@@ -18,6 +18,11 @@ export default function Login() {
     setTimeout(() => setLoading(false), 1000)
   }
 
+  const fillDemoCredentials = () => {
+    setEmail('demo@codespectra.com')
+    setPassword('DemoPass123!')
+  }
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -71,6 +76,32 @@ export default function Login() {
           {loading ? 'Signing in...' : 'Sign In'}
         </Button>
       </form>
+
+      {/* Demo Credentials */}
+      <div className="bg-card/50 border border-border rounded-lg p-4 space-y-3">
+        <div className="space-y-1">
+          <p className="text-sm font-medium text-foreground">🧪 Demo Account</p>
+          <p className="text-xs text-foreground/60">Use these credentials to test the platform:</p>
+        </div>
+        <div className="space-y-2 bg-background/50 rounded p-3 font-mono text-xs">
+          <div className="flex items-center justify-between">
+            <span className="text-foreground/70">Email:</span>
+            <span className="text-primary font-semibold">demo@codespectra.com</span>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-foreground/70">Password:</span>
+            <span className="text-primary font-semibold">DemoPass123!</span>
+          </div>
+        </div>
+        <Button
+          type="button"
+          variant="secondary"
+          className="w-full text-sm"
+          onClick={fillDemoCredentials}
+        >
+          Auto-fill Demo Credentials
+        </Button>
+      </div>
 
       {/* Divider */}
       <div className="relative">
