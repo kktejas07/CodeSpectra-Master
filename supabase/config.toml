@@ -1,0 +1,14 @@
+# Supabase Configuration
+# This file is used by the Supabase CLI
+
+[project]
+# Supabase project configuration
+
+[api]
+# API configuration
+
+[db]
+# Database configuration
+
+[auth]
+# Authentication configuration
