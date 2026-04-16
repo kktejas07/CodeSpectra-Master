@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowRight, Code2, Zap, Shield, Cpu, GitBranch, CheckCircle2, TrendingUp, Github, Menu, X, Play, ChevronRight } from 'lucide-react'
 import { Globe } from '@/components/globe'
 import { DotPattern } from '@/components/dot-pattern'
+import { CodePattern } from '@/components/code-pattern'
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -154,35 +155,34 @@ export default function Home() {
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-32 pb-20 lg:pt-40 lg:pb-32 relative overflow-hidden">
-        {/* Globe background */}
-        <div className="absolute inset-0 opacity-20 pointer-events-none">
-          <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl max-h-4xl">
-            <Globe />
-          </div>
+      <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden min-h-[90vh] flex items-center">
+        {/* Code Pattern Background */}
+        <div className="absolute inset-0 z-0">
+          <CodePattern />
         </div>
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
           <div className="max-w-4xl mx-auto text-center">
-            <p className="text-sm text-muted-foreground mb-6 animate-fade-in">The platform for modern teams</p>
+            <p className="text-sm text-muted-foreground mb-8 animate-fade-in">The platform for modern teams</p>
             
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-tight">
-              The platform<br />
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-tight text-foreground">
+              The platform
+              <br />
               <span className="text-primary">{displayedText}<span className="animate-pulse">|</span></span>
             </h1>
             
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
+            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
               Your toolkit to stop configuring and start innovating. Securely build, deploy, and scale the best experiences.
             </p>
 
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Button size="lg" asChild className="h-12 px-6 text-base gap-2">
+              <Button size="lg" asChild className="h-12 px-8 text-base gap-2 rounded-full">
                 <Link href="/auth/signup">
                   Start free trial
                   <ArrowRight className="w-4 h-4" />
                 </Link>
               </Button>
-              <Button size="lg" variant="outline" asChild className="h-12 px-6 text-base gap-2">
+              <Button size="lg" variant="outline" asChild className="h-12 px-8 text-base gap-2 rounded-full">
                 <Link href="#capabilities">
                   <Play className="w-4 h-4" />
                   Watch demo
