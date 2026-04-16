@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Code2, AlertCircle, Github, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { FaceRecognition } from '@/components/auth/face-recognition'
 import { signIn } from '@/lib/auth-service'
+import { createClient } from '@supabase/supabase-js'
 
 export default function Login() {
   const router = useRouter()
@@ -30,7 +31,34 @@ export default function Login() {
       })
 
       if (response.ok) {
-        setTimeout(() => router.push('/dashboard'), 1000)
+        const data = await response.json()
+        
+        // Fetch user profile to get role
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        
+        if (supabaseUrl && supabaseKey && data.userId) {
+          const supabase = createClient(supabaseUrl, supabaseKey)
+          
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', data.userId)
+            .single()
+
+          // Redirect based on role
+          let redirectPath = '/dashboard'
+          if (profile?.role === 'superadmin') {
+            redirectPath = '/dashboard/admin'
+          } else if (profile?.role === 'admin') {
+            redirectPath = '/dashboard/admin'
+          }
+
+          setTimeout(() => router.push(redirectPath), 1000)
+        } else {
+          // Fallback redirect
+          setTimeout(() => router.push('/dashboard'), 1000)
+        }
       } else {
         setError('Face not recognized. Please try again.')
       }
@@ -56,7 +84,33 @@ export default function Login() {
       const result = await signIn(email, password)
       
       if (result.success) {
-        setTimeout(() => router.push('/dashboard'), 1000)
+        // Fetch user profile to get role
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
+        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
+        
+        if (supabaseUrl && supabaseKey && result.user) {
+          const supabase = createClient(supabaseUrl, supabaseKey)
+          
+          const { data: profile } = await supabase
+            .from('profiles')
+            .select('role')
+            .eq('id', result.user.id)
+            .single()
+
+          // Redirect based on role
+          let redirectPath = '/dashboard'
+          if (profile?.role === 'superadmin') {
+            redirectPath = '/dashboard/admin'
+          } else if (profile?.role === 'admin') {
+            redirectPath = '/dashboard/admin'
+          }
+
+          console.log('[v0] User role:', profile?.role, 'Redirecting to:', redirectPath)
+          setTimeout(() => router.push(redirectPath), 1000)
+        } else {
+          // Fallback redirect if Supabase fetch fails
+          setTimeout(() => router.push('/dashboard'), 1000)
+        }
       } else {
         setError(result.error || 'Login failed. Please try again.')
       }
