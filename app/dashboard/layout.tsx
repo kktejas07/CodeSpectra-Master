@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { getNavItems, UserRole, isAdmin, isSuperAdmin } from '@/lib/rbac'
-import { Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown, Shield, Users } from 'lucide-react'
+import { Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown, Shield, Users, Menu, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/auth-service'
 import {
