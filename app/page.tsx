@@ -156,7 +156,7 @@ export default function Home() {
       {/* Hero Section */}
       <section className="pt-32 pb-20 lg:pt-40 lg:pb-32 relative overflow-hidden">
         {/* Globe background */}
-        <div className="absolute inset-0 opacity-30 pointer-events-none">
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
           <div className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 w-full h-full max-w-4xl max-h-4xl">
             <Globe />
           </div>
@@ -166,13 +166,9 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-sm text-muted-foreground mb-6 animate-fade-in">The platform for modern teams</p>
             
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6">
-              The platform
-              <br />
-              <span className="text-primary inline-block">
-                {displayedText}
-                <span className="animate-pulse">|</span>
-              </span>
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold tracking-tight mb-6 leading-tight">
+              The platform<br />
+              <span className="text-primary">{displayedText}<span className="animate-pulse">|</span></span>
             </h1>
             
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-10 leading-relaxed">
@@ -414,70 +410,77 @@ codespectra.connect({
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 py-20 bg-card/30 relative overflow-hidden">
+      <footer className="border-t border-border/40 py-24 bg-background relative overflow-hidden">
         <DotPattern />
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-12 mb-16">
-            <div className="col-span-2 md:col-span-1 space-y-4">
-              <Link href="/" className="flex items-center gap-2">
+          {/* Footer Grid */}
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 mb-12">
+            {/* Brand Column */}
+            <div className="col-span-2 md:col-span-1">
+              <Link href="/" className="flex items-center gap-2 mb-6">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <Code2 className="w-4 h-4 text-primary-foreground" />
                 </div>
-                <span className="text-lg font-semibold">CodeSpectra</span>
+                <span className="font-semibold text-lg">CodeSpectra</span>
               </Link>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 The platform for modern development teams. Build, analyze, and ship with confidence.
               </p>
             </div>
             
-            <div className="space-y-4">
-              <h4 className="font-semibold text-foreground">Product</h4>
-              <ul className="space-y-3 text-sm">
-                <li><Link href="#capabilities" className="text-muted-foreground hover:text-foreground transition-colors">Features</Link></li>
-                <li><Link href="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">Pricing</Link></li>
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Security</Link></li>
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Enterprise</Link></li>
+            {/* Product Column */}
+            <div>
+              <h4 className="font-semibold text-foreground text-sm mb-6">Product</h4>
+              <ul className="space-y-4">
+                <li><Link href="#capabilities" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Features</Link></li>
+                <li><Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Pricing</Link></li>
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Security</Link></li>
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Enterprise</Link></li>
               </ul>
             </div>
             
-            <div className="space-y-4">
-              <h4 className="font-semibold text-foreground">Resources</h4>
-              <ul className="space-y-3 text-sm">
-                <li><Link href="/docs" className="text-muted-foreground hover:text-foreground transition-colors">Documentation</Link></li>
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">API Reference</Link></li>
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Blog</Link></li>
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Changelog</Link></li>
+            {/* Resources Column */}
+            <div>
+              <h4 className="font-semibold text-foreground text-sm mb-6">Resources</h4>
+              <ul className="space-y-4">
+                <li><Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</Link></li>
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">API Reference</Link></li>
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Blog</Link></li>
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Changelog</Link></li>
               </ul>
             </div>
             
-            <div className="space-y-4">
-              <h4 className="font-semibold text-foreground">Company</h4>
-              <ul className="space-y-3 text-sm">
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">About</Link></li>
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Careers</Link></li>
-                <li><Link href="/support" className="text-muted-foreground hover:text-foreground transition-colors">Contact</Link></li>
+            {/* Company Column */}
+            <div>
+              <h4 className="font-semibold text-foreground text-sm mb-6">Company</h4>
+              <ul className="space-y-4">
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">About</Link></li>
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Careers</Link></li>
+                <li><Link href="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Contact</Link></li>
               </ul>
             </div>
             
-            <div className="space-y-4">
-              <h4 className="font-semibold text-foreground">Legal</h4>
-              <ul className="space-y-3 text-sm">
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Privacy</Link></li>
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Terms</Link></li>
-                <li><Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">Cookies</Link></li>
+            {/* Legal Column */}
+            <div>
+              <h4 className="font-semibold text-foreground text-sm mb-6">Legal</h4>
+              <ul className="space-y-4">
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Privacy</Link></li>
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Terms</Link></li>
+                <li><Link href="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Cookies</Link></li>
               </ul>
             </div>
           </div>
 
-          <div className="border-t border-border/40 pt-8 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <p className="text-sm text-muted-foreground">
+          {/* Footer Bottom */}
+          <div className="border-t border-border/40 pt-12 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <p className="text-xs text-muted-foreground">
               © 2026 CodeSpectra. All rights reserved.
             </p>
             <div className="flex gap-6 items-center">
-              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors hover:scale-110 transform duration-200">
+              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors duration-200">
                 <Github className="w-5 h-5" />
               </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors hover:scale-110 transform duration-200">
+              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors duration-200">
                 <Code2 className="w-5 h-5" />
               </Link>
             </div>
