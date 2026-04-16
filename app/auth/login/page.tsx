@@ -9,6 +9,7 @@ import { Code2, AlertCircle, Github, Mail, Lock, Eye, EyeOff, ArrowRight } from 
 import { FaceRecognition } from '@/components/auth/face-recognition'
 import { signIn } from '@/lib/auth-service'
 import { createClient } from '@supabase/supabase-js'
+import { getDefaultDashboard } from '@/lib/rbac'
 
 export default function Login() {
   const router = useRouter()
@@ -47,12 +48,7 @@ export default function Login() {
             .single()
 
           // Redirect based on role
-          let redirectPath = '/dashboard'
-          if (profile?.role === 'superadmin') {
-            redirectPath = '/dashboard/admin'
-          } else if (profile?.role === 'admin') {
-            redirectPath = '/dashboard/admin'
-          }
+          let redirectPath = getDefaultDashboard((profile?.role || 'user') as any)
 
           setTimeout(() => router.push(redirectPath), 1000)
         } else {
@@ -98,12 +94,7 @@ export default function Login() {
             .single()
 
           // Redirect based on role
-          let redirectPath = '/dashboard'
-          if (profile?.role === 'superadmin') {
-            redirectPath = '/dashboard/admin'
-          } else if (profile?.role === 'admin') {
-            redirectPath = '/dashboard/admin'
-          }
+          let redirectPath = getDefaultDashboard((profile?.role || 'user') as any)
 
           console.log('[v0] User role:', profile?.role, 'Redirecting to:', redirectPath)
           setTimeout(() => router.push(redirectPath), 1000)

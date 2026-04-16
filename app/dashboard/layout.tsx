@@ -4,9 +4,12 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { getNavItems, UserRole, isAdmin, isSuperAdmin } from '@/lib/rbac'
-import { Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown, Shield, Users, Menu, X } from 'lucide-react'
+import { Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown, Shield, Users, Menu, X, MoreHorizontal } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/auth-service'
+import { Breadcrumbs } from '@/components/breadcrumbs'
+import { ThemeSwitcher } from '@/components/theme-switcher'
+import { CommandMenu } from '@/components/command-menu'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -226,8 +229,13 @@ export default function DashboardLayout({
 
       {/* Main Content */}
       <div className="lg:ml-64">
+        {/* Breadcrumbs */}
+        <div className="sticky top-0 h-10 bg-background/80 backdrop-blur-xl border-b border-border/20 z-20 px-4 lg:px-6 flex items-center">
+          <Breadcrumbs />
+        </div>
+
         {/* Top Bar */}
-        <header className="sticky top-0 h-16 bg-background/80 backdrop-blur-xl border-b border-border/40 z-30">
+        <header className="sticky top-10 h-16 bg-background/80 backdrop-blur-xl border-b border-border/40 z-30">
           <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
@@ -236,21 +244,13 @@ export default function DashboardLayout({
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            {/* Search */}
-            <div className="hidden md:flex flex-1 max-w-md">
-              <div className="relative w-full">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                <input
-                  type="text"
-                  placeholder="Search..."
-                  value={searchQuery}
-                  onChange={(e) => setSearchQuery(e.target.value)}
-                  className="w-full pl-9 pr-4 py-2 text-sm border border-border/40 rounded-lg bg-background hover:border-primary/40 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
-                />
-              </div>
-            </div>
+            {/* Search & Command Menu */}
+            <CommandMenu />
 
             <div className="flex items-center gap-2">
+              {/* Theme Switcher */}
+              <ThemeSwitcher />
+
               {/* Notifications Dropdown */}
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
@@ -280,6 +280,48 @@ export default function DashboardLayout({
                   <div className="p-3 border-t border-border text-center">
                     <Button variant="ghost" size="sm" className="w-full text-xs">View All Notifications</Button>
                   </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* More Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+                    <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" className="w-56">
+                  <div className="p-3 border-b border-border">
+                    <p className="text-sm font-semibold">Quick Links</p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/arena">Arena</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/scanner">Code Scanner</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/learning">Learning Path</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/leaderboard">Leaderboard</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/achievements">Achievements</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <div className="p-3 border-b border-border">
+                    <p className="text-sm font-semibold">Resources</p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <a href="https://docs.example.com" target="_blank" rel="noopener noreferrer">Documentation</a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a href="https://help.example.com" target="_blank" rel="noopener noreferrer">Help Center</a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a href="https://status.example.com" target="_blank" rel="noopener noreferrer">Status Page</a>
+                  </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
 

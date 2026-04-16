@@ -143,9 +143,9 @@ export function canAccessPage(role: UserRole, page: string): boolean {
 export function getDefaultDashboard(role: UserRole): string {
   switch (role) {
     case 'superadmin':
-      return '/dashboard/admin'
+      return '/dashboard/admin/system'
     case 'admin':
-      return '/dashboard/admin'
+      return '/dashboard/admin/team'
     case 'user':
     default:
       return '/dashboard'
