@@ -34,14 +34,21 @@ export default function DashboardLayout({
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         
-        if (!supabaseUrl || !supabaseKey) return
+        if (!supabaseUrl || !supabaseKey) {
+          console.log('[v0] Missing Supabase config')
+          return
+        }
 
         const supabase = createClient(supabaseUrl, supabaseKey)
         
         const { data: { user } } = await supabase.auth.getUser()
-        if (!user) return
+        if (!user) {
+          console.log('[v0] No authenticated user')
+          return
+        }
 
-        const { data } = await supabase
+        // Try to get profile from profiles table
+        const { data, error } = await supabase
           .from('profiles')
           .select('*')
           .eq('id', user.id)
@@ -49,9 +56,47 @@ export default function DashboardLayout({
 
         if (data) {
           setUserProfile(data)
+          console.log('[v0] Profile loaded:', data.role)
+        } else if (error?.code === 'PGRST116') {
+          // Profile doesn't exist, create it
+          console.log('[v0] Creating new profile for user...')
+          const newProfile = {
+            id: user.id,
+            full_name: user.user_metadata?.full_name || 'User',
+            email: user.email || '',
+            role: user.user_metadata?.role || 'user',
+          }
+          
+          const { data: created } = await supabase
+            .from('profiles')
+            .insert([newProfile])
+            .select()
+            .single()
+
+          if (created) {
+            setUserProfile(created)
+          } else {
+            // Fallback to auth metadata
+            setUserProfile(newProfile)
+          }
+        } else if (error) {
+          console.log('[v0] Error fetching profile:', error.message)
+          // Use auth metadata as fallback
+          setUserProfile({
+            id: user.id,
+            full_name: user.user_metadata?.full_name || 'User',
+            email: user.email || '',
+            role: user.user_metadata?.role || 'user',
+          })
         }
       } catch (error) {
-        console.error('[v0] Error fetching user profile:', error)
+        console.error('[v0] Error in fetchUserProfile:', error)
+        // Set minimal fallback profile
+        setUserProfile({
+          full_name: 'User',
+          email: '',
+          role: 'user',
+        })
       }
     }
 
