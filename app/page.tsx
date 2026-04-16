@@ -1,350 +1,239 @@
 'use client'
 
 import Link from 'next/link'
+import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { ArrowRight, Code2, Brain, Zap, Shield, Cpu, GitBranch, Star, CheckCircle2, TrendingUp } from 'lucide-react'
+import { ArrowRight, Code2, Zap, Shield, Cpu, GitBranch, Star, CheckCircle2, TrendingUp, Github, Menu, X } from 'lucide-react'
 
 export default function Home() {
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5">
       {/* Navigation */}
-      <nav className="fixed top-0 w-full z-50 bg-background/95 backdrop-blur-md border-b border-border/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3 flex justify-between items-center">
-          <div className="flex items-center gap-2">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Code2 className="w-5 h-5 text-primary-foreground" />
+      <nav className="sticky top-0 z-50 border-b border-border/50 bg-background/95 backdrop-blur-md">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="flex items-center justify-between h-16">
+            {/* Logo */}
+            <Link href="/" className="flex items-center gap-2 group">
+              <div className="w-10 h-10 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center shadow-lg group-hover:shadow-xl transition-shadow">
+                <Code2 className="w-5 h-5 text-primary-foreground" />
+              </div>
+              <span className="text-xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">CodeSpectra</span>
+            </Link>
+
+            {/* Desktop Menu */}
+            <div className="hidden md:flex items-center gap-8">
+              <Link href="#capabilities" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Capabilities</Link>
+              <Link href="#process" className="text-sm text-muted-foreground hover:text-foreground transition-colors">How It Works</Link>
+              <Link href="#pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
+              <Link href="#testimonials" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Testimonials</Link>
             </div>
-            <span className="text-lg font-semibold text-foreground">CodeSpectra</span>
-          </div>
-          
-          <div className="hidden md:flex gap-12 text-sm font-medium">
-            <Link href="#capabilities" className="text-muted-foreground hover:text-foreground transition-colors duration-200">Capabilities</Link>
-            <Link href="#process" className="text-muted-foreground hover:text-foreground transition-colors duration-200">How It Works</Link>
-            <Link href="#testimonials" className="text-muted-foreground hover:text-foreground transition-colors duration-200">Testimonials</Link>
-            <Link href="#pricing" className="text-muted-foreground hover:text-foreground transition-colors duration-200">Pricing</Link>
+
+            {/* Auth Buttons */}
+            <div className="hidden md:flex items-center gap-3">
+              <Button variant="outline" size="sm" asChild className="rounded-lg">
+                <Link href="/auth/login">Sign In</Link>
+              </Button>
+              <Button size="sm" asChild className="rounded-lg gap-2 group">
+                <Link href="/auth/signup">
+                  Get Started
+                  <ArrowRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+            </div>
+
+            {/* Mobile Menu Button */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="md:hidden p-2 hover:bg-muted rounded-lg transition-colors"
+            >
+              {mobileMenuOpen ? <X className="w-6 h-6" /> : <Menu className="w-6 h-6" />}
+            </button>
           </div>
 
-          <div className="flex gap-2">
-            <Link href="/auth/login">
-              <Button variant="ghost" className="text-sm">Sign In</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button size="sm" className="gap-1">
-                Get Started <ArrowRight className="w-3 h-3" />
-              </Button>
-            </Link>
-          </div>
+          {/* Mobile Menu */}
+          {mobileMenuOpen && (
+            <div className="md:hidden pb-4 space-y-3 border-t border-border/50">
+              <Link href="#capabilities" className="block text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-2">Capabilities</Link>
+              <Link href="#process" className="block text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-2">How It Works</Link>
+              <Link href="#pricing" className="block text-sm text-muted-foreground hover:text-foreground transition-colors px-2 py-2">Pricing</Link>
+              <div className="flex gap-2 pt-3">
+                <Button variant="outline" size="sm" asChild className="flex-1 rounded-lg">
+                  <Link href="/auth/login">Sign In</Link>
+                </Button>
+                <Button size="sm" asChild className="flex-1 rounded-lg">
+                  <Link href="/auth/signup">Get Started</Link>
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </nav>
 
       {/* Hero Section */}
-      <section className="pt-40 pb-24 px-4 sm:px-6 lg:px-8 relative">
-        {/* Background gradient effect */}
-        <div className="absolute inset-0 bg-gradient-to-b from-primary/5 to-background/0 pointer-events-none" />
-        
-        <div className="max-w-5xl mx-auto text-center space-y-10 relative z-10">
-          <div className="inline-block px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 text-sm font-medium text-primary mb-4">
-            Master Code Through AI
-          </div>
-          
-          <div className="space-y-6">
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground tracking-tight text-balance">
-              The platform for developers who <span className="text-primary">master</span> their craft
-            </h1>
-            <p className="text-xl sm:text-2xl text-muted-foreground max-w-3xl mx-auto leading-relaxed">
-              Real-time code analysis, competitive challenges, and AI-powered learning all in one place. Stop configuring. Start innovating.
-            </p>
-          </div>
-
-          <div className="flex flex-col sm:flex-row gap-4 justify-center pt-6">
-            <Link href="/setup">
-              <Button size="lg" className="w-full sm:w-auto gap-2 text-base font-semibold h-12 px-8">
-                Start Free Trial <ArrowRight className="w-4 h-4" />
-              </Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button size="lg" variant="outline" className="w-full sm:w-auto text-base font-semibold h-12 px-8">
-                Watch Demo
-              </Button>
-            </Link>
-          </div>
-
-          {/* Social Proof Stats */}
-          <div className="pt-16 grid grid-cols-3 gap-8">
-            <div className="text-center space-y-2">
-              <div className="text-4xl sm:text-5xl font-bold text-primary">10K+</div>
-              <div className="text-sm sm:text-base text-muted-foreground font-medium">Active Developers</div>
+      <section className="py-20 sm:py-28 lg:py-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-4xl mx-auto text-center space-y-8">
+            {/* Announcement Badge */}
+            <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 border border-primary/20 rounded-full text-sm text-primary font-medium hover:bg-primary/20 transition-colors cursor-pointer">
+              <Zap className="w-4 h-4" />
+              <span>Now with AI-powered code fixes</span>
+              <ArrowRight className="w-3 h-3" />
             </div>
-            <div className="text-center space-y-2">
-              <div className="text-4xl sm:text-5xl font-bold text-primary">500+</div>
-              <div className="text-sm sm:text-base text-muted-foreground font-medium">Code Challenges</div>
+
+            {/* Main Headline */}
+            <div className="space-y-4">
+              <h1 className="text-5xl sm:text-6xl lg:text-7xl font-bold text-foreground leading-tight">
+                Analyze Code
+                <br />
+                <span className="bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">With Intelligence</span>
+              </h1>
+              <p className="text-lg sm:text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+                Master your craft with real-time code analysis, competitive challenges, and AI-powered learning. All in one intuitive platform.
+              </p>
             </div>
-            <div className="text-center space-y-2">
-              <div className="text-4xl sm:text-5xl font-bold text-primary">1M+</div>
-              <div className="text-sm sm:text-base text-muted-foreground font-medium">Solutions Analyzed</div>
+
+            {/* CTA Buttons */}
+            <div className="flex flex-col sm:flex-row gap-4 justify-center pt-4">
+              <Button size="lg" asChild className="rounded-lg gap-2 group shadow-lg hover:shadow-xl text-base">
+                <Link href="/auth/signup">
+                  Start Free Trial
+                  <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+                </Link>
+              </Button>
+              <Button size="lg" variant="outline" asChild className="rounded-lg gap-2 text-base border-border/50 hover:border-border">
+                <Link href="#capabilities">
+                  Learn More
+                </Link>
+              </Button>
+            </div>
+
+            {/* Trust Badges */}
+            <div className="flex flex-col sm:flex-row items-center justify-center gap-8 pt-8 border-t border-border/30">
+              <div className="text-center sm:text-left">
+                <p className="text-sm text-muted-foreground font-medium">Trusted by developers</p>
+                <div className="flex items-center gap-2 mt-2">
+                  {[...Array(5)].map((_, i) => (
+                    <span key={i} className="text-yellow-500">★</span>
+                  ))}
+                  <span className="text-sm text-muted-foreground">4.9/5 (2,340+ reviews)</span>
+                </div>
+              </div>
+              <div className="hidden sm:block w-px h-8 bg-border/30"></div>
+              <div className="text-center sm:text-left">
+                <p className="text-2xl font-bold text-foreground">10K+</p>
+                <p className="text-sm text-muted-foreground">Active developers</p>
+              </div>
+              <div className="hidden sm:block w-px h-8 bg-border/30"></div>
+              <div className="text-center sm:text-left">
+                <p className="text-2xl font-bold text-foreground">1M+</p>
+                <p className="text-sm text-muted-foreground">Solutions analyzed</p>
+              </div>
             </div>
           </div>
         </div>
       </section>
 
       {/* Capabilities Section */}
-      <section id="capabilities" className="py-32 px-4 sm:px-6 lg:px-8 border-t border-border">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl sm:text-5xl font-bold text-foreground">Everything you need</h2>
-            <p className="text-xl text-muted-foreground">Nothing you don&apos;t</p>
+      <section id="capabilities" className="py-20 lg:py-28 border-t border-border/50">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">Powerful Features</h2>
+            <p className="text-lg text-muted-foreground">Everything you need to maintain code quality at scale</p>
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-12">
-            {/* Feature 1 */}
-            <div className="space-y-4 flex flex-col">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 border border-primary/20">
-                  <Cpu className="w-7 h-7 text-primary" />
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
+            {[
+              {
+                icon: Shield,
+                title: 'Security Scanning',
+                description: 'Detect vulnerabilities and security hotspots in your code automatically',
+              },
+              {
+                icon: Zap,
+                title: 'AI-Powered Fixes',
+                description: 'Get intelligent suggestions for fixing bugs and code smells with one click',
+              },
+              {
+                icon: TrendingUp,
+                title: 'Quality Metrics',
+                description: 'Track code quality trends and maintain consistent standards across projects',
+              },
+              {
+                icon: Cpu,
+                title: 'Performance Analysis',
+                description: 'Identify performance bottlenecks and get optimization recommendations',
+              },
+              {
+                icon: Github,
+                title: 'GitHub Integration',
+                description: 'Seamlessly integrate with your GitHub workflow and CI/CD pipeline',
+              },
+              {
+                icon: CheckCircle2,
+                title: 'Quality Gates',
+                description: 'Set custom quality thresholds and block merges that don\'t meet standards',
+              },
+            ].map((feature, i) => {
+              const Icon = feature.icon
+              return (
+                <div key={i} className="p-6 border border-border/50 rounded-lg hover:border-primary/50 hover:shadow-lg transition-all duration-300 group">
+                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mb-4 group-hover:bg-primary/20 transition-colors">
+                    <Icon className="w-6 h-6 text-primary" />
+                  </div>
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{feature.title}</h3>
+                  <p className="text-muted-foreground text-sm">{feature.description}</p>
                 </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground">Real-time Code Analysis</h3>
-                  <p className="text-muted-foreground mt-3 leading-relaxed">AI-powered analysis across 8+ languages. Get instant feedback on code quality, performance, security, and maintainability with actionable suggestions.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Feature 2 */}
-            <div className="space-y-4 flex flex-col">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 border border-primary/20">
-                  <Zap className="w-7 h-7 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground">Competitive Challenges</h3>
-                  <p className="text-muted-foreground mt-3 leading-relaxed">Solve 500+ algorithmic problems, compete on global leaderboards, and earn badges. Test your skills against developers worldwide with real-time rankings.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Feature 3 */}
-            <div className="space-y-4 flex flex-col">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 border border-primary/20">
-                  <Brain className="w-7 h-7 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground">AI-Powered Learning</h3>
-                  <p className="text-muted-foreground mt-3 leading-relaxed">Personalized learning paths with AI tutoring. Get real-time hints, code explanations, and optimization suggestions to accelerate your growth.</p>
-                </div>
-              </div>
-            </div>
-
-            {/* Feature 4 */}
-            <div className="space-y-4 flex flex-col">
-              <div className="flex items-start gap-4">
-                <div className="w-14 h-14 bg-primary/10 rounded-lg flex items-center justify-center flex-shrink-0 border border-primary/20">
-                  <Shield className="w-7 h-7 text-primary" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="text-xl font-bold text-foreground">Enterprise Security</h3>
-                  <p className="text-muted-foreground mt-3 leading-relaxed">Bank-grade encryption, SOC 2 compliance, and granular access controls. Your code stays private, secure, and compliant with enterprise standards.</p>
-                </div>
-              </div>
-            </div>
+              )
+            })}
           </div>
         </div>
       </section>
 
       {/* Process Section */}
-      <section id="process" className="py-32 px-4 sm:px-6 lg:px-8 bg-secondary/30 border-t border-border">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl sm:text-5xl font-bold text-foreground">Three steps</h2>
-            <p className="text-xl text-muted-foreground">Infinite possibilities</p>
+      <section id="process" className="py-20 lg:py-28 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 border-t border-primary/20">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-bold text-foreground mb-4">Three Simple Steps</h2>
+            <p className="text-lg text-muted-foreground">Start improving your code in minutes</p>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             {[
               { 
-                number: 'I', 
-                title: 'Connect your code', 
-                description: 'Paste your code or connect GitHub. Start analysis in seconds.',
+                number: '01', 
+                title: 'Connect Your Code', 
+                description: 'Link your GitHub repository or paste code directly. Integration takes less than 2 minutes.',
                 icon: <GitBranch className="w-6 h-6" />
               },
               { 
-                number: 'II', 
-                title: 'Get instant feedback', 
-                description: 'Real-time analysis with 8+ metrics and AI-powered suggestions.',
+                number: '02', 
+                title: 'Get Instant Analysis', 
+                description: 'Real-time feedback on code quality, security, and performance with actionable insights.',
                 icon: <Zap className="w-6 h-6" />
               },
               { 
-                number: 'III', 
-                title: 'Improve & compete', 
-                description: 'Apply fixes, solve challenges, and track your progress over time.',
+                number: '03', 
+                title: 'Improve & Track', 
+                description: 'Apply AI suggestions, compete with peers, and monitor your progress over time.',
                 icon: <TrendingUp className="w-6 h-6" />
               }
             ].map((step, i) => (
-              <div key={i} className="space-y-6">
-                <div className="space-y-3">
-                  <div className="text-6xl font-light text-primary">{step.number}</div>
-                  <h3 className="text-2xl font-bold text-foreground">{step.title}</h3>
-                  <p className="text-muted-foreground leading-relaxed">{step.description}</p>
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Integrations Section */}
-      <section className="py-32 px-4 sm:px-6 lg:px-8 border-t border-border">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl sm:text-5xl font-bold text-foreground">Works with everything</h2>
-            <p className="text-lg text-muted-foreground">Integrates seamlessly with your favorite developer tools</p>
-          </div>
-
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-6 gap-6">
-            {['GitHub', 'Slack', 'Stripe', 'PostgreSQL', 'Docker', 'Vercel'].map((integration) => (
-              <div key={integration} className="flex items-center justify-center p-6 rounded-lg border border-border bg-card hover:border-primary/20 hover:bg-primary/5 transition-all">
-                <span className="font-semibold text-foreground text-center">{integration}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Pricing Section */}
-      <section id="pricing" className="py-32 px-4 sm:px-6 lg:px-8 bg-secondary/30 border-t border-border">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-20 space-y-4">
-            <h2 className="text-4xl sm:text-5xl font-bold text-foreground">Simple, transparent pricing</h2>
-            <p className="text-lg text-muted-foreground">Start free and scale as you grow. No hidden fees.</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              { 
-                name: 'Starter', 
-                price: '0', 
-                features: [
-                  'Up to 3 projects',
-                  '10 challenges/month',
-                  '1GB storage',
-                  'Basic analytics',
-                  'Community support'
-                ] 
-              },
-              { 
-                name: 'Pro', 
-                price: '24', 
-                features: [
-                  'Unlimited projects',
-                  'Unlimited challenges',
-                  '100GB storage',
-                  'Advanced analytics',
-                  'Priority support',
-                  'API access',
-                  'Custom domains'
-                ], 
-                highlight: true 
-              },
-              { 
-                name: 'Enterprise', 
-                price: 'Custom', 
-                features: [
-                  'Everything in Pro',
-                  'Unlimited storage',
-                  '24/7 dedicated support',
-                  'Custom integrations',
-                  'SLA guarantee',
-                  'On-premise option',
-                  'Security audit'
-                ] 
-              }
-            ].map((plan, i) => (
-              <div
-                key={i}
-                className={`p-8 rounded-lg border transition-all ${
-                  plan.highlight
-                    ? 'border-primary bg-primary/5 ring-2 ring-primary/20 md:scale-105'
-                    : 'border-border bg-background hover:border-primary/20'
-                }`}
-              >
-                {plan.highlight && (
-                  <div className="inline-block px-3 py-1 rounded-full bg-primary/10 border border-primary/20 text-xs font-semibold text-primary mb-4">
-                    Most Popular
+              <div key={i} className="relative">
+                <div className="p-6 rounded-lg border border-border/50 hover:border-primary/50 hover:shadow-lg transition-all duration-300 h-full">
+                  <div className="flex items-start gap-4 mb-4">
+                    <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0 text-primary">
+                      {step.icon}
+                    </div>
+                    <div>
+                      <div className="text-sm font-bold text-muted-foreground">{step.number}</div>
+                    </div>
                   </div>
-                )}
-                <h3 className="text-2xl font-bold text-foreground mb-4">{plan.name}</h3>
-                <div className="mb-6">
-                  <span className="text-5xl font-bold text-foreground">{plan.price}</span>
-                  {plan.price !== 'Custom' && <span className="text-muted-foreground ml-2">/month</span>}
+                  <h3 className="text-lg font-semibold text-foreground mb-2">{step.title}</h3>
+                  <p className="text-muted-foreground text-sm leading-relaxed">{step.description}</p>
                 </div>
-                <ul className="space-y-4 mb-8">
-                  {plan.features.map((feature, j) => (
-                    <li key={j} className="text-foreground flex items-center gap-3">
-                      <CheckCircle2 className="w-5 h-5 text-primary flex-shrink-0" />
-                      {feature}
-                    </li>
-                  ))}
-                </ul>
-                <Button 
-                  className="w-full" 
-                  variant={plan.highlight ? 'default' : 'outline'}
-                >
-                  {plan.name === 'Enterprise' ? 'Contact Sales' : 'Get Started'}
-                </Button>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-
-      {/* Testimonials Section */}
-      <section id="testimonials" className="py-24 px-4 sm:px-6 lg:px-8 bg-secondary/30 border-t border-border">
-        <div className="max-w-6xl mx-auto">
-          <div className="text-center mb-16 space-y-4">
-            <h2 className="text-4xl sm:text-5xl font-bold text-foreground">Loved by developers worldwide</h2>
-            <p className="text-lg text-muted-foreground">See what developers are saying about CodeSpectra</p>
-          </div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            {[
-              {
-                name: 'Alex Johnson',
-                role: 'Full Stack Engineer',
-                company: 'Tech Startup',
-                content: 'CodeSpectra transformed how I approach code quality. The AI suggestions are spot-on and helped me improve my skills significantly.',
-                rating: 5
-              },
-              {
-                name: 'Maria Chen',
-                role: 'Tech Lead',
-                company: 'Enterprise Corp',
-                content: 'Best decision for our team. The competitive arena keeps everyone engaged while the analysis tools ensure quality standards.',
-                rating: 5
-              },
-              {
-                name: 'David Kumar',
-                role: 'Junior Developer',
-                company: 'StartUp Inc',
-                content: 'As a junior, the learning path and AI tutoring have been incredible. I went from struggling to confident in 3 months.',
-                rating: 5
-              }
-            ].map((testimonial, i) => (
-              <div key={i} className="p-8 rounded-lg border border-border bg-card hover:border-primary/20 transition-colors">
-                <div className="flex gap-1 mb-4">
-                  {Array(testimonial.rating).fill(null).map((_, j) => (
-                    <Star key={j} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                  ))}
-                </div>
-                <p className="text-foreground mb-6 leading-relaxed">{testimonial.content}</p>
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 bg-primary/20 rounded-full flex items-center justify-center text-sm font-semibold text-primary">
-                    {testimonial.name.split(' ').map(n => n[0]).join('')}
-                  </div>
-                  <div>
-                    <p className="font-semibold text-foreground text-sm">{testimonial.name}</p>
-                    <p className="text-xs text-muted-foreground">{testimonial.role} at {testimonial.company}</p>
-                  </div>
-                </div>
+                {i < 2 && <div className="hidden md:block absolute top-1/2 -right-4 w-8 h-1 bg-gradient-to-r from-primary/20 to-transparent"></div>}
               </div>
             ))}
           </div>
@@ -352,76 +241,74 @@ export default function Home() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="rounded-lg border border-primary/20 bg-primary/5 p-12 sm:p-16 text-center space-y-8">
-            <div className="space-y-4">
-              <h2 className="text-4xl sm:text-5xl font-bold text-foreground">Ready to master code?</h2>
-              <p className="text-lg text-muted-foreground">Join 10,000+ developers improving their craft with CodeSpectra.</p>
-            </div>
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+      <section className="py-20 lg:py-28">
+        <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 text-center space-y-8">
+          <h2 className="text-4xl sm:text-5xl font-bold text-foreground">Ready to improve your code quality?</h2>
+          <p className="text-lg text-muted-foreground max-w-2xl mx-auto">Join thousands of developers who are already using CodeSpectra to analyze and improve their code.</p>
+          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" asChild className="rounded-lg gap-2 group shadow-lg hover:shadow-xl text-base">
               <Link href="/auth/signup">
-                <Button size="lg" className="gap-2 text-base font-semibold">
-                  Start Your Free Trial <ArrowRight className="w-4 h-4" />
-                </Button>
+                Start Free Trial
+                <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
               </Link>
-              <Link href="/auth/login">
-                <Button size="lg" variant="outline" className="text-base font-semibold">
-                  Sign In
-                </Button>
-              </Link>
-            </div>
-            <p className="text-sm text-muted-foreground">No credit card required. Free access to all starter features.</p>
+            </Button>
+            <Button size="lg" variant="outline" asChild className="rounded-lg text-base border-border/50 hover:border-border">
+              <Link href="/auth/login">Sign In</Link>
+            </Button>
           </div>
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border py-16 px-4 sm:px-6 lg:px-8 bg-secondary/30">
-        <div className="max-w-6xl mx-auto">
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-12 mb-12">
+      <footer className="border-t border-border/50 bg-background/50 backdrop-blur-sm py-12">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-8">
             <div>
-              <div className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Code2 className="w-5 h-5 text-primary-foreground" />
-                </div>
-                <span className="font-bold text-foreground">CodeSpectra</span>
-              </div>
-              <p className="text-sm text-muted-foreground">Master code through AI</p>
+              <h4 className="font-semibold text-foreground mb-4">Product</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="#" className="hover:text-foreground transition-colors">Features</Link></li>
+                <li><Link href="#" className="hover:text-foreground transition-colors">Pricing</Link></li>
+                <li><Link href="#" className="hover:text-foreground transition-colors">Security</Link></li>
+              </ul>
             </div>
-            <div className="space-y-4">
-              <p className="font-semibold text-foreground text-sm">Product</p>
-              <div className="space-y-3 text-sm">
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">Features</Link>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">Pricing</Link>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">Challenges</Link>
-              </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Resources</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="#" className="hover:text-foreground transition-colors">Documentation</Link></li>
+                <li><Link href="#" className="hover:text-foreground transition-colors">API Reference</Link></li>
+                <li><Link href="#" className="hover:text-foreground transition-colors">Blog</Link></li>
+              </ul>
             </div>
-            <div className="space-y-4">
-              <p className="font-semibold text-foreground text-sm">Company</p>
-              <div className="space-y-3 text-sm">
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">About</Link>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">Blog</Link>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">Careers</Link>
-              </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Company</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="#" className="hover:text-foreground transition-colors">About</Link></li>
+                <li><Link href="#" className="hover:text-foreground transition-colors">Contact</Link></li>
+                <li><Link href="#" className="hover:text-foreground transition-colors">Careers</Link></li>
+              </ul>
             </div>
-            <div className="space-y-4">
-              <p className="font-semibold text-foreground text-sm">Legal</p>
-              <div className="space-y-3 text-sm">
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">Privacy</Link>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">Terms</Link>
-                <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors block">Security</Link>
-              </div>
+            <div>
+              <h4 className="font-semibold text-foreground mb-4">Legal</h4>
+              <ul className="space-y-2 text-sm text-muted-foreground">
+                <li><Link href="#" className="hover:text-foreground transition-colors">Privacy</Link></li>
+                <li><Link href="#" className="hover:text-foreground transition-colors">Terms</Link></li>
+                <li><Link href="#" className="hover:text-foreground transition-colors">Cookies</Link></li>
+              </ul>
             </div>
           </div>
-          
-          <div className="border-t border-border pt-8 flex flex-col sm:flex-row justify-between items-center text-sm text-muted-foreground">
-            <p>© 2026 CodeSpectra. All rights reserved.</p>
-            <div className="flex gap-8 mt-6 sm:mt-0">
-              <Link href="#" className="hover:text-foreground transition-colors">Twitter</Link>
-              <Link href="#" className="hover:text-foreground transition-colors">GitHub</Link>
-              <Link href="#" className="hover:text-foreground transition-colors">LinkedIn</Link>
-              <Link href="#" className="hover:text-foreground transition-colors">Discord</Link>
+
+          <div className="border-t border-border/30 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="flex items-center gap-2">
+              <Code2 className="w-5 h-5 text-primary" />
+              <span className="text-sm text-muted-foreground">© 2026 CodeSpectra. All rights reserved.</span>
+            </div>
+            <div className="flex gap-6">
+              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Github className="w-5 h-5" />
+              </Link>
+              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
+                <Zap className="w-5 h-5" />
+              </Link>
             </div>
           </div>
         </div>

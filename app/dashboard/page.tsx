@@ -3,116 +3,123 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { AnimatedIllustration } from '@/components/animated-illustration'
-import { TrendingUp, AlertCircle, CheckCircle, Zap } from 'lucide-react'
+import { TrendingUp, AlertCircle, CheckCircle, Zap, ArrowUpRight, ArrowDownRight, Activity, Code, Target } from 'lucide-react'
 
 export default function DashboardPage() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Welcome Section */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card className="p-8 bg-gradient-to-br from-primary/10 to-primary/5">
-          <div className="space-y-4">
-            <div>
-              <h1 className="text-4xl font-bold">Welcome back,</h1>
-              <h2 className="text-4xl font-bold text-primary">Intelligence Lead.</h2>
-            </div>
-            <p className="text-foreground/70">
-              Your infrastructure is currently performing at 94% optimization. We&apos;ve detected 3 new actionable insights for your CI/CD pipelines.
-            </p>
-            <div className="flex gap-3 pt-4">
-              <Button className="bg-primary text-primary-foreground hover:bg-primary/90">
-                Review Security
-              </Button>
-              <Button variant="outline">View Activity</Button>
-            </div>
-          </div>
-        </Card>
-
-        {/* Animated AI Bot */}
-        <div className="flex items-center justify-center">
-          <AnimatedIllustration type="ai-bot" className="max-w-sm" />
-        </div>
+      <div>
+        <h1 className="text-4xl font-bold text-foreground mb-2">Welcome back</h1>
+        <p className="text-muted-foreground">Here&apos;s an overview of your code analysis activity</p>
       </div>
 
-      {/* Key Metrics */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-6">
+      {/* Key Metrics Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        {/* Quality Score */}
+        <Card className="p-6 hover:shadow-lg transition-all duration-300 border-border/50">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-foreground/60 font-semibold">SECURITY SCORE</p>
-              <p className="text-3xl font-bold mt-2">94<span className="text-lg text-foreground/60">/100</span></p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Quality Score</p>
+              <p className="text-3xl font-bold mt-3 text-foreground">94<span className="text-lg text-muted-foreground">/100</span></p>
             </div>
-            <CheckCircle className="w-6 h-6 text-green-500" />
+            <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
+              <TrendingUp className="w-6 h-6 text-green-500" />
+            </div>
           </div>
-          <div className="w-full bg-background rounded-full h-2">
-            <div className="bg-green-500 h-2 rounded-full" style={{ width: '94%' }} />
+          <div className="flex items-center gap-2">
+            <div className="w-full bg-muted rounded-full h-2">
+              <div className="bg-gradient-to-r from-green-500 to-green-600 h-2 rounded-full" style={{ width: '94%' }} />
+            </div>
           </div>
-          <p className="text-xs text-green-600 mt-2">📈 +2.4% from last week</p>
+          <p className="text-xs text-green-600 mt-3 font-medium">↑ +2.4% from last week</p>
         </Card>
 
-        <Card className="p-6">
+        {/* Active Repos */}
+        <Card className="p-6 hover:shadow-lg transition-all duration-300 border-border/50">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-foreground/60 font-semibold">ACTIVE REPOS</p>
-              <p className="text-3xl font-bold mt-2">128</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Monitored Repos</p>
+              <p className="text-3xl font-bold mt-3 text-foreground">128</p>
             </div>
-            <TrendingUp className="w-6 h-6 text-blue-500" />
+            <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+              <Code className="w-6 h-6 text-blue-500" />
+            </div>
           </div>
-          <p className="text-xs text-foreground/60 mt-4">Total Monitored</p>
-          <div className="flex gap-1 mt-2">
-            {[...Array(5)].map((_, i) => (
-              <div key={i} className="w-6 h-6 rounded-full bg-primary/20" />
+          <p className="text-xs text-muted-foreground mt-2">+12 added this month</p>
+          <div className="flex gap-1.5 mt-3">
+            {[...Array(3)].map((_, i) => (
+              <div key={i} className="w-6 h-6 rounded-full bg-primary/20 border border-primary/30" />
             ))}
-            <span className="text-xs text-primary">+12</span>
+            <span className="text-xs text-primary font-medium self-center">+12</span>
           </div>
         </Card>
 
-        <Card className="p-6">
+        {/* Critical Issues */}
+        <Card className="p-6 hover:shadow-lg transition-all duration-300 border-border/50">
           <div className="flex items-start justify-between mb-4">
             <div>
-              <p className="text-sm text-foreground/60 font-semibold">CRITICAL ISSUES</p>
-              <p className="text-3xl font-bold mt-2 text-destructive">07</p>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Critical Issues</p>
+              <p className="text-3xl font-bold mt-3 text-destructive">07</p>
             </div>
-            <AlertCircle className="w-6 h-6 text-destructive" />
+            <div className="w-12 h-12 rounded-lg bg-destructive/10 flex items-center justify-center">
+              <AlertCircle className="w-6 h-6 text-destructive" />
+            </div>
           </div>
-          <Badge variant="destructive" className="mt-2">Action Required</Badge>
-          <p className="text-xs text-foreground/60 mt-2">3 resolved in last 24h</p>
+          <p className="text-xs text-muted-foreground mt-2">3 resolved in last 24h</p>
+          <Badge variant="destructive" className="mt-3 text-xs">Action Required</Badge>
+        </Card>
+
+        {/* Scans Completed */}
+        <Card className="p-6 hover:shadow-lg transition-all duration-300 border-border/50">
+          <div className="flex items-start justify-between mb-4">
+            <div>
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Scans This Week</p>
+              <p className="text-3xl font-bold mt-3 text-foreground">342</p>
+            </div>
+            <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+              <Activity className="w-6 h-6 text-purple-500" />
+            </div>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2">42 pending analysis</p>
+          <div className="text-xs text-purple-600 mt-3 font-medium">↑ 12% increase</div>
         </Card>
       </div>
 
-      {/* Analytics Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      {/* Charts Section */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
         {/* Scan Activity Chart */}
-        <Card className="p-6">
-          <div className="flex items-center justify-between mb-6">
-            <h2 className="text-xl font-bold">Scan Activity & Vulnerabilities</h2>
-            <div className="flex gap-2">
-              <Badge variant="outline" className="text-xs">Weekly</Badge>
-              <Badge variant="outline" className="text-xs">Monthly</Badge>
-            </div>
-          </div>
-
-          <p className="text-sm text-foreground/60 mb-6">Weekly trend across all development clusters</p>
-
-          {/* Simple bar chart */}
-          <div className="flex items-end justify-around h-48 gap-2">
-            {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day, i) => (
-              <div key={day} className="flex flex-col items-center gap-2">
-                <div
-                  className="w-8 bg-gradient-to-t from-primary to-primary/50 rounded-t"
-                  style={{ height: `${[40, 60, 70, 85, 65, 45, 50][i]}%` }}
-                />
-                <span className="text-xs text-foreground/60">{day}</span>
+        <div className="lg:col-span-2">
+          <Card className="p-6 border-border/50">
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h2 className="text-xl font-bold text-foreground">Scan Activity</h2>
+                <p className="text-sm text-muted-foreground mt-1">Weekly trend across all repositories</p>
               </div>
-            ))}
-          </div>
-        </Card>
+              <Badge variant="outline" className="text-xs">Weekly</Badge>
+            </div>
 
-        {/* Severity Distribution */}
-        <Card className="p-6">
-          <h2 className="text-xl font-bold mb-6">Severity Distribution</h2>
-          <p className="text-sm text-foreground/60 mb-6">Live vulnerability landscape</p>
+            {/* Simple bar chart */}
+            <div className="flex items-end justify-around h-48 gap-2">
+              {['MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT', 'SUN'].map((day, i) => {
+                const heights = [40, 60, 70, 85, 65, 45, 50]
+                return (
+                  <div key={day} className="flex flex-col items-center gap-2 flex-1">
+                    <div
+                      className="w-full bg-gradient-to-t from-primary via-primary to-primary/50 rounded-t-lg transition-all duration-300 hover:shadow-lg cursor-pointer hover:from-primary/80"
+                      style={{ height: `${heights[i]}%`, minHeight: '24px' }}
+                    />
+                    <span className="text-xs text-foreground/60 font-medium">{day}</span>
+                  </div>
+                )
+              })}
+            </div>
+          </Card>
+        </div>
+
+        {/* Issues by Severity */}
+        <Card className="p-6 border-border/50">
+          <h2 className="text-xl font-bold text-foreground mb-6">Issues by Severity</h2>
 
           <div className="space-y-4">
             {[
@@ -121,70 +128,84 @@ export default function DashboardPage() {
               { label: 'Medium', value: 107, color: 'bg-yellow-500', percentage: 69 },
             ].map((item) => (
               <div key={item.label}>
-                <div className="flex justify-between mb-2">
-                  <span className="text-sm font-medium">{item.label}</span>
-                  <span className="text-sm text-foreground/60">{item.value} ({item.percentage}%)</span>
+                <div className="flex justify-between items-center mb-2">
+                  <span className="text-sm font-medium text-foreground">{item.label}</span>
+                  <span className="text-xs text-muted-foreground">{item.value}</span>
                 </div>
-                <div className="w-full bg-background rounded-full h-2">
-                  <div className={`${item.color} h-2 rounded-full`} style={{ width: `${item.percentage}%` }} />
+                <div className="w-full bg-muted rounded-full h-2">
+                  <div
+                    className={`${item.color} h-2 rounded-full transition-all duration-300`}
+                    style={{ width: `${item.percentage}%` }}
+                  />
                 </div>
               </div>
             ))}
 
-            <div className="text-center pt-4">
-              <p className="text-2xl font-bold text-primary">156</p>
-              <p className="text-xs text-foreground/60">TOTAL</p>
+            <div className="border-t border-border/50 pt-4 mt-4 text-center">
+              <p className="text-2xl font-bold text-foreground">156</p>
+              <p className="text-xs text-muted-foreground font-medium">TOTAL ISSUES</p>
             </div>
           </div>
         </Card>
       </div>
 
       {/* AI Insights */}
-      <Card className="p-6">
+      <Card className="p-6 bg-gradient-to-r from-primary/5 via-primary/5 to-primary/10 border-primary/20 hover:shadow-lg transition-all duration-300">
         <div className="flex items-start gap-4">
-          <Zap className="w-5 h-5 text-yellow-500 flex-shrink-0 mt-1" />
+          <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+            <Zap className="w-6 h-6 text-primary" />
+          </div>
           <div className="flex-1">
-            <h3 className="font-semibold mb-1">AI Insights</h3>
-            <Badge className="mb-3" variant="secondary">ACTIVE INTELLIGENCE</Badge>
-            <p className="text-sm text-foreground/70">
-              Optimize Docker Layers: Cluster &apos;non-main&apos; shows redundant layer builds. Potential 15% reduction in build time.
+            <div className="flex items-center gap-2 mb-2">
+              <h3 className="font-bold text-foreground">AI Recommendations</h3>
+              <Badge className="text-xs bg-primary/20 text-primary hover:bg-primary/30">SMART</Badge>
+            </div>
+            <p className="text-sm text-foreground/80 leading-relaxed">
+              Optimize Docker layers in cluster &apos;non-main&apos; - 15% reduction in build time possible. We detected 3 redundant layer builds that can be consolidated for better performance.
             </p>
+            <Button size="sm" variant="outline" className="mt-4 text-xs">
+              View Full Report
+            </Button>
           </div>
         </div>
       </Card>
 
-      {/* Recent Events */}
-      <Card className="p-6">
-        <h2 className="text-xl font-bold mb-6">Recent Security Events</h2>
+      {/* Recent Security Events */}
+      <Card className="p-6 border-border/50">
+        <h2 className="text-xl font-bold text-foreground mb-6">Recent Security Events</h2>
         <div className="space-y-3">
           {[
-            { event: 'Auth-API Gateway', severity: 'CRITICAL', time: '2 mins ago', status: 'In Progress' },
-            { event: 'Postgres Cluster-A', severity: 'MEDIUM', time: '14 mins ago', status: 'Resolved' },
-            { event: 'Lambda Edge: Auth', severity: 'HIGH', time: '1 hour ago', status: 'Investigating' },
-            { event: 'Docker Registry Scan', severity: 'MEDIUM', time: '3 hours ago', status: 'Resolved' },
-            { event: 'Frontend Load Balancer', severity: 'LOW', time: '5 hours ago', status: 'Resolved' },
+            { event: 'Auth-API Gateway', severity: 'CRITICAL', time: '2 mins ago', status: 'In Progress', icon: '🔴' },
+            { event: 'Postgres Cluster-A', severity: 'MEDIUM', time: '14 mins ago', status: 'Resolved', icon: '🟡' },
+            { event: 'Lambda Edge: Auth', severity: 'HIGH', time: '1 hour ago', status: 'Investigating', icon: '🟠' },
+            { event: 'Docker Registry Scan', severity: 'MEDIUM', time: '3 hours ago', status: 'Resolved', icon: '🟡' },
+            { event: 'Frontend Load Balancer', severity: 'LOW', time: '5 hours ago', status: 'Resolved', icon: '🟢' },
           ].map((event, i) => (
-            <div key={i} className="flex items-center justify-between p-3 bg-background/50 rounded-lg border border-border/50">
+            <div
+              key={i}
+              className="flex items-center justify-between p-4 bg-background/50 rounded-lg border border-border/50 hover:border-border/80 hover:shadow-md transition-all duration-300 group"
+            >
               <div className="flex items-center gap-3 flex-1">
+                <span className="text-lg">{event.icon}</span>
                 <div>
-                  <p className="font-medium text-sm">{event.event}</p>
-                  <p className="text-xs text-foreground/60">{event.time}</p>
+                  <p className="font-medium text-sm text-foreground group-hover:text-primary transition-colors">{event.event}</p>
+                  <p className="text-xs text-muted-foreground">{event.time}</p>
                 </div>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-2">
                 <Badge
                   variant={
                     event.severity === 'CRITICAL'
                       ? 'destructive'
                       : event.severity === 'HIGH'
-                      ? 'warning'
-                      : 'info'
+                      ? 'default'
+                      : 'secondary'
                   }
-                  className="text-xs"
+                  className="text-xs font-semibold"
                 >
                   {event.severity}
                 </Badge>
-                <Badge variant="outline" className="text-xs">
+                <Badge variant="outline" className="text-xs bg-background/50">
                   {event.status}
                 </Badge>
               </div>
@@ -192,6 +213,23 @@ export default function DashboardPage() {
           ))}
         </div>
       </Card>
+
+      {/* Quick Actions */}
+      <div className="flex flex-wrap gap-3">
+        <Button size="lg" className="gap-2">
+          <Code className="w-5 h-5" />
+          Analyze Code
+        </Button>
+        <Button size="lg" variant="outline" className="gap-2">
+          <Target className="w-5 h-5" />
+          Set Quality Gates
+        </Button>
+        <Button size="lg" variant="outline" className="gap-2">
+          <CheckCircle className="w-5 h-5" />
+          View Reports
+        </Button>
+      </div>
     </div>
   )
 }
+
