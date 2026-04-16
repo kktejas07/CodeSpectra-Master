@@ -95,7 +95,6 @@ export function FaceRecognition({ onCapture, mode, onSkip }: FaceRecognitionProp
   // Simulate face detection and auto-capture
   const startAutoDetection = () => {
     let detectionCounter = 0
-    let qualityCounter = 0
     const targetDetections = 20 // ~1-2 seconds at 10fps
 
     detectionIntervalRef.current = setInterval(() => {
@@ -438,65 +437,6 @@ export function FaceRecognition({ onCapture, mode, onSkip }: FaceRecognitionProp
           50% { transform: scale(0.8); opacity: 0.5; }
         }
       `}</style>
-    </div>
-  )
-}
-
-          setCurrentAngle(nextAngle as 'front' | 'left' | 'right')
-        }
-      }
-    }
-  }
-
-  return (
-    <div className="space-y-6">
-      {isScanning ? (
-        <div className="space-y-4">
-          <div className="relative bg-background/50 border border-border rounded-lg overflow-hidden" style={{ aspectRatio: '4/3' }}>
-            <video ref={videoRef} autoPlay playsInline className="w-full h-full object-cover" />
-            <canvas ref={canvasRef} className="hidden" width={640} height={480} />
-
-            {/* Scanning animation overlay */}
-            <div className="absolute inset-0 flex items-center justify-center">
-              <div className="relative w-40 h-40">
-                <div className="absolute inset-0 border-2 border-primary rounded-lg animate-pulse" />
-                <div className="absolute inset-0 border-2 border-primary rounded-lg animate-spin" style={{ animationDuration: '3s' }} />
-              </div>
-            </div>
-
-            {/* Status indicator */}
-            <div className="absolute top-4 right-4 bg-background/80 px-3 py-1 rounded-full text-sm">
-              {capturedAngles.size}/3 angles captured
-            </div>
-          </div>
-
-          <div className="text-center space-y-2">
-            <p className="text-lg font-semibold">{speakingInstruction || instructions[currentAngle]}</p>
-            <p className="text-sm text-foreground/60">Angle: {currentAngle.charAt(0).toUpperCase() + currentAngle.slice(1)}</p>
-          </div>
-
-          <Button onClick={captureFace} className="w-full" size="lg">
-            <Camera className="w-4 h-4 mr-2" />
-            Capture Face
-          </Button>
-
-          <Button onClick={() => setIsScanning(false)} variant="outline" className="w-full">
-            Cancel
-          </Button>
-        </div>
-      ) : (
-        <Button onClick={() => setIsScanning(true)} className="w-full" size="lg">
-          <Camera className="w-4 h-4 mr-2" />
-          Start Face {mode === 'login' ? 'Recognition' : 'Enrollment'}
-        </Button>
-      )}
-
-      {error && (
-        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <p className="text-sm">{error}</p>
-        </div>
-      )}
     </div>
   )
 }
