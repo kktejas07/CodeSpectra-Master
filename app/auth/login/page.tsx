@@ -18,25 +18,47 @@ export default function Login() {
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    
+    // Validate inputs
+    if (!email || !password) {
+      setError('Please enter both email and password.')
+      return
+    }
+
     setError('')
     setSuccess('')
     setLoading(true)
 
     try {
+      console.log('[v0] Attempting login with email:', email)
       const result = await signIn(email, password)
+      console.log('[v0] Login result:', result)
       
       if (result.success) {
         setSuccess('Login successful! Redirecting to dashboard...')
-        // Redirect to dashboard after 1 second
+        // Redirect to dashboard after 1.5 seconds
         setTimeout(() => {
           router.push('/dashboard')
-        }, 1000)
+        }, 1500)
       } else {
-        setError(result.error || 'Login failed. Please try again.')
+        console.error('[v0] Login error:', result.error)
+        
+        // Provide more specific error messages
+        let errorMsg = result.error || 'Login failed. Please try again.'
+        
+        if (errorMsg.toLowerCase().includes('invalid')) {
+          errorMsg = 'Invalid email or password. Please check your credentials.'
+        } else if (errorMsg.toLowerCase().includes('not confirmed')) {
+          errorMsg = 'Please confirm your email address before logging in.'
+        } else if (errorMsg.toLowerCase().includes('user')) {
+          errorMsg = 'User not found. Have you created a demo user? Visit the setup page.'
+        }
+        
+        setError(errorMsg)
       }
     } catch (err) {
-      setError('An unexpected error occurred. Please try again.')
-      console.error('Login error:', err)
+      console.error('[v0] Login exception:', err)
+      setError('An unexpected error occurred. Please ensure your Supabase is configured correctly.')
     } finally {
       setLoading(false)
     }

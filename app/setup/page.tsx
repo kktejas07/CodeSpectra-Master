@@ -18,24 +18,31 @@ export default function SetupPage() {
     setSuccess(false)
 
     try {
+      console.log('[v0] Starting demo user setup...')
       const response = await fetch('/api/setup-demo', {
         method: 'POST',
       })
 
+      console.log('[v0] Setup response status:', response.status)
       const data = await response.json()
+      console.log('[v0] Setup response data:', data)
 
       if (data.success) {
         setSuccess(true)
+        console.log('[v0] Setup successful, redirecting to login...')
         // Redirect to login after 2 seconds
         setTimeout(() => {
           router.push('/auth/login')
         }, 2000)
       } else {
-        setError(data.error || 'Setup failed. Please try again.')
+        const errorMsg = data.error || 'Setup failed. Please try again.'
+        console.error('[v0] Setup failed:', errorMsg)
+        setError(errorMsg)
       }
     } catch (err) {
-      setError('An error occurred during setup. Please try again.')
-      console.error('Setup error:', err)
+      const errorMsg = err instanceof Error ? err.message : 'An error occurred during setup.'
+      console.error('[v0] Setup exception:', err)
+      setError(`Connection error: ${errorMsg}. Please check your Supabase configuration.`)
     } finally {
       setLoading(false)
     }
@@ -129,6 +136,31 @@ export default function SetupPage() {
             </>
           )}
         </div>
+
+        {/* Troubleshooting Info */}
+        {error && (
+          <div className="bg-background/50 border border-border rounded p-4 space-y-3">
+            <p className="text-xs font-medium text-foreground">Troubleshooting Tips:</p>
+            <ul className="text-xs space-y-2 text-foreground/70">
+              <li className="flex gap-2">
+                <span className="text-primary">1.</span>
+                <span>Ensure your Supabase project URL and API keys are configured in environment variables</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary">2.</span>
+                <span>Check that SUPABASE_SERVICE_ROLE_KEY is set in your .env.local file</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary">3.</span>
+                <span>Try clicking "Start Setup" again - the demo user may already exist</span>
+              </li>
+              <li className="flex gap-2">
+                <span className="text-primary">4.</span>
+                <span>If it still fails, manually sign up with any email/password to test</span>
+              </li>
+            </ul>
+          </div>
+        )}
 
         {/* Footer */}
         <div className="text-center text-sm text-foreground/60">
