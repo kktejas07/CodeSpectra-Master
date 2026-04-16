@@ -27,6 +27,10 @@ export default function SetupPage() {
 
       if (data.success) {
         setCreatedUsers(data.users || [])
+        // Save to sessionStorage so login page can access
+        if (data.users) {
+          sessionStorage.setItem('demoUsers', JSON.stringify(data.users))
+        }
         setSuccess(true)
         // Redirect to login after 3 seconds
         setTimeout(() => {

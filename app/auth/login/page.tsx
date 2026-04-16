@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -18,6 +18,7 @@ export default function Login() {
   const [loading, setLoading] = useState(false)
   const [error, setError] = useState('')
   const [rememberMe, setRememberMe] = useState(false)
+  const [demoUsers, setDemoUsers] = useState<any[]>([])
 
   const handleFaceCapture = async (faceData: string) => {
     setLoading(true)
@@ -74,7 +75,21 @@ export default function Login() {
     setEmail(email)
     setPassword(password)
     setError('')
+    setAuthMethod('email')
   }
+
+  // Load demo users from sessionStorage (set after setup)
+  useEffect(() => {
+    const stored = sessionStorage.getItem('demoUsers')
+    if (stored) {
+      try {
+        const users = JSON.parse(stored)
+        setDemoUsers(users)
+      } catch (e) {
+        console.log('[v0] Could not parse stored demo users')
+      }
+    }
+  }, [])
 
   return (
     <div className="min-h-screen bg-background flex items-center justify-center p-4">
@@ -250,42 +265,63 @@ export default function Login() {
                   <div>
                     <p className="text-sm font-semibold text-primary mb-2">Try Demo</p>
                     <p className="text-xs text-muted-foreground mb-3">
-                      First time? Run setup to create demo user, then use credentials below.
+                      {demoUsers.length > 0 ? 'Click any account below to test it' : 'First time? Run setup to create demo users'}
                     </p>
                   </div>
                 </div>
-                <div className="flex gap-2">
+                {demoUsers.length === 0 && (
                   <Button 
                     size="sm" 
                     variant="outline" 
                     asChild
-                    className="flex-1"
+                    className="w-full"
                   >
                     <Link href="/setup">Run Setup</Link>
                   </Button>
-                  <Button 
-                    size="sm"
-                    onClick={() => fillDemoCredentials('demo@codespectra.com', 'DemoPass123!')}
-                    className="flex-1"
-                  >
-                    Auto-fill Credentials
-                  </Button>
-                </div>
+                )}
               </div>
 
-              <div className="bg-muted/50 border border-border/40 rounded-xl p-4 space-y-3">
-                <p className="text-xs font-medium text-muted-foreground">Demo Credentials</p>
-                <div className="space-y-2">
-                  <div className="p-3 bg-background rounded-lg border border-border/40">
-                    <p className="text-xs text-muted-foreground mb-1">Email</p>
-                    <code className="text-sm font-mono text-foreground">demo@codespectra.com</code>
-                  </div>
-                  <div className="p-3 bg-background rounded-lg border border-border/40">
-                    <p className="text-xs text-muted-foreground mb-1">Password</p>
-                    <code className="text-sm font-mono text-foreground">DemoPass123!</code>
+              {/* Demo Users Credentials - Show all 3 */}
+              {demoUsers.length > 0 ? (
+                <div className="bg-muted/50 border border-border/40 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground">Demo Accounts - Click to login:</p>
+                  <div className="space-y-2">
+                    {demoUsers.map((user, index) => (
+                      <button
+                        key={index}
+                        onClick={() => fillDemoCredentials(user.email, user.password)}
+                        className="w-full p-3 bg-background border border-border/40 rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
+                      >
+                        <div className="flex items-center justify-between">
+                          <div className="flex-1">
+                            <p className="text-xs font-semibold text-foreground capitalize">{user.role}</p>
+                            <p className="text-xs text-muted-foreground font-mono">{user.email}</p>
+                          </div>
+                          <ArrowRight className="w-4 h-4 text-primary" />
+                        </div>
+                      </button>
+                    ))}
                   </div>
                 </div>
-              </div>
+              ) : (
+                <div className="bg-muted/50 border border-border/40 rounded-xl p-4 space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground">Default Demo Credentials</p>
+                  <div className="space-y-2">
+                    <button
+                      onClick={() => fillDemoCredentials('demo@codespectra.com', 'DemoPass123!')}
+                      className="w-full p-3 bg-background border border-border/40 rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex-1">
+                          <p className="text-xs font-semibold text-foreground">Demo User</p>
+                          <p className="text-xs text-muted-foreground font-mono">demo@codespectra.com</p>
+                        </div>
+                        <ArrowRight className="w-4 h-4 text-primary" />
+                      </div>
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 

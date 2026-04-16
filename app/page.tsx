@@ -177,7 +177,7 @@ export default function Home() {
             <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-[1.1] text-foreground">
               The platform
               <br />
-              to <span className="text-primary inline-flex items-center gap-1 min-w-[280px] sm:min-w-[350px]">{displayedText}<span className="inline-block animate-pulse">|</span></span>
+              to <span className="text-primary inline-flex items-center gap-1 min-w-[280px] sm:min-w-[350px] pb-2 border-b-4 border-primary">{displayedText}<span className="inline-block animate-pulse">|</span></span>
             </h1>
             
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
