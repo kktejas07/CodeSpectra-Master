@@ -44,118 +44,111 @@ export default function SignUp() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
-            <Code2 className="w-6 h-6 text-primary-foreground" />
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-sm space-y-8">
+        {/* Header */}
+        <div className="text-center space-y-2">
+          <div className="flex items-center justify-center gap-2 mb-4">
+            <div className="w-10 h-10 bg-primary rounded flex items-center justify-center">
+              <Code2 className="w-6 h-6 text-primary-foreground" />
+            </div>
+            <span className="text-xl font-semibold text-foreground">CodeSpectra</span>
           </div>
-          <span className="text-2xl font-bold text-foreground">CodeSpectra</span>
+          <h1 className="text-2xl font-semibold text-foreground">Create account</h1>
+          <p className="text-sm text-muted-foreground">Join thousands of developers mastering their craft</p>
         </div>
-        <h1 className="text-2xl font-bold text-foreground">Create Account</h1>
-        <p className="text-foreground/60">Join the community of developers mastering their craft</p>
-      </div>
 
-      {/* Error Message */}
-      {error && (
-        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg flex items-start gap-3">
-          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-medium">Signup Failed</p>
-            <p className="text-sm text-destructive/80">{error}</p>
+        {/* Error Message */}
+        {error && (
+          <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm px-4 py-3 rounded flex items-start gap-3">
+            <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <p>{error}</p>
+          </div>
+        )}
+
+        {/* Success Message */}
+        {success && (
+          <div className="bg-green-500/10 border border-green-500/30 text-green-700 text-sm px-4 py-3 rounded flex items-start gap-3">
+            <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+            <p>{success}</p>
+          </div>
+        )}
+
+        {/* Form */}
+        <form onSubmit={handleSignUp} className="space-y-4">
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Full name</label>
+            <Input
+              type="text"
+              placeholder="John Doe"
+              value={fullName}
+              onChange={(e) => setFullName(e.target.value)}
+              required
+              className="bg-card border-border"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Email</label>
+            <Input
+              type="email"
+              placeholder="you@example.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              required
+              className="bg-card border-border"
+            />
+          </div>
+
+          <div className="space-y-2">
+            <label className="text-sm font-medium text-foreground">Password</label>
+            <Input
+              type="password"
+              placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              required
+              className="bg-card border-border"
+            />
+          </div>
+
+          <Button type="submit" disabled={loading} className="w-full">
+            {loading ? 'Creating account...' : 'Create account'}
+          </Button>
+        </form>
+
+        {/* Divider */}
+        <div className="relative">
+          <div className="absolute inset-0 flex items-center">
+            <div className="w-full border-t border-border"></div>
+          </div>
+          <div className="relative flex justify-center text-xs">
+            <span className="px-2 bg-background text-muted-foreground">Or continue with</span>
           </div>
         </div>
-      )}
 
-      {/* Success Message */}
-      {success && (
-        <div className="bg-green-500/10 border border-green-500 text-green-700 px-4 py-3 rounded-lg flex items-start gap-3">
-          <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-          <div>
-            <p className="text-sm font-medium">Success!</p>
-            <p className="text-sm text-green-600">{success}</p>
-          </div>
-        </div>
-      )}
-
-      {/* Form */}
-      <form onSubmit={handleSignUp} className="space-y-4">
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Full Name</label>
-          <Input
-            type="text"
-            placeholder="John Doe"
-            value={fullName}
-            onChange={(e) => setFullName(e.target.value)}
-            required
-            className="bg-background border-border text-foreground placeholder:text-foreground/50"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Email</label>
-          <Input
-            type="email"
-            placeholder="you@example.com"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            required
-            className="bg-background border-border text-foreground placeholder:text-foreground/50"
-          />
-        </div>
-
-        <div className="space-y-2">
-          <label className="text-sm font-medium text-foreground">Password</label>
-          <Input
-            type="password"
-            placeholder="••••••••"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            required
-            className="bg-background border-border text-foreground placeholder:text-foreground/50"
-          />
-        </div>
-
-        <Button 
-          type="submit" 
-          disabled={loading}
-          className="w-full"
-        >
-          {loading ? 'Creating account...' : 'Sign Up'}
+        {/* OAuth Options */}
+        <Button variant="outline" className="w-full">
+          <Code2 className="w-4 h-4 mr-2" />
+          GitHub
         </Button>
-      </form>
 
-      {/* Divider */}
-      <div className="relative">
-        <div className="absolute inset-0 flex items-center">
-          <div className="w-full border-t border-border"></div>
+        {/* Login Link */}
+        <div className="text-center text-sm text-muted-foreground">
+          Already have an account?{' '}
+          <Link href="/auth/login" className="text-primary font-medium hover:underline">
+            Sign in
+          </Link>
         </div>
-        <div className="relative flex justify-center text-sm">
-          <span className="px-2 bg-background text-foreground/50">Or</span>
-        </div>
+
+        {/* Terms */}
+        <p className="text-center text-xs text-muted-foreground">
+          By signing up, you agree to our{' '}
+          <Link href="#" className="underline hover:text-foreground">Terms</Link>
+          {' '}and{' '}
+          <Link href="#" className="underline hover:text-foreground">Privacy Policy</Link>
+        </p>
       </div>
-
-      {/* OAuth Options - Placeholder */}
-      <Button variant="outline" className="w-full">
-        Continue with Google
-      </Button>
-
-      {/* Login Link */}
-      <div className="text-center text-sm text-foreground/60">
-        Already have an account?{' '}
-        <Link href="/auth/login" className="text-primary font-medium hover:underline">
-          Sign in
-        </Link>
-      </div>
-
-      {/* Terms */}
-      <p className="text-center text-xs text-foreground/50">
-        By signing up, you agree to our{' '}
-        <Link href="#" className="hover:text-foreground/70">Terms of Service</Link>
-        {' '}and{' '}
-        <Link href="#" className="hover:text-foreground/70">Privacy Policy</Link>
-      </p>
     </div>
   )
 }

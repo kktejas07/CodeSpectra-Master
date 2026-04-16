@@ -30,30 +30,30 @@ export default function AdminLayout({
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <Link href="/admin" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
                 <Code2 className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-bold text-foreground">CodeSpectra</span>
+              <span className="font-semibold text-foreground">CodeSpectra</span>
             </Link>
-            <p className="text-xs text-foreground/50 mt-2">Admin Panel</p>
+            <p className="text-xs text-muted-foreground mt-2">Admin Panel</p>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-6 space-y-2">
+          <nav className="flex-1 p-4 space-y-1">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href}>
-                <div className="px-4 py-3 rounded-lg hover:bg-card-foreground/5 transition flex items-center gap-3 text-foreground/70 hover:text-foreground">
-                  <item.icon className="w-5 h-5" />
-                  <span className="text-sm font-medium">{item.label}</span>
+                <div className="px-4 py-3 rounded flex items-center gap-3 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition text-sm">
+                  <item.icon className="w-4 h-4" />
+                  <span className="font-medium">{item.label}</span>
                 </div>
               </Link>
             ))}
           </nav>
 
           {/* Logout */}
-          <div className="p-6 border-t border-border">
-            <Button variant="ghost" className="w-full justify-start text-foreground/70 hover:text-foreground">
-              <LogOut className="w-5 h-5 mr-3" />
+          <div className="p-4 border-t border-border">
+            <Button variant="ghost" className="w-full justify-start text-sm text-muted-foreground hover:text-foreground hover:bg-destructive/10">
+              <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
           </div>
@@ -78,8 +78,8 @@ export default function AdminLayout({
 
             <div className="flex-1 flex justify-end items-center gap-4">
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                  <span className="text-primary-foreground text-xs font-bold">A</span>
+                <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
+                  <span className="text-primary-foreground text-xs font-semibold">A</span>
                 </div>
                 <span className="text-sm font-medium text-foreground">Admin</span>
               </div>

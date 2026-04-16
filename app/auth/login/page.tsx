@@ -112,66 +112,66 @@ export default function Login() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
-      <Card className="w-full max-w-md p-8 space-y-6">
-        {/* Logo */}
+    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+      <div className="w-full max-w-sm space-y-8">
+        {/* Header */}
         <div className="text-center space-y-2">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-10 h-10 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-10 h-10 bg-primary rounded flex items-center justify-center">
               <Code2 className="w-6 h-6 text-primary-foreground" />
             </div>
-            <span className="text-2xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">
-              CodeSpectra
-            </span>
+            <span className="text-xl font-semibold text-foreground">CodeSpectra</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
-          <p className="text-foreground/60">Secure, intelligent code analysis platform</p>
+          <h1 className="text-2xl font-semibold text-foreground">Welcome back</h1>
+          <p className="text-sm text-muted-foreground">Sign in to your account to continue</p>
         </div>
 
         {/* Error Message */}
         {error && (
-          <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg flex items-start gap-3">
+          <div className="bg-destructive/10 border border-destructive/30 text-destructive text-sm px-4 py-3 rounded flex items-start gap-3">
             <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
-            <p className="text-sm">{error}</p>
+            <p>{error}</p>
           </div>
         )}
 
         {/* Auth Method Selection */}
         {authMethod === null ? (
           <div className="space-y-4">
-            <Button onClick={() => setAuthMethod('face')} className="w-full h-12" size="lg">
-              🔐 Face Recognition Login
+            <Button onClick={() => setAuthMethod('email')} className="w-full" size="lg">
+              Sign in with email
             </Button>
 
             <div className="relative">
               <div className="absolute inset-0 flex items-center">
                 <div className="w-full border-t border-border"></div>
               </div>
-              <div className="relative flex justify-center text-sm">
-                <span className="px-2 bg-card text-foreground/60">Or continue with</span>
+              <div className="relative flex justify-center text-xs">
+                <span className="px-2 bg-background text-muted-foreground">Or continue with</span>
               </div>
             </div>
 
-            <div className="space-y-3">
-              <Button onClick={() => setAuthMethod('email')} variant="outline" className="w-full">
-                <Mail className="w-4 h-4 mr-2" />
-                Email & Password
-              </Button>
-              <Button onClick={() => handleOAuthLogin('google')} variant="outline" className="w-full">
-                <Mail className="w-4 h-4 mr-2" />
-                Google
-              </Button>
-              <Button onClick={() => handleOAuthLogin('github')} variant="outline" className="w-full">
+            <div className="grid grid-cols-2 gap-3">
+              <Button onClick={() => handleOAuthLogin('github')} variant="outline">
                 <Github className="w-4 h-4 mr-2" />
                 GitHub
               </Button>
+              <Button onClick={() => handleOAuthLogin('google')} variant="outline">
+                <Mail className="w-4 h-4 mr-2" />
+                Google
+              </Button>
             </div>
+
+            {/* Optional: Face Recognition */}
+            <Button onClick={() => setAuthMethod('face')} variant="outline" className="w-full">
+              <Lock className="w-4 h-4 mr-2" />
+              Face ID
+            </Button>
           </div>
         ) : authMethod === 'face' ? (
           <>
             <FaceRecognition onCapture={handleFaceCapture} mode="login" />
             <Button variant="outline" onClick={() => setAuthMethod(null)} className="w-full">
-              Back
+              Back to options
             </Button>
           </>
         ) : (
@@ -185,7 +185,7 @@ export default function Login() {
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   required
-                  className="bg-background border-border"
+                  className="bg-card border-border"
                 />
               </div>
 
@@ -193,7 +193,7 @@ export default function Login() {
                 <div className="flex items-center justify-between">
                   <label className="text-sm font-medium text-foreground">Password</label>
                   <Link href="#" className="text-xs text-primary hover:underline">
-                    Forgot?
+                    Forgot password?
                   </Link>
                 </div>
                 <Input
@@ -202,12 +202,12 @@ export default function Login() {
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
                   required
-                  className="bg-background border-border"
+                  className="bg-card border-border"
                 />
               </div>
 
               <Button type="submit" disabled={loading} className="w-full">
-                {loading ? 'Signing in...' : 'Sign In'}
+                {loading ? 'Signing in...' : 'Sign in'}
               </Button>
             </form>
             <Button variant="outline" onClick={() => setAuthMethod(null)} className="w-full">
@@ -217,8 +217,8 @@ export default function Login() {
         )}
 
         {/* Demo Accounts */}
-        <div className="border-t border-border pt-4 space-y-3">
-          <p className="text-xs font-semibold text-foreground/60">🧪 DEMO ACCOUNTS</p>
+        <div className="bg-card/50 border border-border rounded-lg p-4 space-y-3">
+          <p className="text-xs font-semibold text-muted-foreground">Demo accounts</p>
           <div className="space-y-2">
             {[
               { role: 'superadmin' as const, label: 'Superadmin', icon: '👑' },
@@ -230,30 +230,32 @@ export default function Login() {
                 variant="ghost"
                 size="sm"
                 onClick={() => fillDemoCredentials(demo.role)}
-                className="w-full justify-start text-xs"
+                className="w-full justify-start text-xs hover:bg-primary/10"
               >
                 <span className="mr-2">{demo.icon}</span>
                 <span className="flex-1 text-left">{demo.label}</span>
-                <Badge variant="secondary" className="text-xs">Fill</Badge>
               </Button>
             ))}
           </div>
-          <p className="text-xs text-foreground/50">Password: DemoPass123!</p>
+          <p className="text-xs text-muted-foreground">Password: DemoPass123!</p>
         </div>
 
         {/* Footer */}
-        <div className="border-t border-border pt-4 text-center space-y-3">
-          <p className="text-sm text-foreground/60">
+        <div className="text-center space-y-4">
+          <p className="text-sm text-muted-foreground">
             Don&apos;t have an account?{' '}
             <Link href="/auth/signup" className="text-primary font-medium hover:underline">
-              Sign up
+              Create one
             </Link>
           </p>
-          <p className="text-xs text-foreground/50">
-            By signing in, you agree to our Terms and Privacy Policy
+          <p className="text-xs text-muted-foreground">
+            By signing in, you agree to our{' '}
+            <Link href="#" className="underline hover:text-foreground">Terms</Link>
+            {' '}and{' '}
+            <Link href="#" className="underline hover:text-foreground">Privacy Policy</Link>
           </p>
         </div>
-      </Card>
+      </div>
     </div>
   )
 }

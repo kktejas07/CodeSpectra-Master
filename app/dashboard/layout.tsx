@@ -3,7 +3,7 @@
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Code2, Menu, X, Home, Trophy, BookOpen, BarChart3, Settings, LogOut, Star } from 'lucide-react'
+import { Code2, Menu, X, Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/auth-service'
 
@@ -17,8 +17,8 @@ export default function DashboardLayout({
 
   const navItems = [
     { href: '/dashboard', icon: Home, label: 'Overview' },
-    { href: '/dashboard/arena', icon: Trophy, label: 'Coding Arena' },
-    { href: '/dashboard/scanner', icon: Code2, label: 'Code Scanner' },
+    { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
+    { href: '/dashboard/scanner', icon: CodeIcon, label: 'Scanner' },
     { href: '/dashboard/learning', icon: BookOpen, label: 'Learning' },
     { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
     { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
@@ -42,33 +42,33 @@ export default function DashboardLayout({
           {/* Logo */}
           <div className="p-6 border-b border-border">
             <Link href="/dashboard" className="flex items-center gap-2">
-              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+              <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
                 <Code2 className="w-5 h-5 text-primary-foreground" />
               </div>
-              <span className="font-bold text-foreground">CodeSpectra</span>
+              <span className="font-semibold text-foreground">CodeSpectra</span>
             </Link>
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-6 space-y-2">
+          <nav className="flex-1 p-4 space-y-1">
             {navItems.map((item) => (
               <Link key={item.href} href={item.href}>
-                <div className="px-4 py-3 rounded-lg hover:bg-card-foreground/5 transition flex items-center gap-3 text-foreground/70 hover:text-foreground">
-                  <item.icon className="w-5 h-5" />
-                  <span className="text-sm font-medium">{item.label}</span>
+                <div className="px-4 py-3 rounded flex items-center gap-3 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition text-sm">
+                  <item.icon className="w-4 h-4" />
+                  <span className="font-medium">{item.label}</span>
                 </div>
               </Link>
             ))}
           </nav>
 
           {/* Logout */}
-          <div className="p-6 border-t border-border">
+          <div className="p-4 border-t border-border">
             <Button 
               onClick={handleLogout}
               variant="ghost" 
-              className="w-full justify-start text-foreground/70 hover:text-foreground hover:bg-destructive/10"
+              className="w-full justify-start text-sm text-muted-foreground hover:text-foreground hover:bg-destructive/10"
             >
-              <LogOut className="w-5 h-5 mr-3" />
+              <LogOut className="w-4 h-4 mr-2" />
               Sign Out
             </Button>
           </div>
@@ -94,10 +94,10 @@ export default function DashboardLayout({
             <div className="flex-1 flex justify-end items-center gap-4">
               {/* User Profile */}
               <div className="flex items-center gap-3">
-                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                  <span className="text-primary-foreground text-xs font-bold">U</span>
+                <div className="w-8 h-8 bg-primary rounded flex items-center justify-center">
+                  <span className="text-primary-foreground text-xs font-semibold">U</span>
                 </div>
-                <span className="text-sm font-medium text-foreground">User</span>
+                <span className="text-sm font-medium text-foreground">Developer</span>
               </div>
             </div>
           </div>

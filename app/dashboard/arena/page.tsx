@@ -79,11 +79,11 @@ const mockChallenges: Challenge[] = [
   },
 ]
 
-const difficultyColors: Record<string, string> = {
-  easy: 'text-green-400 bg-green-500/10',
-  medium: 'text-yellow-400 bg-yellow-500/10',
-  hard: 'text-red-400 bg-red-500/10',
-}
+  const difficultyColors: Record<string, string> = {
+    easy: 'text-green-600 bg-green-500/10',
+    medium: 'text-amber-600 bg-amber-500/10',
+    hard: 'text-red-600 bg-red-500/10',
+  }
 
 export default function ArenaPage() {
   const [difficulty, setDifficulty] = useState<string>('all')
@@ -99,43 +99,34 @@ export default function ArenaPage() {
   const difficulties = ['all', 'easy', 'medium', 'hard']
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       {/* Header */}
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Coding Arena</h1>
+          <h1 className="text-3xl font-semibold text-foreground">Coding Arena</h1>
         </div>
-        <p className="text-foreground/60">Compete in challenges and earn points</p>
+        <p className="text-muted-foreground">Compete in challenges and earn points</p>
       </div>
 
       {/* Stats Bar */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className="p-4 rounded-lg bg-card border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground/60">Challenges Solved</p>
-              <p className="text-2xl font-bold text-foreground">12</p>
-            </div>
-            <Code2 className="w-8 h-8 text-primary/50" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <div className="p-6 rounded-lg bg-card border border-border">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Challenges Solved</p>
+            <p className="text-3xl font-semibold text-foreground">12</p>
           </div>
         </div>
-        <div className="p-4 rounded-lg bg-card border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground/60">Attempts Today</p>
-              <p className="text-2xl font-bold text-foreground">3</p>
-            </div>
-            <Clock className="w-8 h-8 text-primary/50" />
+        <div className="p-6 rounded-lg bg-card border border-border">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Attempts Today</p>
+            <p className="text-3xl font-semibold text-foreground">3</p>
           </div>
         </div>
-        <div className="p-4 rounded-lg bg-card border border-border">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-foreground/60">Points Earned</p>
-              <p className="text-2xl font-bold text-foreground">1,850</p>
-            </div>
-            <Zap className="w-8 h-8 text-primary/50" />
+        <div className="p-6 rounded-lg bg-card border border-border">
+          <div className="space-y-2">
+            <p className="text-sm text-muted-foreground">Points Earned</p>
+            <p className="text-3xl font-semibold text-foreground">1,850</p>
           </div>
         </div>
       </div>
@@ -143,12 +134,7 @@ export default function ArenaPage() {
       {/* Filters */}
       <div className="flex flex-col md:flex-row gap-4">
         <div className="flex-1">
-          <label className="text-sm font-medium text-foreground mb-2 block">
-            <div className="flex items-center gap-2 mb-2">
-              <Filter className="w-4 h-4" />
-              Difficulty
-            </div>
-          </label>
+          <label className="text-sm font-medium text-foreground mb-2 block">Difficulty</label>
           <select
             value={difficulty}
             onChange={(e) => setDifficulty(e.target.value)}
@@ -163,9 +149,7 @@ export default function ArenaPage() {
         </div>
 
         <div className="flex-1">
-          <label className="text-sm font-medium text-foreground mb-2 block">
-            Category
-          </label>
+          <label className="text-sm font-medium text-foreground mb-2 block">Category</label>
           <select
             value={category}
             onChange={(e) => setCategory(e.target.value)}
@@ -184,40 +168,40 @@ export default function ArenaPage() {
       <div className="space-y-3">
         {filteredChallenges.length === 0 ? (
           <div className="p-8 rounded-lg bg-card border border-border text-center">
-            <p className="text-foreground/60">No challenges found matching your filters</p>
+            <p className="text-muted-foreground">No challenges found matching your filters</p>
           </div>
         ) : (
           filteredChallenges.map((challenge) => (
             <Link key={challenge.id} href={`/dashboard/arena/${challenge.id}`}>
               <div className="p-6 rounded-lg bg-card border border-border hover:border-primary/50 transition cursor-pointer">
                 <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-                  <div className="flex-1 space-y-2">
-                    <div className="flex items-center gap-3">
-                      <h3 className="text-lg font-bold text-foreground">{challenge.title}</h3>
+                  <div className="flex-1 space-y-3">
+                    <div className="flex items-center gap-3 flex-wrap">
+                      <h3 className="text-lg font-semibold text-foreground">{challenge.title}</h3>
                       <span
-                        className={`px-3 py-1 rounded-full text-xs font-medium ${
+                        className={`px-3 py-1 rounded text-xs font-medium ${
                           difficultyColors[challenge.difficulty]
                         }`}
                       >
                         {challenge.difficulty.toUpperCase()}
                       </span>
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
+                      <span className="px-3 py-1 rounded text-xs font-medium bg-primary/10 text-primary">
                         {challenge.category}
                       </span>
                     </div>
-                    <p className="text-sm text-foreground/60">{challenge.description}</p>
-                    <div className="flex gap-4 text-xs text-foreground/50">
+                    <p className="text-sm text-muted-foreground">{challenge.description}</p>
+                    <div className="flex gap-4 text-xs text-muted-foreground">
                       <span>Solved by {challenge.solved.toLocaleString()} users</span>
                     </div>
                   </div>
 
                   <div className="flex flex-col items-end gap-3">
                     <div className="text-right">
-                      <p className="text-2xl font-bold text-primary">{challenge.points}</p>
-                      <p className="text-xs text-foreground/50">points</p>
+                      <p className="text-2xl font-semibold text-primary">{challenge.points}</p>
+                      <p className="text-xs text-muted-foreground">points</p>
                     </div>
                     {challenge.attempts > 0 && (
-                      <span className="px-3 py-1 rounded-full text-xs font-medium bg-blue-500/10 text-blue-400">
+                      <span className="px-3 py-1 rounded text-xs font-medium bg-blue-500/10 text-blue-600">
                         {challenge.attempts} attempt{challenge.attempts !== 1 ? 's' : ''}
                       </span>
                     )}
