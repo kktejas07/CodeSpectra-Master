@@ -1,27 +1,27 @@
 /**
- * API Route: POST /api/auth/face-login
- * Description: Verify face and login user
- * Body: { userId, capturedFace }
- * Response: { success, user, error }
+ * API Route: POST /api/auth/login
+ * Description: Sign in user with email and password
+ * Body: { email, password }
+ * Response: { success, user, session, error }
  */
 
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyFaceLogin } from '@/lib/auth-service'
+import { signIn } from '@/lib/auth-service'
 
 export async function POST(request: NextRequest) {
   try {
     const body = await request.json()
-    const { userId, capturedFace } = body
+    const { email, password } = body
 
     // Validation
-    if (!userId || !capturedFace) {
+    if (!email || !password) {
       return NextResponse.json(
-        { success: false, error: 'User ID and captured face are required' },
+        { success: false, error: 'Email and password are required' },
         { status: 400 }
       )
     }
 
-    const result = await verifyFaceLogin(userId, capturedFace)
+    const result = await signIn(email, password)
 
     if (result.success) {
       return NextResponse.json(result, { status: 200 })
@@ -29,7 +29,7 @@ export async function POST(request: NextRequest) {
       return NextResponse.json(result, { status: 401 })
     }
   } catch (error) {
-    console.error('[v0] Face login API error:', error)
+    console.error('[v0] Login API error:', error)
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
