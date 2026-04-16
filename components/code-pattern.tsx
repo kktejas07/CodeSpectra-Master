@@ -2,7 +2,11 @@
 
 import { useEffect, useRef } from 'react'
 
-export function CodePattern() {
+interface CodePatternProps {
+  className?: string
+}
+
+export function CodePattern({ className = '' }: CodePatternProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
 
   useEffect(() => {
@@ -12,15 +16,22 @@ export function CodePattern() {
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
+    // Get container dimensions
+    const container = canvas.parentElement
+    if (!container) return
+
+    const width = container.clientWidth
+    const height = container.clientHeight
+
     // Set canvas size
     const dpr = window.devicePixelRatio || 1
-    canvas.width = window.innerWidth * dpr
-    canvas.height = window.innerHeight * dpr
+    canvas.width = width * dpr
+    canvas.height = height * dpr
     ctx.scale(dpr, dpr)
 
     // Clear canvas
     ctx.fillStyle = 'transparent'
-    ctx.fillRect(0, 0, window.innerWidth, window.innerHeight)
+    ctx.fillRect(0, 0, width, height)
 
     // Characters to draw
     const chars = ['[', ']', '{', '}', '(', ')', 'L', 'r', 'F', 'T', 'f', '|', '—', '├', '┤', '┬', '┴', '─', '•', '◆', '■', '□', '▪', '▢']
@@ -35,8 +46,8 @@ export function CodePattern() {
       const spacing = 40
       const jitter = 15
 
-      for (let y = -spacing; y < window.innerHeight + spacing; y += spacing) {
-        for (let x = -spacing; x < window.innerWidth + spacing; x += spacing) {
+      for (let y = -spacing; y < height + spacing; y += spacing) {
+        for (let x = -spacing; x < width + spacing; x += spacing) {
           // Random jitter
           const jx = x + (Math.random() - 0.5) * jitter
           const jy = y + (Math.random() - 0.5) * jitter
@@ -66,8 +77,10 @@ export function CodePattern() {
 
     // Handle window resize
     const handleResize = () => {
-      canvas.width = window.innerWidth * dpr
-      canvas.height = window.innerHeight * dpr
+      const newWidth = container.clientWidth
+      const newHeight = container.clientHeight
+      canvas.width = newWidth * dpr
+      canvas.height = newHeight * dpr
       ctx.scale(dpr, dpr)
       drawPattern()
     }
@@ -79,8 +92,8 @@ export function CodePattern() {
   return (
     <canvas
       ref={canvasRef}
-      className="fixed top-0 left-0 w-full h-full pointer-events-none"
-      style={{ opacity: 0.6 }}
+      className={`absolute inset-0 pointer-events-none ${className}`}
+      style={{ opacity: 0.5 }}
     />
   )
 }

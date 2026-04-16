@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Code2, Zap, Shield, Cpu, GitBranch, CheckCircle2, TrendingUp, Github, Menu, X, Play, ChevronRight } from 'lucide-react'
 import { Globe } from '@/components/globe'
@@ -15,7 +15,7 @@ export default function Home() {
   const fullText = 'to create'
 
   // Text animation effect
-  useState(() => {
+  useEffect(() => {
     let index = 0
     const timer = setInterval(() => {
       if (index <= fullText.length) {
