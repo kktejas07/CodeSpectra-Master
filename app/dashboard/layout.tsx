@@ -3,7 +3,8 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Code2, Menu, X, Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown } from 'lucide-react'
+import { getNavItems, UserRole, isAdmin, isSuperAdmin } from '@/lib/rbac'
+import { Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown, Shield, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/auth-service'
 import {
@@ -57,15 +58,42 @@ export default function DashboardLayout({
     fetchUserProfile()
   }, [])
 
-  const navItems = [
+  // Get dynamic nav items based on role
+  const getDynamicNavItems = () => {
+    if (!userProfile?.role) return []
+    
+    const baseItems = [
+      { href: '/dashboard', icon: Home, label: 'Overview' },
+      { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
+      { href: '/dashboard/scanner', icon: CodeIcon, label: 'Scanner' },
+      { href: '/dashboard/learning', icon: BookOpen, label: 'Learning' },
+      { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
+      { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
+    ]
+
+    // Admin users get Team Management instead of regular overview
+    if (isAdmin(userProfile.role as UserRole)) {
+      return [
+        { href: '/dashboard', icon: Home, label: 'Overview' },
+        { href: '/dashboard/admin', icon: isSuperAdmin(userProfile.role as UserRole) ? Shield : Users, label: isSuperAdmin(userProfile.role as UserRole) ? 'System Admin' : 'Team Management' },
+        ...baseItems.slice(1)
+      ]
+    }
+
+    return baseItems
+  }
+
+  const navItems = getDynamicNavItems()
+  const dynamicNavItems = navItems.length > 0 ? navItems : [
     { href: '/dashboard', icon: Home, label: 'Overview' },
     { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
     { href: '/dashboard/scanner', icon: CodeIcon, label: 'Scanner' },
     { href: '/dashboard/learning', icon: BookOpen, label: 'Learning' },
     { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
     { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
-    { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
   ]
+
+  const Code2 = () => null
 
   const handleLogout = async () => {
     const result = await signOut()
@@ -108,7 +136,7 @@ export default function DashboardLayout({
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
-            {navItems.map((item) => {
+            {dynamicNavItems.map((item) => {
               const active = isActive(item.href)
               return (
                 <Link key={item.href} href={item.href}>
@@ -123,6 +151,18 @@ export default function DashboardLayout({
                 </Link>
               )
             })}
+            
+            {/* Settings - Always visible */}
+            <Link href="/dashboard/settings">
+              <div className={`px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
+                isActive('/dashboard/settings')
+                  ? 'bg-primary/10 text-primary' 
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}>
+                <Settings className={`w-4 h-4 ${isActive('/dashboard/settings') ? 'text-primary' : ''}`} />
+                <span>Settings</span>
+              </div>
+            </Link>
           </nav>
 
           {/* Logout */}

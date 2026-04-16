@@ -1,13 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
 import { Users, Settings, BarChart3, Shield, Activity, TrendingUp } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { isAdmin, isSuperAdmin } from '@/lib/rbac'
 
 export default function AdminDashboard() {
+  const router = useRouter()
   const [userProfile, setUserProfile] = useState<any>(null)
+  const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({
     totalUsers: 0,
     activeUsers: 0,
@@ -30,7 +34,10 @@ export default function AdminDashboard() {
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
-      if (!user) return
+      if (!user) {
+        router.push('/auth/login')
+        return
+      }
 
       // Get user profile
       const { data: profile } = await supabase
@@ -41,10 +48,24 @@ export default function AdminDashboard() {
 
       setUserProfile(profile)
 
-      // Get statistics
-      const { data: allUsers } = await supabase
-        .from('profiles')
-        .select('role')
+      // Check if user has admin access
+      if (!profile || !isAdmin(profile.role)) {
+        console.log('[v0] Unauthorized access to admin dashboard')
+        router.push('/dashboard')
+        return
+      }
+
+      // Get statistics based on role
+      let allUsers
+      if (isSuperAdmin(profile.role)) {
+        // Superadmin sees all users
+        const { data } = await supabase.from('profiles').select('role')
+        allUsers = data
+      } else {
+        // Admin sees team users only (for now, we'll show all but could filter by organization)
+        const { data } = await supabase.from('profiles').select('role')
+        allUsers = data
+      }
 
       if (allUsers) {
         const superadminCount = allUsers.filter((u) => u.role === 'superadmin').length
@@ -53,13 +74,15 @@ export default function AdminDashboard() {
 
         setStats({
           totalUsers: totalCount,
-          activeUsers: Math.floor(totalCount * 0.8), // Simulated
+          activeUsers: Math.floor(totalCount * 0.8),
           superadmins: superadminCount,
           admins: adminCount,
         })
       }
     } catch (error) {
       console.error('[v0] Error fetching admin data:', error)
+    } finally {
+      setLoading(false)
     }
   }
 
@@ -129,12 +152,61 @@ export default function AdminDashboard() {
         </div>
       </div>
 
-      {/* Admin Controls */}
-      <div className="bg-card border border-border/40 rounded-lg p-8 space-y-6">
-        <div>
-          <h2 className="text-xl font-bold text-foreground mb-2">Admin Controls</h2>
-          <p className="text-sm text-muted-foreground">Manage users, roles, and platform settings</p>
+      {/* Admin Controls - Only for Superadmins */}
+      {userProfile && isSuperAdmin(userProfile.role) && (
+        <div className="rounded-lg bg-card border border-border/40 p-8 space-y-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
+            <Shield className="w-5 h-5 text-primary" />
+            System Administration
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button className="h-12 justify-start">
+              <Users className="w-5 h-5 mr-3" />
+              Manage All Users
+            </Button>
+            <Button className="h-12 justify-start">
+              <BarChart3 className="w-5 h-5 mr-3" />
+              View System Analytics
+            </Button>
+            <Button className="h-12 justify-start">
+              <Settings className="w-5 h-5 mr-3" />
+              System Settings
+            </Button>
+            <Button className="h-12 justify-start">
+              <Activity className="w-5 h-5 mr-3" />
+              View Audit Logs
+            </Button>
+          </div>
         </div>
+      )}
+
+      {/* Team Management - For Tenant Admins */}
+      {userProfile && userProfile.role === 'admin' && (
+        <div className="rounded-lg bg-card border border-border/40 p-8 space-y-6">
+          <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
+            <Users className="w-5 h-5 text-primary" />
+            Team Management
+          </h2>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <Button className="h-12 justify-start">
+              <Users className="w-5 h-5 mr-3" />
+              Manage Team Members
+            </Button>
+            <Button className="h-12 justify-start">
+              <BarChart3 className="w-5 h-5 mr-3" />
+              Team Analytics
+            </Button>
+            <Button className="h-12 justify-start">
+              <Settings className="w-5 h-5 mr-3" />
+              Team Settings
+            </Button>
+            <Button className="h-12 justify-start">
+              <Activity className="w-5 h-5 mr-3" />
+              Team Activity
+            </Button>
+          </div>
+        </div>
+      )}
 
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <Button variant="outline" className="justify-start h-11">
