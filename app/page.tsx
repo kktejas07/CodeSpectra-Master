@@ -164,10 +164,10 @@ export default function Home() {
           <div className="max-w-4xl mx-auto text-center">
             <p className="text-sm text-muted-foreground mb-8 animate-fade-in">The platform for modern teams</p>
             
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-tight text-foreground">
+            <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-[1.1] text-foreground">
               The platform
               <br />
-              <span className="text-primary">{displayedText}<span className="animate-pulse">|</span></span>
+              <span className="text-primary inline-flex items-center gap-1">{displayedText}<span className="inline-block animate-pulse">|</span></span>
             </h1>
             
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">

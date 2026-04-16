@@ -83,24 +83,24 @@ export default function SetupPage() {
             </div>
           )}
 
-          {success && createdUsers.length > 0 && (
+          {success && createdUsers && createdUsers.length > 0 && (
             <div className="bg-muted/50 border border-border/50 rounded-lg p-4 space-y-3">
               <p className="text-xs font-semibold text-foreground">Created Demo Accounts:</p>
-              <div className="space-y-3">
+              <div className="space-y-2">
                 {createdUsers.map((user, index) => (
                   <div key={index} className="bg-background border border-border/30 rounded-lg p-3 space-y-2">
                     <div className="flex items-center justify-between">
-                      <span className="text-xs font-semibold text-foreground capitalize bg-primary/20 px-2 py-1 rounded">
+                      <span className="text-xs font-semibold text-white capitalize bg-primary px-2 py-1 rounded">
                         {user.role}
                       </span>
-                      <span className="text-xs text-muted-foreground">{user.full_name}</span>
+                      <span className="text-xs text-muted-foreground font-medium">{user.full_name}</span>
                     </div>
-                    <div className="space-y-1.5 font-mono text-xs">
-                      <div className="flex justify-between">
+                    <div className="space-y-1 font-mono text-xs">
+                      <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Email:</span>
                         <span className="text-primary font-semibold">{user.email}</span>
                       </div>
-                      <div className="flex justify-between">
+                      <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Password:</span>
                         <span className="text-primary font-semibold">{user.password}</span>
                       </div>
