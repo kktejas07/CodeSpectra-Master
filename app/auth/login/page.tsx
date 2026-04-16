@@ -1,5 +1,3 @@
-'use client'
-
 import { useState } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
@@ -244,26 +242,48 @@ export default function Login() {
 
           {/* Demo Accounts Card */}
           {authMethod === null && (
-            <div className="bg-muted/50 border border-border/40 rounded-xl p-4 space-y-3">
-              <p className="text-xs font-medium text-muted-foreground">Demo Accounts</p>
-              <div className="grid grid-cols-3 gap-2">
-                {[
-                  { email: 'demo.superadmin@codespectra.com', label: 'Superadmin' },
-                  { email: 'demo.admin@codespectra.com', label: 'Admin' },
-                  { email: 'demo.user@codespectra.com', label: 'User' },
-                ].map((demo) => (
-                  <button
-                    key={demo.email}
-                    onClick={() => fillDemoCredentials(demo.email, 'DemoPass123!')}
-                    className="text-xs px-3 py-2 rounded-lg bg-background hover:bg-primary/10 text-muted-foreground hover:text-foreground transition-colors font-medium border border-border/40"
+            <div className="space-y-4">
+              <div className="bg-primary/10 border border-primary/30 rounded-xl p-4 space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <p className="text-sm font-semibold text-primary mb-2">Try Demo</p>
+                    <p className="text-xs text-muted-foreground mb-3">
+                      First time? Run setup to create demo user, then use credentials below.
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  <Button 
+                    size="sm" 
+                    variant="outline" 
+                    asChild
+                    className="flex-1"
                   >
-                    {demo.label}
-                  </button>
-                ))}
+                    <Link href="/setup">Run Setup</Link>
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={() => fillDemoCredentials('demo@codespectra.com', 'DemoPass123!')}
+                    className="flex-1"
+                  >
+                    Auto-fill Credentials
+                  </Button>
+                </div>
               </div>
-              <p className="text-xs text-muted-foreground">
-                Password: <code className="bg-background px-1.5 py-0.5 rounded text-xs font-mono">DemoPass123!</code>
-              </p>
+
+              <div className="bg-muted/50 border border-border/40 rounded-xl p-4 space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">Demo Credentials</p>
+                <div className="space-y-2">
+                  <div className="p-3 bg-background rounded-lg border border-border/40">
+                    <p className="text-xs text-muted-foreground mb-1">Email</p>
+                    <code className="text-sm font-mono text-foreground">demo@codespectra.com</code>
+                  </div>
+                  <div className="p-3 bg-background rounded-lg border border-border/40">
+                    <p className="text-xs text-muted-foreground mb-1">Password</p>
+                    <code className="text-sm font-mono text-foreground">DemoPass123!</code>
+                  </div>
+                </div>
+              </div>
             </div>
           )}
 
