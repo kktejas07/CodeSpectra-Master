@@ -5,6 +5,7 @@ import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Code2, Zap, Shield, Cpu, GitBranch, CheckCircle2, TrendingUp, Github, Menu, X, Play, ChevronRight } from 'lucide-react'
 import { Globe } from '@/components/globe'
+import { DotPattern } from '@/components/dot-pattern'
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -413,8 +414,9 @@ codespectra.connect({
       </section>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 py-20 bg-card/30">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+      <footer className="border-t border-border/40 py-20 bg-card/30 relative overflow-hidden">
+        <DotPattern />
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10">
           <div className="grid grid-cols-2 md:grid-cols-5 gap-12 mb-16">
             <div className="col-span-2 md:col-span-1 space-y-4">
               <Link href="/" className="flex items-center gap-2">
