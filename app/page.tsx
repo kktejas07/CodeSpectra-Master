@@ -5,6 +5,7 @@ import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Code2, Zap, Shield, Cpu, GitBranch, CheckCircle2, TrendingUp, Github, Menu, X, Play, ChevronRight } from 'lucide-react'
 import { CodeGlobeViewer } from '@/components/code-globe-3d'
+import { DotPattern } from '@/components/dot-pattern'
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
