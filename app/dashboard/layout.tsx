@@ -1,9 +1,9 @@
 'use client'
 
 import { useState } from 'react'
-import { useRouter } from 'next/navigation'
+import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { Code2, Menu, X, Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Zap } from 'lucide-react'
+import { Code2, Menu, X, Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/auth-service'
 
@@ -13,6 +13,7 @@ export default function DashboardLayout({
   children: React.ReactNode
 }) {
   const router = useRouter()
+  const pathname = usePathname()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const navItems = [
@@ -32,41 +33,63 @@ export default function DashboardLayout({
     }
   }
 
+  const isActive = (href: string) => {
+    if (href === '/dashboard') {
+      return pathname === '/dashboard'
+    }
+    return pathname.startsWith(href)
+  }
+
   return (
     <div className="min-h-screen bg-background">
+      {/* Mobile overlay */}
+      {sidebarOpen && (
+        <div 
+          className="fixed inset-0 bg-background/80 backdrop-blur-sm z-30 lg:hidden"
+          onClick={() => setSidebarOpen(false)}
+        />
+      )}
+
       {/* Sidebar */}
-      <aside className={`fixed left-0 top-0 h-screen w-64 bg-gradient-to-b from-card to-card/80 border-r border-border/50 z-40 transform transition-transform ${
+      <aside className={`fixed left-0 top-0 h-screen w-64 bg-card border-r border-border/40 z-40 transform transition-transform duration-200 ${
         sidebarOpen ? 'translate-x-0' : '-translate-x-full'
       } lg:translate-x-0`}>
         <div className="flex flex-col h-full">
           {/* Logo */}
-          <div className="p-6 border-b border-border/50">
-            <Link href="/dashboard" className="flex items-center gap-2 group">
-              <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center group-hover:shadow-lg transition-shadow">
-                <Code2 className="w-5 h-5 text-primary-foreground" />
+          <div className="h-16 px-6 flex items-center border-b border-border/40">
+            <Link href="/dashboard" className="flex items-center gap-2.5">
+              <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
+                <Code2 className="w-4 h-4 text-primary-foreground" />
               </div>
-              <span className="font-bold text-foreground group-hover:text-primary transition-colors">CodeSpectra</span>
+              <span className="text-lg font-semibold">CodeSpectra</span>
             </Link>
           </div>
 
           {/* Navigation */}
           <nav className="flex-1 p-4 space-y-1">
-            {navItems.map((item) => (
-              <Link key={item.href} href={item.href}>
-                <div className="px-4 py-3 rounded-lg flex items-center gap-3 text-muted-foreground hover:text-foreground hover:bg-secondary/50 transition text-sm font-medium group">
-                  <item.icon className="w-4 h-4 group-hover:text-primary transition-colors" />
-                  <span>{item.label}</span>
-                </div>
-              </Link>
-            ))}
+            {navItems.map((item) => {
+              const active = isActive(item.href)
+              return (
+                <Link key={item.href} href={item.href}>
+                  <div className={`px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
+                    active 
+                      ? 'bg-primary/10 text-primary' 
+                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                  }`}>
+                    <item.icon className={`w-4 h-4 ${active ? 'text-primary' : ''}`} />
+                    <span>{item.label}</span>
+                  </div>
+                </Link>
+              )
+            })}
           </nav>
 
           {/* Logout */}
-          <div className="p-4 border-t border-border/50">
+          <div className="p-4 border-t border-border/40">
             <Button 
               onClick={handleLogout}
               variant="ghost" 
-              className="w-full justify-start text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10 transition-all duration-200 rounded-lg"
+              className="w-full justify-start text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10"
             >
               <LogOut className="w-4 h-4 mr-2" />
               Sign Out
@@ -78,33 +101,47 @@ export default function DashboardLayout({
       {/* Main Content */}
       <div className="lg:ml-64">
         {/* Top Bar */}
-        <header className="sticky top-0 h-16 bg-gradient-to-r from-card to-card/80 border-b border-border/50 z-30">
-          <div className="h-full px-6 flex items-center justify-between">
+        <header className="sticky top-0 h-16 bg-background/80 backdrop-blur-xl border-b border-border/40 z-30">
+          <div className="h-full px-4 lg:px-6 flex items-center justify-between gap-4">
             <button
               onClick={() => setSidebarOpen(!sidebarOpen)}
               className="lg:hidden p-2 hover:bg-muted rounded-lg transition-colors"
             >
-              {sidebarOpen ? (
-                <X className="w-6 h-6" />
-              ) : (
-                <Menu className="w-6 h-6" />
-              )}
+              {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            <div className="flex-1 flex justify-end items-center gap-4">
+            {/* Search */}
+            <div className="hidden md:flex flex-1 max-w-md">
+              <div className="relative w-full">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <input
+                  type="text"
+                  placeholder="Search..."
+                  className="w-full pl-9 pr-4 py-2 text-sm border border-border/40 rounded-lg bg-background hover:border-primary/40 transition-colors focus:border-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+                />
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2">
+              {/* Notifications */}
+              <button className="p-2 hover:bg-muted rounded-lg transition-colors relative">
+                <Bell className="w-5 h-5 text-muted-foreground" />
+                <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
+              </button>
+
               {/* User Profile */}
-              <div className="flex items-center gap-3 px-4 py-2 rounded-lg hover:bg-muted/50 transition-colors">
-                <div className="w-8 h-8 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center shadow-md">
-                  <span className="text-primary-foreground text-xs font-bold">U</span>
+              <div className="flex items-center gap-3 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+                <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                  <span className="text-primary-foreground text-sm font-medium">U</span>
                 </div>
-                <span className="text-sm font-medium text-foreground">Developer</span>
+                <span className="hidden sm:block text-sm font-medium">Developer</span>
               </div>
             </div>
           </div>
         </header>
 
         {/* Page Content */}
-        <main className="p-6 bg-gradient-to-br from-background via-background to-primary/5">
+        <main className="p-4 lg:p-6">
           {children}
         </main>
       </div>
