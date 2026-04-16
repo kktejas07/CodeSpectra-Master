@@ -18,30 +18,24 @@ export default function SetupPage() {
     setSuccess(false)
 
     try {
-      console.log('[v0] Starting demo user setup...')
       const response = await fetch('/api/setup-demo', {
         method: 'POST',
       })
 
-      console.log('[v0] Setup response status:', response.status)
       const data = await response.json()
-      console.log('[v0] Setup response data:', data)
 
       if (data.success) {
         setSuccess(true)
-        console.log('[v0] Setup successful, redirecting to login...')
         // Redirect to login after 2 seconds
         setTimeout(() => {
           router.push('/auth/login')
         }, 2000)
       } else {
         const errorMsg = data.error || 'Setup failed. Please try again.'
-        console.error('[v0] Setup failed:', errorMsg)
         setError(errorMsg)
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred during setup.'
-      console.error('[v0] Setup exception:', err)
       setError(`Connection error: ${errorMsg}. Please check your Supabase configuration.`)
     } finally {
       setLoading(false)

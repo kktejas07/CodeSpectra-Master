@@ -70,25 +70,25 @@ export default function SupportPortalPage() {
 
   return (
     <PublicPageWrapper>
-      <div className="space-y-12">
+      <div className="space-y-16">
         {/* Header */}
-        <div className="text-center space-y-4 mb-8">
-          <h1 className="text-5xl sm:text-6xl font-bold text-foreground">Support & Help</h1>
+        <div className="text-center space-y-4">
+          <h1 className="text-6xl font-bold text-foreground">Support & help</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">Get help and find answers to common questions</p>
         </div>
 
         {/* Support Cards */}
-        <div className="grid md:grid-cols-3 gap-6 mb-12">
+        <div className="grid md:grid-cols-3 gap-6 max-w-5xl mx-auto w-full">
           {[
-            { icon: MessageSquare, title: 'Create a Ticket', desc: 'Get help from our support team', href: '/dashboard/support' },
-            { icon: AlertCircle, title: 'Check Status', desc: 'View system status and incidents', href: '#' },
-            { icon: Clock, title: 'Response Times', desc: '~2 hours for priority issues', href: '#' }
+            { icon: MessageSquare, title: 'Create a ticket', desc: 'Get help from our support team', href: '/dashboard/support' },
+            { icon: AlertCircle, title: 'Check status', desc: 'View system status and incidents', href: '#' },
+            { icon: Clock, title: 'Response times', desc: '~2 hours for priority issues', href: '#' }
           ].map((item, i) => {
             const Icon = item.icon
             return (
-              <div key={i} className="p-6 border border-border/50 rounded-lg hover:border-primary/50 hover:shadow-lg transition-all duration-300 bg-card text-center">
-                <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center mx-auto mb-4">
-                  <Icon className="w-6 h-6 text-primary" />
+              <div key={i} className="p-6 border border-border/50 rounded-lg hover:border-primary/30 hover:shadow-md transition-all duration-300">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center mb-4">
+                  <Icon className="w-5 h-5 text-primary" />
                 </div>
                 <h3 className="font-semibold text-foreground mb-2">{item.title}</h3>
                 <p className="text-sm text-muted-foreground mb-4">{item.desc}</p>
@@ -101,17 +101,17 @@ export default function SupportPortalPage() {
         </div>
 
         {/* FAQs */}
-        <div className="space-y-6">
-          <div>
-            <h2 className="text-3xl font-bold mb-6 text-foreground">Frequently Asked Questions</h2>
-            <div className="relative mb-8">
+        <div className="max-w-3xl mx-auto w-full">
+          <div className="mb-8">
+            <h2 className="text-4xl font-bold mb-6 text-foreground">Frequently asked questions</h2>
+            <div className="relative">
               <Search className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
               <input
                 type="text"
                 placeholder="Search FAQs..."
                 value={searchQuery}
                 onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full pl-10 pr-4 py-2.5 border border-border/50 rounded-lg bg-card hover:border-primary/50 transition-colors focus:border-primary/50 focus:outline-none"
+                className="w-full pl-10 pr-4 py-2.5 border border-border/50 rounded-lg bg-card hover:border-primary/30 transition-colors focus:border-primary focus:outline-none"
               />
             </div>
           </div>
@@ -122,16 +122,16 @@ export default function SupportPortalPage() {
             </div>
           ) : (
             filteredFaqs.map((section) => (
-              <div key={section.category}>
+              <div key={section.category} className="mb-8">
                 <div className="flex items-center gap-3 mb-4">
                   <Badge variant="outline" className="text-xs">{section.category}</Badge>
                 </div>
                 <div className="space-y-3">
                   {section.questions.map((faq, i) => (
-                    <div key={i} className="p-4 border border-border/50 rounded-lg bg-card hover:bg-muted/50 transition-colors">
+                    <div key={i} className="p-4 border border-border/50 rounded-lg hover:bg-muted/30 transition-colors">
                       <details className="cursor-pointer group">
                         <summary className="font-semibold flex items-center gap-2 text-foreground group-open:text-primary transition-colors">
-                          <CheckCircle className="w-4 h-4 text-green-600 flex-shrink-0" />
+                          <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
                           {faq.q}
                         </summary>
                         <p className="text-sm text-muted-foreground mt-3 ml-6 leading-relaxed">
@@ -147,7 +147,7 @@ export default function SupportPortalPage() {
         </div>
 
         {/* Help CTA */}
-        <div className="p-8 border border-primary/20 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 text-center">
+        <div className="p-8 border border-primary/20 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5 text-center max-w-3xl mx-auto w-full">
           <h3 className="text-2xl font-bold text-foreground mb-2">Still need help?</h3>
           <p className="text-muted-foreground mb-6 max-w-2xl mx-auto">
             Our support team is available 24/7 to assist you with any questions or issues.
