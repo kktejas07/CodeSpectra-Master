@@ -11,6 +11,7 @@ export default function SetupPage() {
   const [loading, setLoading] = useState(false)
   const [success, setSuccess] = useState(false)
   const [error, setError] = useState('')
+  const [createdUsers, setCreatedUsers] = useState<any[]>([])
 
   const handleSetup = async () => {
     setLoading(true)
@@ -25,11 +26,12 @@ export default function SetupPage() {
       const data = await response.json()
 
       if (data.success) {
+        setCreatedUsers(data.users || [])
         setSuccess(true)
-        // Redirect to login after 2 seconds
+        // Redirect to login after 3 seconds
         setTimeout(() => {
           router.push('/auth/login')
-        }, 2000)
+        }, 3000)
       } else {
         const errorMsg = data.error || 'Setup failed. Please try again.'
         setError(errorMsg)
@@ -76,7 +78,35 @@ export default function SetupPage() {
               <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium">Setup Complete!</p>
-                <p className="text-sm text-green-600 mt-1">Demo account created. Redirecting to login...</p>
+                <p className="text-sm text-green-600 mt-1">Demo accounts created. Redirecting to login...</p>
+              </div>
+            </div>
+          )}
+
+          {success && createdUsers.length > 0 && (
+            <div className="bg-muted/50 border border-border/50 rounded-lg p-4 space-y-3">
+              <p className="text-xs font-semibold text-foreground">Created Demo Accounts:</p>
+              <div className="space-y-3">
+                {createdUsers.map((user, index) => (
+                  <div key={index} className="bg-background border border-border/30 rounded-lg p-3 space-y-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-xs font-semibold text-foreground capitalize bg-primary/20 px-2 py-1 rounded">
+                        {user.role}
+                      </span>
+                      <span className="text-xs text-muted-foreground">{user.full_name}</span>
+                    </div>
+                    <div className="space-y-1.5 font-mono text-xs">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Email:</span>
+                        <span className="text-primary font-semibold">{user.email}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Password:</span>
+                        <span className="text-primary font-semibold">{user.password}</span>
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           )}
@@ -88,11 +118,19 @@ export default function SetupPage() {
                 <ul className="space-y-2 text-muted-foreground">
                   <li className="flex items-start gap-2">
                     <span className="text-green-500 font-bold mt-0.5">✓</span>
-                    <span>Create a demo user account</span>
+                    <span>Create a Superadmin account</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-green-500 font-bold mt-0.5">✓</span>
-                    <span>Initialize user profile in the database</span>
+                    <span>Create a Tenant Admin account</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 font-bold mt-0.5">✓</span>
+                    <span>Create a Demo User account</span>
+                  </li>
+                  <li className="flex items-start gap-2">
+                    <span className="text-green-500 font-bold mt-0.5">✓</span>
+                    <span>Initialize user profiles in the database</span>
                   </li>
                   <li className="flex items-start gap-2">
                     <span className="text-green-500 font-bold mt-0.5">✓</span>
@@ -101,16 +139,47 @@ export default function SetupPage() {
                 </ul>
               </div>
 
-              <div className="bg-muted/50 rounded-lg p-4 space-y-2 border border-border/50">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-3 border border-border/50">
                 <p className="text-xs font-semibold text-foreground">Demo Account Details:</p>
-                <div className="text-xs space-y-1.5 font-mono">
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Email:</span>
-                    <span className="text-primary font-semibold">demo@codespectra.com</span>
+                <div className="space-y-2">
+                  <div className="bg-background border border-border/30 rounded p-2.5">
+                    <div className="text-xs font-semibold text-primary mb-1">SUPERADMIN</div>
+                    <div className="text-xs space-y-1 font-mono">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Email:</span>
+                        <span className="text-foreground">superadmin@codespectra.com</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Password:</span>
+                        <span className="text-foreground">SuperAdmin123!</span>
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex justify-between">
-                    <span className="text-muted-foreground">Password:</span>
-                    <span className="text-primary font-semibold">DemoPass123!</span>
+                  <div className="bg-background border border-border/30 rounded p-2.5">
+                    <div className="text-xs font-semibold text-primary mb-1">TENANT ADMIN</div>
+                    <div className="text-xs space-y-1 font-mono">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Email:</span>
+                        <span className="text-foreground">admin@codespectra.com</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Password:</span>
+                        <span className="text-foreground">TenantAdmin123!</span>
+                      </div>
+                    </div>
+                  </div>
+                  <div className="bg-background border border-border/30 rounded p-2.5">
+                    <div className="text-xs font-semibold text-primary mb-1">DEMO USER</div>
+                    <div className="text-xs space-y-1 font-mono">
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Email:</span>
+                        <span className="text-foreground">demo@codespectra.com</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Password:</span>
+                        <span className="text-foreground">DemoPass123!</span>
+                      </div>
+                    </div>
                   </div>
                 </div>
               </div>
