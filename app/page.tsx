@@ -10,22 +10,32 @@ import { DotPattern } from '@/components/dot-pattern'
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [displayedText, setDisplayedText] = useState('')
+  const [currentWord, setCurrentWord] = useState(0)
   
-  const fullText = 'to create'
+  const words = ['create', 'build', 'scale', 'ship']
 
-  // Text animation effect
+  // Text animation effect - cycles through words
   useEffect(() => {
-    let index = 0
-    const timer = setInterval(() => {
-      if (index <= fullText.length) {
-        setDisplayedText(fullText.slice(0, index))
-        index++
+    let charIndex = 0
+    const currentFullWord = words[currentWord]
+    
+    const charTimer = setInterval(() => {
+      if (charIndex <= currentFullWord.length) {
+        setDisplayedText(currentFullWord.slice(0, charIndex))
+        charIndex++
       } else {
-        clearInterval(timer)
+        clearInterval(charTimer)
+        // Wait 2 seconds before switching to next word
+        const wordTimer = setTimeout(() => {
+          setCurrentWord((prev) => (prev + 1) % words.length)
+          charIndex = 0
+        }, 2000)
+        return () => clearTimeout(wordTimer)
       }
-    }, 100)
-    return () => clearInterval(timer)
-  }, [])
+    }, 80)
+    
+    return () => clearInterval(charTimer)
+  }, [currentWord])
 
   const stats = [
     { value: '20 days', label: 'saved on builds', company: 'NETFLIX' },
@@ -167,7 +177,7 @@ export default function Home() {
             <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-[1.1] text-foreground">
               The platform
               <br />
-              <span className="text-primary inline-flex items-center gap-1">{displayedText}<span className="inline-block animate-pulse">|</span></span>
+              to <span className="text-primary inline-flex items-center gap-1 min-w-[280px] sm:min-w-[350px]">{displayedText}<span className="inline-block animate-pulse">|</span></span>
             </h1>
             
             <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed">
