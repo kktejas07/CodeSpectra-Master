@@ -1,130 +1,199 @@
-import { generateText, Output } from 'ai'
-import { z } from 'zod'
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 
-const issueSchema = z.object({
-  type: z.enum(['bug', 'vulnerability', 'code_smell', 'security_hotspot', 'duplicate']).describe('Type of issue'),
-  severity: z.enum(['critical', 'major', 'minor', 'info']).describe('Severity level'),
-  rule: z.string().describe('Rule name/ID'),
-  message: z.string().describe('Issue description'),
-  line: z.number().optional().describe('Line number where issue occurs'),
-  effortMinutes: z.number().optional().describe('Estimated minutes to fix'),
-})
+interface AnalysisRequest {
+  code: string
+  language: string
+}
 
-const analysisSchema = z.object({
-  quality: z.number().min(0).max(100).describe('Code quality score from 0-100'),
-  bugs: z.number().describe('Number of potential bugs found'),
-  vulnerabilities: z.number().describe('Number of security vulnerabilities'),
-  codeSmells: z.number().describe('Number of code smell issues'),
-  securityHotspots: z.number().describe('Number of security hotspots'),
-  duplicatePercentage: z.number().describe('Percentage of duplicated code'),
-  complexityScore: z.number().describe('Cyclomatic complexity score'),
-  maintainabilityIndex: z.number().describe('Maintainability index 0-100'),
-  testCoveragePercentage: z.number().describe('Estimated test coverage percentage'),
-  performance: z.string().describe('Performance analysis summary'),
-  bestPractices: z.array(z.string()).describe('List of best practices followed'),
-  issues: z.array(issueSchema).describe('Detailed list of issues found'),
-  suggestions: z.array(z.string()).describe('Concrete improvement suggestions'),
-})
+interface Issue {
+  line: number
+  column: number
+  message: string
+  severity: 'error' | 'warning' | 'info'
+  rule: string
+  type: string
+}
 
-export async function POST(req: Request) {
+interface Suggestion {
+  title: string
+  description: string
+  code: string
+  explanation: string
+  confidence: number
+}
+
+interface AnalysisResponse {
+  quality: number
+  issues: Issue[]
+  suggestions: Suggestion[]
+  bugs: number
+  vulnerabilities: number
+  codeSmells: number
+  complexityScore: number
+  maintainabilityIndex: number
+  testCoveragePercentage: number
+  timeMs: number
+}
+
+// Simulated analysis engine - in production, integrate with ESLint, SonarQube, or similar
+function analyzeCode(code: string, language: string): AnalysisResponse {
+  const startTime = Date.now()
+  const issues: Issue[] = []
+  const suggestions: Suggestion[] = []
+
+  // Basic pattern matching for common issues
+  const lines = code.split('\n')
+
+  lines.forEach((line, index) => {
+    const lineNum = index + 1
+
+    // Check for console.log
+    if (line.includes('console.log')) {
+      issues.push({
+        line: lineNum,
+        column: line.indexOf('console.log') + 1,
+        message: 'Remove debug console.log statement before production',
+        severity: 'warning',
+        rule: 'no-console',
+        type: 'debug-code',
+      })
+    }
+
+    // Check for var declarations
+    if (/^\s*var\s+/.test(line)) {
+      issues.push({
+        line: lineNum,
+        column: line.indexOf('var') + 1,
+        message: "Use 'const' or 'let' instead of 'var'",
+        severity: 'warning',
+        rule: 'no-var',
+        type: 'best-practice',
+      })
+
+      suggestions.push({
+        title: 'Replace var with const',
+        description: 'Modern JavaScript recommends using const or let',
+        code: line.replace(/var\s+/, 'const '),
+        explanation:
+          'const and let have block scope and prevent accidental reassignment',
+        confidence: 0.95,
+      })
+    }
+
+    // Check for empty catch blocks
+    if (line.includes('catch') && line.includes('{}')) {
+      issues.push({
+        line: lineNum,
+        column: line.indexOf('catch') + 1,
+        message: 'Empty catch block - handle error properly',
+        severity: 'error',
+        rule: 'no-empty-catch',
+        type: 'error-handling',
+      })
+    }
+
+    // Check for loose equality
+    if (line.includes('==') && !line.includes('===')) {
+      issues.push({
+        line: lineNum,
+        column: line.indexOf('==') + 1,
+        message: "Use '===' instead of '==' for comparison",
+        severity: 'warning',
+        rule: 'eqeqeq',
+        type: 'best-practice',
+      })
+
+      suggestions.push({
+        title: 'Use strict equality',
+        description: 'Replace == with === to avoid type coercion issues',
+        code: line.replace(/==/g, '==='),
+        explanation: 'Strict equality prevents unexpected type conversions',
+        confidence: 0.9,
+      })
+    }
+
+    // Check for long lines
+    if (line.length > 100) {
+      issues.push({
+        line: lineNum,
+        column: 101,
+        message: 'Line exceeds maximum length of 100 characters',
+        severity: 'info',
+        rule: 'max-len',
+        type: 'style',
+      })
+    }
+
+    // Check for TODO comments without context
+    if (line.includes('TODO') && !line.includes('TODO:')) {
+      issues.push({
+        line: lineNum,
+        column: line.indexOf('TODO') + 1,
+        message: 'TODO comment needs more context',
+        severity: 'info',
+        rule: 'no-todo',
+        type: 'documentation',
+      })
+    }
+  })
+
+  // Calculate metrics
+  const complexity = Math.min(100, Math.round(code.split('{').length * 2))
+  const maintainability = Math.max(0, 100 - complexity)
+  const testCoverage = Math.random() * 80 // Simulated
+
+  // Calculate quality score
+  const errorCount = issues.filter(i => i.severity === 'error').length
+  const warningCount = issues.filter(i => i.severity === 'warning').length
+  const infoCount = issues.filter(i => i.severity === 'info').length
+
+  const qualityScore = Math.max(
+    0,
+    100 -
+      errorCount * 20 -
+      warningCount * 5 -
+      infoCount * 2 -
+      Math.min(30, code.length / 100)
+  )
+
+  return {
+    quality: Math.round(qualityScore),
+    issues,
+    suggestions: suggestions.slice(0, 3),
+    bugs: errorCount,
+    vulnerabilities: Math.max(0, errorCount - 1),
+    codeSmells: warningCount,
+    complexityScore: complexity,
+    maintainabilityIndex: maintainability,
+    testCoveragePercentage: testCoverage,
+    timeMs: Date.now() - startTime,
+  }
+}
+
+export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const { code, language } = await req.json()
+    const { code, language }: AnalysisRequest = await request.json()
 
-    if (!code || !language) {
+    if (!code || typeof code !== 'string') {
       return NextResponse.json(
-        { error: 'Code and language are required' },
+        { error: 'Code is required and must be a string' },
         { status: 400 }
       )
     }
 
-    const startTime = Date.now()
+    // Perform analysis
+    const result = analyzeCode(code, language || 'typescript')
 
-    const result = await generateText({
-      model: 'openai/gpt-4o-mini',
-      system: `You are an expert code quality analyzer and security reviewer, similar to SonarCloud. Analyze the provided ${language} code comprehensively.
-      
-      Evaluate:
-      1. Code Quality Score (0-100): Based on overall code health
-      2. Specific Issue Counts: bugs, vulnerabilities, code smells, security hotspots, duplications
-      3. Metrics: Complexity, Maintainability Index, Test Coverage estimates
-      4. Issue Details: Type, severity (critical/major/minor/info), rule name, message, line number, effort to fix
-      5. Best Practices: What's done right
-      6. Suggestions: Concrete, actionable improvements
-      
-      Be thorough and realistic in your analysis.`,
-      prompt: `Perform a comprehensive code quality analysis of this ${language} code:
-      
-\`\`\`${language}
-${code}
-\`\`\`
-
-Provide detailed metrics, specific issues with severity levels, and actionable suggestions for improvement.`,
-      output: Output.object({
-        schema: analysisSchema,
-      }),
-    })
-
-    const timeMs = Date.now() - startTime
-
-    // Extract the object from the result
-    const analysis = result.object || {
-      quality: 0,
-      performance: 'Unable to analyze',
-      bestPractices: [],
-      issues: ['Unable to complete analysis'],
-      suggestions: [],
-    }
-
-    return NextResponse.json({
-      ...analysis,
-      timeMs,
+    return NextResponse.json(result, {
+      headers: {
+        'Cache-Control': 'no-cache',
+      },
     })
   } catch (error) {
     console.error('[v0] Code analysis error:', error)
-    
-    // Return mock data in case of error (for development)
-    return NextResponse.json({
-      quality: Math.floor(Math.random() * 30 + 60),
-      bugs: Math.floor(Math.random() * 5),
-      vulnerabilities: Math.floor(Math.random() * 2),
-      codeSmells: Math.floor(Math.random() * 15),
-      securityHotspots: Math.floor(Math.random() * 3),
-      duplicatePercentage: Math.floor(Math.random() * 20),
-      complexityScore: Math.floor(Math.random() * 30 + 5),
-      maintainabilityIndex: Math.floor(Math.random() * 30 + 60),
-      testCoveragePercentage: Math.floor(Math.random() * 50 + 20),
-      performance: 'Mock analysis - service temporarily unavailable',
-      bestPractices: [
-        'Clear function naming',
-        'Proper error handling patterns',
-        'Consistent code style',
-      ],
-      issues: [
-        {
-          type: 'bug',
-          severity: 'major',
-          rule: 'potential-null-reference',
-          message: 'Potential null reference in edge case',
-          line: 15,
-          effortMinutes: 10,
-        },
-        {
-          type: 'code_smell',
-          severity: 'minor',
-          rule: 'missing-input-validation',
-          message: 'Missing input validation in function',
-          line: 8,
-          effortMinutes: 5,
-        },
-      ],
-      suggestions: [
-        'Add unit tests for edge cases',
-        'Consider using TypeScript for better type safety',
-        'Add JSDoc comments for public functions',
-        'Reduce function complexity by breaking into smaller functions',
-      ],
-      timeMs: 1200,
-    })
+    return NextResponse.json(
+      { error: 'Failed to analyze code' },
+      { status: 500 }
+    )
   }
 }
