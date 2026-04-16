@@ -50,14 +50,14 @@ export default function Home() {
           </p>
 
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link href="/auth/signup">
+            <Link href="/setup">
               <Button size="lg" className="w-full sm:w-auto">
-                Start Free Trial <ArrowRight className="ml-2 w-4 h-4" />
+                Try Demo <ArrowRight className="ml-2 w-4 h-4" />
               </Button>
             </Link>
-            <Link href="#features">
+            <Link href="/auth/signup">
               <Button size="lg" variant="outline" className="w-full sm:w-auto">
-                Watch Demo
+                Create Account
               </Button>
             </Link>
           </div>

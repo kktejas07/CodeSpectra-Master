@@ -1,26 +1,52 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Code2 } from 'lucide-react'
+import { Code2, AlertCircle, CheckCircle } from 'lucide-react'
+import { signIn } from '@/lib/auth-service'
 
 export default function Login() {
+  const router = useRouter()
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    setSuccess('')
     setLoading(true)
-    // TODO: Implement Supabase login
-    setTimeout(() => setLoading(false), 1000)
+
+    try {
+      const result = await signIn(email, password)
+      
+      if (result.success) {
+        setSuccess('Login successful! Redirecting to dashboard...')
+        // Redirect to dashboard after 1 second
+        setTimeout(() => {
+          router.push('/dashboard')
+        }, 1000)
+      } else {
+        setError(result.error || 'Login failed. Please try again.')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+      console.error('Login error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   const fillDemoCredentials = () => {
     setEmail('demo@codespectra.com')
     setPassword('DemoPass123!')
+    setError('')
+    setSuccess('')
   }
 
   return (
@@ -36,6 +62,28 @@ export default function Login() {
         <h1 className="text-2xl font-bold text-foreground">Welcome Back</h1>
         <p className="text-foreground/60">Sign in to continue your coding journey</p>
       </div>
+
+      {/* Error Message */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Login Failed</p>
+            <p className="text-sm text-destructive/80">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-500/10 border border-green-500 text-green-700 px-4 py-3 rounded-lg flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Success!</p>
+            <p className="text-sm text-green-600">{success}</p>
+          </div>
+        </div>
+      )}
 
       {/* Form */}
       <form onSubmit={handleLogin} className="space-y-4">

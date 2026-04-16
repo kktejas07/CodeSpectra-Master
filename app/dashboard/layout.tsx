@@ -1,15 +1,18 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { Code2, Menu, X, Home, Trophy, BookOpen, BarChart3, Settings, LogOut } from 'lucide-react'
+import { Code2, Menu, X, Home, Trophy, BookOpen, BarChart3, Settings, LogOut, Star } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { signOut } from '@/lib/auth-service'
 
 export default function DashboardLayout({
   children,
 }: {
   children: React.ReactNode
 }) {
+  const router = useRouter()
   const [sidebarOpen, setSidebarOpen] = useState(false)
 
   const navItems = [
@@ -18,8 +21,16 @@ export default function DashboardLayout({
     { href: '/dashboard/scanner', icon: Code2, label: 'Code Scanner' },
     { href: '/dashboard/learning', icon: BookOpen, label: 'Learning' },
     { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
+    { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
     { href: '/dashboard/settings', icon: Settings, label: 'Settings' },
   ]
+
+  const handleLogout = async () => {
+    const result = await signOut()
+    if (result.success) {
+      router.push('/auth/login')
+    }
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -52,7 +63,11 @@ export default function DashboardLayout({
 
           {/* Logout */}
           <div className="p-6 border-t border-border">
-            <Button variant="ghost" className="w-full justify-start text-foreground/70 hover:text-foreground">
+            <Button 
+              onClick={handleLogout}
+              variant="ghost" 
+              className="w-full justify-start text-foreground/70 hover:text-foreground hover:bg-destructive/10"
+            >
               <LogOut className="w-5 h-5 mr-3" />
               Sign Out
             </Button>

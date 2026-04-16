@@ -1,21 +1,46 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Code2 } from 'lucide-react'
+import { Code2, AlertCircle, CheckCircle } from 'lucide-react'
+import { signUp } from '@/lib/auth-service'
 
 export default function SignUp() {
+  const router = useRouter()
+  const [fullName, setFullName] = useState('')
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const handleSignUp = async (e: React.FormEvent) => {
     e.preventDefault()
+    setError('')
+    setSuccess('')
     setLoading(true)
-    // TODO: Implement Supabase signup
-    setTimeout(() => setLoading(false), 1000)
+
+    try {
+      const result = await signUp(email, password, fullName)
+      
+      if (result.success) {
+        setSuccess('Account created successfully! Redirecting to login...')
+        // Redirect to login after 2 seconds
+        setTimeout(() => {
+          router.push('/auth/login')
+        }, 2000)
+      } else {
+        setError(result.error || 'Signup failed. Please try again.')
+      }
+    } catch (err) {
+      setError('An unexpected error occurred. Please try again.')
+      console.error('Signup error:', err)
+    } finally {
+      setLoading(false)
+    }
   }
 
   return (
@@ -32,8 +57,42 @@ export default function SignUp() {
         <p className="text-foreground/60">Join the community of developers mastering their craft</p>
       </div>
 
+      {/* Error Message */}
+      {error && (
+        <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg flex items-start gap-3">
+          <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Signup Failed</p>
+            <p className="text-sm text-destructive/80">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Success Message */}
+      {success && (
+        <div className="bg-green-500/10 border border-green-500 text-green-700 px-4 py-3 rounded-lg flex items-start gap-3">
+          <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
+          <div>
+            <p className="text-sm font-medium">Success!</p>
+            <p className="text-sm text-green-600">{success}</p>
+          </div>
+        </div>
+      )}
+
       {/* Form */}
       <form onSubmit={handleSignUp} className="space-y-4">
+        <div className="space-y-2">
+          <label className="text-sm font-medium text-foreground">Full Name</label>
+          <Input
+            type="text"
+            placeholder="John Doe"
+            value={fullName}
+            onChange={(e) => setFullName(e.target.value)}
+            required
+            className="bg-background border-border text-foreground placeholder:text-foreground/50"
+          />
+        </div>
+
         <div className="space-y-2">
           <label className="text-sm font-medium text-foreground">Email</label>
           <Input
