@@ -4,9 +4,7 @@ import Link from 'next/link'
 import { useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { ArrowRight, Code2, Zap, Shield, Cpu, GitBranch, CheckCircle2, TrendingUp, Github, Menu, X, Play, ChevronRight } from 'lucide-react'
-import { Globe } from '@/components/globe'
-import { DotPattern } from '@/components/dot-pattern'
-import { CodePattern } from '@/components/code-pattern'
+import { CodeGlobeViewer } from '@/components/code-globe-3d'
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -156,9 +154,9 @@ export default function Home() {
 
       {/* Hero Section */}
       <section className="relative pt-32 pb-20 lg:pt-40 lg:pb-32 overflow-hidden min-h-[90vh] flex items-center">
-        {/* Code Pattern Background */}
+        {/* 3D Code Globe Background */}
         <div className="absolute inset-0 z-0">
-          <CodePattern />
+          <CodeGlobeViewer />
         </div>
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
