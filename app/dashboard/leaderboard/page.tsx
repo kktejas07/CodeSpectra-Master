@@ -1,139 +1,187 @@
 'use client'
 
-import { BarChart3, Trophy, TrendingUp } from 'lucide-react'
-
-const leaderboardData = [
-  { rank: 1, name: 'Alex Chen', points: 5420, challenges: 87, streak: 42 },
-  { rank: 2, name: 'Jordan Lee', points: 5210, challenges: 81, streak: 35 },
-  { rank: 3, name: 'Sam Rodriguez', points: 4980, challenges: 78, streak: 28 },
-  { rank: 4, name: 'Taylor Kim', points: 4750, challenges: 74, streak: 21 },
-  { rank: 5, name: 'Morgan Smith', points: 4520, challenges: 71, streak: 18 },
-  { rank: 6, name: 'Casey Johnson', points: 4310, challenges: 68, streak: 15 },
-  { rank: 7, name: 'River Davis', points: 4050, challenges: 63, streak: 12 },
-  { rank: 8, name: 'Quinn Brown', points: 3890, challenges: 61, streak: 10 },
-  { rank: 9, name: 'Parker Wilson', points: 3650, challenges: 57, streak: 8 },
-  { rank: 10, name: 'You', points: 2450, challenges: 42, streak: 7 },
-]
+import { useState } from 'react'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 
 export default function LeaderboardPage() {
+  const [view, setView] = useState<'global' | 'team' | 'monthly'>('global')
+
+  const topRankers = [
+    {
+      rank: 1,
+      name: 'marco_codes',
+      title: 'GRANDMASTER',
+      level: 99,
+      xp: 210000,
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=marco',
+      badge: '👑',
+      undefeated: true,
+    },
+    {
+      rank: 2,
+      name: 'Sarah.dev',
+      title: 'SILVER ARCHITECT',
+      level: 88,
+      xp: 124000,
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=sarah',
+      badge: '🥈',
+      undefeated: false,
+    },
+    {
+      rank: 3,
+      name: 'Aiden.X',
+      title: 'BRONZE LEAD',
+      level: 76,
+      xp: 98000,
+      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=aiden',
+      badge: '🥉',
+      undefeated: false,
+    },
+  ]
+
+  const fullRankings = [
+    { rank: 4, name: 'ZeroCool', title: 'ELITE CONTRIBUTOR', level: 72, xp: 88432, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=zero', language: 'Python' },
+    { rank: 5, name: 'NeonPulse', title: 'SECURITY SPECIALIST', level: 65, xp: 72110, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=neon', language: 'Rust' },
+    { rank: 6, name: 'Felix (You)', title: 'RISING STAR', level: 54, xp: 56800, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=felix', language: 'TypeScript' },
+    { rank: 7, name: 'GhostProtocol', title: 'KERNEL DEV', level: 49, xp: 42900, avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=ghost', language: 'C++' },
+  ]
+
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <BarChart3 className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Global Leaderboard</h1>
-        </div>
-        <p className="text-foreground/60">See how you rank against other developers worldwide</p>
+      {/* Header */}
+      <div>
+        <h1 className="text-4xl font-bold mb-2">Global Leaderboards</h1>
+        <p className="text-foreground/60">The arena where elite developers battle for architectural dominance. Top performers earn limited-edition badges and priority beta access.</p>
       </div>
 
-      {/* Your Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <div className="p-6 rounded-lg bg-primary/10 border border-primary/30">
-          <div className="text-3xl font-bold text-primary mb-2">#10</div>
-          <p className="text-sm text-foreground/60">Your Rank</p>
-        </div>
-        <div className="p-6 rounded-lg bg-card border border-border">
-          <div className="text-3xl font-bold text-foreground mb-2">2,450</div>
-          <p className="text-sm text-foreground/60">Total Points</p>
-        </div>
-        <div className="p-6 rounded-lg bg-card border border-border">
-          <div className="text-3xl font-bold text-foreground mb-2">42</div>
-          <p className="text-sm text-foreground/60">Challenges Solved</p>
-        </div>
-        <div className="p-6 rounded-lg bg-card border border-border">
-          <div className="text-3xl font-bold text-foreground mb-2">7</div>
-          <p className="text-sm text-foreground/60">Day Streak</p>
-        </div>
-      </div>
+      {/* View Toggle */}
+      <Tabs value={view} onValueChange={(v) => setView(v as any)} className="w-full">
+        <TabsList className="grid w-full max-w-md">
+          <TabsTrigger value="global">Global</TabsTrigger>
+          <TabsTrigger value="team">Team</TabsTrigger>
+          <TabsTrigger value="monthly">Monthly</TabsTrigger>
+        </TabsList>
 
-      {/* Leaderboard Table */}
-      <div className="rounded-lg bg-card border border-border overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border bg-card/50">
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/70">Rank</th>
-                <th className="px-6 py-4 text-left text-sm font-semibold text-foreground/70">User</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-foreground/70">Points</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-foreground/70">Challenges</th>
-                <th className="px-6 py-4 text-right text-sm font-semibold text-foreground/70">Streak</th>
-              </tr>
-            </thead>
-            <tbody>
-              {leaderboardData.map((entry, index) => (
-                <tr
-                  key={entry.rank}
-                  className={`border-b border-border last:border-b-0 hover:bg-background/50 transition ${
-                    entry.name === 'You' ? 'bg-primary/5' : ''
-                  }`}
-                >
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      {entry.rank <= 3 ? (
-                        <Trophy
-                          className={`w-5 h-5 ${
-                            entry.rank === 1
-                              ? 'text-yellow-400'
-                              : entry.rank === 2
-                              ? 'text-gray-400'
-                              : 'text-orange-400'
-                          }`}
-                        />
-                      ) : (
-                        <span className="text-foreground/60 font-medium">{entry.rank}</span>
-                      )}
-                    </div>
-                  </td>
-                  <td className="px-6 py-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-8 h-8 rounded-full bg-primary/50 flex items-center justify-center">
-                        <span className="text-xs font-bold text-primary-foreground">
-                          {entry.name[0]}
-                        </span>
-                      </div>
-                      <span className={`font-medium ${
-                        entry.name === 'You' ? 'text-primary' : 'text-foreground'
-                      }`}>
-                        {entry.name}
-                      </span>
-                    </div>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="font-semibold text-foreground">{entry.points.toLocaleString()}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <span className="text-foreground/70">{entry.challenges}</span>
-                  </td>
-                  <td className="px-6 py-4 text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <TrendingUp className="w-4 h-4 text-green-400" />
-                      <span className="text-foreground/70">{entry.streak}</span>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
+        <TabsContent value={view} className="space-y-6">
+          {/* Top 3 Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            {topRankers.map((ranker) => (
+              <Card
+                key={ranker.rank}
+                className={`p-6 relative overflow-hidden transition-all hover:shadow-lg ${
+                  ranker.rank === 1 ? 'md:col-span-1 border-primary/50 bg-gradient-to-br from-primary/10' : ''
+                }`}
+              >
+                {/* Rank Badge */}
+                <div className="absolute top-4 right-4 text-3xl">{ranker.badge}</div>
 
-      {/* Info */}
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className="p-4 rounded-lg bg-card border border-border">
-          <h3 className="font-semibold text-foreground mb-2">How Rankings Work</h3>
-          <p className="text-sm text-foreground/60">
-            Rankings are calculated based on total points earned. Points are awarded for solving
-            challenges with higher difficulty levels offering more points.
-          </p>
-        </div>
-        <div className="p-4 rounded-lg bg-card border border-border">
-          <h3 className="font-semibold text-foreground mb-2">Streaks</h3>
-          <p className="text-sm text-foreground/60">
-            Maintain your streak by solving at least one challenge per day. Streaks help track
-            consistency and dedication.
-          </p>
-        </div>
-      </div>
+                {/* Rank Number */}
+                <Badge className="absolute top-4 left-4" variant={ranker.rank === 1 ? 'default' : 'secondary'}>
+                  #{ranker.rank}
+                </Badge>
+
+                <div className="flex flex-col items-center text-center space-y-4 pt-8">
+                  {/* Avatar */}
+                  <div className="relative">
+                    <img
+                      src={ranker.avatar}
+                      alt={ranker.name}
+                      className="w-32 h-32 rounded-full border-4 border-primary/50 object-cover"
+                    />
+                    {ranker.undefeated && <Badge className="absolute bottom-0 right-0 bg-yellow-500">UNDEFEATED</Badge>}
+                  </div>
+
+                  {/* Info */}
+                  <div>
+                    <p className="text-xs text-foreground/60 mb-1">{ranker.title}</p>
+                    <p className="text-xl font-bold">{ranker.name}</p>
+                    <p className="text-sm text-foreground/60 mt-2">
+                      Lvl {ranker.level} • {ranker.xp.toLocaleString()} XP
+                    </p>
+                  </div>
+
+                  {/* Trophy */}
+                  {ranker.rank === 1 && <Badge className="mt-4">⭐ GRANDMASTER TIER</Badge>}
+                </div>
+              </Card>
+            ))}
+          </div>
+
+          {/* Full Rankings Table */}
+          <Card className="overflow-hidden">
+            <div className="overflow-x-auto">
+              <table className="w-full">
+                <thead>
+                  <tr className="border-b border-border">
+                    <th className="px-6 py-4 text-left text-sm font-semibold">RANK</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">ENGINEER</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">INTELLIGENCE LEVEL</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">EXPERIENCE (XP)</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">MAIN LANGUAGE</th>
+                    <th className="px-6 py-4 text-left text-sm font-semibold">STATUS</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {fullRankings.map((user) => (
+                    <tr key={user.rank} className="border-b border-border hover:bg-background/50 transition-colors">
+                      <td className="px-6 py-4">
+                        <p className="font-bold text-lg">{String(user.rank).padStart(2, '0')}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <img src={user.avatar} alt={user.name} className="w-8 h-8 rounded-full" />
+                          <div>
+                            <p className="font-medium">{user.name}</p>
+                            <p className="text-xs text-foreground/60">{user.title}</p>
+                          </div>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <div className="flex items-center gap-2">
+                          <div className="w-24 bg-background rounded-full h-2">
+                            <div className="bg-primary h-2 rounded-full" style={{ width: `${(user.level / 100) * 100}%` }} />
+                          </div>
+                          <span className="text-sm font-medium">Lvl {user.level}</span>
+                        </div>
+                      </td>
+                      <td className="px-6 py-4">
+                        <p className="font-medium">{user.xp.toLocaleString()}</p>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge variant="outline">{user.language}</Badge>
+                      </td>
+                      <td className="px-6 py-4">
+                        <Badge className="bg-green-500/20 text-green-700">Active</Badge>
+                      </td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination */}
+            <div className="flex items-center justify-between px-6 py-4 border-t border-border">
+              <p className="text-sm text-foreground/60">Showing 1-10 of 2,450 competitors</p>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" disabled>
+                  Previous
+                </Button>
+                {[1, 2, 3].map((page) => (
+                  <Button key={page} variant={page === 1 ? 'default' : 'outline'} size="sm">
+                    {page}
+                  </Button>
+                ))}
+                <Button variant="outline" size="sm">
+                  Next
+                </Button>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }
