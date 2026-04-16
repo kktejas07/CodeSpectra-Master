@@ -59,10 +59,10 @@ export default function LeaderboardPage() {
 
       {/* View Toggle */}
       <Tabs value={view} onValueChange={(v) => setView(v as any)} className="w-full">
-        <TabsList className="grid w-full max-w-md">
-          <TabsTrigger value="global">Global</TabsTrigger>
-          <TabsTrigger value="team">Team</TabsTrigger>
-          <TabsTrigger value="monthly">Monthly</TabsTrigger>
+        <TabsList className="grid grid-cols-3 w-fit gap-0 bg-muted/50 border border-border/40 rounded-lg p-0.5">
+          <TabsTrigger value="global" className="rounded-md">Global</TabsTrigger>
+          <TabsTrigger value="team" className="rounded-md">Team</TabsTrigger>
+          <TabsTrigger value="monthly" className="rounded-md">Monthly</TabsTrigger>
         </TabsList>
 
         <TabsContent value={view} className="space-y-6">

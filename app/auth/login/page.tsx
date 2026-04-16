@@ -292,12 +292,15 @@ export default function Login() {
                         onClick={() => fillDemoCredentials(user.email, user.password)}
                         className="w-full p-3 bg-background border border-border/40 rounded-lg hover:border-primary/50 hover:bg-primary/5 transition-all text-left"
                       >
-                        <div className="flex items-center justify-between">
+                        <div className="flex items-center justify-between gap-3">
                           <div className="flex-1">
-                            <p className="text-xs font-semibold text-foreground capitalize">{user.role}</p>
+                            <div className="flex items-center gap-2 mb-1">
+                              <p className="text-xs font-semibold text-foreground capitalize">{user.full_name}</p>
+                              <span className="text-xs px-2 py-0.5 bg-primary/20 text-primary rounded capitalize font-semibold">{user.role}</span>
+                            </div>
                             <p className="text-xs text-muted-foreground font-mono">{user.email}</p>
                           </div>
-                          <ArrowRight className="w-4 h-4 text-primary" />
+                          <ArrowRight className="w-4 h-4 text-primary flex-shrink-0" />
                         </div>
                       </button>
                     ))}
