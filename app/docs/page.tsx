@@ -1,9 +1,9 @@
 'use client'
 
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import Link from 'next/link'
 import { BookOpen, MessageSquare, Search, ChevronRight } from 'lucide-react'
+import { Button } from '@/components/ui/button'
+import { PublicPageWrapper } from '@/app/public-layout'
 
 export default function DocsPage() {
   const sections = [
@@ -50,66 +50,74 @@ export default function DocsPage() {
   ]
 
   return (
-    <div className="space-y-12 py-12">
-      <div>
-        <h1 className="text-4xl font-bold mb-4">Documentation</h1>
-        <p className="text-xl text-muted-foreground">Everything you need to know about CodeSpectra</p>
-      </div>
-
-      <div className="flex gap-2 max-w-md">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-3 w-4 h-4 text-muted-foreground" />
-          <input
-            type="text"
-            placeholder="Search documentation..."
-            className="w-full pl-10 pr-4 py-2 border rounded-lg"
-          />
+    <PublicPageWrapper>
+      <div className="space-y-12">
+        {/* Header */}
+        <div className="text-center space-y-4 mb-8">
+          <h1 className="text-5xl sm:text-6xl font-bold text-foreground">Documentation</h1>
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto">Everything you need to know about CodeSpectra</p>
         </div>
-      </div>
 
-      <div className="grid md:grid-cols-2 gap-6">
-        {sections.map((section) => (
-          <Card key={section.title} className="p-6 hover:shadow-lg transition-shadow">
-            <div className="flex items-start gap-3 mb-4">
-              <BookOpen className="w-6 h-6 text-primary flex-shrink-0" />
-              <div>
-                <h2 className="text-lg font-semibold">{section.title}</h2>
-                <p className="text-sm text-muted-foreground">{section.description}</p>
+        {/* Search */}
+        <div className="max-w-md mx-auto mb-12">
+          <div className="relative">
+            <Search className="absolute left-3 top-3.5 w-4 h-4 text-muted-foreground" />
+            <input
+              type="text"
+              placeholder="Search documentation..."
+              className="w-full pl-10 pr-4 py-2.5 border border-border/50 rounded-lg bg-card hover:border-primary/50 transition-colors focus:border-primary/50 focus:outline-none"
+            />
+          </div>
+        </div>
+
+        {/* Documentation Grid */}
+        <div className="grid md:grid-cols-2 gap-8 mb-16">
+          {sections.map((section) => (
+            <div key={section.title} className="p-6 border border-border/50 rounded-lg hover:border-primary/50 hover:shadow-lg transition-all duration-300 bg-card">
+              <div className="flex items-start gap-3 mb-4">
+                <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center flex-shrink-0">
+                  <BookOpen className="w-5 h-5 text-primary" />
+                </div>
+                <div>
+                  <h2 className="text-lg font-semibold text-foreground">{section.title}</h2>
+                  <p className="text-sm text-muted-foreground mt-1">{section.description}</p>
+                </div>
               </div>
+              <ul className="space-y-2">
+                {section.articles.map((article) => (
+                  <li key={article}>
+                    <a href="#" className="flex items-center justify-between text-sm text-primary hover:text-primary/80 transition-colors group py-1">
+                      {article}
+                      <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
+                    </a>
+                  </li>
+                ))}
+              </ul>
             </div>
-            <ul className="space-y-2">
-              {section.articles.map((article) => (
-                <li key={article}>
-                  <a href="#" className="flex items-center justify-between text-sm text-primary hover:underline group">
-                    {article}
-                    <ChevronRight className="w-4 h-4 opacity-0 group-hover:opacity-100 transition-opacity" />
-                  </a>
-                </li>
-              ))}
-            </ul>
-          </Card>
-        ))}
-      </div>
+          ))}
+        </div>
 
-      <Card className="p-8 bg-blue-50 dark:bg-blue-950/20">
-        <div className="flex items-start gap-4">
-          <MessageSquare className="w-6 h-6 text-blue-600 flex-shrink-0 mt-1" />
-          <div>
-            <h3 className="font-semibold mb-2">Need Help?</h3>
-            <p className="text-sm text-muted-foreground mb-4">
-              Can't find what you're looking for? Our support team is here to help.
-            </p>
-            <div className="flex gap-2">
-              <Link href="/support">
-                <Button variant="default">Contact Support</Button>
-              </Link>
-              <a href="#" className="inline-flex items-center text-sm text-primary hover:underline">
-                Check FAQ
-              </a>
+        {/* Help CTA */}
+        <div className="p-8 border border-primary/20 rounded-lg bg-gradient-to-br from-primary/10 to-primary/5">
+          <div className="flex items-start gap-4">
+            <MessageSquare className="w-6 h-6 text-primary flex-shrink-0 mt-1" />
+            <div>
+              <h3 className="font-semibold text-foreground text-lg mb-2">Need Help?</h3>
+              <p className="text-sm text-muted-foreground mb-4 max-w-xl">
+                Can't find what you're looking for? Our support team is here to help 24/7.
+              </p>
+              <div className="flex gap-3">
+                <Button asChild className="rounded-lg">
+                  <Link href="/support">Contact Support</Link>
+                </Button>
+                <Button variant="outline" asChild className="rounded-lg">
+                  <a href="#">Check FAQ</a>
+                </Button>
+              </div>
             </div>
           </div>
         </div>
-      </Card>
-    </div>
+      </div>
+    </PublicPageWrapper>
   )
 }

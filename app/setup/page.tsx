@@ -49,38 +49,40 @@ export default function SetupPage() {
   }
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-4">
+    <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 flex items-center justify-center p-4">
       <div className="w-full max-w-md space-y-6">
         {/* Header */}
-        <div className="text-center space-y-2">
+        <div className="text-center space-y-3 mb-8">
           <div className="flex items-center justify-center gap-2 mb-4">
-            <div className="w-12 h-12 bg-primary rounded-lg flex items-center justify-center">
+            <div className="w-12 h-12 bg-gradient-to-br from-primary to-primary/60 rounded-lg flex items-center justify-center shadow-lg">
               <Code2 className="w-7 h-7 text-primary-foreground" />
             </div>
-            <span className="text-3xl font-bold text-foreground">CodeSpectra</span>
+            <span className="text-3xl font-bold bg-gradient-to-r from-primary to-primary/60 bg-clip-text text-transparent">CodeSpectra</span>
           </div>
-          <h1 className="text-2xl font-bold text-foreground">Initial Setup</h1>
-          <p className="text-foreground/60">Set up the demo account to start testing</p>
+          <div>
+            <h1 className="text-2xl font-bold text-foreground">Initial Setup</h1>
+            <p className="text-muted-foreground mt-1">Set up the demo account to start testing</p>
+          </div>
         </div>
 
         {/* Content Card */}
-        <div className="bg-card border border-border rounded-lg p-6 space-y-4">
+        <div className="bg-card border border-border/50 rounded-lg p-6 space-y-4 shadow-lg">
           {error && (
-            <div className="bg-destructive/10 border border-destructive text-destructive px-4 py-3 rounded-lg flex items-start gap-3">
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive px-4 py-3 rounded-lg flex items-start gap-3 animate-in fade-in duration-300">
               <AlertCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium">Setup Failed</p>
-                <p className="text-sm text-destructive/80">{error}</p>
+                <p className="text-sm text-destructive/80 mt-1">{error}</p>
               </div>
             </div>
           )}
 
           {success && (
-            <div className="bg-green-500/10 border border-green-500 text-green-700 px-4 py-3 rounded-lg flex items-start gap-3">
+            <div className="bg-green-500/10 border border-green-500/20 text-green-700 px-4 py-3 rounded-lg flex items-start gap-3 animate-in fade-in duration-300">
               <CheckCircle className="w-5 h-5 mt-0.5 flex-shrink-0" />
               <div>
                 <p className="text-sm font-medium">Setup Complete!</p>
-                <p className="text-sm text-green-600">Demo account created. Redirecting to login...</p>
+                <p className="text-sm text-green-600 mt-1">Demo account created. Redirecting to login...</p>
               </div>
             </div>
           )}
@@ -89,73 +91,73 @@ export default function SetupPage() {
             <>
               <div className="space-y-3 text-sm">
                 <h2 className="font-semibold text-foreground">This will:</h2>
-                <ul className="space-y-2 text-foreground/70">
+                <ul className="space-y-2 text-muted-foreground">
                   <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">✓</span>
+                    <span className="text-green-500 font-bold mt-0.5">✓</span>
                     <span>Create a demo user account</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">✓</span>
+                    <span className="text-green-500 font-bold mt-0.5">✓</span>
                     <span>Initialize user profile in the database</span>
                   </li>
                   <li className="flex items-start gap-2">
-                    <span className="text-primary mt-0.5">✓</span>
+                    <span className="text-green-500 font-bold mt-0.5">✓</span>
                     <span>Allow you to test all platform features</span>
                   </li>
                 </ul>
               </div>
 
-              <div className="bg-background/50 rounded p-3 space-y-2">
-                <p className="text-xs font-medium text-foreground">Demo Account Details:</p>
-                <div className="text-xs space-y-1 font-mono">
+              <div className="bg-muted/50 rounded-lg p-4 space-y-2 border border-border/50">
+                <p className="text-xs font-semibold text-foreground">Demo Account Details:</p>
+                <div className="text-xs space-y-1.5 font-mono">
                   <div className="flex justify-between">
-                    <span className="text-foreground/60">Email:</span>
-                    <span className="text-primary">demo@codespectra.com</span>
+                    <span className="text-muted-foreground">Email:</span>
+                    <span className="text-primary font-semibold">demo@codespectra.com</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-foreground/60">Password:</span>
-                    <span className="text-primary">DemoPass123!</span>
+                    <span className="text-muted-foreground">Password:</span>
+                    <span className="text-primary font-semibold">DemoPass123!</span>
                   </div>
                 </div>
               </div>
 
-              <Button
+              <button
                 onClick={handleSetup}
                 disabled={loading}
-                className="w-full"
+                className="w-full py-2.5 px-4 rounded-lg font-semibold bg-primary text-primary-foreground hover:bg-primary/90 disabled:opacity-50 disabled:cursor-not-allowed transition-all duration-200 shadow-md hover:shadow-lg flex items-center justify-center gap-2"
               >
                 {loading ? (
                   <>
-                    <Loader className="w-4 h-4 mr-2 animate-spin" />
+                    <Loader className="w-4 h-4 animate-spin" />
                     Setting up...
                   </>
                 ) : (
                   'Start Setup'
                 )}
-              </Button>
+              </button>
             </>
           )}
         </div>
 
         {/* Troubleshooting Info */}
         {error && (
-          <div className="bg-background/50 border border-border rounded p-4 space-y-3">
-            <p className="text-xs font-medium text-foreground">Troubleshooting Tips:</p>
-            <ul className="text-xs space-y-2 text-foreground/70">
+          <div className="bg-muted/50 border border-border/50 rounded-lg p-4 space-y-3">
+            <p className="text-xs font-semibold text-foreground">Troubleshooting Tips:</p>
+            <ul className="text-xs space-y-2 text-muted-foreground">
               <li className="flex gap-2">
-                <span className="text-primary">1.</span>
+                <span className="text-primary font-bold flex-shrink-0">1.</span>
                 <span>Ensure your Supabase project URL and API keys are configured in environment variables</span>
               </li>
               <li className="flex gap-2">
-                <span className="text-primary">2.</span>
+                <span className="text-primary font-bold flex-shrink-0">2.</span>
                 <span>Check that SUPABASE_SERVICE_ROLE_KEY is set in your .env.local file</span>
               </li>
               <li className="flex gap-2">
-                <span className="text-primary">3.</span>
+                <span className="text-primary font-bold flex-shrink-0">3.</span>
                 <span>Try clicking "Start Setup" again - the demo user may already exist</span>
               </li>
               <li className="flex gap-2">
-                <span className="text-primary">4.</span>
+                <span className="text-primary font-bold flex-shrink-0">4.</span>
                 <span>If it still fails, manually sign up with any email/password to test</span>
               </li>
             </ul>
@@ -163,9 +165,9 @@ export default function SetupPage() {
         )}
 
         {/* Footer */}
-        <div className="text-center text-sm text-foreground/60">
+        <div className="text-center text-sm text-muted-foreground">
           Already have an account?{' '}
-          <Link href="/auth/login" className="text-primary font-medium hover:underline">
+          <Link href="/auth/login" className="text-primary font-semibold hover:text-primary/80 transition-colors">
             Sign in
           </Link>
         </div>
