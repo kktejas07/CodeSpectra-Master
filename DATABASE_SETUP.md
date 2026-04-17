@@ -1,33 +1,10 @@
-import { createClient } from '@supabase/supabase-js'
+# Database Setup Guide
 
-const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-const supabaseServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY
+## Required SQL for CodeSpectra
 
-if (!supabaseUrl || !supabaseServiceKey) {
-  console.error('[v0] Missing Supabase environment variables')
-  process.exit(1)
-}
+Run this SQL in your Supabase SQL Editor to set up the profiles table:
 
-const supabase = createClient(supabaseUrl, supabaseServiceKey)
-
-async function setupProfilesTable() {
-  try {
-    console.log('[v0] Setting up profiles table...')
-
-    // Try to query the table - if it exists, we're done
-    const { data: existingTable, error: checkError } = await supabase
-      .from('profiles')
-      .select('id')
-      .limit(1)
-
-    if (!checkError || checkError.code === 'PGRST116') {
-      console.log('[v0] ✓ Profiles table already exists or will be created by auth.users trigger')
-      return
-    }
-
-    console.error('[v0] Error checking table:', checkError)
-    console.log('[v0] Please run the following SQL in your Supabase dashboard:')
-    console.log(`
+```sql
 -- Create profiles table
 CREATE TABLE IF NOT EXISTS public.profiles (
   id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
@@ -57,7 +34,7 @@ CREATE POLICY "Users can update own profile" ON public.profiles
   FOR UPDATE USING (auth.uid() = id);
 
 -- Create index
-CREATE INDEX profiles_role_idx ON public.profiles(role);
+CREATE INDEX IF NOT EXISTS profiles_role_idx ON public.profiles(role);
 
 -- Auto-create profile on user signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
@@ -78,12 +55,37 @@ DROP TRIGGER IF EXISTS on_auth_user_created ON auth.users;
 CREATE TRIGGER on_auth_user_created
   AFTER INSERT ON auth.users
   FOR EACH ROW EXECUTE FUNCTION public.handle_new_user();
-    `)
+```
 
-  } catch (error) {
-    console.error('[v0] Setup error:', error)
-  }
-}
+## Steps to Setup
 
-setupProfilesTable()
+1. Go to your Supabase Dashboard
+2. Navigate to SQL Editor
+3. Click "New Query"
+4. Copy and paste the SQL above
+5. Click "Run"
+6. Done! Profiles table is now created
 
+## Testing User Roles
+
+After creating the table, you can set roles using Supabase Admin:
+
+```sql
+-- Set a user as superadmin
+UPDATE public.profiles 
+SET role = 'superadmin' 
+WHERE email = 'admin@example.com';
+
+-- Set a user as admin (tenant admin)
+UPDATE public.profiles 
+SET role = 'admin' 
+WHERE email = 'teamadmin@example.com';
+```
+
+## How Redirects Work
+
+- **Superadmin** logs in → Redirected to `/dashboard/admin/system`
+- **Tenant Admin** logs in → Redirected to `/dashboard/admin/team`
+- **User** logs in → Redirected to `/dashboard`
+
+The role is automatically fetched from the profiles table and used by both the middleware and dashboard layout.

@@ -51,14 +51,17 @@ export async function middleware(request: NextRequest) {
         return NextResponse.redirect(new URL('/auth/login', request.url))
       }
 
-      // Fetch user role
-      const { data: profile } = await supabase
+      // Fetch user role with error handling
+      const { data: profile, error: profileError } = await supabase
         .from('profiles')
         .select('role')
         .eq('id', user.id)
         .single()
 
+      // If profile doesn't exist, use default 'user' role
       const userRole = (profile?.role || 'user') as 'superadmin' | 'admin' | 'user'
+
+      console.log('[v0] Middleware - User role:', userRole, 'Profile error:', profileError?.message)
 
       // Check page access based on role
       const allowedPages = ACCESSIBLE_PAGES[userRole] || ACCESSIBLE_PAGES.user
