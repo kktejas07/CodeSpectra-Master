@@ -1,160 +1,182 @@
 'use client'
 
 import { useState } from 'react'
+import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
-import { Settings, Bell, Lock, Trash2 } from 'lucide-react'
+import { Settings, Moon, Sun, Globe, Palette } from 'lucide-react'
 
 export default function SettingsPage() {
-  const [email, setEmail] = useState('user@example.com')
-  const [username, setUsername] = useState('username')
-  const [language, setLanguage] = useState('javascript')
-  const [notifications, setNotifications] = useState(true)
+  const [theme, setTheme] = useState('light')
+  const [language, setLanguage] = useState('en')
+  const [emailNotifications, setEmailNotifications] = useState(true)
+  const [pushNotifications, setPushNotifications] = useState(true)
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
 
-  const handleSave = () => {
-    // TODO: Save settings
-    alert('Settings saved!')
-  }
+  const themes = [
+    { id: 'light', label: 'Light', icon: Sun },
+    { id: 'dark', label: 'Dark', icon: Moon },
+    { id: 'auto', label: 'Auto', icon: Palette },
+  ]
+
+  const languages = [
+    { id: 'en', label: 'English' },
+    { id: 'es', label: 'Español' },
+    { id: 'fr', label: 'Français' },
+    { id: 'de', label: 'Deutsch' },
+    { id: 'zh', label: '中文' },
+  ]
 
   return (
-    <div className="space-y-8 max-w-4xl mx-auto">
-      <div className="space-y-2">
-        <div className="flex items-center gap-3">
-          <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center">
-            <Settings className="w-6 h-6 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground">Settings</h1>
-            <p className="text-muted-foreground">Manage your account and preferences</p>
-          </div>
-        </div>
+    <div className="space-y-6 max-w-4xl">
+      <div>
+        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+          <Settings className="w-8 h-8 text-primary" />
+          Settings
+        </h1>
+        <p className="text-muted-foreground mt-2">Customize your experience</p>
       </div>
 
-      {/* Profile Section */}
-      <div className="rounded-lg bg-card border border-border/40 p-8 space-y-6">
-        <h2 className="text-xl font-bold text-foreground">Profile</h2>
-        
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-foreground">Email</label>
-            <Input
-              type="email"
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              className="bg-background border-border/40 text-foreground h-10"
-              placeholder="your@email.com"
-            />
-          </div>
-
-          <div className="space-y-3">
-            <label className="text-sm font-semibold text-foreground">Username</label>
-            <Input
-              type="text"
-              value={username}
-              onChange={(e) => setUsername(e.target.value)}
-              className="bg-background border-border/40 text-foreground h-10"
-              placeholder="username"
-            />
-          </div>
-        </div>
-
-        <div className="space-y-3">
-          <label className="text-sm font-semibold text-foreground">Preferred Language</label>
-          <select
-            value={language}
-            onChange={(e) => setLanguage(e.target.value)}
-            className="w-full px-4 py-2.5 rounded-lg bg-background border border-border/40 text-foreground focus:outline-none focus:ring-2 focus:ring-primary/20 focus:border-primary transition-colors"
-          >
-            <option value="javascript">JavaScript</option>
-            <option value="python">Python</option>
-            <option value="java">Java</option>
-            <option value="cpp">C++</option>
-            <option value="typescript">TypeScript</option>
-          </select>
-        </div>
-      </div>
-
-      {/* Notifications */}
-      <div className="rounded-lg bg-card border border-border/40 p-8 space-y-6">
-        <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
-          <Bell className="w-5 h-5" />
-          Notifications
-        </h2>
-
+      {/* Theme Settings */}
+      <Card className="p-6">
+        <h2 className="text-xl font-bold text-foreground mb-4">Appearance</h2>
         <div className="space-y-4">
-          <div className="flex items-center justify-between p-4 bg-background/50 rounded-lg border border-border/20">
-            <div>
-              <p className="font-medium text-foreground">Challenge Reminders</p>
-              <p className="text-sm text-muted-foreground">Get notified about daily challenges</p>
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-3">Theme</label>
+            <div className="grid grid-cols-3 gap-3">
+              {themes.map((t) => {
+                const Icon = t.icon
+                return (
+                  <button
+                    key={t.id}
+                    onClick={() => setTheme(t.id)}
+                    className={`p-3 rounded-lg border-2 transition-colors flex items-center justify-center gap-2 ${
+                      theme === t.id
+                        ? 'border-primary bg-primary/10'
+                        : 'border-border hover:border-primary/50'
+                    }`}
+                  >
+                    <Icon className="w-5 h-5" />
+                    <span className="text-sm font-medium">{t.label}</span>
+                  </button>
+                )
+              })}
             </div>
-            <input
-              type="checkbox"
-              checked={notifications}
-              onChange={(e) => setNotifications(e.target.checked)}
-              className="w-5 h-5 rounded border-border cursor-pointer"
-            />
-          </div>
-
-          <div className="flex items-center justify-between p-4 bg-background/50 rounded-lg border border-border/20">
-            <div>
-              <p className="font-medium text-foreground">Achievement Alerts</p>
-              <p className="text-sm text-muted-foreground">Get notified when you unlock achievements</p>
-            </div>
-            <input
-              type="checkbox"
-              defaultChecked
-              className="w-5 h-5 rounded border-border cursor-pointer"
-            />
           </div>
         </div>
-      </div>
+      </Card>
 
-      {/* Security */}
-      <div className="rounded-lg bg-card border border-border/40 p-8 space-y-6">
-        <h2 className="text-xl font-bold text-foreground flex items-center gap-3">
-          <Lock className="w-5 h-5" />
-          Security
-        </h2>
+      {/* Language Settings */}
+      <Card className="p-6">
+        <h2 className="text-xl font-bold text-foreground mb-4">Language & Region</h2>
+        <div className="space-y-4">
+          <div>
+            <label className="block text-sm font-medium text-foreground mb-2">Language</label>
+            <select
+              value={language}
+              onChange={(e) => setLanguage(e.target.value)}
+              className="w-full px-4 py-2 rounded-lg border border-border bg-background text-foreground"
+            >
+              {languages.map((lang) => (
+                <option key={lang.id} value={lang.id}>
+                  {lang.label}
+                </option>
+              ))}
+            </select>
+          </div>
+        </div>
+      </Card>
 
-        <div className="space-y-3">
-          <Button variant="outline" className="w-full justify-start h-10">
+      {/* Notification Settings */}
+      <Card className="p-6">
+        <h2 className="text-xl font-bold text-foreground mb-4">Notifications</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-foreground">Email Notifications</p>
+              <p className="text-sm text-muted-foreground">Receive email updates about your activity</p>
+            </div>
+            <button
+              onClick={() => setEmailNotifications(!emailNotifications)}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                emailNotifications ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                  emailNotifications ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+
+          <div className="border-t border-border pt-4" />
+
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-foreground">Push Notifications</p>
+              <p className="text-sm text-muted-foreground">Receive browser notifications in real-time</p>
+            </div>
+            <button
+              onClick={() => setPushNotifications(!pushNotifications)}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                pushNotifications ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                  pushNotifications ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+        </div>
+      </Card>
+
+      {/* Security Settings */}
+      <Card className="p-6">
+        <h2 className="text-xl font-bold text-foreground mb-4">Security</h2>
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <p className="font-medium text-foreground">Two-Factor Authentication</p>
+              <p className="text-sm text-muted-foreground">Add an extra layer of security to your account</p>
+            </div>
+            <button
+              onClick={() => setTwoFactorEnabled(!twoFactorEnabled)}
+              className={`relative inline-flex h-8 w-14 items-center rounded-full transition-colors ${
+                twoFactorEnabled ? 'bg-primary' : 'bg-muted'
+              }`}
+            >
+              <span
+                className={`inline-block h-6 w-6 transform rounded-full bg-white transition-transform ${
+                  twoFactorEnabled ? 'translate-x-7' : 'translate-x-1'
+                }`}
+              />
+            </button>
+          </div>
+          <Button variant="outline" className="w-full">
             Change Password
           </Button>
+        </div>
+      </Card>
 
-          <Button variant="outline" className="w-full justify-start h-10">
-            Two-Factor Authentication
+      {/* Account Actions */}
+      <Card className="p-6 border-red-200 bg-red-50/50">
+        <h2 className="text-xl font-bold text-red-700 mb-4">Danger Zone</h2>
+        <div className="space-y-3">
+          <Button variant="outline" className="w-full border-red-300 text-red-600 hover:bg-red-100">
+            Export My Data
+          </Button>
+          <Button variant="outline" className="w-full border-red-300 text-red-600 hover:bg-red-100">
+            Delete Account
           </Button>
         </div>
+      </Card>
 
-        <div className="p-4 bg-background/50 rounded-lg border border-border/20">
-          <p className="text-sm text-muted-foreground">Last login: Today at 2:30 PM</p>
-        </div>
-      </div>
-
-      {/* Danger Zone */}
-      <div className="rounded-lg bg-red-500/5 border border-red-500/30 p-8 space-y-6">
-        <h2 className="text-xl font-bold text-red-400 flex items-center gap-3">
-          <Trash2 className="w-5 h-5" />
-          Danger Zone
-        </h2>
-
-        <Button variant="destructive" className="w-full h-10">
-          Delete Account
-        </Button>
-
-        <p className="text-xs text-foreground/50 leading-relaxed">
-          Warning: Deleting your account is permanent and cannot be undone. All your data will be deleted.
-        </p>
-      </div>
-
-      {/* Save Button */}
-      <div className="flex gap-3 pb-6">
-        <Button onClick={handleSave} className="flex-1 h-10">
-          Save Changes
-        </Button>
-        <Button variant="outline" className="flex-1 h-10">
-          Cancel
-        </Button>
+      {/* Save Changes */}
+      <div className="flex gap-3">
+        <Button className="flex-1">Save Changes</Button>
+        <Button variant="outline" className="flex-1">Cancel</Button>
       </div>
     </div>
   )
