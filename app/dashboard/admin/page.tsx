@@ -208,26 +208,6 @@ export default function AdminDashboard() {
         </div>
       )}
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <Button variant="outline" className="justify-start h-11">
-            <Users className="w-4 h-4 mr-2" />
-            Manage Users
-          </Button>
-          <Button variant="outline" className="justify-start h-11">
-            <Settings className="w-4 h-4 mr-2" />
-            System Settings
-          </Button>
-          <Button variant="outline" className="justify-start h-11">
-            <Shield className="w-4 h-4 mr-2" />
-            Role Management
-          </Button>
-          <Button variant="outline" className="justify-start h-11">
-            <TrendingUp className="w-4 h-4 mr-2" />
-            Analytics
-          </Button>
-        </div>
-      </div>
-
       {/* Quick Actions */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Recent Activity */}
