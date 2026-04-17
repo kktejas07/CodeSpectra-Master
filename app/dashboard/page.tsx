@@ -3,7 +3,7 @@
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { TrendingUp, AlertCircle, Zap, Activity, Code, Target, CheckCircle, ArrowRight, Clock } from 'lucide-react'
+import { TrendingUp, AlertCircle, Zap, Activity, Code, Trophy, BookOpen, CheckCircle, ArrowRight, Clock } from 'lucide-react'
 import Link from 'next/link'
 
 export default function DashboardPage() {
@@ -228,13 +228,23 @@ export default function DashboardPage() {
             Analyze Code
           </Link>
         </Button>
-        <Button variant="outline" className="gap-2">
-          <Target className="w-4 h-4" />
-          Set Quality Gates
+        <Button asChild variant="outline" className="gap-2">
+          <Link href="/dashboard/challenges">
+            <Trophy className="w-4 h-4" />
+            Practice Challenges
+          </Link>
         </Button>
-        <Button variant="outline" className="gap-2">
-          <CheckCircle className="w-4 h-4" />
-          View Reports
+        <Button asChild variant="outline" className="gap-2">
+          <Link href="/dashboard/prepare">
+            <BookOpen className="w-4 h-4" />
+            Prepare for Interview
+          </Link>
+        </Button>
+        <Button asChild variant="outline" className="gap-2">
+          <Link href="/dashboard/certifications">
+            <CheckCircle className="w-4 h-4" />
+            Get Certified
+          </Link>
         </Button>
       </div>
     </div>
