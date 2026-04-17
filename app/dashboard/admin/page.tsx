@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase-client'
 import { Users, Settings, BarChart3, Shield, Activity, TrendingUp } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -25,13 +25,6 @@ export default function AdminDashboard() {
 
   const fetchAdminData = async () => {
     try {
-      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-      const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-
-      if (!supabaseUrl || !supabaseKey) return
-
-      const supabase = createClient(supabaseUrl, supabaseKey)
-
       // Get current user
       const { data: { user } } = await supabase.auth.getUser()
       if (!user) {

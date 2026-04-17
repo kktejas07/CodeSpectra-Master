@@ -11,19 +11,13 @@ export function Breadcrumbs() {
   const segments = pathname
     .split('/')
     .filter(Boolean)
-    .map((segment) => ({
-      label: segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' '),
-      href: `/${segment}`,
-    }))
 
-  // Build full paths
-  const breadcrumbs = [
-    { label: 'Dashboard', href: '/dashboard' },
-    ...segments.slice(1).map((_, index) => ({
-      label: segments[index + 1]?.label || '',
-      href: segments.slice(0, index + 2).reduce((acc, seg) => acc + '/' + seg, ''),
-    })),
-  ].filter((b) => b.label)
+  // Build full paths - each segment gets its full accumulated path
+  const breadcrumbs = segments.map((segment, index) => {
+    const path = '/' + segments.slice(0, index + 1).join('/')
+    const label = segment.charAt(0).toUpperCase() + segment.slice(1).replace(/-/g, ' ')
+    return { label, href: path }
+  }).slice(0, -1) // Remove current page from breadcrumbs
 
   return (
     <nav className="flex items-center gap-2 text-sm">

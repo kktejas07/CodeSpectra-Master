@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
+import { supabase } from '@/lib/supabase-client'
 import { getNavItems, UserRole, isAdmin, isSuperAdmin } from '@/lib/rbac'
 import { Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown, Shield, Users, Menu, X, MoreHorizontal, Lock, FileText, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
@@ -17,7 +18,6 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
-import { createClient } from '@supabase/supabase-js'
 
 // Icon mapping for dynamic icons
 const iconMap: Record<string, any> = {
@@ -57,16 +57,6 @@ export default function DashboardLayout({
   useEffect(() => {
     const fetchUserProfile = async () => {
       try {
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        
-        if (!supabaseUrl || !supabaseKey) {
-          console.log('[v0] Missing Supabase config')
-          return
-        }
-
-        const supabase = createClient(supabaseUrl, supabaseKey)
-        
         const { data: { user } } = await supabase.auth.getUser()
         if (!user) {
           console.log('[v0] No authenticated user')
@@ -225,11 +215,11 @@ export default function DashboardLayout({
               <div key={group.section}>
                 {idx > 0 && <div className="my-0.5 mx-4 h-px bg-border/30" />}
                 <div className="px-2 py-2 space-y-0.5">
-                  {group.items.map((item: any) => {
+                  {group.items.map((item: any, itemIdx: number) => {
                     const active = isActive(item.href)
                     const IconComponent = typeof item.icon === 'string' ? iconMap[item.icon] : item.icon
                     return (
-                      <Link key={item.href} href={item.href}>
+                      <Link key={`${group.section}-${itemIdx}-${item.href}`} href={item.href}>
                         <div className={`px-3 py-2 rounded-md flex items-center gap-2.5 text-sm transition-all ${
                           active 
                             ? 'bg-primary/10 text-primary font-medium' 

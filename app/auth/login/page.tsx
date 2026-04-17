@@ -8,7 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Code2, AlertCircle, Github, Mail, Lock, Eye, EyeOff, ArrowRight } from 'lucide-react'
 import { FaceRecognition } from '@/components/auth/face-recognition'
 import { signIn } from '@/lib/auth-service'
-import { createClient } from '@supabase/supabase-js'
+import { supabase } from '@/lib/supabase-client'
 import { getDefaultDashboard } from '@/lib/rbac'
 
 export default function Login() {
@@ -38,9 +38,7 @@ export default function Login() {
         const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
         const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
         
-        if (supabaseUrl && supabaseKey && data.userId) {
-          const supabase = createClient(supabaseUrl, supabaseKey)
-          
+        if (data.userId) {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
@@ -58,8 +56,9 @@ export default function Login() {
           }
 
           console.log('[v0] Face login - User role:', profile?.role, 'Redirecting to:', redirectPath)
+          setTimeout(() => router.push(redirectPath), 500)
         } else {
-          console.log('[v0] Face login - Missing Supabase config')
+          console.log('[v0] Face login - Failed to get user ID')
           setTimeout(() => router.push('/dashboard'), 500)
         }
       } else {
@@ -88,19 +87,13 @@ export default function Login() {
       
       if (result.success) {
         // Fetch user profile to get role
-        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-        const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-        
-        if (supabaseUrl && supabaseKey && result.user) {
-          const supabase = createClient(supabaseUrl, supabaseKey)
-          
+        if (result.user) {
           const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', result.user.id)
             .single()
 
-          console.log('[v0] Profile fetch result:', { profile, error: profileError })
           let redirectPath = '/dashboard'
           if (profile?.role === 'superadmin') {
             redirectPath = '/dashboard/admin/system'
@@ -113,7 +106,7 @@ export default function Login() {
           console.log('[v0] User role:', profile?.role, 'Redirecting to:', redirectPath)
           setTimeout(() => router.push(redirectPath), 500)
         } else {
-          console.log('[v0] Missing Supabase config or user')
+          console.log('[v0] No user returned from login')
           setTimeout(() => router.push('/dashboard'), 500)
         }
       } else {
