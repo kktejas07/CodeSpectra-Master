@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { ArrowRight, Code2, Zap, Shield, Cpu, GitBranch, CheckCircle2, TrendingUp, Github, Menu, X, Play, ChevronRight } from 'lucide-react'
 import { CodePattern } from '@/components/code-pattern'
 import { DotPattern } from '@/components/dot-pattern'
+import { Globe3D } from '@/components/globe-3d'
 
 export default function Home() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
@@ -299,32 +300,49 @@ codespectra.connect({
       </section>
 
       {/* Infrastructure Section */}
-      <section className="py-24 lg:py-32 border-t border-border/40">
+      <section className="py-24 lg:py-32 border-t border-border/40 overflow-hidden">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-16">
-            <p className="text-sm text-muted-foreground mb-3">Infrastructure</p>
-            <h2 className="text-4xl sm:text-5xl font-bold">
-              Global by
-              <br />
-              <span className="text-muted-foreground">default.</span>
-            </h2>
-            <p className="text-muted-foreground mt-6 max-w-2xl leading-relaxed">
-              Deploy once, run everywhere. Our edge network spans 17 data centers across 6 continents, delivering sub-50ms latency to 99% of the world.
-            </p>
-          </div>
+          <div className="grid lg:grid-cols-2 gap-12 items-center">
+            {/* Text Content */}
+            <div>
+              <p className="text-sm text-muted-foreground mb-3">Infrastructure</p>
+              <h2 className="text-4xl sm:text-5xl font-bold">
+                Global by
+                <br />
+                <span className="text-muted-foreground">default.</span>
+              </h2>
+              <p className="text-muted-foreground mt-6 max-w-xl leading-relaxed">
+                Deploy once, run everywhere. Our edge network spans 17 data centers across 6 continents, delivering sub-50ms latency to 99% of the world.
+              </p>
 
-          <div className="grid sm:grid-cols-3 gap-8">
-            <div className="text-center p-8 border border-border/40 rounded-xl">
-              <p className="text-4xl font-bold text-foreground">17</p>
-              <p className="text-sm text-muted-foreground mt-2">Data centers</p>
+              <div className="grid grid-cols-3 gap-4 mt-10">
+                <div className="text-center p-4 border border-border/40 rounded-xl bg-card/50">
+                  <p className="text-3xl font-bold text-foreground">17</p>
+                  <p className="text-xs text-muted-foreground mt-1">Data centers</p>
+                </div>
+                <div className="text-center p-4 border border-border/40 rounded-xl bg-card/50">
+                  <p className="text-3xl font-bold text-foreground">99.99%</p>
+                  <p className="text-xs text-muted-foreground mt-1">Uptime SLA</p>
+                </div>
+                <div className="text-center p-4 border border-border/40 rounded-xl bg-card/50">
+                  <p className="text-3xl font-bold text-primary">&lt;50ms</p>
+                  <p className="text-xs text-muted-foreground mt-1">Global latency</p>
+                </div>
+              </div>
             </div>
-            <div className="text-center p-8 border border-border/40 rounded-xl">
-              <p className="text-4xl font-bold text-foreground">99.99%</p>
-              <p className="text-sm text-muted-foreground mt-2">Uptime SLA</p>
-            </div>
-            <div className="text-center p-8 border border-border/40 rounded-xl">
-              <p className="text-4xl font-bold text-primary">&lt;50ms</p>
-              <p className="text-sm text-muted-foreground mt-2">Global latency</p>
+
+            {/* 3D Globe */}
+            <div className="relative h-[400px] lg:h-[500px]">
+              <div className="absolute inset-0 flex items-center justify-center">
+                <Globe3D 
+                  particleCount={1200}
+                  globeRadius={180}
+                  rotationSpeed={0.003}
+                  interactive={true}
+                />
+              </div>
+              {/* Glow effect behind globe */}
+              <div className="absolute inset-0 bg-gradient-radial from-primary/10 via-transparent to-transparent pointer-events-none" />
             </div>
           </div>
         </div>
