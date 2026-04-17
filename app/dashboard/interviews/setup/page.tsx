@@ -1,33 +1,52 @@
 'use client'
 
 import { useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { ResumeUpload } from '@/components/interviews/resume-upload'
 import { AudioCameraSettings } from '@/components/interviews/audio-camera-settings'
 import { InterviewRoleSelector } from '@/components/interviews/interview-role-selector'
-import { LiveInterview } from '@/components/interviews/live-interview'
 
-type InterviewStage = 'role-selection' | 'resume' | 'settings' | 'live' | 'feedback'
+type InterviewStage = 'role-selection' | 'resume' | 'settings' | 'dynamic' | 'feedback'
+
+interface InterviewConfig {
+  role: string
+  interviewType: 'technical' | 'behavioral' | 'system-design'
+  resumeInfo?: string
+}
 
 export default function InterviewSetupPage() {
+  const router = useRouter()
   const [stage, setStage] = useState<InterviewStage>('role-selection')
   const [selectedRole, setSelectedRole] = useState<string>('')
   const [completedRoles] = useState<string[]>([])
+  const [config, setConfig] = useState<InterviewConfig>({
+    role: '',
+    interviewType: 'technical',
+  })
 
   const handleRoleSelect = (roleId: string) => {
     setSelectedRole(roleId)
+    setConfig((prev) => ({ ...prev, role: roleId }))
     setStage('resume')
   }
 
-  const handleResumeUpload = () => {
+  const handleResumeUpload = (resumeText?: string) => {
+    setConfig((prev) => ({ ...prev, resumeInfo: resumeText }))
     setStage('settings')
   }
 
   const handleSettingsComplete = () => {
-    setStage('live')
+    // Navigate to dynamic interview with config
+    const params = new URLSearchParams({
+      role: config.role,
+      type: config.interviewType,
+      ...(config.resumeInfo && { resume: config.resumeInfo }),
+    })
+    router.push(`/dashboard/interviews/dynamic?${params.toString()}`)
   }
 
-  const handleEndInterview = () => {
-    setStage('feedback')
+  const handleBackToRole = () => {
+    setStage('role-selection')
   }
 
   return (
@@ -43,7 +62,11 @@ export default function InterviewSetupPage() {
 
       {stage === 'resume' && (
         <div className="min-h-screen flex items-center justify-center py-12 px-4">
-          <ResumeUpload onContinue={handleResumeUpload} isOptional={true} />
+          <ResumeUpload
+            onContinue={handleResumeUpload}
+            isOptional={true}
+            onBack={handleBackToRole}
+          />
         </div>
       )}
 
@@ -53,28 +76,6 @@ export default function InterviewSetupPage() {
             onContinue={handleSettingsComplete}
             onBack={() => setStage('resume')}
           />
-        </div>
-      )}
-
-      {stage === 'live' && (
-        <LiveInterview
-          roleId={selectedRole}
-          interviewType="technical"
-          onEndInterview={handleEndInterview}
-        />
-      )}
-
-      {stage === 'feedback' && (
-        <div className="container max-w-4xl mx-auto py-12 px-4">
-          <div className="text-center space-y-8">
-            <div>
-              <h1 className="text-4xl font-bold text-foreground mb-2">Interview Complete!</h1>
-              <p className="text-muted-foreground">Your interview is being analyzed by our AI.</p>
-            </div>
-            <div className="bg-muted rounded-lg p-12 animate-pulse">
-              <p className="text-muted-foreground">Generating your detailed feedback...</p>
-            </div>
-          </div>
         </div>
       )}
     </div>
