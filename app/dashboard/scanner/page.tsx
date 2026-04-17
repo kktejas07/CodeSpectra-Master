@@ -88,119 +88,76 @@ export default function CodeScannerPage() {
   }
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="space-y-2">
-        <div className="flex items-center gap-2">
-          <Code2 className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Code Scanner</h1>
+    <div className="flex gap-6">
+      {/* Sidebar Navigation */}
+      <div className="w-64 flex-shrink-0">
+        <div className="bg-card border border-border rounded-lg p-4 sticky top-20">
+          <h2 className="font-bold text-lg mb-4 flex items-center gap-2">
+            <Code2 className="w-5 h-5 text-primary" />
+            Scanner Tools
+          </h2>
+          
+          <nav className="space-y-2">
+            <NavItem
+              icon={<Code2 className="w-4 h-4" />}
+              label="Manual Analysis"
+              isActive={scanMode === 'manual'}
+              onClick={() => setScanMode('manual')}
+            />
+            <NavItem
+              icon={<Github className="w-4 h-4" />}
+              label="GitHub Repos"
+              isActive={scanMode === 'github'}
+              onClick={() => setScanMode('github')}
+            />
+            <NavItem
+              icon={<BarChart3 className="w-4 h-4" />}
+              label="Trends"
+              isActive={scanMode === 'trends'}
+              onClick={() => setScanMode('trends')}
+            />
+            <NavItem
+              icon={<Plus className="w-4 h-4" />}
+              label="Quality Gates"
+              isActive={scanMode === 'quality-gates'}
+              onClick={() => setScanMode('quality-gates')}
+            />
+            <NavItem
+              icon={<FileText className="w-4 h-4" />}
+              label="Code Review"
+              isActive={scanMode === 'review'}
+              onClick={() => setScanMode('review')}
+            />
+            <NavItem
+              icon={<Settings className="w-4 h-4" />}
+              label="Configuration"
+              isActive={scanMode === 'config'}
+              onClick={() => setScanMode('config')}
+            />
+            <NavItem
+              icon={<FileText className="w-4 h-4" />}
+              label="Reports"
+              isActive={scanMode === 'reports'}
+              onClick={() => setScanMode('reports')}
+            />
+            <NavItem
+              icon={<BarChart3 className="w-4 h-4" />}
+              label="Insights"
+              isActive={scanMode === 'insights'}
+              onClick={() => setScanMode('insights')}
+            />
+            <NavItem
+              icon={<Users className="w-4 h-4" />}
+              label="Team"
+              isActive={scanMode === 'team'}
+              onClick={() => setScanMode('team')}
+            />
+          </nav>
         </div>
-        <p className="text-foreground/60">
-          Advanced code analysis powered by AI, similar to SonarCloud with GitHub integration and real-time feedback
-        </p>
       </div>
 
-      {/* Scan Mode Tabs */}
-      <div className="flex gap-2 border-b border-border overflow-x-auto pb-0">
-        <button
-          onClick={() => setScanMode('manual')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'manual'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          <Code2 className="w-4 h-4 inline mr-2" />
-          Manual Analysis
-        </button>
-        <button
-          onClick={() => setScanMode('github')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'github'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          <Github className="w-4 h-4 inline mr-2" />
-          GitHub Repos
-        </button>
-        <button
-          onClick={() => setScanMode('trends')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'trends'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 inline mr-2" />
-          Trends
-        </button>
-        <button
-          onClick={() => setScanMode('quality-gates')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'quality-gates'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          <Plus className="w-4 h-4 inline mr-2" />
-          Quality Gates
-        </button>
-        <button
-          onClick={() => setScanMode('review')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'review'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          Code Review
-        </button>
-        <button
-          onClick={() => setScanMode('config')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'config'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          <Settings className="w-4 h-4 inline mr-2" />
-          Config
-        </button>
-        <button
-          onClick={() => setScanMode('reports')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'reports'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          <FileText className="w-4 h-4 inline mr-2" />
-          Reports
-        </button>
-        <button
-          onClick={() => setScanMode('insights')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'insights'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          <BarChart3 className="w-4 h-4 inline mr-2" />
-          Insights
-        </button>
-        <button
-          onClick={() => setScanMode('team')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
-            scanMode === 'team'
-              ? 'border-primary text-primary'
-              : 'border-transparent text-foreground/60 hover:text-foreground'
-          }`}
-        >
-          <Users className="w-4 h-4 inline mr-2" />
-          Team
-        </button>
-      </div>
+      {/* Main Content */}
+      <div className="flex-1 space-y-6">
 
       {/* Manual Analysis Mode */}
       {scanMode === 'manual' && (
@@ -493,35 +450,51 @@ export default function CodeScannerPage() {
       )}
 
       {/* Feature Overview */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/30 p-6">
-        <h3 className="font-semibold text-foreground mb-4">CodeSpectra Scanner Features</h3>
-        <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-4">
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Code Quality Score</p>
-            <p className="text-xs text-foreground/60">0-100 rating based on comprehensive analysis</p>
+      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 p-6">
+        <h3 className="font-semibold text-foreground mb-3">Available Tools</h3>
+        <div className="grid md:grid-cols-2 gap-3">
+          <div className="text-sm text-foreground/70">
+            <span className="font-medium">Manual Analysis:</span> Scan code directly
           </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Bug Detection</p>
-            <p className="text-xs text-foreground/60">Find potential runtime errors and logical issues</p>
+          <div className="text-sm text-foreground/70">
+            <span className="font-medium">GitHub:</span> Connect and scan repositories
           </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Security Analysis</p>
-            <p className="text-xs text-foreground/60">Identify vulnerabilities and security hotspots</p>
+          <div className="text-sm text-foreground/70">
+            <span className="font-medium">Trends:</span> Track quality over time
           </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Suggested Fixes</p>
-            <p className="text-xs text-foreground/60">AI-powered recommendations with confidence levels</p>
+          <div className="text-sm text-foreground/70">
+            <span className="font-medium">Quality Gates:</span> Set quality standards
           </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">GitHub Integration</p>
-            <p className="text-xs text-foreground/60">Connect repos and scan automatically on push</p>
+          <div className="text-sm text-foreground/70">
+            <span className="font-medium">Code Review:</span> Collaborative reviews
           </div>
-          <div className="space-y-1">
-            <p className="text-sm font-medium text-foreground">Trend Tracking</p>
-            <p className="text-xs text-foreground/60">Monitor code quality improvements over time</p>
+          <div className="text-sm text-foreground/70">
+            <span className="font-medium">Configuration:</span> Customize scanner rules
+          </div>
+          <div className="text-sm text-foreground/70">
+            <span className="font-medium">Reports:</span> Export analysis results
+          </div>
+          <div className="text-sm text-foreground/70">
+            <span className="font-medium">Insights:</span> Dashboard analytics
           </div>
         </div>
       </Card>
     </div>
-  )
+  );
+}
+
+function NavItem({ icon, label, isActive, onClick }) {
+  return (
+    <button
+      onClick={onClick}
+      className={`w-full flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-sm font-medium ${
+        isActive
+          ? 'bg-primary text-primary-foreground'
+          : 'text-foreground/70 hover:bg-muted hover:text-foreground'
+      }`}
+    >
+      {icon}
+      {label}
+    </button>
+  );
 }

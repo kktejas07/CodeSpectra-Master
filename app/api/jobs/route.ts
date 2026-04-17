@@ -1,60 +1,63 @@
-import { NextResponse } from 'next/server'
+import { NextResponse, NextRequest } from 'next/server'
+import { supabaseServer } from '@/lib/supabase-client'
 
-const mockJobs = [
-  {
-    id: '1',
-    title: 'Senior Full-Stack Developer',
-    company: 'Tech Corp',
-    location: 'San Francisco, CA',
-    salary: { min: 150000, max: 200000, currency: 'USD' },
-    jobType: 'Full-time',
-    experienceLevel: 'Senior',
-    description: 'Looking for experienced full-stack developer to join our team',
-    skills: ['JavaScript', 'React', 'Node.js', 'PostgreSQL'],
-    applicants: 24,
-    postedAt: '2 days ago',
-  },
-  {
-    id: '2',
-    title: 'Frontend Engineer',
-    company: 'StartUp Inc',
-    location: 'Remote',
-    salary: { min: 120000, max: 160000, currency: 'USD' },
-    jobType: 'Full-time',
-    experienceLevel: 'Mid-level',
-    description: 'Help build beautiful user interfaces for our platform',
-    skills: ['React', 'TypeScript', 'Tailwind CSS', 'Next.js'],
-    applicants: 18,
-    postedAt: '5 days ago',
-  },
-]
+export async function GET(request: NextRequest) {
+  try {
+    const { searchParams } = new URL(request.url)
+    const location = searchParams.get('location')
+    const jobType = searchParams.get('jobType')
+    const level = searchParams.get('level')
+    const page = parseInt(searchParams.get('page') || '1')
+    const limit = parseInt(searchParams.get('limit') || '10')
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url)
-  const location = searchParams.get('location')
-  const jobType = searchParams.get('jobType')
-  const level = searchParams.get('level')
+    let query = supabaseServer.from('job_postings').select('*').eq('is_active', true)
 
-  let filtered = mockJobs
+    if (location) query = query.ilike('location', `%${location}%`)
+    if (jobType) query = query.eq('job_type', jobType)
+    if (level) query = query.eq('experience_level', level)
 
-  if (location) filtered = filtered.filter(job => job.location.includes(location))
-  if (jobType) filtered = filtered.filter(job => job.jobType === jobType)
-  if (level) filtered = filtered.filter(job => job.experienceLevel === level)
+    const { data, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range((page - 1) * limit, page * limit - 1)
 
-  return NextResponse.json(filtered)
+    if (error) throw error
+
+    return NextResponse.json({ 
+      data: data || [],
+      pagination: { page, limit, total: count || 0 }
+    })
+  } catch (error) {
+    console.error('[v0] Jobs API error:', error)
+    return NextResponse.json({ 
+      data: [],
+      error: 'Failed to fetch jobs'
+    }, { status: 500 })
+  }
 }
 
-export async function POST(request: Request) {
+export async function POST(request: NextRequest) {
   try {
-    const data = await request.json()
-    const newJob = {
-      id: String(Math.random()),
-      ...data,
-      applicants: 0,
-      postedAt: 'just now',
+    const { data: { user }, error: authError } = await supabaseServer.auth.getUser()
+    
+    if (authError || !user) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
-    return NextResponse.json(newJob, { status: 201 })
+
+    const body = await request.json()
+
+    const { data, error } = await supabaseServer
+      .from('job_postings')
+      .insert([{
+        ...body,
+        created_by: user.id,
+      }])
+      .select()
+
+    if (error) throw error
+
+    return NextResponse.json(data?.[0], { status: 201 })
   } catch (error) {
+    console.error('[v0] Create job error:', error)
     return NextResponse.json({ error: 'Failed to create job' }, { status: 400 })
   }
 }
