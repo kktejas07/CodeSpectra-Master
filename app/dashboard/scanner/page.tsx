@@ -1,7 +1,7 @@
 'use client'
 
 import { useState } from 'react'
-import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users } from 'lucide-react'
+import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { AdvancedMetrics } from '@/components/scanner/advanced-metrics'
@@ -17,6 +17,13 @@ import { ScannerConfigPanel } from '@/components/scanner/scanner-config-panel'
 import { ReportGenerator } from '@/components/scanner/report-generator'
 import { InsightsDashboard } from '@/components/scanner/insights-dashboard'
 import { TeamLeaderboard } from '@/components/scanner/team-leaderboard'
+import { MetricsFileBrowser } from '@/components/scanner/metrics-file-browser'
+import { SecurityHotspots } from '@/components/scanner/security-hotspots'
+import { QualityRatings } from '@/components/scanner/quality-ratings'
+import { ActivityTimeline } from '@/components/scanner/activity-timeline'
+import { ArchitectureVisualization } from '@/components/scanner/architecture-visualization'
+import { PRIntegration } from '@/components/scanner/pr-integration'
+import { BranchAnalytics } from '@/components/scanner/branch-analytics'
 
 interface AnalysisResult {
   id: string
@@ -44,7 +51,7 @@ interface AnalysisResult {
   timestamp: Date
 }
 
-type ScanMode = 'manual' | 'github' | 'quality-gates' | 'trends' | 'review' | 'config' | 'reports' | 'insights' | 'team'
+type ScanMode = 'manual' | 'github' | 'quality-gates' | 'trends' | 'review' | 'config' | 'reports' | 'insights' | 'team' | 'metrics' | 'hotspots' | 'ratings' | 'activity' | 'architecture' | 'pr' | 'branches'
 
 export default function CodeScannerPage() {
   const [scanMode, setScanMode] = useState<ScanMode>('manual')
@@ -128,6 +135,54 @@ export default function CodeScannerPage() {
               isActive={scanMode === 'review'}
               onClick={() => setScanMode('review')}
             />
+
+            {/* SonarQube Features */}
+            <div className="border-t border-border my-3 pt-3">
+              <p className="text-xs font-semibold text-foreground/50 px-3 py-2">QUALITY ANALYSIS</p>
+              <NavItem
+                icon={<Zap className="w-4 h-4" />}
+                label="Metrics Browser"
+                isActive={scanMode === 'metrics'}
+                onClick={() => setScanMode('metrics')}
+              />
+              <NavItem
+                icon={<Shield className="w-4 h-4" />}
+                label="Security Hotspots"
+                isActive={scanMode === 'hotspots'}
+                onClick={() => setScanMode('hotspots')}
+              />
+              <NavItem
+                icon={<BarChart3 className="w-4 h-4" />}
+                label="Quality Ratings"
+                isActive={scanMode === 'ratings'}
+                onClick={() => setScanMode('ratings')}
+              />
+              <NavItem
+                icon={<Activity className="w-4 h-4" />}
+                label="Activity Timeline"
+                isActive={scanMode === 'activity'}
+                onClick={() => setScanMode('activity')}
+              />
+              <NavItem
+                icon={<GitBranch className="w-4 h-4" />}
+                label="Architecture"
+                isActive={scanMode === 'architecture'}
+                onClick={() => setScanMode('architecture')}
+              />
+              <NavItem
+                icon={<PullRequest className="w-4 h-4" />}
+                label="PR Integration"
+                isActive={scanMode === 'pr'}
+                onClick={() => setScanMode('pr')}
+              />
+              <NavItem
+                icon={<GitBranch className="w-4 h-4" />}
+                label="Branch Analytics"
+                isActive={scanMode === 'branches'}
+                onClick={() => setScanMode('branches')}
+              />
+            </div>
+
             <NavItem
               icon={<Settings className="w-4 h-4" />}
               label="Configuration"
@@ -444,41 +499,79 @@ export default function CodeScannerPage() {
         <InsightsDashboard />
       )}
 
+      {/* Metrics Browser Mode */}
+      {scanMode === 'metrics' && (
+        <MetricsFileBrowser />
+      )}
+
+      {/* Security Hotspots Mode */}
+      {scanMode === 'hotspots' && (
+        <SecurityHotspots />
+      )}
+
+      {/* Quality Ratings Mode */}
+      {scanMode === 'ratings' && (
+        <QualityRatings />
+      )}
+
+      {/* Activity Timeline Mode */}
+      {scanMode === 'activity' && (
+        <ActivityTimeline />
+      )}
+
+      {/* Architecture Visualization Mode */}
+      {scanMode === 'architecture' && (
+        <ArchitectureVisualization />
+      )}
+
+      {/* PR Integration Mode */}
+      {scanMode === 'pr' && (
+        <PRIntegration />
+      )}
+
+      {/* Branch Analytics Mode */}
+      {scanMode === 'branches' && (
+        <BranchAnalytics />
+      )}
+
       {/* Team Mode */}
       {scanMode === 'team' && (
         <TeamLeaderboard />
       )}
 
       {/* Feature Overview */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 p-6">
-        <h3 className="font-semibold text-foreground mb-3">Available Tools</h3>
-        <div className="grid md:grid-cols-2 gap-3">
-          <div className="text-sm text-foreground/70">
-            <span className="font-medium">Manual Analysis:</span> Scan code directly
+      {(scanMode === 'manual' || !scanMode) && (
+        <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20 p-6">
+          <h3 className="font-semibold text-foreground mb-3">Available Tools</h3>
+          <div className="grid md:grid-cols-2 gap-3">
+            <div className="text-sm text-foreground/70">
+              <span className="font-medium">Manual Analysis:</span> Scan code directly
+            </div>
+            <div className="text-sm text-foreground/70">
+              <span className="font-medium">GitHub:</span> Connect and scan repositories
+            </div>
+            <div className="text-sm text-foreground/70">
+              <span className="font-medium">Trends:</span> Track quality over time
+            </div>
+            <div className="text-sm text-foreground/70">
+              <span className="font-medium">Quality Gates:</span> Set quality standards
+            </div>
+            <div className="text-sm text-foreground/70">
+              <span className="font-medium">Code Review:</span> Collaborative reviews
+            </div>
+            <div className="text-sm text-foreground/70">
+              <span className="font-medium">Configuration:</span> Customize scanner rules
+            </div>
+            <div className="text-sm text-foreground/70">
+              <span className="font-medium">Reports:</span> Export analysis results
+            </div>
+            <div className="text-sm text-foreground/70">
+              <span className="font-medium">Insights:</span> Dashboard analytics
+            </div>
           </div>
-          <div className="text-sm text-foreground/70">
-            <span className="font-medium">GitHub:</span> Connect and scan repositories
-          </div>
-          <div className="text-sm text-foreground/70">
-            <span className="font-medium">Trends:</span> Track quality over time
-          </div>
-          <div className="text-sm text-foreground/70">
-            <span className="font-medium">Quality Gates:</span> Set quality standards
-          </div>
-          <div className="text-sm text-foreground/70">
-            <span className="font-medium">Code Review:</span> Collaborative reviews
-          </div>
-          <div className="text-sm text-foreground/70">
-            <span className="font-medium">Configuration:</span> Customize scanner rules
-          </div>
-          <div className="text-sm text-foreground/70">
-            <span className="font-medium">Reports:</span> Export analysis results
-          </div>
-          <div className="text-sm text-foreground/70">
-            <span className="font-medium">Insights:</span> Dashboard analytics
-          </div>
-        </div>
-      </Card>
+        </Card>
+      )}
+      </div>
     </div>
   );
 }

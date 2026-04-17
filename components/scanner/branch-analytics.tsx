@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Git, TrendingUp, Calendar, Users } from 'lucide-react'
+import { GitBranch, TrendingUp, Calendar, Users } from 'lucide-react'
 
 interface Branch {
   id: string
@@ -10,12 +10,12 @@ interface Branch {
   isMainBranch: boolean
   type: 'long-lived' | 'short-lived'
   
-  -- Metrics
+  // Metrics
   linesOfCode: number
   issues: number
   coverage: number
   
-  -- Activity
+  // Activity
   lastAnalysis: Date
   lastCommit: Date
   commits: number
@@ -91,7 +91,7 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
       <div className="space-y-4">
         {branches.length === 0 ? (
           <Card className="p-8 text-center border-dashed">
-            <Git className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
+            <GitBranch className="w-12 h-12 text-foreground/30 mx-auto mb-3" />
             <p className="text-foreground/60">No branches found</p>
           </Card>
         ) : (

@@ -11,16 +11,16 @@ interface PRAnalysis {
   author: string
   branch: string
   
-  -- Quality metrics
+  // Quality metrics
   newIssues: number
   fixedIssues: number
   coverage: number
   duplications: number
   
-  -- Gate status
+  // Gate status
   gateStatus: 'PASSED' | 'FAILED' | 'PENDING'
   
-  -- Time
+  // Time
   createdAt: Date
   url: string
 }
