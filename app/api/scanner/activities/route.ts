@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { supabaseServer } from '@/lib/supabase-client'
 
 /**
  * GET /api/scanner/activities
@@ -21,29 +22,28 @@ export async function GET(req: NextRequest) {
       )
     }
 
-    // This would connect to Supabase
-    // For now, returning mock data structure
-    const activities = [
-      {
-        id: '1',
-        projectId,
-        eventType: 'scan_completed',
-        eventData: { scanId: 'scan-1', issuesFound: 15 },
-        createdAt: new Date(),
-      },
-      {
-        id: '2',
-        projectId,
-        eventType: 'issue_created',
-        eventData: { issueId: 'issue-1', severity: 'high' },
-        createdAt: new Date(Date.now() - 3600000),
-      },
-    ]
+    let query = supabaseServer.from('code_scan_activities').select('*')
+
+    if (projectId) query = query.eq('project_id', projectId)
+    if (eventType) query = query.eq('event_type', eventType)
+
+    if (startDate || endDate) {
+      if (startDate) query = query.gte('created_at', new Date(startDate).toISOString())
+      if (endDate) query = query.lte('created_at', new Date(endDate).toISOString())
+    }
+
+    const { data, error, count } = await query
+      .order('created_at', { ascending: false })
+      .range(offset, offset + limit - 1)
+
+    if (error) throw error
 
     return NextResponse.json({
-      data: activities,
-      count: activities.length,
-      total: activities.length,
+      activities: data || [],
+      count: data?.length || 0,
+      total: count || 0,
+      offset,
+      limit,
     })
   } catch (error) {
     console.error('[v0] API Error in GET /api/scanner/activities:', error)
@@ -70,17 +70,21 @@ export async function POST(req: NextRequest) {
       )
     }
 
-    // This would insert into Supabase
-    const newActivity = {
-      id: `activity-${Date.now()}`,
-      projectId,
-      userId,
-      eventType,
-      eventData,
-      createdAt: new Date(),
-    }
+    const { data, error } = await supabaseServer
+      .from('code_scan_activities')
+      .insert([
+        {
+          project_id: projectId,
+          user_id: userId,
+          event_type: eventType,
+          event_data: eventData || {},
+        },
+      ])
+      .select()
 
-    return NextResponse.json(newActivity, { status: 201 })
+    if (error) throw error
+
+    return NextResponse.json(data?.[0], { status: 201 })
   } catch (error) {
     console.error('[v0] API Error in POST /api/scanner/activities:', error)
     return NextResponse.json(
@@ -89,3 +93,4 @@ export async function POST(req: NextRequest) {
     )
   }
 }
+
