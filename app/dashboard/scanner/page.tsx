@@ -1,14 +1,25 @@
 'use client'
 
 import { useState } from 'react'
-import { Code2, Sparkles, Loader, Github, Plus } from 'lucide-react'
+import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { AdvancedMetrics } from '@/components/scanner/advanced-metrics'
 import { SuggestedFixes } from '@/components/scanner/suggested-fixes'
 import { GitHubIntegration } from '@/components/scanner/github-integration'
+import { RepositoryBrowser } from '@/components/scanner/repository-browser'
+import { ScanHistory } from '@/components/scanner/scan-history'
+import { MetricsTrendChart } from '@/components/scanner/metrics-trend-chart'
+import { CodeDiffViewer } from '@/components/scanner/code-diff-viewer'
+import { QualityGateDashboard } from '@/components/scanner/quality-gate-dashboard'
+import { CodeReviewPanel } from '@/components/scanner/code-review-panel'
+import { ScannerConfigPanel } from '@/components/scanner/scanner-config-panel'
+import { ReportGenerator } from '@/components/scanner/report-generator'
+import { InsightsDashboard } from '@/components/scanner/insights-dashboard'
+import { TeamLeaderboard } from '@/components/scanner/team-leaderboard'
 
 interface AnalysisResult {
+  id: string
   quality: number
   bugs: number
   vulnerabilities: number
@@ -30,9 +41,10 @@ interface AnalysisResult {
   }>
   suggestions: string[]
   timeMs: number
+  timestamp: Date
 }
 
-type ScanMode = 'manual' | 'github'
+type ScanMode = 'manual' | 'github' | 'quality-gates' | 'trends' | 'review' | 'config' | 'reports' | 'insights' | 'team'
 
 export default function CodeScannerPage() {
   const [scanMode, setScanMode] = useState<ScanMode>('manual')
@@ -56,8 +68,13 @@ export default function CodeScannerPage() {
 
       const result = await response.json()
       console.log('[v0] Analysis complete:', result)
-      setAnalysis(result)
-      setScanHistory([result, ...scanHistory.slice(0, 4)]) // Keep last 5 scans
+      const analysisWithMetadata: AnalysisResult = {
+        ...result,
+        id: `scan-${Date.now()}`,
+        timestamp: new Date(),
+      }
+      setAnalysis(analysisWithMetadata)
+      setScanHistory([analysisWithMetadata, ...scanHistory.slice(0, 9)])
     } catch (error) {
       console.error('[v0] Analysis failed:', error)
     } finally {
@@ -84,10 +101,10 @@ export default function CodeScannerPage() {
       </div>
 
       {/* Scan Mode Tabs */}
-      <div className="flex gap-2 border-b border-border">
+      <div className="flex gap-2 border-b border-border overflow-x-auto pb-0">
         <button
           onClick={() => setScanMode('manual')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
             scanMode === 'manual'
               ? 'border-primary text-primary'
               : 'border-transparent text-foreground/60 hover:text-foreground'
@@ -98,66 +115,92 @@ export default function CodeScannerPage() {
         </button>
         <button
           onClick={() => setScanMode('github')}
-          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
             scanMode === 'github'
               ? 'border-primary text-primary'
               : 'border-transparent text-foreground/60 hover:text-foreground'
           }`}
         >
           <Github className="w-4 h-4 inline mr-2" />
-          GitHub Integration
+          GitHub Repos
+        </button>
+        <button
+          onClick={() => setScanMode('trends')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            scanMode === 'trends'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-foreground/60 hover:text-foreground'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 inline mr-2" />
+          Trends
+        </button>
+        <button
+          onClick={() => setScanMode('quality-gates')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            scanMode === 'quality-gates'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-foreground/60 hover:text-foreground'
+          }`}
+        >
+          <Plus className="w-4 h-4 inline mr-2" />
+          Quality Gates
+        </button>
+        <button
+          onClick={() => setScanMode('review')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            scanMode === 'review'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-foreground/60 hover:text-foreground'
+          }`}
+        >
+          Code Review
+        </button>
+        <button
+          onClick={() => setScanMode('config')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            scanMode === 'config'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-foreground/60 hover:text-foreground'
+          }`}
+        >
+          <Settings className="w-4 h-4 inline mr-2" />
+          Config
+        </button>
+        <button
+          onClick={() => setScanMode('reports')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            scanMode === 'reports'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-foreground/60 hover:text-foreground'
+          }`}
+        >
+          <FileText className="w-4 h-4 inline mr-2" />
+          Reports
+        </button>
+        <button
+          onClick={() => setScanMode('insights')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            scanMode === 'insights'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-foreground/60 hover:text-foreground'
+          }`}
+        >
+          <BarChart3 className="w-4 h-4 inline mr-2" />
+          Insights
+        </button>
+        <button
+          onClick={() => setScanMode('team')}
+          className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors whitespace-nowrap ${
+            scanMode === 'team'
+              ? 'border-primary text-primary'
+              : 'border-transparent text-foreground/60 hover:text-foreground'
+          }`}
+        >
+          <Users className="w-4 h-4 inline mr-2" />
+          Team
         </button>
       </div>
-
-      {/* GitHub Integration Mode */}
-      {scanMode === 'github' && (
-        <div className="space-y-6">
-          <GitHubIntegration />
-
-          {/* Coming Soon Features */}
-          <Card className="bg-card/30 border border-border p-6">
-            <h3 className="font-semibold text-foreground mb-4">GitHub Features</h3>
-            <div className="grid md:grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Automatic Scanning
-                </h4>
-                <p className="text-sm text-foreground/60">
-                  Automatically scan your repositories on every push and pull request
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Pull Request Reviews
-                </h4>
-                <p className="text-sm text-foreground/60">
-                  Get automatic code quality checks and suggestions on PR submissions
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Trend Analysis
-                </h4>
-                <p className="text-sm text-foreground/60">
-                  Track code quality improvements over time with historical data
-                </p>
-              </div>
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
-                  <Plus className="w-4 h-4" />
-                  Team Insights
-                </h4>
-                <p className="text-sm text-foreground/60">
-                  Compare code quality across team members and repositories
-                </p>
-              </div>
-            </div>
-          </Card>
-        </div>
-      )}
 
       {/* Manual Analysis Mode */}
       {scanMode === 'manual' && (
@@ -227,24 +270,24 @@ export default function CodeScannerPage() {
 
             {/* Scan History */}
             {scanHistory.length > 0 && (
-              <Card className="bg-card border border-border p-6">
-                <h3 className="font-semibold text-foreground mb-3">Recent Scans</h3>
-                <div className="space-y-2">
-                  {scanHistory.map((scan, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => setAnalysis(scan)}
-                      className="w-full text-left p-3 rounded bg-background hover:bg-background/80 border border-border/50 hover:border-primary/50 transition-all flex items-center justify-between"
-                    >
-                      <div>
-                        <p className="text-sm font-medium text-foreground">{language}</p>
-                        <p className="text-xs text-foreground/50">Score: {scan.quality}/100</p>
-                      </div>
-                      <span className="text-sm font-bold text-primary">{scan.quality}</span>
-                    </button>
-                  ))}
-                </div>
-              </Card>
+              <ScanHistory
+                scans={scanHistory.map((scan) => ({
+                  id: scan.id,
+                  source: 'manual',
+                  target: language,
+                  language: language,
+                  quality: scan.quality,
+                  bugs: scan.bugs,
+                  vulnerabilities: scan.vulnerabilities,
+                  codeSmells: scan.codeSmells,
+                  timestamp: scan.timestamp,
+                  duration: scan.timeMs,
+                }))}
+                onSelectScan={(scan) => {
+                  const historyItem = scanHistory.find((h) => h.id === scan.id)
+                  if (historyItem) setAnalysis(historyItem)
+                }}
+              />
             )}
           </div>
 
@@ -325,6 +368,128 @@ export default function CodeScannerPage() {
             )}
           </div>
         </div>
+      )}
+
+      {/* GitHub Integration Mode */}
+      {scanMode === 'github' && (
+        <div className="space-y-6">
+          <GitHubIntegration />
+          <RepositoryBrowser
+            onSelectRepository={(repo) => console.log('Selected repo:', repo)}
+            onSelectFile={(file) => console.log('Selected file:', file)}
+          />
+
+          {/* Coming Soon Features */}
+          <Card className="bg-card/30 border border-border p-6">
+            <h3 className="font-semibold text-foreground mb-4">GitHub Features</h3>
+            <div className="grid md:grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Automatic Scanning
+                </h4>
+                <p className="text-sm text-foreground/60">
+                  Automatically scan your repositories on every push and pull request
+                </p>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Pull Request Reviews
+                </h4>
+                <p className="text-sm text-foreground/60">
+                  Get automatic code quality checks and suggestions on PR submissions
+                </p>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Trend Analysis
+                </h4>
+                <p className="text-sm text-foreground/60">
+                  Track code quality improvements over time with historical data
+                </p>
+              </div>
+              <div className="space-y-2">
+                <h4 className="text-sm font-medium text-primary flex items-center gap-2">
+                  <Plus className="w-4 h-4" />
+                  Team Insights
+                </h4>
+                <p className="text-sm text-foreground/60">
+                  Compare code quality across team members and repositories
+                </p>
+              </div>
+            </div>
+          </Card>
+        </div>
+      )}
+
+      {/* Metrics Trend Mode */}
+      {scanMode === 'trends' && (
+        <div className="space-y-6">
+          <Card className="bg-card/30 border border-border p-6">
+            <h3 className="font-semibold text-foreground mb-4">Code Quality Trends</h3>
+            <p className="text-sm text-foreground/60 mb-6">
+              Track how your code quality metrics evolve over time. Historical data helps you identify patterns and improvements.
+            </p>
+          </Card>
+          <MetricsTrendChart
+            data={[
+              { date: '2024-01-01', quality: 72, bugs: 8, vulnerabilities: 2, codeSmells: 15, complexity: 45, coverage: 65 },
+              { date: '2024-01-08', quality: 75, bugs: 6, vulnerabilities: 2, codeSmells: 12, complexity: 42, coverage: 68 },
+              { date: '2024-01-15', quality: 78, bugs: 4, vulnerabilities: 1, codeSmells: 10, complexity: 40, coverage: 72 },
+              { date: '2024-01-22', quality: 82, bugs: 2, vulnerabilities: 1, codeSmells: 7, complexity: 38, coverage: 76 },
+              { date: '2024-01-29', quality: 85, bugs: 1, vulnerabilities: 0, codeSmells: 5, complexity: 36, coverage: 81 },
+            ]}
+            metric="quality"
+          />
+        </div>
+      )}
+
+      {/* Quality Gates Mode */}
+      {scanMode === 'quality-gates' && (
+        <QualityGateDashboard
+          gates={[]}
+          onSave={(gate) => console.log('Saved gate:', gate)}
+          onDelete={(id) => console.log('Deleted gate:', id)}
+        />
+      )}
+
+      {/* Code Review Mode */}
+      {scanMode === 'review' && (
+        <CodeReviewPanel
+          issueId="issue-1"
+          comments={[]}
+          onAddComment={(text) => console.log('Added comment:', text)}
+          onReply={(commentId, text) => console.log('Replied to', commentId, ':', text)}
+          onResolve={(issueId) => console.log('Resolved:', issueId)}
+        />
+      )}
+
+      {/* Configuration Mode */}
+      {scanMode === 'config' && (
+        <ScannerConfigPanel
+          onSave={(config) => console.log('Config saved:', config)}
+        />
+      )}
+
+      {/* Reports Mode */}
+      {scanMode === 'reports' && (
+        <ReportGenerator
+          onExport={(format) => console.log('Exporting as:', format)}
+          onEmail={(recipients) => console.log('Emailing to:', recipients)}
+          onShare={(link) => console.log('Share link:', link)}
+        />
+      )}
+
+      {/* Insights Mode */}
+      {scanMode === 'insights' && (
+        <InsightsDashboard />
+      )}
+
+      {/* Team Mode */}
+      {scanMode === 'team' && (
+        <TeamLeaderboard />
       )}
 
       {/* Feature Overview */}
