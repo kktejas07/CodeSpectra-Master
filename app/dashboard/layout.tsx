@@ -247,99 +247,98 @@ export default function DashboardLayout({
           </nav>
 
           {/* Bottom Section */}
-          <div className="p-3 border-t border-border/40 space-y-2">
-            {/* Quick Actions Row */}
-            <div className="flex items-center gap-1.5">
+          <div className="p-3 border-t border-border/40 space-y-1">
+            {/* Search - Moved to bottom for Vercel-like layout */}
+            <div className="px-2 py-2">
+              <button 
+                className="w-full px-2.5 py-1.5 rounded-md bg-muted/40 hover:bg-muted/60 transition-colors flex items-center gap-2 text-xs text-muted-foreground"
+              >
+                <Search className="w-3.5 h-3.5" />
+                <span>Find...</span>
+                <span className="ml-auto text-[10px] opacity-50">F</span>
+              </button>
+            </div>
+
+            {/* Icon Controls */}
+            <div className="flex items-center gap-1 px-2">
               {/* Theme Switcher */}
-              <div className="flex-1 flex justify-center">
-                <ThemeSwitcher />
-              </div>
+              <ThemeSwitcher />
 
               {/* Notifications */}
-              <div className="flex-1 flex justify-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-2 hover:bg-muted rounded-lg transition-colors relative">
-                      <Bell className="w-4 h-4 text-muted-foreground" />
-                      <span className="absolute top-1.5 right-1.5 w-1.5 h-1.5 bg-primary rounded-full" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" side="right" className="w-80 ml-2">
-                    <div className="p-3 border-b border-border">
-                      <p className="font-semibold text-sm">Notifications</p>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 hover:bg-muted rounded-lg transition-colors relative">
+                    <Bell className="w-4 h-4 text-muted-foreground" />
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary rounded-full" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="top" className="w-80 mb-2">
+                  <div className="p-3 border-b border-border">
+                    <p className="font-semibold text-sm">Notifications</p>
+                  </div>
+                  <div className="p-3 max-h-64 overflow-y-auto space-y-2">
+                    <div className="p-2 bg-primary/5 rounded border border-primary/20 text-xs">
+                      <p className="font-medium">Challenge Completed</p>
+                      <p className="text-muted-foreground text-xs">Docker mastery challenge</p>
                     </div>
-                    <div className="p-3 max-h-64 overflow-y-auto space-y-2">
-                      <div className="p-2 bg-primary/5 rounded border border-primary/20 text-xs">
-                        <p className="font-medium">Challenge Completed</p>
-                        <p className="text-muted-foreground text-xs">Docker mastery challenge</p>
-                      </div>
-                      <div className="p-2 bg-muted rounded border border-border text-xs">
-                        <p className="font-medium">Achievement Unlocked</p>
-                        <p className="text-muted-foreground text-xs">Bronze Developer badge</p>
-                      </div>
+                    <div className="p-2 bg-muted rounded border border-border text-xs">
+                      <p className="font-medium">Achievement Unlocked</p>
+                      <p className="text-muted-foreground text-xs">Bronze Developer badge</p>
                     </div>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* More Menu */}
-              <div className="flex-1 flex justify-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                      <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" side="right" className="w-56 ml-2">
-                    <div className="p-2 border-b border-border">
-                      <p className="text-xs font-semibold text-muted-foreground">MENU</p>
-                    </div>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/profile">Profile</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <div className="p-2 border-b border-border">
-                      <p className="text-xs font-semibold text-muted-foreground">HELP</p>
-                    </div>
-                    <DropdownMenuItem asChild>
-                      <a href="https://docs.example.com" target="_blank" rel="noopener noreferrer">Documentation</a>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem asChild>
-                      <a href="https://help.example.com" target="_blank" rel="noopener noreferrer">Support</a>
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 hover:bg-muted rounded-lg transition-colors">
+                    <MoreHorizontal className="w-4 h-4 text-muted-foreground" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="top" className="w-56 mb-2">
+                  <div className="p-2 border-b border-border">
+                    <p className="text-xs font-semibold text-muted-foreground uppercase">Help</p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <a href="https://docs.example.com" target="_blank" rel="noopener noreferrer" className="cursor-pointer">Documentation</a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a href="https://help.example.com" target="_blank" rel="noopener noreferrer" className="cursor-pointer">Support</a>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
 
               {/* User Profile */}
-              <div className="flex-1 flex justify-center">
-                <DropdownMenu>
-                  <DropdownMenuTrigger asChild>
-                    <button className="w-8 h-8 rounded-full bg-primary/90 flex items-center justify-center hover:bg-primary transition-colors">
-                      <span className="text-xs font-bold text-primary-foreground">
-                        {userProfile?.full_name?.charAt(0) || 'U'}
-                      </span>
-                    </button>
-                  </DropdownMenuTrigger>
-                  <DropdownMenuContent align="start" side="right" className="w-56 ml-2">
-                    <div className="p-3 border-b border-border space-y-1">
-                      <p className="text-sm font-semibold">{userProfile?.full_name || 'User'}</p>
-                      <p className="text-xs text-muted-foreground">{userProfile?.email}</p>
-                      <p className="text-xs text-primary capitalize font-medium mt-2">
-                        {userProfile?.role ? userProfile.role.toUpperCase() : 'USER'}
-                      </p>
-                    </div>
-                    <DropdownMenuItem asChild>
-                      <Link href="/dashboard/settings">Settings</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
-                      <LogOut className="w-4 h-4 mr-2" />
-                      Sign Out
-                    </DropdownMenuItem>
-                  </DropdownMenuContent>
-                </DropdownMenu>
-              </div>
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="w-8 h-8 rounded-full bg-primary/90 flex items-center justify-center hover:bg-primary transition-colors ml-auto">
+                    <span className="text-xs font-bold text-primary-foreground">
+                      {userProfile?.full_name?.charAt(0) || 'U'}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end" side="top" className="w-56 mb-2">
+                  <div className="p-3 border-b border-border space-y-1">
+                    <p className="text-sm font-semibold">{userProfile?.full_name || 'User'}</p>
+                    <p className="text-xs text-muted-foreground">{userProfile?.email}</p>
+                    <p className="text-xs text-primary capitalize font-medium mt-2 bg-primary/10 px-2 py-1 rounded w-fit">
+                      {userProfile?.role ? userProfile.role.toUpperCase() : 'USER'}
+                    </p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/profile">Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/settings">Settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
             </div>
           </div>
         </div>

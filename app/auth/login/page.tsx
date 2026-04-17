@@ -41,19 +41,29 @@ export default function Login() {
         if (supabaseUrl && supabaseKey && data.userId) {
           const supabase = createClient(supabaseUrl, supabaseKey)
           
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', data.userId)
             .single()
 
-          // Redirect based on role
-          let redirectPath = getDefaultDashboard((profile?.role || 'user') as any)
+          console.log('[v0] Face login profile:', { profile, error: profileError })
 
-          setTimeout(() => router.push(redirectPath), 1000)
+          // Redirect based on role
+          let redirectPath = '/dashboard'
+          if (profile?.role === 'superadmin') {
+            redirectPath = '/dashboard/admin/system'
+          } else if (profile?.role === 'admin') {
+            redirectPath = '/dashboard/admin/team'
+          } else if (profile?.role === 'user') {
+            redirectPath = '/dashboard'
+          }
+
+          console.log('[v0] Face login - User role:', profile?.role, 'Redirecting to:', redirectPath)
+          setTimeout(() => router.push(redirectPath), 500)
         } else {
-          // Fallback redirect
-          setTimeout(() => router.push('/dashboard'), 1000)
+          console.log('[v0] Face login - Missing Supabase config')
+          setTimeout(() => router.push('/dashboard'), 500)
         }
       } else {
         setError('Face not recognized. Please try again.')
@@ -87,20 +97,29 @@ export default function Login() {
         if (supabaseUrl && supabaseKey && result.user) {
           const supabase = createClient(supabaseUrl, supabaseKey)
           
-          const { data: profile } = await supabase
+          const { data: profile, error: profileError } = await supabase
             .from('profiles')
             .select('role')
             .eq('id', result.user.id)
             .single()
 
+          console.log('[v0] Profile fetch result:', { profile, error: profileError })
+
           // Redirect based on role
-          let redirectPath = getDefaultDashboard((profile?.role || 'user') as any)
+          let redirectPath = '/dashboard'
+          if (profile?.role === 'superadmin') {
+            redirectPath = '/dashboard/admin/system'
+          } else if (profile?.role === 'admin') {
+            redirectPath = '/dashboard/admin/team'
+          } else if (profile?.role === 'user') {
+            redirectPath = '/dashboard'
+          }
 
           console.log('[v0] User role:', profile?.role, 'Redirecting to:', redirectPath)
-          setTimeout(() => router.push(redirectPath), 1000)
+          setTimeout(() => router.push(redirectPath), 500)
         } else {
-          // Fallback redirect if Supabase fetch fails
-          setTimeout(() => router.push('/dashboard'), 1000)
+          console.log('[v0] Missing Supabase config or user')
+          setTimeout(() => router.push('/dashboard'), 500)
         }
       } else {
         setError(result.error || 'Login failed. Please try again.')
