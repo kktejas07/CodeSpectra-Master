@@ -3,10 +3,12 @@
 import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { createClient } from '@supabase/supabase-js'
-import { Users, Settings, BarChart3, Shield, Activity, TrendingUp, Server, Lock } from 'lucide-react'
+import { Users, Settings, BarChart3, Shield, Activity, Server, Lock } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { isSuperAdmin } from '@/lib/rbac'
+import { AnalyticsDashboard } from '@/components/admin/analytics-dashboard'
+import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
 
 export default function SystemAdminDashboard() {
   const router = useRouter()
@@ -166,30 +168,11 @@ export default function SystemAdminDashboard() {
         </div>
       </div>
 
-      {/* Recent Activity */}
-      <div className="rounded-lg bg-card border border-border/40 p-8">
-        <h2 className="text-xl font-bold text-foreground mb-6">Recent System Activity</h2>
-        <div className="space-y-4">
-          <div className="p-4 bg-muted/50 rounded-lg border border-border/20">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-medium text-foreground">New Admin Created</p>
-                <p className="text-sm text-muted-foreground">jane_admin assigned as team admin</p>
-              </div>
-              <span className="text-xs text-muted-foreground">2 hours ago</span>
-            </div>
-          </div>
-          <div className="p-4 bg-muted/50 rounded-lg border border-border/20">
-            <div className="flex items-start justify-between">
-              <div>
-                <p className="font-medium text-foreground">System Updated</p>
-                <p className="text-sm text-muted-foreground">Version 2.1.0 deployed</p>
-              </div>
-              <span className="text-xs text-muted-foreground">5 hours ago</span>
-            </div>
-          </div>
-        </div>
-      </div>
+      {/* Analytics Dashboard */}
+      <AnalyticsDashboard />
+
+      {/* Audit Logs */}
+      <AuditLogsViewer />
     </div>
   )
 }

@@ -3,22 +3,66 @@
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Users, Plus, Search, Filter } from 'lucide-react'
-import { Input } from '@/components/ui/input'
+import { Users, Plus } from 'lucide-react'
+import { UserManagementTable } from '@/components/admin/user-management-table'
+import { RoleAssignmentDialog } from '@/components/admin/role-assignment-dialog'
 
 export default function UsersManagement() {
   const [users] = useState([
-    { id: 1, name: 'John Doe', email: 'john@example.com', role: 'user', status: 'active' },
-    { id: 2, name: 'Jane Smith', email: 'jane@example.com', role: 'admin', status: 'active' },
-    { id: 3, name: 'Mike Johnson', email: 'mike@example.com', role: 'user', status: 'inactive' },
+    { 
+      id: '1', 
+      name: 'John Doe', 
+      email: 'john@example.com', 
+      role: 'user' as const, 
+      status: 'active' as const,
+      joinedAt: 'Jan 15, 2024',
+      lastActive: '2 hours ago',
+    },
+    { 
+      id: '2', 
+      name: 'Jane Smith', 
+      email: 'jane@example.com', 
+      role: 'admin' as const, 
+      status: 'active' as const,
+      joinedAt: 'Dec 20, 2023',
+      lastActive: '30 mins ago',
+    },
+    { 
+      id: '3', 
+      name: 'Mike Johnson', 
+      email: 'mike@example.com', 
+      role: 'user' as const, 
+      status: 'inactive' as const,
+      joinedAt: 'Feb 10, 2024',
+      lastActive: '5 days ago',
+    },
   ])
+
+  const [roleDialogOpen, setRoleDialogOpen] = useState(false)
+  const [selectedUser, setSelectedUser] = useState<any>(null)
+
+  const handleEdit = (user: any) => {
+    setSelectedUser(user)
+    setRoleDialogOpen(true)
+  }
+
+  const handleDelete = (userId: string) => {
+    console.log('Delete user:', userId)
+  }
+
+  const handleConfirmRole = (role: string) => {
+    console.log('Assign role:', role, 'to user:', selectedUser?.id)
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Users Management</h1>
-          <p className="text-muted-foreground mt-1">Manage all system users</p>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
+            <Users className="w-8 h-8 text-primary" />
+            Users Management
+          </h1>
+          <p className="text-muted-foreground mt-2">Manage all system users and assign roles</p>
         </div>
         <Button className="gap-2">
           <Plus className="w-4 h-4" />
@@ -26,53 +70,20 @@ export default function UsersManagement() {
         </Button>
       </div>
 
-      <Card className="p-6">
-        <div className="flex gap-4 mb-6">
-          <div className="flex-1 relative">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-            <Input placeholder="Search users..." className="pl-9" />
-          </div>
-          <Button variant="outline" className="gap-2">
-            <Filter className="w-4 h-4" />
-            Filter
-          </Button>
-        </div>
+      <UserManagementTable
+        users={users}
+        onEdit={handleEdit}
+        onDelete={handleDelete}
+      />
 
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead>
-              <tr className="border-b border-border/40">
-                <th className="text-left py-3 px-4 font-medium">Name</th>
-                <th className="text-left py-3 px-4 font-medium">Email</th>
-                <th className="text-left py-3 px-4 font-medium">Role</th>
-                <th className="text-left py-3 px-4 font-medium">Status</th>
-                <th className="text-left py-3 px-4 font-medium">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {users.map((user) => (
-                <tr key={user.id} className="border-b border-border/40 hover:bg-muted/50 transition-colors">
-                  <td className="py-3 px-4">{user.name}</td>
-                  <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
-                  <td className="py-3 px-4 capitalize">{user.role}</td>
-                  <td className="py-3 px-4">
-                    <span className={`px-2 py-1 rounded text-xs font-medium ${
-                      user.status === 'active' 
-                        ? 'bg-green-500/20 text-green-700 dark:text-green-400' 
-                        : 'bg-gray-500/20 text-gray-700 dark:text-gray-400'
-                    }`}>
-                      {user.status}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <Button variant="ghost" size="sm">Edit</Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <RoleAssignmentDialog
+        open={roleDialogOpen}
+        userId={selectedUser?.id}
+        userName={selectedUser?.name}
+        currentRole={selectedUser?.role}
+        onOpenChange={setRoleDialogOpen}
+        onConfirm={handleConfirmRole}
+      />
     </div>
   )
 }
