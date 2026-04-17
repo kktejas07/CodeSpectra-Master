@@ -4,275 +4,312 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Shield, Plus, Edit2, Trash2, Save, X } from 'lucide-react'
+import { CheckCircle2, AlertCircle, Plus, Edit2, Trash2, BarChart3 } from 'lucide-react'
 
 interface QualityGate {
   id: string
   name: string
-  description: string
-  conditions: GateCondition[]
-  isActive: boolean
-}
-
-interface GateCondition {
-  metric: string
-  operator: 'greater_than' | 'less_than' | 'equals'
-  value: number
-  impact: 'pass' | 'fail' | 'warn'
+  conditions: {
+    securityIssues: number
+    reliabilityIssues: number
+    maintainabilityIssues: number
+    coverage: number
+    duplications: number
+  }
+  status: 'PASSED' | 'FAILED' | 'NOT_COMPUTED'
 }
 
 interface QualityGateDashboardProps {
   gates?: QualityGate[]
   onSave?: (gate: QualityGate) => void
-  onDelete?: (gateId: string) => void
+  onDelete?: (id: string) => void
 }
-
-const AVAILABLE_METRICS = [
-  { value: 'quality_score', label: 'Quality Score', unit: '/100' },
-  { value: 'bugs', label: 'Bugs Count', unit: '' },
-  { value: 'vulnerabilities', label: 'Vulnerabilities', unit: '' },
-  { value: 'code_smells', label: 'Code Smells', unit: '' },
-  { value: 'complexity', label: 'Complexity Score', unit: '' },
-  { value: 'duplicates', label: 'Duplicate Lines %', unit: '%' },
-  { value: 'coverage', label: 'Test Coverage', unit: '%' },
-]
 
 export function QualityGateDashboard({
   gates = [],
   onSave,
   onDelete,
 }: QualityGateDashboardProps) {
-  const [isCreating, setIsCreating] = useState(false)
+  const [showForm, setShowForm] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
-  const [newGate, setNewGate] = useState<Partial<QualityGate>>({
+  const [formData, setFormData] = useState({
     name: '',
-    description: '',
-    conditions: [],
-    isActive: true,
+    conditions: {
+      securityIssues: 0,
+      reliabilityIssues: 0,
+      maintainabilityIssues: 5,
+      coverage: 80,
+      duplications: 3,
+    },
   })
 
-  const handleAddCondition = () => {
-    setNewGate((prev) => ({
-      ...prev,
-      conditions: [
-        ...(prev.conditions || []),
-        { metric: 'quality_score', operator: 'greater_than', value: 80, impact: 'pass' },
-      ],
-    }))
-  }
+  const handleSubmit = () => {
+    if (!formData.name.trim()) return
 
-  const handleSaveGate = () => {
-    if (!newGate.name?.trim()) return
-
-    const gate: QualityGate = {
+    onSave?.({
       id: editingId || `gate-${Date.now()}`,
-      name: newGate.name || '',
-      description: newGate.description || '',
-      conditions: newGate.conditions || [],
-      isActive: newGate.isActive ?? true,
-    }
+      name: formData.name,
+      conditions: formData.conditions,
+      status: 'NOT_COMPUTED',
+    })
 
-    onSave?.(gate)
-    setIsCreating(false)
+    setShowForm(false)
     setEditingId(null)
-    setNewGate({ name: '', description: '', conditions: [], isActive: true })
-  }
-
-  const getMetricLabel = (metricValue: string) => {
-    return AVAILABLE_METRICS.find((m) => m.value === metricValue)?.label || metricValue
-  }
-
-  const getOperatorLabel = (op: string) => {
-    const labels: Record<string, string> = {
-      greater_than: '>',
-      less_than: '<',
-      equals: '=',
-    }
-    return labels[op] || op
+    setFormData({
+      name: '',
+      conditions: {
+        securityIssues: 0,
+        reliabilityIssues: 0,
+        maintainabilityIssues: 5,
+        coverage: 80,
+        duplications: 3,
+      },
+    })
   }
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
-          <h3 className="font-semibold text-foreground flex items-center gap-2">
-            <Shield className="w-5 h-5" />
-            Quality Gates
-          </h3>
-          <p className="text-sm text-foreground/60">
-            Define rules that code must pass to be considered deployable
-          </p>
-        </div>
-        <Button
-          onClick={() => setIsCreating(true)}
-          className="gap-2"
-          disabled={isCreating}
-        >
+      <div>
+        <h1 className="text-3xl font-bold mb-2">Quality Gates</h1>
+        <p className="text-foreground/60">
+          Define pass/fail criteria for code quality. Projects must satisfy all conditions to pass.
+        </p>
+      </div>
+
+      {/* Add Button */}
+      <div className="flex justify-end">
+        <Button onClick={() => setShowForm(!showForm)} className="gap-2">
           <Plus className="w-4 h-4" />
-          New Gate
+          New Quality Gate
         </Button>
       </div>
 
-      {/* Create/Edit Form */}
-      {isCreating && (
-        <Card className="bg-card/30 border border-border p-6 space-y-4">
-          <h4 className="font-semibold text-foreground">
-            {editingId ? 'Edit' : 'Create'} Quality Gate
-          </h4>
+      {/* Form */}
+      {showForm && (
+        <Card className="p-6 border-2 border-primary/50 bg-primary/5">
+          <h2 className="text-xl font-bold mb-4">Create Quality Gate</h2>
 
-          <div className="space-y-3">
-            <input
-              type="text"
-              placeholder="Gate name (e.g., Production Ready)"
-              value={newGate.name || ''}
-              onChange={(e) => setNewGate((prev) => ({ ...prev, name: e.target.value }))}
-              className="w-full px-3 py-2 bg-background border border-border rounded text-foreground placeholder-foreground/40"
-            />
-
-            <textarea
-              placeholder="Description"
-              value={newGate.description || ''}
-              onChange={(e) => setNewGate((prev) => ({ ...prev, description: e.target.value }))}
-              className="w-full px-3 py-2 bg-background border border-border rounded text-foreground placeholder-foreground/40 text-sm"
-              rows={2}
-            />
-          </div>
-
-          {/* Conditions */}
-          <div className="space-y-3">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-medium text-foreground">Conditions</p>
-              <Button
-                variant="outline"
-                size="sm"
-                onClick={handleAddCondition}
-              >
-                <Plus className="w-4 h-4 mr-1" />
-                Add
-              </Button>
+          <div className="space-y-4">
+            <div>
+              <label className="text-sm font-medium block mb-2">Gate Name</label>
+              <input
+                type="text"
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder="e.g., Production Ready, Sonar Way"
+                className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+              />
             </div>
 
-            {newGate.conditions?.map((condition, idx) => (
-              <div key={idx} className="flex gap-2 items-center bg-background p-3 rounded border border-border">
-                <select
-                  value={condition.metric}
-                  onChange={(e) => {
-                    const newConditions = [...(newGate.conditions || [])]
-                    newConditions[idx].metric = e.target.value
-                    setNewGate((prev) => ({ ...prev, conditions: newConditions }))
-                  }}
-                  className="px-2 py-1 bg-card border border-border rounded text-sm text-foreground"
-                >
-                  {AVAILABLE_METRICS.map((m) => (
-                    <option key={m.value} value={m.value}>
-                      {m.label}
-                    </option>
-                  ))}
-                </select>
-
-                <select
-                  value={condition.operator}
-                  onChange={(e) => {
-                    const newConditions = [...(newGate.conditions || [])]
-                    newConditions[idx].operator = e.target.value as any
-                    setNewGate((prev) => ({ ...prev, conditions: newConditions }))
-                  }}
-                  className="px-2 py-1 bg-card border border-border rounded text-sm text-foreground"
-                >
-                  <option value="greater_than">{">"}</option>
-                  <option value="less_than">{"<"}</option>
-                  <option value="equals">{"="}</option>
-                </select>
-
+            <div className="grid md:grid-cols-2 gap-4">
+              <div>
+                <label className="text-sm font-medium block mb-2">Security Issues (max)</label>
                 <input
                   type="number"
-                  value={condition.value}
-                  onChange={(e) => {
-                    const newConditions = [...(newGate.conditions || [])]
-                    newConditions[idx].value = parseInt(e.target.value)
-                    setNewGate((prev) => ({ ...prev, conditions: newConditions }))
-                  }}
-                  className="w-20 px-2 py-1 bg-card border border-border rounded text-sm text-foreground"
+                  min="0"
+                  value={formData.conditions.securityIssues}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conditions: {
+                        ...formData.conditions,
+                        securityIssues: parseInt(e.target.value) || 0,
+                      },
+                    })
+                  }
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
                 />
-
-                <button
-                  onClick={() => {
-                    const newConditions = newGate.conditions?.filter((_, i) => i !== idx) || []
-                    setNewGate((prev) => ({ ...prev, conditions: newConditions }))
-                  }}
-                  className="p-1 hover:bg-red-500/10 rounded text-red-600 hover:text-red-700 transition"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </button>
               </div>
-            ))}
-          </div>
 
-          {/* Actions */}
-          <div className="flex gap-2 pt-4 border-t border-border">
-            <Button onClick={handleSaveGate} className="gap-2">
-              <Save className="w-4 h-4" />
-              Save Gate
-            </Button>
-            <Button
-              variant="outline"
-              onClick={() => {
-                setIsCreating(false)
-                setEditingId(null)
-                setNewGate({ name: '', description: '', conditions: [], isActive: true })
-              }}
-              className="gap-2"
-            >
-              <X className="w-4 h-4" />
-              Cancel
-            </Button>
+              <div>
+                <label className="text-sm font-medium block mb-2">Reliability Issues (max)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.conditions.reliabilityIssues}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conditions: {
+                        ...formData.conditions,
+                        reliabilityIssues: parseInt(e.target.value) || 0,
+                      },
+                    })
+                  }
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium block mb-2">Maintainability Issues (max)</label>
+                <input
+                  type="number"
+                  min="0"
+                  value={formData.conditions.maintainabilityIssues}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conditions: {
+                        ...formData.conditions,
+                        maintainabilityIssues: parseInt(e.target.value) || 0,
+                      },
+                    })
+                  }
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium block mb-2">Code Coverage (min %)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.conditions.coverage}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conditions: {
+                        ...formData.conditions,
+                        coverage: parseFloat(e.target.value) || 0,
+                      },
+                    })
+                  }
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+
+              <div>
+                <label className="text-sm font-medium block mb-2">Duplication (max %)</label>
+                <input
+                  type="number"
+                  min="0"
+                  max="100"
+                  step="0.1"
+                  value={formData.conditions.duplications}
+                  onChange={(e) =>
+                    setFormData({
+                      ...formData,
+                      conditions: {
+                        ...formData.conditions,
+                        duplications: parseFloat(e.target.value) || 0,
+                      },
+                    })
+                  }
+                  className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
+                />
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-4 border-t border-border">
+              <Button onClick={handleSubmit} className="flex-1">
+                Save Gate
+              </Button>
+              <Button
+                variant="outline"
+                onClick={() => {
+                  setShowForm(false)
+                  setEditingId(null)
+                }}
+                className="flex-1"
+              >
+                Cancel
+              </Button>
+            </div>
           </div>
         </Card>
       )}
 
-      {/* Existing Gates */}
-      <div className="space-y-3">
+      {/* Gates Grid */}
+      <div className="grid gap-4">
         {gates.length === 0 ? (
-          <Card className="bg-card/30 border border-border p-8 text-center">
-            <p className="text-sm text-foreground/60">No quality gates configured</p>
+          <Card className="p-12 text-center bg-card/30 border border-dashed border-border">
+            <BarChart3 className="w-12 h-12 text-foreground/40 mx-auto mb-3" />
+            <p className="text-foreground/60">No quality gates configured</p>
+            <p className="text-sm text-foreground/50 mt-1">Create one to enforce code quality standards</p>
           </Card>
         ) : (
           gates.map((gate) => (
-            <Card key={gate.id} className="bg-card/30 border border-border p-4">
-              <div className="flex items-start justify-between gap-4">
-                <div className="space-y-2">
-                  <div className="flex items-center gap-2">
-                    <h4 className="font-semibold text-foreground">{gate.name}</h4>
-                    <Badge className={gate.isActive ? 'bg-green-500/20 text-green-600' : 'bg-gray-500/20 text-gray-600'}>
-                      {gate.isActive ? 'Active' : 'Inactive'}
-                    </Badge>
-                  </div>
-                  <p className="text-sm text-foreground/60">{gate.description}</p>
+            <Card key={gate.id} className="p-6 hover:shadow-lg transition-shadow">
+              {/* Header */}
+              <div className="flex items-start justify-between mb-4">
+                <div className="flex items-center gap-3">
+                  {gate.status === 'PASSED' ? (
+                    <CheckCircle2 className="w-6 h-6 text-green-500" />
+                  ) : gate.status === 'FAILED' ? (
+                    <AlertCircle className="w-6 h-6 text-red-500" />
+                  ) : (
+                    <AlertCircle className="w-6 h-6 text-yellow-500" />
+                  )}
 
-                  {/* Conditions Summary */}
-                  <div className="flex flex-wrap gap-2 mt-2">
-                    {gate.conditions.map((cond, idx) => (
-                      <Badge key={idx} variant="outline" className="text-xs">
-                        {getMetricLabel(cond.metric)} {getOperatorLabel(cond.operator)} {cond.value}
-                      </Badge>
-                    ))}
+                  <div>
+                    <h3 className="font-bold text-lg">{gate.name}</h3>
+                    <Badge
+                      variant="outline"
+                      className={
+                        gate.status === 'PASSED'
+                          ? 'bg-green-500/20 text-green-600'
+                          : gate.status === 'FAILED'
+                            ? 'bg-red-500/20 text-red-600'
+                            : 'bg-yellow-500/20 text-yellow-600'
+                      }
+                    >
+                      {gate.status}
+                    </Badge>
                   </div>
                 </div>
 
                 <div className="flex gap-2">
-                  <button
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={() => setEditingId(gate.id)}
-                    className="p-2 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
                   >
                     <Edit2 className="w-4 h-4" />
-                  </button>
-                  <button
+                  </Button>
+                  <Button
+                    size="sm"
+                    variant="ghost"
                     onClick={() => onDelete?.(gate.id)}
-                    className="p-2 hover:bg-red-500/10 rounded text-red-600 hover:text-red-700 transition"
                   >
                     <Trash2 className="w-4 h-4" />
-                  </button>
+                  </Button>
+                </div>
+              </div>
+
+              {/* Conditions */}
+              <div className="grid md:grid-cols-5 gap-3">
+                <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                  <p className="text-xs font-medium text-foreground/60 mb-1">Security</p>
+                  <p className="text-2xl font-bold text-foreground">{gate.conditions.securityIssues}</p>
+                  <p className="text-xs text-foreground/50">max issues</p>
+                </div>
+
+                <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                  <p className="text-xs font-medium text-foreground/60 mb-1">Reliability</p>
+                  <p className="text-2xl font-bold text-foreground">{gate.conditions.reliabilityIssues}</p>
+                  <p className="text-xs text-foreground/50">max issues</p>
+                </div>
+
+                <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                  <p className="text-xs font-medium text-foreground/60 mb-1">Maintainability</p>
+                  <p className="text-2xl font-bold text-foreground">
+                    {gate.conditions.maintainabilityIssues}
+                  </p>
+                  <p className="text-xs text-foreground/50">max issues</p>
+                </div>
+
+                <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                  <p className="text-xs font-medium text-foreground/60 mb-1">Coverage</p>
+                  <p className="text-2xl font-bold text-foreground">{gate.conditions.coverage}%</p>
+                  <p className="text-xs text-foreground/50">minimum</p>
+                </div>
+
+                <div className="bg-muted/50 p-4 rounded-lg border border-border">
+                  <p className="text-xs font-medium text-foreground/60 mb-1">Duplication</p>
+                  <p className="text-2xl font-bold text-foreground">{gate.conditions.duplications}%</p>
+                  <p className="text-xs text-foreground/50">maximum</p>
                 </div>
               </div>
             </Card>
