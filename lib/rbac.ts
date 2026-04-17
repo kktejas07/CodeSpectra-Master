@@ -1,6 +1,3 @@
-import { createServerClient } from '@supabase/ssr'
-import { cookies } from 'next/headers'
-
 export type UserRole = 'superadmin' | 'admin' | 'user'
 
 // SUPERADMIN: Full unrestricted access to everything
@@ -59,63 +56,7 @@ export interface UserWithPermissions {
 }
 
 /**
- * Get current user with role from Supabase
- */
-export async function getCurrentUser(): Promise<UserWithPermissions | null> {
-  try {
-    const cookieStore = await cookies()
-    const supabase = createServerClient(
-      process.env.NEXT_PUBLIC_SUPABASE_URL!,
-      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
-      {
-        cookies: {
-          getAll() {
-            return cookieStore.getAll()
-          },
-          setAll(cookiesToSet) {
-            cookiesToSet.forEach(({ name, value, options }) => {
-              cookieStore.set(name, value, options)
-            })
-          },
-        },
-      }
-    )
-
-    const {
-      data: { user },
-    } = await supabase.auth.getUser()
-
-    if (!user) return null
-
-    const { data: profile, error } = await supabase
-      .from('profiles')
-      .select('*')
-      .eq('id', user.id)
-      .single()
-
-    if (error) {
-      console.log('[v0] Profile fetch error:', error.message)
-      return null
-    }
-
-    const role = (profile?.role || 'user') as UserRole
-
-    return {
-      id: user.id,
-      email: user.email || '',
-      full_name: profile?.full_name,
-      role,
-      is_active: profile?.is_active !== false,
-      tenant_id: profile?.tenant_id,
-    }
-  } catch (error) {
-    console.error('[v0] Error fetching current user:', error)
-    return null
-  }
-}
-
-/**
- * Check if user can access a specific page
+ * Check if user can access a specific page (CLIENT-SAFE)
  */
 export function canAccessPage(role: UserRole, pathname: string): boolean {
   const allowedPages = ACCESSIBLE_PAGES[role] || []
@@ -127,7 +68,7 @@ export function canAccessPage(role: UserRole, pathname: string): boolean {
 }
 
 /**
- * Get accessible pages for a role
+ * Get accessible pages for a role (CLIENT-SAFE)
  */
 export function getAccessiblePages(role: UserRole): string[] {
   return ACCESSIBLE_PAGES[role] || []
