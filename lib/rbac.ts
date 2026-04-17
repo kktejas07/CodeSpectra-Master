@@ -91,35 +91,54 @@ export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
 }
 
 // Navigation items for each role
-export const ROLE_NAV_ITEMS: Record<UserRole, Array<{href: string, icon: any, label: string}>> = {
+export const ROLE_NAV_ITEMS: Record<UserRole, Array<{href: string, icon: any, label: string, section?: string}>> = {
   superadmin: [
-    { href: '/dashboard', icon: 'Home', label: 'Overview' },
-    { href: '/dashboard/admin', icon: 'Shield', label: 'Admin Panel' },
-    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena' },
-    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner' },
-    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning' },
-    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard' },
-    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements' },
-    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings' }
+    // Main Section
+    { href: '/dashboard', icon: 'Home', label: 'Overview', section: 'main' },
+    
+    // Admin Section
+    { href: '/dashboard/admin/system', icon: 'Shield', label: 'System Admin', section: 'admin' },
+    { href: '/dashboard/admin/users', icon: 'Users', label: 'Users', section: 'admin' },
+    { href: '/dashboard/admin/teams', icon: 'Users', label: 'Teams', section: 'admin' },
+    { href: '/dashboard/admin/roles', icon: 'Lock', label: 'Roles & Permissions', section: 'admin' },
+    { href: '/dashboard/admin/analytics', icon: 'BarChart3', label: 'System Analytics', section: 'admin' },
+    { href: '/dashboard/admin/audit-logs', icon: 'FileText', label: 'Audit Logs', section: 'admin' },
+    { href: '/dashboard/admin/security', icon: 'Shield', label: 'Security', section: 'admin' },
+    { href: '/dashboard/admin/settings', icon: 'Settings', label: 'System Settings', section: 'admin' },
+    
+    // Platform Section
+    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena', section: 'platform' },
+    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner', section: 'platform' },
+    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning', section: 'platform' },
+    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard', section: 'platform' },
+    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements', section: 'platform' },
+    
+    // User Section
+    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings', section: 'user' },
+    { href: '/dashboard/profile', icon: 'User', label: 'Profile', section: 'user' },
   ],
   admin: [
-    { href: '/dashboard', icon: 'Home', label: 'Overview' },
-    { href: '/dashboard/admin', icon: 'Users', label: 'Team Management' },
-    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena' },
-    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner' },
-    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning' },
-    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard' },
-    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements' },
-    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings' }
+    { href: '/dashboard', icon: 'Home', label: 'Overview', section: 'main' },
+    { href: '/dashboard/admin/team', icon: 'Users', label: 'Team Management', section: 'admin' },
+    { href: '/dashboard/admin/team-analytics', icon: 'BarChart3', label: 'Team Analytics', section: 'admin' },
+    { href: '/dashboard/admin/team-settings', icon: 'Settings', label: 'Team Settings', section: 'admin' },
+    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena', section: 'platform' },
+    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner', section: 'platform' },
+    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning', section: 'platform' },
+    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard', section: 'platform' },
+    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements', section: 'platform' },
+    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings', section: 'user' },
+    { href: '/dashboard/profile', icon: 'User', label: 'Profile', section: 'user' },
   ],
   user: [
-    { href: '/dashboard', icon: 'Home', label: 'Overview' },
-    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena' },
-    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner' },
-    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning' },
-    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard' },
-    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements' },
-    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings' }
+    { href: '/dashboard', icon: 'Home', label: 'Overview', section: 'main' },
+    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena', section: 'platform' },
+    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner', section: 'platform' },
+    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning', section: 'platform' },
+    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard', section: 'platform' },
+    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements', section: 'platform' },
+    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings', section: 'user' },
+    { href: '/dashboard/profile', icon: 'User', label: 'Profile', section: 'user' },
   ]
 }
 

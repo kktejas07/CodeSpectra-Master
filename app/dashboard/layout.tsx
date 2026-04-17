@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { getNavItems, UserRole, isAdmin, isSuperAdmin } from '@/lib/rbac'
-import { Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown, Shield, Users, Menu, X, MoreHorizontal } from 'lucide-react'
+import { Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Settings, LogOut, Star, Bell, Search, ChevronDown, Shield, Users, Menu, X, MoreHorizontal, Lock, FileText, User } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { signOut } from '@/lib/auth-service'
 import { Breadcrumbs } from '@/components/breadcrumbs'
@@ -18,6 +18,29 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
 import { createClient } from '@supabase/supabase-js'
+
+// Icon mapping for dynamic icons
+const iconMap: Record<string, any> = {
+  'Home': Home,
+  'Trophy': Trophy,
+  'Code2': CodeIcon,
+  'BookOpen': BookOpen,
+  'BarChart3': BarChart3,
+  'Settings': Settings,
+  'LogOut': LogOut,
+  'Star': Star,
+  'Bell': Bell,
+  'Search': Search,
+  'ChevronDown': ChevronDown,
+  'Shield': Shield,
+  'Users': Users,
+  'Menu': Menu,
+  'X': X,
+  'MoreHorizontal': MoreHorizontal,
+  'Lock': Lock,
+  'FileText': FileText,
+  'User': User,
+}
 
 export default function DashboardLayout({
   children,
@@ -183,47 +206,136 @@ export default function DashboardLayout({
           </div>
 
           {/* Navigation */}
-          <nav className="flex-1 p-4 space-y-1">
-            {dynamicNavItems.map((item) => {
-              const active = isActive(item.href)
-              return (
-                <Link key={item.href} href={item.href}>
-                  <div className={`px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
-                    active 
-                      ? 'bg-primary/10 text-primary' 
-                      : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-                  }`}>
-                    <item.icon className={`w-4 h-4 ${active ? 'text-primary' : ''}`} />
-                    <span>{item.label}</span>
-                  </div>
-                </Link>
-              )
-            })}
-            
-            {/* Settings - Always visible */}
-            <Link href="/dashboard/settings">
-              <div className={`px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
-                isActive('/dashboard/settings')
-                  ? 'bg-primary/10 text-primary' 
-                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
-              }`}>
-                <Settings className={`w-4 h-4 ${isActive('/dashboard/settings') ? 'text-primary' : ''}`} />
-                <span>Settings</span>
+          <nav className="flex-1 overflow-y-auto p-4 space-y-1">
+            {/* Render grouped navigation */}
+            {dynamicNavItems.reduce((groups: any[], item: any) => {
+              const group = groups.find(g => g.section === item.section)
+              if (group) {
+                group.items.push(item)
+              } else {
+                groups.push({ section: item.section, items: [item] })
+              }
+              return groups
+            }, []).map((group: any, idx: number) => (
+              <div key={group.section}>
+                {idx > 0 && <div className="my-3 h-px bg-border/30" />}
+                {group.items.map((item: any) => {
+                  const active = isActive(item.href)
+                  const IconComponent = typeof item.icon === 'string' ? iconMap[item.icon] : item.icon
+                  return (
+                    <Link key={item.href} href={item.href}>
+                      <div className={`px-3 py-2.5 rounded-lg flex items-center gap-3 text-sm font-medium transition-colors ${
+                        active 
+                          ? 'bg-primary/10 text-primary' 
+                          : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                      }`}>
+                        {IconComponent && <IconComponent className={`w-4 h-4 ${active ? 'text-primary' : ''}`} />}
+                        <span>{item.label}</span>
+                      </div>
+                    </Link>
+                  )
+                })}
               </div>
-            </Link>
+            ))}
           </nav>
 
-          {/* Logout */}
-          <div className="p-4 border-t border-border/40">
-            <Button 
-              onClick={handleLogout}
-              variant="ghost" 
-              className="w-full justify-start text-sm text-muted-foreground hover:text-destructive hover:bg-destructive/10"
+          {/* Bottom Section - Search, Theme, Notifications */}
+          <div className="p-4 border-t border-border/40 space-y-3">
+            {/* Search Button */}
+            <button 
+              onClick={() => {}} 
+              className="w-full px-3 py-2 rounded-lg bg-muted hover:bg-muted/80 transition-colors flex items-center gap-2 text-sm text-muted-foreground"
             >
-              <LogOut className="w-4 h-4 mr-2" />
-              Sign Out
-            </Button>
+              <Search className="w-4 h-4" />
+              <span>Search</span>
+              <span className="ml-auto text-xs opacity-50">⌘K</span>
+            </button>
+
+            {/* Controls */}
+            <div className="flex items-center justify-between gap-2">
+              {/* Theme Switcher */}
+              <ThemeSwitcher />
+
+              {/* Notifications */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 hover:bg-muted rounded-lg transition-colors relative flex-1">
+                    <Bell className="w-4 h-4 text-muted-foreground mx-auto" />
+                    <span className="absolute top-1 right-1 w-1.5 h-1.5 bg-primary rounded-full" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="right" className="w-80 ml-2">
+                  <div className="p-3 border-b border-border">
+                    <p className="font-semibold text-sm">Notifications</p>
+                  </div>
+                  <div className="p-3 max-h-64 overflow-y-auto">
+                    <div className="space-y-2">
+                      <div className="p-2 bg-primary/5 rounded border border-primary/20 text-xs">
+                        <p className="font-medium">Challenge Completed</p>
+                        <p className="text-muted-foreground">Docker mastery challenge</p>
+                      </div>
+                      <div className="p-2 bg-muted rounded border border-border text-xs">
+                        <p className="font-medium">Achievement Unlocked</p>
+                        <p className="text-muted-foreground">Bronze Developer badge</p>
+                      </div>
+                    </div>
+                  </div>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* More Menu */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="p-2 hover:bg-muted rounded-lg transition-colors flex-1">
+                    <MoreHorizontal className="w-4 h-4 text-muted-foreground mx-auto" />
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="right" className="w-56 ml-2">
+                  <div className="p-3 border-b border-border">
+                    <p className="text-sm font-semibold">Quick Links</p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/profile">Profile</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem asChild>
+                    <a href="https://docs.example.com" target="_blank" rel="noopener noreferrer">Documentation</a>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem asChild>
+                    <a href="https://help.example.com" target="_blank" rel="noopener noreferrer">Help & Support</a>
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+
+              {/* User Profile */}
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <button className="w-8 h-8 rounded-full bg-primary flex items-center justify-center hover:bg-primary/90 transition-colors">
+                    <span className="text-xs font-semibold text-primary-foreground">
+                      {userProfile?.full_name?.charAt(0) || 'U'}
+                    </span>
+                  </button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="start" side="right" className="w-56 ml-2">
+                  <div className="p-3 border-b border-border">
+                    <p className="text-sm font-medium">{userProfile?.full_name || 'User'}</p>
+                    <p className="text-xs text-muted-foreground">{userProfile?.email}</p>
+                    <p className="text-xs text-primary capitalize font-semibold mt-1">{userProfile?.role || 'user'}</p>
+                  </div>
+                  <DropdownMenuItem asChild>
+                    <Link href="/dashboard/settings">Settings</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuSeparator />
+                  <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                    <LogOut className="w-4 h-4 mr-2" />
+                    Sign Out
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
           </div>
+
+          {/* Logout Button - Remove old one */}
         </div>
       </aside>
 
@@ -244,123 +356,44 @@ export default function DashboardLayout({
               {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
             </button>
 
-            {/* Search & Command Menu */}
-            <CommandMenu />
+            {/* Spacer */}
+            <div className="flex-1" />
 
-            <div className="flex items-center gap-2">
-              {/* Theme Switcher */}
-              <ThemeSwitcher />
-
-              {/* Notifications Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="p-2 hover:bg-muted rounded-lg transition-colors relative">
-                    <Bell className="w-5 h-5 text-muted-foreground" />
-                    <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-primary rounded-full" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-80">
-                  <div className="p-3 border-b border-border">
-                    <p className="font-semibold text-sm">Notifications</p>
+            {/* User Profile Dropdown - Header */}
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
+                  <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
+                    <span className="text-primary-foreground text-sm font-medium">
+                      {userProfile?.full_name?.charAt(0) || 'U'}
+                    </span>
                   </div>
-                  <div className="p-3">
-                    <div className="space-y-3">
-                      <div className="p-3 bg-primary/5 rounded-lg border border-primary/20">
-                        <p className="text-sm font-medium">Challenge Completed!</p>
-                        <p className="text-xs text-muted-foreground mt-1">You completed the Docker challenge</p>
-                        <p className="text-xs text-muted-foreground mt-2">2 hours ago</p>
-                      </div>
-                      <div className="p-3 bg-muted rounded-lg">
-                        <p className="text-sm font-medium">New Achievement Unlocked</p>
-                        <p className="text-xs text-muted-foreground mt-1">Bronze Developer badge earned</p>
-                        <p className="text-xs text-muted-foreground mt-2">1 day ago</p>
-                      </div>
-                    </div>
+                  <div className="hidden sm:flex flex-col items-start">
+                    <span className="text-sm font-medium leading-tight">{userProfile?.full_name || 'User'}</span>
+                    <span className="text-xs text-muted-foreground capitalize">{userProfile?.role || 'user'}</span>
                   </div>
-                  <div className="p-3 border-t border-border text-center">
-                    <Button variant="ghost" size="sm" className="w-full text-xs">View All Notifications</Button>
-                  </div>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* More Menu */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="p-2 hover:bg-muted rounded-lg transition-colors">
-                    <MoreHorizontal className="w-5 h-5 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56">
-                  <div className="p-3 border-b border-border">
-                    <p className="text-sm font-semibold">Quick Links</p>
-                  </div>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/arena">Arena</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/scanner">Code Scanner</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/learning">Learning Path</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/leaderboard">Leaderboard</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/achievements">Achievements</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <div className="p-3 border-b border-border">
-                    <p className="text-sm font-semibold">Resources</p>
-                  </div>
-                  <DropdownMenuItem asChild>
-                    <a href="https://docs.example.com" target="_blank" rel="noopener noreferrer">Documentation</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href="https://help.example.com" target="_blank" rel="noopener noreferrer">Help Center</a>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <a href="https://status.example.com" target="_blank" rel="noopener noreferrer">Status Page</a>
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-
-              {/* User Profile Dropdown */}
-              <DropdownMenu>
-                <DropdownMenuTrigger asChild>
-                  <button className="flex items-center gap-2 px-3 py-1.5 rounded-lg hover:bg-muted transition-colors cursor-pointer">
-                    <div className="w-8 h-8 bg-primary rounded-full flex items-center justify-center">
-                      <span className="text-primary-foreground text-sm font-medium">
-                        {userProfile?.full_name?.charAt(0) || 'U'}
-                      </span>
-                    </div>
-                    <div className="hidden sm:flex flex-col items-start">
-                      <span className="text-sm font-medium leading-tight">{userProfile?.full_name || 'User'}</span>
-                      <span className="text-xs text-muted-foreground capitalize">{userProfile?.role || 'user'}</span>
-                    </div>
-                    <ChevronDown className="w-4 h-4 text-muted-foreground" />
-                  </button>
-                </DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                  <div className="p-3 border-b border-border">
-                    <p className="text-sm font-medium">{userProfile?.full_name || 'User'}</p>
-                    <p className="text-xs text-muted-foreground">{userProfile?.email || 'user@example.com'}</p>
-                    <p className="text-xs text-primary capitalize mt-1 font-semibold">{userProfile?.role || 'user'}</p>
-                  </div>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/settings">Settings</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuItem asChild>
-                    <Link href="/dashboard/profile">Profile</Link>
-                  </DropdownMenuItem>
-                  <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
-                    <LogOut className="w-4 h-4 mr-2" />
-                    Sign Out
-                  </DropdownMenuItem>
-                </DropdownMenuContent>
-              </DropdownMenu>
-            </div>
+                  <ChevronDown className="w-4 h-4 text-muted-foreground" />
+                </button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <div className="p-3 border-b border-border">
+                  <p className="text-sm font-medium">{userProfile?.full_name || 'User'}</p>
+                  <p className="text-xs text-muted-foreground">{userProfile?.email || 'user@example.com'}</p>
+                  <p className="text-xs text-primary capitalize mt-1 font-semibold">{userProfile?.role || 'user'}</p>
+                </div>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/settings">Settings</Link>
+                </DropdownMenuItem>
+                <DropdownMenuItem asChild>
+                  <Link href="/dashboard/profile">Profile</Link>
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={handleLogout} className="text-destructive cursor-pointer">
+                  <LogOut className="w-4 h-4 mr-2" />
+                  Sign Out
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
           </div>
         </header>
 
