@@ -1,171 +1,154 @@
-import { createClient } from '@supabase/supabase-js'
+import { createServerClient } from '@supabase/ssr'
+import { cookies } from 'next/headers'
 
 export type UserRole = 'superadmin' | 'admin' | 'user'
 
-export interface RBACConfig {
-  role: UserRole
-  permissions: string[]
-}
-
-// Define what each role can access
-export const ROLE_PERMISSIONS: Record<UserRole, string[]> = {
-  superadmin: [
-    'view_all_dashboards',
-    'manage_users',
-    'manage_admins',
-    'manage_organization',
-    'view_analytics',
-    'manage_system_settings',
-    'view_audit_logs',
-    'manage_permissions',
-    'view_all_content',
-    'manage_all_features'
-  ],
-  admin: [
-    'view_admin_dashboard',
-    'manage_team_members',
-    'manage_organization',
-    'view_team_analytics',
-    'manage_team_settings',
-    'view_team_audit_logs',
-    'manage_team_features',
-    'view_dashboard',
-    'view_arena',
-    'view_scanner',
-    'view_learning',
-    'view_leaderboard',
-    'view_achievements'
-  ],
-  user: [
-    'view_dashboard',
-    'view_arena',
-    'view_scanner',
-    'view_learning',
-    'view_leaderboard',
-    'view_achievements',
-    'view_personal_settings',
-    'view_profile'
-  ]
-}
+// SUPERADMIN: Full unrestricted access to everything
+export const SUPERADMIN_PAGES = [
+  '/dashboard',
+  '/dashboard/admin',
+  '/dashboard/admin/system',
+  '/dashboard/admin/users',
+  '/dashboard/admin/roles',
+  '/dashboard/admin/permissions',
+  '/dashboard/admin/analytics',
+  '/dashboard/admin/audit-logs',
+  '/dashboard/admin/learning',
+  '/dashboard/challenges',
+  '/dashboard/interviews',
+  '/dashboard/interviews/feedback',
+  '/dashboard/learning',
+  '/dashboard/profile',
+  '/dashboard/achievements',
+  '/dashboard/analytics',
+  '/dashboard/code-scanner',
+  '/dashboard/leaderboard',
+]
 
 // Define pages accessible by each role
 export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
-  superadmin: [
-    '/dashboard',
-    '/dashboard/admin',
-    '/dashboard/admin/system',
-    '/dashboard/admin/users',
-    '/dashboard/admin/teams',
-    '/dashboard/admin/roles',
-    '/dashboard/admin/analytics',
-    '/dashboard/admin/audit-logs',
-    '/dashboard/admin/security',
-    '/dashboard/admin/settings',
-    '/dashboard/overview',
-    '/dashboard/arena',
-    '/dashboard/scanner',
-    '/dashboard/learning',
-    '/dashboard/leaderboard',
-    '/dashboard/achievements',
-    '/dashboard/settings',
-    '/dashboard/profile'
-  ],
+  superadmin: SUPERADMIN_PAGES, // Superadmin has all pages
   admin: [
     '/dashboard',
     '/dashboard/admin',
     '/dashboard/admin/team',
-    '/dashboard/admin/team-analytics',
-    '/dashboard/admin/team-settings',
-    '/dashboard/overview',
-    '/dashboard/arena',
-    '/dashboard/scanner',
+    '/dashboard/challenges',
+    '/dashboard/interviews',
     '/dashboard/learning',
-    '/dashboard/leaderboard',
+    '/dashboard/profile',
     '/dashboard/achievements',
-    '/dashboard/settings',
-    '/dashboard/profile'
+    '/dashboard/analytics',
   ],
   user: [
     '/dashboard',
-    '/dashboard/overview',
-    '/dashboard/arena',
-    '/dashboard/scanner',
+    '/dashboard/challenges',
+    '/dashboard/interviews',
     '/dashboard/learning',
-    '/dashboard/leaderboard',
+    '/dashboard/profile',
     '/dashboard/achievements',
-    '/dashboard/settings',
-    '/dashboard/profile'
-  ]
+  ],
 }
 
-// Navigation items for each role
-export const ROLE_NAV_ITEMS: Record<UserRole, Array<{href: string, icon: any, label: string, section?: string}>> = {
-  superadmin: [
-    // Main Section
-    { href: '/dashboard', icon: 'Home', label: 'Overview', section: 'main' },
-    
-    // Admin Section
-    { href: '/dashboard/admin/system', icon: 'Shield', label: 'System Admin', section: 'admin' },
-    { href: '/dashboard/admin/users', icon: 'Users', label: 'Users', section: 'admin' },
-    { href: '/dashboard/admin/teams', icon: 'Users', label: 'Teams', section: 'admin' },
-    { href: '/dashboard/admin/roles', icon: 'Lock', label: 'Roles & Permissions', section: 'admin' },
-    { href: '/dashboard/admin/analytics', icon: 'BarChart3', label: 'System Analytics', section: 'admin' },
-    { href: '/dashboard/admin/audit-logs', icon: 'FileText', label: 'Audit Logs', section: 'admin' },
-    { href: '/dashboard/admin/security', icon: 'Shield', label: 'Security', section: 'admin' },
-    { href: '/dashboard/admin/settings', icon: 'Settings', label: 'System Settings', section: 'admin' },
-    
-    // Platform Section
-    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena', section: 'platform' },
-    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner', section: 'platform' },
-    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning', section: 'platform' },
-    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard', section: 'platform' },
-    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements', section: 'platform' },
-    
-    // User Section
-    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings', section: 'user' },
-    { href: '/dashboard/profile', icon: 'User', label: 'Profile', section: 'user' },
-  ],
-  admin: [
-    { href: '/dashboard', icon: 'Home', label: 'Overview', section: 'main' },
-    { href: '/dashboard/admin/team', icon: 'Users', label: 'Team Management', section: 'admin' },
-    { href: '/dashboard/admin/team-analytics', icon: 'BarChart3', label: 'Team Analytics', section: 'admin' },
-    { href: '/dashboard/admin/team-settings', icon: 'Settings', label: 'Team Settings', section: 'admin' },
-    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena', section: 'platform' },
-    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner', section: 'platform' },
-    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning', section: 'platform' },
-    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard', section: 'platform' },
-    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements', section: 'platform' },
-    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings', section: 'user' },
-    { href: '/dashboard/profile', icon: 'User', label: 'Profile', section: 'user' },
-  ],
-  user: [
-    { href: '/dashboard', icon: 'Home', label: 'Overview', section: 'main' },
-    { href: '/dashboard/arena', icon: 'Trophy', label: 'Arena', section: 'platform' },
-    { href: '/dashboard/scanner', icon: 'Code2', label: 'Scanner', section: 'platform' },
-    { href: '/dashboard/learning', icon: 'BookOpen', label: 'Learning', section: 'platform' },
-    { href: '/dashboard/leaderboard', icon: 'BarChart3', label: 'Leaderboard', section: 'platform' },
-    { href: '/dashboard/achievements', icon: 'Star', label: 'Achievements', section: 'platform' },
-    { href: '/dashboard/settings', icon: 'Settings', label: 'Settings', section: 'user' },
-    { href: '/dashboard/profile', icon: 'User', label: 'Profile', section: 'user' },
-  ]
+export interface UserWithPermissions {
+  id: string
+  email: string
+  full_name: string | null
+  role: UserRole
+  is_active: boolean
+  tenant_id?: string
 }
 
 /**
- * Check if user has a specific permission
+ * Get current user with role from Supabase
  */
-export function hasPermission(role: UserRole, permission: string): boolean {
-  return ROLE_PERMISSIONS[role]?.includes(permission) ?? false
+export async function getCurrentUser(): Promise<UserWithPermissions | null> {
+  try {
+    const cookieStore = await cookies()
+    const supabase = createServerClient(
+      process.env.NEXT_PUBLIC_SUPABASE_URL!,
+      process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
+      {
+        cookies: {
+          getAll() {
+            return cookieStore.getAll()
+          },
+          setAll(cookiesToSet) {
+            cookiesToSet.forEach(({ name, value, options }) => {
+              cookieStore.set(name, value, options)
+            })
+          },
+        },
+      }
+    )
+
+    const {
+      data: { user },
+    } = await supabase.auth.getUser()
+
+    if (!user) return null
+
+    const { data: profile, error } = await supabase
+      .from('profiles')
+      .select('*')
+      .eq('id', user.id)
+      .single()
+
+    if (error) {
+      console.log('[v0] Profile fetch error:', error.message)
+      return null
+    }
+
+    const role = (profile?.role || 'user') as UserRole
+
+    return {
+      id: user.id,
+      email: user.email || '',
+      full_name: profile?.full_name,
+      role,
+      is_active: profile?.is_active !== false,
+      tenant_id: profile?.tenant_id,
+    }
+  } catch (error) {
+    console.error('[v0] Error fetching current user:', error)
+    return null
+  }
 }
 
 /**
  * Check if user can access a specific page
  */
-export function canAccessPage(role: UserRole, page: string): boolean {
-  return ACCESSIBLE_PAGES[role]?.includes(page) ?? false
+export function canAccessPage(role: UserRole, pathname: string): boolean {
+  const allowedPages = ACCESSIBLE_PAGES[role] || []
+  const basePath = pathname.split('?')[0]
+
+  return allowedPages.some(
+    (page) => basePath === page || basePath.startsWith(page + '/')
+  )
 }
 
 /**
- * Get redirect URL based on role
+ * Get accessible pages for a role
+ */
+export function getAccessiblePages(role: UserRole): string[] {
+  return ACCESSIBLE_PAGES[role] || []
+}
+
+/**
+ * Check if user is superadmin (has full unrestricted access)
+ */
+export function isSuperAdmin(role: UserRole): boolean {
+  return role === 'superadmin'
+}
+
+/**
+ * Check if user is admin or superadmin
+ */
+export function isAdmin(role: UserRole): boolean {
+  return role === 'admin' || role === 'superadmin'
+}
+
+/**
+ * Get default dashboard for role
  */
 export function getDefaultDashboard(role: UserRole): string {
   switch (role) {
@@ -180,49 +163,13 @@ export function getDefaultDashboard(role: UserRole): string {
 }
 
 /**
- * Get navigation items for role
+ * Get role display label
  */
-export function getNavItems(role: UserRole): Array<{href: string, icon: any, label: string}> {
-  return ROLE_NAV_ITEMS[role] ?? ROLE_NAV_ITEMS.user
-}
-
-/**
- * Fetch user role from Supabase
- */
-export async function fetchUserRole(userId: string): Promise<UserRole> {
-  try {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL
-    const supabaseKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY
-    
-    if (!supabaseUrl || !supabaseKey) {
-      return 'user'
-    }
-
-    const supabase = createClient(supabaseUrl, supabaseKey)
-    
-    const { data } = await supabase
-      .from('profiles')
-      .select('role')
-      .eq('id', userId)
-      .single()
-
-    return (data?.role as UserRole) || 'user'
-  } catch (error) {
-    console.error('[v0] Error fetching user role:', error)
-    return 'user'
+export function getRoleLabel(role: UserRole): string {
+  const labels: Record<UserRole, string> = {
+    superadmin: 'Super Admin',
+    admin: 'Admin',
+    user: 'User',
   }
-}
-
-/**
- * Check if user has admin access (superadmin or admin)
- */
-export function isAdmin(role: UserRole): boolean {
-  return role === 'superadmin' || role === 'admin'
-}
-
-/**
- * Check if user is superadmin
- */
-export function isSuperAdmin(role: UserRole): boolean {
-  return role === 'superadmin'
+  return labels[role] || role
 }

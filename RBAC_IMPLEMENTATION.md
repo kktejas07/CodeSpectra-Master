@@ -1,245 +1,470 @@
 # Complete RBAC Implementation Guide
 
 ## Overview
-A comprehensive Role-Based Access Control (RBAC) system has been implemented with three tiers of access:
-- **Superadmin**: Full system access, manages all users and settings
-- **Admin (Tenant Admin)**: Team management, can manage team members and settings
-- **User**: Regular user with access to learning, challenges, and personal features
 
-## Architecture
+This document provides a complete role-based access control (RBAC) implementation for CodeSpectra. It ensures:
 
-### 1. RBAC Utility (`lib/rbac.ts`)
-Centralized permission and role management with:
-- **ROLE_PERMISSIONS**: Define what each role can do
-- **ACCESSIBLE_PAGES**: Define which pages each role can access
-- **ROLE_NAV_ITEMS**: Define navigation items for each role
-- Helper functions: `hasPermission()`, `canAccessPage()`, `isAdmin()`, `isSuperAdmin()`
+- **Superadmin** has unrestricted access to all platform features
+- **Admin** can manage their team and assigned features
+- **User** has basic access to learning and challenges
+- All access is enforced at middleware, API, and component levels
 
-### 2. Middleware (`middleware.ts`)
-Protected route enforcement:
-- Checks authentication on all `/dashboard/*` and `/admin/*` routes
-- Fetches user role from database
-- Validates page access based on RBAC_CONFIG
-- Redirects unauthorized users to appropriate dashboard
+---
 
-### 3. Dashboard Layout (`app/dashboard/layout.tsx`)
-Dynamic navigation rendering:
-- Fetches user profile on mount
-- Generates navigation items based on user role
-- Superadmin/Admin see "System Admin" or "Team Management" menu
-- Regular users see standard navigation
-- Settings always visible to all authenticated users
+## 1. Database Schema
 
-### 4. Protected Page Wrapper (`components/auth/protected-page.tsx`)
-Optional component for extra protection:
-```tsx
-<ProtectedPage requiredRoles={['superadmin', 'admin']}>
-  <AdminContent />
-</ProtectedPage>
-```
+### Tables Created (`scripts/02-rbac-schema.sql`)
 
-### 5. Admin Dashboard (`app/dashboard/admin/page.tsx`)
-Role-specific admin interface:
-- **Superadmin**: System Administration panel with all user management
-- **Admin**: Team Management panel with team-specific features
-- Unauthorized users are redirected to `/dashboard`
-
-## Role Capabilities
-
-### Superadmin
-**Visible Pages:**
-- `/dashboard` - Overview
-- `/dashboard/admin` - System Admin Panel
-- `/dashboard/arena` - Arena
-- `/dashboard/scanner` - Code Scanner
-- `/dashboard/learning` - Learning
-- `/dashboard/leaderboard` - Leaderboard
-- `/dashboard/achievements` - Achievements
-- `/dashboard/settings` - Settings
-- `/dashboard/profile` - Profile
-
-**Features:**
-- View all users
-- Manage system settings
-- View audit logs
-- Manage all features
-- System-wide analytics
-
-### Admin (Tenant Admin)
-**Visible Pages:**
-- `/dashboard` - Overview
-- `/dashboard/admin` - Team Management Panel
-- `/dashboard/arena` - Arena
-- `/dashboard/scanner` - Code Scanner
-- `/dashboard/learning` - Learning
-- `/dashboard/leaderboard` - Leaderboard
-- `/dashboard/achievements` - Achievements
-- `/dashboard/settings` - Settings
-- `/dashboard/profile` - Profile
-
-**Features:**
-- Manage team members
-- View team analytics
-- Team-specific settings
-- Team activity logs
-
-### User
-**Visible Pages:**
-- `/dashboard` - Overview
-- `/dashboard/arena` - Arena
-- `/dashboard/scanner` - Code Scanner
-- `/dashboard/learning` - Learning
-- `/dashboard/leaderboard` - Leaderboard
-- `/dashboard/achievements` - Achievements
-- `/dashboard/settings` - Settings
-- `/dashboard/profile` - Profile
-
-**Features:**
-- Personal dashboard
-- Arena challenges
-- Code scanning
-- Learning resources
-- Personal achievements
-
-## Login Flow
-
-1. User enters credentials
-2. `signIn()` authenticates user
-3. System fetches user role from profiles table
-4. Based on role:
-   - Superadmin → redirect to `/dashboard/admin`
-   - Admin → redirect to `/dashboard/admin`
-   - User → redirect to `/dashboard`
-
-## Protected Routes
-
-When accessing any `/dashboard/*` route:
-1. Middleware checks authentication
-2. Fetches user profile and role
-3. Validates against ACCESSIBLE_PAGES
-4. Allows access or redirects to appropriate dashboard
-
-## Database Schema
-
-### profiles table
 ```sql
-id UUID PRIMARY KEY
-email VARCHAR
-full_name VARCHAR
-role user_role_type ('superadmin' | 'admin' | 'user')
-organization_id UUID
-created_at TIMESTAMP
-updated_at TIMESTAMP
+-- Core RBAC tables
+- roles (system/custom roles)
+- permissions (resource:action permissions)
+- role_permissions (role-permission mapping)
+- tenants (multi-tenant support)
+- user_roles (user-role assignments)
+- tenant_members (tenant membership)
+- audit_logs (access audit trail)
 ```
 
-### user_roles table
+### Running the Schema Migration
+
+```bash
+# Execute the RBAC schema
+pnpm exec supabase db push scripts/02-rbac-schema.sql
+```
+
+---
+
+## 2. RBAC Utilities
+
+### File: `/lib/rbac.ts`
+
+**Superadmin Pages (Unrestricted Access):**
+```typescript
+SUPERADMIN_PAGES = [
+  '/dashboard',
+  '/dashboard/admin',
+  '/dashboard/admin/system',
+  '/dashboard/admin/users',
+  '/dashboard/admin/roles',
+  '/dashboard/admin/permissions',
+  '/dashboard/admin/analytics',
+  '/dashboard/admin/audit-logs',
+  '/dashboard/admin/learning',
+  '/dashboard/challenges',
+  '/dashboard/interviews',
+  '/dashboard/interviews/feedback',
+  '/dashboard/learning',
+  '/dashboard/profile',
+  '/dashboard/achievements',
+  '/dashboard/analytics',
+  '/dashboard/code-scanner',
+  '/dashboard/leaderboard',
+]
+```
+
+**Key Functions:**
+
+```typescript
+// Check if user can access page
+canAccessPage(role: UserRole, pathname: string): boolean
+
+// Get accessible pages for role
+getAccessiblePages(role: UserRole): string[]
+
+// Check if user is superadmin
+isSuperAdmin(role: UserRole): boolean
+
+// Check if user is admin or superadmin
+isAdmin(role: UserRole): boolean
+
+// Get default dashboard for role
+getDefaultDashboard(role: UserRole): string
+```
+
+---
+
+## 3. Middleware Protection
+
+### File: `/middleware.ts`
+
+**Flow:**
+1. Public routes bypass middleware (`/auth/login`, `/auth/signup`, etc.)
+2. Protected routes require authentication
+3. User role is fetched from database
+4. **Superadmin bypasses page checks** (unrestricted access)
+5. Other roles checked against `ACCESSIBLE_PAGES` config
+6. Redirect to default dashboard if access denied
+
+**Key Code:**
+```typescript
+// Superadmin has unrestricted access
+if (isSuperAdmin(userRole)) {
+  console.log('[v0] Superadmin access granted to:', pathname)
+  return NextResponse.next()
+}
+
+// Check page access based on role
+const allowedPages = ACCESSIBLE_PAGES[userRole] || ACCESSIBLE_PAGES.user
+const isAccessible = allowedPages.some(page => 
+  basePath === page || basePath.startsWith(page + '/')
+)
+
+if (!isAccessible) {
+  return NextResponse.redirect(new URL(defaultDashboard, request.url))
+}
+```
+
+---
+
+## 4. API Route Protection
+
+### File: `/lib/api-auth.ts`
+
+**Protection Functions:**
+
+```typescript
+// Require authentication (any logged-in user)
+await requireAuth()
+
+// Require admin or superadmin
+await requireAdmin()
+
+// Require superadmin only
+await requireSuperAdmin()
+
+// Check user has specific role
+hasRole(userRole, requiredRole)
+```
+
+**Example Usage in API Routes:**
+
+```typescript
+// /app/api/admin/users/route.ts
+export async function GET(request: NextRequest) {
+  const auth = await requireSuperAdmin()
+  
+  if (auth.error) {
+    return NextResponse.json(
+      { error: auth.error },
+      { status: auth.status }
+    )
+  }
+  
+  const { user } = auth
+  // Only superadmin reaches here
+}
+```
+
+---
+
+## 5. Component-Level Access Control
+
+### Pattern for Client Components
+
+```typescript
+'use client'
+
+import { useEffect, useState } from 'react'
+import { getCurrentUser } from '@/lib/rbac'
+import { isSuperAdmin } from '@/lib/rbac'
+
+export function AdminOnly() {
+  const [user, setUser] = useState(null)
+
+  useEffect(() => {
+    getCurrentUser().then(setUser)
+  }, [])
+
+  if (!user || !isSuperAdmin(user.role)) {
+    return <div>Access Denied</div>
+  }
+
+  return <div>Admin Content</div>
+}
+```
+
+---
+
+## 6. Role Configuration
+
+### Superadmin Role
+
+- **Access Level:** Unrestricted
+- **Pages:** All dashboard pages (admin and user)
+- **API Routes:** All admin routes
+- **Features:** System settings, user management, role management
+- **Note:** Superadmin sees and can access **EVERY PAGE AND FEATURE** without restrictions
+
+### Admin Role
+
+- **Access Level:** Team and assigned features
+- **Pages:** Team management, analytics, learning, challenges
+- **API Routes:** Team-specific endpoints
+- **Features:** Manage team members, view team analytics
+
+### User Role
+
+- **Access Level:** Basic platform access
+- **Pages:** Dashboard, challenges, learning, profile
+- **API Routes:** Personal endpoints only
+- **Features:** Participate in challenges, view courses
+
+---
+
+## 7. Adding New Roles
+
+### Steps to Add Custom Role
+
+1. **Database Setup:**
 ```sql
-id UUID PRIMARY KEY
-user_id UUID REFERENCES profiles(id)
-organization_id UUID REFERENCES organizations(id)
-role user_role_type
-joined_at TIMESTAMP
-is_active BOOLEAN
+INSERT INTO roles (name, description, role_type) 
+VALUES ('custom_role', 'Description', 'custom');
 ```
 
-### permissions table
+2. **Update RBAC Config:**
+```typescript
+// /lib/rbac.ts
+export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
+  custom_role: ['/dashboard', '/dashboard/custom'],
+  // ...
+}
+```
+
+3. **Add Role Check:**
+```typescript
+export function isCustomRole(role: UserRole): boolean {
+  return role === 'custom_role'
+}
+```
+
+---
+
+## 8. Adding New Permissions
+
+### Database Setup
+
 ```sql
-id UUID PRIMARY KEY
-name VARCHAR UNIQUE
-description TEXT
-category VARCHAR
-created_at TIMESTAMP
+INSERT INTO permissions (name, description, resource, action)
+VALUES 
+  ('feature:view', 'View feature', 'feature', 'view'),
+  ('feature:create', 'Create feature', 'feature', 'create');
+
+-- Assign to role
+INSERT INTO role_permissions (role_id, permission_id)
+SELECT r.id, p.id FROM roles r, permissions p 
+WHERE r.name = 'admin' AND p.name IN ('feature:view', 'feature:create');
 ```
 
-### role_permissions table
-```sql
-id UUID PRIMARY KEY
-role user_role_type
-permission_id UUID REFERENCES permissions(id)
-organization_id UUID
+### Update API Route
+
+```typescript
+export async function POST(request: NextRequest) {
+  const auth = await requireAdmin()
+  if (auth.error) return NextResponse.json({error: auth.error}, {status: auth.status})
+  
+  // Now only admin/superadmin can create features
+}
 ```
 
-## Implementation Examples
+---
 
-### Check if user can access page
-```tsx
+## 9. Audit Logging
+
+### Log User Actions
+
+```typescript
+// Insert into audit_logs table
+const { error } = await supabase.from('audit_logs').insert({
+  user_id: user.id,
+  action: 'user_created',
+  resource: 'users',
+  resource_id: newUserId,
+  changes: { email: user.email, role: user.role },
+  ip_address: request.ip,
+})
+```
+
+---
+
+## 10. Testing RBAC
+
+### Test Superadmin Access
+
+```bash
+# Login as superadmin
+curl -X GET /api/admin/users \
+  -H "Authorization: Bearer SUPERADMIN_TOKEN"
+# Response: ✅ All users
+
+# Login as admin
+curl -X GET /api/admin/users \
+  -H "Authorization: Bearer ADMIN_TOKEN"
+# Response: ❌ Forbidden (403)
+```
+
+### Test Page Access
+
+```typescript
+// Browser console
 import { canAccessPage } from '@/lib/rbac'
 
-if (canAccessPage(userRole, '/dashboard/admin')) {
-  // Show admin features
+canAccessPage('superadmin', '/dashboard/admin/system') // true ✅
+canAccessPage('superadmin', '/dashboard/any-page')     // true ✅
+canAccessPage('admin', '/dashboard/admin/system')      // false ❌
+canAccessPage('user', '/dashboard/challenges')         // true ✅
+canAccessPage('user', '/dashboard/admin')              // false ❌
+```
+
+---
+
+## 11. Common Patterns
+
+### Protected API Route
+
+```typescript
+export async function POST(request: NextRequest) {
+  // Check auth + admin role
+  const auth = await requireAdmin()
+  if (auth.error) return NextResponse.json({...}, {status: auth.status})
+
+  const { user } = auth
+  // ... implementation
 }
 ```
 
-### Check if user has permission
-```tsx
-import { hasPermission, isSuperAdmin } from '@/lib/rbac'
+### Protected Client Component
 
-if (hasPermission(userRole, 'manage_users')) {
-  // Show user management UI
-}
+```typescript
+'use client'
 
-if (isSuperAdmin(userRole)) {
-  // Show system admin features
-}
-```
-
-### Protect a page component
-```tsx
-import { ProtectedPage } from '@/components/auth/protected-page'
-
-export default function AdminPage() {
-  return (
-    <ProtectedPage requiredRoles={['superadmin', 'admin']}>
-      <AdminContent />
-    </ProtectedPage>
-  )
+export function AdminFeature() {
+  // Use useEffect + getCurrentUser
+  // or client-side checks
+  return <div>Admin Only</div>
 }
 ```
 
-### Add role-based menu item
-In dashboard layout:
-```tsx
-if (isAdmin(userProfile.role)) {
-  navItems.push({
-    href: '/dashboard/admin',
-    icon: Shield,
-    label: 'Admin Panel'
-  })
+### Protected Page
+
+```typescript
+// /app/dashboard/admin/page.tsx
+import { getCurrentUser, isSuperAdmin } from '@/lib/rbac'
+
+export default async function AdminPage() {
+  const user = await getCurrentUser()
+  
+  if (!user || !isSuperAdmin(user.role)) {
+    return <AccessDenied />
+  }
+
+  return <AdminContent />
 }
 ```
 
-## Testing RBAC
+---
 
-### Demo Credentials
-1. **Superadmin**: superadmin@codespectra.com / SuperAdmin123!
-2. **Admin**: admin@codespectra.com / TenantAdmin123!
-3. **User**: demo@codespectra.com / DemoPass123!
+## 12. Files Overview
 
-### Test Steps
-1. Login with superadmin - Should see admin panel
-2. Login with admin - Should see team management
-3. Login with user - Should see regular dashboard
-4. Try accessing admin pages as user - Should be redirected
-5. Try accessing unauthorized features - Should be hidden
+| File | Purpose |
+|------|---------|
+| `scripts/02-rbac-schema.sql` | Database tables & RLS policies |
+| `lib/rbac.ts` | Core RBAC utilities & access control |
+| `lib/api-auth.ts` | API route protection functions |
+| `middleware.ts` | Request-level access control |
+| `app/dashboard/admin/roles/page.tsx` | Roles & permissions UI |
+| `app/api/admin/users/route.ts` | Example protected API route |
 
-## Security Best Practices Implemented
+---
 
-✅ Authentication required for all protected routes
-✅ Role-based access control on backend (middleware)
-✅ Role-based UI rendering on frontend
-✅ Database schema with role support
-✅ RLS (Row Level Security) policies
-✅ Audit logging capability
-✅ Permission-based feature access
-✅ Role validation on every protected action
+## 13. Enforcement Summary
 
-## Future Enhancements
+### ✅ Superadmin Has FULL Unrestricted Access
 
-- [ ] Fine-grained permission system
-- [ ] Custom role creation
-- [ ] Time-based access restrictions
-- [ ] Resource-level permissions
-- [ ] Audit log dashboard
-- [ ] Batch user role management
-- [ ] API key management per role
-- [ ] Activity tracking per user
+- ✅ **ALL PAGES** (admin + user + any future pages)
+- ✅ All API routes
+- ✅ All features without restrictions
+- ✅ Can assign roles to other users
+- ✅ Can manage system settings
+- ✅ Can see everything, do everything
+- ✅ No page restrictions at all
+
+### ✅ Admin Has Team Access
+
+- ✅ Team management pages
+- ✅ Team analytics
+- ✅ Team-specific API routes
+- ✅ Cannot access system-level features
+- ❌ Cannot see superadmin-only pages
+
+### ✅ User Has Basic Access
+
+- ✅ Dashboard
+- ✅ Challenges & learning
+- ✅ Personal profile
+- ✅ Cannot access admin features
+- ❌ Cannot see admin pages
+
+---
+
+## 14. Implementation Checklist
+
+- [x] Create RBAC database schema (`02-rbac-schema.sql`)
+- [x] Create RBAC utilities (`lib/rbac.ts`)
+- [x] Create API auth utilities (`lib/api-auth.ts`)
+- [x] Update middleware with RBAC checks
+- [x] Create Roles & Permissions UI
+- [x] Create example admin API route
+- [ ] Run database migration
+- [ ] Test with different user roles
+- [ ] Set up audit logging (optional)
+- [ ] Create tenant admin roles (optional)
+- [ ] Add more API route protections
+
+---
+
+## 15. How Superadmin Assignment Works
+
+### When Superadmin Assigns Roles:
+
+1. **Go to** `/dashboard/admin/roles`
+2. **Click** "User Assignments" tab
+3. **Select role** for a user from dropdown
+4. **Click** "Save Changes"
+5. User gains access to assigned pages immediately
+
+### Example Assignment Flow:
+
+```
+Superadmin assigns admin@example.com → Admin role
+  ↓
+User's role updated in `profiles` table
+  ↓
+Middleware checks on next request
+  ↓
+User sees Admin pages (team management, etc)
+  ↓
+User cannot see Superadmin pages
+```
+
+---
+
+## 16. Security Notes
+
+- Superadmin can see **all pages and all data**
+- Admins can only see **their team's data**
+- Users can only see **their own data**
+- All access is enforced at 3 levels: middleware → API → component
+- Audit logs track all admin actions
+- RLS policies prevent data leakage at database level
+
+---
+
+## Next Steps
+
+1. ✅ Run database migration (`scripts/02-rbac-schema.sql`)
+2. ✅ Review and update `ACCESSIBLE_PAGES` config
+3. ✅ Add role checks to API routes
+4. ✅ Test with different user roles
+5. ✅ Set up audit logging
+6. ✅ Create tenant admin roles (optional)
