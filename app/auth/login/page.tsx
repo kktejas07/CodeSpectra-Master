@@ -47,8 +47,6 @@ export default function Login() {
             .eq('id', data.userId)
             .single()
 
-          console.log('[v0] Face login profile:', { profile, error: profileError })
-
           // Redirect based on role
           let redirectPath = '/dashboard'
           if (profile?.role === 'superadmin') {
@@ -60,7 +58,6 @@ export default function Login() {
           }
 
           console.log('[v0] Face login - User role:', profile?.role, 'Redirecting to:', redirectPath)
-          setTimeout(() => router.push(redirectPath), 500)
         } else {
           console.log('[v0] Face login - Missing Supabase config')
           setTimeout(() => router.push('/dashboard'), 500)
@@ -104,8 +101,6 @@ export default function Login() {
             .single()
 
           console.log('[v0] Profile fetch result:', { profile, error: profileError })
-
-          // Redirect based on role
           let redirectPath = '/dashboard'
           if (profile?.role === 'superadmin') {
             redirectPath = '/dashboard/admin/system'

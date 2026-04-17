@@ -53,8 +53,13 @@ export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
   superadmin: [
     '/dashboard',
     '/dashboard/admin',
+    '/dashboard/admin/system',
     '/dashboard/admin/users',
     '/dashboard/admin/teams',
+    '/dashboard/admin/roles',
+    '/dashboard/admin/analytics',
+    '/dashboard/admin/audit-logs',
+    '/dashboard/admin/security',
     '/dashboard/admin/settings',
     '/dashboard/overview',
     '/dashboard/arena',
@@ -68,6 +73,9 @@ export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
   admin: [
     '/dashboard',
     '/dashboard/admin',
+    '/dashboard/admin/team',
+    '/dashboard/admin/team-analytics',
+    '/dashboard/admin/team-settings',
     '/dashboard/overview',
     '/dashboard/arena',
     '/dashboard/scanner',

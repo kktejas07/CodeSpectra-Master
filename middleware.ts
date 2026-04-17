@@ -74,8 +74,8 @@ export async function middleware(request: NextRequest) {
       if (!isAccessible) {
         console.log(`[v0] Access denied for ${userRole} to ${basePath}`)
         // Redirect to default dashboard for their role
-        const defaultDashboard = userRole === 'superadmin' ? '/dashboard/admin' : 
-                                 userRole === 'admin' ? '/dashboard/admin' : 
+        const defaultDashboard = userRole === 'superadmin' ? '/dashboard/admin/system' : 
+                                 userRole === 'admin' ? '/dashboard/admin/team' : 
                                  '/dashboard'
         return NextResponse.redirect(new URL(defaultDashboard, request.url))
       }
