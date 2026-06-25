@@ -115,7 +115,7 @@ function LoginInner() {
               type="checkbox"
               checked={rememberMe}
               onChange={(e) => setRememberMe(e.target.checked)}
-              className="h-4 w-4 rounded border-input"
+              className="h-4 w-4 rounded border-input accent-primary"
               data-testid="login-remember-checkbox"
             />
             <span>Remember me</span>
