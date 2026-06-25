@@ -1,89 +1,101 @@
-from fastapi import FastAPI, APIRouter
+"""
+Thin proxy server: forwards every `/api/*` request to the Next.js dev
+server running on localhost:3000.
+
+The CodeSpectra migration moved the entire app to Next.js, which serves
+both pages and API routes from port 3000. The Kubernetes ingress in this
+preview environment forwards `/api/*` to port 8001, so we proxy through
+to keep that contract working transparently.
+"""
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
 from dotenv import load_dotenv
-from starlette.middleware.cors import CORSMiddleware
-from motor.motor_asyncio import AsyncIOMotorClient
 import os
+import httpx
 import logging
 from pathlib import Path
-from pydantic import BaseModel, Field, ConfigDict
-from typing import List
-import uuid
-from datetime import datetime, timezone
 
 
 ROOT_DIR = Path(__file__).parent
-load_dotenv(ROOT_DIR / '.env')
+load_dotenv(ROOT_DIR / ".env")
 
-# MongoDB connection
-mongo_url = os.environ['MONGO_URL']
-client = AsyncIOMotorClient(mongo_url)
-db = client[os.environ['DB_NAME']]
+NEXT_ORIGIN = os.environ.get("NEXTJS_INTERNAL_URL", "http://localhost:3000")
 
-# Create the main app without a prefix
-app = FastAPI()
+app = FastAPI(title="CodeSpectra API proxy")
 
-# Create a router with the /api prefix
-api_router = APIRouter(prefix="/api")
+# Shared async HTTP client (keep-alive pool)
+_client = httpx.AsyncClient(timeout=30.0, follow_redirects=False)
+
+# Hop-by-hop headers that must not be forwarded.
+HOP_HEADERS = {
+    "connection",
+    "keep-alive",
+    "proxy-authenticate",
+    "proxy-authorization",
+    "te",
+    "trailers",
+    "transfer-encoding",
+    "upgrade",
+    "host",
+    "content-length",
+}
 
 
-# Define Models
-class StatusCheck(BaseModel):
-    model_config = ConfigDict(extra="ignore")  # Ignore MongoDB's _id field
-    
-    id: str = Field(default_factory=lambda: str(uuid.uuid4()))
-    client_name: str
-    timestamp: datetime = Field(default_factory=lambda: datetime.now(timezone.utc))
+async def _forward(request: Request, path: str) -> Response:
+    upstream = f"{NEXT_ORIGIN}/{path}"
+    if request.url.query:
+        upstream = f"{upstream}?{request.url.query}"
 
-class StatusCheckCreate(BaseModel):
-    client_name: str
+    headers = {
+        k: v
+        for k, v in request.headers.items()
+        if k.lower() not in HOP_HEADERS
+    }
+    # Set a sane forwarded-host so Better Auth + Next.js see the right origin.
+    fwd_host = request.headers.get("x-forwarded-host") or request.headers.get("host")
+    if fwd_host:
+        headers["x-forwarded-host"] = fwd_host
+        headers["host"] = "localhost:3000"
 
-# Add your routes to the router instead of directly to app
-@api_router.get("/")
-async def root():
-    return {"message": "Hello World"}
+    body = await request.body()
 
-@api_router.post("/status", response_model=StatusCheck)
-async def create_status_check(input: StatusCheckCreate):
-    status_dict = input.model_dump()
-    status_obj = StatusCheck(**status_dict)
-    
-    # Convert to dict and serialize datetime to ISO string for MongoDB
-    doc = status_obj.model_dump()
-    doc['timestamp'] = doc['timestamp'].isoformat()
-    
-    _ = await db.status_checks.insert_one(doc)
-    return status_obj
+    try:
+        upstream_res = await _client.request(
+            method=request.method,
+            url=upstream,
+            headers=headers,
+            content=body,
+        )
+    except httpx.RequestError as e:
+        logging.exception("Proxy upstream error")
+        return Response(
+            content=f'{{"error":"upstream unreachable","detail":"{type(e).__name__}"}}',
+            media_type="application/json",
+            status_code=502,
+        )
 
-@api_router.get("/status", response_model=List[StatusCheck])
-async def get_status_checks():
-    # Exclude MongoDB's _id field from the query results
-    status_checks = await db.status_checks.find({}, {"_id": 0}).to_list(1000)
-    
-    # Convert ISO string timestamps back to datetime objects
-    for check in status_checks:
-        if isinstance(check['timestamp'], str):
-            check['timestamp'] = datetime.fromisoformat(check['timestamp'])
-    
-    return status_checks
+    # Strip hop-by-hop response headers
+    response_headers = {
+        k: v
+        for k, v in upstream_res.headers.items()
+        if k.lower() not in HOP_HEADERS
+    }
 
-# Include the router in the main app
-app.include_router(api_router)
+    return Response(
+        content=upstream_res.content,
+        status_code=upstream_res.status_code,
+        headers=response_headers,
+    )
 
-app.add_middleware(
-    CORSMiddleware,
-    allow_credentials=True,
-    allow_origins=os.environ.get('CORS_ORIGINS', '*').split(','),
-    allow_methods=["*"],
-    allow_headers=["*"],
+
+@app.get("/api/__proxy_health")
+async def health() -> dict[str, str]:
+    return {"status": "ok", "upstream": NEXT_ORIGIN}
+
+
+@app.api_route(
+    "/api/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
 )
-
-# Configure logging
-logging.basicConfig(
-    level=logging.INFO,
-    format='%(asctime)s - %(name)s - %(levelname)s - %(message)s'
-)
-logger = logging.getLogger(__name__)
-
-@app.on_event("shutdown")
-async def shutdown_db_client():
-    client.close()
+async def proxy_api(request: Request, path: str) -> Response:
+    return await _forward(request, f"api/{path}")
