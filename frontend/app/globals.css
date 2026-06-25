@@ -3,11 +3,13 @@
 
 @custom-variant dark (&:is(.dark *));
 
-/* Make Tailwind's `font-sans` and `font-mono` use Plus Jakarta Sans /
-   JetBrains Mono loaded via next/font in app/layout.tsx. */
+/* Make Tailwind's `font-sans` AND `font-mono` use JetBrains Mono — coding-theme
+   pattern style as requested. The whole UI uses the same monospace family for
+   a consistent IDE-like look. */
 @theme {
   --font-sans:
-    var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, system-ui, sans-serif;
+    var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
+    monospace;
   --font-mono:
     var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
     monospace;

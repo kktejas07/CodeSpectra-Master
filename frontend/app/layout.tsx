@@ -1,15 +1,9 @@
 import type { Metadata } from 'next'
-import { Plus_Jakarta_Sans, JetBrains_Mono } from 'next/font/google'
+import { JetBrains_Mono } from 'next/font/google'
 import { ToastProvider } from '@/lib/toast-context'
 import { ThemeProvider } from 'next-themes'
 import './globals.css'
 
-const sans = Plus_Jakarta_Sans({
-  subsets: ['latin'],
-  variable: '--font-sans',
-  display: 'swap',
-  weight: ['400', '500', '600', '700', '800'],
-})
 const mono = JetBrains_Mono({
   subsets: ['latin'],
   variable: '--font-mono',
@@ -40,7 +34,7 @@ export default function RootLayout({
     <html
       lang="en"
       suppressHydrationWarning
-      className={`${sans.variable} ${mono.variable}`}
+      className={`${mono.variable}`}
     >
       <body
         className="font-sans antialiased bg-background text-foreground"

@@ -51,6 +51,7 @@ import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { LearningSidebarNav } from '@/components/dashboard/learning-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
 import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
+import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -140,7 +141,10 @@ export default function DashboardLayout({
     const baseLeaves: NavLeaf[] = [
       { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
       { href: '/dashboard/scanner?mode=manual', icon: CodeIcon, label: 'Scanner' },
+      { href: '/dashboard/agent', icon: Bot, label: 'Agent' },
       { href: LEARNING_HUB_DEFAULT, icon: BookOpen, label: 'Learning' },
+      { href: '/dashboard/skill-analytics', icon: SparklesIcon, label: 'Skill Analytics' },
+      { href: '/dashboard/identity-verify', icon: CameraIcon, label: 'Identity Verify' },
       { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
       { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
     ]
@@ -582,6 +586,8 @@ export default function DashboardLayout({
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
+      {/* Floating Ask CodeSpectra AI assistant — available across the dashboard */}
+      <AskCodeSpectra />
     </div>
   )
 }

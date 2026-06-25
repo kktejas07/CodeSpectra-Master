@@ -12,9 +12,12 @@ import {
   Loader2,
   Play,
   Send,
+  Sparkles,
   XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
+import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -99,9 +102,11 @@ export default function ProblemDetailPage() {
 
   const [language, setLanguage] = useState<string>('python')
   const [source, setSource] = useState<string>('')
-  const [tab, setTab] = useState<'samples' | 'results' | 'console'>('samples')
+  const [tab, setTab] = useState<'samples' | 'results' | 'console' | 'analysis'>('samples')
   const [running, setRunning] = useState<'run' | 'submit' | null>(null)
   const [result, setResult] = useState<RunResponse | null>(null)
+  const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null)
+  const [analysisLoading, setAnalysisLoading] = useState(false)
   const sourceRef = useRef(source)
   sourceRef.current = source
 
@@ -151,6 +156,25 @@ export default function ProblemDetailPage() {
         throw new Error(json.error || `HTTP ${res.status}`)
       }
       setResult(json)
+      // Auto-run AI Code Analysis on submit
+      if (mode === 'submit') {
+        setAnalysisLoading(true)
+        fetch('/api/ai/code-analysis', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            code: sourceRef.current,
+            language,
+            problem_title: problem.title,
+            passed_tests: json.passed_tests,
+            total_tests: json.total_tests,
+          }),
+        })
+          .then((r) => (r.ok ? r.json() : null))
+          .then((j) => setAnalysis(j))
+          .catch(() => null)
+          .finally(() => setAnalysisLoading(false))
+      }
     } catch (e) {
       setResult({
         mode,
@@ -203,6 +227,9 @@ export default function ProblemDetailPage() {
 
   return (
     <div className="h-screen flex flex-col bg-background overflow-hidden">
+      {/* AI Proctoring — silent monitor pinned top-right */}
+      <ProctorMonitor sessionKind="problem" sessionId={problem.slug} />
+
       {/* Top bar */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0">
         <div className="flex items-center gap-3 min-w-0">
@@ -318,6 +345,13 @@ export default function ProblemDetailPage() {
               <p className="text-sm text-muted-foreground">{problem.example_explanation}</p>
             </Section>
           )}
+
+          {/* AI Smart Hints */}
+          <SmartHintsPanel
+            problemSlug={problem.slug}
+            language={language}
+            currentCode={source}
+          />
         </section>
 
         {/* RIGHT — Editor + console */}
@@ -398,6 +432,11 @@ export default function ProblemDetailPage() {
               <TabBtn current={tab} value="console" onClick={setTab}>
                 Console
               </TabBtn>
+              <TabBtn current={tab} value="analysis" onClick={setTab}>
+                <span className="inline-flex items-center gap-1">
+                  <Sparkles className="h-3 w-3 text-primary" /> AI Analysis
+                </span>
+              </TabBtn>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {tab === 'samples' && (
@@ -409,6 +448,9 @@ export default function ProblemDetailPage() {
                   {result?.stderr_excerpt ||
                     '// stdout/stderr from your last run will appear here'}
                 </pre>
+              )}
+              {tab === 'analysis' && (
+                <AnalysisPanel analysis={analysis} loading={analysisLoading} hasSubmitted={!!result && result.mode === 'submit'} />
               )}
             </div>
           </div>
@@ -452,8 +494,8 @@ function TabBtn({
   children,
 }: {
   current: string
-  value: 'samples' | 'results' | 'console'
-  onClick: (v: 'samples' | 'results' | 'console') => void
+  value: 'samples' | 'results' | 'console' | 'analysis'
+  onClick: (v: 'samples' | 'results' | 'console' | 'analysis') => void
   children: React.ReactNode
 }) {
   const active = current === value

@@ -23,6 +23,12 @@ NEXT_ORIGIN = os.environ.get("NEXTJS_INTERNAL_URL", "http://localhost:3000")
 
 app = FastAPI(title="CodeSpectra API proxy")
 
+# Internal AI router — used by Next.js server-side API routes via
+# `http://localhost:8001/internal/ai/*`. NOT exposed through the Kubernetes
+# ingress (which only forwards `/api/*`).
+from ai_router import router as ai_router  # noqa: E402
+app.include_router(ai_router)
+
 # Shared async HTTP client (keep-alive pool)
 _client = httpx.AsyncClient(timeout=30.0, follow_redirects=False)
 
