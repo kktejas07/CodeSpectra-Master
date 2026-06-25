@@ -3,9 +3,9 @@
   "version": "0.1.0",
   "private": true,
   "scripts": {
-    "dev": "next dev",
+    "dev": "next dev --webpack",
     "build": "next build",
-    "start": "next dev -p 3000 -H 0.0.0.0",
+    "start": "next dev --webpack -p 3000 -H 0.0.0.0",
     "lint": "eslint .",
     "stripe:bootstrap": "node scripts/stripe-billing-bootstrap.mjs",
     "stripe:listen": "node scripts/run-stripe-listen.mjs"

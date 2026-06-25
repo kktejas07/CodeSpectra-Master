@@ -296,6 +296,20 @@ export function Globe3D({
     layoutMetrics()
     window.addEventListener('resize', onResize)
 
+    // ResizeObserver picks up container resizes (flex/grid layout) that
+    // `window.resize` misses — without it the canvas keeps its 300x150
+    // default internal buffer when the parent's actual size grows later.
+    const resizeObserver = new ResizeObserver(() => {
+      // Don't debounce here — we want immediate updates on actual size changes.
+      layoutMetrics()
+    })
+    resizeObserver.observe(canvas)
+    if (canvas.parentElement) resizeObserver.observe(canvas.parentElement)
+
+    // Force one more layout on next animation frame in case the parent
+    // wasn't measured yet during the initial useEffect run.
+    requestAnimationFrame(() => layoutMetrics())
+
     if (interactive) {
       canvas.style.cursor = 'grab'
       canvas.addEventListener('pointerdown', handlePointerDown)
@@ -313,6 +327,7 @@ export function Globe3D({
 
     return () => {
       window.removeEventListener('resize', onResize)
+      resizeObserver.disconnect()
       clearTimeout(resizeTimer)
       observer.disconnect()
       if (interactive) {
