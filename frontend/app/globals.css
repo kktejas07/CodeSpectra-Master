@@ -199,8 +199,11 @@
   }
   
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rounding-metrics" 1;
+    @apply bg-background text-foreground font-sans;
+    font-family:
+      var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
+      monospace;
+    font-feature-settings: 'rounding-metrics' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
   }

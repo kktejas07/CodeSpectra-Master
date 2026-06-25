@@ -37,7 +37,7 @@ export default function RootLayout({
       className={`${mono.variable}`}
     >
       <body
-        className="font-sans antialiased bg-background text-foreground"
+        className="antialiased bg-background text-foreground font-mono"
         suppressHydrationWarning
       >
         <ThemeProvider
