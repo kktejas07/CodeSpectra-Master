@@ -35,6 +35,12 @@ export async function proxy(request: NextRequest) {
   });
 
   if (!sessionCookie) {
+    // DEMO MODE: while MONGODB_URI is unset, let users preview /dashboard/* and /admin/*
+    // pages without authentication so they can see what was built. Remove this
+    // block in production.
+    if (!process.env.MONGODB_URI) {
+      return NextResponse.next()
+    }
     const loginUrl = new URL("/auth/login", request.url);
     loginUrl.searchParams.set("redirectTo", pathname);
     return NextResponse.redirect(loginUrl);
