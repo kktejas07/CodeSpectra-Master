@@ -1,0 +1,18 @@
+# Supabase Configuration
+# This file is used by the Supabase CLI
+
+[project]
+# Supabase project configuration
+
+[api]
+# API configuration
+
+[db]
+# Database configuration
+
+[auth]
+# Authentication configuration
+
+# GitHub push queue — scheduled drain via Supabase Edge (see `supabase/functions/github-scan-queue/index.ts`).
+[functions.github-scan-queue]
+verify_jwt = false

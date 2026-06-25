@@ -1,0 +1,590 @@
+@import 'tailwindcss';
+@import 'tw-animate-css';
+
+@custom-variant dark (&:is(.dark *));
+
+/* Optimus / v0 marketing theme — light */
+:root {
+  /* Neutral — soft paper white */
+  --background: 40 20% 99%;
+  --foreground: 240 10% 4%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 4%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 4%;
+  
+  /* Primary accent - Vibrant blue */
+  --primary: 221 83% 53%;
+  --primary-foreground: 0 0% 100%;
+  
+  /* Secondary colors */
+  --secondary: 240 5% 96%;
+  --secondary-foreground: 240 6% 10%;
+  
+  /* Neutral grays */
+  --muted: 240 6% 96%;
+  --muted-foreground: 240 4% 42%;
+  
+  /* Accent */
+  --accent: 240 5% 96%;
+  --accent-foreground: 240 6% 10%;
+  
+  /* Destructive */
+  --destructive: 0 84% 60%;
+  --destructive-foreground: 0 0% 100%;
+  
+  /* Success */
+  --success: 142 76% 36%;
+  --success-foreground: 0 0% 100%;
+  
+  /* Borders and input */
+  --border: 240 6% 91%;
+  --input: 240 6% 91%;
+  --ring: 221 83% 53%;
+  
+  /* Charts */
+  --chart-1: 221 83% 53%;
+  --chart-2: 142 76% 36%;
+  --chart-3: 215 20% 50%;
+  --chart-4: 25 95% 53%;
+  --chart-5: 199 89% 48%;
+  
+  /* Radius */
+  --radius: 0.625rem;
+  
+  /* Sidebar */
+  --sidebar: 0 0% 100%;
+  --sidebar-foreground: 240 10% 4%;
+  --sidebar-primary: 221 83% 53%;
+  --sidebar-primary-foreground: 0 0% 100%;
+  --sidebar-accent: 240 5% 96%;
+  --sidebar-accent-foreground: 240 6% 10%;
+  --sidebar-border: 240 6% 90%;
+  --sidebar-ring: 221 83% 53%;
+
+  /* Inverted marketing band (e.g. Process / how-it-works) — near-black + light text in light & dark */
+  --marketing-band-bg: 240 10% 4%;
+  --marketing-band-fg: 0 0% 98%;
+}
+
+/* Optimus Theme - Dark Mode (Default) */
+.dark {
+  /* Deep dark backgrounds */
+  --background: 240 10% 4%;
+  --foreground: 0 0% 98%;
+  --card: 240 10% 6%;
+  --card-foreground: 0 0% 98%;
+  --popover: 240 10% 6%;
+  --popover-foreground: 0 0% 98%;
+  
+  /* Primary accent - Bright blue */
+  --primary: 217 91% 60%;
+  --primary-foreground: 240 10% 4%;
+  
+  /* Secondary colors */
+  --secondary: 240 4% 16%;
+  --secondary-foreground: 0 0% 98%;
+  
+  /* Neutral grays */
+  --muted: 240 4% 16%;
+  --muted-foreground: 240 5% 65%;
+  
+  /* Accent */
+  --accent: 240 4% 16%;
+  --accent-foreground: 0 0% 98%;
+  
+  /* Destructive */
+  --destructive: 0 72% 51%;
+  --destructive-foreground: 0 0% 98%;
+  
+  /* Success */
+  --success: 142 71% 45%;
+  --success-foreground: 240 10% 4%;
+  
+  /* Borders and input */
+  --border: 240 4% 16%;
+  --input: 240 4% 16%;
+  --ring: 217 91% 60%;
+  
+  /* Charts */
+  --chart-1: 217 91% 60%;
+  --chart-2: 142 71% 45%;
+  --chart-3: 215 18% 55%;
+  --chart-4: 25 95% 53%;
+  --chart-5: 199 89% 48%;
+  
+  /* Radius */
+  --radius: 0.625rem;
+  
+  /* Sidebar */
+  --sidebar: 240 10% 6%;
+  --sidebar-foreground: 0 0% 98%;
+  --sidebar-primary: 217 91% 60%;
+  --sidebar-primary-foreground: 240 10% 4%;
+  --sidebar-accent: 240 4% 16%;
+  --sidebar-accent-foreground: 0 0% 98%;
+  --sidebar-border: 240 4% 16%;
+  --sidebar-ring: 217 91% 60%;
+
+  --marketing-band-bg: 0 0% 0%;
+  --marketing-band-fg: 0 0% 98%;
+}
+
+
+@theme inline {
+  --font-sans: 'Geist', 'Geist Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: 'Geist Mono', 'Geist Mono Fallback', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  
+  --color-background: hsl(var(--background));
+  --color-foreground: hsl(var(--foreground));
+  --color-card: hsl(var(--card));
+  --color-card-foreground: hsl(var(--card-foreground));
+  --color-popover: hsl(var(--popover));
+  --color-popover-foreground: hsl(var(--popover-foreground));
+  --color-primary: hsl(var(--primary));
+  --color-primary-foreground: hsl(var(--primary-foreground));
+  --color-secondary: hsl(var(--secondary));
+  --color-secondary-foreground: hsl(var(--secondary-foreground));
+  --color-muted: hsl(var(--muted));
+  --color-muted-foreground: hsl(var(--muted-foreground));
+  --color-accent: hsl(var(--accent));
+  --color-accent-foreground: hsl(var(--accent-foreground));
+  --color-destructive: hsl(var(--destructive));
+  --color-destructive-foreground: hsl(var(--destructive-foreground));
+  --color-border: hsl(var(--border));
+  --color-input: hsl(var(--input));
+  --color-ring: hsl(var(--ring));
+  --color-chart-1: hsl(var(--chart-1));
+  --color-chart-2: hsl(var(--chart-2));
+  --color-chart-3: hsl(var(--chart-3));
+  --color-chart-4: hsl(var(--chart-4));
+  --color-chart-5: hsl(var(--chart-5));
+  
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  
+  --color-sidebar: hsl(var(--sidebar));
+  --color-sidebar-foreground: hsl(var(--sidebar-foreground));
+  --color-sidebar-primary: hsl(var(--sidebar-primary));
+  --color-sidebar-primary-foreground: hsl(var(--sidebar-primary-foreground));
+  --color-sidebar-accent: hsl(var(--sidebar-accent));
+  --color-sidebar-accent-foreground: hsl(var(--sidebar-accent-foreground));
+  --color-sidebar-border: hsl(var(--sidebar-border));
+  --color-sidebar-ring: hsl(var(--sidebar-ring));
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  
+  @media (prefers-reduced-motion: no-preference) {
+    html {
+      scroll-behavior: smooth;
+    }
+  }
+  
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rounding-metrics" 1;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Scrollbars — match light/dark theme */
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: hsl(var(--muted-foreground) / 0.35) hsl(var(--muted));
+  }
+  .dark * {
+    scrollbar-color: hsl(var(--muted-foreground) / 0.45) hsl(var(--card));
+  }
+  *::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+  *::-webkit-scrollbar-track {
+    background: hsl(var(--muted));
+  }
+  *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.35);
+    border-radius: 9999px;
+    border: 3px solid hsl(var(--muted));
+    background-clip: padding-box;
+  }
+  .dark *::-webkit-scrollbar-track {
+    background: hsl(var(--card));
+  }
+  .dark *::-webkit-scrollbar-thumb {
+    background-color: hsl(var(--muted-foreground) / 0.45);
+    border-color: hsl(var(--card));
+  }
+  
+  h1,
+  h2,
+  h3,
+  h4,
+  h5,
+  h6 {
+    @apply font-semibold;
+  }
+  
+  h1 {
+    @apply text-4xl;
+  }
+  
+  h2 {
+    @apply text-3xl;
+  }
+  
+  h3 {
+    @apply text-2xl;
+  }
+  
+  h4 {
+    @apply text-xl;
+  }
+  
+  h5 {
+    @apply text-lg;
+  }
+  
+  h6 {
+    @apply text-base;
+  }
+}
+
+@layer utilities {
+  @keyframes fade-in {
+    from {
+      opacity: 0;
+      transform: translateY(10px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  @keyframes marquee {
+    0% {
+      transform: translateX(0);
+    }
+    100% {
+      transform: translateX(calc(-100% - 4rem));
+    }
+  }
+
+  .animate-fade-in {
+    animation: fade-in 0.6s ease-out;
+  }
+
+  .animate-marquee {
+    animation: marquee 30s linear infinite;
+  }
+
+  @keyframes dot-pattern-drift {
+    0% {
+      transform: translate3d(0, 0, 0);
+    }
+    100% {
+      transform: translate3d(36px, 36px, 0);
+    }
+  }
+
+  @keyframes capability-in {
+    from {
+      opacity: 0;
+      transform: translateY(14px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+
+  .animate-dot-drift {
+    animation: dot-pattern-drift 48s linear infinite;
+  }
+
+  .animate-dot-drift-reverse {
+    animation: dot-pattern-drift 64s linear infinite reverse;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .animate-dot-drift,
+    .animate-dot-drift-reverse {
+      animation: none;
+    }
+  }
+
+  .capability-reveal {
+    animation: capability-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .capability-reveal {
+      animation: none;
+    }
+  }
+
+  .bg-gradient-radial {
+    background: radial-gradient(circle at center, var(--tw-gradient-from) 0%, var(--tw-gradient-via) 50%, var(--tw-gradient-to) 100%);
+  }
+
+  /* Footer: soft drifting gradient orbs */
+  @keyframes footer-blob-drift {
+    0%,
+    100% {
+      transform: translate3d(0, 0, 0) scale(1);
+    }
+    50% {
+      transform: translate3d(2.5%, -3.5%, 0) scale(1.07);
+    }
+  }
+
+  .footer-blob {
+    animation: footer-blob-drift 24s ease-in-out infinite;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .footer-blob {
+      animation: none;
+    }
+  }
+
+  /* Capabilities: SVG motion */
+  @keyframes cap-ill-dash-loop {
+    0%,
+    100% {
+      stroke-dashoffset: 64;
+      opacity: 0.55;
+    }
+    45%,
+    55% {
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+  }
+
+  @keyframes cap-ill-orbit-spin {
+    from {
+      transform: rotate(0deg);
+    }
+    to {
+      transform: rotate(360deg);
+    }
+  }
+
+  @keyframes cap-ill-pulse {
+    0%,
+    100% {
+      opacity: 0.45;
+      transform: scale(1);
+    }
+    50% {
+      opacity: 1;
+      transform: scale(1.2);
+    }
+  }
+
+  @keyframes cap-ill-bar-scan {
+    0%,
+    100% {
+      opacity: 0.35;
+    }
+    50% {
+      opacity: 1;
+    }
+  }
+
+  .cap-ill-stroke {
+    animation: cap-ill-dash-loop 3.6s ease-in-out infinite;
+  }
+
+  .cap-ill-orbit {
+    transform-origin: 56px 44px;
+    animation: cap-ill-orbit-spin 20s linear infinite;
+  }
+
+  .cap-ill-pulse {
+    transform-origin: center;
+    animation: cap-ill-pulse 2s ease-in-out infinite;
+  }
+
+  .cap-ill-bar {
+    animation: cap-ill-bar-scan 2.2s ease-in-out infinite;
+  }
+
+  .cap-ill-bar-delay {
+    animation-delay: 0.35s;
+  }
+
+  .cap-ill-bar-delay-2 {
+    animation-delay: 0.7s;
+  }
+
+  .cap-ill-01 circle:nth-of-type(2) {
+    transform-origin: 56px 44px;
+    animation: cap-ill-orbit-spin 28s linear infinite reverse;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .cap-ill-stroke,
+    .cap-ill-orbit,
+    .cap-ill-pulse,
+    .cap-ill-bar,
+    .cap-ill-bar-delay,
+    .cap-ill-bar-delay-2,
+    .cap-ill-01 circle:nth-of-type(2) {
+      animation: none;
+    }
+    .cap-ill-stroke {
+      stroke-dashoffset: 0 !important;
+      opacity: 1;
+    }
+  }
+
+  /* Platform section SVG — same motion language as capability illustrations */
+  @keyframes platform-ill-spine-move {
+    from {
+      stroke-dashoffset: 0;
+    }
+    to {
+      stroke-dashoffset: 56;
+    }
+  }
+
+  @keyframes platform-ill-hub-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.88;
+    }
+  }
+
+  @keyframes platform-ill-lock-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.62;
+    }
+  }
+
+  @keyframes platform-ill-row-soft {
+    0%,
+    100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0.86;
+    }
+  }
+
+  @keyframes platform-ill-connect-draw {
+    0%,
+    100% {
+      stroke-dashoffset: 96;
+      opacity: 0.45;
+    }
+    45%,
+    55% {
+      stroke-dashoffset: 0;
+      opacity: 1;
+    }
+  }
+
+  .platform-ill-spine {
+    animation: platform-ill-spine-move 6.5s linear infinite;
+  }
+
+  .platform-ill-hub {
+    animation: platform-ill-hub-soft 3.8s ease-in-out infinite;
+  }
+
+  .platform-ill-lock {
+    animation: platform-ill-lock-soft 2.6s ease-in-out infinite;
+  }
+
+  .platform-ill-row {
+    animation: platform-ill-row-soft 3.4s ease-in-out infinite;
+  }
+
+  .platform-ill-r1 {
+    animation-delay: 0.45s;
+  }
+
+  .platform-ill-r2 {
+    animation-delay: 0.9s;
+  }
+
+  .platform-ill-r3 {
+    animation-delay: 1.35s;
+  }
+
+  .platform-ill-connect {
+    stroke-dasharray: 96;
+    stroke-dashoffset: 96;
+    animation: platform-ill-connect-draw 3.8s ease-in-out infinite;
+  }
+
+  .platform-ill-node {
+    transform-box: fill-box;
+    transform-origin: center;
+    animation: cap-ill-pulse 2.3s ease-in-out infinite;
+  }
+
+  .platform-ill-node-d1 {
+    animation-delay: 0.3s;
+  }
+
+  .platform-ill-node-d2 {
+    animation-delay: 0.6s;
+  }
+
+  .platform-ill-node-d3 {
+    animation-delay: 0.9s;
+  }
+
+  .platform-ill-icon {
+    animation: cap-ill-bar-scan 2.4s ease-in-out infinite;
+  }
+
+  .platform-ill-icon-d1 {
+    animation-delay: 0.35s;
+  }
+
+  .platform-ill-icon-d2 {
+    animation-delay: 0.7s;
+  }
+
+  .platform-ill-icon-d3 {
+    animation-delay: 1.05s;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .platform-ill-spine,
+    .platform-ill-hub,
+    .platform-ill-lock,
+    .platform-ill-row,
+    .platform-ill-connect,
+    .platform-ill-node,
+    .platform-ill-icon,
+    .platform-ill .cap-ill-bar,
+    .platform-ill .cap-ill-bar-delay,
+    .platform-ill .cap-ill-bar-delay-2 {
+      animation: none;
+    }
+    .platform-ill-connect {
+      stroke-dashoffset: 0 !important;
+      opacity: 1;
+    }
+  }
+}
+

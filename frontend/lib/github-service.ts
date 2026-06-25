@@ -1,0 +1,611 @@
+import { supabase } from './supabase-client'
+
+// GitHub Integration Service
+// Handles OAuth flow, GitHub API interactions, and advanced analytics
+
+export interface GitHubIntegration {
+  id: string
+  github_username: string
+  is_active: boolean
+  last_synced_at?: string
+}
+
+export interface GitHubRepository {
+  id: number
+  name: string
+  full_name: string
+  description: string
+  url: string
+  owner: {
+    login: string
+    avatar_url: string
+  }
+  language: string
+  stars: number
+  updated_at: string
+}
+
+export interface GitHubFile {
+  name: string
+  path: string
+  type: 'file' | 'dir'
+  size?: number
+  sha?: string
+  url?: string
+}
+
+export interface AnalysisMetrics {
+  bugs_count: number
+  vulnerabilities_count: number
+  code_smells_count: number
+  security_hotspots_count: number
+  duplicated_lines_count: number
+  cyclomatic_complexity: number
+  test_coverage_percent: number
+  maintainability_index: number
+}
+
+export interface CodeAnalysis {
+  id: string
+  file_path: string
+  file_language: string
+  quality_score: number
+  metrics: AnalysisMetrics
+  issues: any[]
+  suggestions: any[]
+  analyzed_at: string
+}
+
+/** Start GitHub OAuth in the browser. Returns false if OAuth is not configured. */
+export function initiateGitHubAuth(): boolean {
+  const clientId = process.env.NEXT_PUBLIC_GITHUB_CLIENT_ID
+  if (!clientId) {
+    console.error('[CodeSpectra] NEXT_PUBLIC_GITHUB_CLIENT_ID is not set')
+    return false
+  }
+
+  const redirectUri = `${typeof window !== 'undefined' ? window.location.origin : ''}/auth/github/callback`
+  const scope = 'repo,read:user,read:repo_hook'
+  const state = generateRandomState()
+
+  if (typeof window !== 'undefined') {
+    sessionStorage.setItem('github_oauth_state', state)
+    sessionStorage.setItem('github_oauth_redirect', redirectUri)
+  }
+
+  const params = new URLSearchParams({
+    client_id: clientId,
+    redirect_uri: redirectUri,
+    scope,
+    state,
+  })
+
+  if (typeof window !== 'undefined') {
+    window.location.href = `https://github.com/login/oauth/authorize?${params.toString()}`
+  }
+  return true
+}
+
+// Exchange code for token (call from /auth/github/callback only)
+export async function exchangeGitHubCode(code: string, state: string): Promise<any> {
+  const storedState = typeof window !== 'undefined' ? sessionStorage.getItem('github_oauth_state') : null
+  if (state !== storedState) {
+    throw new Error('Invalid state parameter')
+  }
+
+  const redirectUri =
+    typeof window !== 'undefined' ? sessionStorage.getItem('github_oauth_redirect') || '' : ''
+  if (!redirectUri) {
+    throw new Error('Missing OAuth redirect URI — start Connect from the scanner again.')
+  }
+
+  const { data } = await supabase.auth.getSession()
+  const token = data.session?.access_token
+  if (!token) {
+    throw new Error('You must be signed in to connect GitHub.')
+  }
+
+  const response = await fetch('/api/github/auth/callback', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      Authorization: `Bearer ${token}`,
+    },
+    body: JSON.stringify({ code, state, redirect_uri: redirectUri }),
+  })
+
+  const json = await response.json().catch(() => ({}))
+  if (!response.ok) {
+    throw new Error(typeof json.error === 'string' ? json.error : 'Failed to authenticate with GitHub')
+  }
+
+  if (typeof window !== 'undefined') {
+    sessionStorage.removeItem('github_oauth_state')
+    sessionStorage.removeItem('github_oauth_redirect')
+  }
+
+  return json
+}
+
+/** Normalized repo row for UI (matches `/api/github/repos` success payload). */
+export type GitHubRepoListItem = {
+  id: number
+  name: string
+  full_name: string
+  description: string | null
+  language: string | null
+  stars: number
+  updated_at: string
+  owner?: { login: string; avatar_url: string }
+}
+
+// Get list of user's repositories (requires Supabase session JWT — same as API)
+export async function getGitHubRepositories(page = 1): Promise<GitHubRepoListItem[]> {
+  try {
+    const { data } = await supabase.auth.getSession()
+    if (!data.session) {
+      console.warn('[CodeSpectra] getGitHubRepositories: no session')
+      return []
+    }
+
+    const response = await fetch(`/api/github/repos?page=${page}`, {
+      credentials: 'include',
+    })
+
+    const payload = await response.json().catch(() => null)
+
+    if (!response.ok) {
+      console.error('[CodeSpectra] GitHub repos HTTP', response.status, payload)
+      return []
+    }
+
+    if (!Array.isArray(payload)) {
+      console.error('[CodeSpectra] GitHub repos: expected array, got', typeof payload)
+      return []
+    }
+
+    return payload as GitHubRepoListItem[]
+  } catch (error) {
+    console.error('[CodeSpectra] getGitHubRepositories:', error)
+    return []
+  }
+}
+
+// Get file tree for a repository
+export async function getRepositoryFiles(owner: string, repo: string, path = ''): Promise<any> {
+  try {
+    const qs = new URLSearchParams({ owner, repo })
+    if (path) qs.set('path', path)
+    const response = await fetch(`/api/github/repo-files?${qs.toString()}`, {
+      credentials: 'include',
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch repository files')
+    }
+
+    return await response.json()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+// Get file content from GitHub
+export async function getFileContent(owner: string, repo: string, path: string): Promise<any> {
+  try {
+    const response = await fetch('/api/github/file-content', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ owner, repo, path }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch file content')
+    }
+
+    const data = await response.json()
+    return data
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+// Disconnect GitHub integration
+export async function disconnectGitHub(): Promise<any> {
+  try {
+    const response = await fetch('/api/github/disconnect', {
+      method: 'POST',
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to disconnect GitHub')
+    }
+
+    return {
+      success: true,
+      message: 'GitHub disconnected',
+    }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+// Get current GitHub integration
+export async function getGitHubIntegration(): Promise<any> {
+  try {
+    const response = await fetch('/api/github/integration')
+    if (!response.ok) {
+      return null
+    }
+    return await response.json()
+  } catch (error) {
+    return null
+  }
+}
+
+// Link GitHub repository
+export async function linkGitHubRepository(
+  repoId: number,
+  repoName: string,
+  repoUrl: string
+): Promise<any> {
+  try {
+    const response = await fetch('/api/github/link-repo', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ repoId, repoName, repoUrl }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to link repository')
+    }
+
+    return await response.json()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+export type GitHubAnalyzeContext = {
+  github_repo_owner: string
+  github_repo_name: string
+  github_file_path: string
+  github_repo_url?: string
+  github_branch?: string
+  github_commit_hash?: string
+}
+
+// Analyze code and return metrics
+export async function analyzeCode(
+  code: string,
+  language: string,
+  filePath: string = 'file',
+  repoId?: string,
+  github?: GitHubAnalyzeContext
+): Promise<any> {
+  try {
+    const body: Record<string, unknown> = {
+      code,
+      language,
+      file_path: filePath,
+      repo_id: repoId,
+      include_metrics: [
+        'bugs',
+        'vulnerabilities',
+        'code_smells',
+        'security_hotspots',
+        'duplicated_code',
+        'complexity',
+        'test_coverage',
+        'maintainability',
+      ],
+    }
+    if (github) {
+      Object.assign(body, github)
+    }
+
+    const response = await fetch('/api/analyze-code', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to analyze code')
+    }
+
+    return await response.json()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+// Get analysis history
+export async function getAnalysisHistory(limit: number = 20): Promise<any> {
+  try {
+    const response = await fetch(`/api/analysis-history?limit=${limit}`, { credentials: 'include' })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch analysis history')
+    }
+
+    return await response.json()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+export interface GenerateAIFixesInput {
+  code: string
+  issues: Array<{
+    type?: string
+    severity: string
+    rule: string
+    message: string
+    line?: number
+    effortMinutes?: number
+  }>
+  language?: string
+  /** When set, persists rows for `POST /api/apply-fix` (must be a real `code_scans.id`). */
+  scan_id?: string
+}
+
+// Generate AI fixes for issues (optional persistence when `scan_id` is a UUID from analyze-code).
+export async function generateAIFixes(params: GenerateAIFixesInput): Promise<Record<string, unknown>> {
+  try {
+    const response = await fetch('/api/generate-fixes', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        code: params.code,
+        issues: params.issues,
+        language: params.language ?? 'javascript',
+        scan_id: params.scan_id,
+      }),
+    })
+
+    const json = (await response.json()) as Record<string, unknown>
+    if (!response.ok) {
+      return {
+        success: false,
+        error: (json.error as string) || 'Failed to generate fixes',
+        ...(typeof json.retry_after === 'number' ? { retry_after: json.retry_after } : {}),
+      }
+    }
+    return { success: true, ...json }
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+// Apply suggested fix
+export async function applySuggestedFix(fixId: string): Promise<any> {
+  try {
+    const response = await fetch('/api/apply-fix', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fix_id: fixId, action: 'apply' }),
+    })
+
+    let json: Record<string, unknown> = {}
+    try {
+      json = (await response.json()) as Record<string, unknown>
+    } catch {
+      /* non-JSON error body */
+    }
+    if (!response.ok) {
+      return { success: false, error: (json.error as string) || 'Failed to apply fix' }
+    }
+    return json
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+/** Undo “applied” status (same ownership rules as apply). */
+export async function unapplySuggestedFix(fixId: string): Promise<Record<string, unknown>> {
+  try {
+    const response = await fetch('/api/apply-fix', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fix_id: fixId, action: 'unapply' }),
+    })
+    const json = (await response.json()) as Record<string, unknown>
+    if (!response.ok) {
+      return { success: false, error: (json.error as string) || 'Failed to unapply fix' }
+    }
+    return json
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An error occurred',
+    }
+  }
+}
+
+/** Mark multiple suggested fixes applied (same ownership rules as single apply). */
+export async function applySuggestedFixBatch(fixIds: string[]): Promise<Record<string, unknown>> {
+  try {
+    const response = await fetch('/api/apply-fix', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fix_ids: fixIds.slice(0, 40), action: 'apply' }),
+    })
+    const json = (await response.json()) as Record<string, unknown>
+    if (!response.ok) {
+      return { success: false, error: (json.error as string) || 'Failed to apply fixes' }
+    }
+    return { success: true, ...json }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An error occurred',
+    }
+  }
+}
+
+/** Batch undo applied markers. */
+export async function unapplySuggestedFixBatch(fixIds: string[]): Promise<Record<string, unknown>> {
+  try {
+    const response = await fetch('/api/apply-fix', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ fix_ids: fixIds.slice(0, 40), action: 'unapply' }),
+    })
+    const json = (await response.json()) as Record<string, unknown>
+    if (!response.ok) {
+      return { success: false, error: (json.error as string) || 'Failed to unapply fixes' }
+    }
+    return { success: true, ...json }
+  } catch (error) {
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : 'An error occurred',
+    }
+  }
+}
+
+// Get quality gate configuration
+export async function getQualityGates(): Promise<any> {
+  try {
+    const response = await fetch('/api/quality-gates', { credentials: 'include' })
+
+    if (!response.ok) {
+      throw new Error('Failed to fetch quality gates')
+    }
+
+    return await response.json()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+// Create/update quality gate
+export async function saveQualityGate(gateName: string, thresholds: any): Promise<any> {
+  try {
+    const response = await fetch('/api/quality-gates', {
+      method: 'POST',
+      credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ gate_name: gateName, ...thresholds }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to save quality gate')
+    }
+
+    return await response.json()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+// Check if analysis passes quality gate
+export async function checkQualityGate(analysisId: string): Promise<any> {
+  try {
+    const response = await fetch('/api/check-quality-gate', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ analysis_id: analysisId }),
+    })
+
+    if (!response.ok) {
+      throw new Error('Failed to check quality gate')
+    }
+
+    return await response.json()
+  } catch (error) {
+    const errorMessage = error instanceof Error ? error.message : 'An error occurred'
+    return {
+      success: false,
+      error: errorMessage,
+    }
+  }
+}
+
+// Calculate quality score from metrics
+export function calculateQualityScore(metrics: AnalysisMetrics): number {
+  let score = 100
+
+  // Deduct for bugs (each bug: -5)
+  score -= Math.min(metrics.bugs_count * 5, 25)
+
+  // Deduct for vulnerabilities (each: -8)
+  score -= Math.min(metrics.vulnerabilities_count * 8, 30)
+
+  // Deduct for code smells (each: -2)
+  score -= Math.min(metrics.code_smells_count * 2, 20)
+
+  // Deduct for low test coverage
+  if (metrics.test_coverage_percent < 50) {
+    score -= 15
+  } else if (metrics.test_coverage_percent < 80) {
+    score -= 5
+  }
+
+  // Deduct for high complexity
+  if (metrics.cyclomatic_complexity > 20) {
+    score -= 10
+  } else if (metrics.cyclomatic_complexity > 10) {
+    score -= 5
+  }
+
+  return Math.max(score, 0)
+}
+
+// Helper function to generate random state
+function generateRandomState(): string {
+  const array = new Uint8Array(32)
+  if (typeof crypto !== 'undefined') {
+    crypto.getRandomValues(array)
+  }
+  return Array.from(array, (byte) => byte.toString(16).padStart(2, '0')).join('')
+}
+
