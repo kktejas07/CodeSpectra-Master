@@ -1,42 +1,26 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
 import { MongoClient } from "mongodb";
-
-/**
- * Better Auth server instance for CodeSpectra.
- *
- * Phase 1 of the Supabase → MongoDB migration. This file is wired into the
- * catch-all route at `app/api/auth/[...all]/route.ts`. Existing Supabase auth
- * pages still work; new Better Auth endpoints live under `/api/auth/*`.
- *
- * Env required at runtime:
- *   - MONGODB_URI
- *   - MONGODB_DB_NAME            (optional, defaults to "codespectra")
- *   - BETTER_AUTH_SECRET         (openssl rand -base64 32)
- *   - NEXT_PUBLIC_APP_URL        (e.g. http://localhost:3000)
- *   - GITHUB_CLIENT_ID           (optional, enables GitHub OAuth)
- *   - GITHUB_CLIENT_SECRET       (optional)
- *
- * Note: `betterAuth({ database })` accepts a function that returns the
- * adapter, so we lazily build the MongoDB client on first auth request
- * rather than at module import time. This keeps `next build` working even
- * when MONGODB_URI is unset.
- */
+import { readTrustedOrigins } from "./server-secrets-cache";
 
 const dbName = process.env.MONGODB_DB_NAME || "codespectra";
 
+const CLIENT_OPTS = {
+  serverSelectionTimeoutMS: 6000,
+  connectTimeoutMS: 6000,
+  socketTimeoutMS: 30000,
+  maxPoolSize: 20,
+  retryWrites: true,
+};
+
 function buildAdapter() {
-  // The MongoDB driver is lazy: constructing a MongoClient does not open a
-  // TCP connection. So we always return a real adapter and let actual auth
-  // calls fail at request time if the URI is bogus. This lets `next build`
-  // configure Better Auth cleanly even when MONGODB_URI is empty.
-  const uri = process.env.MONGODB_URI || "mongodb://placeholder:27017/codespectra";
-  const client = new MongoClient(uri);
+  const uri =
+    process.env.MONGODB_URI || "mongodb://placeholder:27017/codespectra";
+  const client = new MongoClient(uri, CLIENT_OPTS);
   const db = client.db(dbName);
   return mongodbAdapter(db);
 }
 
-// Cache the adapter so we don't rebuild on every request.
 let _adapter: ReturnType<typeof mongodbAdapter> | undefined;
 const databaseAdapter = ((options) => {
   if (!_adapter) {
@@ -56,6 +40,63 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.NEXT_PUBLIC_APP_URL,
+  // Accept Origin headers from any of these domains. The external preview
+  // domain changes per env so we include the wildcard `*.emergentagent.com`
+  // pattern via the explicit list below — Better Auth performs an exact
+  // origin match.
+  // Trusted origins resolver — runs per request. Sources:
+  //   1. Static defaults (localhost, hard-coded preview, NEXT_PUBLIC_APP_URL)
+  //   2. BETTER_AUTH_TRUSTED_ORIGINS env (comma-separated)
+  //   3. MongoDB `platform_settings.secrets.trusted_origins_extra` (admin-managed)
+  //   4. *.preview.emergentagent.com and *.preview.emergentcf.cloud — Emergent
+  //      preview environments rotate hostnames between deploys, so we accept
+  //      any cluster URL coming from the request's Origin header that matches
+  //      one of the known patterns.
+  // Trailing slashes are stripped; only http/https origins are accepted.
+  trustedOrigins: async (request: Request): Promise<string[]> => {
+    const staticOrigins = [
+      "http://localhost:3000",
+      "https://codespectra-master.preview.emergentagent.com",
+      ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
+      ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
+        ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : []),
+    ];
+
+    // Auto-trust any Emergent preview hostname coming from the request itself.
+    // This avoids a re-deploy every time the preview URL rotates.
+    const PREVIEW_HOST_RE = /\.preview\.(emergentagent\.com|emergentcf\.cloud)$/i;
+    const auto: string[] = [];
+    try {
+      const originHeader = request.headers.get("origin");
+      if (originHeader) {
+        const u = new URL(originHeader);
+        if (PREVIEW_HOST_RE.test(u.hostname)) auto.push(u.origin);
+      }
+      const fwdHost =
+        request.headers.get("x-forwarded-host") || request.headers.get("host");
+      const fwdProto =
+        request.headers.get("x-forwarded-proto") ||
+        (fwdHost?.includes("localhost") ? "http" : "https");
+      if (fwdHost && PREVIEW_HOST_RE.test(fwdHost)) {
+        auto.push(`${fwdProto}://${fwdHost}`);
+      }
+    } catch {
+      /* malformed Origin header — ignore */
+    }
+
+    let dynamic: string[] = [];
+    try {
+      dynamic = await readTrustedOrigins();
+    } catch {
+      /* If DB read fails, fall back to static list only (don't break auth). */
+    }
+    return [...staticOrigins, ...auto, ...dynamic].map((o) =>
+      o.replace(/\/+$/, ""),
+    );
+  },
   database: databaseAdapter,
   emailAndPassword: {
     enabled: true,

@@ -23,7 +23,8 @@ import {
 import { useToast } from '@/lib/toast-context'
 import { formatRelativeTime } from '@/lib/date-utils'
 import type { AdminUserListRow } from '@/lib/admin-users'
-import { supabase } from '@/lib/supabase-client'
+// Supabase realtime was removed; the page now polls /api/admin/users instead.
+// import { supabase } from '@/lib/supabase-client'
 import { normalizeUserRole, type UserRole } from '@/lib/rbac'
 
 type TableUser = {
@@ -106,23 +107,15 @@ export default function UsersManagement() {
     return () => window.clearInterval(t)
   }, [loadUsers])
 
-  /** Realtime: refresh when directory rows change (roles, names, activity). */
-  useEffect(() => {
-    const channel = supabase
-      .channel('admin-users-profiles')
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'profiles' },
-        () => {
-          void loadUsers().catch(() => {})
-        }
-      )
-      .subscribe()
-
-    return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [loadUsers])
+  /**
+   * Realtime updates from Supabase were removed in the MongoDB migration.
+   * The 30-second polling loop above keeps the directory fresh enough; for
+   * sub-second updates re-introduce MongoDB Change Streams behind an SSE
+   * endpoint in a future phase.
+   */
+  // useEffect(() => {
+  //   const channel = supabase.channel('admin-users-profiles')...
+  // }, [loadUsers])
 
   const displayUsers = useMemo(
     () => rows.map((r) => mapRowToTableUser(r, tick)),

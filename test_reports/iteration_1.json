@@ -1,0 +1,58 @@
+{
+  "summary": "Full backend + frontend regression for the 9+ AI features mega-batch. Backend: 22/22 pytest tests pass against the FastAPI proxy + Next.js + internal /internal/ai/* router (chat SSE, hints, code-analysis, code-review, grade, agent, generate-problem RBAC, proctor, skill analytics, identity-verify, auth). Frontend: /assessment renders 100% (9/9 ecosystem cards, hero, how-it-works, FAQ). /problems/two-sum exposes proctor-monitor + hints-toggle + hint-level-1 data-testids. Critical regression found: site-wide font is NOT JetBrains Mono (it falls back to ui-sans-serif). Browser sign-in flow could not be auto-validated because /login does not host the form (the canonical path is /auth/login).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "Global typography (app/layout.tsx or tailwind config)",
+        "issue": "Body + h1 computed font-family is `ui-sans-serif, system-ui, sans-serif, ...` — JetBrains Mono is NOT applied site-wide. The user explicitly asked to revert UI font to JetBrains Mono. Plus Jakarta Sans was removed but the replacement mono font is missing from the body/heading CSS.",
+        "selector": "body, h1",
+        "priority": "HIGH"
+      },
+      {
+        "component": "Login route",
+        "issue": "/login does not render the email/password form — the canonical sign-in page is at /auth/login (this is what /dashboard redirects to). Either add a redirect /login → /auth/login or document the path. Tests using requests.post('/api/auth/sign-in/email') work fine, so this is purely a UX/discoverability issue.",
+        "selector": "/login",
+        "priority": "MEDIUM"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": [
+      {
+        "screen": "/assessment + all dashboard pages",
+        "issues": ["Monospace coding-theme font (JetBrains Mono) requested by user is missing — page renders in default sans-serif"]
+      }
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Apply JetBrains Mono globally — wire next/font/google JetBrains_Mono into app/layout.tsx (className on <body>) and/or set tailwind theme.fontFamily.sans to use it. Verify with: getComputedStyle(document.body).fontFamily contains 'JetBrains Mono'.",
+    "(Optional) Add a redirect from /login to /auth/login or move the sign-in form back to /login for parity with the navbar 'Log in' link."
+  ],
+  "critical_code_review_comments": [
+    "ai_router.py is 525 lines and packs 9 endpoints in one file — consider splitting into ai/chat.py, ai/hints.py, ai/review.py, ai/agent.py etc. for maintainability.",
+    "Identity verify endpoint silently returns match=false with confidence=0 when ImageContent import fails (`Vision comparison unsupported in this environment`) — this is graceful but the frontend should surface that as 'vision unavailable' not just a low-confidence rejection.",
+    "_parse_json_response in ai_router.py does multiple O(n^2) JSON slice retries — fine for small payloads but worth bounding by max attempts.",
+    "Internal ingress isolation verified: POST https://...preview.emergentagent.com/internal/ai/chat returns the marketing 'Preview Unavailable' HTML (not the FastAPI 422), so /internal/ai/* is correctly NOT proxied through. Good security posture.",
+    "Proctor /api/proctor/events expects body shape {session_id, event_type, meta} — schema not documented in PRD; consider adding a Pydantic-ish schema doc in /app/frontend/app/api/proctor/events/route.ts."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (new — 22 tests)"
+  ],
+  "success_rate": {
+    "backend": "100% (22/22)",
+    "frontend": "partial — public pages 100%, authenticated dashboard pages not exercised by browser due to login-form path mismatch, but underlying APIs verified by backend tests"
+  },
+  "test_credentials": "qa@codespectra.dev / QApass123! (works for sign-in/email via Better Auth, cookie session established)",
+  "seed_data_creation": "None — used existing seeded QA user from /app/memory/test_credentials.md.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend test file at /app/backend/tests/backend_test.py is the regression suite — run with `pytest backend/tests/backend_test.py -v --junitxml=/app/test_reports/pytest/pytest_results.xml`. All 22 tests pass in ~70s. The /internal/ai/* check uses the EXTERNAL preview URL to confirm ingress isolation — don't change that to localhost. For UI testing, use http://localhost:3000 (the external preview URL serves a 'Preview Unavailable' page to headless browser sessions; curl/requests work fine). Authenticated UI tests must use /auth/login (NOT /login). The font regression is the only must-fix UI issue.",
+  "rca of the issue": "Font regression RCA: User asked to revert from Plus Jakarta Sans back to JetBrains Mono. The Plus Jakarta Sans link/import was removed but no JetBrains Mono replacement was wired in. Reproduction: visit http://localhost:3000/assessment → DevTools → getComputedStyle(document.body).fontFamily returns 'ui-sans-serif, system-ui, sans-serif, ...' instead of containing 'JetBrains Mono'. Mitigation: import JetBrains_Mono via `next/font/google` in app/layout.tsx and apply its className to <body>, OR set theme.fontFamily.sans/mono in tailwind.config to include JetBrains Mono."
+}

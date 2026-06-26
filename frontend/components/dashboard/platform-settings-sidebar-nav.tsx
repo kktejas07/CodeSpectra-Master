@@ -26,7 +26,7 @@ const ITEMS: {
   { id: 'mail', label: 'Mail & email APIs', icon: Mail },
   { id: 'ops', label: 'Operations', icon: Sliders },
   { id: 'product', label: 'Product & access', icon: Users },
-  { id: 'integrations', label: 'Stripe & billing', icon: KeyRound },
+  { id: 'integrations', label: 'Payments & integrations', icon: KeyRound },
 ]
 
 export function PlatformSettingsSidebarNav({

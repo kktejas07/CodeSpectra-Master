@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -14,8 +13,7 @@ import {
 } from '@/components/ui/select'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Globe2, Info, MapPin } from 'lucide-react'
-import { supabase } from '@/lib/supabase-client'
-import { getDefaultDashboard, isSuperAdmin, normalizeUserRole } from '@/lib/rbac'
+import { useRoleGate } from '@/lib/use-role-gate'
 
 const REGIONS = [
   { city: 'Paris', pct: '0.0' },
@@ -27,32 +25,10 @@ const REGIONS = [
 ]
 
 export default function CdnAdminPage() {
-  const router = useRouter()
-  const [ready, setReady] = useState(false)
+  const gate = useRoleGate({ require: 'superadmin' })
   const [windowRange, setWindowRange] = useState('12h')
 
-  useEffect(() => {
-    const run = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      const meta = (user.user_metadata as { role?: string } | undefined)?.role
-      const role = normalizeUserRole(profile?.role ?? meta)
-      if (!isSuperAdmin(role)) {
-        router.replace(getDefaultDashboard(role))
-        return
-      }
-      setReady(true)
-    }
-    void run()
-  }, [router])
-
-  if (!ready) {
+  if (!gate.ready) {
     return <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">Loading…</div>
   }
 

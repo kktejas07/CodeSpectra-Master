@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,9 +26,9 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase-client'
-import { getDefaultDashboard, isSuperAdmin, normalizeUserRole } from '@/lib/rbac'
+import { useRoleGate } from '@/lib/use-role-gate'
 import { useToast } from '@/lib/toast-context'
+import GitHubConnectButton from '@/components/integrations/github-connect-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   ADMIN_NEW_USER_EMAIL_DELIVERIES,
@@ -76,6 +76,14 @@ const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], 
 }
 
 type SecretsDraft = {
+  razorpay_key_id: string
+  razorpay_key_secret: string
+  razorpay_webhook_secret: string
+  trusted_origins_extra: string
+  piston_url: string
+  github_app_token: string
+  github_client_id: string
+  github_client_secret: string
   stripe_secret_key: string
   stripe_webhook_secret: string
   stripe_price_pro_monthly: string
@@ -85,6 +93,14 @@ type SecretsDraft = {
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
+  razorpay_key_id: '',
+  razorpay_key_secret: '',
+  razorpay_webhook_secret: '',
+  trusted_origins_extra: '',
+  piston_url: '',
+  github_app_token: '',
+  github_client_id: '',
+  github_client_secret: '',
   stripe_secret_key: '',
   stripe_webhook_secret: '',
   stripe_price_pro_monthly: '',
@@ -94,7 +110,7 @@ const emptySecretsDraft = (): SecretsDraft => ({
 })
 
 function SystemSettingsInner() {
-  const router = useRouter()
+  const gate = useRoleGate({ require: 'superadmin' })
   const searchParams = useSearchParams()
   const section: PlatformSettingsSection = parsePlatformSettingsSection(
     searchParams.get('section')
@@ -116,22 +132,8 @@ function SystemSettingsInner() {
   })
 
   useEffect(() => {
+    if (!gate.ready) return
     const run = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      const meta = (user.user_metadata as { role?: string } | undefined)?.role
-      const role = normalizeUserRole(profile?.role ?? meta)
-      if (!isSuperAdmin(role)) {
-        router.replace(getDefaultDashboard(role))
-        return
-      }
-
       const [res, secRes] = await Promise.all([
         fetch('/api/admin/platform-settings', { credentials: 'include' }),
         fetch('/api/admin/server-secrets', { credentials: 'include' }),
@@ -159,7 +161,7 @@ function SystemSettingsInner() {
       setLoading(false)
     }
     void run()
-  }, [router, addToast])
+  }, [gate.ready, addToast])
 
   const reloadSecrets = useCallback(async () => {
     const secRes = await fetch('/api/admin/server-secrets', { credentials: 'include' })
@@ -266,7 +268,7 @@ function SystemSettingsInner() {
       if (!res.ok) throw new Error((json.error as string) || 'Save failed')
       setSecretsDraft(emptySecretsDraft())
       await reloadSecrets()
-      addToast({ type: 'success', title: 'Stripe & billing saved' })
+      addToast({ type: 'success', title: 'Integrations saved' })
     } catch (e) {
       addToast({
         type: 'error',
@@ -335,6 +337,11 @@ function SystemSettingsInner() {
       setSavingKey(null)
     }
   }, [addToast, form.admin_new_user_email_delivery, mailSecretsDraft, reloadSecrets])
+
+  // While the role gate is still resolving, render NOTHING — prevents the
+  // half-mounted form (and its outbound /api/admin/* fetches) from racing
+  // with an in-flight redirect for non-superadmin users.
+  if (!gate.ready) return null
 
   if (loading) {
     return (
@@ -769,12 +776,12 @@ function SystemSettingsInner() {
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <KeyRound className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Stripe & billing</h3>
+                  <h3 className="font-semibold text-foreground">Payments & integrations</h3>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Stripe <strong>secret key</strong>, <strong>webhook signing secret</strong>, and Dashboard{' '}
-                  <code className="rounded bg-muted px-1 text-xs">price_…</code> IDs for user Checkout must match the
-                  prices configured in Stripe. The server prefers environment variables when set. Resend / SendGrid:{' '}
+                  Configure <strong>Razorpay</strong> credentials below. Keys are stored encrypted at
+                  rest in MongoDB and read by every payment endpoint — no redeploy required.
+                  Resend / SendGrid lives in{' '}
                   <Link href={platformSettingsHref('mail')} className="font-medium text-primary underline-offset-4 hover:underline">
                     Mail & email APIs
                   </Link>
@@ -782,6 +789,285 @@ function SystemSettingsInner() {
                 </p>
               </div>
               <div className="space-y-6 px-6 py-5">
+
+                {/* Razorpay — primary payment gateway */}
+                <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4" data-testid="rzp-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Razorpay (primary)</p>
+                    {secretsMeta.has_razorpay_key_id && secretsMeta.has_razorpay_key_secret ? (
+                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        ✓ Active
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Get test keys at{' '}
+                    <Link
+                      href="https://dashboard.razorpay.com/app/keys"
+                      target="_blank"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      Razorpay Dashboard → Settings → API Keys
+                    </Link>
+                    . Use <code className="rounded bg-muted px-1">rzp_test_…</code> for development.
+                  </p>
+                  <div>
+                    <Label htmlFor="sec_rzp_id">Key ID</Label>
+                    {secretsMeta.has_razorpay_key_id ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_key_id_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="sec_rzp_id"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_key_id}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_key_id: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="rzp_test_xxxxxxxxxxxx"
+                      data-testid="rzp-key-id-input"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="sec_rzp_sk">Key secret</Label>
+                    {secretsMeta.has_razorpay_key_secret ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_key_secret_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="sec_rzp_sk"
+                      type="password"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_key_secret}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_key_secret: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="••••••••••••••••••••"
+                      data-testid="rzp-key-secret-input"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="sec_rzp_wh">Webhook signing secret (optional)</Label>
+                    {secretsMeta.has_razorpay_webhook_secret ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_webhook_secret_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="sec_rzp_wh"
+                      type="password"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_webhook_secret}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_webhook_secret: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="paste from Razorpay → Webhooks page"
+                      data-testid="rzp-webhook-input"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Webhook URL to register in Razorpay:{' '}
+                    <code className="rounded bg-muted px-1">
+                      {typeof window !== 'undefined'
+                        ? `${window.location.origin}/api/billing/webhook`
+                        : '<your-domain>/api/billing/webhook'}
+                    </code>
+                  </p>
+                </div>
+
+                {/* Trusted Origins editor */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="origins-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Trusted origins (CORS + CSRF)</p>
+                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Dynamic
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Additional origins Better Auth should accept on{' '}
+                    <code className="rounded bg-muted px-1">/api/auth/*</code>. Localhost and the
+                    main app URL are already permitted. Add staging / new preview / custom domains
+                    here — no redeploy required.
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Format: one origin per line, OR comma-separated. Trailing slashes are stripped
+                    automatically. Only <code>http://</code> and <code>https://</code> origins are accepted.
+                  </p>
+                  <textarea
+                    id="sec_trusted_origins"
+                    rows={3}
+                    value={secretsDraft.trusted_origins_extra}
+                    onChange={(e) =>
+                      setSecretsDraft((d) => ({ ...d, trusted_origins_extra: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-border/60 bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder={`https://staging.codespectra.com\nhttps://preview-branch.example.com`}
+                    data-testid="trusted-origins-input"
+                  />
+                  {secretsMeta.trusted_origins_extra ? (
+                    <p className="font-mono text-[11px] text-muted-foreground break-all">
+                      Saved: {String(secretsMeta.trusted_origins_extra)}
+                    </p>
+                  ) : null}
+                </div>
+
+                {/* Piston (code execution backend) */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="piston-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Code execution backend (Piston)</p>
+                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Dynamic
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Base URL of a Piston-compatible code execution server (no trailing slash).
+                    Leave empty to use the in-process subprocess executor
+                    (<code>python</code>, <code>node</code>, <code>tsx</code>, <code>bash</code> only).
+                    See{' '}
+                    <a
+                      href="https://github.com/engineer-man/piston#self-hosting"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      Piston self-hosting docs
+                    </a>{' '}
+                    for Docker / Render / Fly deploy.
+                  </p>
+                  <Input
+                    id="sec_piston_url"
+                    value={secretsDraft.piston_url}
+                    onChange={(e) =>
+                      setSecretsDraft((d) => ({ ...d, piston_url: e.target.value }))
+                    }
+                    placeholder="https://piston.your-domain.com/api/v2/piston"
+                    className="font-mono"
+                    data-testid="piston-url-input"
+                  />
+                  {secretsMeta.piston_url ? (
+                    <p className="font-mono text-[11px] text-muted-foreground break-all">
+                      Saved: {String(secretsMeta.piston_url)}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Currently using in-process executor (subprocess, no sandbox).
+                    </p>
+                  )}
+                </div>
+
+                {/* GitHub App token */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="github-token-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">GitHub App / PAT token</p>
+                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Dynamic
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Personal access token used by the AI code-review bot to{' '}
+                    <strong>post review comments back to PRs</strong>. Needs{' '}
+                    <code>pull_requests:write</code> on the repos you want reviewed.
+                    Without this, reviews are saved to MongoDB but not posted to GitHub.
+                  </p>
+                  {secretsMeta.has_github_app_token ? (
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      Current key: {String(secretsMeta.github_app_token_masked ?? '—')}
+                    </p>
+                  ) : null}
+                  <Input
+                    id="sec_github_app_token"
+                    type="password"
+                    value={secretsDraft.github_app_token}
+                    onChange={(e) =>
+                      setSecretsDraft((d) => ({ ...d, github_app_token: e.target.value }))
+                    }
+                    placeholder="ghp_…  (or  github_pat_…)"
+                    className="font-mono"
+                    data-testid="github-token-input"
+                    autoComplete="off"
+                  />
+                </div>
+
+                {/* GitHub OAuth App (per-user "Connect GitHub" flow) */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="github-oauth-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">GitHub OAuth App (per-user install)</p>
+                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Dynamic
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Lets each user authorise CodeSpectra against their own GitHub
+                    account (no PAT pasting). Create an OAuth App at{' '}
+                    <a
+                      href="https://github.com/settings/applications/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      github.com/settings/applications/new
+                    </a>{' '}
+                    and set the Authorization callback URL to{' '}
+                    <code className="break-all">
+                      {(typeof window !== 'undefined' ? window.location.origin : '<APP_URL>')}
+                      /api/github/oauth/callback
+                    </code>
+                    .
+                  </p>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Client ID
+                      </label>
+                      <Input
+                        value={secretsDraft.github_client_id}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, github_client_id: e.target.value }))
+                        }
+                        placeholder="Iv1.…"
+                        className="font-mono"
+                        data-testid="github-client-id-input"
+                      />
+                      {secretsMeta.github_client_id ? (
+                        <p className="mt-1 font-mono text-[11px] text-muted-foreground break-all">
+                          Saved: {String(secretsMeta.github_client_id)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Client secret
+                      </label>
+                      <Input
+                        type="password"
+                        value={secretsDraft.github_client_secret}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, github_client_secret: e.target.value }))
+                        }
+                        placeholder="••••••••••••••••"
+                        className="font-mono"
+                        data-testid="github-client-secret-input"
+                        autoComplete="off"
+                      />
+                      {secretsMeta.has_github_client_secret ? (
+                        <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                          Current: {String(secretsMeta.github_client_secret_masked ?? '—')}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <GitHubConnectButton />
+                </div>
+
                 <Alert className="rounded-lg border-border/60 bg-muted/20">
                   <Mail className="h-4 w-4" />
                   <AlertTitle className="text-sm">Transactional email (Resend / SendGrid)</AlertTitle>
@@ -797,8 +1083,11 @@ function SystemSettingsInner() {
                   </AlertDescription>
                 </Alert>
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-foreground">Stripe (billing & webhooks)</p>
+                <div className="space-y-3 opacity-70">
+                  <p className="text-sm font-medium text-foreground">Stripe (legacy)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Kept for historical webhooks only. Razorpay is the active gateway.
+                  </p>
                   {secretsMeta.has_stripe_secret_key ? (
                     <p className="font-mono text-xs text-muted-foreground">
                       Secret key: {String(secretsMeta.stripe_secret_key_masked ?? '—')}
@@ -984,7 +1273,7 @@ function SystemSettingsInner() {
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save Stripe & billing
+                  Save integrations
                 </Button>
               </div>
             </Card>

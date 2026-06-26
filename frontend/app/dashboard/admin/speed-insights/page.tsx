@@ -1,7 +1,6 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -15,8 +14,8 @@ import {
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Activity, CheckCircle2, Gauge, Info, TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { supabase } from '@/lib/supabase-client'
-import { DASHBOARD_ROUTES, getDefaultDashboard, isSuperAdmin, normalizeUserRole } from '@/lib/rbac'
+import { useRoleGate } from '@/lib/use-role-gate'
+import { DASHBOARD_ROUTES } from '@/lib/rbac'
 
 type VitalsSummary = {
   range: string
@@ -76,7 +75,7 @@ const METRIC_CARDS: { key: string; title: string }[] = [
 ]
 
 export default function SpeedInsightsPage() {
-  const router = useRouter()
+  const gate = useRoleGate({ require: 'superadmin' })
   const [ready, setReady] = useState(false)
   const [range, setRange] = useState('24h')
   const [routeScope, setRouteScope] = useState('all')
@@ -107,25 +106,9 @@ export default function SpeedInsightsPage() {
   }, [ready, range, routeScope])
 
   useEffect(() => {
-    const run = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      const meta = (user.user_metadata as { role?: string } | undefined)?.role
-      const role = normalizeUserRole(profile?.role ?? meta)
-      if (!isSuperAdmin(role)) {
-        router.replace(getDefaultDashboard(role))
-        return
-      }
-      setReady(true)
-    }
-    void run()
-  }, [router])
+    if (!gate.ready) return
+    setReady(true)
+  }, [gate.ready])
 
   useEffect(() => {
     void loadSummary()

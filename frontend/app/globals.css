@@ -3,6 +3,18 @@
 
 @custom-variant dark (&:is(.dark *));
 
+/* Make Tailwind's `font-sans` AND `font-mono` use JetBrains Mono — coding-theme
+   pattern style as requested. The whole UI uses the same monospace family for
+   a consistent IDE-like look. */
+@theme {
+  --font-sans:
+    var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+  --font-mono:
+    var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
+    monospace;
+}
+
 /* Optimus / v0 marketing theme — light */
 :root {
   /* Neutral — soft paper white */
@@ -13,8 +25,8 @@
   --popover: 0 0% 100%;
   --popover-foreground: 240 10% 4%;
   
-  /* Primary accent - Vibrant blue */
-  --primary: 221 83% 53%;
+  /* Primary accent - Vibrant emerald green */
+  --primary: 142 71% 45%;
   --primary-foreground: 0 0% 100%;
   
   /* Secondary colors */
@@ -40,10 +52,10 @@
   /* Borders and input */
   --border: 240 6% 91%;
   --input: 240 6% 91%;
-  --ring: 221 83% 53%;
+  --ring: 142 71% 45%;
   
   /* Charts */
-  --chart-1: 221 83% 53%;
+  --chart-1: 142 71% 45%;
   --chart-2: 142 76% 36%;
   --chart-3: 215 20% 50%;
   --chart-4: 25 95% 53%;
@@ -55,12 +67,12 @@
   /* Sidebar */
   --sidebar: 0 0% 100%;
   --sidebar-foreground: 240 10% 4%;
-  --sidebar-primary: 221 83% 53%;
+  --sidebar-primary: 142 71% 45%;
   --sidebar-primary-foreground: 0 0% 100%;
   --sidebar-accent: 240 5% 96%;
   --sidebar-accent-foreground: 240 6% 10%;
   --sidebar-border: 240 6% 90%;
-  --sidebar-ring: 221 83% 53%;
+  --sidebar-ring: 142 71% 45%;
 
   /* Inverted marketing band (e.g. Process / how-it-works) — near-black + light text in light & dark */
   --marketing-band-bg: 240 10% 4%;
@@ -77,8 +89,8 @@
   --popover: 240 10% 6%;
   --popover-foreground: 0 0% 98%;
   
-  /* Primary accent - Bright blue */
-  --primary: 217 91% 60%;
+  /* Primary accent - Bright emerald green */
+  --primary: 142 70% 50%;
   --primary-foreground: 240 10% 4%;
   
   /* Secondary colors */
@@ -104,10 +116,10 @@
   /* Borders and input */
   --border: 240 4% 16%;
   --input: 240 4% 16%;
-  --ring: 217 91% 60%;
+  --ring: 142 70% 50%;
   
   /* Charts */
-  --chart-1: 217 91% 60%;
+  --chart-1: 142 70% 50%;
   --chart-2: 142 71% 45%;
   --chart-3: 215 18% 55%;
   --chart-4: 25 95% 53%;
@@ -119,12 +131,12 @@
   /* Sidebar */
   --sidebar: 240 10% 6%;
   --sidebar-foreground: 0 0% 98%;
-  --sidebar-primary: 217 91% 60%;
+  --sidebar-primary: 142 70% 50%;
   --sidebar-primary-foreground: 240 10% 4%;
   --sidebar-accent: 240 4% 16%;
   --sidebar-accent-foreground: 0 0% 98%;
   --sidebar-border: 240 4% 16%;
-  --sidebar-ring: 217 91% 60%;
+  --sidebar-ring: 142 70% 50%;
 
   --marketing-band-bg: 0 0% 0%;
   --marketing-band-fg: 0 0% 98%;
@@ -132,8 +144,8 @@
 
 
 @theme inline {
-  --font-sans: 'Geist', 'Geist Fallback', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
-  --font-mono: 'Geist Mono', 'Geist Mono Fallback', 'SF Mono', Monaco, 'Cascadia Code', 'Roboto Mono', Consolas, 'Courier New', monospace;
+  --font-sans: var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+  --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, 'SF Mono', monospace;
   
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));
@@ -187,10 +199,25 @@
   }
   
   body {
-    @apply bg-background text-foreground;
-    font-feature-settings: "rounding-metrics" 1;
+    @apply bg-background text-foreground font-sans;
+    font-family:
+      var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo,
+      monospace;
+    font-feature-settings: 'rounding-metrics' 1;
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
+  }
+
+  /* Tint native form controls (checkboxes, radios, range, progress) with the brand. */
+  input,
+  textarea,
+  select,
+  progress {
+    accent-color: hsl(var(--primary));
+  }
+  ::selection {
+    background-color: hsl(var(--primary) / 0.25);
+    color: hsl(var(--primary-foreground));
   }
 
   /* Scrollbars — match light/dark theme */

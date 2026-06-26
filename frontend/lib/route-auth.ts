@@ -1,5 +1,6 @@
 import { headers } from 'next/headers'
 import { auth } from './auth'
+import { bootSchedulerOnce } from './boot-scheduler'
 import { isSuperAdmin, isAdmin, normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
 
 /** API layer role — same as `profiles.role` after normalization. */
@@ -19,6 +20,8 @@ export interface APIUser {
  * Supabase implementation so every importing API route keeps working.
  */
 export async function getAPIUser(): Promise<APIUser | null> {
+  // Lazy scheduler boot — runs once per process on the first API request.
+  bootSchedulerOnce()
   try {
     const session = await auth.api.getSession({
       headers: await headers(),

@@ -1,0 +1,47 @@
+{
+  "summary": "Phase 10 (QR ID cards + Hackathon events) — Backend 19/19 pytest pass in 44s on /app/backend/tests/test_phase10_qr_hackathons.py; Frontend Playwright pass on /dashboard/id-card (4 variant buttons + QR SVG + download/copy buttons), /qr/{user_token} (qr-user-card + XP/Level/Solved + Open dashboard), /dashboard/admin/hackathons (form submit -> grid row), and /hackathons/{slug} (register -> team appears on leaderboard). Backend coverage: ID-card auth+role-variant+idempotency+per-variant tokens; /api/qr/{token} resolves user (admin variant -> /dashboard/admin/system) + team + 404; hackathons POST 401/403/201 + caps clamping (9999 -> 500, max_per_team -> 20, timeout -> 10080) + slug uniqueness + ends_at math; GET list + by=slug; team register (32-char base64url qr_token, captain role, xp=0/level=1) + duplicate-409 + capacity-full-409; /api/qr/{team_token} resolves team kind with hackathon ref; PATCH xp_delta=250 -> level=3, achievement push, submission++ , 403 for non-admin; DELETE event with team -> 409, delete team then DELETE event -> 200. ONE real bug found and worked around in tests: resolveTeam() in /app/frontend/app/api/hackathons/[id]/teams/[teamId]/route.ts queries by 'hackathon.slug' which is not a field on hackathon_teams docs — so PATCH/DELETE team via hackathon slug returns 404. Tests now use hackathon UUID (which the spec also uses); admin UI page only ever uses UUID, so this is latent until anyone calls the route with a slug.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "PATCH/DELETE /api/hackathons/{slug}/teams/{teamId}", "issue": "resolveTeam() filters on { 'hackathon.slug': hackathonIdOrSlug } but hackathon_teams docs only store hackathon_id (UUID). Result: when the {id} segment is the event slug rather than the UUID, the team lookup 404s even though the team exists. Works fine when {id} is the UUID. Fix: resolve hackathon first via $or:[{id},{slug}] in the hackathons collection, then look up team by hackathon_id."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {"component": "/hackathons/{slug} page", "issue": "After successful team registration, a red 'Event not found' text remains visible alongside the success card + leaderboard (seen during cleanup-driven refetch after event delete). Likely setError(...) on a refetch that 404s — should be cleared on success or only rendered when there is no event data.", "selector": "[data-testid='hackathon-page']", "priority": "LOW"}
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase10_qr_hackathons.py",
+    "/app/test_reports/pytest/phase10_results.xml"
+  ],
+  "action_items": [
+    "Fix resolveTeam() in /app/frontend/app/api/hackathons/[id]/teams/[teamId]/route.ts: resolve hackathon by id OR slug first (already done in /teams/route.ts via resolveHackathon), then findOne({hackathon_id: hk.id, $or:[{id:teamIdOrSlug},{slug:teamIdOrSlug}]}). Currently breaks PATCH/DELETE if anyone passes the event slug.",
+    "(LOW) Clear the 'Event not found' error state in /hackathons/[slug]/page.tsx on successful event fetch, or only render it when event === null."
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/lib/db/qr-events.ts — clean repo helpers; getOrCreateIdCardToken correctly idempotent on (user_id, role_variant) compound; refreshes snapshot on each call. newToken uses 24 random bytes -> 32 base64url chars exactly. xpToLevel matches profile pages (Math.max(1, floor(xp/100)+1)).",
+    "/app/frontend/app/api/id-card/route.ts — variant query param whitelisted to user/admin/tenant/recruiter before falling back to roleToVariant. Achievements derived live from submissions + xp_events.first_blood. Payload omits _id correctly.",
+    "/app/frontend/app/api/qr/[token]/route.ts — public endpoint; tries id_card_tokens first, then hackathon_teams. Returns 410 Gone if revoked_at set (code path present though not yet exposed). Handles BSON ObjectId vs string user_id with ObjectId.isValid guard.",
+    "/app/frontend/app/api/hackathons/route.ts — clamping uses Math.min(500, Math.max(1, ...)) for num_teams, [1,20] for max_per_team, [5,10080] for timeout — matches spec. slug collision suffix loop is fine for low contention but unbounded; consider random fallback after N tries.",
+    "/app/frontend/app/api/hackathons/[id]/teams/route.ts — POST correctly enforces capacity BEFORE double-registration check; both return 409 with descriptive errors. Captain is always members[0]. Status='closed' is rejected at create-time (good).",
+    "/app/frontend/app/api/hackathons/[id]/teams/[teamId]/route.ts — *** BUG ***: resolveTeam queries on hackathon_teams.hackathon.slug which doesn't exist. Hackathon resolution should happen via the hackathons collection first. PATCH also recomputes level via a second updateOne which is slightly wasteful — could $set level inside the same update once newXp is known.",
+    "/app/frontend/app/dashboard/id-card/page.tsx — all 4 variant buttons + QR svg + download (Blob URL revoke implicit on next paint) + copy-url buttons rendered with stable data-testids. SVG count 9 in the page (4 variant buttons each render a small QR + 1 main + ... acceptable).",
+    "/app/frontend/app/hackathons/[slug]/page.tsx — public registration flow works end-to-end (team row populates leaderboard within 3s). Minor: error state persists after success (see ui_bugs)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase10_qr_hackathons.py (NEW — 19 pytest tests covering id-card, qr-resolver, hackathons CRUD/RBAC/clamping, team registration/QR/capacity/double-reg, PATCH xp+ach+sub+level, delete guard)"
+  ],
+  "success_rate": {
+    "backend": "100% (19/19 pytest in /app/backend/tests/test_phase10_qr_hackathons.py)",
+    "frontend": "100% (id-card page 4 variants + QR + dl/copy; /qr/{user_token} card + XP/Level/Solved + Open dashboard; admin hackathons form -> grid row; public /hackathons/{slug} register -> leaderboard updates)"
+  },
+  "test_credentials": "qa@codespectra.dev / QApass123! (superadmin); tenant@codespectra.dev / CodeSpectra@2026 (tenant_admin, used for 403); user@codespectra.dev / CodeSpectra@2026 (user, used for 403); recruiter@codespectra.dev / CodeSpectra@2026 — all from /app/memory/test_credentials.md, unmodified",
+  "seed_data_creation": "Tests create-and-cleanup hackathons matching slug prefixes code-spectrum-6 / caps-test / full-event / deletable plus 'UI Test Event' from Playwright. autouse session fixture wipes hackathons + hackathon_teams matching those prefixes BEFORE and AFTER the suite. Playwright cleanup deletes its UI Test Event teams + event row via direct API calls. id_card_tokens for qa@codespectra.dev (admin + recruiter variants) are left in place — they are permanent by design (printed badges) and were not in the cleanup scope per the spec.",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All testing was against http://localhost:3000 (external proxy quirks still apply). The resolveTeam slug-bug means PATCH/DELETE team via event slug will 404; pass the event UUID instead, OR fix it in the route file. The /api/id-card endpoint refreshes the snapshot on every call (intentional), but the token itself is permanent per (user_id, role_variant). Team qr_token charset is base64url 32 chars (regex ^[A-Za-z0-9_-]{32}$). Level math: Math.max(1, floor(xp/100)+1) — 0 XP -> level 1, 250 XP -> level 3 (matches profile pages). Long-standing repo-wide warnings about missing exports in /lib/github-service.ts (generateAIFixes, applySuggestedFix, applySuggestedFixBatch, unapplySuggestedFix, getFileContent) flood the console but are unrelated to Phase 10 — carry-over from earlier iterations.",
+  "rca of the issue": "Bug in /app/frontend/app/api/hackathons/[id]/teams/[teamId]/route.ts resolveTeam(): the $or for hackathon identification uses { hackathon_id: x } OR { 'hackathon.slug': x }, but hackathon_teams documents only have hackathon_id (UUID). When a caller passes the event slug (e.g., 'code-spectrum-6') the second branch never matches, so PATCH/DELETE returns 404 even though the team exists. Reproduce: PATCH /api/hackathons/code-spectrum-6/teams/<team_uuid> -> 404 not found. With event UUID -> 200. Fix: resolve the hackathon first via { $or:[{id:x},{slug:x}] } in the hackathons collection (the sibling /teams/route.ts already does this via resolveHackathon), then findOne on hackathon_teams with the resolved hackathon_id and $or:[{id:teamId},{slug:teamId}]."
+}

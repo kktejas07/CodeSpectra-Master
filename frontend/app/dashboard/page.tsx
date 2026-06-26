@@ -7,39 +7,27 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TrendingUp, AlertCircle, Zap, Activity, Code, Trophy, BookOpen, CheckCircle, ArrowRight, Clock } from 'lucide-react'
 import Link from 'next/link'
-import { supabase } from '@/lib/supabase-client'
+import { useSession } from '@/lib/auth-client'
+import { DailyChallengeWidget } from '@/components/dashboard/daily-challenge-widget'
 import { getDefaultDashboard, normalizeUserRole } from '@/lib/rbac'
 
 export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
+  const { data: session, isPending } = useSession()
 
   useEffect(() => {
-    let cancelled = false
-    const run = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user || cancelled) return
-      const { data: profile } = await supabase
-        .from('profiles')
-        .select('role')
-        .eq('id', user.id)
-        .single()
-      const meta = (user.user_metadata as { role?: string } | undefined)?.role
-      const role = normalizeUserRole(profile?.role ?? meta)
-      if (cancelled) return
-      const target = getDefaultDashboard(role)
-      // Only bounce off the generic overview URL so deep links keep working
-      if (pathname === '/dashboard' && target !== pathname) {
-        router.replace(target)
-      }
+    if (isPending) return
+    if (!session?.user) {
+      router.push('/auth/login')
+      return
     }
-    void run()
-    return () => {
-      cancelled = true
+    const role = normalizeUserRole((session.user as { role?: string }).role)
+    const target = getDefaultDashboard(role)
+    if (pathname === '/dashboard' && target !== pathname) {
+      router.replace(target)
     }
-  }, [router, pathname])
+  }, [router, pathname, isPending, session?.user?.id])
   const metrics = [
     {
       label: 'Quality Score',
@@ -94,6 +82,9 @@ export default function DashboardPage() {
         <h1 className="text-3xl font-bold mb-1">Welcome back</h1>
         <p className="text-muted-foreground">Here&apos;s an overview of your code analysis activity</p>
       </div>
+
+      {/* Daily challenge / streak — HackerRank-style */}
+      <DailyChallengeWidget />
 
       {/* Metrics Grid */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

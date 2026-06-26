@@ -357,7 +357,7 @@ export async function bootstrap() {
           className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none select-none px-4 pb-8 pt-20 sm:px-6 sm:pt-24 lg:px-8"
           aria-hidden
         >
-          <div className="relative aspect-square w-[min(94vw,calc(100dvh-11rem),880px)] sm:w-[min(92vw,calc(100dvh-10rem),900px)] lg:w-[min(88vw,min(82dvh,920px))] max-h-[min(82dvh,920px)] max-w-full opacity-[0.68] dark:opacity-[0.82]">
+          <div className="relative aspect-square w-[min(94vw,calc(100dvh-11rem),880px)] sm:w-[min(92vw,calc(100dvh-10rem),900px)] lg:w-[min(88vw,min(82dvh,920px))] max-h-[min(82dvh,920px)] max-w-full opacity-90 dark:opacity-100">
             <Globe3D
               particleCount={1100}
               dotRadius={4.25}
@@ -370,9 +370,9 @@ export async function bootstrap() {
           </div>
         </div>
 
-        {/* Lighter scrim so the globe stays visible; text still readable */}
+        {/* Soft scrim — keeps text readable while letting the globe shine through */}
         <div
-          className="absolute inset-0 z-1 bg-linear-to-b from-background/60 via-background/28 to-background/65 dark:from-background/72 dark:via-background/38 dark:to-background/78 pointer-events-none"
+          className="absolute inset-0 z-1 bg-linear-to-b from-background/40 via-background/10 to-background/55 dark:from-background/35 dark:via-background/5 dark:to-background/50 pointer-events-none"
           aria-hidden
         />
 

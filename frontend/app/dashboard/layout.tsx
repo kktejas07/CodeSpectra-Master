@@ -23,6 +23,7 @@ import {
   Settings,
   LogOut,
   Star,
+  Award,
   Bell,
   Users,
   User,
@@ -40,6 +41,12 @@ import {
   Globe2,
   SlidersHorizontal,
   ChevronRight,
+  Bot,
+  Sparkles,
+  Sparkles as SparklesIcon,
+  Camera as CameraIcon,
+  Layers as LayersIcon,
+  CreditCard as CreditCardIcon,
   type LucideIcon,
 } from 'lucide-react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
@@ -51,6 +58,7 @@ import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { LearningSidebarNav } from '@/components/dashboard/learning-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
 import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
+import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -139,10 +147,16 @@ export default function DashboardLayout({
 
     const baseLeaves: NavLeaf[] = [
       { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
+      { href: '/dashboard/tracks', icon: LayersIcon, label: 'Tracks' },
       { href: '/dashboard/scanner?mode=manual', icon: CodeIcon, label: 'Scanner' },
+      { href: '/dashboard/agent', icon: Bot, label: 'Agent' },
       { href: LEARNING_HUB_DEFAULT, icon: BookOpen, label: 'Learning' },
+      { href: '/dashboard/skill-analytics', icon: SparklesIcon, label: 'Skill Analytics' },
+      { href: '/dashboard/identity-verify', icon: CameraIcon, label: 'Identity Verify' },
       { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
       { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
+      { href: '/dashboard/certifications', icon: Award, label: 'Certifications' },
+      { href: '/dashboard/pricing', icon: CreditCardIcon, label: 'Pricing' },
     ]
 
     const role = normalizeUserRole(userProfile.role)
@@ -158,6 +172,10 @@ export default function DashboardLayout({
         { href: p.speedInsights, icon: Gauge, label: 'Speed Insights' },
         { href: p.cdn, icon: Globe2, label: 'CDN' },
         { href: p.pricing, icon: FileText, label: 'Pricing' },
+        // Admin-only domains added in Phase 11. Server enforces 403 — but the
+        // links would otherwise be orphan dead-ends in the UI.
+        { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
+        { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
       ]
       const platformSettingsLeaf: NavLeaf = {
         href: p.settings,
@@ -370,6 +388,7 @@ export default function DashboardLayout({
                     const { href, label, icon: IconComponent } = entry.item
                     const active = isActive(href)
                     const nestedShell = mainNavHasNestedShell(href)
+                    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
                     return (
                       <Link
                         key={href}
@@ -377,6 +396,7 @@ export default function DashboardLayout({
                         title={label}
                         prefetch={false}
                         onClick={() => setSidebarOpen(false)}
+                        data-testid={`sidebar-nav-${slug}`}
                       >
                         <div
                           className={cn(
@@ -582,6 +602,8 @@ export default function DashboardLayout({
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
+      {/* Floating Ask CodeSpectra AI assistant — available across the dashboard */}
+      <AskCodeSpectra />
     </div>
   )
 }

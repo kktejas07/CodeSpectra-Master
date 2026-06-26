@@ -8,7 +8,7 @@
  * password hashing + `account` linkage consistent.
  */
 
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import type { Collection, Filter } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 

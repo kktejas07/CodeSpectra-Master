@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 3 — Validated the FastAPI proxy regression fix (dual /api/* and stripped /* routing) plus the login flow + role-gate redirect. All scenarios PASS. Added a new TestProxyStripping class (7 tests) to /app/backend/tests/backend_test.py — every test passes (7/7). Full pytest suite now sits at 35/36 (the one failure, test_generate_problem_forbidden_for_non_admin, is pre-existing and unrelated to this iteration's changes: it expects a 401/403 but the seeded QA user is now superadmin so the endpoint times out actually generating a problem). Login UI verified: cleared cookies, signed in as qa@codespectra.dev/QApass123!, was redirected to /dashboard then (after the post-login reload) to /dashboard/admin/system, sidebar populates with ALL 19 expected superadmin nav entries (Operations overview, Users, Roles, Insights, Audit logs, Integrations, Speed Insights, CDN, Pricing, Arena, Tracks, Scanner, Agent, Learning, Skill Analytics, Identity Verify, Leaderboard, Achievements, Platform settings), NO 'Loading navigation…' fallback, and GET /api/auth/get-session returns user.role='superadmin'. Role-gate redirect: created a fresh non-superadmin user (qa-regular-1782475565@example.com), signed in, attempted GET /dashboard/admin/system → correctly redirected back to /dashboard with the regular-user sidebar (no admin entries). Backend regression curls confirm both /api/auth/sign-in/email and /auth/sign-in/email (stripped) return 200 + role=superadmin; wrong password → 401 INVALID_EMAIL_OR_PASSWORD; missing fields → 400 VALIDATION_ERROR; /__proxy_health returns {'ingress':'strips_api_prefix'}; /internal/ai/* continues to serve from ai_router locally (and is correctly skipped by the stripped catch-all).",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {
+        "endpoint": "/api/ai/generate-problem (test_generate_problem_forbidden_for_non_admin)",
+        "issue": "Pre-existing test assertion is now invalid: it expects 401/403 for non-admin users, but the seeded QA user is superadmin per /app/memory/test_credentials.md. The endpoint accepts the request and starts an LLM call, hitting the 15s request timeout. Either change the test to use a freshly-signed-up non-admin user, or remove the assertion. Not related to this iteration's proxy fix."
+      }
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Optional cleanup: update test_generate_problem_forbidden_for_non_admin to use a freshly signed-up regular user instead of the seeded superadmin QA user (pre-existing issue, not from this iteration).",
+    "Carry-over from iteration_2: still no JSX-level role guard on /app/frontend/app/dashboard/admin/settings/page.tsx — recommend adding `if (!gate.ready) return null` after the useRoleGate call."
+  ],
+  "critical_code_review_comments": [
+    "/app/backend/server.py: the stripped catch-all `@app.api_route('/{path:path}')` correctly skips `internal/` to avoid exposing AI internals via Cloudflare/Emergent ingress that strips /api/. ai_router is registered BEFORE the catch-all, so /internal/ai/* paths are still served by the included router and the explicit `internal/` check in proxy_stripped is a defensive double-guard. Good.",
+    "/app/backend/server.py keeps a sane forwarded-host header (sets host=localhost:3000 for upstream and preserves x-forwarded-host for Better Auth). This is critical for cookie scoping and the Origin CSRF check.",
+    "Better Auth rejects requests without an Origin header with code MISSING_OR_NULL_ORIGIN (403). The proxy doesn't auto-add an Origin, so any non-browser/curl client must send one. This is correct security posture but worth documenting in /app/memory/test_credentials.md."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (added TestProxyStripping class — 7 new tests, all passing)"
+  ],
+  "success_rate": {
+    "backend": "97% (35/36 pytest — 7/7 new TestProxyStripping passes; the 1 failure is pre-existing and unrelated)",
+    "frontend": "100% — login UI flow, sidebar nav (19/19), get-session role propagation, role-gate redirect for non-superadmin all PASS"
+  },
+  "test_credentials": "qa@codespectra.dev / QApass123! (superadmin) + qa-regular-1782475565@example.com / RegPass123! (regular user, created during this iteration)",
+  "seed_data_creation": "Created one TEST regular user via POST /api/auth/sign-up/email (qa-regular-1782475565@example.com) for role-gate testing.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite at /app/backend/tests/backend_test.py (36 tests, ~140s). Run with `pytest backend/tests/backend_test.py -v --junitxml=/app/test_reports/pytest/pytest_results.xml`. Use http://localhost:3000 + http://localhost:8001 directly — the external preview URL https://codespectra-master.preview.emergentagent.com is currently flaky at the ingress level (Cloudflare 404 when /api/ is stripped, returns marketing HTML on root). The FastAPI proxy now accepts BOTH /api/* and stripped /* paths (see TestProxyStripping). When testing the login UI: clear cookies first, submit form, wait for **/dashboard*, then page.reload(wait_until='networkidle') once to defeat Next.js dev-mode Fast Refresh — this is documented in the request and confirmed working. Better Auth requires an Origin header on POST /api/auth/* — curl tests must include `-H 'Origin: http://localhost:3000'`.",
+  "rca of the issue": "Original bug: External preview URL returned Cloudflare 404 on /api/* because Emergent's ingress was stripping the /api/ prefix before forwarding to backend:8001, but server.py only matched `/api/{path:path}`. The fix in /app/backend/server.py adds a second catch-all `/{path:path}` that re-adds the /api/ prefix when calling Next.js, while explicitly skipping `internal/` so AI internals aren't exposed. Verified end-to-end: (a) curl http://localhost:8001/auth/sign-in/email returns 200 with the same payload as /api/auth/sign-in/email, (b) /__proxy_health responds with ingress='strips_api_prefix', (c) /internal/ai/complete still returns 200 because ai_router is registered before the catch-all and the stripped catch-all explicitly returns 404 for internal/* anyway."
+}

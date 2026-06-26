@@ -1,11 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { BarChart3, TrendingUp, Users, Activity, Code2, ListOrdered } from 'lucide-react'
-import { supabase } from '@/lib/supabase-client'
-import { getDefaultDashboard, isSuperAdmin, normalizeUserRole } from '@/lib/rbac'
+import { useRoleGate } from '@/lib/use-role-gate'
 
 type Metrics = {
   totalUsers: number
@@ -16,27 +14,13 @@ type Metrics = {
 }
 
 export default function Analytics() {
-  const router = useRouter()
+  const gate = useRoleGate({ require: 'superadmin' })
   const [metrics, setMetrics] = useState<Metrics | null>(null)
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
+    if (!gate.ready) return
     const run = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      const meta = (user.user_metadata as { role?: string } | undefined)?.role
-      const role = normalizeUserRole(profile?.role ?? meta)
-      if (!isSuperAdmin(role)) {
-        router.replace(getDefaultDashboard(role))
-        return
-      }
-
       const res = await fetch('/api/admin/metrics', { credentials: 'include' })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
@@ -58,7 +42,7 @@ export default function Analytics() {
       })
     }
     void run()
-  }, [router])
+  }, [gate.ready])
 
   const stats = metrics
     ? [
