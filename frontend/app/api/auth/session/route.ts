@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { createSessionCookie, verifyIdToken } from '@/lib/firebase-admin'
+import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { cookies } from 'next/headers'
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
@@ -12,12 +12,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'idToken required' }, { status: 400 })
     }
 
-    const decoded = await verifyIdToken(idToken)
+    const auth = await getAdminAuthInstance()
+    if (!auth) {
+      return NextResponse.json({ error: 'Firebase not configured' }, { status: 500 })
+    }
+
+    const decoded = await auth.verifyIdToken(idToken)
     if (!decoded) {
       return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
     }
 
-    const sessionCookie = await createSessionCookie(idToken, SESSION_EXPIRES_IN)
+    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: SESSION_EXPIRES_IN })
     const response = NextResponse.json({ ok: true })
 
     response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
@@ -56,8 +61,12 @@ export async function GET() {
   }
 
   try {
-    const { verifySessionCookie } = await import('@/lib/firebase-admin')
-    const decoded = await verifySessionCookie(sessionCookie)
+    const auth = await getAdminAuthInstance()
+    if (!auth) {
+      return NextResponse.json({ user: null })
+    }
+
+    const decoded = await auth.verifySessionCookie(sessionCookie, true)
     if (!decoded) {
       return NextResponse.json({ user: null })
     }

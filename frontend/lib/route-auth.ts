@@ -1,6 +1,6 @@
 import { headers } from 'next/headers'
 import { cookies } from 'next/headers'
-import { verifySessionCookie, verifyIdToken } from './firebase-admin'
+import { getAdminAuthInstance } from './firebase-admin'
 import { bootSchedulerOnce } from './boot-scheduler'
 import { isSuperAdmin, isAdmin, normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
 
@@ -17,17 +17,24 @@ const SESSION_COOKIE_NAME = 'codespectra_session'
 export async function getAPIUser(): Promise<APIUser | null> {
   bootSchedulerOnce()
   try {
+    const adminAuth = await getAdminAuthInstance()
+    if (!adminAuth) return null
+
     const cookieStore = await cookies()
     const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
 
     if (sessionCookie) {
-      const decoded = await verifySessionCookie(sessionCookie)
-      if (decoded) {
-        return {
-          id: decoded.uid,
-          email: decoded.email || '',
-          role: normalizeUserRole((decoded as Record<string, unknown>).role as string | undefined),
+      try {
+        const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
+        if (decoded) {
+          return {
+            id: decoded.uid,
+            email: decoded.email || '',
+            role: normalizeUserRole((decoded as Record<string, unknown>).role as string | undefined),
+          }
         }
+      } catch {
+        /* invalid cookie — fall through to Bearer token check */
       }
     }
 
@@ -35,13 +42,17 @@ export async function getAPIUser(): Promise<APIUser | null> {
     const authHeader = headersList.get('authorization')
     if (authHeader?.startsWith('Bearer ')) {
       const token = authHeader.slice(7)
-      const decoded = await verifyIdToken(token)
-      if (decoded) {
-        return {
-          id: decoded.uid,
-          email: decoded.email || '',
-          role: normalizeUserRole((decoded as Record<string, unknown>).role as string | undefined),
+      try {
+        const decoded = await adminAuth.verifyIdToken(token)
+        if (decoded) {
+          return {
+            id: decoded.uid,
+            email: decoded.email || '',
+            role: normalizeUserRole((decoded as Record<string, unknown>).role as string | undefined),
+          }
         }
+      } catch {
+        /* invalid token */
       }
     }
 

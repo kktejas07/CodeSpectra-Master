@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/api-auth'
-import { adminAuth } from '@/lib/firebase-admin'
+import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { listAllUsers, getUserById } from '@/lib/db/admin'
 import { buildAdminUserRow, type ProfileRow } from '@/lib/admin-users'
 import { normalizeUserRole } from '@/lib/rbac'
@@ -74,6 +74,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
+  const adminAuth = await getAdminAuthInstance()
+  if (!adminAuth) {
+    return NextResponse.json({ error: 'Firebase not configured' }, { status: 500 })
+  }
+
   let body: { email?: string; password?: string; full_name?: string; role?: string }
   try {
     body = await request.json()
@@ -86,8 +91,6 @@ export async function POST(request: Request) {
   const role = normalizeUserRole(body.role)
   const password =
     (body.password && body.password.length >= 8 ? body.password : undefined) ||
-    // Generate a temporary password if none provided. The admin should
-    // immediately ask the user to reset it via /auth/forgot-password.
     `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
 
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {

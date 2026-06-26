@@ -1,4 +1,4 @@
-import { adminAuth } from '@/lib/firebase-admin'
+import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { updateUserById } from '@/lib/db/admin'
 
 const demoUsers = [
@@ -23,6 +23,14 @@ const demoUsers = [
 ]
 
 export async function POST() {
+  const adminAuth = await getAdminAuthInstance()
+  if (!adminAuth) {
+    return new Response(
+      JSON.stringify({ success: false, error: 'Firebase not configured' }),
+      { status: 500, headers: { 'Content-Type': 'application/json' } },
+    )
+  }
+
   const createdUsers: Array<{
     email: string
     password: string
