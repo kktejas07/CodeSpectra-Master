@@ -10,6 +10,8 @@ import {
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
+import { useSession } from '@/lib/auth-client'
+import { normalizeUserRole, isAdmin as isAdminRole, type UserRole } from '@/lib/rbac'
 
 interface NavItem {
   id: string
@@ -17,6 +19,8 @@ interface NavItem {
   href: string
   icon: React.ReactNode
   badge?: string
+  /** Optional role gate. If set, item (or submenu entry) is only rendered when the user role passes. */
+  requires?: 'admin' | 'superadmin'
   submenu?: NavItem[]
 }
 
@@ -43,7 +47,8 @@ const navItems: NavItem[] = [
       { id: 'challenges-all', label: 'All Challenges', href: '/dashboard/challenges', icon: <Trophy className="w-4 h-4" /> },
       { id: 'leaderboard', label: 'Leaderboard', href: '/dashboard/leaderboard', icon: <BarChart3 className="w-4 h-4" /> },
       { id: 'id-card', label: 'My ID Card', href: '/dashboard/id-card', icon: <Zap className="w-4 h-4" /> },
-      { id: 'hackathons', label: 'Hackathons', href: '/dashboard/admin/hackathons', icon: <Trophy className="w-4 h-4" /> },
+      // Hackathons admin entry — admin-only (server returns 403 for non-admins).
+      { id: 'hackathons', label: 'Hackathons', href: '/dashboard/admin/hackathons', icon: <Trophy className="w-4 h-4" />, requires: 'admin' },
       { id: 'progress', label: 'My Progress', href: '/dashboard/challenges/progress', icon: <Zap className="w-4 h-4" /> },
     ]
   },
@@ -81,6 +86,7 @@ const navItems: NavItem[] = [
     submenu: [
       { id: 'badges', label: 'Badges', href: '/dashboard/achievements?tab=badges', icon: <Award className="w-4 h-4" /> },
       { id: 'achievements-list', label: 'Achievements', href: '/dashboard/achievements?tab=achievements', icon: <Trophy className="w-4 h-4" /> },
+      { id: 'certifications', label: 'Certifications', href: '/dashboard/certifications', icon: <Award className="w-4 h-4" /> },
     ]
   },
   {
@@ -120,12 +126,14 @@ const adminItems: NavItem[] = [
     label: 'Hackathons',
     href: '/dashboard/admin/hackathons',
     icon: <Trophy className="w-5 h-5" />,
+    requires: 'admin',
   },
   {
     id: 'admin-ai-inventory',
     label: 'AI Inventory',
     href: '/dashboard/admin/ai-inventory',
     icon: <Brain className="w-5 h-5" />,
+    requires: 'admin',
   },
 ]
 
@@ -134,10 +142,29 @@ interface SidebarProps {
   onClose?: () => void
 }
 
+/** Filter items by the visitor's role. Removes whole items and prunes submenu entries. */
+function filterByRole(items: NavItem[], role: UserRole): NavItem[] {
+  const passes = (req?: 'admin' | 'superadmin') => {
+    if (!req) return true
+    if (req === 'superadmin') return role === 'superadmin'
+    return isAdminRole(role)
+  }
+  return items
+    .filter((it) => passes(it.requires))
+    .map((it) =>
+      it.submenu
+        ? { ...it, submenu: it.submenu.filter((s) => passes(s.requires)) }
+        : it,
+    )
+}
+
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
+  const { data: session } = useSession()
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
-  const isAdmin = pathname.startsWith('/admin')
+
+  const role = normalizeUserRole((session?.user as { role?: string } | undefined)?.role)
+  const isAdminView = pathname.startsWith('/admin')
 
   const toggleSubmenu = (itemId: string) => {
     setExpandedMenus(prev =>
@@ -147,16 +174,18 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
     )
   }
 
-  const menuItems = isAdmin ? adminItems : navItems
+  // Admin views are gated to admins; for non-admins fall back to user nav.
+  const baseItems = isAdminView && isAdminRole(role) ? adminItems : navItems
+  const menuItems = filterByRole(baseItems, role)
 
   return (
-    <div className={cn(
+    <div data-testid="sidebar" className={cn(
       'fixed inset-y-0 left-0 z-40 w-64 bg-background border-r border-border overflow-y-auto transition-transform lg:translate-x-0',
       isOpen ? 'translate-x-0' : '-translate-x-full'
     )}>
       {/* Logo */}
       <div className="p-6 border-b border-border">
-        <Link href="/dashboard" className="flex items-center gap-2">
+        <Link href="/dashboard" className="flex items-center gap-2" data-testid="sidebar-logo">
           <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center text-white font-bold">
             CS
           </div>
@@ -168,13 +197,14 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
       </div>
 
       {/* Navigation */}
-      <nav className="p-4 space-y-2">
+      <nav className="p-4 space-y-2" data-testid="sidebar-nav">
         {menuItems.map((item) => (
           <div key={item.id}>
-            {item.submenu ? (
+            {item.submenu && item.submenu.length > 0 ? (
               <>
                 <button
                   onClick={() => toggleSubmenu(item.id)}
+                  data-testid={`sidebar-item-${item.id}`}
                   className={cn(
                     'w-full flex items-center justify-between px-4 py-2 rounded-lg transition',
                     expandedMenus.includes(item.id)
@@ -205,6 +235,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
                       <Link
                         key={subitem.id}
                         href={subitem.href}
+                        data-testid={`sidebar-subitem-${subitem.id}`}
                         className={cn(
                           'flex items-center gap-2 px-3 py-2 rounded text-sm transition',
                           pathname === subitem.href
@@ -222,6 +253,7 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
             ) : (
               <Link
                 href={item.href}
+                data-testid={`sidebar-item-${item.id}`}
                 className={cn(
                   'flex items-center gap-3 px-4 py-2 rounded-lg transition',
                   pathname === item.href
@@ -244,11 +276,11 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
 
       {/* Footer */}
       <div className="absolute bottom-0 left-0 right-0 p-4 border-t border-border space-y-2 bg-muted/30">
-        <Button variant="outline" size="sm" className="w-full gap-2">
+        <Button variant="outline" size="sm" className="w-full gap-2" data-testid="sidebar-settings-btn">
           <Settings className="w-4 h-4" />
           Settings
         </Button>
-        <Button variant="ghost" size="sm" className="w-full gap-2 text-destructive hover:text-destructive">
+        <Button variant="ghost" size="sm" className="w-full gap-2 text-destructive hover:text-destructive" data-testid="sidebar-logout-btn">
           <LogOut className="w-4 h-4" />
           Logout
         </Button>
@@ -267,6 +299,7 @@ export function MobileMenuButton() {
         size="icon"
         className="lg:hidden"
         onClick={() => setIsOpen(!isOpen)}
+        data-testid="mobile-menu-toggle"
       >
         {isOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
       </Button>

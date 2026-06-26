@@ -6,7 +6,7 @@
  *   - submissions      : per-user solution attempts (status, score, results)
  *   - problem_languages: optional per-problem boilerplate per language
  */
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 

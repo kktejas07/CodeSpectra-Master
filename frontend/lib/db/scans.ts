@@ -15,7 +15,7 @@
  * ObjectId for these because the existing UI treats ids as opaque strings.
  */
 
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import type { Collection, Db, Filter, Sort } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 

@@ -1,0 +1,48 @@
+{
+  "summary": "Phase 11 — Certifications + AI Inventory Audit + Sidebar RBAC gating + Mobile scaffolds. Backend pytest 14/14 PASS on /app/backend/tests/test_phase11_certs_audit.py covering catalog seed (6 modules), category filter, no-answer-leak in catalog & start, 401-unauth on start, idempotency-within-24h, submit pass (score=100, verify_token), submit fail (verify_token=null), GET /me, GET /verify/<token> valid + invalid, audit 401/403/200 with mode='embedded' + python.findings + npm.findings + source fields. Frontend Playwright verified: public /cert/verify/<valid_token> renders cert-verify-valid + cert-verify-title (SQL Basic) + cert-verify-name (Demo User, NOT Anonymous) + cert-verify-score (100%); /cert/verify/notreal renders cert-verify-invalid card; /dashboard/certifications (signed in via fetch sign-in) lists 6 cert-card-* items with MDN + exercism attribution; /dashboard/certifications/javascript-basic renders cert-attempt-runner + 5 cert-question-* + cert-submit-btn; sidebar correctly HIDES admin-ai-inventory + admin-hackathons from regular user. Mobile scaffolds exist at /app/mobile/ios/CodeSpectraMobile (4 Swift files) and /app/mobile/android/codespectra-mobile (Gradle app) — not exercised per spec. ONE CRITICAL BUG FOUND: sidebar gating uses pathname.startsWith('/admin') but admin pages live at /dashboard/admin/*, so admin items (AI Inventory + Hackathons) are NEVER visible to superadmin in the main dashboard sidebar — confirmed on /dashboard/admin/system and /admin (which has its own separate sidebar component).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "components/navigation/sidebar.tsx (line 167)",
+        "issue": "isAdminView = pathname.startsWith('/admin') — but the admin pages are mounted at /dashboard/admin/* (e.g. /dashboard/admin/ai-inventory, /dashboard/admin/hackathons, /dashboard/admin/system). Because /dashboard/admin/system does NOT start with '/admin', isAdminView is false there, so baseItems falls back to navItems (regular user nav). Result: admin items 'AI Inventory' and 'Hackathons' (data-testid sidebar-item-admin-ai-inventory, sidebar-item-admin-hackathons) are NEVER rendered for superadmin in the main sidebar. Verified empirically: signed in as qa@codespectra.dev, navigated to /dashboard/admin/system — neither testid present. (/admin route uses an entirely different/separate sidebar component with only Dashboard/Users/Challenges/Courses/Settings, also no AI Inventory/Hackathons.)",
+        "selector": "[data-testid=\"sidebar-item-admin-ai-inventory\"], [data-testid=\"sidebar-item-admin-hackathons\"]",
+        "priority": "HIGH"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_phase11_certs_audit.py",
+    "/app/test_reports/pytest/phase11_results.xml"
+  ],
+  "action_items": [
+    "FIX (HIGH): /app/frontend/components/navigation/sidebar.tsx line 167 — change `pathname.startsWith('/admin')` to `pathname.startsWith('/admin') || pathname.startsWith('/dashboard/admin')` (or just `pathname.includes('/admin')`). Without this fix the AI Inventory and Hackathons sidebar items are unreachable for admins from the main dashboard sidebar. Verify by signing in as qa@codespectra.dev, opening /dashboard/admin/system, and confirming both sidebar-item-admin-ai-inventory and sidebar-item-admin-hackathons appear."
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/components/navigation/sidebar.tsx — filterByRole() and useSession-based gating logic are correct, but the isAdminView selector pathname.startsWith('/admin') misses /dashboard/admin/*, defeating the purpose of admin items in the adminItems array. This is the ONLY critical bug found in P1.",
+    "/app/frontend/app/api/certifications/route.ts — clean: cursor pagination + category filter + seed-on-empty + publicCertView strips questions[]. Schema validation via SeedModule list is sound.",
+    "/app/frontend/app/api/certifications/[id]/start/route.ts — idempotency on (user, cert_id, started_at>=now-24h, submitted_at: null) correctly returns existing attempt; verified by pytest (same attempt_id on second call). Display name lookup uses ObjectId first then falls back to {id: user.id} which is the right resilience pattern.",
+    "/app/frontend/app/api/certifications/[id]/submit/route.ts — body.answers is Record<questionId, choiceIndex> (NOT positional array). Spec called for [1,2,2,1,1] which had to be remapped to {qid: idx} in tests; if any future client implementation passes a positional array the score will silently be 0. Consider supporting both shapes OR documenting the contract more prominently in the route file's JSDoc.",
+    "/app/frontend/app/api/ai-inventory/audit/route.ts — embedded fallback correctly populated; mode/note/source/findings keys all present in superadmin response. RBAC: 401→403→200 chain verified.",
+    "/app/frontend/lib/db/certifications.ts — seedCertificationsIfEmpty() seeds 6 modules with open-source attribution (MDN/exercism/OSSU/web.dev/FreeCodeCamp/React Docs) on first GET; pytest confirms catalog appears immediately on initial /api/certifications call.",
+    "/app/frontend/app/cert/verify/[token]/page.tsx — public anon-friendly page renders cert-verify-valid/invalid + title + name + score data-testids exactly per spec; verified with real verify_token (Demo User, 100%)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_phase11_certs_audit.py (NEW — 14 pytests, 13.6s, 100% pass)"
+  ],
+  "success_rate": {
+    "backend": "100% (14/14 pytest in test_phase11_certs_audit.py)",
+    "frontend": "~85% — verify pages + cert dashboard + cert runner + user-side sidebar gating all confirmed working. Superadmin sidebar gating BROKEN (HIGH — see ui_bugs)."
+  },
+  "test_credentials": "Used qa@codespectra.dev / QApass123! (superadmin) and user@codespectra.dev / CodeSpectra@2026 (user) from /app/memory/test_credentials.md unchanged.",
+  "seed_data_creation": "Tests create cert attempts for user@codespectra.dev across sql-basic (PASS, verify_token persisted), python-basic (fail), javascript-basic (idempotency test). Not cleaned up — they are valid earned credentials; verify_token kR2l5nOmnITFsYn5n5V-HKyAwQ1J-2Mt is a passing sql-basic cert for Demo User (used to validate public verify page).",
+  "retest_needed": true,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "1) The fetched-cookie pattern works to sign in inside Playwright when input selectors don't appear (do `await page.evaluate(... fetch('/api/auth/sign-in/email', {credentials:'include'}) ...)` then navigate). 2) The submit route expects answers as Record<questionId, choiceIndex>, NOT a positional array — backend tests build the map from the start response's question.id ordering. 3) For sql-basic the correct answer indexes in seed order are [1,2,2,1,1] which gives score=100. 4) AI inventory audit always returns mode='embedded' in dev preview (NODE_ENV != production and AI_INVENTORY_REAL_AUDIT not set). 5) Mobile scaffolds verified to exist at /app/mobile/ios + /app/mobile/android per spec.",
+  "rca of the issue": "Sidebar gating bug RCA: /app/frontend/components/navigation/sidebar.tsx line 167 sets `const isAdminView = pathname.startsWith('/admin')`. The Next.js app's admin pages, however, live under /dashboard/admin/* (the only '/admin' top-level route is a legacy admin shell that has its own separate sidebar component). Line 178 then chooses `baseItems = isAdminView && isAdminRole(role) ? adminItems : navItems`. Because isAdminView is false at /dashboard/admin/system, baseItems is the user navItems array which does NOT contain admin-hackathons / admin-ai-inventory. After filterByRole strips nothing (since those items aren't there to begin with), the rendered sidebar omits both. Reproduce: sign in as qa@codespectra.dev, visit /dashboard/admin/system, assert presence of [data-testid='sidebar-item-admin-ai-inventory'] — returns null. Fix: `const isAdminView = pathname.startsWith('/admin') || pathname.startsWith('/dashboard/admin')`. After fix the adminItems array (which already contains both items with requires:'admin') will be active and filterByRole will keep them for superadmin/tenant_admin."
+}

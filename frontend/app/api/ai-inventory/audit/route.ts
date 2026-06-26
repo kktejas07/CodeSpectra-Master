@@ -1,19 +1,24 @@
 /**
  * GET /api/ai-inventory/audit
  *
- * Runs a lightweight, in-process dependency vulnerability audit:
- *   - Python deps from /app/backend/requirements.txt (matched against a
- *     small embedded advisory list).
- *   - JS deps from /app/frontend/package.json (matched against the same list
- *     when the package name overlaps).
+ * Runs a dependency vulnerability audit. Behaviour:
  *
- * For real production use, point this endpoint at `pip-audit` and
- * `npm audit --json` instead of the embedded list. This implementation is
- * intentionally self-contained so it works offline / in CI sandboxes.
+ *   - In **production** (`NODE_ENV === 'production'` or `AI_INVENTORY_REAL_AUDIT=1`):
+ *     spawns `pip-audit --strict --format json -r /app/backend/requirements.txt`
+ *     and `npm audit --json --omit=dev` against `/app/frontend`. If those tools
+ *     aren't installed or fail to spawn, the embedded advisory fallback is
+ *     used so the endpoint still returns useful data.
  *
- * Admin-only. Returns a chunked report keyed by ecosystem.
+ *   - In **development**: uses the embedded advisory list directly so the
+ *     dashboard works offline / in CI sandboxes without `pip-audit` or
+ *     network access.
+ *
+ * Admin-only. Returns a chunked report keyed by ecosystem with a `source`
+ * field so callers can tell whether the data came from a real CLI run or
+ * from the static fallback list.
  */
 import { promises as fs } from 'fs'
+import { spawn } from 'child_process'
 import { NextResponse } from 'next/server'
 import path from 'path'
 import { getAPIUser } from '@/lib/api-auth'
@@ -21,12 +26,23 @@ import { getAPIUser } from '@/lib/api-auth'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+type Severity = 'low' | 'medium' | 'high' | 'critical'
+
+interface Finding {
+  package: string
+  installed: string
+  ecosystem: 'pypi' | 'npm'
+  severity: Severity
+  cve?: string
+  summary: string
+  fix: string
+}
+
 interface Advisory {
   package: string
   ecosystem: 'pypi' | 'npm'
-  /** A simple `<` comparison; production usage should swap in semver / pep440. */
   vulnerable_below: string
-  severity: 'low' | 'medium' | 'high' | 'critical'
+  severity: Severity
   cve?: string
   summary: string
   fix: string
@@ -93,8 +109,55 @@ function isAdmin(role?: string | null): boolean {
   return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
 }
 
+function shouldUseRealAudit(): boolean {
+  return process.env.NODE_ENV === 'production' || process.env.AI_INVENTORY_REAL_AUDIT === '1'
+}
+
+function normSeverity(raw: string | undefined | null): Severity {
+  const s = (raw || '').toLowerCase()
+  if (s === 'critical') return 'critical'
+  if (s === 'high') return 'high'
+  if (s === 'moderate' || s === 'medium') return 'medium'
+  return 'low'
+}
+
+/** Run a command, capture stdout, with a hard timeout. */
+function runCmd(
+  cmd: string,
+  args: string[],
+  opts: { cwd?: string; timeoutMs?: number } = {},
+): Promise<{ ok: boolean; stdout: string; stderr: string; code: number | null; spawned: boolean }> {
+  return new Promise((resolve) => {
+    let spawned = true
+    let child
+    try {
+      child = spawn(cmd, args, {
+        cwd: opts.cwd,
+        timeout: opts.timeoutMs ?? 30_000,
+        killSignal: 'SIGKILL',
+      })
+    } catch {
+      resolve({ ok: false, stdout: '', stderr: 'spawn-failed', code: null, spawned: false })
+      return
+    }
+    const out: Buffer[] = []
+    const err: Buffer[] = []
+    child.stdout?.on('data', (c) => out.push(c))
+    child.stderr?.on('data', (c) => err.push(c))
+    child.on('error', () => {
+      spawned = false
+      resolve({ ok: false, stdout: '', stderr: Buffer.concat(err).toString(), code: null, spawned: false })
+    })
+    child.on('close', (code) => {
+      const stdout = Buffer.concat(out).toString('utf8')
+      const stderr = Buffer.concat(err).toString('utf8')
+      // pip-audit / npm audit exit non-zero when vulns are found — still a successful scan.
+      resolve({ ok: code === 0 || code === 1, stdout, stderr, code, spawned })
+    })
+  })
+}
+
 function parsePipPin(line: string): { name: string; version: string } | null {
-  // Accept: pkg==1.2.3, pkg>=1.2 (treat as no fixed version), pkg~=1.2
   const m = line.match(/^\s*([A-Za-z0-9_.\-]+)\s*(?:==|>=|~=|>)\s*([0-9][0-9A-Za-z.\-_+]*)/)
   if (!m) return null
   return { name: m[1].toLowerCase(), version: m[2] }
@@ -111,17 +174,9 @@ function compareSemver(a: string, b: string): number {
   return 0
 }
 
-interface Finding {
-  package: string
-  installed: string
-  ecosystem: 'pypi' | 'npm'
-  severity: Advisory['severity']
-  cve?: string
-  summary: string
-  fix: string
-}
+/* -------------------- Embedded (fallback) auditors -------------------- */
 
-async function auditPython(): Promise<Finding[]> {
+async function auditPythonEmbedded(): Promise<Finding[]> {
   const file = path.resolve('/app/backend/requirements.txt')
   const findings: Finding[] = []
   try {
@@ -152,7 +207,7 @@ async function auditPython(): Promise<Finding[]> {
   return findings
 }
 
-async function auditNpm(): Promise<Finding[]> {
+async function auditNpmEmbedded(): Promise<Finding[]> {
   const file = path.resolve('/app/frontend/package.json')
   const findings: Finding[] = []
   try {
@@ -187,20 +242,166 @@ async function auditNpm(): Promise<Finding[]> {
   return findings
 }
 
+/* -------------------- Real CLI auditors -------------------- */
+
+interface PipAuditDep {
+  name: string
+  version: string
+  vulns?: Array<{
+    id?: string
+    aliases?: string[]
+    description?: string
+    fix_versions?: string[]
+  }>
+}
+
+interface PipAuditReport {
+  dependencies?: PipAuditDep[]
+}
+
+async function auditPythonReal(): Promise<{ findings: Finding[]; ok: boolean; stderr?: string }> {
+  const req = path.resolve('/app/backend/requirements.txt')
+  const res = await runCmd(
+    'pip-audit',
+    ['--strict', '--format', 'json', '-r', req],
+    { timeoutMs: 45_000 },
+  )
+  if (!res.spawned) return { findings: [], ok: false, stderr: 'pip-audit not installed' }
+  if (!res.stdout) return { findings: [], ok: res.ok, stderr: res.stderr }
+  const findings: Finding[] = []
+  try {
+    const parsed = JSON.parse(res.stdout) as PipAuditReport
+    for (const dep of parsed.dependencies || []) {
+      for (const v of dep.vulns || []) {
+        const cve = (v.aliases || []).find((a) => a.startsWith('CVE-')) || v.id
+        const fix = v.fix_versions && v.fix_versions.length > 0
+          ? `Upgrade ${dep.name} to >= ${v.fix_versions[0]}`
+          : `Upgrade ${dep.name} when a fix is available`
+        findings.push({
+          package: dep.name.toLowerCase(),
+          installed: dep.version,
+          ecosystem: 'pypi',
+          severity: 'medium', // pip-audit JSON doesn't include severity reliably
+          cve,
+          summary: (v.description || `Advisory ${v.id || ''}`).split('\n')[0].slice(0, 240),
+          fix,
+        })
+      }
+    }
+    return { findings, ok: true }
+  } catch (e) {
+    return { findings: [], ok: false, stderr: `parse-error: ${(e as Error).message}` }
+  }
+}
+
+interface NpmAuditAdvisory {
+  source?: number
+  name?: string
+  title?: string
+  url?: string
+  severity?: string
+  range?: string
+  cwe?: string[]
+  cves?: string[]
+}
+
+interface NpmAuditVuln {
+  name: string
+  severity: string
+  via: Array<string | NpmAuditAdvisory>
+  range?: string
+  fixAvailable?: boolean | { name: string; version: string }
+  effects?: string[]
+  nodes?: string[]
+}
+
+interface NpmAuditReport {
+  vulnerabilities?: Record<string, NpmAuditVuln>
+}
+
+async function auditNpmReal(): Promise<{ findings: Finding[]; ok: boolean; stderr?: string }> {
+  const cwd = path.resolve('/app/frontend')
+  const res = await runCmd(
+    'npm',
+    ['audit', '--json', '--omit=dev'],
+    { cwd, timeoutMs: 60_000 },
+  )
+  if (!res.spawned) return { findings: [], ok: false, stderr: 'npm not installed' }
+  if (!res.stdout) return { findings: [], ok: res.ok, stderr: res.stderr }
+  const findings: Finding[] = []
+  try {
+    const parsed = JSON.parse(res.stdout) as NpmAuditReport
+    for (const [name, vuln] of Object.entries(parsed.vulnerabilities || {})) {
+      const adv = (vuln.via || []).find((v): v is NpmAuditAdvisory => typeof v === 'object')
+      const cve = adv?.cves?.[0]
+      const fixVer =
+        typeof vuln.fixAvailable === 'object' && vuln.fixAvailable
+          ? vuln.fixAvailable.version
+          : null
+      findings.push({
+        package: name,
+        installed: vuln.range || 'unknown',
+        ecosystem: 'npm',
+        severity: normSeverity(vuln.severity),
+        cve,
+        summary: (adv?.title || `Vulnerable ${name} ${vuln.range || ''}`).slice(0, 240),
+        fix: fixVer ? `Upgrade ${name} to ${fixVer}` : `Run \`npm audit fix\` in /app/frontend`,
+      })
+    }
+    return { findings, ok: true }
+  } catch (e) {
+    return { findings: [], ok: false, stderr: `parse-error: ${(e as Error).message}` }
+  }
+}
+
+/* -------------------- Route handler -------------------- */
+
 export async function GET() {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!isAdmin(user.role)) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
-  const [python, npm] = await Promise.all([auditPython(), auditNpm()])
+
+  const useReal = shouldUseRealAudit()
+  const errors: Record<string, string> = {}
+
+  let pyFindings: Finding[] = []
+  let npmFindings: Finding[] = []
+  let pySource: 'cli' | 'embedded' = 'embedded'
+  let npmSource: 'cli' | 'embedded' = 'embedded'
+
+  if (useReal) {
+    const [py, npmRes] = await Promise.all([auditPythonReal(), auditNpmReal()])
+    if (py.ok) {
+      pyFindings = py.findings
+      pySource = 'cli'
+    } else {
+      errors.python = py.stderr || 'pip-audit failed'
+      pyFindings = await auditPythonEmbedded()
+    }
+    if (npmRes.ok) {
+      npmFindings = npmRes.findings
+      npmSource = 'cli'
+    } else {
+      errors.npm = npmRes.stderr || 'npm audit failed'
+      npmFindings = await auditNpmEmbedded()
+    }
+  } else {
+    pyFindings = await auditPythonEmbedded()
+    npmFindings = await auditNpmEmbedded()
+  }
+
   return NextResponse.json({
     scanned_at: new Date().toISOString(),
+    mode: useReal ? 'real' : 'embedded',
     advisory_count: ADVISORIES.length,
-    python: { findings: python, count: python.length },
-    npm: { findings: npm, count: npm.length },
+    python: { findings: pyFindings, count: pyFindings.length, source: pySource },
+    npm: { findings: npmFindings, count: npmFindings.length, source: npmSource },
+    errors: Object.keys(errors).length > 0 ? errors : undefined,
     note:
-      'Embedded advisory list. For production accuracy, replace with `pip-audit --strict --format json` ' +
-      'and `npm audit --json`.',
+      useReal
+        ? 'Real CLI audit: pip-audit + npm audit. Falls back to embedded advisories if CLI fails.'
+        : 'Embedded advisory list (dev mode). Set NODE_ENV=production or AI_INVENTORY_REAL_AUDIT=1 to run pip-audit + npm audit.',
   })
 }

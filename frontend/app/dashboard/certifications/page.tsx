@@ -1,172 +1,113 @@
 'use client'
 
+import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Award, Lock, CheckCircle, ArrowRight, BookOpen } from 'lucide-react'
+import { Award, CheckCircle, ArrowRight, BookOpen, ExternalLink } from 'lucide-react'
 
-interface Certification {
+interface CertCatalog {
   id: string
+  slug: string
   title: string
   level: 'Basic' | 'Intermediate' | 'Advanced'
+  category: 'skill' | 'role'
   description: string
   icon: string
   duration: number
-  questions: number
-  passingScore: number
-  earned?: boolean
-  progress?: number
+  passing_score: number
+  source: string
+  source_url?: string
+  license: string
+  question_count: number
 }
 
-const SKILLS_CERTIFICATIONS: Certification[] = [
-  {
-    id: 'angular-basic',
-    title: 'Angular (Basic)',
-    level: 'Basic',
-    description: 'Foundational knowledge of Angular framework',
-    icon: 'A',
-    duration: 90,
-    questions: 50,
-    passingScore: 70,
-    earned: false,
-  },
-  {
-    id: 'angular-intermediate',
-    title: 'Angular (Intermediate)',
-    level: 'Intermediate',
-    description: 'Advanced Angular concepts and patterns',
-    icon: 'A',
-    duration: 120,
-    questions: 60,
-    passingScore: 75,
-    earned: false,
-  },
-  {
-    id: 'csharp-basic',
-    title: 'C# (Basic)',
-    level: 'Basic',
-    description: 'Introduction to C# programming language',
-    icon: 'C',
-    duration: 90,
-    questions: 50,
-    passingScore: 70,
-    earned: false,
-  },
-  {
-    id: 'css-basic',
-    title: 'CSS (Basic)',
-    level: 'Basic',
-    description: 'CSS styling and layout fundamentals',
-    icon: 'S',
-    duration: 75,
-    questions: 40,
-    passingScore: 70,
-    earned: true,
-  },
-  {
-    id: 'go-intermediate',
-    title: 'Go (Intermediate)',
-    level: 'Intermediate',
-    description: 'Go language patterns and concurrency',
-    icon: 'G',
-    duration: 120,
-    questions: 60,
-    passingScore: 75,
-    earned: false,
-  },
-  {
-    id: 'go-basic',
-    title: 'Go (Basic)',
-    level: 'Basic',
-    description: 'Go programming fundamentals',
-    icon: 'G',
-    duration: 90,
-    questions: 50,
-    passingScore: 70,
-    earned: true,
-  },
-  {
-    id: 'java-basic',
-    title: 'Java (Basic)',
-    level: 'Basic',
-    description: 'Java programming fundamentals',
-    icon: 'J',
-    duration: 90,
-    questions: 50,
-    passingScore: 70,
-    earned: false,
-  },
-  {
-    id: 'javascript-intermediate',
-    title: 'JavaScript (Intermediate)',
-    level: 'Intermediate',
-    description: 'Advanced JavaScript concepts',
-    icon: 'J',
-    duration: 120,
-    questions: 60,
-    passingScore: 75,
-    earned: false,
-  },
-  {
-    id: 'javascript-basic',
-    title: 'JavaScript (Basic)',
-    level: 'Basic',
-    description: 'JavaScript programming fundamentals',
-    icon: 'J',
-    duration: 90,
-    questions: 50,
-    passingScore: 70,
-    earned: true,
-  },
-]
+interface MyAttempt {
+  attempt_id: string
+  certification: CertCatalog | null
+  score: number
+  passed: boolean
+  started_at: string
+  submitted_at?: string | null
+  verify_token?: string | null
+}
 
-const ROLE_CERTIFICATIONS: Certification[] = [
-  {
-    id: 'frontend-react',
-    title: 'Frontend Developer (React)',
-    level: 'Intermediate',
-    description: 'Master React and modern frontend development',
-    icon: 'R',
-    duration: 180,
-    questions: 80,
-    passingScore: 75,
-    earned: true,
-  },
-  {
-    id: 'software-engineer',
-    title: 'Software Engineer',
-    level: 'Advanced',
-    description: 'Complete software engineering assessment',
-    icon: 'E',
-    duration: 240,
-    questions: 100,
-    passingScore: 80,
-    earned: false,
-    progress: 65,
-  },
-  {
-    id: 'software-engineer-intern',
-    title: 'Software Engineer Intern',
-    level: 'Intermediate',
-    description: 'Assessment for engineering intern positions',
-    icon: 'I',
-    duration: 150,
-    questions: 60,
-    passingScore: 70,
-    earned: false,
-  },
-]
+interface MyResponse {
+  items: MyAttempt[]
+  earned_count: number
+  attempt_count: number
+}
 
 export default function CertificationsPage() {
-  const earnedSkills = SKILLS_CERTIFICATIONS.filter((c) => c.earned).length
-  const totalSkills = SKILLS_CERTIFICATIONS.length
+  const [catalog, setCatalog] = useState<CertCatalog[]>([])
+  const [me, setMe] = useState<MyResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      try {
+        const [catRes, meRes] = await Promise.all([
+          fetch('/api/certifications?limit=50', { credentials: 'include' }),
+          fetch('/api/certifications/me', { credentials: 'include' }),
+        ])
+        if (!catRes.ok) throw new Error(`catalog ${catRes.status}`)
+        const cat = await catRes.json()
+        let mine: MyResponse | null = null
+        if (meRes.ok) mine = await meRes.json()
+        if (!active) return
+        setCatalog(cat.items || [])
+        setMe(mine)
+      } catch (e) {
+        if (active) setError((e as Error).message)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+    load()
+    return () => {
+      active = false
+    }
+  }, [])
+
+  const earnedMap = new Map<string, MyAttempt>()
+  for (const a of me?.items || []) {
+    if (a.certification && a.passed) {
+      const prev = earnedMap.get(a.certification.id)
+      if (!prev || (a.score > prev.score)) earnedMap.set(a.certification.id, a)
+    }
+  }
+
+  const skills = catalog.filter((c) => c.category === 'skill')
+  const roles = catalog.filter((c) => c.category === 'role')
+  const earnedSkills = skills.filter((c) => earnedMap.has(c.id)).length
+
+  if (loading) {
+    return (
+      <div className="p-8 text-center text-muted-foreground" data-testid="certifications-loading">
+        Loading certifications…
+      </div>
+    )
+  }
+  if (error) {
+    return (
+      <div className="p-8 text-center text-destructive" data-testid="certifications-error">
+        Failed to load certifications: {error}
+      </div>
+    )
+  }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8" data-testid="certifications-page">
       {/* Header */}
       <div>
         <h1 className="text-3xl font-bold mb-2">Get Certified</h1>
-        <p className="text-muted-foreground">Get certified in technical skills and roles to showcase your expertise to peers and employers</p>
+        <p className="text-muted-foreground">
+          Open-source certification modules. Questions sourced from MDN, FreeCodeCamp, exercism and
+          OSSU under permissive licenses.
+        </p>
       </div>
 
       {/* Benefits Section */}
@@ -175,33 +116,31 @@ export default function CertificationsPage() {
           <div className="flex items-start gap-3">
             <Award className="w-5 h-5 text-blue-400 flex-shrink-0 mt-1" />
             <div>
-              <p className="font-semibold text-foreground">Stand out from the crowd</p>
+              <p className="font-semibold text-foreground">Stand out</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Get certified in technical skills by taking the HackerRank Certification Test
+                Earn shareable, verifiable certificates backed by open-source curricula.
               </p>
             </div>
           </div>
         </Card>
-
         <Card className="p-6 bg-purple-500/5 border-purple-500/20">
           <div className="flex items-start gap-3">
             <BookOpen className="w-5 h-5 text-purple-400 flex-shrink-0 mt-1" />
             <div>
-              <p className="font-semibold text-foreground">Standardised Assessment</p>
+              <p className="font-semibold text-foreground">Open content</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Assessments are organized around specific skills and carefully curated based on recruiting data
+                Every module attributes its source and license — no proprietary lock-in.
               </p>
             </div>
           </div>
         </Card>
-
         <Card className="p-6 bg-green-500/5 border-green-500/20">
           <div className="flex items-start gap-3">
             <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-1" />
             <div>
-              <p className="font-semibold text-foreground">Enrich your profile</p>
+              <p className="font-semibold text-foreground">Verifiable</p>
               <p className="text-sm text-muted-foreground mt-1">
-                Upon successfully clearing an assessment, you can promote yourself using the certificate
+                Recruiters can hit <code>/cert/verify/&lt;token&gt;</code> to confirm in one click.
               </p>
             </div>
           </div>
@@ -209,153 +148,119 @@ export default function CertificationsPage() {
       </div>
 
       {/* Role Certifications */}
-      <div className="space-y-4">
-        <div>
-          <h2 className="text-xl font-bold mb-1">Get Your Roles Certified</h2>
-          <p className="text-sm text-muted-foreground">Specialized assessments for different job roles</p>
+      {roles.length > 0 && (
+        <div className="space-y-4">
+          <div>
+            <h2 className="text-xl font-bold mb-1">Role-based assessments</h2>
+            <p className="text-sm text-muted-foreground">For specific job roles.</p>
+          </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {roles.map((cert) => (
+              <CertCard key={cert.id} cert={cert} earned={earnedMap.get(cert.id) || null} />
+            ))}
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {ROLE_CERTIFICATIONS.map((cert) => (
-            <Card
-              key={cert.id}
-              className={`p-6 border-border/40 hover:border-primary/40 transition-all ${
-                cert.earned ? 'bg-green-500/5' : ''
-              }`}
-            >
-              <div className="space-y-4">
-                {/* Icon and Title */}
-                <div className="flex items-start justify-between">
-                  <div className="w-12 h-12 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary">
-                    {cert.icon}
-                  </div>
-                  {cert.earned && <CheckCircle className="w-5 h-5 text-green-500" />}
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-foreground">{cert.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{cert.description}</p>
-                </div>
-
-                {/* Stats */}
-                <div className="grid grid-cols-2 gap-2 text-xs text-muted-foreground">
-                  <div>Duration: {cert.duration} min</div>
-                  <div>Questions: {cert.questions}</div>
-                </div>
-
-                {/* Progress or Button */}
-                {cert.progress ? (
-                  <div>
-                    <div className="flex items-center justify-between mb-2">
-                      <span className="text-xs font-medium">Progress</span>
-                      <span className="text-xs font-bold text-primary">{cert.progress}%</span>
-                    </div>
-                    <div className="w-full h-2 bg-muted rounded-full overflow-hidden">
-                      <div
-                        className="h-full bg-primary transition-all"
-                        style={{ width: `${cert.progress}%` }}
-                      />
-                    </div>
-                  </div>
-                ) : (
-                  <Button className="w-full gap-2" variant={cert.earned ? 'outline' : 'default'}>
-                    {cert.earned ? (
-                      <>
-                        <CheckCircle className="w-4 h-4" />
-                        View Certificate
-                      </>
-                    ) : (
-                      <>
-                        Get Certified
-                        <ArrowRight className="w-4 h-4" />
-                      </>
-                    )}
-                  </Button>
-                )}
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
+      )}
 
       {/* Skills Certifications */}
-      <div className="space-y-4">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold mb-1">Get Your Skills Certified</h2>
-            <p className="text-sm text-muted-foreground">Master programming languages and technologies</p>
+      {skills.length > 0 && (
+        <div className="space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-xl font-bold mb-1">Skill-based assessments</h2>
+              <p className="text-sm text-muted-foreground">Languages and frameworks.</p>
+            </div>
+            <Badge variant="outline" className="text-xs" data-testid="certs-earned-count">
+              {earnedSkills}/{skills.length} earned
+            </Badge>
           </div>
-          <Badge variant="outline" className="text-xs">
-            {earnedSkills}/{totalSkills} Earned
-          </Badge>
+          <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+            {skills.map((cert) => (
+              <CertCard key={cert.id} cert={cert} earned={earnedMap.get(cert.id) || null} compact />
+            ))}
+          </div>
         </div>
-
-        <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
-          {SKILLS_CERTIFICATIONS.map((cert) => (
-            <Card
-              key={cert.id}
-              className={`p-6 border-border/40 transition-all ${
-                cert.earned ? 'bg-green-500/5 border-green-500/20 hover:border-green-500/40' : 'hover:border-primary/40'
-              }`}
-            >
-              <div className="space-y-3">
-                {/* Icon and Title */}
-                <div className="flex items-start justify-between gap-3">
-                  <div>
-                    <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary text-sm">
-                      {cert.icon}
-                    </div>
-                  </div>
-                  {cert.earned ? (
-                    <CheckCircle className="w-4 h-4 text-green-500 flex-shrink-0" />
-                  ) : (
-                    <Badge variant="outline" className="text-xs">
-                      {cert.level}
-                    </Badge>
-                  )}
-                </div>
-
-                <div>
-                  <h3 className="font-semibold text-foreground text-sm">{cert.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-1">{cert.description}</p>
-                </div>
-
-                {/* Details */}
-                <div className="text-xs text-muted-foreground space-y-1 border-t border-border/40 pt-3">
-                  <div>Duration: {cert.duration} minutes</div>
-                  <div>Questions: {cert.questions}</div>
-                  <div>Passing Score: {cert.passingScore}%</div>
-                </div>
-
-                {/* Button */}
-                <Button className="w-full h-8 text-xs gap-2" variant={cert.earned ? 'outline' : 'default'}>
-                  {cert.earned ? (
-                    <>
-                      <CheckCircle className="w-3 h-3" />
-                      Verified
-                    </>
-                  ) : (
-                    <>Get Certified</>
-                  )}
-                </Button>
-              </div>
-            </Card>
-          ))}
-        </div>
-      </div>
-
-      {/* CTA */}
-      <Card className="p-8 text-center bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <Award className="w-12 h-12 text-primary mx-auto mb-4" />
-        <h3 className="text-xl font-bold mb-2">Ready to showcase your skills?</h3>
-        <p className="text-muted-foreground mb-6 max-w-lg mx-auto">
-          Start a certification test today and earn a badge to display on your profile and resume
-        </p>
-        <Button size="lg" className="gap-2">
-          Start a Certification
-          <ArrowRight className="w-4 h-4" />
-        </Button>
-      </Card>
+      )}
     </div>
+  )
+}
+
+function CertCard({
+  cert,
+  earned,
+  compact,
+}: {
+  cert: CertCatalog
+  earned: MyAttempt | null
+  compact?: boolean
+}) {
+  return (
+    <Card
+      data-testid={`cert-card-${cert.slug}`}
+      className={`p-6 border-border/40 transition-all ${
+        earned ? 'bg-green-500/5 border-green-500/20 hover:border-green-500/40' : 'hover:border-primary/40'
+      }`}
+    >
+      <div className={compact ? 'space-y-3' : 'space-y-4'}>
+        <div className="flex items-start justify-between gap-3">
+          <div className={`${compact ? 'w-10 h-10 text-sm' : 'w-12 h-12'} rounded-lg bg-primary/10 flex items-center justify-center font-bold text-primary`}>
+            {cert.icon}
+          </div>
+          {earned ? (
+            <CheckCircle className="w-5 h-5 text-green-500" />
+          ) : (
+            <Badge variant="outline" className="text-xs">
+              {cert.level}
+            </Badge>
+          )}
+        </div>
+        <div>
+          <h3 className={`font-semibold text-foreground ${compact ? 'text-sm' : ''}`}>{cert.title}</h3>
+          <p className="text-xs text-muted-foreground mt-1">{cert.description}</p>
+          {cert.source_url ? (
+            <a
+              href={cert.source_url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-[11px] text-muted-foreground hover:text-primary inline-flex items-center gap-1 mt-2"
+            >
+              Source: {cert.source} ({cert.license}) <ExternalLink className="w-3 h-3" />
+            </a>
+          ) : (
+            <p className="text-[11px] text-muted-foreground mt-2">
+              Source: {cert.source} ({cert.license})
+            </p>
+          )}
+        </div>
+        <div className="text-xs text-muted-foreground space-y-1 border-t border-border/40 pt-3">
+          <div>Duration: {cert.duration} min</div>
+          <div>Questions: {cert.question_count}</div>
+          <div>Passing score: {cert.passing_score}%</div>
+          {earned && <div className="text-green-500 font-medium">Your score: {earned.score}%</div>}
+        </div>
+        {earned && earned.verify_token ? (
+          <Link href={`/cert/verify/${earned.verify_token}`} className="block">
+            <Button
+              className="w-full gap-2"
+              variant="outline"
+              data-testid={`cert-view-${cert.slug}`}
+            >
+              <CheckCircle className="w-4 h-4" />
+              View certificate
+            </Button>
+          </Link>
+        ) : (
+          <Link href={`/dashboard/certifications/${cert.slug}`} className="block">
+            <Button
+              className="w-full gap-2"
+              data-testid={`cert-start-${cert.slug}`}
+            >
+              Start assessment
+              <ArrowRight className="w-4 h-4" />
+            </Button>
+          </Link>
+        )}
+      </div>
+    </Card>
   )
 }

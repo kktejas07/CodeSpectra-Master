@@ -10,7 +10,7 @@
  * Timestamps are ISO-8601 strings stored as strings (not BSON Date) so the
  * API layer can ship them straight to JSON without conversion.
  */
-import { randomBytes, randomUUID } from 'crypto'
+import { randomBytes, randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 

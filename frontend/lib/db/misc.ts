@@ -14,7 +14,7 @@
  *   - feature_flags
  *   - quality_ratings           (per-project rating rules)
  */
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 

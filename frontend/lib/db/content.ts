@@ -5,7 +5,7 @@
  * All documents use string `id` (UUID v4) so existing API/UI shapes are
  * unchanged.
  */
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 

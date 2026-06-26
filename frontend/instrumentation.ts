@@ -3,23 +3,17 @@
  *
  * Docs: https://nextjs.org/docs/app/building-your-application/optimizing/instrumentation
  *
- * We use this slot to start the in-process scheduler tick loop so that
- * single-instance deploys (and `next dev`) trigger schedule-trigger
- * workflows without needing an external cron. The loop is a no-op if
- * `NEXT_PUBLIC_DISABLE_SCHEDULER=1` is set.
+ * We intentionally keep this file dependency-free. The in-process scheduler
+ * lives in `lib/scheduler.ts` and pulls in the MongoDB driver, which can't
+ * be bundled for the Edge runtime — so importing it directly from here
+ * causes the dev/edge build to fail.
  *
- * On serverless deployments (Vercel, etc.) the in-process loop will only
- * run while a node is warm — pair this with the `vercel.json` cron entry,
- * which hits `/api/cron/tick` every minute to guarantee execution.
+ * Instead, the scheduler boots lazily on the FIRST hit to any API route via
+ * `lib/boot-scheduler.ts` (called from `lib/api-auth.ts`). For serverless
+ * deployments the existing `vercel.json` cron entry hits `/api/cron/tick`
+ * every minute, which also works as a fallback in any environment.
  */
 export async function register() {
-  // Only run on the Node.js runtime — Edge can't spawn timers.
-  if (process.env.NEXT_RUNTIME !== 'nodejs') return
-  try {
-    const { startSchedulerLoop } = await import('./lib/scheduler')
-    startSchedulerLoop()
-    console.log('[CodeSpectra] scheduler loop booted via instrumentation.register()')
-  } catch (e) {
-    console.warn('[CodeSpectra] scheduler bootstrap skipped:', e)
-  }
+  // No-op. See module docstring.
+  return
 }

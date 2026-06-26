@@ -14,7 +14,7 @@
  *   - First-blood bonus: +25 XP (first user to get an `accepted` submission
  *     on a given problem). Tracked by checking submissions collection.
  */
-import { randomUUID } from 'crypto'
+import { randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
