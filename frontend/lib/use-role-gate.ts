@@ -13,6 +13,7 @@ import {
 
 interface RoleGate {
   ready: boolean
+  allowed: boolean
   user: { id: string; email: string; name?: string; role: UserRole } | null
   loading: boolean
 }
@@ -57,5 +58,5 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
       }
     : null
 
-  return { ready, user, loading: isPending }
+  return { ready, allowed: ready, user, loading: isPending }
 }
