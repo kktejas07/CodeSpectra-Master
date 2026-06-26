@@ -5,7 +5,6 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { supabase } from '@/lib/supabase-client'
 import { Trophy, Medal, Award, Loader2, CheckCircle2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
@@ -66,22 +65,7 @@ export default function LeaderboardPage() {
     void load()
   }, [load])
 
-  useEffect(() => {
-    const channel = supabase
-      .channel(`leaderboard-live-${view}`)
-      .on(
-        'postgres_changes',
-        { event: '*', schema: 'public', table: 'leaderboard' },
-        () => {
-          void load()
-        }
-      )
-      .subscribe()
-    return () => {
-      void supabase.removeChannel(channel)
-    }
-  }, [load, view])
-
+  // Realtime via polling (Supabase realtime channel removed during MongoDB migration).
   useEffect(() => {
     const id = window.setInterval(() => void load(), 45_000)
     return () => window.clearInterval(id)

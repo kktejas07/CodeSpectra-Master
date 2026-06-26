@@ -2,12 +2,12 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import { useSession } from '@/lib/auth-client'
 import {
   getDefaultDashboard,
   normalizeUserRole,
   UserRole,
 } from '@/lib/rbac'
-import { supabase } from '@/lib/supabase-client'
 
 interface ProtectedPageProps {
   children: React.ReactNode
@@ -15,53 +15,31 @@ interface ProtectedPageProps {
   requiredPermission?: string
 }
 
-export function ProtectedPage({ 
-  children, 
+export function ProtectedPage({
+  children,
   requiredRoles,
-  requiredPermission 
 }: ProtectedPageProps) {
   const router = useRouter()
+  const { data: session, isPending } = useSession()
   const [isAuthorized, setIsAuthorized] = useState(false)
-  const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const checkAccess = async () => {
-      try {
-        const { data: { user } } = await supabase.auth.getUser()
-        if (!user) {
-          router.push('/auth/login')
-          return
-        }
-
-        const { data: profile } = await supabase
-          .from('profiles')
-          .select('role')
-          .eq('id', user.id)
-          .single()
-
-        const meta = (user.user_metadata as { role?: string } | undefined)?.role
-        const userRole = normalizeUserRole(profile?.role ?? meta)
-
-        // Check role-based access
-        if (requiredRoles && !requiredRoles.includes(userRole)) {
-          console.log('[CodeSpectra] User role', userRole, 'not in required roles:', requiredRoles)
-          router.push(getDefaultDashboard(userRole))
-          return
-        }
-
-        setIsAuthorized(true)
-      } catch (error) {
-        console.error('[CodeSpectra] Authorization check error:', error)
-        router.push('/auth/login')
-      } finally {
-        setLoading(false)
-      }
+    if (isPending) return
+    if (!session?.user) {
+      router.push('/auth/login')
+      return
     }
+    const userRole = normalizeUserRole(
+      (session.user as { role?: string }).role,
+    )
+    if (requiredRoles && !requiredRoles.includes(userRole)) {
+      router.push(getDefaultDashboard(userRole))
+      return
+    }
+    setIsAuthorized(true)
+  }, [router, requiredRoles, isPending, session?.user?.id])
 
-    checkAccess()
-  }, [router, requiredRoles, requiredPermission])
-
-  if (loading) {
+  if (isPending) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>

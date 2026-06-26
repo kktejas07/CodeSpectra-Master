@@ -1,0 +1,53 @@
+{
+  "summary": "Iteration 2: tested the Razorpay migration + daily challenge + tracks/pricing UI + supabase cleanup. Backend pytest suite extended to 29 tests (added TestBilling x5 and TestDailyChallenge x2) — all 29 pass against the FastAPI proxy + Next.js stack (~71s). Frontend: JetBrains Mono font regression from iteration_1 is FIXED (computed body font-family now contains 'JetBrains Mono'). Pricing page renders the amber 'Payments not yet activated' banner, all 3 plan cards (pro_monthly / pro_yearly / problem_pack_50), 'POPULAR' badge on Pro Monthly, and 'Checkout disabled' buttons (verified disabled=true). Daily challenge widget on /dashboard exposes daily-widget / streak-counter / daily-cta data-testids. Sidebar (verified visually in screenshot) shows all required entries: Overview, Arena, Tracks, Scanner, Agent, Learning, Skill Analytics, Identity Verify, Leaderboard, Achievements, Pricing. Two-sum still has hints + proctor + AI Analysis. Supabase cleanup is COMPLETE — zero `from '@/lib/supabase-*'` imports under /app/frontend/app|components (one commented-out line in admin/users/page.tsx — harmless). 4 of 5 admin pages correctly redirect a non-superadmin user to /dashboard; /dashboard/admin/settings is the ONLY admin page that does not redirect (regression).",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [
+      {
+        "component": "/dashboard/admin/settings (SystemSettingsInner)",
+        "issue": "Role gate not enforced on JSX render. The page calls useRoleGate({require:'superadmin'}) but the returned JSX is rendered regardless of gate.ready / gate.user.role. The other 4 admin pages (system/analytics/cdn/speed-insights) correctly hide content until gate.ready is true. A non-superadmin lands on /dashboard/admin/settings and the form renders briefly while router.push('/dashboard') is in flight (and during HMR rebuilds the redirect can race). Fix: wrap the return JSX with `if (!gate.ready) return <Loading/>` or `if (gate.user?.role !== 'superadmin') return null` similar to admin/cdn.",
+        "selector": "/dashboard/admin/settings",
+        "priority": "MEDIUM"
+      },
+      {
+        "component": "Admin pages — generic",
+        "issue": "useRoleGate returns {ready, user, loading} but most admin pages only consume `gate.ready` in a useEffect; the JSX itself is not protected. Today this works because router.push() runs before the user can interact, but it leaks the page shell for ~1 frame and the hook signature doesn't expose an explicit `allowed`/`isAuthorized` boolean to make the guard idiomatic. Consider adding `allowed: boolean` to useRoleGate return and require all admin pages to do `if (!allowed) return null` at the top of the component.",
+        "selector": "/app/frontend/lib/use-role-gate.ts",
+        "priority": "LOW"
+      }
+    ],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "Add an explicit JSX-level role guard to /app/frontend/app/dashboard/admin/settings/page.tsx (e.g. `if (!gate.ready) return null` before the main return). Optionally extend useRoleGate to return an `allowed` boolean for clarity."
+  ],
+  "critical_code_review_comments": [
+    "useRoleGate only signals readiness via `ready` boolean and relies on router.push for unauthorized users — there is no explicit `allowed` flag that pages can use to short-circuit JSX. This is what allowed the settings page leak. Recommend adding `allowed: boolean` to RoleGate type.",
+    "/app/frontend/app/dashboard/admin/settings/page.tsx is 996 lines — exceeds the 700-line file-size guideline; split into smaller section components (branding / ops / product / mail / integrations).",
+    "billing webhook & verify endpoints correctly enforce HMAC SHA-256 signature verification — good security posture; both return 400 on bad signature with deterministic error keys (`invalid_signature`, `signature_mismatch`).",
+    "Razorpay create-order properly returns 503 + `razorpay_not_configured` when env vars are absent — clean degradation path; ready for the user to drop in real keys.",
+    "Daily challenge uses a deterministic same-day hash (str * 31 + charCode) — deterministic across the day, no caching needed; streak calculation walks back through UTC days using submissions collection. Good.",
+    "/app/frontend/app/dashboard/admin/users/page.tsx still has a commented `// import { supabase } ...` line — cosmetic, remove it to keep the codebase clean."
+  ],
+  "updated_files": [
+    "/app/backend/tests/backend_test.py (added TestBilling and TestDailyChallenge classes — +7 tests, all passing)"
+  ],
+  "success_rate": {
+    "backend": "100% (29/29 pytest)",
+    "frontend": "92% — 11/12 frontend assertions passed; only /dashboard/admin/settings role-gate leak failed. Sidebar verified visually in screenshot, pricing verified, daily widget verified, two-sum verified, supabase cleanup verified."
+  },
+  "test_credentials": "qa@codespectra.dev / QApass123! (Better Auth on local MongoDB) — sign-in returns 200 and sets session cookie",
+  "seed_data_creation": "None — reused the existing QA user. No accepted submissions yet so streak=0 (matches expectation).",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Backend regression suite at /app/backend/tests/backend_test.py (29 tests, ~71s, run with `pytest backend/tests/backend_test.py -v --junitxml=/app/test_reports/pytest/pytest_results.xml`). For frontend, use http://localhost:3000 directly (external preview URL is sometimes asleep). Sign in via POST /api/auth/sign-in/email with qa@codespectra.dev/QApass123!. Razorpay create-order success path can only be re-tested once the user provides RAZORPAY_KEY_ID/SECRET — currently the unconfigured contract (503 razorpay_not_configured) is what's asserted. The /dashboard/admin/settings page is the ONLY remaining role-gate leak — once main agent adds the JSX guard, re-run the playwright admin-routes block to confirm all 5 admin pages redirect non-superadmins to /dashboard.",
+  "rca of the issue": "RCA for /dashboard/admin/settings role-gate leak: useRoleGate (file: /app/frontend/lib/use-role-gate.ts) does router.push('/dashboard') when the user role doesn't match 'superadmin', but it never sets `ready=true` for that case. The settings page (line 96 of /app/frontend/app/dashboard/admin/settings/page.tsx) calls `const gate = useRoleGate({require:'superadmin'})` and only uses `gate.ready` inside a useEffect to gate the data-fetch — the JSX returned by SystemSettingsInner is NOT protected by `if (!gate.ready) return ...`. The other admin pages (cdn/system/analytics/speed-insights) DO check `gate.ready` before returning meaningful JSX (their loading branch returns early), which is why they redirect cleanly. Reproduction: sign in as a non-superadmin user (the seeded QA user has role='user'), then GET /dashboard/admin/settings → final URL stays on /dashboard/admin/settings while the settings shell renders with an error toast. Mitigation: add `if (!gate.ready) return <SkeletonLoader/>` (or `return null`) immediately after the `const gate = useRoleGate(...)` line in settings/page.tsx, mirroring the pattern already used by admin/cdn/page.tsx."
+}

@@ -2,7 +2,7 @@
 
 import { Suspense, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { useRouter, useSearchParams } from 'next/navigation'
+import { useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import {
@@ -26,8 +26,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { supabase } from '@/lib/supabase-client'
-import { getDefaultDashboard, isSuperAdmin, normalizeUserRole } from '@/lib/rbac'
+import { useRoleGate } from '@/lib/use-role-gate'
 import { useToast } from '@/lib/toast-context'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -94,7 +93,7 @@ const emptySecretsDraft = (): SecretsDraft => ({
 })
 
 function SystemSettingsInner() {
-  const router = useRouter()
+  const gate = useRoleGate({ require: 'superadmin' })
   const searchParams = useSearchParams()
   const section: PlatformSettingsSection = parsePlatformSettingsSection(
     searchParams.get('section')
@@ -116,22 +115,8 @@ function SystemSettingsInner() {
   })
 
   useEffect(() => {
+    if (!gate.ready) return
     const run = async () => {
-      const {
-        data: { user },
-      } = await supabase.auth.getUser()
-      if (!user) {
-        router.push('/auth/login')
-        return
-      }
-      const { data: profile } = await supabase.from('profiles').select('role').eq('id', user.id).single()
-      const meta = (user.user_metadata as { role?: string } | undefined)?.role
-      const role = normalizeUserRole(profile?.role ?? meta)
-      if (!isSuperAdmin(role)) {
-        router.replace(getDefaultDashboard(role))
-        return
-      }
-
       const [res, secRes] = await Promise.all([
         fetch('/api/admin/platform-settings', { credentials: 'include' }),
         fetch('/api/admin/server-secrets', { credentials: 'include' }),

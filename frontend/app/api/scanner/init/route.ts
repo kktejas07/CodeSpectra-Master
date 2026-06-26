@@ -1,61 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { initializeSampleData, clearProjectData } from '@/lib/initialize-sonarqube-data'
 
 /**
- * POST /api/scanner/init
- * Initialize database schema and sample data
- * For development/demo purposes only
+ * POST /api/scanner/init — legacy endpoint. Originally seeded SonarQube-style
+ * project data through Supabase. After the MongoDB migration the seed lives
+ * in `lib/db/seed-problems.ts` and runs automatically on first DB connect,
+ * so this endpoint is now a no-op kept for API compatibility.
  */
-export async function POST(request: NextRequest) {
-  try {
-    const body = await request.json()
-    const { action = 'init', projectId = 'demo-project' } = body
-
-    // Security: Only allow in development
-    if (process.env.NODE_ENV === 'production') {
-      return NextResponse.json(
-        { error: 'This endpoint is not available in production' },
-        { status: 403 }
-      )
-    }
-
-    if (action === 'init') {
-      const result = await initializeSampleData(projectId)
-      return NextResponse.json(result)
-    } else if (action === 'clear') {
-      const result = await clearProjectData(projectId)
-      return NextResponse.json(result)
-    } else {
-      return NextResponse.json(
-        { error: 'Invalid action. Use "init" or "clear"' },
-        { status: 400 }
-      )
-    }
-  } catch (error) {
-    console.error('[CodeSpectra] Initialization error:', error)
-    return NextResponse.json(
-      { error: 'Initialization failed', details: String(error) },
-      { status: 500 }
-    )
-  }
+export async function POST(_request: NextRequest) {
+  return NextResponse.json({
+    status: 'ok',
+    message: 'Scanner seed data is now auto-initialized on startup. This endpoint is a no-op.',
+  })
 }
 
-/**
- * GET /api/scanner/init
- * Check initialization status
- */
-export async function GET(request: NextRequest) {
-  try {
-    return NextResponse.json({
-      status: 'ready',
-      environment: process.env.NODE_ENV,
-      message: 'POST to this endpoint with { action: "init" | "clear", projectId: string } to initialize/clear data',
-    })
-  } catch (error) {
-    console.error('[CodeSpectra] Status check error:', error)
-    return NextResponse.json(
-      { error: 'Status check failed' },
-      { status: 500 }
-    )
-  }
+export async function GET() {
+  return NextResponse.json({ status: 'ready' })
 }

@@ -353,3 +353,94 @@ class TestAIRoutesAuthed:
             timeout=15,
         )
         assert r.status_code in (200, 400, 422), f"{r.status_code} {r.text[:200]}"
+
+
+# ---------------- Razorpay billing endpoints ----------------
+
+class TestBilling:
+    """Razorpay billing: catalog, create-order (503 when keys missing),
+    verify (signature_mismatch), webhook (invalid_signature)."""
+
+    def test_billing_me_returns_plans_and_unconfigured_flag(self, auth_session):
+        r = auth_session.get(f"{BASE_URL}/api/billing/me", timeout=20)
+        assert r.status_code == 200, r.text[:300]
+        d = r.json()
+        assert d["razorpay_configured"] is False, "Razorpay should be unconfigured (no keys)"
+        assert d["subscription"] is None
+        plans = d.get("plans") or []
+        ids = {p["id"] for p in plans}
+        # Catalog must have the 3 plans from BILLING_PLANS
+        assert {"pro_monthly", "pro_yearly", "problem_pack_50"}.issubset(ids), f"plans={ids}"
+        # spot check amounts
+        by_id = {p["id"]: p for p in plans}
+        assert by_id["pro_monthly"]["amount_inr"] == 499
+        assert by_id["pro_yearly"]["amount_inr"] == 4990
+        assert by_id["problem_pack_50"]["amount_inr"] == 199
+
+    def test_billing_me_requires_auth(self):
+        r = requests.get(f"{BASE_URL}/api/billing/me", timeout=15)
+        assert r.status_code == 401
+
+    def test_create_order_returns_503_when_not_configured(self, auth_session):
+        r = auth_session.post(
+            f"{BASE_URL}/api/billing/create-order",
+            json={"plan_id": "pro_monthly"},
+            timeout=15,
+        )
+        assert r.status_code == 503, f"expected 503, got {r.status_code} {r.text[:200]}"
+        d = r.json()
+        assert d.get("error") == "razorpay_not_configured"
+
+    def test_verify_rejects_bad_signature(self, auth_session):
+        r = auth_session.post(
+            f"{BASE_URL}/api/billing/verify",
+            json={
+                "razorpay_order_id": "order_TESTXYZ",
+                "razorpay_payment_id": "pay_TESTXYZ",
+                "razorpay_signature": "deadbeef",
+            },
+            timeout=15,
+        )
+        assert r.status_code == 400, f"expected 400, got {r.status_code} {r.text[:200]}"
+        assert r.json().get("error") == "signature_mismatch"
+
+    def test_webhook_rejects_invalid_signature(self):
+        r = requests.post(
+            f"{BASE_URL}/api/billing/webhook",
+            data=json.dumps({"event": "payment.captured", "payload": {}}),
+            headers={
+                "Content-Type": "application/json",
+                "x-razorpay-signature": "not-a-real-signature",
+            },
+            timeout=15,
+        )
+        assert r.status_code == 400, f"expected 400, got {r.status_code} {r.text[:200]}"
+        assert r.json().get("error") == "invalid_signature"
+
+
+# ---------------- Daily challenge ----------------
+
+class TestDailyChallenge:
+    def test_daily_challenge_shape(self, auth_session):
+        r = auth_session.get(f"{BASE_URL}/api/daily-challenge", timeout=20)
+        assert r.status_code == 200, r.text[:300]
+        d = r.json()
+        assert "today" in d
+        # YYYY-MM-DD
+        assert len(d["today"]) == 10 and d["today"][4] == "-" and d["today"][7] == "-"
+        # problem may be null if no problems seeded, otherwise must have keys
+        if d.get("problem"):
+            for k in ("slug", "title", "difficulty", "topics"):
+                assert k in d["problem"], f"missing key {k}"
+        assert isinstance(d.get("streak", 0), int)
+        # Streak should be 0 for fresh QA user with no accepted submissions
+        assert d["streak"] == 0
+        assert d.get("solved_today") in (False, None)
+
+    def test_daily_challenge_deterministic(self, auth_session):
+        r1 = auth_session.get(f"{BASE_URL}/api/daily-challenge", timeout=20).json()
+        r2 = auth_session.get(f"{BASE_URL}/api/daily-challenge", timeout=20).json()
+        assert r1["today"] == r2["today"]
+        if r1.get("problem") and r2.get("problem"):
+            assert r1["problem"]["slug"] == r2["problem"]["slug"]
+

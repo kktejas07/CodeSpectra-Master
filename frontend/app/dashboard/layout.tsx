@@ -40,6 +40,11 @@ import {
   Globe2,
   SlidersHorizontal,
   ChevronRight,
+  Bot,
+  Sparkles as SparklesIcon,
+  Camera as CameraIcon,
+  Layers as LayersIcon,
+  CreditCard as CreditCardIcon,
   type LucideIcon,
 } from 'lucide-react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
@@ -140,6 +145,7 @@ export default function DashboardLayout({
 
     const baseLeaves: NavLeaf[] = [
       { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
+      { href: '/dashboard/tracks', icon: LayersIcon, label: 'Tracks' },
       { href: '/dashboard/scanner?mode=manual', icon: CodeIcon, label: 'Scanner' },
       { href: '/dashboard/agent', icon: Bot, label: 'Agent' },
       { href: LEARNING_HUB_DEFAULT, icon: BookOpen, label: 'Learning' },
@@ -147,6 +153,7 @@ export default function DashboardLayout({
       { href: '/dashboard/identity-verify', icon: CameraIcon, label: 'Identity Verify' },
       { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
       { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
+      { href: '/dashboard/pricing', icon: CreditCardIcon, label: 'Pricing' },
     ]
 
     const role = normalizeUserRole(userProfile.role)
