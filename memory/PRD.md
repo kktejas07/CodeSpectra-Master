@@ -119,13 +119,39 @@ superadmin settings UI (no hardcoded keys).** Tech-stack tracks. Daily challenge
   `lib/face-auth-service.ts`; `/problems` page hydration fix
   (useCallback instead of eslint-disable).
 
+### Phase 8 — Judge / PR comments / Visual builder / Cron / Dev login (2026-06-26) ✅
+- **Local code executor** `lib/local-executor.ts` — in-process subprocess runner
+  (python3, node, npx tsx, bash, sh). 5s default timeout, 256 KiB output cap,
+  isolated temp dir per run.
+- **Dynamic Piston** `lib/piston.ts` — resolves `piston_url` from
+  `platform_settings` first, then `PISTON_URL` env, then falls back to the
+  local executor. Gracefully degrades on 401 / 403 / 429 / network errors.
+- **Settings UI** — added `Code execution backend (Piston)` + `GitHub App / PAT
+  token` sections at `/dashboard/admin/settings`.
+- **GitHub PR comments** — `/api/github/webhook` now enqueues
+  `pull_request` events with `pull_request_number`. Queue worker posts an AI
+  review comment back to the PR when a token is configured (per-owner via
+  `integrations` collection OR a global `github_app_token` admin setting).
+- **React Flow workflow builder** —
+  `components/workflows/workflow-builder.tsx` (Visual tab). Drag from a node
+  edge to another to wire, click a node to inspect/edit its config JSON, +
+  buttons for all 6 node types.
+- **Cron picker** — `components/workflows/cron-picker.tsx`. 7 presets + 5
+  per-field selects + live description. Shown when workflow trigger is
+  `schedule`. Persisted via `cron_expression` on `WorkflowDoc`.
+- **Dev quick-login** — `/auth/login` shows a role picker (Superadmin,
+  Tenant admin, User, Recruiter) outside production builds, gated by
+  `process.env.NODE_ENV !== 'production' || ?dev=1`.
+
 ## Pending action items
-- Some legacy `/api/billing/subscription`, `/api/webhooks/stripe` still
-  reference `getServiceSupabase` stub — return 503 on call. To be ported.
-- Visual graph builder for workflows (currently JSON editor)
-- GitHub PR review comments posted back to PR (currently saved to
-  `ai_code_reviews` but not pushed to the PR — needs OAuth token route)
-- Piston whitelist: public API now blocks unauth traffic, host private Piston.
+- ✅ Piston/judge backend solved (local + override path)
+- ✅ PR comments wired
+- ✅ Visual builder shipped
+- ✅ Cron picker shipped
+- Visual graph builder polish: replace Math.random() with grid placement
+- Scheduler RUNNER — workflows with `trigger: schedule` still need a cron
+  process that POSTs `/api/workflows/{id}/run` on the cadence
+- GitHub App OAuth install flow (currently only PAT works)
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`
