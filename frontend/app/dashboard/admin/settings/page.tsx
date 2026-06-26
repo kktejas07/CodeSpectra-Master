@@ -259,7 +259,7 @@ function SystemSettingsInner() {
       if (!res.ok) throw new Error((json.error as string) || 'Save failed')
       setSecretsDraft(emptySecretsDraft())
       await reloadSecrets()
-      addToast({ type: 'success', title: 'Stripe & billing saved' })
+      addToast({ type: 'success', title: 'Integrations saved' })
     } catch (e) {
       addToast({
         type: 'error',
@@ -1116,7 +1116,7 @@ function SystemSettingsInner() {
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save Stripe & billing
+                  Save integrations
                 </Button>
               </div>
             </Card>

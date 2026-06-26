@@ -22,6 +22,8 @@ export type ServerSecretsRecord = {
   razorpay_key_id?: string
   razorpay_key_secret?: string
   razorpay_webhook_secret?: string
+  // --- Better Auth runtime trusted origins (comma- or newline-separated) --
+  trusted_origins_extra?: string
   // --- Legacy Stripe (kept for back-compat reads only) -------------------
   stripe_secret_key?: string
   stripe_webhook_secret?: string
