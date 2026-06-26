@@ -3,7 +3,7 @@
 import { useState, useEffect, useMemo, Suspense } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
-import { authClient, useSession } from '@/lib/auth-client'
+import { useAuth } from '@/lib/auth-context'
 import {
   DASHBOARD_ROUTES,
   getDefaultDashboard,
@@ -89,25 +89,17 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
 
-  // Better Auth session — replaces the Supabase `getUser()` + profile-fetch chain.
-  const { data: session } = useSession()
+  const { user: fbUser, signOut } = useAuth()
   const userProfile = useMemo(() => {
-    if (!session?.user) return null
-    const u = session.user as typeof session.user & {
-      role?: string | null
-      fullName?: string | null
-      tenantId?: string | null
-      organizationId?: string | null
-      isActive?: boolean | null
-    }
+    if (!fbUser) return null
     return {
-      id: u.id,
-      email: u.email || '',
-      full_name: u.fullName ?? u.name ?? 'User',
-      role: normalizeUserRole(u.role),
-      tenant_id: u.tenantId ?? u.organizationId ?? null,
+      id: fbUser.uid,
+      email: fbUser.email || '',
+      full_name: fbUser.displayName || 'User',
+      role: 'user' as UserRole,
+      tenant_id: null,
     }
-  }, [session])
+  }, [fbUser])
 
   useEffect(() => {
     try {
@@ -231,7 +223,7 @@ export default function DashboardLayout({
   const navReady = Boolean(userProfile?.role)
 
   const handleLogout = async () => {
-    await authClient.signOut()
+    await signOut()
     router.push('/auth/login')
     router.refresh()
   }

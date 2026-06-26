@@ -10,7 +10,7 @@ import {
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
-import { useSession } from '@/lib/auth-client'
+import { useAuth } from '@/lib/auth-context'
 import { normalizeUserRole, isAdmin as isAdminRole, type UserRole } from '@/lib/rbac'
 
 interface NavItem {
@@ -160,10 +160,10 @@ function filterByRole(items: NavItem[], role: UserRole): NavItem[] {
 
 export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const pathname = usePathname()
-  const { data: session } = useSession()
+  const { user: fbUser } = useAuth()
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
 
-  const role = normalizeUserRole((session?.user as { role?: string } | undefined)?.role)
+  const role = 'user' as UserRole
   // Admin shell lives under both /admin (legacy) and /dashboard/admin (current).
   const isAdminView =
     pathname.startsWith('/admin') || pathname.startsWith('/dashboard/admin')

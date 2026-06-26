@@ -7,22 +7,22 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { TrendingUp, AlertCircle, Zap, Activity, Code, Trophy, BookOpen, CheckCircle, ArrowRight, Clock } from 'lucide-react'
 import Link from 'next/link'
-import { useSession } from '@/lib/auth-client'
+import { useAuth } from '@/lib/auth-context'
 import { DailyChallengeWidget } from '@/components/dashboard/daily-challenge-widget'
-import { getDefaultDashboard, normalizeUserRole } from '@/lib/rbac'
+import { getDefaultDashboard } from '@/lib/rbac'
 
 export default function DashboardPage() {
   const router = useRouter()
   const pathname = usePathname()
-  const { data: session, isPending } = useSession()
+  const { user: fbUser, loading: isPending } = useAuth()
 
   useEffect(() => {
     if (isPending) return
-    if (!session?.user) {
+    if (!fbUser) {
       router.push('/auth/login')
       return
     }
-    const role = normalizeUserRole((session.user as { role?: string }).role)
+    const role = 'user' as const
     const target = getDefaultDashboard(role)
     if (pathname === '/dashboard' && target !== pathname) {
       router.replace(target)

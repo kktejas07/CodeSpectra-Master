@@ -1,9 +1,9 @@
 import { headers } from 'next/headers'
-import { auth } from './auth'
+import { cookies } from 'next/headers'
+import { verifySessionCookie, verifyIdToken } from './firebase-admin'
 import { bootSchedulerOnce } from './boot-scheduler'
 import { isSuperAdmin, isAdmin, normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
 
-/** API layer role — same as `profiles.role` after normalization. */
 export type UserRole = RBACUserRole
 
 export interface APIUser {
@@ -12,33 +12,40 @@ export interface APIUser {
   role: UserRole
 }
 
-/**
- * Get authenticated user in API routes (server only).
- *
- * Phase 3 of migration: this is now backed by Better Auth + MongoDB. The
- * function signature and return shape are identical to the previous
- * Supabase implementation so every importing API route keeps working.
- */
+const SESSION_COOKIE_NAME = 'codespectra_session'
+
 export async function getAPIUser(): Promise<APIUser | null> {
-  // Lazy scheduler boot — runs once per process on the first API request.
   bootSchedulerOnce()
   try {
-    const session = await auth.api.getSession({
-      headers: await headers(),
-    })
-    if (!session?.user) return null
+    const cookieStore = await cookies()
+    const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
 
-    const u = session.user as unknown as {
-      id: string
-      email: string
-      role?: string | null
+    if (sessionCookie) {
+      const decoded = await verifySessionCookie(sessionCookie)
+      if (decoded) {
+        return {
+          id: decoded.uid,
+          email: decoded.email || '',
+          role: normalizeUserRole((decoded as Record<string, unknown>).role as string | undefined),
+        }
+      }
     }
 
-    return {
-      id: u.id,
-      email: u.email || '',
-      role: normalizeUserRole(u.role),
+    const headersList = await headers()
+    const authHeader = headersList.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7)
+      const decoded = await verifyIdToken(token)
+      if (decoded) {
+        return {
+          id: decoded.uid,
+          email: decoded.email || '',
+          role: normalizeUserRole((decoded as Record<string, unknown>).role as string | undefined),
+        }
+      }
     }
+
+    return null
   } catch (error) {
     console.error('[CodeSpectra] Error getting API user:', error)
     return null
@@ -53,7 +60,6 @@ export async function requireAuth() {
   return { user }
 }
 
-/** Requires `tenant_admin` or `superadmin`. */
 export async function requireAdmin() {
   const user = await getAPIUser()
   if (!user) return { error: 'Unauthorized', status: 401 as const }

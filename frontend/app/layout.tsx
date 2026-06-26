@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { JetBrains_Mono } from 'next/font/google'
 import { ToastProvider } from '@/lib/toast-context'
 import { ThemeProvider } from 'next-themes'
+import { AuthProvider } from '@/lib/auth-context'
 import './globals.css'
 
 const mono = JetBrains_Mono({
@@ -46,7 +47,9 @@ export default function RootLayout({
           enableSystem
           storageKey="codespectra-theme"
         >
-          <ToastProvider>{children}</ToastProvider>
+          <AuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>

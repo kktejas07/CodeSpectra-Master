@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { useSession } from '@/lib/auth-client'
+import { useAuth } from '@/lib/auth-context'
 import {
   getDefaultDashboard,
   normalizeUserRole,
@@ -12,7 +12,6 @@ import {
 interface ProtectedPageProps {
   children: React.ReactNode
   requiredRoles?: UserRole[]
-  requiredPermission?: string
 }
 
 export function ProtectedPage({
@@ -20,26 +19,23 @@ export function ProtectedPage({
   requiredRoles,
 }: ProtectedPageProps) {
   const router = useRouter()
-  const { data: session, isPending } = useSession()
+  const { user, loading } = useAuth()
   const [isAuthorized, setIsAuthorized] = useState(false)
 
   useEffect(() => {
-    if (isPending) return
-    if (!session?.user) {
+    if (loading) return
+    if (!user) {
       router.push('/auth/login')
       return
     }
-    const userRole = normalizeUserRole(
-      (session.user as { role?: string }).role,
-    )
-    if (requiredRoles && !requiredRoles.includes(userRole)) {
-      router.push(getDefaultDashboard(userRole))
+    if (requiredRoles && requiredRoles.length > 0) {
+      setIsAuthorized(false)
       return
     }
     setIsAuthorized(true)
-  }, [router, requiredRoles, isPending, session?.user?.id])
+  }, [router, requiredRoles, loading, user])
 
-  if (isPending) {
+  if (loading) {
     return (
       <div className="flex items-center justify-center min-h-screen">
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
