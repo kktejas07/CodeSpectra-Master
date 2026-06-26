@@ -5,6 +5,28 @@ import { cookies } from 'next/headers'
 const SESSION_COOKIE_NAME = 'codespectra_session'
 const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7 * 1000
 
+async function ensureUserProfile(uid: string, email: string, displayName?: string) {
+  try {
+    const { users } = await import('@/lib/db/admin')
+    const userCol = await users()
+    const existing = await userCol.findOne({ id: uid })
+    if (!existing) {
+      await userCol.insertOne({
+        id: uid,
+        email,
+        name: displayName || email?.split('@')[0] || 'User',
+        fullName: displayName || email?.split('@')[0] || 'User',
+        role: 'user',
+        isActive: true,
+        createdAt: new Date(),
+        updatedAt: new Date(),
+      })
+    }
+  } catch (e) {
+    console.error('[Session] Profile sync error:', e)
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
     const { idToken } = await request.json()
@@ -32,6 +54,8 @@ export async function POST(request: NextRequest) {
       path: '/',
       maxAge: SESSION_EXPIRES_IN / 1000,
     })
+
+    await ensureUserProfile(decoded.uid, decoded.email || '', decoded.name)
 
     return response
   } catch (error) {
@@ -71,11 +95,16 @@ export async function GET() {
       return NextResponse.json({ user: null })
     }
 
+    const { users } = await import('@/lib/db/admin')
+    const userCol = await users()
+    const profile = await userCol.findOne({ id: decoded.uid })
+
     return NextResponse.json({
       user: {
         uid: decoded.uid,
         email: decoded.email || null,
-        role: (decoded as Record<string, unknown>).role || 'user',
+        role: profile?.role || 'user',
+        fullName: profile?.fullName || profile?.name || decoded.name || null,
       },
     })
   } catch {
