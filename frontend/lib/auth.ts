@@ -48,8 +48,12 @@ export const auth = betterAuth({
   //   1. Static defaults (localhost, hard-coded preview, NEXT_PUBLIC_APP_URL)
   //   2. BETTER_AUTH_TRUSTED_ORIGINS env (comma-separated)
   //   3. MongoDB `platform_settings.secrets.trusted_origins_extra` (admin-managed)
+  //   4. *.preview.emergentagent.com and *.preview.emergentcf.cloud — Emergent
+  //      preview environments rotate hostnames between deploys, so we accept
+  //      any cluster URL coming from the request's Origin header that matches
+  //      one of the known patterns.
   // Trailing slashes are stripped; only http/https origins are accepted.
-  trustedOrigins: async (_request: Request): Promise<string[]> => {
+  trustedOrigins: async (request: Request): Promise<string[]> => {
     const staticOrigins = [
       "http://localhost:3000",
       "https://codespectra-master.preview.emergentagent.com",
@@ -60,13 +64,38 @@ export const auth = betterAuth({
             .filter(Boolean)
         : []),
     ];
+
+    // Auto-trust any Emergent preview hostname coming from the request itself.
+    // This avoids a re-deploy every time the preview URL rotates.
+    const PREVIEW_HOST_RE = /\.preview\.(emergentagent\.com|emergentcf\.cloud)$/i;
+    const auto: string[] = [];
+    try {
+      const originHeader = request.headers.get("origin");
+      if (originHeader) {
+        const u = new URL(originHeader);
+        if (PREVIEW_HOST_RE.test(u.hostname)) auto.push(u.origin);
+      }
+      const fwdHost =
+        request.headers.get("x-forwarded-host") || request.headers.get("host");
+      const fwdProto =
+        request.headers.get("x-forwarded-proto") ||
+        (fwdHost?.includes("localhost") ? "http" : "https");
+      if (fwdHost && PREVIEW_HOST_RE.test(fwdHost)) {
+        auto.push(`${fwdProto}://${fwdHost}`);
+      }
+    } catch {
+      /* malformed Origin header — ignore */
+    }
+
     let dynamic: string[] = [];
     try {
       dynamic = await readTrustedOrigins();
     } catch {
       /* If DB read fails, fall back to static list only (don't break auth). */
     }
-    return [...staticOrigins, ...dynamic].map((o) => o.replace(/\/+$/, ""));
+    return [...staticOrigins, ...auto, ...dynamic].map((o) =>
+      o.replace(/\/+$/, ""),
+    );
   },
   database: databaseAdapter,
   emailAndPassword: {
