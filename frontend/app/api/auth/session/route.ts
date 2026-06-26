@@ -1,14 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { cookies } from 'next/headers'
+import { users as getUsersCollection } from '@/lib/db/admin'
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
 const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7 * 1000
 
 async function ensureUserProfile(uid: string, email: string, displayName?: string) {
   try {
-    const { users } = await import('@/lib/db/admin')
-    const userCol = await users()
+    const userCol = await getUsersCollection()
     const existing = await userCol.findOne({ id: uid })
     if (!existing) {
       await userCol.insertOne({
@@ -95,8 +95,7 @@ export async function GET() {
       return NextResponse.json({ user: null })
     }
 
-    const { users } = await import('@/lib/db/admin')
-    const userCol = await users()
+    const userCol = await getUsersCollection()
     const profile = await userCol.findOne({ id: decoded.uid })
 
     return NextResponse.json({
