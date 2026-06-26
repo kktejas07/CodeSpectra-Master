@@ -59,8 +59,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      getFirebaseModule().then(({ onAuthStateChanged }) => {
+      getFirebaseModule().then(({ onAuthStateChanged, getRedirectResult }) => {
         if (cancelled) return
+
+        getRedirectResult(auth).catch(() => {})
+
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
           if (cancelled) return
           if (firebaseUser) {
@@ -73,7 +76,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           setLoading(false)
         })
 
-        // If auth is already resolved synchronously, clean up immediately
         if (getFirebaseAuthSync()) {
           setLoading(false)
         }
@@ -98,19 +100,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signInWithGoogle = async () => {
-    await withAuth(async (auth) => {
-      const { signInWithPopup, GoogleAuthProvider } = await getFirebaseModule()
-      const provider = new GoogleAuthProvider()
-      await signInWithPopup(auth, provider)
-    })
+    const auth = await getFirebaseAuth()
+    if (!auth) return
+    const { signInWithRedirect, GoogleAuthProvider } = await getFirebaseModule()
+    const provider = new GoogleAuthProvider()
+    await signInWithRedirect(auth, provider)
   }
 
   const signInWithGithub = async () => {
-    await withAuth(async (auth) => {
-      const { signInWithPopup, GithubAuthProvider } = await getFirebaseModule()
-      const provider = new GithubAuthProvider()
-      await signInWithPopup(auth, provider)
-    })
+    const auth = await getFirebaseAuth()
+    if (!auth) return
+    const { signInWithRedirect, GithubAuthProvider } = await getFirebaseModule()
+    const provider = new GithubAuthProvider()
+    await signInWithRedirect(auth, provider)
   }
 
   const signOut = async () => {
