@@ -227,12 +227,27 @@ superadmin settings UI (no hardcoded keys).** Tech-stack tracks. Daily challenge
   - `POST /api/certifications/[id]/submit` — scores `Record<questionId, choiceIndex>`, sets `verify_token` if passed.
   - `GET /api/certifications/me` — user's attempt history with earned count.
   - `GET /api/certifications/verify/[token]` — public verify endpoint (no auth).
+  - `GET /api/certifications/cert-svg/[token]?template=classic|modern|minimal` — server-side SVG certificate (downloadable vector).
 - UI:
   - `/dashboard/certifications` — catalog (API-driven, replaces previous static page).
   - `/dashboard/certifications/[slug]` — assessment runner with radio-button question UI.
-  - `/cert/verify/[token]` — public shareable certificate page with candidate name, score, license attribution.
+  - `/cert/verify/[token]` — public certificate page with 3 templates (Classic / Modern / Minimal),
+    template picker, Print/Save-as-PDF, Download SVG, embedded QR.
+  - `/open-source` — public attribution page listing every dependency, curriculum, tool and license.
 - Snapshot pattern: candidate name resolved from `user._id` (ObjectId) at start time and stored on the attempt,
   so verify URLs keep working even if the user is later deleted/renamed.
+
+### Phase 12.1 — Certificate templates + verified real audit (2026-06-26) ✅
+- **3 certificate templates** (`components/cert/CertificateTemplates.tsx`):
+  - **Classic** — Formal serif with gold accents, double border, corner medallions, embedded QR.
+  - **Modern** — Dark gradient with bold typography, side-mounted score + QR cards.
+  - **Minimal** — Clean B&W layout with structured metadata, large QR.
+  - All A4-landscape, print-ready (`@media print` stylesheet hides chrome, forces landscape).
+  - Open-source-only: Tailwind (MIT), lucide-react (ISC), qrcode (MIT). No new heavy deps (no html2canvas, no jspdf).
+- **Server-side SVG download** at `/api/certifications/cert-svg/[token]` — open W3C standard, no extra deps.
+- **pip-audit symlinked** to `/usr/local/bin/pip-audit` so the Next.js spawn picks it up. Real audit now returns
+  `mode: 'real'` with both python.source='cli' and npm.source='cli'.
+- **Open-source attribution page** at `/open-source` — lists every dep, curriculum, tool with link + license.
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`
