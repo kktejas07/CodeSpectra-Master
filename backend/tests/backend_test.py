@@ -402,13 +402,35 @@ class TestAIRoutesAuthed:
         d = r.json()
         assert "final_code" in d or "steps" in d
 
-    def test_generate_problem_forbidden_for_non_admin(self, auth_session):
-        r = auth_session.post(
+    def test_generate_problem_forbidden_for_non_admin(self):
+        """A freshly signed-up regular user should get 401/403, NOT the admin
+        success path. We deliberately do NOT use the seeded `auth_session`
+        fixture because that user is promoted to `superadmin` (see
+        /app/memory/test_credentials.md), which would (correctly) allow the
+        endpoint and turn this assertion into a flaky LLM timeout."""
+        s = requests.Session()
+        s.headers.update({"Content-Type": "application/json", "Origin": "http://localhost:3000"})
+        unique = f"qa-regular-{int(time.time() * 1000)}@example.com"
+        signup = s.post(
+            f"{BASE_URL}/api/auth/sign-up/email",
+            json={"email": unique, "password": "RegPass123!", "name": "QA Regular"},
+            timeout=20,
+        )
+        assert signup.status_code in (200, 201), f"signup failed: {signup.status_code} {signup.text[:200]}"
+        # Better Auth auto-signs-in on sign-up. Confirm by also explicitly signing in.
+        r_in = s.post(
+            f"{BASE_URL}/api/auth/sign-in/email",
+            json={"email": unique, "password": "RegPass123!"},
+            timeout=20,
+        )
+        assert r_in.status_code == 200, f"sign-in failed: {r_in.status_code}"
+
+        r = s.post(
             f"{BASE_URL}/api/ai/generate-problem",
             json={"role": "SE", "difficulty": "easy", "topics": ["arrays"], "language_hint": "python"},
             timeout=15,
         )
-        assert r.status_code in (401, 403), f"expected 401/403, got {r.status_code} {r.text[:200]}"
+        assert r.status_code in (401, 403), f"expected 401/403 for non-admin, got {r.status_code} {r.text[:200]}"
 
     def test_proctor_events(self, auth_session):
         r = auth_session.post(

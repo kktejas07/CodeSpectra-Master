@@ -321,14 +321,10 @@ function SystemSettingsInner() {
     }
   }, [addToast, form.admin_new_user_email_delivery, mailSecretsDraft, reloadSecrets])
 
-  if (!gate.ready) {
-    return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        Authorising…
-      </div>
-    )
-  }
+  // While the role gate is still resolving, render NOTHING — prevents the
+  // half-mounted form (and its outbound /api/admin/* fetches) from racing
+  // with an in-flight redirect for non-superadmin users.
+  if (!gate.ready) return null
 
   if (loading) {
     return (
