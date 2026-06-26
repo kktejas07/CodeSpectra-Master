@@ -90,6 +90,35 @@ export interface FileContent {
   encoding?: string
 }
 
+export async function getRepositoryFiles(
+  owner: string,
+  repo: string,
+): Promise<{ path: string; type: 'file' | 'dir'; size?: number }[]> {
+  const res = await fetch(
+    `/api/github/repo-files?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}`,
+    { cache: 'no-store' },
+  )
+  if (!res.ok) return []
+  const json = (await res.json()) as { files?: { path: string; type: 'file' | 'dir'; size?: number }[] }
+  return json.files ?? []
+}
+
+export async function analyzeCode(
+  code: string,
+  language: string,
+  filePath: string,
+  _unused?: unknown,
+  meta?: Record<string, string>,
+): Promise<Record<string, unknown>> {
+  const res = await fetch('/api/analyze-code', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ code, language, filePath, ...meta }),
+  })
+  if (!res.ok) return { error: 'Request failed' }
+  return (await res.json()) as Record<string, unknown>
+}
+
 export async function getFileContent(
   owner: string,
   repo: string,
