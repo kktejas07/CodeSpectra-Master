@@ -50,7 +50,7 @@ export const auth = betterAuth({
     ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
       ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
       : []),
-  ],
+  ].map((o) => o.replace(/\/+$/, "")), // Better Auth does exact-string origin match — strip trailing slashes so 'https://x.com/' and 'https://x.com' both work.
   database: databaseAdapter,
   emailAndPassword: {
     enabled: true,
