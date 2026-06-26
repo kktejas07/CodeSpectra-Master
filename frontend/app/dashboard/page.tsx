@@ -27,7 +27,7 @@ export default function DashboardPage() {
     if (pathname === '/dashboard' && target !== pathname) {
       router.replace(target)
     }
-  }, [router, pathname, isPending, session?.user?.id])
+  }, [router, pathname, isPending, fbUser?.uid])
   const metrics = [
     {
       label: 'Quality Score',
