@@ -28,6 +28,9 @@ export type ServerSecretsRecord = {
   piston_url?: string
   // --- GitHub App (PR-comment posting) -----------------------------------
   github_app_token?: string
+  // --- GitHub OAuth App (lets users connect their account) ---------------
+  github_client_id?: string
+  github_client_secret?: string
   // --- Legacy Stripe (kept for back-compat reads only) -------------------
   stripe_secret_key?: string
   stripe_webhook_secret?: string

@@ -33,7 +33,7 @@ import '@xyflow/react/dist/style.css'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
-import { Plus, Trash2 } from 'lucide-react'
+import { Plus, Trash2, LayoutGrid } from 'lucide-react'
 
 export interface WorkflowDsl {
   nodes: Array<{
@@ -68,13 +68,27 @@ const NODE_COLOR: Record<string, string> = {
   delay: '#64748b',
 }
 
+/**
+ * Layout constants — kept in module scope so `addNode` + the auto-arrange
+ * routine produce identical, deterministic positions.
+ */
+const GRID_X = 240
+const GRID_Y = 130
+const ORIGIN_X = 60
+const ORIGIN_Y = 60
+const COLS = 4
+
+function gridPos(index: number): { x: number; y: number } {
+  return {
+    x: ORIGIN_X + (index % COLS) * GRID_X,
+    y: ORIGIN_Y + Math.floor(index / COLS) * GRID_Y,
+  }
+}
+
 function dslToFlow(dsl: WorkflowDsl): { nodes: Node[]; edges: Edge[] } {
   const nodes: Node[] = dsl.nodes.map((n, i) => ({
     id: n.id,
-    position: {
-      x: 80 + (i % 4) * 220,
-      y: 80 + Math.floor(i / 4) * 140,
-    },
+    position: gridPos(i),
     data: {
       label: `${n.label || n.type}\n${n.type}`,
       __node: n,
@@ -98,6 +112,72 @@ function dslToFlow(dsl: WorkflowDsl): { nodes: Node[]; edges: Edge[] } {
     style: { stroke: '#22c55e' },
   }))
   return { nodes, edges }
+}
+
+/**
+ * Topological-style layered layout. Nodes are placed in columns based on
+ * their longest-path depth from any source (no-incoming-edges) node, then
+ * within each column they are stacked vertically. This produces a stable,
+ * readable graph for the typical "trigger → step → step" workflow shape.
+ */
+function autoArrangePositions(
+  dsl: WorkflowDsl,
+): Record<string, { x: number; y: number }> {
+  const incomingCount = new Map<string, number>()
+  const outgoing = new Map<string, string[]>()
+  for (const n of dsl.nodes) {
+    incomingCount.set(n.id, 0)
+    outgoing.set(n.id, [])
+  }
+  for (const e of dsl.edges) {
+    incomingCount.set(e.to, (incomingCount.get(e.to) || 0) + 1)
+    outgoing.get(e.from)?.push(e.to)
+  }
+
+  const depth = new Map<string, number>()
+  // BFS from each source so we get the *longest* path depth.
+  const sources = dsl.nodes.filter((n) => (incomingCount.get(n.id) || 0) === 0)
+  for (const s of sources) depth.set(s.id, 0)
+  let changed = true
+  let iterations = 0
+  while (changed && iterations < dsl.nodes.length + 1) {
+    changed = false
+    iterations += 1
+    for (const e of dsl.edges) {
+      const d = (depth.get(e.from) ?? 0) + 1
+      if (d > (depth.get(e.to) ?? -1)) {
+        depth.set(e.to, d)
+        changed = true
+      }
+    }
+  }
+  // Any node still undepth-ed (cycle / orphan) → push to the end.
+  let maxDepth = 0
+  for (const d of depth.values()) maxDepth = Math.max(maxDepth, d)
+  for (const n of dsl.nodes) {
+    if (!depth.has(n.id)) depth.set(n.id, maxDepth + 1)
+  }
+
+  // Group by column.
+  const cols = new Map<number, string[]>()
+  for (const n of dsl.nodes) {
+    const d = depth.get(n.id) || 0
+    if (!cols.has(d)) cols.set(d, [])
+    cols.get(d)!.push(n.id)
+  }
+
+  const positions: Record<string, { x: number; y: number }> = {}
+  const sortedDepths = [...cols.keys()].sort((a, b) => a - b)
+  for (const d of sortedDepths) {
+    const col = cols.get(d)!
+    col.forEach((id, row) => {
+      positions[id] = {
+        x: ORIGIN_X + d * GRID_X,
+        y: ORIGIN_Y + row * GRID_Y,
+      }
+    })
+  }
+  return positions
 }
 
 function flowToDsl(
@@ -189,9 +269,11 @@ function BuilderInner({ value, onChange }: Props) {
       label: type,
       config: defaultConfigFor(type),
     }
+    // Deterministic placement: next free cell after the last existing node.
+    const pos = gridPos(nodes.length)
     const flowNode: Node = {
       id,
-      position: { x: 120 + Math.random() * 200, y: 120 + Math.random() * 200 },
+      position: pos,
       data: { label: `${type}\n${type}`, __node: node },
       style: {
         background: '#0b0f14',
@@ -206,6 +288,19 @@ function BuilderInner({ value, onChange }: Props) {
     }
     setNodes((prev) => {
       const next = [...prev, flowNode]
+      emit(next, edges)
+      return next
+    })
+  }
+
+  function autoArrange() {
+    const dsl = flowToDsl(nodes, edges, value)
+    const positions = autoArrangePositions(dsl)
+    setNodes((prev) => {
+      const next = prev.map((n) => ({
+        ...n,
+        position: positions[n.id] || n.position,
+      }))
       emit(next, edges)
       return next
     })
@@ -283,6 +378,15 @@ function BuilderInner({ value, onChange }: Props) {
               <Plus className="mr-0.5 h-3 w-3" /> {t}
             </Button>
           ))}
+          <Button
+            size="sm"
+            variant="default"
+            onClick={autoArrange}
+            className="h-7 px-2 text-[10px]"
+            data-testid="builder-auto-arrange"
+          >
+            <LayoutGrid className="mr-0.5 h-3 w-3" /> Auto arrange
+          </Button>
         </div>
       </div>
 

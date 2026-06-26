@@ -28,6 +28,7 @@ import {
 } from '@/components/ui/select'
 import { useRoleGate } from '@/lib/use-role-gate'
 import { useToast } from '@/lib/toast-context'
+import GitHubConnectButton from '@/components/integrations/github-connect-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
   ADMIN_NEW_USER_EMAIL_DELIVERIES,
@@ -81,6 +82,8 @@ type SecretsDraft = {
   trusted_origins_extra: string
   piston_url: string
   github_app_token: string
+  github_client_id: string
+  github_client_secret: string
   stripe_secret_key: string
   stripe_webhook_secret: string
   stripe_price_pro_monthly: string
@@ -96,6 +99,8 @@ const emptySecretsDraft = (): SecretsDraft => ({
   trusted_origins_extra: '',
   piston_url: '',
   github_app_token: '',
+  github_client_id: '',
+  github_client_secret: '',
   stripe_secret_key: '',
   stripe_webhook_secret: '',
   stripe_price_pro_monthly: '',
@@ -990,6 +995,77 @@ function SystemSettingsInner() {
                     data-testid="github-token-input"
                     autoComplete="off"
                   />
+                </div>
+
+                {/* GitHub OAuth App (per-user "Connect GitHub" flow) */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="github-oauth-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">GitHub OAuth App (per-user install)</p>
+                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Dynamic
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Lets each user authorise CodeSpectra against their own GitHub
+                    account (no PAT pasting). Create an OAuth App at{' '}
+                    <a
+                      href="https://github.com/settings/applications/new"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      github.com/settings/applications/new
+                    </a>{' '}
+                    and set the Authorization callback URL to{' '}
+                    <code className="break-all">
+                      {(typeof window !== 'undefined' ? window.location.origin : '<APP_URL>')}
+                      /api/github/oauth/callback
+                    </code>
+                    .
+                  </p>
+                  <div className="grid gap-2 md:grid-cols-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Client ID
+                      </label>
+                      <Input
+                        value={secretsDraft.github_client_id}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, github_client_id: e.target.value }))
+                        }
+                        placeholder="Iv1.…"
+                        className="font-mono"
+                        data-testid="github-client-id-input"
+                      />
+                      {secretsMeta.github_client_id ? (
+                        <p className="mt-1 font-mono text-[11px] text-muted-foreground break-all">
+                          Saved: {String(secretsMeta.github_client_id)}
+                        </p>
+                      ) : null}
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Client secret
+                      </label>
+                      <Input
+                        type="password"
+                        value={secretsDraft.github_client_secret}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, github_client_secret: e.target.value }))
+                        }
+                        placeholder="••••••••••••••••"
+                        className="font-mono"
+                        data-testid="github-client-secret-input"
+                        autoComplete="off"
+                      />
+                      {secretsMeta.has_github_client_secret ? (
+                        <p className="mt-1 font-mono text-[11px] text-muted-foreground">
+                          Current: {String(secretsMeta.github_client_secret_masked ?? '—')}
+                        </p>
+                      ) : null}
+                    </div>
+                  </div>
+                  <GitHubConnectButton />
                 </div>
 
                 <Alert className="rounded-lg border-border/60 bg-muted/20">
