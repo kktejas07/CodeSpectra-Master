@@ -23,6 +23,7 @@ import {
   Settings,
   LogOut,
   Star,
+  Award,
   Bell,
   Users,
   User,
@@ -41,6 +42,7 @@ import {
   SlidersHorizontal,
   ChevronRight,
   Bot,
+  Sparkles,
   Sparkles as SparklesIcon,
   Camera as CameraIcon,
   Layers as LayersIcon,
@@ -153,6 +155,7 @@ export default function DashboardLayout({
       { href: '/dashboard/identity-verify', icon: CameraIcon, label: 'Identity Verify' },
       { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
       { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
+      { href: '/dashboard/certifications', icon: Award, label: 'Certifications' },
       { href: '/dashboard/pricing', icon: CreditCardIcon, label: 'Pricing' },
     ]
 
@@ -169,6 +172,10 @@ export default function DashboardLayout({
         { href: p.speedInsights, icon: Gauge, label: 'Speed Insights' },
         { href: p.cdn, icon: Globe2, label: 'CDN' },
         { href: p.pricing, icon: FileText, label: 'Pricing' },
+        // Admin-only domains added in Phase 11. Server enforces 403 — but the
+        // links would otherwise be orphan dead-ends in the UI.
+        { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
+        { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
       ]
       const platformSettingsLeaf: NavLeaf = {
         href: p.settings,
@@ -381,6 +388,7 @@ export default function DashboardLayout({
                     const { href, label, icon: IconComponent } = entry.item
                     const active = isActive(href)
                     const nestedShell = mainNavHasNestedShell(href)
+                    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
                     return (
                       <Link
                         key={href}
@@ -388,6 +396,7 @@ export default function DashboardLayout({
                         title={label}
                         prefetch={false}
                         onClick={() => setSidebarOpen(false)}
+                        data-testid={`sidebar-nav-${slug}`}
                       >
                         <div
                           className={cn(

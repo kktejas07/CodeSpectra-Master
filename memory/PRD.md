@@ -188,7 +188,51 @@ superadmin settings UI (no hardcoded keys).** Tech-stack tracks. Daily challenge
 - LangGraph, CrewAI, AutoGen, smolagents, OpenAI Swarm, Pydantic AI (os_agents)
 
 **Scheduler boot hook**
-- `instrumentation.ts` auto-starts the in-process tick loop on Node.js runtime; no external cron needed for single-instance deploys.
+- ~~`instrumentation.ts` auto-starts the in-process tick loop on Node.js runtime~~ — Next 16 turbopack
+  static-traced the dynamic mongodb import out of `instrumentation.ts` into the Edge bundle and broke
+  `net`/`tls` resolution. Now the scheduler is lazy-booted from `lib/boot-scheduler.ts` on the first
+  call to `getAPIUser()` (any authenticated route). Same UX — runs in-process, no external cron
+  required for single-instance deploys.
+
+### Phase 12 — Real dependency audit + Open-source Certifications + Mobile scaffolds (2026-06-26) ✅
+
+**P1 — Sidebar admin gating**
+- `/app/frontend/app/dashboard/layout.tsx`: Hackathons + AI Inventory added to the superadmin
+  `platformItems` block; the regular user sidebar no longer shows them. Certifications added as
+  a base nav item for everyone. data-testids `sidebar-nav-<slug>` added on every link for QA.
+
+**P2 — Real `pip-audit` + `npm audit`**
+- `/app/frontend/app/api/ai-inventory/audit/route.ts` rewritten:
+  - In production (or `AI_INVENTORY_REAL_AUDIT=1`): spawns `pip-audit --strict --format json -r requirements.txt`
+    and `npm audit --json --omit=dev` in `/app/frontend`.
+  - Returns `{mode: 'real'|'embedded', python:{findings,count,source}, npm:{findings,count,source}, errors?}`.
+  - Auto-falls-back to embedded advisory list if either CLI is missing or fails.
+- Dev preview always returns `mode: 'embedded'` (pip-audit not installed in sandbox).
+
+**P3 — Native mobile scaffolds**
+- `/app/mobile/ios/CodeSpectraMobile/` — SwiftUI iOS 16+ scaffold (4 files: App, Models, APIClient, CertificationsView).
+  MVVM + async/await `URLSession` + cookie-based Better Auth.
+- `/app/mobile/android/codespectra-mobile/` — Jetpack Compose API 26+ scaffold (Kotlin 2.0, AGP 8.5).
+  MVVM with ViewModel + StateFlow + OkHttp CookieJar + kotlinx-serialization.
+- Both consume `GET /api/certifications` (chunked) and `GET /api/certifications/verify/{token}` (public).
+- Each platform README documents the next steps (sign-in via SFSafariViewController / CustomTabsIntent, QR scanning).
+
+**P4 — Open-source Certification modules**
+- New MongoDB collections: `certifications` (catalog) and `certification_attempts`.
+- Seeded 6 modules sourced from MDN (CC-BY-SA), exercism (MIT), FreeCodeCamp (BSD-3), web.dev (CC-BY-4.0),
+  React Docs (CC-BY-4.0), OSSU (MIT). Each module has 5 questions, source URL + license attribution.
+- API:
+  - `GET /api/certifications` — public chunked catalog with `category=skill|role` + cursor pagination.
+  - `POST /api/certifications/[id]/start` — auth-only, idempotent within 24h, returns questions with answers stripped.
+  - `POST /api/certifications/[id]/submit` — scores `Record<questionId, choiceIndex>`, sets `verify_token` if passed.
+  - `GET /api/certifications/me` — user's attempt history with earned count.
+  - `GET /api/certifications/verify/[token]` — public verify endpoint (no auth).
+- UI:
+  - `/dashboard/certifications` — catalog (API-driven, replaces previous static page).
+  - `/dashboard/certifications/[slug]` — assessment runner with radio-button question UI.
+  - `/cert/verify/[token]` — public shareable certificate page with candidate name, score, license attribution.
+- Snapshot pattern: candidate name resolved from `user._id` (ObjectId) at start time and stored on the attempt,
+  so verify URLs keep working even if the user is later deleted/renamed.
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`

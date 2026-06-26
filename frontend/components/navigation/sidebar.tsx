@@ -164,7 +164,9 @@ export function Sidebar({ isOpen = true, onClose }: SidebarProps) {
   const [expandedMenus, setExpandedMenus] = useState<string[]>([])
 
   const role = normalizeUserRole((session?.user as { role?: string } | undefined)?.role)
-  const isAdminView = pathname.startsWith('/admin')
+  // Admin shell lives under both /admin (legacy) and /dashboard/admin (current).
+  const isAdminView =
+    pathname.startsWith('/admin') || pathname.startsWith('/dashboard/admin')
 
   const toggleSubmenu = (itemId: string) => {
     setExpandedMenus(prev =>
