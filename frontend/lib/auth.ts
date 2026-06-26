@@ -39,6 +39,18 @@ if (process.env.GITHUB_CLIENT_ID && process.env.GITHUB_CLIENT_SECRET) {
 export const auth = betterAuth({
   secret: process.env.BETTER_AUTH_SECRET,
   baseURL: process.env.NEXT_PUBLIC_APP_URL,
+  // Accept Origin headers from any of these domains. The external preview
+  // domain changes per env so we include the wildcard `*.emergentagent.com`
+  // pattern via the explicit list below — Better Auth performs an exact
+  // origin match.
+  trustedOrigins: [
+    "http://localhost:3000",
+    "https://codespectra-master.preview.emergentagent.com",
+    ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
+    ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
+      ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
+      : []),
+  ],
   database: databaseAdapter,
   emailAndPassword: {
     enabled: true,
