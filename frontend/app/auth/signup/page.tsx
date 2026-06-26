@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -9,14 +9,20 @@ import { Label } from "@/components/ui/label";
 import {
   AlertCircle,
   ArrowRight,
+  Check,
+  CheckCircle2,
   Code2,
+  Eye,
+  EyeOff,
   Github,
   Loader2,
   Lock,
   Mail,
   User,
+  X,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { cn } from "@/lib/utils";
 
 function SignupInner() {
   const router = useRouter();
@@ -24,9 +30,18 @@ function SignupInner() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signUpWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
+
+  const passwordChecks = useMemo(() => [
+    { label: "At least 8 characters", met: password.length >= 8 },
+    { label: "Contains uppercase letter", met: /[A-Z]/.test(password) },
+    { label: "Contains lowercase letter", met: /[a-z]/.test(password) },
+    { label: "Contains a number", met: /[0-9]/.test(password) },
+    { label: "Contains special character", met: /[^A-Za-z0-9]/.test(password) },
+  ], [password]);
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -173,16 +188,40 @@ function SignupInner() {
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
                 <Input
                   id="password"
-                  type="password"
+                  type={showPassword ? "text" : "password"}
                   placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10"
+                  className="pl-10 pr-10"
                   required
                   minLength={8}
                   autoComplete="new-password"
                 />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
               </div>
+              {password.length > 0 && (
+                <div className="space-y-1.5 pt-1">
+                  {passwordChecks.map((check) => (
+                    <div key={check.label} className="flex items-center gap-2 text-xs">
+                      {check.met ? (
+                        <Check className="w-3 h-3 text-green-500 shrink-0" />
+                      ) : (
+                        <X className="w-3 h-3 text-muted-foreground/40 shrink-0" />
+                      )}
+                      <span className={cn(check.met ? "text-green-500" : "text-muted-foreground")}>
+                        {check.label}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
             </div>
 
             <Button type="submit" disabled={loading} className="w-full gap-2 h-11">
