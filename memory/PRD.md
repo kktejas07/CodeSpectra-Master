@@ -169,11 +169,26 @@ superadmin settings UI (no hardcoded keys).** Tech-stack tracks. Daily challenge
   - `/hackathons/[slug]` — public registration + live leaderboard
     (auto-refreshing every 15 s).
 
-## Pending action items
-- ✅ All Phase 10 deliverables shipped + tested (19/19 pytest + frontend).
-- 🟢 Scheduler runner from Phase 9 (`lib/scheduler.ts` + `/api/cron/tick`)
-  is wired but currently runs in-process only — no external Vercel Cron
-  setup yet. Ready when you deploy.
+### Phase 11 — Finish trio + AI Inventory (2026-06-26) ✅
+
+**Trio finished**
+- `/dashboard/admin/hackathons/[id]` — detail page with per-team XP/achievement/submission grant forms + downloadable QR.
+- Sidebar wires: **My ID Card** (under Challenges), **Hackathons** (admin), **AI Inventory** (admin).
+- QR revoke flow: `POST /api/id-card?action=revoke` marks the row revoked (old token still resolves to 410 Gone) and `getOrCreateIdCardToken` issues a fresh token on next GET.
+
+**AI Inventory (`lib/ai-inventory.ts`)**
+- 13 categories auto-discovered: automations, mcp_servers, llm_models, rag_docs, agents, bot_replies, plugins, connectors, ai_skills, mcp_tools, genai_runs, web_scraping_tools, os_agent_frameworks.
+- Live counts on this deploy: **48 components, 34 active.**
+- Chunked API at `/api/ai-inventory` (summary) + `?category=...&cursor=N&limit=M` (paginated, ≤ 50 items/page).
+- Vulnerability scanner at `/api/ai-inventory/audit` — scans `/app/backend/requirements.txt` + `/app/frontend/package.json` against an embedded advisory list. Currently flags `requests 2.31.0 → CVE-2024-47081`.
+- Admin UI at `/dashboard/admin/ai-inventory` with **Inventory** + **Vulnerability audit** tabs. 401 anon, 403 non-admin, 200 admin.
+
+**Catalog recommendations** (scraping + agent frameworks built into category 12-13):
+- Firecrawl, ScrapeGraphAI, Crawl4AI, Crawlee, Jina AI Reader (web_scraping)
+- LangGraph, CrewAI, AutoGen, smolagents, OpenAI Swarm, Pydantic AI (os_agents)
+
+**Scheduler boot hook**
+- `instrumentation.ts` auto-starts the in-process tick loop on Node.js runtime; no external cron needed for single-instance deploys.
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`

@@ -127,7 +127,13 @@ export async function getOrCreateIdCardToken(
   snapshot?: IdCardTokenDoc['snapshot'],
 ): Promise<IdCardTokenDoc> {
   const col = await idCardTokens()
-  const existing = await col.findOne({ user_id: userId, role_variant: roleVariant })
+  // Active = no `revoked_at` set. Revoked stubs are intentionally left
+  // around so old QR scans resolve to 410.
+  const existing = await col.findOne({
+    user_id: userId,
+    role_variant: roleVariant,
+    $or: [{ revoked_at: null }, { revoked_at: { $exists: false } }],
+  })
   if (existing) {
     // Refresh snapshot opportunistically (name/email might have changed).
     if (snapshot) {

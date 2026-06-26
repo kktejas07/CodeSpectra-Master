@@ -20,6 +20,7 @@ import { getAPIUser } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import {
   getOrCreateIdCardToken,
+  idCardTokens,
   roleToVariant,
   xpToLevel,
 } from '@/lib/db/qr-events'
@@ -98,4 +99,48 @@ export async function GET(req: NextRequest) {
       achievements,
     },
   })
+}
+
+/**
+ * POST /api/id-card?action=revoke[&variant=...]
+ *
+ * Revokes the current token for the given variant (defaults to the role's
+ * native variant) and immediately issues a fresh one. The old QR will
+ * return 410 Gone on scan. This is useful when a printed badge is lost
+ * or compromised.
+ */
+export async function POST(req: NextRequest) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const url = new URL(req.url)
+  const action = url.searchParams.get('action')
+  if (action !== 'revoke') {
+    return NextResponse.json({ error: 'unknown action' }, { status: 400 })
+  }
+
+  const requestedVariant = url.searchParams.get('variant') || ''
+  const variant =
+    ['user', 'admin', 'tenant', 'recruiter'].includes(requestedVariant)
+      ? (requestedVariant as 'user' | 'admin' | 'tenant' | 'recruiter')
+      : roleToVariant(user.role)
+
+  const col = await idCardTokens()
+  const existing = await col.findOne({ user_id: user.id, role_variant: variant })
+  if (existing) {
+    // Insert a stub row preserving the OLD token + revoked_at so scans of
+    // the printed badge resolve to 410 Gone via /api/qr/[token].
+    await col.insertOne({
+      id: `${existing.id}-revoked-${Date.now()}`,
+      token: existing.token,
+      user_id: existing.user_id,
+      role_variant: existing.role_variant,
+      snapshot: existing.snapshot,
+      revoked_at: new Date().toISOString(),
+      created_at: existing.created_at,
+    })
+    // Remove the active row so the next GET issues a fresh token.
+    await col.deleteOne({ id: existing.id })
+  }
+  return NextResponse.json({ ok: true, revoked: !!existing })
 }

@@ -42,6 +42,8 @@ const navItems: NavItem[] = [
     submenu: [
       { id: 'challenges-all', label: 'All Challenges', href: '/dashboard/challenges', icon: <Trophy className="w-4 h-4" /> },
       { id: 'leaderboard', label: 'Leaderboard', href: '/dashboard/leaderboard', icon: <BarChart3 className="w-4 h-4" /> },
+      { id: 'id-card', label: 'My ID Card', href: '/dashboard/id-card', icon: <Zap className="w-4 h-4" /> },
+      { id: 'hackathons', label: 'Hackathons', href: '/dashboard/admin/hackathons', icon: <Trophy className="w-4 h-4" /> },
       { id: 'progress', label: 'My Progress', href: '/dashboard/challenges/progress', icon: <Zap className="w-4 h-4" /> },
     ]
   },
@@ -112,6 +114,18 @@ const adminItems: NavItem[] = [
       { id: 'manage-courses', label: 'Manage Courses', href: '/admin/learning', icon: <BookOpen className="w-4 h-4" /> },
       { id: 'instructors', label: 'Instructors', href: '/admin/learning/instructors', icon: <Users className="w-4 h-4" /> },
     ]
+  },
+  {
+    id: 'admin-hackathons',
+    label: 'Hackathons',
+    href: '/dashboard/admin/hackathons',
+    icon: <Trophy className="w-5 h-5" />,
+  },
+  {
+    id: 'admin-ai-inventory',
+    label: 'AI Inventory',
+    href: '/dashboard/admin/ai-inventory',
+    icon: <Brain className="w-5 h-5" />,
   },
 ]
 

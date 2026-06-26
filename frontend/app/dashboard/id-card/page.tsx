@@ -20,6 +20,7 @@ import {
   IdCard,
   Copy,
   CheckCircle2,
+  RotateCcw,
 } from 'lucide-react'
 
 type Variant = 'user' | 'admin' | 'tenant' | 'recruiter'
@@ -99,6 +100,26 @@ export default function IdCardPage() {
     setTimeout(() => setCopied(false), 1500)
   }
 
+  async function revoke() {
+    if (
+      !confirm(
+        'Revoke this QR? Anyone holding a printed copy will see a "revoked" page on scan. A fresh QR will be issued immediately.',
+      )
+    )
+      return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/id-card?action=revoke&variant=${variant}`, {
+        method: 'POST',
+      })
+      if (!res.ok) throw new Error('revoke failed')
+      await load(variant)
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+      setLoading(false)
+    }
+  }
+
   return (
     <div className="space-y-6" data-testid="id-card-page">
       <header>
@@ -165,6 +186,15 @@ export default function IdCardPage() {
                   )}
                 </Button>
               </div>
+              <Button
+                onClick={revoke}
+                variant="ghost"
+                size="sm"
+                className="w-full text-destructive hover:text-destructive"
+                data-testid="id-card-revoke"
+              >
+                <RotateCcw className="mr-1 h-3 w-3" /> Revoke & re-issue
+              </Button>
             </div>
 
             <div className="space-y-4">
