@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { getRazorpay, isRazorpayConfigured } from '@/lib/razorpay-server'
+import { getRazorpay, getPublishableKeyId, isRazorpayConfigured } from '@/lib/razorpay-server'
 import {
   BILLING_PLANS,
   billingOrders,
@@ -24,12 +24,12 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!isRazorpayConfigured()) {
+  if (!(await isRazorpayConfigured())) {
     return NextResponse.json(
       {
         error: 'razorpay_not_configured',
         message:
-          'Payments are not yet activated. The admin must set RAZORPAY_KEY_ID and RAZORPAY_KEY_SECRET in /app/frontend/.env.local.',
+          'Payments are not yet activated. A super-admin can set the keys at /dashboard/admin/settings?section=integrations.',
       },
       { status: 503 },
     )
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const receipt = `cs_${id.replace(/-/g, '').slice(0, 32)}`
 
   try {
-    const rzp = getRazorpay()
+    const rzp = await getRazorpay()
     const order = await rzp.orders.create({
       amount: plan.amount_paise,
       currency: plan.currency,
@@ -84,7 +84,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       amount_paise: plan.amount_paise,
       currency: plan.currency,
       plan: { id: plan.id, name: plan.name, perks: plan.perks },
-      key_id: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID || process.env.RAZORPAY_KEY_ID,
+      key_id: await getPublishableKeyId(),
       prefill: { name: user.name || user.email, email: user.email },
     })
   } catch (e) {

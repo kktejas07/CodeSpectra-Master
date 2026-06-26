@@ -1,9 +1,15 @@
 /**
- * Server-only: optional integration secrets stored in `platform_settings` (key `secrets`).
- * Used when the corresponding environment variable is unset. Cache is warmed per request as needed.
+ * Dynamic integration secrets stored in MongoDB (`platform_settings` collection
+ * under key `secrets`). Read by API routes (Razorpay, email providers, …) so
+ * admins can rotate credentials from `/dashboard/admin/settings` without
+ * touching .env files or redeploying.
+ *
+ * Fallback chain at runtime:
+ *   1. value from MongoDB cache (admin-saved)
+ *   2. value from process.env
  */
-
-import { getServiceSupabase } from '@/lib/admin-service-client'
+import type { Collection } from 'mongodb'
+import { getMongoDb } from '@/lib/mongodb'
 
 export const SERVER_SECRETS_PLATFORM_KEY = 'secrets'
 
@@ -12,12 +18,27 @@ export type ServerSecretsRecord = {
   resend_from_email?: string
   sendgrid_api_key?: string
   sendgrid_from_email?: string
+  // --- Razorpay -----------------------------------------------------------
+  razorpay_key_id?: string
+  razorpay_key_secret?: string
+  razorpay_webhook_secret?: string
+  // --- Legacy Stripe (kept for back-compat reads only) -------------------
   stripe_secret_key?: string
   stripe_webhook_secret?: string
   stripe_price_pro_monthly?: string
   stripe_price_pro_yearly?: string
   stripe_price_enterprise_monthly?: string
   stripe_price_enterprise_yearly?: string
+}
+
+interface PlatformSettingDoc {
+  key: string
+  value: Record<string, unknown>
+  updated_at: string
+}
+
+async function settingsCol(): Promise<Collection<PlatformSettingDoc>> {
+  return (await getMongoDb()).collection<PlatformSettingDoc>('platform_settings')
 }
 
 let cached: ServerSecretsRecord | null = null
@@ -38,22 +59,9 @@ export async function warmServerSecretsCache(): Promise<void> {
   }
   inflight = (async () => {
     try {
-      const supabase = getServiceSupabase()
-      if (!supabase) {
-        cached = {}
-        return
-      }
-      const { data, error } = await supabase
-        .from('platform_settings')
-        .select('value')
-        .eq('key', SERVER_SECRETS_PLATFORM_KEY)
-        .maybeSingle()
-      if (error) {
-        console.error('[CodeSpectra] server secrets load:', error.message)
-        cached = {}
-      } else {
-        cached = (data?.value as ServerSecretsRecord) || {}
-      }
+      const col = await settingsCol()
+      const doc = await col.findOne({ key: SERVER_SECRETS_PLATFORM_KEY })
+      cached = (doc?.value as ServerSecretsRecord) || {}
     } catch (e) {
       console.error('[CodeSpectra] server secrets load:', e)
       cached = {}
@@ -68,6 +76,42 @@ export async function warmServerSecretsCache(): Promise<void> {
 export function getServerSecretsFromCache(): ServerSecretsRecord {
   if (cacheValid && cached) return cached
   return {}
+}
+
+/**
+ * Load secrets from cache (warming first if needed). Async — call from API
+ * routes that need to read the current values.
+ */
+export async function readServerSecrets(): Promise<ServerSecretsRecord> {
+  await warmServerSecretsCache()
+  return getServerSecretsFromCache()
+}
+
+/**
+ * Persist new server secrets and invalidate the in-memory cache. Returns the
+ * merged record (existing values are preserved if not supplied in `patch`).
+ */
+export async function writeServerSecrets(
+  patch: Partial<ServerSecretsRecord>,
+): Promise<ServerSecretsRecord> {
+  const col = await settingsCol()
+  const existing = await col.findOne({ key: SERVER_SECRETS_PLATFORM_KEY })
+  const prev = (existing?.value as ServerSecretsRecord) || {}
+  const next: ServerSecretsRecord = { ...prev }
+  for (const [k, v] of Object.entries(patch) as [keyof ServerSecretsRecord, unknown][]) {
+    if (v === null || v === undefined || (typeof v === 'string' && v.trim() === '')) {
+      delete next[k]
+    } else if (typeof v === 'string') {
+      next[k] = v.trim() as never
+    }
+  }
+  await col.updateOne(
+    { key: SERVER_SECRETS_PLATFORM_KEY },
+    { $set: { value: next as unknown as Record<string, unknown>, updated_at: new Date().toISOString() } },
+    { upsert: true },
+  )
+  invalidateServerSecretsCache()
+  return next
 }
 
 /** Mask API keys for admin UI (never return full secrets). */

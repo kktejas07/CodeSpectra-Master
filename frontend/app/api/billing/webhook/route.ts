@@ -27,7 +27,7 @@ export const runtime = 'nodejs'
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const signature = req.headers.get('x-razorpay-signature') || ''
   const raw = await req.text()
-  if (!verifyWebhookSignature(raw, signature)) {
+  if (!(await verifyWebhookSignature(raw, signature))) {
     return NextResponse.json({ error: 'invalid_signature' }, { status: 400 })
   }
 

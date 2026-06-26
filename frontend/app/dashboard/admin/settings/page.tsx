@@ -144,7 +144,7 @@ function SystemSettingsInner() {
       setLoading(false)
     }
     void run()
-  }, [router, addToast])
+  }, [gate.ready, addToast])
 
   const reloadSecrets = useCallback(async () => {
     const secRes = await fetch('/api/admin/server-secrets', { credentials: 'include' })
@@ -763,12 +763,12 @@ function SystemSettingsInner() {
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <KeyRound className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Stripe & billing</h3>
+                  <h3 className="font-semibold text-foreground">Payments & integrations</h3>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Stripe <strong>secret key</strong>, <strong>webhook signing secret</strong>, and Dashboard{' '}
-                  <code className="rounded bg-muted px-1 text-xs">price_…</code> IDs for user Checkout must match the
-                  prices configured in Stripe. The server prefers environment variables when set. Resend / SendGrid:{' '}
+                  Configure <strong>Razorpay</strong> credentials below. Keys are stored encrypted at
+                  rest in MongoDB and read by every payment endpoint — no redeploy required.
+                  Resend / SendGrid lives in{' '}
                   <Link href={platformSettingsHref('mail')} className="font-medium text-primary underline-offset-4 hover:underline">
                     Mail & email APIs
                   </Link>
@@ -776,6 +776,101 @@ function SystemSettingsInner() {
                 </p>
               </div>
               <div className="space-y-6 px-6 py-5">
+
+                {/* Razorpay — primary payment gateway */}
+                <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4" data-testid="rzp-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Razorpay (primary)</p>
+                    {secretsMeta.has_razorpay_key_id && secretsMeta.has_razorpay_key_secret ? (
+                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        ✓ Active
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Get test keys at{' '}
+                    <Link
+                      href="https://dashboard.razorpay.com/app/keys"
+                      target="_blank"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      Razorpay Dashboard → Settings → API Keys
+                    </Link>
+                    . Use <code className="rounded bg-muted px-1">rzp_test_…</code> for development.
+                  </p>
+                  <div>
+                    <Label htmlFor="sec_rzp_id">Key ID</Label>
+                    {secretsMeta.has_razorpay_key_id ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_key_id_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="sec_rzp_id"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_key_id}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_key_id: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="rzp_test_xxxxxxxxxxxx"
+                      data-testid="rzp-key-id-input"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="sec_rzp_sk">Key secret</Label>
+                    {secretsMeta.has_razorpay_key_secret ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_key_secret_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="sec_rzp_sk"
+                      type="password"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_key_secret}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_key_secret: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="••••••••••••••••••••"
+                      data-testid="rzp-key-secret-input"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="sec_rzp_wh">Webhook signing secret (optional)</Label>
+                    {secretsMeta.has_razorpay_webhook_secret ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_webhook_secret_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="sec_rzp_wh"
+                      type="password"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_webhook_secret}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_webhook_secret: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="paste from Razorpay → Webhooks page"
+                      data-testid="rzp-webhook-input"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Webhook URL to register in Razorpay:{' '}
+                    <code className="rounded bg-muted px-1">
+                      {typeof window !== 'undefined'
+                        ? `${window.location.origin}/api/billing/webhook`
+                        : '<your-domain>/api/billing/webhook'}
+                    </code>
+                  </p>
+                </div>
+
                 <Alert className="rounded-lg border-border/60 bg-muted/20">
                   <Mail className="h-4 w-4" />
                   <AlertTitle className="text-sm">Transactional email (Resend / SendGrid)</AlertTitle>
@@ -791,8 +886,11 @@ function SystemSettingsInner() {
                   </AlertDescription>
                 </Alert>
 
-                <div className="space-y-3">
-                  <p className="text-sm font-medium text-foreground">Stripe (billing & webhooks)</p>
+                <div className="space-y-3 opacity-70">
+                  <p className="text-sm font-medium text-foreground">Stripe (legacy)</p>
+                  <p className="text-xs text-muted-foreground">
+                    Kept for historical webhooks only. Razorpay is the active gateway.
+                  </p>
                   {secretsMeta.has_stripe_secret_key ? (
                     <p className="font-mono text-xs text-muted-foreground">
                       Secret key: {String(secretsMeta.stripe_secret_key_masked ?? '—')}

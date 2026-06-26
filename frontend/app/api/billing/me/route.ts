@@ -17,7 +17,7 @@ export async function GET(): Promise<NextResponse> {
   const active = await subs.findOne({ user_id: user.id, status: 'active' })
 
   return NextResponse.json({
-    razorpay_configured: isRazorpayConfigured(),
+    razorpay_configured: await isRazorpayConfigured(),
     subscription:
       active && new Date(active.ends_at) > new Date()
         ? {
