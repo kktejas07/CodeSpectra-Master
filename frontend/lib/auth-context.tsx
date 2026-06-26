@@ -1,19 +1,8 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import {
-  onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  signInWithPopup,
-  GoogleAuthProvider,
-  GithubAuthProvider,
-  sendPasswordResetEmail,
-  confirmPasswordReset,
-  signOut as firebaseSignOut,
-  type User,
-} from 'firebase/auth'
-import { auth } from './firebase'
+import { getFirebaseAuth } from './firebase'
+import type { User } from 'firebase/auth'
 
 export interface AuthUser {
   uid: string
@@ -47,53 +36,93 @@ function toAuthUser(firebaseUser: User): AuthUser {
   }
 }
 
+function getFirebaseModule() {
+  return import('firebase/auth')
+}
+
+async function withAuth<T>(fn: (auth: import('firebase/auth').Auth) => Promise<T>): Promise<T> {
+  const auth = getFirebaseAuth()
+  if (!auth) throw new Error('Firebase not available')
+  return fn(auth)
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-      if (firebaseUser) {
-        setUser(toAuthUser(firebaseUser))
-        await createSession(firebaseUser)
-      } else {
-        setUser(null)
-        await clearSession()
-      }
+    const auth = getFirebaseAuth()
+    if (!auth) {
       setLoading(false)
+      return
+    }
+
+    let unsubscribe: (() => void) | undefined
+    getFirebaseModule().then(({ onAuthStateChanged }) => {
+      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+          setUser(toAuthUser(firebaseUser))
+          await createSession(firebaseUser)
+        } else {
+          setUser(null)
+          await clearSession()
+        }
+        setLoading(false)
+      })
     })
-    return unsubscribe
+
+    return () => unsubscribe?.()
   }, [])
 
   const signInWithEmail = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(auth, email, password)
+    await withAuth(async (auth) => {
+      const { signInWithEmailAndPassword } = await getFirebaseModule()
+      await signInWithEmailAndPassword(auth, email, password)
+    })
   }
 
   const signUpWithEmail = async (email: string, password: string, name: string) => {
-    const cred = await createUserWithEmailAndPassword(auth, email, password)
-    await createSession(cred.user)
+    await withAuth(async (auth) => {
+      const { createUserWithEmailAndPassword } = await getFirebaseModule()
+      await createUserWithEmailAndPassword(auth, email, password)
+    })
   }
 
   const signInWithGoogle = async () => {
-    const provider = new GoogleAuthProvider()
-    await signInWithPopup(auth, provider)
+    await withAuth(async (auth) => {
+      const { signInWithPopup, GoogleAuthProvider } = await getFirebaseModule()
+      const provider = new GoogleAuthProvider()
+      await signInWithPopup(auth, provider)
+    })
   }
 
   const signInWithGithub = async () => {
-    const provider = new GithubAuthProvider()
-    await signInWithPopup(auth, provider)
+    await withAuth(async (auth) => {
+      const { signInWithPopup, GithubAuthProvider } = await getFirebaseModule()
+      const provider = new GithubAuthProvider()
+      await signInWithPopup(auth, provider)
+    })
   }
 
   const signOut = async () => {
-    await firebaseSignOut(auth)
+    await withAuth(async (auth) => {
+      const { signOut: firebaseSignOut } = await getFirebaseModule()
+      await firebaseSignOut(auth)
+    })
   }
 
   const sendPasswordReset = async (email: string) => {
-    await sendPasswordResetEmail(auth, email)
+    await withAuth(async (auth) => {
+      const { sendPasswordResetEmail } = await getFirebaseModule()
+      await sendPasswordResetEmail(auth, email)
+    })
   }
 
   const confirmPasswordResetAction = async (code: string, newPassword: string) => {
-    await confirmPasswordReset(auth, code, newPassword)
+    await withAuth(async (auth) => {
+      const { confirmPasswordReset } = await getFirebaseModule()
+      await confirmPasswordReset(auth, code, newPassword)
+    })
   }
 
   return (
@@ -115,9 +144,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   )
 }
 
-export function useAuth() {
+export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
-  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
+  if (!ctx) {
+    if (typeof window === 'undefined') {
+      return { user: null, loading: true, signInWithEmail: async () => {}, signUpWithEmail: async () => {}, signInWithGoogle: async () => {}, signInWithGithub: async () => {}, signOut: async () => {}, sendPasswordReset: async () => {}, confirmPasswordReset: async () => {} }
+    }
+    throw new Error('useAuth must be used within AuthProvider')
+  }
   return ctx
 }
 

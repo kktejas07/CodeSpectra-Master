@@ -47,9 +47,7 @@ export default function RootLayout({
           enableSystem
           storageKey="codespectra-theme"
         >
-          <AuthProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </AuthProvider>
+          <ToastProvider>{children}</ToastProvider>
         </ThemeProvider>
       </body>
     </html>
