@@ -1,0 +1,44 @@
+{
+  "summary": "Iteration 7 — Comprehensive end-to-end testing of the HackerRank-style sandbox + AI feature batch (XP/Leaderboard, public profiles, MCP endpoint, Workflows v1, GitHub webhook + queue, Face-MFA cleanup verification, submission XP code-path). 21/21 pytest tests PASS in 10s on /app/backend/tests/test_iteration7_features.py. Frontend Playwright runs verified: /problems renders 3 problems with no JS errors (Two Sum, FizzBuzz, Palindrome Check); /users/qa renders profile UI with name 'QA Atlas', 'SUPERADMIN' badge and 100 XP stat; /dashboard/admin/workflows renders for superadmin with data-testid='workflow-new-btn' visible. MCP manifest returns the 5 required tools both via GET (bare-string array) and via JSON-RPC tools/list; tools/call for list_problems, get_user_xp(slug='qa') and get_leaderboard all return correct payloads. Leaderboard scope=global is sorted descending by xp with QA Atlas (xp=100) at rank 1 and no 'Developer'/'unknown' placeholders. Workflow full CRUD+run cycle works: create (201) → list shows item → run returns status='success' with 2 trace steps (node_ids={t1,l1}, both ok=true) → delete (200). GitHub webhook ping returns {ok:true, received:'ping'}; queue/run is correctly 401 unauth and 200 for superadmin. Face-MFA cleanup verified: lib/face-auth-service.ts is gone and no .ts/.tsx files import it. Submission XP code-path verified: awardXp + FIRST_BLOOD_BONUS + first-blood logic all present in /app/frontend/app/api/submissions/route.ts. Important: all tests run against http://localhost:3000 per agent-to-agent note — the external preview ingress + FastAPI 8001 proxy have quirks for these new routes.",
+  "backend_issues": {
+    "critical": [],
+    "minor": [
+      {"endpoint": "POST /api/workflows", "issue": "Response leaks MongoDB ObjectId `_id` (e.g. '6a3e8428b980f783ebb51144') alongside the canonical UUID `id`. Per the project's code-review rule 'Always exclude mongodb objectId _id', the `_id` field should be stripped from the JSON projection before serialization. Same likely applies to GET /api/workflows list response (each item carries `_id`)."}
+    ]
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": []
+  },
+  "test_report_links": [
+    "/app/backend/tests/test_iteration7_features.py",
+    "/app/test_reports/pytest/iter7_results.xml"
+  ],
+  "action_items": [
+    "(Minor, non-blocking) Strip MongoDB `_id` from POST /api/workflows and GET /api/workflows responses — the canonical id is the UUID `id` field; leaking `_id` is inconsistent with the project's code-review rule and confused initial test assertions (the `_id` doesn't match the `id` used in list/run/delete URLs)."
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/app/api/workflows/route.ts — POST returns the inserted document including Mongo `_id`. Project rule states '_id' must be excluded; either project it out in find() or use { projection:{_id:0} } / delete obj._id before res.json(). Functional behaviour is unaffected because the route handlers consistently key off the UUID `id`.",
+    "/app/frontend/app/api/mcp/route.ts — GET manifest returns tools as a bare string[] ('list_problems', ...) while the JSON-RPC tools/list returns tools as objects [{name,...}]. This is technically valid (the manifest is a human/registry view, not MCP-spec) but two shapes for the same logical thing risks confusing third-party MCP clients. Consider always returning the object shape (or document the divergence).",
+    "/app/frontend/app/api/leaderboard/route.ts — works correctly; ObjectId-to-string user lookup is solid, names come from `user` collection, sort desc by xp is correct. xp_events seed for QA/tenant/user confirmed visible in monthly + global scopes.",
+    "/app/frontend/app/api/users/[slug]/route.ts — returns full profile with name, role, stats.xp, recent submissions; 404 for unknown slug is correct.",
+    "/app/frontend/app/users/[slug]/page.tsx — initial state shows 'Loading profile…' until /api/users/[slug] resolves; this is normal but during fast page-load tests with wait_until='domcontentloaded' the API may not have responded yet. Tests should use wait_until='networkidle' OR explicitly wait for the name selector.",
+    "/app/frontend/app/api/github/webhook/route.ts — ping handler returns {ok:true, received:'ping'} as specified.",
+    "/app/frontend/lib/github-queue-worker.ts — queue/run endpoint returns {ok:true, processed, results}; unauth correctly rejected with 401.",
+    "/app/frontend/app/api/submissions/route.ts — awardXp + FIRST_BLOOD_BONUS + first-blood check are all present and wired before the response. Cannot E2E-test because Piston public API is whitelist-blocked since 2026-02-15 per the agent-to-agent note."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_iteration7_features.py (NEW — 21 pytest tests covering leaderboard, user profile, MCP, workflows, github webhook+queue, submission XP code-path, face-MFA cleanup)"
+  ],
+  "success_rate": {
+    "backend": "100% (21/21 pytest in /app/backend/tests/test_iteration7_features.py)",
+    "frontend": "100% (all 3 target pages render without JS errors; new-workflow data-testid present; profile shows name + 100 XP; problems list shows 3 items)"
+  },
+  "test_credentials": "qa@codespectra.dev / QApass123! (superadmin) — from /app/memory/test_credentials.md, unmodified",
+  "seed_data_creation": "Workflows: one disposable 'TEST_WF_iter7' workflow is created+run+deleted per test run (cleaned up by try/finally). Leaderboard xp_events for QA/tenant/user were seeded externally per the review request — verified visible in both global and monthly scopes.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "All tests must run against http://localhost:3000 — the external preview URL returns a webflow marketing page for /api/* and FastAPI proxy at :8001 has a stale-cookie quirk that returns 200 with empty items for unauth /api/workflows (real Next.js returns 401). Workflow create response is a flat object containing BOTH a UUID `id` AND a Mongo `_id`; always key off `id` (the `_id` does NOT match the URL path id used by run/delete). MCP GET manifest returns tools as a bare string[], not [{name}]. /users/[slug] UI shows 'Loading profile…' until the API resolves — use wait_until='networkidle' OR wait for the name text in Playwright. Piston public API is whitelist-blocked for unauthenticated traffic since 2026-02-15 so XP-via-submission cannot be E2E-tested — code-path test (search for awardXp + FIRST_BLOOD_BONUS in /app/frontend/app/api/submissions/route.ts) is the agreed substitute.",
+  "rca of the issue": "N/A — no functional bugs found. Only one minor code-quality issue: workflows API leaks Mongo `_id` in responses, which is inconsistent with the project's documented '_id must be excluded' rule but doesn't break any client (they use the UUID `id`)."
+}

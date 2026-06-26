@@ -9,6 +9,7 @@ import {
   type SubmissionStatus,
   type TestRunResult,
 } from '@/lib/db/problems'
+import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS } from '@/lib/db/leaderboard'
 import { executeOnce } from '@/lib/piston'
 import type { PistonExecuteResult } from '@/lib/piston'
 
@@ -163,8 +164,48 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     try {
       const sCol = await submissions()
       await sCol.insertOne(doc)
+
+      // XP economy: award on first accepted solve + first-blood bonus.
+      if (aggregateStatus === 'accepted') {
+        const difficulty = (problem.difficulty || 'easy') as 'easy' | 'medium' | 'hard'
+        const baseXp = DIFFICULTY_XP[difficulty] ?? 10
+
+        // Has this user already solved this problem before?
+        const prior = await sCol.findOne({
+          problem_id: problem.id,
+          user_id: gate.user.id,
+          status: 'accepted',
+          id: { $ne: doc.id },
+        })
+        if (!prior) {
+          await awardXp({
+            userId: gate.user.id,
+            amount: baseXp,
+            reason: 'submission_accepted',
+            problemId: problem.id,
+            submissionId: doc.id,
+            metadata: { difficulty },
+          })
+
+          // First-blood: is there any earlier accepted submission *from anyone*?
+          const earlier = await sCol.findOne(
+            { problem_id: problem.id, status: 'accepted', id: { $ne: doc.id } },
+            { sort: { created_at: 1 } },
+          )
+          if (!earlier) {
+            await awardXp({
+              userId: gate.user.id,
+              amount: FIRST_BLOOD_BONUS,
+              reason: 'first_blood',
+              problemId: problem.id,
+              submissionId: doc.id,
+              metadata: { difficulty },
+            })
+          }
+        }
+      }
     } catch (e) {
-      console.warn('[CodeSpectra] submission insert skipped:', e)
+      console.warn('[CodeSpectra] submission insert/XP skipped:', e)
     }
   }
 

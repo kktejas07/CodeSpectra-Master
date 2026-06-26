@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, ArrowRight, Search, Code2, Trophy } from 'lucide-react'
 import { Input } from '@/components/ui/input'
@@ -27,12 +27,7 @@ export default function ProblemsListPage() {
   const [q, setQ] = useState('')
   const [difficulty, setDifficulty] = useState<string>('all')
 
-  useEffect(() => {
-    void load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [difficulty])
-
-  async function load() {
+  const load = useCallback(async () => {
     setLoading(true)
     setError(null)
     try {
@@ -48,7 +43,11 @@ export default function ProblemsListPage() {
     } finally {
       setLoading(false)
     }
-  }
+  }, [difficulty, q])
+
+  useEffect(() => {
+    void load()
+  }, [load])
 
   const filtered = problems.filter((p) =>
     q ? p.title.toLowerCase().includes(q.toLowerCase()) : true,

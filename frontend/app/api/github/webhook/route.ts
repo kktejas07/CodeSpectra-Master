@@ -1,14 +1,34 @@
+/**
+ * POST /api/github/webhook
+ * Verifies the `X-Hub-Signature-256` HMAC, persists the raw event into
+ * MongoDB (`github_webhook_events`), and enqueues `push` events for the
+ * scan worker (`github_webhook_scan_queue`).
+ *
+ * Configure in GitHub repo → Settings → Webhooks:
+ *   - Payload URL : `<APP_URL>/api/github/webhook`
+ *   - Content type: application/json
+ *   - Secret      : value of env `GITHUB_WEBHOOK_SECRET`
+ *   - Events      : "Just the push event" (and `ping` for setup)
+ */
 import { createHmac, timingSafeEqual } from 'crypto'
 import { NextRequest, NextResponse } from 'next/server'
-import { getServiceSupabase } from '@/lib/admin-service-client'
+import {
+  githubWebhookEvents,
+  githubWebhookScanQueue,
+  newId,
+  nowIso,
+} from '@/lib/db/leaderboard'
 
-function verifyGitHubSignature(rawBody: string, signatureHeader: string | null, secret: string): boolean {
-  if (!secret) {
-    return true
-  }
-  if (!signatureHeader?.startsWith('sha256=')) {
-    return false
-  }
+export const runtime = 'nodejs'
+
+function verifyGitHubSignature(
+  rawBody: string,
+  signatureHeader: string | null,
+  secret: string,
+): boolean {
+  if (!secret) return true
+  if (!signatureHeader?.startsWith('sha256=')) return false
+
   const expected = `sha256=${createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')}`
   const a = Buffer.from(signatureHeader)
   const b = Buffer.from(expected)
@@ -20,11 +40,6 @@ function verifyGitHubSignature(rawBody: string, signatureHeader: string | null, 
   }
 }
 
-/**
- * POST /api/github/webhook
- * Configure in GitHub repo → Settings → Webhooks: URL `https://<host>/api/github/webhook`, content type JSON,
- * secret = `GITHUB_WEBHOOK_SECRET`. Events: pushes (and `ping` for setup).
- */
 export async function POST(request: NextRequest) {
   const rawBody = await request.text()
   const secret = process.env.GITHUB_WEBHOOK_SECRET || ''
@@ -45,50 +60,55 @@ export async function POST(request: NextRequest) {
 
   const eventType = request.headers.get('x-github-event') || 'unknown'
   const deliveryId = request.headers.get('x-github-delivery')
-  const repo = (payload.repository as { full_name?: string } | undefined)?.full_name ?? null
+  const repo =
+    (payload.repository as { full_name?: string } | undefined)?.full_name ?? null
   const ownerLogin =
-    (payload.repository as { owner?: { login?: string } } | undefined)?.owner?.login ?? null
+    (payload.repository as { owner?: { login?: string } } | undefined)?.owner?.login ??
+    null
   const action = typeof payload.action === 'string' ? payload.action : null
 
-  const supabase = getServiceSupabase()
-  if (supabase) {
-    const { error } = await supabase.from('github_webhook_events').insert({
+  try {
+    const eventsCol = await githubWebhookEvents()
+    await eventsCol.insertOne({
+      id: newId(),
       delivery_id: deliveryId,
       event_type: eventType,
       action,
       repository_full_name: repo,
       payload,
+      created_at: nowIso(),
     })
-    if (error) {
-      console.error('[CodeSpectra] github_webhook_events insert:', error.message)
-    }
+  } catch (e) {
+    console.error('[CodeSpectra] github_webhook_events insert:', e)
   }
 
-  // Phase 3: enqueue `push` events for a future worker (fetch default branch files → analyze).
-  if (supabase && eventType === 'push' && deliveryId && repo) {
+  // Enqueue `push` events (skip branch-deletion pushes).
+  if (eventType === 'push' && deliveryId && repo) {
     const ref = typeof payload.ref === 'string' ? payload.ref : null
     const after = typeof payload.after === 'string' ? payload.after : null
     const before = typeof payload.before === 'string' ? payload.before : null
     const isDeletion = !after || after.length < 7 || /^0+$/.test(after)
     if (ref && before && !isDeletion) {
-      const { data: dup } = await supabase
-        .from('github_webhook_scan_queue')
-        .select('id')
-        .eq('delivery_id', deliveryId)
-        .maybeSingle()
-      if (!dup) {
-        const { error: qErr } = await supabase.from('github_webhook_scan_queue').insert({
-          delivery_id: deliveryId,
-          repository_full_name: repo,
-          owner_login: ownerLogin,
-          ref,
-          before_commit_sha: before,
-          head_commit_sha: after,
-          status: 'pending',
-        })
-        if (qErr) {
-          console.error('[CodeSpectra] github_webhook_scan_queue insert:', qErr.message)
+      try {
+        const queue = await githubWebhookScanQueue()
+        const dup = await queue.findOne({ delivery_id: deliveryId })
+        if (!dup) {
+          await queue.insertOne({
+            id: newId(),
+            delivery_id: deliveryId,
+            repository_full_name: repo,
+            owner_login: ownerLogin,
+            ref,
+            before_commit_sha: before,
+            head_commit_sha: after,
+            status: 'pending',
+            attempts: 0,
+            created_at: nowIso(),
+            updated_at: nowIso(),
+          })
         }
+      } catch (e) {
+        console.error('[CodeSpectra] github_webhook_scan_queue insert:', e)
       }
     }
   }
