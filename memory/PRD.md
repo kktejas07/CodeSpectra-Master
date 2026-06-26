@@ -89,19 +89,43 @@ superadmin settings UI (no hardcoded keys).** Tech-stack tracks. Daily challenge
 ```
 
 ## Test
+- 21/21 backend pytest in `/app/backend/tests/test_iteration7_features.py` (iter 7)
 - 29/29 backend pytest in `/app/backend/tests/backend_test.py` (iteration 2)
 - Razorpay dynamic config verified by curl (PATCH save → GET masked read → billing/me toggles to configured=true)
 - Atlas confirmed connecting (problems endpoint 200, sign-up creates users on Atlas)
 
+### Phase 7 — XP / Webhooks / MCP / Workflows (2026-06-26) ✅
+- **XP system** — new `xp_events` Mongo collection + `lib/db/leaderboard.ts` helper
+  (`awardXp`, `getUserXp`, `DIFFICULTY_XP`, `FIRST_BLOOD_BONUS=25`)
+- **Submissions** auto-award XP on first accepted solve + first-blood bonus
+- **Leaderboard** `/api/leaderboard?scope=global|monthly|team` — pure MongoDB
+  aggregation, ObjectId-aware user lookup
+- **Public profile** `/users/:slug` (slug = email-localpart or hex `_id`) +
+  `/api/users/:slug` endpoint (name, role, XP, recent submissions)
+- **GitHub webhooks** `/api/github/webhook` rewritten to MongoDB — verifies
+  HMAC, persists to `github_webhook_events`, enqueues `push` events into
+  `github_webhook_scan_queue`
+- **Queue worker** `lib/github-queue-worker.ts` — atomic
+  `findOneAndUpdate` claim, AI code-review via emergent backend, posts to
+  `ai_code_reviews`. Triggered by `POST /api/github/queue/run` (superadmin).
+- **MCP** JSON-RPC 2.0 endpoint at `/api/mcp` (+ root alias `/mcp`) exposing
+  5 tools: `list_problems`, `get_problem`, `run_code`, `get_user_xp`,
+  `get_leaderboard`. Compatible with Claude Desktop / Cursor.
+- **Workflows v1** — `workflows` + `workflow_runs` collections,
+  `/api/workflows` CRUD, `/api/workflows/:id/run` engine, admin UI at
+  `/dashboard/admin/workflows`. Node types: `trigger.manual`,
+  `http.request`, `ai.complete`, `mongo.find`, `log`, `delay`.
+- **Cleanup** — deleted dead `components/auth/face-recognition.tsx` +
+  `lib/face-auth-service.ts`; `/problems` page hydration fix
+  (useCallback instead of eslint-disable).
+
 ## Pending action items
-- Admin UI test screenshot needs deeper playwright login flow (interim screenshot got
-  caught on auth redirect). All APIs verified working via curl.
-- Some legacy `/api/billing/subscription`, `/api/webhooks/stripe`, `/api/github/webhook`
-  still reference `getServiceSupabase` stub — return 503 on call. To be ported.
-- Code review bot on PR webhooks
-- XP system + real leaderboard from submissions
-- User profile pages `/users/:slug`
-- MCP endpoint `/mcp`
+- Some legacy `/api/billing/subscription`, `/api/webhooks/stripe` still
+  reference `getServiceSupabase` stub — return 503 on call. To be ported.
+- Visual graph builder for workflows (currently JSON editor)
+- GitHub PR review comments posted back to PR (currently saved to
+  `ai_code_reviews` but not pushed to the PR — needs OAuth token route)
+- Piston whitelist: public API now blocks unauth traffic, host private Piston.
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`

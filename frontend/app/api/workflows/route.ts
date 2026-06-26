@@ -57,5 +57,9 @@ export async function POST(req: NextRequest) {
   }
   const col = await workflows()
   await col.insertOne(doc)
-  return NextResponse.json(doc, { status: 201 })
+  // Strip Mongo `_id` injected by insertOne to keep the response contract
+  // identical to GET (which projects `_id: 0`). Clients should key off `id`.
+  const { _id: _ignored, ...clean } = doc as WorkflowDoc & { _id?: unknown }
+  void _ignored
+  return NextResponse.json(clean, { status: 201 })
 }
