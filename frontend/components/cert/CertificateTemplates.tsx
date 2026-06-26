@@ -48,7 +48,7 @@ const dateFmt = (iso: string) =>
 export function ClassicCertificate({ data }: { data: CertificateData }) {
   return (
     <div
-      data-testid="cert-template-classic"
+      data-testid="cert-canvas-classic"
       className="cert-sheet bg-[#fdfaf2] text-[#1c2c4c] relative overflow-hidden"
     >
       {/* Decorative double border + corner flourishes */}
@@ -125,7 +125,7 @@ export function ClassicCertificate({ data }: { data: CertificateData }) {
 export function ModernCertificate({ data }: { data: CertificateData }) {
   return (
     <div
-      data-testid="cert-template-modern"
+      data-testid="cert-canvas-modern"
       className="cert-sheet bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0a5d3b] text-white relative overflow-hidden"
     >
       {/* Geometric accents */}
@@ -192,7 +192,7 @@ export function ModernCertificate({ data }: { data: CertificateData }) {
 export function MinimalCertificate({ data }: { data: CertificateData }) {
   return (
     <div
-      data-testid="cert-template-minimal"
+      data-testid="cert-canvas-minimal"
       className="cert-sheet bg-white text-neutral-900 relative overflow-hidden"
     >
       {/* Single accent bar */}

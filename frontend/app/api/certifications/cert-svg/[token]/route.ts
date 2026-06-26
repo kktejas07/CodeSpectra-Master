@@ -229,7 +229,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
     status: 200,
     headers: {
       'Content-Type': 'image/svg+xml; charset=utf-8',
-      'Content-Disposition': `attachment; filename="codespectra-${attempt.cert_snapshot.title.replace(/[^a-z0-9]+/gi, '-').toLowerCase()}-${template}.svg"`,
+      'Content-Disposition': `attachment; filename="codespectra-${attempt.cert_snapshot.title.replace(/[^a-z0-9]+/gi, '-').replace(/^-+|-+$/g, '').toLowerCase()}-${template}.svg"`,
       'Cache-Control': 'public, max-age=300',
     },
   })
