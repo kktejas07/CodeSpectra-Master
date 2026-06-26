@@ -23,7 +23,7 @@ async function getAdminAuth(): Promise<Auth | null> {
           credential: cert({
             projectId,
             clientEmail,
-            privateKey: privateKey.replace(/\\n/g, '\n'),
+            privateKey: privateKey.replace(/\\n/g, '\n').replace(/^["']|["']$/g, ''),
           }),
         })
       : getApps()[0]
