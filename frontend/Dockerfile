@@ -4,5 +4,5 @@ COPY package.json .
 RUN yarn install --frozen-lockfile 2>/dev/null || yarn install
 COPY . .
 RUN yarn build
-EXPOSE 80
-CMD ["npx", "next", "start", "-p", "80"]
+EXPOSE 3000
+CMD ["node_modules/.bin/next", "start", "-p", "3000"]
