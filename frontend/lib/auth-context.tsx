@@ -59,10 +59,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return
       }
 
-      getFirebaseModule().then(({ onAuthStateChanged, getRedirectResult }) => {
+      getFirebaseModule().then(({ onAuthStateChanged }) => {
         if (cancelled) return
-
-        getRedirectResult(auth).catch(() => {})
 
         const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
           if (cancelled) return
@@ -102,17 +100,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogle = async () => {
     const auth = await getFirebaseAuth()
     if (!auth) return
-    const { signInWithRedirect, GoogleAuthProvider } = await getFirebaseModule()
+    const { signInWithPopup, GoogleAuthProvider } = await getFirebaseModule()
     const provider = new GoogleAuthProvider()
-    await signInWithRedirect(auth, provider)
+    provider.addScope('email')
+    provider.addScope('profile')
+    await signInWithPopup(auth, provider)
   }
 
   const signInWithGithub = async () => {
     const auth = await getFirebaseAuth()
     if (!auth) return
-    const { signInWithRedirect, GithubAuthProvider } = await getFirebaseModule()
+    const { signInWithPopup, GithubAuthProvider } = await getFirebaseModule()
     const provider = new GithubAuthProvider()
-    await signInWithRedirect(auth, provider)
+    provider.addScope('user:email')
+    await signInWithPopup(auth, provider)
   }
 
   const signOut = async () => {
