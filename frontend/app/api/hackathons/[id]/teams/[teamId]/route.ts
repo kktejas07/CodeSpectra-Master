@@ -15,13 +15,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
-import {
-  hackathonTeams,
-  newId,
-  nowIso,
-  xpToLevel,
-  type HackathonAchievement,
-} from '@/lib/db/qr-events'
+import { hackathons, hackathonTeams, newId, nowIso, xpToLevel, type HackathonAchievement } from '@/lib/db/qr-events'
 import { generateQrSvg } from '@/lib/qr'
 
 export const runtime = 'nodejs'
@@ -42,12 +36,17 @@ function absoluteOrigin(req: NextRequest): string {
 }
 
 async function resolveTeam(hackathonIdOrSlug: string, teamIdOrSlug: string) {
+  // Resolve the hackathon first (accepts UUID or slug) so we can scope the
+  // team query by `hackathon_id`. The previous implementation tried to query
+  // `hackathon_teams.hackathon.slug` which does not exist.
+  const hk = await (await hackathons()).findOne({
+    $or: [{ id: hackathonIdOrSlug }, { slug: hackathonIdOrSlug }],
+  })
+  if (!hk) return null
   const col = await hackathonTeams()
   return col.findOne({
-    $and: [
-      { $or: [{ hackathon_id: hackathonIdOrSlug }, { 'hackathon.slug': hackathonIdOrSlug }] },
-      { $or: [{ id: teamIdOrSlug }, { slug: teamIdOrSlug }] },
-    ],
+    hackathon_id: hk.id,
+    $or: [{ id: teamIdOrSlug }, { slug: teamIdOrSlug }],
   })
 }
 

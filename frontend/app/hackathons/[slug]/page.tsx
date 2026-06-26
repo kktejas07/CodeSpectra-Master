@@ -72,6 +72,7 @@ export default function HackathonPage({
       ])
       if (!hRes.ok) throw new Error('Event not found')
       setHackathon((await hRes.json()) as Hackathon)
+      setError(null) // clear any prior error once the event resolves cleanly
       if (tRes.ok) {
         const j = (await tRes.json()) as { items: Team[] }
         setTeams(j.items)

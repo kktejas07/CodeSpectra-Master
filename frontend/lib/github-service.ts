@@ -77,3 +77,70 @@ export async function getGitHubRepositories(page = 1): Promise<GitHubRepoListIte
   const json = (await res.json()) as { items?: GitHubRepoListItem[] }
   return json.items ?? []
 }
+
+// ----------------------------------------------------------------------------
+// Compatibility stubs (consumed by the legacy scanner components). They route
+// to the new MongoDB endpoints; if those endpoints don't exist yet they fail
+// loudly so callers can be migrated piecemeal.
+// ----------------------------------------------------------------------------
+
+export interface FileContent {
+  path: string
+  content: string
+  encoding?: string
+}
+
+export async function getFileContent(
+  owner: string,
+  repo: string,
+  path: string,
+): Promise<FileContent | null> {
+  const res = await fetch(
+    `/api/github/file-content?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(path)}`,
+    { cache: 'no-store' },
+  )
+  if (!res.ok) return null
+  return (await res.json()) as FileContent
+}
+
+export async function generateAIFixes(args: {
+  scanId?: string
+  repository?: string
+  files?: string[]
+}): Promise<{ ok: boolean; fixes: unknown[] }> {
+  const res = await fetch('/api/ai/code-review', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(args),
+  })
+  if (!res.ok) return { ok: false, fixes: [] }
+  const json = (await res.json()) as { fixes?: unknown[] }
+  return { ok: true, fixes: json.fixes ?? [] }
+}
+
+export async function applySuggestedFix(fixId: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`/api/ai/fixes/${encodeURIComponent(fixId)}/apply`, {
+    method: 'POST',
+  })
+  return { ok: res.ok }
+}
+
+export async function applySuggestedFixBatch(
+  fixIds: string[],
+): Promise<{ ok: boolean; applied: number }> {
+  const res = await fetch('/api/ai/fixes/apply-batch', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ ids: fixIds }),
+  })
+  if (!res.ok) return { ok: false, applied: 0 }
+  const j = (await res.json()) as { applied?: number }
+  return { ok: true, applied: j.applied ?? 0 }
+}
+
+export async function unapplySuggestedFix(fixId: string): Promise<{ ok: boolean }> {
+  const res = await fetch(`/api/ai/fixes/${encodeURIComponent(fixId)}/unapply`, {
+    method: 'POST',
+  })
+  return { ok: res.ok }
+}

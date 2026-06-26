@@ -143,15 +143,37 @@ superadmin settings UI (no hardcoded keys).** Tech-stack tracks. Daily challenge
   Tenant admin, User, Recruiter) outside production builds, gated by
   `process.env.NODE_ENV !== 'production' || ?dev=1`.
 
+### Phase 10 — QR ID cards + Hackathon events (2026-06-26) ✅
+- **`lib/db/qr-events.ts`** — new collections `id_card_tokens`,
+  `hackathons`, `hackathon_teams`. Helpers: `newToken()` (32-char
+  base64url), `getOrCreateIdCardToken()`, `xpToLevel()` (1 / 100 XP).
+- **`lib/qr.ts`** — wraps `qrcode` package, returns SVG strings sized for
+  inline usage (no PNG round-trip).
+- **API**
+  - `GET /api/id-card[?variant=...]` — lazy-creates a permanent token per
+    `(user_id, role_variant)`; returns SVG + payload (XP, level, solved,
+    achievements derived live from `submissions` + `xp_events`).
+  - `GET /api/qr/[token]` — public scan resolver. Tries `id_card_tokens`,
+    then `hackathon_teams.qr_token`. Returns role-themed `dashboard_url`.
+  - `GET|POST /api/hackathons`, `GET|PATCH|DELETE /api/hackathons/[id]`
+    (accepts id OR slug via `?by=slug`).
+  - `GET|POST /api/hackathons/[id]/teams` — registration enforces
+    `num_teams` cap + no double-membership.
+  - `GET|PATCH|DELETE /api/hackathons/[id]/teams/[teamId]` — admin grants
+    `xp_delta`, `achievement`, `submission` counter. Level auto-recomputed.
+- **UI**
+  - `/dashboard/id-card` — 4 role-variant tabs (Builder / Superadmin /
+    Tenant admin / Recruiter) + inline QR + SVG download + copy URL.
+  - `/qr/[token]` — public scan landing with role-tinted gradients.
+  - `/dashboard/admin/hackathons` — superadmin event CRUD UI.
+  - `/hackathons/[slug]` — public registration + live leaderboard
+    (auto-refreshing every 15 s).
+
 ## Pending action items
-- ✅ Piston/judge backend solved (local + override path)
-- ✅ PR comments wired
-- ✅ Visual builder shipped
-- ✅ Cron picker shipped
-- Visual graph builder polish: replace Math.random() with grid placement
-- Scheduler RUNNER — workflows with `trigger: schedule` still need a cron
-  process that POSTs `/api/workflows/{id}/run` on the cadence
-- GitHub App OAuth install flow (currently only PAT works)
+- ✅ All Phase 10 deliverables shipped + tested (19/19 pytest + frontend).
+- 🟢 Scheduler runner from Phase 9 (`lib/scheduler.ts` + `/api/cron/tick`)
+  is wired but currently runs in-process only — no external Vercel Cron
+  setup yet. Ready when you deploy.
 
 ## Test Credentials
 See `/app/memory/test_credentials.md`
