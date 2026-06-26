@@ -156,10 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) {
-    if (typeof window === 'undefined') {
-      return { user: null, loading: true, signInWithEmail: async () => {}, signUpWithEmail: async () => {}, signInWithGoogle: async () => {}, signInWithGithub: async () => {}, signOut: async () => {}, sendPasswordReset: async () => {}, confirmPasswordReset: async () => {} }
-    }
-    throw new Error('useAuth must be used within AuthProvider')
+    return { user: null, loading: true, signInWithEmail: async () => {}, signUpWithEmail: async () => {}, signInWithGoogle: async () => {}, signInWithGithub: async () => {}, signOut: async () => {}, sendPasswordReset: async () => {}, confirmPasswordReset: async () => {} }
   }
   return ctx
 }
