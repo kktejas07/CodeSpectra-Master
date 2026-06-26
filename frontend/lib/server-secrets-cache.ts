@@ -121,3 +121,18 @@ export function maskSecret(value: string | undefined | null): string | null {
   if (v.length <= 8) return '••••••••'
   return `${v.slice(0, 4)}••••${v.slice(-4)}`
 }
+
+/**
+ * Returns the normalised list of additional trusted origins configured by the
+ * admin in MongoDB. Strips whitespace + trailing slashes; lowercases scheme/host
+ * for tolerant matching.
+ */
+export async function readTrustedOrigins(): Promise<string[]> {
+  const secrets = await readServerSecrets()
+  const raw = (secrets.trusted_origins_extra || '').trim()
+  if (!raw) return []
+  return raw
+    .split(/[,\n]/)
+    .map((s) => s.trim().replace(/\/+$/, ''))
+    .filter((s) => s.length > 0 && /^https?:\/\//i.test(s))
+}

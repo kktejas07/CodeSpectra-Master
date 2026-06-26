@@ -21,6 +21,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
 const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'resend_from_email',
   'sendgrid_from_email',
+  'trusted_origins_extra',
   'stripe_price_pro_monthly',
   'stripe_price_pro_yearly',
   'stripe_price_enterprise_monthly',

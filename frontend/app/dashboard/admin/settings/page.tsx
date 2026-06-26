@@ -75,6 +75,10 @@ const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], 
 }
 
 type SecretsDraft = {
+  razorpay_key_id: string
+  razorpay_key_secret: string
+  razorpay_webhook_secret: string
+  trusted_origins_extra: string
   stripe_secret_key: string
   stripe_webhook_secret: string
   stripe_price_pro_monthly: string
@@ -84,6 +88,10 @@ type SecretsDraft = {
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
+  razorpay_key_id: '',
+  razorpay_key_secret: '',
+  razorpay_webhook_secret: '',
+  trusted_origins_extra: '',
   stripe_secret_key: '',
   stripe_webhook_secret: '',
   stripe_price_pro_monthly: '',
@@ -865,6 +873,42 @@ function SystemSettingsInner() {
                         : '<your-domain>/api/billing/webhook'}
                     </code>
                   </p>
+                </div>
+
+                {/* Trusted Origins editor */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="origins-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Trusted origins (CORS + CSRF)</p>
+                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Dynamic
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Additional origins Better Auth should accept on{' '}
+                    <code className="rounded bg-muted px-1">/api/auth/*</code>. Localhost and the
+                    main app URL are already permitted. Add staging / new preview / custom domains
+                    here — no redeploy required.
+                  </p>
+                  <p className="text-[11px] text-muted-foreground">
+                    Format: one origin per line, OR comma-separated. Trailing slashes are stripped
+                    automatically. Only <code>http://</code> and <code>https://</code> origins are accepted.
+                  </p>
+                  <textarea
+                    id="sec_trusted_origins"
+                    rows={3}
+                    value={secretsDraft.trusted_origins_extra}
+                    onChange={(e) =>
+                      setSecretsDraft((d) => ({ ...d, trusted_origins_extra: e.target.value }))
+                    }
+                    className="w-full rounded-lg border border-border/60 bg-background px-3 py-2 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary"
+                    placeholder={`https://staging.codespectra.com\nhttps://preview-branch.example.com`}
+                    data-testid="trusted-origins-input"
+                  />
+                  {secretsMeta.trusted_origins_extra ? (
+                    <p className="font-mono text-[11px] text-muted-foreground break-all">
+                      Saved: {String(secretsMeta.trusted_origins_extra)}
+                    </p>
+                  ) : null}
                 </div>
 
                 <Alert className="rounded-lg border-border/60 bg-muted/20">

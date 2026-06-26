@@ -1,6 +1,7 @@
 import { betterAuth } from "better-auth";
 import { mongodbAdapter } from "@better-auth/mongo-adapter";
 import { MongoClient } from "mongodb";
+import { readTrustedOrigins } from "./server-secrets-cache";
 
 const dbName = process.env.MONGODB_DB_NAME || "codespectra";
 
@@ -43,14 +44,30 @@ export const auth = betterAuth({
   // domain changes per env so we include the wildcard `*.emergentagent.com`
   // pattern via the explicit list below — Better Auth performs an exact
   // origin match.
-  trustedOrigins: [
-    "http://localhost:3000",
-    "https://codespectra-master.preview.emergentagent.com",
-    ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
-    ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
-      ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",").map((s) => s.trim()).filter(Boolean)
-      : []),
-  ].map((o) => o.replace(/\/+$/, "")), // Better Auth does exact-string origin match — strip trailing slashes so 'https://x.com/' and 'https://x.com' both work.
+  // Trusted origins resolver — runs per request. Sources:
+  //   1. Static defaults (localhost, hard-coded preview, NEXT_PUBLIC_APP_URL)
+  //   2. BETTER_AUTH_TRUSTED_ORIGINS env (comma-separated)
+  //   3. MongoDB `platform_settings.secrets.trusted_origins_extra` (admin-managed)
+  // Trailing slashes are stripped; only http/https origins are accepted.
+  trustedOrigins: async (_request: Request): Promise<string[]> => {
+    const staticOrigins = [
+      "http://localhost:3000",
+      "https://codespectra-master.preview.emergentagent.com",
+      ...(process.env.NEXT_PUBLIC_APP_URL ? [process.env.NEXT_PUBLIC_APP_URL] : []),
+      ...(process.env.BETTER_AUTH_TRUSTED_ORIGINS
+        ? process.env.BETTER_AUTH_TRUSTED_ORIGINS.split(",")
+            .map((s) => s.trim())
+            .filter(Boolean)
+        : []),
+    ];
+    let dynamic: string[] = [];
+    try {
+      dynamic = await readTrustedOrigins();
+    } catch {
+      /* If DB read fails, fall back to static list only (don't break auth). */
+    }
+    return [...staticOrigins, ...dynamic].map((o) => o.replace(/\/+$/, ""));
+  },
   database: databaseAdapter,
   emailAndPassword: {
     enabled: true,

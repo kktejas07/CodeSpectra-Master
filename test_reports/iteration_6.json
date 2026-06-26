@@ -1,0 +1,43 @@
+{
+  "summary": "Iteration 6 — End-to-end verification of the 'Trusted Origins editor in admin UI' enhancement. ALL 7 review requests PASS. (a) Superadmin signs in with Origin=http://localhost:3000 → 200. (b) PATCH /api/admin/server-secrets with `trusted_origins_extra` containing both 'https://staging-xyz.example.com/' (trailing slash) and 'https://feature-branch.preview.dev' (plus invalid 'not-a-url' and 'ftp://x.com' to test filtering) returns {ok:true}. (c) GET /api/admin/server-secrets shows the saved value in secrets.trusted_origins_extra. (d) POST /api/auth/sign-in/email with Origin=https://staging-xyz.example.com/ (trailing slash) immediately returns 200 — NO restart required (async trustedOrigins resolver works dynamically). (e) Origin=https://feature-branch.preview.dev returns 200. (f) Origin=https://attacker.example → 403 INVALID_ORIGIN (server log confirms). (g) PATCH '' to clear → previously-allowed origin now 403. (h) Invalid origins (ftp://, not-a-url) filtered out by readTrustedOrigins() → 403. PYTEST FULL REGRESSION: 44/44 PASS (36 from backend_test.py + 8 NEW in test_trusted_origins.py) in 129s. FRONTEND UI: Razorpay card (rzp-key-id-input, rzp-key-secret-input, rzp-webhook-input) AND new 'Trusted origins (CORS + CSRF)' card with data-testid=origins-section visible. Explainer mentions 'Localhost ... already permitted' + 'one origin per line, OR comma-separated'. Editing via textarea (one with trailing slash + one without) and clicking 'Save Stripe & billing' triggered a successful PATCH; 'Saved: https://ui-test-a.example.com/, https://ui-test-b.example.com' label appeared below the textarea + success toast 'Stripe & billing saved'. ROLE GATE: created a fresh regular user via /api/auth/sign-up/email (auto-signs-in, session role='user'), navigated to /dashboard/admin/settings?section=integrations, origins-section count=0 (server-side role gate via requireSuperAdmin returns 401 from GET so the whole settings card never renders for non-admins). No flash of the origins card.",
+  "backend_issues": {
+    "critical": [],
+    "minor": []
+  },
+  "frontend_issues": {
+    "ui_bugs": [],
+    "integration_issues": [],
+    "design_issues": [
+      {"screen": "Integrations settings — bottom Save button", "issues": ["The single Save button at the bottom is labelled 'Save Stripe & billing' even though it now also persists Razorpay keys AND trusted origins. Consider renaming to 'Save integrations' or 'Save payments & origins' so superadmins know the same button writes the origins they just edited."]}
+    ]
+  },
+  "test_report_links": [
+    "/app/backend/tests/backend_test.py",
+    "/app/backend/tests/test_trusted_origins.py",
+    "/app/test_reports/pytest/pytest_results.xml"
+  ],
+  "action_items": [
+    "(Nice-to-have, non-blocking) Rename the integrations Save button from 'Save Stripe & billing' to 'Save integrations' so it reflects that Razorpay keys + trusted origins are also persisted by that button.",
+    "(Nice-to-have, non-blocking) Add `trusted_origins_extra?: string` to the `ServerSecretsRecord` type in /app/frontend/lib/server-secrets-cache.ts — currently the runtime works because the value flows through `as ServerSecretsRecord` casts, but TS strict mode would flag `secrets.trusted_origins_extra` (line 132) and `PLAIN_FIELDS` casting `'trusted_origins_extra'` as `keyof ServerSecretsRecord` (route.ts) as type errors. Functional behaviour is unaffected."
+  ],
+  "critical_code_review_comments": [
+    "/app/frontend/lib/auth.ts — trustedOrigins is now an `async (request) => Promise<string[]>` resolver per Better Auth docs. Static defaults + env + DB-stored origins are merged, trailing slashes stripped on the final list, and a try/catch around readTrustedOrigins() correctly falls back to the static list if Mongo is unreachable. Excellent — verified DYNAMIC (no restart needed) end-to-end.",
+    "/app/frontend/lib/server-secrets-cache.ts — readTrustedOrigins() correctly normalises: splits on comma OR newline, trims whitespace, strips trailing slashes, filters to /^https?:\\/\\//i. Empty input returns []. The `trusted_origins_extra` field is NOT declared in the ServerSecretsRecord type (line 16-32) but is read on line 132 — works at runtime due to the `as ServerSecretsRecord` cast, but it's a type-safety gap. Add it to the type for clean strict-mode builds.",
+    "/app/frontend/app/api/admin/server-secrets/route.ts — `trusted_origins_extra` added to PLAIN_FIELDS so PATCH accepts string values and GET round-trips them. Razorpay key id sanity-check (rzp_test_/rzp_live_) is preserved. Good. The cast `(keyof ServerSecretsRecord)[]` for PLAIN_FIELDS would warn under strict TS since the type doesn't declare the field — same fix as above.",
+    "/app/frontend/app/dashboard/admin/settings/page.tsx — origins-section card placed below Razorpay card in the integrations section. Textarea bound to `secretsDraft.trusted_origins_extra`, persisted via the existing saveSecrets() which calls reloadSecrets() after PATCH so the 'Saved:' label refreshes immediately. Explainer + format hint are clear and accurate.",
+    "Server log behaviour: every rejected origin produces a Better Auth ERROR log entry 'Invalid origin: ...' — useful for observability. Confirmed for attacker.example, ftp://x.com, and feature-branch.preview.dev (after clear)."
+  ],
+  "updated_files": [
+    "/app/backend/tests/test_trusted_origins.py (NEW — 8 tests for the dynamic-origin flow)"
+  ],
+  "success_rate": {
+    "backend": "100% (44/44 pytest in 129s — 36 legacy regressions + 8 new dynamic-origin tests)",
+    "frontend": "100% — origins editor renders, edit+save persists, 'Saved:' label refreshes, role gate blocks non-superadmins (origins-section count=0)"
+  },
+  "test_credentials": "qa@codespectra.dev / QApass123! (superadmin) — used as-is from /app/memory/test_credentials.md",
+  "seed_data_creation": "One disposable regular user qa-reg-<ts>@example.com / RegPass123! (role=user) created via /api/auth/sign-up/email for the role-gate test. Pytest fixture also creates a unique qa-regular-<ts>@example.com per session. Admin settings field `trusted_origins_extra` is cleared by the test_trusted_origins module-scoped cleanup fixture.",
+  "retest_needed": false,
+  "should_main_agent_self_test": true,
+  "context_for_next_testing_agent": "Iteration 6 closes the 'Trusted Origins editor in admin UI' enhancement. The async trustedOrigins resolver in lib/auth.ts is verified DYNAMIC — Better Auth re-evaluates per request and pulls fresh values from MongoDB without a server restart (confirmed by adding origin via PATCH then immediately POSTing sign-in with that Origin → 200, then PATCH '' to clear and immediately verifying 403). No fallback restart was needed. New regression test file: /app/backend/tests/test_trusted_origins.py (8 tests, all pass in 7s). Playwright tip from iteration 5 (page.keyboard.type() not page.fill()) still applies. The single 'Save Stripe & billing' button at the bottom of the integrations form persists Razorpay keys AND trusted origins via a single PATCH /api/admin/server-secrets call; relabelling it would aid discoverability but is non-blocking. TypeScript type ServerSecretsRecord is missing the `trusted_origins_extra` field declaration — runtime is fine via `as` casts; main agent should add the field declaration for clean strict-mode builds.",
+  "rca of the issue": "N/A — no bugs found. Feature works end-to-end as specified."
+}
