@@ -99,9 +99,34 @@ async def health() -> dict[str, str]:
     return {"status": "ok", "upstream": NEXT_ORIGIN}
 
 
+@app.get("/__proxy_health")
+async def health_stripped() -> dict[str, str]:
+    """Same as /api/__proxy_health but for ingresses that strip /api/."""
+    return {"status": "ok", "upstream": NEXT_ORIGIN, "ingress": "strips_api_prefix"}
+
+
+# Some Kubernetes/Cloudflare ingresses forward `/api/*` to backend port 8001
+# WITHOUT the `/api` prefix (path-rewrite). Others keep it. We accept both:
+#   • `/api/<path>`  → forward to Next.js as `/api/<path>`
+#   • `/<path>`      → forward to Next.js as `/api/<path>` (re-add the prefix)
 @app.api_route(
     "/api/{path:path}",
     methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
 )
 async def proxy_api(request: Request, path: str) -> Response:
+    return await _forward(request, f"api/{path}")
+
+
+@app.api_route(
+    "/{path:path}",
+    methods=["GET", "POST", "PUT", "PATCH", "DELETE", "OPTIONS", "HEAD"],
+)
+async def proxy_stripped(request: Request, path: str) -> Response:
+    # Skip internal endpoints — they're meant for in-cluster Next.js calls only.
+    if path.startswith("internal/"):
+        return Response(
+            content=b'{"detail":"Not Found"}',
+            media_type="application/json",
+            status_code=404,
+        )
     return await _forward(request, f"api/{path}")

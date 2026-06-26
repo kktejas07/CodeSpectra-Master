@@ -69,6 +69,85 @@ def auth_session(session: requests.Session) -> requests.Session:
 
 # ---------------- public surface ----------------
 
+class TestProxyStripping:
+    """Regression: FastAPI proxy must accept both /api/* and stripped /* paths.
+
+    Some ingresses strip /api/ before forwarding to backend:8001. The proxy
+    re-adds the prefix when calling Next.js. /internal/* must NOT be exposed
+    via the stripped catch-all (but ai_router itself still handles it directly).
+    """
+
+    ORIGIN = {"Origin": "http://localhost:3000"}
+
+    def test_health_api(self):
+        r = requests.get(f"{INTERNAL_FASTAPI}/api/__proxy_health", timeout=5)
+        assert r.status_code == 200
+        assert r.json()["status"] == "ok"
+
+    def test_health_stripped(self):
+        r = requests.get(f"{INTERNAL_FASTAPI}/__proxy_health", timeout=5)
+        assert r.status_code == 200
+        d = r.json()
+        assert d["status"] == "ok"
+        assert d.get("ingress") == "strips_api_prefix"
+
+    def test_signin_via_api_prefix(self):
+        r = requests.post(
+            f"{INTERNAL_FASTAPI}/api/auth/sign-in/email",
+            json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
+            headers={**self.ORIGIN, "Content-Type": "application/json"},
+            timeout=20,
+        )
+        assert r.status_code == 200, r.text[:300]
+        d = r.json()
+        assert d["user"]["role"] == "superadmin"
+        assert isinstance(d.get("token"), str) and len(d["token"]) > 0
+
+    def test_signin_via_stripped(self):
+        r = requests.post(
+            f"{INTERNAL_FASTAPI}/auth/sign-in/email",
+            json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
+            headers={**self.ORIGIN, "Content-Type": "application/json"},
+            timeout=20,
+        )
+        assert r.status_code == 200, r.text[:300]
+        d = r.json()
+        assert d["user"]["role"] == "superadmin"
+
+    def test_signin_invalid_password(self):
+        r = requests.post(
+            f"{INTERNAL_FASTAPI}/api/auth/sign-in/email",
+            json={"email": TEST_EMAIL, "password": "WRONG_PASS_X"},
+            headers={**self.ORIGIN, "Content-Type": "application/json"},
+            timeout=15,
+        )
+        assert r.status_code == 401
+        assert r.json().get("code") == "INVALID_EMAIL_OR_PASSWORD"
+
+    def test_signin_missing_fields(self):
+        r = requests.post(
+            f"{INTERNAL_FASTAPI}/api/auth/sign-in/email",
+            json={},
+            headers={**self.ORIGIN, "Content-Type": "application/json"},
+            timeout=15,
+        )
+        assert r.status_code == 400
+
+    def test_internal_ai_still_works_locally(self):
+        """ai_router takes precedence over the stripped catch-all."""
+        r = requests.post(
+            f"{INTERNAL_FASTAPI}/internal/ai/complete",
+            json={
+                "session_id": f"t-{uuid.uuid4()}",
+                "system_message": "Reply with PONG.",
+                "user_message": "ping",
+                "model_role": "fast",
+            },
+            timeout=60,
+        )
+        assert r.status_code == 200, r.text[:200]
+
+
 class TestPublicSurface:
     """Public pages + ingress isolation"""
 
