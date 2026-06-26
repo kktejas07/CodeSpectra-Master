@@ -66,10 +66,16 @@ export interface GithubScanQueueDoc {
   ref: string
   before_commit_sha: string
   head_commit_sha: string
+  /** 'push' (default) or 'pull_request' — added in Phase 8 for PR-comment posting. */
+  event_type?: 'push' | 'pull_request'
+  /** Populated when `event_type === 'pull_request'`. */
+  pull_request_number?: number
   status: 'pending' | 'running' | 'completed' | 'failed' | 'skipped'
   attempts: number
   last_error?: string | null
   scan_id?: string | null
+  /** Set after a comment is posted to the PR. */
+  pr_comment_url?: string | null
   created_at: string
   updated_at: string
   locked_at?: string | null
@@ -93,6 +99,8 @@ export interface WorkflowDoc {
   name: string
   description?: string
   trigger: 'manual' | 'schedule' | 'webhook'
+  /** Cron expression (5-field standard) when `trigger === 'schedule'`. */
+  cron_expression?: string
   is_active: boolean
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]

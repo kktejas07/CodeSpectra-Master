@@ -2,9 +2,10 @@
  * GitHub webhook scan queue worker (MongoDB native).
  *
  * Pulls one `pending` row at a time using an atomic `findOneAndUpdate`,
- * runs an AI code review over the head-commit diff, persists the result
- * to `ai_code_reviews`, and posts an inline review comment to GitHub when
- * a user-installed integration is available.
+ * runs an AI code review over the head-commit (or PR) diff, persists the
+ * result to `ai_code_reviews`, and — when the row originated from a
+ * `pull_request` event AND a GitHub App token is configured in the
+ * dynamic secrets — posts an inline review comment to the PR.
  *
  * The worker is intentionally tolerant: any failure marks the row `failed`
  * with the last error rather than throwing, so a `processGithubScanQueueBatch`
@@ -18,6 +19,7 @@ import {
   type GithubScanQueueDoc,
 } from '@/lib/db/leaderboard'
 import { integrations as integrationsCollection } from '@/lib/db/misc'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
 
 export type QueueProcessResult = {
   processed: boolean
@@ -109,17 +111,60 @@ async function markStatus(
 }
 
 /**
- * Resolve a GitHub access token for the repository owner (if the user has
- * connected an integration). Returns `null` for anonymous webhook events.
+ * Resolve a GitHub access token. Priority:
+ *   1. Per-owner integration token stored in the `integrations` collection
+ *      (set when a user installs the GitHub OAuth app).
+ *   2. The `github_app_token` from dynamic admin settings (a single PAT
+ *      that can post comments on any repo it has access to). Useful for
+ *      single-tenant deployments without OAuth.
  */
-async function tokenForOwner(ownerLogin: string | null): Promise<string | null> {
-  if (!ownerLogin) return null
+async function resolveGithubToken(ownerLogin: string | null): Promise<string | null> {
+  if (ownerLogin) {
+    try {
+      const col = await integrationsCollection()
+      const row = await col.findOne({ provider: 'github', github_login: ownerLogin })
+      const t = (row?.access_token as string | undefined) || null
+      if (t) return t
+    } catch {
+      /* fall through to admin token */
+    }
+  }
   try {
-    const col = await integrationsCollection()
-    const row = await col.findOne({ provider: 'github', github_login: ownerLogin })
-    const t = (row?.access_token as string | undefined) || null
-    return t
+    const secrets = await readServerSecrets()
+    return secrets.github_app_token?.trim() || null
   } catch {
+    return null
+  }
+}
+
+/** Post a single comment to a PR. Returns the GitHub comment URL or null. */
+async function postPrComment(
+  repo: string,
+  prNumber: number,
+  body: string,
+  token: string,
+): Promise<string | null> {
+  const url = `${GITHUB_API}/repos/${repo}/issues/${prNumber}/comments`
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: {
+        Accept: 'application/vnd.github+json',
+        'X-GitHub-Api-Version': '2022-11-28',
+        'User-Agent': 'codespectra-bot',
+        Authorization: `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({ body }),
+    })
+    if (!res.ok) {
+      console.warn('[CodeSpectra] PR comment post failed:', res.status, await res.text())
+      return null
+    }
+    const data = (await res.json()) as { html_url?: string }
+    return data.html_url ?? null
+  } catch (e) {
+    console.warn('[CodeSpectra] PR comment post threw:', e)
     return null
   }
 }
@@ -129,7 +174,7 @@ export async function processGithubScanQueueItem(): Promise<QueueProcessResult> 
   if (!item) return { processed: false, message: 'queue empty' }
 
   try {
-    const token = await tokenForOwner(item.owner_login)
+    const token = await resolveGithubToken(item.owner_login)
     const files = await fetchCommitFiles(item.repository_full_name, item.head_commit_sha, token)
     if (!files || !files.files?.length) {
       await markStatus(item.id, 'skipped', { last_error: 'No files in commit' })
@@ -158,13 +203,49 @@ export async function processGithubScanQueueItem(): Promise<QueueProcessResult> 
         repository: item.repository_full_name,
         ref: item.ref,
         head_sha: item.head_commit_sha,
+        event_type: item.event_type || 'push',
+        pull_request_number: item.pull_request_number,
         review_markdown: reviewText,
       },
       created_at: nowIso(),
     })
 
-    await markStatus(item.id, 'completed', { scan_id: reviewId, last_error: null })
-    return { processed: true, status: 'completed', itemId: item.id, scanId: reviewId }
+    // If the event is a PR and we have a token, post the review back to GitHub.
+    let prCommentUrl: string | null = null
+    if (
+      item.event_type === 'pull_request' &&
+      item.pull_request_number &&
+      token
+    ) {
+      const formatted = [
+        '### :robot: CodeSpectra automated review',
+        '',
+        reviewText,
+        '',
+        '---',
+        `<sub>Generated by CodeSpectra for \`${item.head_commit_sha.slice(0, 7)}\`. ` +
+          `Hit ▶ Re-run from the workspace if you change the diff.</sub>`,
+      ].join('\n')
+      prCommentUrl = await postPrComment(
+        item.repository_full_name,
+        item.pull_request_number,
+        formatted,
+        token,
+      )
+    }
+
+    await markStatus(item.id, 'completed', {
+      scan_id: reviewId,
+      last_error: null,
+      pr_comment_url: prCommentUrl,
+    })
+    return {
+      processed: true,
+      status: 'completed',
+      itemId: item.id,
+      scanId: reviewId,
+      message: prCommentUrl ? `posted: ${prCommentUrl}` : 'review saved',
+    }
   } catch (e) {
     const msg = e instanceof Error ? e.message : String(e)
     await markStatus(item.id, 'failed', { last_error: msg })

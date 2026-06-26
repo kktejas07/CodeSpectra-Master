@@ -79,6 +79,8 @@ type SecretsDraft = {
   razorpay_key_secret: string
   razorpay_webhook_secret: string
   trusted_origins_extra: string
+  piston_url: string
+  github_app_token: string
   stripe_secret_key: string
   stripe_webhook_secret: string
   stripe_price_pro_monthly: string
@@ -92,6 +94,8 @@ const emptySecretsDraft = (): SecretsDraft => ({
   razorpay_key_secret: '',
   razorpay_webhook_secret: '',
   trusted_origins_extra: '',
+  piston_url: '',
+  github_app_token: '',
   stripe_secret_key: '',
   stripe_webhook_secret: '',
   stripe_price_pro_monthly: '',
@@ -909,6 +913,83 @@ function SystemSettingsInner() {
                       Saved: {String(secretsMeta.trusted_origins_extra)}
                     </p>
                   ) : null}
+                </div>
+
+                {/* Piston (code execution backend) */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="piston-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Code execution backend (Piston)</p>
+                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Dynamic
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Base URL of a Piston-compatible code execution server (no trailing slash).
+                    Leave empty to use the in-process subprocess executor
+                    (<code>python</code>, <code>node</code>, <code>tsx</code>, <code>bash</code> only).
+                    See{' '}
+                    <a
+                      href="https://github.com/engineer-man/piston#self-hosting"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      Piston self-hosting docs
+                    </a>{' '}
+                    for Docker / Render / Fly deploy.
+                  </p>
+                  <Input
+                    id="sec_piston_url"
+                    value={secretsDraft.piston_url}
+                    onChange={(e) =>
+                      setSecretsDraft((d) => ({ ...d, piston_url: e.target.value }))
+                    }
+                    placeholder="https://piston.your-domain.com/api/v2/piston"
+                    className="font-mono"
+                    data-testid="piston-url-input"
+                  />
+                  {secretsMeta.piston_url ? (
+                    <p className="font-mono text-[11px] text-muted-foreground break-all">
+                      Saved: {String(secretsMeta.piston_url)}
+                    </p>
+                  ) : (
+                    <p className="text-[11px] text-muted-foreground">
+                      Currently using in-process executor (subprocess, no sandbox).
+                    </p>
+                  )}
+                </div>
+
+                {/* GitHub App token */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="github-token-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">GitHub App / PAT token</p>
+                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Dynamic
+                    </span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Personal access token used by the AI code-review bot to{' '}
+                    <strong>post review comments back to PRs</strong>. Needs{' '}
+                    <code>pull_requests:write</code> on the repos you want reviewed.
+                    Without this, reviews are saved to MongoDB but not posted to GitHub.
+                  </p>
+                  {secretsMeta.has_github_app_token ? (
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      Current key: {String(secretsMeta.github_app_token_masked ?? '—')}
+                    </p>
+                  ) : null}
+                  <Input
+                    id="sec_github_app_token"
+                    type="password"
+                    value={secretsDraft.github_app_token}
+                    onChange={(e) =>
+                      setSecretsDraft((d) => ({ ...d, github_app_token: e.target.value }))
+                    }
+                    placeholder="ghp_…  (or  github_pat_…)"
+                    className="font-mono"
+                    data-testid="github-token-input"
+                    autoComplete="off"
+                  />
                 </div>
 
                 <Alert className="rounded-lg border-border/60 bg-muted/20">

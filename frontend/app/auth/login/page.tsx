@@ -300,6 +300,44 @@ function LoginInner() {
             </Button>
           </form>
 
+          {/* Dev-mode quick-login picker — only shown in non-prod or with the
+              ?dev=1 query parameter. Helps QA flip between roles fast. */}
+          {(process.env.NODE_ENV !== 'production' ||
+            searchParams.get('dev') === '1') && (
+            <div
+              className="mt-2 rounded-lg border border-border/60 bg-muted/30 p-3 text-xs"
+              data-testid="dev-quick-login"
+            >
+              <p className="mb-2 font-semibold uppercase tracking-wider text-muted-foreground">
+                Dev quick login
+              </p>
+              <div className="flex flex-wrap gap-2">
+                {[
+                  { role: 'Superadmin', email: 'qa@codespectra.dev', password: 'QApass123!' },
+                  { role: 'Tenant admin', email: 'tenant@codespectra.dev', password: 'CodeSpectra@2026' },
+                  { role: 'User', email: 'user@codespectra.dev', password: 'CodeSpectra@2026' },
+                  { role: 'Recruiter', email: 'recruiter@codespectra.dev', password: 'CodeSpectra@2026' },
+                ].map((c) => (
+                  <button
+                    key={c.email}
+                    type="button"
+                    onClick={() => {
+                      setEmail(c.email)
+                      setPassword(c.password)
+                    }}
+                    className="rounded border border-border/80 bg-background px-2 py-1 transition-colors hover:border-primary hover:text-primary"
+                    data-testid={`dev-quick-login-${c.role.toLowerCase().replace(/\s+/g, '-')}`}
+                  >
+                    {c.role}
+                  </button>
+                ))}
+              </div>
+              <p className="mt-2 text-[10px] text-muted-foreground">
+                Click a role to fill credentials, then press <em>Sign in</em>.
+              </p>
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground text-center">
             By signing in you agree to our{" "}
             <Link href="/terms" className="underline hover:text-foreground">

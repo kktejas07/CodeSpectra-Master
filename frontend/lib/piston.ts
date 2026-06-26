@@ -9,7 +9,27 @@
  * in .env.local to your own Docker deployment (https://github.com/engineer-man/piston).
  */
 
-const PISTON_URL = process.env.PISTON_URL || 'https://emkc.org/api/v2/piston'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
+import { isLocallySupported, localExecuteOnce } from '@/lib/local-executor'
+
+/**
+ * Resolve the active Piston URL. Priority:
+ *   1. `piston_url` from MongoDB platform_settings (admin-configurable)
+ *   2. `PISTON_URL` env var
+ *   3. `null` → caller should fall back to the local executor
+ */
+async function resolvePistonUrl(): Promise<string | null> {
+  try {
+    const secrets = await readServerSecrets()
+    const fromDb = secrets.piston_url?.trim()
+    if (fromDb) return fromDb.replace(/\/+$/, '')
+  } catch {
+    /* ignore – the cache may not be warmed yet on a cold start */
+  }
+  const env = process.env.PISTON_URL?.trim()
+  if (env) return env.replace(/\/+$/, '')
+  return null
+}
 
 export interface PistonRuntime {
   language: string
@@ -43,7 +63,13 @@ let _runtimesAt = 0
 export async function fetchRuntimes(): Promise<PistonRuntime[]> {
   // 5-minute in-memory cache
   if (_runtimes && Date.now() - _runtimesAt < 5 * 60 * 1000) return _runtimes
-  const res = await fetch(`${PISTON_URL}/runtimes`, {
+  const baseUrl = await resolvePistonUrl()
+  if (!baseUrl) {
+    _runtimes = []
+    _runtimesAt = Date.now()
+    return _runtimes
+  }
+  const res = await fetch(`${baseUrl}/runtimes`, {
     headers: { Accept: 'application/json' },
     cache: 'no-store',
   })
@@ -77,8 +103,30 @@ export interface ExecuteOptions {
 }
 
 export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteResult> {
-  const version = opts.version || (await resolveLanguageVersion(opts.language))
+  const baseUrl = await resolvePistonUrl()
+
+  // No Piston configured → use local subprocess executor when possible.
+  if (!baseUrl) {
+    if (!isLocallySupported(opts.language)) {
+      throw new Error(
+        `No Piston server configured and language "${opts.language}" is not supported by the local executor. ` +
+          `Configure piston_url in superadmin settings or use one of: python, javascript, typescript, bash.`,
+      )
+    }
+    return localExecuteOnce(opts)
+  }
+
+  let version = opts.version
   if (!version) {
+    try {
+      version = (await resolveLanguageVersion(opts.language)) || undefined
+    } catch {
+      version = undefined
+    }
+  }
+  if (!version) {
+    // Piston is reachable but language is unknown — fall back to local if possible.
+    if (isLocallySupported(opts.language)) return localExecuteOnce(opts)
     throw new Error(`Unsupported language: ${opts.language}`)
   }
 
@@ -92,13 +140,26 @@ export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteRe
     run_memory_limit: 256 * 1024 * 1024, // 256 MB
   }
 
-  const res = await fetch(`${PISTON_URL}/execute`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
-    body: JSON.stringify(body),
-  })
+  let res: Response
+  try {
+    res = await fetch(`${baseUrl}/execute`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json' },
+      body: JSON.stringify(body),
+    })
+  } catch (e) {
+    // Network failure → degrade gracefully to local executor.
+    if (isLocallySupported(opts.language)) return localExecuteOnce(opts)
+    throw e
+  }
 
   if (!res.ok) {
+    // Whitelist / quota errors are common on the public Piston instance — fall
+    // back to local execution rather than hard-failing the user.
+    if ((res.status === 401 || res.status === 403 || res.status === 429) &&
+        isLocallySupported(opts.language)) {
+      return localExecuteOnce(opts)
+    }
     const txt = await res.text()
     throw new Error(`Piston execute failed: ${res.status} ${txt.slice(0, 200)}`)
   }

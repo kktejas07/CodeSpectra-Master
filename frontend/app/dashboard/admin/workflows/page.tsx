@@ -1,13 +1,14 @@
 'use client'
 
 /**
- * Workflow automation v1 — list, edit JSON, run.
+ * Workflow automation — Phase 8.
  *
- * v1 deliberately keeps things minimal: a list of workflows + a JSON
- * editor for each (no drag-drop graph yet). Run logs show the step-by-step
- * output of the last execution.
+ * Adds:
+ *   - Visual graph builder (React Flow) alongside the JSON editor (tabbed).
+ *   - Cron picker for `trigger === 'schedule'` workflows.
  */
 import { useCallback, useEffect, useMemo, useState } from 'react'
+import dynamic from 'next/dynamic'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -22,15 +23,26 @@ import {
   XCircle,
   Workflow as WorkflowIcon,
 } from 'lucide-react'
+import CronPicker from '@/components/workflows/cron-picker'
+
+const WorkflowBuilder = dynamic(
+  () => import('@/components/workflows/workflow-builder'),
+  { ssr: false, loading: () => (
+    <div className="flex h-[520px] items-center justify-center rounded-lg border border-border/60 bg-card text-muted-foreground">
+      <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading visual builder…
+    </div>
+  ) },
+)
 
 interface WorkflowSummary {
   id: string
   name: string
   description?: string
   is_active: boolean
-  trigger: string
-  nodes: unknown[]
-  edges: unknown[]
+  trigger: 'manual' | 'schedule' | 'webhook'
+  cron_expression?: string
+  nodes: Array<{ id: string; type: string; label?: string; config?: Record<string, unknown> }>
+  edges: Array<{ from: string; to: string }>
   created_at: string
   updated_at: string
 }
@@ -51,26 +63,7 @@ interface RunResult {
   duration_ms: number
 }
 
-const STARTER_TEMPLATE = `{
-  "name": "Daily problem digest",
-  "description": "Fetch top 5 problems, ask the LLM to summarise.",
-  "trigger": "manual",
-  "is_active": true,
-  "nodes": [
-    { "id": "t1", "type": "trigger.manual", "label": "Start" },
-    { "id": "fetch", "type": "mongo.find", "label": "Top problems",
-      "config": { "collection": "problems", "filter": { "is_published": true }, "limit": 5 } },
-    { "id": "ai", "type": "ai.complete", "label": "Summarise",
-      "config": {
-        "system": "You write 1-line digests for engineering teams.",
-        "prompt": "Summarise these problems: {{fetch}}"
-      } }
-  ],
-  "edges": [
-    { "from": "t1", "to": "fetch" },
-    { "from": "fetch", "to": "ai" }
-  ]
-}`
+type Tab = 'visual' | 'json'
 
 export default function WorkflowsPage() {
   const [items, setItems] = useState<WorkflowSummary[]>([])
@@ -82,8 +75,9 @@ export default function WorkflowsPage() {
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [run, setRun] = useState<RunResult | null>(null)
+  const [tab, setTab] = useState<Tab>('visual')
 
-  const load = useCallback(async () => {
+  const load = useCallback(async (preserveSelected?: string) => {
     setLoading(true)
     setError(null)
     try {
@@ -91,7 +85,8 @@ export default function WorkflowsPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load')
       setItems(json.items as WorkflowSummary[])
-      if (!selected && json.items[0]) setSelected(json.items[0].id)
+      if (preserveSelected) setSelected(preserveSelected)
+      else if (!selected && json.items[0]) setSelected(json.items[0].id)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -112,6 +107,20 @@ export default function WorkflowsPage() {
     if (current) setDraft(JSON.stringify(current, null, 2))
   }, [current])
 
+  const parsedDraft: WorkflowSummary | null = useMemo(() => {
+    try {
+      return JSON.parse(draft) as WorkflowSummary
+    } catch {
+      return null
+    }
+  }, [draft])
+
+  function patchDraft(patch: Partial<WorkflowSummary>) {
+    if (!parsedDraft) return
+    const merged = { ...parsedDraft, ...patch }
+    setDraft(JSON.stringify(merged, null, 2))
+  }
+
   async function create() {
     if (!newName.trim()) return
     setBusy(true)
@@ -126,8 +135,7 @@ export default function WorkflowsPage() {
       if (!res.ok) throw new Error(json.error || 'Failed')
       setCreating(false)
       setNewName('')
-      await load()
-      setSelected(json.id)
+      await load(json.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -148,7 +156,7 @@ export default function WorkflowsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed')
-      await load()
+      await load(current.id)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -162,9 +170,7 @@ export default function WorkflowsPage() {
     setError(null)
     setRun(null)
     try {
-      const res = await fetch(`/api/workflows/${current.id}/run`, {
-        method: 'POST',
-      })
+      const res = await fetch(`/api/workflows/${current.id}/run`, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Run failed')
       setRun(json as RunResult)
@@ -198,11 +204,10 @@ export default function WorkflowsPage() {
             Workflow automation
           </h1>
           <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Compose pipelines using built-in node types
-            (<code>trigger.manual</code>, <code>http.request</code>,
+            Compose pipelines visually or via JSON. Built-in node types:
+            <code> trigger.manual</code>, <code>http.request</code>,
             <code> ai.complete</code>, <code>mongo.find</code>, <code>log</code>,
-            <code> delay</code>). v1 ships with a JSON editor; a visual graph
-            builder is on the roadmap.
+            <code> delay</code>.
           </p>
         </div>
         <Button
@@ -236,9 +241,7 @@ export default function WorkflowsPage() {
             <Button onClick={create} disabled={busy} data-testid="workflow-new-save">
               {busy ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Create'}
             </Button>
-            <Button variant="ghost" onClick={() => setCreating(false)}>
-              Cancel
-            </Button>
+            <Button variant="ghost" onClick={() => setCreating(false)}>Cancel</Button>
           </div>
         </Card>
       )}
@@ -272,6 +275,9 @@ export default function WorkflowsPage() {
                   <p className="font-medium">{w.name}</p>
                   <p className="text-xs text-muted-foreground">
                     {w.is_active ? 'Active' : 'Paused'} · {w.trigger}
+                    {w.trigger === 'schedule' && w.cron_expression
+                      ? ` · ${w.cron_expression}`
+                      : ''}
                   </p>
                 </button>
               </li>
@@ -283,9 +289,6 @@ export default function WorkflowsPage() {
           {!current ? (
             <div className="space-y-3 text-sm text-muted-foreground">
               <p>Select a workflow on the left, or create a new one to begin.</p>
-              <p className="font-mono text-xs whitespace-pre-wrap rounded bg-muted/40 p-3">
-                {STARTER_TEMPLATE}
-              </p>
             </div>
           ) : (
             <>
@@ -294,13 +297,25 @@ export default function WorkflowsPage() {
                 <Badge variant={current.is_active ? 'default' : 'secondary'}>
                   {current.is_active ? 'Active' : 'Paused'}
                 </Badge>
+                <Badge variant="outline" className="capitalize">{current.trigger}</Badge>
                 <div className="ml-auto flex gap-2">
                   <Button
-                    onClick={save}
-                    variant="outline"
-                    disabled={busy}
-                    data-testid="workflow-save-btn"
+                    variant={tab === 'visual' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setTab('visual')}
+                    data-testid="workflow-tab-visual"
                   >
+                    Visual
+                  </Button>
+                  <Button
+                    variant={tab === 'json' ? 'default' : 'ghost'}
+                    size="sm"
+                    onClick={() => setTab('json')}
+                    data-testid="workflow-tab-json"
+                  >
+                    JSON
+                  </Button>
+                  <Button onClick={save} variant="outline" disabled={busy} data-testid="workflow-save-btn">
                     Save
                   </Button>
                   <Button onClick={runWorkflow} disabled={busy} data-testid="workflow-run-btn">
@@ -311,34 +326,71 @@ export default function WorkflowsPage() {
                     )}
                     Run
                   </Button>
-                  <Button
-                    onClick={remove}
-                    variant="ghost"
-                    disabled={busy}
-                    data-testid="workflow-delete-btn"
-                  >
+                  <Button onClick={remove} variant="ghost" disabled={busy} data-testid="workflow-delete-btn">
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>
               </div>
-              <Textarea
-                value={draft}
-                onChange={(e) => setDraft(e.target.value)}
-                rows={18}
-                className="font-mono text-xs"
-                data-testid="workflow-json-editor"
-              />
+
+              {/* Trigger config */}
+              <div className="mb-4 grid gap-3 rounded-lg border border-border/60 bg-muted/20 p-3 md:grid-cols-[140px_1fr]">
+                <div>
+                  <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                    Trigger
+                  </label>
+                  <select
+                    value={parsedDraft?.trigger || 'manual'}
+                    onChange={(e) => patchDraft({ trigger: e.target.value as WorkflowSummary['trigger'] })}
+                    className="mt-1 h-8 w-full rounded border border-border/80 bg-background px-2 text-xs"
+                    data-testid="workflow-trigger-select"
+                  >
+                    <option value="manual">Manual</option>
+                    <option value="schedule">Schedule (cron)</option>
+                    <option value="webhook">Webhook</option>
+                  </select>
+                </div>
+                <div>
+                  {parsedDraft?.trigger === 'schedule' ? (
+                    <CronPicker
+                      value={parsedDraft.cron_expression || '0 9 * * *'}
+                      onChange={(c) => patchDraft({ cron_expression: c })}
+                    />
+                  ) : (
+                    <p className="text-xs text-muted-foreground">
+                      {parsedDraft?.trigger === 'webhook'
+                        ? 'POST to /api/workflows/{id}/run to trigger this workflow programmatically.'
+                        : 'Manual workflows run when you click ▶ Run.'}
+                    </p>
+                  )}
+                </div>
+              </div>
+
+              {tab === 'visual' && parsedDraft && (
+                <WorkflowBuilder
+                  value={{ nodes: parsedDraft.nodes, edges: parsedDraft.edges }}
+                  onChange={(next) => patchDraft({ nodes: next.nodes, edges: next.edges })}
+                />
+              )}
+
+              {tab === 'json' && (
+                <Textarea
+                  value={draft}
+                  onChange={(e) => setDraft(e.target.value)}
+                  rows={20}
+                  className="font-mono text-xs"
+                  data-testid="workflow-json-editor"
+                />
+              )}
+
               {run && (
                 <div className="mt-4 border-t border-border pt-4">
                   <div className="flex items-center gap-2">
                     <h3 className="text-sm font-semibold">Last run</h3>
                     <Badge
                       variant={
-                        run.status === 'success'
-                          ? 'default'
-                          : run.status === 'failed'
-                            ? 'destructive'
-                            : 'secondary'
+                        run.status === 'success' ? 'default' :
+                        run.status === 'failed' ? 'destructive' :
+                        'secondary'
                       }
                     >
                       {run.status} · {run.duration_ms}ms
@@ -357,9 +409,7 @@ export default function WorkflowsPage() {
                             <XCircle className="h-4 w-4 text-destructive" />
                           )}
                           <span className="font-medium">{s.label}</span>
-                          <span className="ml-auto text-muted-foreground">
-                            {s.duration_ms}ms
-                          </span>
+                          <span className="ml-auto text-muted-foreground">{s.duration_ms}ms</span>
                         </div>
                         {s.error && <p className="mt-1 text-destructive">{s.error}</p>}
                         {s.output != null && (

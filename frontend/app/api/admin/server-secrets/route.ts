@@ -13,6 +13,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'razorpay_key_id',
   'razorpay_key_secret',
   'razorpay_webhook_secret',
+  'github_app_token',
   // legacy
   'stripe_secret_key',
   'stripe_webhook_secret',
@@ -22,6 +23,7 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'resend_from_email',
   'sendgrid_from_email',
   'trusted_origins_extra',
+  'piston_url',
   'stripe_price_pro_monthly',
   'stripe_price_pro_yearly',
   'stripe_price_enterprise_monthly',

@@ -101,6 +101,7 @@ export async function POST(request: NextRequest) {
             ref,
             before_commit_sha: before,
             head_commit_sha: after,
+            event_type: 'push',
             status: 'pending',
             attempts: 0,
             created_at: nowIso(),
@@ -109,6 +110,53 @@ export async function POST(request: NextRequest) {
         }
       } catch (e) {
         console.error('[CodeSpectra] github_webhook_scan_queue insert:', e)
+      }
+    }
+  }
+
+  // Enqueue `pull_request` events (only opened / synchronize / reopened
+  // actions — we don't review closures or label changes).
+  if (eventType === 'pull_request' && deliveryId && repo) {
+    const action = typeof payload.action === 'string' ? payload.action : ''
+    const pr = payload.pull_request as
+      | {
+          number?: number
+          head?: { ref?: string; sha?: string }
+          base?: { sha?: string }
+        }
+      | undefined
+    const headSha = pr?.head?.sha
+    const baseSha = pr?.base?.sha
+    const ref = pr?.head?.ref ? `refs/heads/${pr.head.ref}` : null
+    if (
+      ['opened', 'reopened', 'synchronize'].includes(action) &&
+      pr?.number &&
+      headSha &&
+      baseSha &&
+      ref
+    ) {
+      try {
+        const queue = await githubWebhookScanQueue()
+        const dup = await queue.findOne({ delivery_id: deliveryId })
+        if (!dup) {
+          await queue.insertOne({
+            id: newId(),
+            delivery_id: deliveryId,
+            repository_full_name: repo,
+            owner_login: ownerLogin,
+            ref,
+            before_commit_sha: baseSha,
+            head_commit_sha: headSha,
+            event_type: 'pull_request',
+            pull_request_number: pr.number,
+            status: 'pending',
+            attempts: 0,
+            created_at: nowIso(),
+            updated_at: nowIso(),
+          })
+        }
+      } catch (e) {
+        console.error('[CodeSpectra] github_webhook_scan_queue PR insert:', e)
       }
     }
   }

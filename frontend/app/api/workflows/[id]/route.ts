@@ -37,7 +37,7 @@ export async function PATCH(
     return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
   }
   const $set: Record<string, unknown> = { updated_at: nowIso() }
-  for (const k of ['name', 'description', 'trigger', 'is_active', 'nodes', 'edges'] as const) {
+  for (const k of ['name', 'description', 'trigger', 'cron_expression', 'is_active', 'nodes', 'edges'] as const) {
     if (k in body) $set[k] = body[k]
   }
   const col = await workflows()
