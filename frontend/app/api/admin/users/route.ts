@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/api-auth'
-import { auth } from '@/lib/auth'
+import { adminAuth } from '@/lib/firebase-admin'
 import { listAllUsers, getUserById } from '@/lib/db/admin'
 import { buildAdminUserRow, type ProfileRow } from '@/lib/admin-users'
 import { normalizeUserRole } from '@/lib/rbac'
@@ -95,13 +95,12 @@ export async function POST(request: Request) {
   }
 
   try {
-    const signupRes = await auth.api.signUpEmail({
-      body: { email, password, name: full_name },
+    const userRecord = await adminAuth.createUser({
+      email,
+      password,
+      displayName: full_name,
     })
-    const newUserId = signupRes.user?.id
-    if (!newUserId) {
-      return NextResponse.json({ error: 'Failed to create user' }, { status: 500 })
-    }
+    const newUserId = userRecord.uid
 
     const { updateUserById } = await import('@/lib/db/admin')
     await updateUserById(newUserId, { role, fullName: full_name })

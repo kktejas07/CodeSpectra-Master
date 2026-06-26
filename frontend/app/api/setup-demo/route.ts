@@ -1,4 +1,4 @@
-import { auth } from '@/lib/auth'
+import { adminAuth } from '@/lib/firebase-admin'
 import { updateUserById } from '@/lib/db/admin'
 
 const demoUsers = [
@@ -22,12 +22,6 @@ const demoUsers = [
   },
 ]
 
-/**
- * POST /api/setup-demo
- * Phase 6 migration: provisions the three demo users via Better Auth's
- * `signUpEmail` server API, then upgrades their role + fullName in the
- * MongoDB `user` collection. Idempotent — re-running just updates roles.
- */
 export async function POST() {
   const createdUsers: Array<{
     email: string
@@ -42,20 +36,20 @@ export async function POST() {
     try {
       let userId: string | null = null
       try {
-        const res = await auth.api.signUpEmail({
-          body: { email: u.email, password: u.password, name: u.full_name },
+        const userRecord = await adminAuth.createUser({
+          email: u.email,
+          password: u.password,
+          displayName: u.full_name,
         })
-        userId = res.user?.id ?? null
+        userId = userRecord.uid
       } catch (err) {
-        // Most likely "User already exists" — try to look them up instead.
         const msg = err instanceof Error ? err.message : String(err)
-        if (!msg.toLowerCase().includes('exist')) {
+        if (!msg.toLowerCase().includes('already exist')) {
           errors.push(`${u.email}: ${msg}`)
+          continue
         }
-        const { users } = await import('@/lib/db/admin')
-        const userCol = await users()
-        const existing = await userCol.findOne({ email: u.email })
-        userId = (existing?._id as string | undefined) ?? (existing?.id as string | undefined) ?? null
+        const existing = await adminAuth.getUserByEmail(u.email)
+        userId = existing.uid
       }
 
       if (!userId) {
