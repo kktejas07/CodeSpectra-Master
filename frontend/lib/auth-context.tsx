@@ -1,7 +1,7 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { getFirebaseAuth } from './firebase'
+import { getFirebaseAuth, getFirebaseAuthSync } from './firebase'
 import type { User } from 'firebase/auth'
 
 export interface AuthUser {
@@ -41,7 +41,7 @@ function getFirebaseModule() {
 }
 
 async function withAuth<T>(fn: (auth: import('firebase/auth').Auth) => Promise<T>): Promise<T> {
-  const auth = getFirebaseAuth()
+  const auth = await getFirebaseAuth()
   if (!auth) throw new Error('Firebase not available')
   return fn(auth)
 }
@@ -51,27 +51,36 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    const auth = getFirebaseAuth()
-    if (!auth) {
-      setLoading(false)
-      return
-    }
+    let cancelled = false
 
-    let unsubscribe: (() => void) | undefined
-    getFirebaseModule().then(({ onAuthStateChanged }) => {
-      unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          setUser(toAuthUser(firebaseUser))
-          await createSession(firebaseUser)
-        } else {
-          setUser(null)
-          await clearSession()
+    getFirebaseAuth().then((auth) => {
+      if (cancelled || !auth) {
+        if (!cancelled) setLoading(false)
+        return
+      }
+
+      getFirebaseModule().then(({ onAuthStateChanged }) => {
+        if (cancelled) return
+        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+          if (cancelled) return
+          if (firebaseUser) {
+            setUser(toAuthUser(firebaseUser))
+            await createSession(firebaseUser)
+          } else {
+            setUser(null)
+            await clearSession()
+          }
+          setLoading(false)
+        })
+
+        // If auth is already resolved synchronously, clean up immediately
+        if (getFirebaseAuthSync()) {
+          setLoading(false)
         }
-        setLoading(false)
       })
     })
 
-    return () => unsubscribe?.()
+    return () => { cancelled = true }
   }, [])
 
   const signInWithEmail = async (email: string, password: string) => {
