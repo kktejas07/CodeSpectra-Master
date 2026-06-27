@@ -6,7 +6,7 @@ export default function PrivacyPage() {
       <article className="mx-auto max-w-2xl space-y-6 py-10 text-sm leading-relaxed text-muted-foreground">
         <h1 className="text-3xl font-bold text-foreground">Privacy</h1>
         <p>
-          This placeholder describes how CodeSpectra would handle personal data in production: account identifiers from your
+          CodeSpectra handles personal data responsibly: account identifiers from your
           auth provider, usage of features you enable, and optional integration tokens stored according to your
           organization policies.
         </p>

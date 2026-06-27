@@ -169,7 +169,7 @@ export function PublicPageWrapper({
                 All systems operational
               </div>
               <div className="flex items-center gap-5">
-                <a href="https://github.com/Devender0077/CodeSpectra-Master" target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="CodeSpectra on GitHub">
+                <a href="https://github.com/kktejas07/CodeSpectra-Master" target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="CodeSpectra on GitHub">
                   <Github className="h-5 w-5" />
                 </a>
                 <Link href="/docs" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="Documentation">

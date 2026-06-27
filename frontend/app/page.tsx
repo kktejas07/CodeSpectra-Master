@@ -3,38 +3,22 @@
 import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
-import { NavThemeSwitch } from '@/components/nav-theme-switch'
 import { cn } from '@/lib/utils'
-import { ArrowRight, Code2, Github, Menu, X, Library } from 'lucide-react'
+import { ArrowRight, Code2 } from 'lucide-react'
 import { AnimatedDotCanvas } from '@/components/animated-dot-canvas'
 import { Globe3D } from '@/components/globe-3d'
 import { PlatformWorkspaceIllustration } from '@/components/landing/platform-workspace-illustration'
-import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
 import { CapabilityIllustration } from '@/components/landing/capability-illustration'
 import { ProcessShowcase, type ProcessStep } from '@/components/landing/process-showcase'
 import { useHasSupabaseSession } from '@/hooks/use-has-supabase-session'
+import { PublicPageWrapper } from '@/app/public-layout'
 
 type Capability = { number: string; title: string; description: string }
 
-const NAV_SCROLL_THRESHOLD = 32
-const DASHBOARD_HREF = '/dashboard'
-
 export default function Home() {
   const hasSession = useHasSupabaseSession()
-  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
-  const [navScrolled, setNavScrolled] = useState(false)
   const [displayedText, setDisplayedText] = useState('')
   const [currentWord, setCurrentWord] = useState(0)
-
-  const updateNavScroll = useCallback(() => {
-    setNavScrolled(window.scrollY > NAV_SCROLL_THRESHOLD)
-  }, [])
-
-  useEffect(() => {
-    updateNavScroll()
-    window.addEventListener('scroll', updateNavScroll, { passive: true })
-    return () => window.removeEventListener('scroll', updateNavScroll)
-  }, [updateNavScroll])
   
   const words = ['analyze', 'practice', 'learn', 'certify']
   const widestWord = words.reduce((a, b) => (a.length >= b.length ? a : b))
@@ -160,195 +144,7 @@ export async function bootstrap() {
   ]
 
   return (
-    <div className="min-h-screen bg-background text-foreground">
-      {/* Navigation — full-width glass at top; scrolled = floating centered pill (md+) */}
-      <nav
-        className={cn(
-          'fixed left-0 right-0 top-0 z-50 transition-all duration-500 ease-out',
-          navScrolled || mobileMenuOpen
-            ? 'bg-transparent pt-3 md:pt-4'
-            : 'border-b border-transparent bg-background/35 backdrop-blur-md supports-backdrop-filter:bg-background/25'
-        )}
-      >
-        <div
-          className={cn(
-            'mx-auto transition-all duration-500',
-            navScrolled || mobileMenuOpen
-              ? 'max-w-7xl px-3 sm:px-4 md:max-w-4xl md:px-4 lg:max-w-5xl xl:max-w-6xl'
-              : 'max-w-7xl px-4 sm:px-6 lg:px-8'
-          )}
-        >
-          <div
-            className={cn(
-              /* Mobile: two columns. md+: grid so center links never overlap theme / CTAs */
-              'relative flex items-center justify-between gap-2 transition-all duration-500 sm:gap-3 md:grid md:grid-cols-[auto_minmax(0,1fr)_auto] md:items-center md:justify-normal md:gap-x-2 md:gap-y-0 lg:gap-x-4',
-              navScrolled || mobileMenuOpen
-                ? cn(
-                    'min-h-[52px] border-b border-border/50 bg-background/92 py-2.5 shadow-sm backdrop-blur-xl supports-backdrop-filter:bg-background/88',
-                    'md:rounded-full md:border md:border-border/55 md:bg-background/80 md:py-2 md:shadow-[0_8px_30px_-8px_rgba(0,0,0,0.12)] md:backdrop-blur-xl dark:md:border-border/50 dark:md:shadow-[0_8px_32px_-8px_rgba(0,0,0,0.45)]',
-                    'md:border-b-0 md:px-4 md:py-2.5 lg:px-6 xl:px-7'
-                  )
-                : 'h-16 border-b border-transparent bg-transparent'
-            )}
-          >
-            <Link
-              href="/"
-              className="group relative z-10 flex min-w-0 shrink-0 items-center gap-2 transition-all duration-500 md:justify-self-start"
-              onClick={() => setMobileMenuOpen(false)}
-            >
-              <div
-                className={cn(
-                  'flex items-center justify-center rounded-lg bg-primary shadow-primary/25 transition-all duration-500',
-                  navScrolled || mobileMenuOpen ? 'h-7 w-7 shadow-sm md:h-8 md:w-8' : 'h-8 w-8 shadow-sm'
-                )}
-              >
-                <Code2
-                  className={cn(
-                    'text-primary-foreground transition-all duration-500',
-                    navScrolled || mobileMenuOpen ? 'h-3.5 w-3.5 md:h-4 md:w-4' : 'h-4 w-4'
-                  )}
-                />
-              </div>
-              <span
-                className={cn(
-                  'font-semibold tracking-tight text-foreground transition-all duration-500',
-                  navScrolled || mobileMenuOpen ? 'text-base md:text-lg' : 'text-[15px] sm:text-base'
-                )}
-              >
-                CodeSpectra
-                <sup className="ml-0.5 mt-0.5 font-mono text-[10px] font-medium text-muted-foreground transition-all duration-500">
-                  TM
-                </sup>
-              </span>
-            </Link>
-
-            <nav
-              className="hidden min-w-0 items-center justify-center justify-self-stretch md:flex"
-              aria-label="Primary"
-            >
-              <div className="flex max-w-full flex-wrap items-center justify-center gap-x-4 gap-y-1 sm:gap-x-5 md:gap-x-4 lg:gap-x-6 xl:gap-x-8">
-                {(
-                  [
-                    { href: '#capabilities', label: 'Features' },
-                    { href: '#how-it-works', label: 'How it works' },
-                    { href: '#integrations', label: 'Integrations' },
-                    { href: '/pricing', label: 'Pricing' },
-                  ] as const
-                ).map(({ href, label }) => (
-                  <Link
-                    key={href}
-                    href={href}
-                    className={cn(
-                      'group relative shrink-0 whitespace-nowrap text-sm transition-colors duration-300',
-                      navScrolled || mobileMenuOpen
-                        ? 'text-foreground/70 hover:text-foreground'
-                        : 'text-muted-foreground hover:text-foreground'
-                    )}
-                  >
-                    {label}
-                    <span
-                      className="absolute -bottom-1 left-0 h-px w-0 bg-foreground transition-all duration-300 group-hover:w-full"
-                      aria-hidden
-                    />
-                  </Link>
-                ))}
-              </div>
-            </nav>
-
-            <div className="relative z-10 flex shrink-0 items-center justify-end gap-2 md:justify-self-end md:gap-2 lg:gap-3">
-              <NavThemeSwitch compact className="shrink-0" />
-              <div className="hidden items-center gap-2 md:flex lg:gap-3">
-                {hasSession ? (
-                  <Button
-                    size="sm"
-                    asChild
-                    className={cn(
-                      'h-8 shrink-0 gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-all duration-500 hover:bg-primary/90 sm:px-4',
-                      (navScrolled || mobileMenuOpen) && 'md:shadow-md'
-                    )}
-                  >
-                    <Link href={DASHBOARD_HREF}>
-                      Go to dashboard
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <>
-                    <Link
-                      href="/auth/login"
-                      className={cn(
-                        'shrink-0 transition-all duration-500 hover:text-foreground',
-                        navScrolled || mobileMenuOpen ? 'text-xs text-foreground/70' : 'text-sm text-muted-foreground'
-                      )}
-                    >
-                      Sign in
-                    </Link>
-                    <Button
-                      size="sm"
-                      asChild
-                      className={cn(
-                        'h-8 shrink-0 gap-1.5 rounded-full bg-primary px-3 text-xs font-medium text-primary-foreground shadow-sm transition-all duration-500 hover:bg-primary/90 sm:px-4',
-                        (navScrolled || mobileMenuOpen) && 'md:shadow-md'
-                      )}
-                    >
-                      <Link href="/auth/signup">
-                        Get started
-                        <ArrowRight className="h-3.5 w-3.5" />
-                      </Link>
-                    </Button>
-                  </>
-                )}
-              </div>
-              <button
-                type="button"
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className={cn(
-                  'rounded-lg p-2 transition-colors md:hidden',
-                  navScrolled || mobileMenuOpen ? 'hover:bg-muted/80' : 'hover:bg-muted'
-                )}
-                aria-expanded={mobileMenuOpen}
-                aria-label={mobileMenuOpen ? 'Close menu' : 'Open menu'}
-              >
-                {mobileMenuOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
-              </button>
-            </div>
-          </div>
-
-          {/* Mobile Menu */}
-          {mobileMenuOpen && (
-            <div
-              className={cn(
-                'space-y-1 border-t py-4 md:hidden',
-                navScrolled ? 'border-border/50 bg-background/95 backdrop-blur-md' : 'border-border/40'
-              )}
-            >
-              <Link href="#capabilities" className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">Features</Link>
-              <Link href="#how-it-works" className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">How it works</Link>
-              <Link href="#integrations" className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">Integrations</Link>
-              <Link href="/pricing" className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">Pricing</Link>
-              <div className="flex gap-2 pt-3 px-3">
-                {hasSession ? (
-                  <Button size="sm" asChild className="w-full gap-1">
-                    <Link href={DASHBOARD_HREF}>
-                      Go to dashboard
-                      <ArrowRight className="h-3.5 w-3.5" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <>
-                    <Button variant="outline" size="sm" asChild className="flex-1">
-                      <Link href="/auth/login">Sign in</Link>
-                    </Button>
-                    <Button size="sm" asChild className="flex-1">
-                      <Link href="/auth/signup">Get started</Link>
-                    </Button>
-                  </>
-                )}
-              </div>
-            </div>
-          )}
-        </div>
-      </nav>
+    <PublicPageWrapper>
 
       {/* Hero — 3D globe backdrop only (no code-letter canvas); copy on top */}
       <section className="relative isolate overflow-hidden pt-28 pb-20 lg:pt-36 lg:pb-28 min-h-[90vh] flex items-center">
@@ -646,105 +442,6 @@ export async function bootstrap() {
         </div>
       </section>
 
-      {/* Footer — link columns + drifting circles + dot field (Optimus-style mood) */}
-      <footer className="relative overflow-hidden border-t border-border/40 bg-muted/15 py-20 dark:bg-muted/10 lg:py-24">
-        <FooterAnimatedBackdrop />
-        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          {/* Footer Grid */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 mb-12">
-            {/* Brand Column */}
-            <div className="col-span-2 md:col-span-1">
-              <Link href="/" className="flex items-center gap-2 mb-6">
-                <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-                  <Code2 className="w-4 h-4 text-primary-foreground" />
-                </div>
-                <span className="font-semibold text-lg">CodeSpectra</span>
-              </Link>
-              <p className="text-sm text-muted-foreground leading-relaxed">
-                CodeSpectra helps you learn and improve: scan your code, fix issues with guidance and AI support, practice
-                challenges, take courses and exams, train for interviews, earn certificates, and explore opportunities.
-              </p>
-            </div>
-            
-            {/* Product Column */}
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-6">Product</h4>
-              <ul className="space-y-4">
-                <li><Link href="/features" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Features</Link></li>
-                <li><Link href="#how-it-works" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">How it works</Link></li>
-                <li><Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Pricing</Link></li>
-                <li><Link href="/security" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Security</Link></li>
-                <li><Link href="#trust" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Trust on platform</Link></li>
-              </ul>
-            </div>
-            
-            {/* Resources Column */}
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-6">Resources</h4>
-              <ul className="space-y-4">
-                <li><Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</Link></li>
-                <li><Link href="/api-reference" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">API reference</Link></li>
-                <li><Link href="/faq" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">FAQ</Link></li>
-                <li><Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Blog</Link></li>
-                <li><Link href="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Support</Link></li>
-                <li><Link href="/dashboard/scanner?mode=manual" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Scanner (signed in)</Link></li>
-              </ul>
-            </div>
-            
-            {/* Company Column */}
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-6">Company</h4>
-              <ul className="space-y-4">
-                <li><Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">About</Link></li>
-                <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Contact</Link></li>
-                <li><Link href="/careers" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Careers</Link></li>
-              </ul>
-            </div>
-            
-            {/* Legal Column */}
-            <div>
-              <h4 className="font-semibold text-foreground text-sm mb-6">Legal</h4>
-              <ul className="space-y-4">
-                <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Privacy</Link></li>
-                <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Terms</Link></li>
-                <li><Link href="/cookies" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Cookies</Link></li>
-              </ul>
-            </div>
-          </div>
-
-          {/* Footer Bottom */}
-          <div className="flex flex-col gap-6 border-t border-border/40 pt-10 sm:flex-row sm:items-center sm:justify-between">
-            <p className="text-xs text-muted-foreground">© 2026 CodeSpectra. All rights reserved.</p>
-            <div className="flex flex-wrap items-center gap-4 sm:justify-end">
-              <div className="flex items-center gap-2 rounded-full border border-border/50 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
-                <span className="relative flex h-2 w-2 shrink-0">
-                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40" />
-                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
-                </span>
-                All systems operational
-              </div>
-              <div className="flex items-center gap-5">
-                <a
-                  href="https://github.com/Devender0077/CodeSpectra-Master"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
-                  aria-label="CodeSpectra on GitHub"
-                >
-                  <Github className="h-5 w-5" />
-                </a>
-                <Link
-                  href="/docs"
-                  className="text-muted-foreground transition-colors duration-200 hover:text-foreground"
-                  aria-label="Documentation"
-                >
-                  <Code2 className="h-5 w-5" />
-                </Link>
-              </div>
-            </div>
-          </div>
-        </div>
-      </footer>
-    </div>
+    </PublicPageWrapper>
   )
 }

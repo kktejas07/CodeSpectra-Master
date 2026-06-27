@@ -173,7 +173,7 @@ export default function SetupPage() {
                     </div>
                   </div>
                   <div className="bg-background border border-border/30 rounded p-2.5">
-                    <div className="text-xs font-semibold text-primary mb-1">DEMO USER</div>
+                    <div className="text-xs font-semibold text-primary mb-1">SETUP ADMIN</div>
                     <div className="text-xs space-y-1 font-mono">
                       <div className="flex justify-between">
                         <span className="text-muted-foreground">Email:</span>
