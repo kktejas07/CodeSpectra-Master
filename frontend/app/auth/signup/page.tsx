@@ -10,7 +10,6 @@ import {
   AlertCircle,
   ArrowRight,
   Check,
-  CheckCircle2,
   Code2,
   Eye,
   EyeOff,
@@ -18,8 +17,11 @@ import {
   Loader2,
   Lock,
   Mail,
+  Sparkles,
+  Terminal,
   User,
   X,
+  Zap,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { cn } from "@/lib/utils";
@@ -91,26 +93,83 @@ function SignupInner() {
   }
 
   return (
-    <div className="min-h-screen bg-background text-foreground flex flex-col items-center justify-center px-4 py-12">
-      <div className="w-full max-w-md space-y-8">
-        <div className="text-center">
-          <Link href="/" className="inline-flex items-center gap-2 mb-8">
-            <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
-              <Code2 className="w-4 h-4 text-primary-foreground" />
-            </div>
-            <span className="font-semibold text-lg tracking-tight">CodeSpectra</span>
-          </Link>
-          <h1 className="text-2xl font-bold tracking-tight">Create your account</h1>
-          <p className="text-muted-foreground mt-2">Start your journey with CodeSpectra</p>
+    <div className="min-h-screen w-full grid lg:grid-cols-[1.05fr_1fr] bg-background">
+      {/* Brand panel — visible on lg+ */}
+      <aside className="hidden lg:flex relative overflow-hidden flex-col justify-between p-12 xl:p-16 bg-[radial-gradient(60%_60%_at_30%_20%,hsl(var(--primary)/0.18)_0%,transparent_60%),radial-gradient(40%_40%_at_80%_90%,hsl(var(--primary)/0.10)_0%,transparent_55%)]">
+        <div aria-hidden className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
+        <div className="relative flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_40px_-8px_hsl(var(--primary)/0.7)]">
+            <Terminal className="h-5 w-5" />
+          </div>
+          <span className="text-lg font-semibold tracking-tight">CodeSpectra</span>
         </div>
+        <div className="relative space-y-8 max-w-lg">
+          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur px-3 py-1 text-xs text-muted-foreground">
+            <Sparkles className="h-3 w-3 text-primary" />
+            Code quality + competitive coding, one platform
+          </div>
+          <h1 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.05]">
+            Ship cleaner code.<br />
+            <span className="text-primary">Win the competition.</span>
+          </h1>
+          <p className="text-muted-foreground text-base leading-relaxed">
+            CodeSpectra fuses SonarQube-grade static analysis with a HackerRank-style arena. Scan, fix, and compete — all in one workspace.
+          </p>
+          <div className="grid grid-cols-1 gap-3 text-sm">
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+                <Zap className="h-4 w-4" />
+              </span>
+              <span className="text-foreground/85">AI fix suggestions on every issue</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+                <Terminal className="h-4 w-4" />
+              </span>
+              <span className="text-foreground/85">40+ languages, real test cases, live judging</span>
+            </div>
+            <div className="flex items-center gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+                <Code2 className="h-4 w-4" />
+              </span>
+              <span className="text-foreground/85">Quality gates that block bad pushes</span>
+            </div>
+          </div>
+        </div>
+        <div className="relative flex items-center justify-between text-xs text-muted-foreground">
+          <span>&copy; 2026 CodeSpectra</span>
+          <div className="flex items-center gap-4">
+            <Link href="/privacy" className="hover:text-foreground transition">Privacy</Link>
+            <Link href="/terms" className="hover:text-foreground transition">Terms</Link>
+          </div>
+        </div>
+      </aside>
 
-        <div className="bg-card border border-border/40 rounded-xl p-6 space-y-6">
+      {/* Signup form */}
+      <main className="flex items-center justify-center px-6 py-10 sm:px-12">
+        <div className="w-full max-w-md space-y-7">
+          {/* Mobile logo */}
+          <div className="lg:hidden flex items-center gap-2">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+              <Terminal className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-semibold">CodeSpectra</span>
+          </div>
+
+          <div className="space-y-2">
+            <h2 className="text-2xl font-bold tracking-tight">Create your account</h2>
+            <p className="text-sm text-muted-foreground">
+              Already have one?{" "}
+              <Link href="/auth/login" className="font-medium text-primary hover:underline">Sign in</Link>
+            </p>
+          </div>
+
           <div className="grid grid-cols-2 gap-3">
             <Button
               variant="outline"
               onClick={handleGoogleSignUp}
               disabled={loading}
-              className="w-full gap-2 h-11"
+              className="w-full h-11 gap-2"
             >
               <svg className="w-5 h-5" viewBox="0 0 24 24">
                 <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92a5.06 5.06 0 0 1-2.2 3.32v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.1z" fill="#4285F4"/>
@@ -124,7 +183,7 @@ function SignupInner() {
               variant="outline"
               onClick={handleGithubSignUp}
               disabled={loading}
-              className="w-full gap-2 h-11"
+              className="w-full h-11 gap-2"
             >
               <Github className="w-5 h-5" />
               GitHub
@@ -133,10 +192,10 @@ function SignupInner() {
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
-              <span className="w-full border-t border-border/40" />
+              <span className="w-full border-t" />
             </div>
-            <div className="relative flex justify-center text-xs uppercase">
-              <span className="bg-card px-2 text-muted-foreground">Or sign up with email</span>
+            <div className="relative flex justify-center text-xs uppercase tracking-wider">
+              <span className="bg-background px-3 text-muted-foreground">or sign up with email</span>
             </div>
           </div>
 
@@ -151,14 +210,14 @@ function SignupInner() {
             <div className="space-y-2">
               <Label htmlFor="name">Full name</Label>
               <div className="relative">
-                <User className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <User className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="name"
                   type="text"
                   placeholder="John Doe"
                   value={name}
                   onChange={(e) => setName(e.target.value)}
-                  className="pl-10"
+                  className="pl-9 h-11"
                   required
                   autoComplete="name"
                 />
@@ -168,14 +227,14 @@ function SignupInner() {
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <div className="relative">
-                <Mail className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="email"
                   type="email"
                   placeholder="you@example.com"
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
-                  className="pl-10"
+                  className="pl-9 h-11"
                   required
                   autoComplete="email"
                 />
@@ -185,14 +244,14 @@ function SignupInner() {
             <div className="space-y-2">
               <Label htmlFor="password">Password</Label>
               <div className="relative">
-                <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
                 <Input
                   id="password"
                   type={showPassword ? "text" : "password"}
                   placeholder="At least 8 characters"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                  className="pl-10 pr-10"
+                  className="pl-9 pr-10 h-11"
                   required
                   minLength={8}
                   autoComplete="new-password"
@@ -224,23 +283,19 @@ function SignupInner() {
               )}
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full gap-2 h-11">
+            <Button type="submit" disabled={loading} className="w-full h-11 gap-2">
               {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
               {loading ? "Creating account..." : "Create account"}
             </Button>
           </form>
-        </div>
 
-        <p className="text-center text-sm text-muted-foreground">
-          Already have an account?{" "}
-          <Link
-            href="/auth/login"
-            className="font-medium text-foreground hover:text-primary transition-colors"
-          >
-            Sign in
-          </Link>
-        </p>
-      </div>
+          <p className="text-xs text-muted-foreground text-center">
+            By signing up you agree to our{" "}
+            <Link href="/terms" className="underline hover:text-foreground">Terms</Link> and{" "}
+            <Link href="/privacy" className="underline hover:text-foreground">Privacy Policy</Link>.
+          </p>
+        </div>
+      </main>
     </div>
   );
 }
