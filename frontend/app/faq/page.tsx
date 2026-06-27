@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { ChevronDown } from 'lucide-react'
+import { PublicPageWrapper } from '@/app/public-layout'
 
 export default function FAQPage() {
   const [openIndex, setOpenIndex] = useState(0)
@@ -79,6 +80,7 @@ export default function FAQPage() {
   ]
 
   return (
+    <PublicPageWrapper>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="pt-20 pb-16 px-4 sm:px-6 lg:px-8 max-w-4xl mx-auto text-center">
@@ -140,5 +142,6 @@ export default function FAQPage() {
         </div>
       </div>
     </div>
+    </PublicPageWrapper>
   )
 }

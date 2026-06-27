@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card'
 import { Users, Zap, Target, Award } from 'lucide-react'
+import { PublicPageWrapper } from '@/app/public-layout'
 
 export default function AboutPage() {
   const team = [
@@ -35,6 +36,7 @@ export default function AboutPage() {
   ]
 
   return (
+    <PublicPageWrapper>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="pt-20 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
@@ -106,5 +108,6 @@ export default function AboutPage() {
         </div>
       </div>
     </div>
+    </PublicPageWrapper>
   )
 }
