@@ -7,7 +7,7 @@ import { useState } from 'react'
 import { useHasSupabaseSession } from '@/hooks/use-has-supabase-session'
 import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
 
-const DASHBOARD_HREF = '/dashboard'
+export const DASHBOARD_HREF = '/dashboard'
 
 export function PublicPageWrapper({
   children,

@@ -2,112 +2,200 @@
 
 import Link from 'next/link'
 import { useState, useMemo } from 'react'
-import { Search, ChevronRight, BookOpen, Code2, Zap, Shield, Settings, Trophy, Users, BarChart3, Terminal, MessageSquare, Menu, X, ChevronDown, ExternalLink } from 'lucide-react'
+import { Search, ChevronRight, BookOpen, Code2, Zap, Shield, Settings, Trophy, Users, BarChart3, Terminal, MessageSquare, Menu, X, ChevronDown, ExternalLink, CheckCircle, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { PublicPageWrapper } from '@/app/public-layout'
 
-const docStructure = [
+type DocItem = {
+  id: string
+  label: string
+  desc: string
+  href: string
+}
+
+type DocSection = {
+  id: string
+  title: string
+  icon: typeof Zap
+  content: string
+  features: { title: string; text: string }[]
+  items: DocItem[]
+}
+
+const docSections: DocSection[] = [
   {
+    id: 'getting-started',
     title: 'Getting Started',
     icon: Zap,
+    content: 'CodeSpectra is a unified platform for developers who want to write better code, learn new skills, and advance their careers. Unlike traditional learning platforms that focus only on theory, CodeSpectra combines static code analysis, AI-powered fixes, structured learning paths, coding challenges, interview simulations, and career tools in one workspace. Your account ties everything together — scan a real project, practice in the arena, take a course, then apply for roles with certificates and a polished resume, all without switching between tools.',
+    features: [
+      { title: 'Unified dashboard', text: 'Every module — scanner, challenges, courses, interviews, jobs — is accessible from one sidebar after a single sign-in.' },
+      { title: 'Progress persistence', text: 'Scans, completed challenges, course progress, interview feedback, and certificates are tied to your account and persist across sessions.' },
+      { title: 'Role-based access', text: 'Learners access their own content; admins manage users, teams, and platform settings. Your role determines what you see.' },
+      { title: 'Integration ready', text: 'Connect GitHub for repository context, Google for faster sign-in, and Slack for notifications — all from the settings panel.' },
+    ],
     items: [
-      { label: 'What is CodeSpectra?', href: '/about', desc: 'Platform overview and key capabilities' },
-      { label: 'Quick Start Guide', href: '/auth/signup', desc: 'Create your account in minutes' },
-      { label: 'Dashboard Tour', href: '/dashboard', desc: 'Navigate your personal dashboard' },
-      { label: 'Account Settings', href: '/dashboard/settings', desc: 'Manage profile, security, and preferences' },
-      { label: 'Roles & Permissions', href: '/admin/roles', desc: 'Understanding user roles and access levels' },
+      { id: 'what-is-codespectra', label: 'What is CodeSpectra?', desc: 'Platform overview and key capabilities', href: '/docs#getting-started' },
+      { id: 'quick-start', label: 'Quick Start Guide', desc: 'Create your account in minutes', href: '/auth/signup' },
+      { id: 'dashboard-tour', label: 'Dashboard Tour', desc: 'Navigate your personal dashboard', href: '/dashboard' },
+      { id: 'account-settings', label: 'Account Settings', desc: 'Manage profile, security, and preferences', href: '/dashboard/settings' },
+      { id: 'roles', label: 'Roles & Permissions', desc: 'Understanding user roles and access levels', href: '/docs#roles-section' },
     ],
   },
   {
+    id: 'code-analysis',
     title: 'Code Analysis',
     icon: Code2,
+    content: 'The code analysis engine scans your source code for bugs, vulnerabilities, code smells, and maintainability issues. It supports multiple languages and provides severity-ranked results so you know what to fix first. Each issue includes an explanation, the exact location in your code, and (when available) an AI-generated fix suggestion. You can submit code manually through the web interface or connect a GitHub repository for automatic scanning on every push.',
+    features: [
+      { title: 'Multi-language support', text: 'Scan TypeScript, JavaScript, Python, Java, Go, Rust, and more. The parser automatically detects the language from the file extension or content.' },
+      { title: 'Severity classification', text: 'Every issue is tagged as error, warning, or info. Quality gates let you enforce rules like "zero errors before merge".' },
+      { title: 'AI-assisted fixes', text: 'For many issue types, the engine generates a suggested fix with a diff preview. Review the change and apply it directly or copy the recommendation.' },
+      { title: 'Historical trends', text: 'The analytics dashboard tracks issue counts over time so you can see whether your codebase is improving after each scan.' },
+    ],
     items: [
-      { label: 'Manual Code Scan', href: '/dashboard/scanner?mode=manual', desc: 'Submit code for instant analysis' },
-      { label: 'GitHub Integration', href: '/dashboard/admin/integrations', desc: 'Auto-scan repositories on push' },
-      { label: 'Issue Types', href: '/dashboard/scanner', desc: 'Bugs, vulnerabilities, code smells, and more' },
-      { label: 'Quality Gates', href: '/dashboard/scanner', desc: 'Set quality thresholds and enforce standards' },
-      { label: 'AI-Powered Fixes', href: '/dashboard/scanner', desc: 'Get intelligent fix suggestions' },
-      { label: 'Analysis Reports', href: '/dashboard/analytics', desc: 'View and export detailed reports' },
+      { id: 'manual-scan', label: 'Manual Code Scan', desc: 'Submit code for instant analysis', href: '/dashboard/scanner?mode=manual' },
+      { id: 'github-scan', label: 'GitHub Integration', desc: 'Auto-scan repositories on push', href: '/dashboard/admin/integrations' },
+      { id: 'issue-types', label: 'Issue Types', desc: 'Bugs, vulnerabilities, code smells, and more', href: '/docs#issue-types-section' },
+      { id: 'quality-gates', label: 'Quality Gates', desc: 'Set quality thresholds and enforce standards', href: '/docs#quality-gates-section' },
+      { id: 'ai-fixes', label: 'AI-Powered Fixes', desc: 'Get intelligent fix suggestions', href: '/docs#ai-fixes-section' },
+      { id: 'reports', label: 'Analysis Reports', desc: 'View and export detailed reports', href: '/dashboard/analytics' },
     ],
   },
   {
+    id: 'challenges',
     title: 'Learning & Challenges',
     icon: Trophy,
+    content: 'The challenges module lets you practice coding through structured problems, timed competitions, and real-time arena battles. Problems span multiple difficulty levels and domains including algorithms, data structures, system design, and debugging. Each challenge includes test cases, a built-in code editor, and immediate pass/fail feedback. Arena mode pairs you with other learners for head-to-head competition, and the leaderboard tracks your performance over time.',
+    features: [
+      { title: 'Structured difficulty', text: 'Problems are categorized as easy, medium, hard, and expert. Start where you are comfortable and progress as your skills grow.' },
+      { title: 'Real-time arena', text: 'Arena mode matches you with peers for timed coding battles. Solve the same problem faster or more efficiently than your opponent to win.' },
+      { title: 'Daily challenges', text: 'A new problem every day keeps your skills sharp. Complete the daily challenge to build streaks and earn badges.' },
+      { title: 'Leaderboards', text: 'Compare your performance across challenges, arenas, and codeathons. Filter by domain, difficulty, or time period.' },
+    ],
     items: [
-      { label: 'Coding Challenges', href: '/dashboard/challenges', desc: 'Solve problems across multiple domains' },
-      { label: 'Arena Mode', href: '/dashboard/arena', desc: 'Real-time competitive coding battles' },
-      { label: 'Learning Tracks', href: '/dashboard/tracks', desc: 'Structured learning paths with milestones' },
-      { label: 'Daily Challenges', href: '/dashboard', desc: 'New challenges every day' },
-      { label: 'Leaderboards', href: '/dashboard/leaderboard', desc: 'Compare performance with peers' },
-      { label: 'Codeathons', href: '/dashboard/codeathons', desc: 'Timed coding events and competitions' },
+      { id: 'challenges', label: 'Coding Challenges', desc: 'Solve problems across multiple domains', href: '/dashboard/challenges' },
+      { id: 'arena', label: 'Arena Mode', desc: 'Real-time competitive coding battles', href: '/dashboard/arena' },
+      { id: 'tracks', label: 'Learning Tracks', desc: 'Structured learning paths with milestones', href: '/dashboard/tracks' },
+      { id: 'daily', label: 'Daily Challenges', desc: 'New challenges every day', href: '/dashboard' },
+      { id: 'leaderboard', label: 'Leaderboards', desc: 'Compare performance with peers', href: '/dashboard/leaderboard' },
+      { id: 'codeathons', label: 'Codeathons', desc: 'Timed coding events and competitions', href: '/dashboard/codeathons' },
     ],
   },
   {
+    id: 'courses',
     title: 'Courses & Exams',
     icon: BookOpen,
+    content: 'The learning module offers structured courses that combine lessons, quizzes, and hands-on exercises. Each course has a clear curriculum with milestones. Exams are timed assessments that test your knowledge, and passing an exam earns you a verifiable certificate. Progress tracking shows your completion percentage, scores, and time spent across all enrolled courses. Certificates can be shared on LinkedIn or included in your resume.',
+    features: [
+      { title: 'Structured curriculum', text: 'Courses are organized into modules with lessons, quizzes, and practical exercises. Each module builds on the previous one.' },
+      { title: 'Timed exams', text: 'Exams simulate real-world pressure with countdown timers. Questions cover multiple formats: multiple choice, code writing, and debugging.' },
+      { title: 'Verifiable certificates', text: 'Pass an exam to earn a certificate with a unique verification code. Employers and peers can verify authenticity online.' },
+      { title: 'Progress dashboard', text: 'See completion percentages, scores, time spent, and streak data for all enrolled courses and upcoming exams.' },
+    ],
     items: [
-      { label: 'Course Catalog', href: '/dashboard/learning', desc: 'Browse available courses' },
-      { label: 'Taking Exams', href: '/dashboard/exams', desc: 'Timed assessments with proctoring' },
-      { label: 'Certifications', href: '/dashboard/certifications', desc: 'Earn verifiable certificates' },
-      { label: 'Progress Tracking', href: '/dashboard/learning', desc: 'Monitor completion and scores' },
+      { id: 'catalog', label: 'Course Catalog', desc: 'Browse available courses', href: '/dashboard/learning' },
+      { id: 'exams', label: 'Taking Exams', desc: 'Timed assessments with proctoring', href: '/dashboard/exams' },
+      { id: 'certifications', label: 'Certifications', desc: 'Earn verifiable certificates', href: '/dashboard/certifications' },
+      { id: 'progress', label: 'Progress Tracking', desc: 'Monitor completion and scores', href: '/dashboard/learning' },
     ],
   },
   {
+    id: 'career',
     title: 'Career Development',
     icon: Users,
+    content: 'The career module bridges the gap between learning and employment. Dynamic interviews use AI to simulate real interview scenarios, asking questions and evaluating your responses. After each interview, you receive detailed feedback on technical accuracy, communication, and areas for improvement. The resume builder helps you create professional resumes that highlight your skills, certificates, and experience. Job listings let you browse and apply to positions directly from the platform.',
+    features: [
+      { title: 'AI interview simulations', text: 'Practice with dynamic interviews that adapt to your answers. Choose from technical, behavioral, or mixed formats.' },
+      { title: 'Detailed feedback', text: 'After each interview, review your performance with scores, transcript analysis, and specific improvement suggestions.' },
+      { title: 'Resume builder', text: 'Build professional resumes with drag-and-drop sections. Import your certificates and completed courses automatically.' },
+      { title: 'Job marketplace', text: 'Browse listings from partner companies. Filter by role type, location, experience level, and required skills.' },
+    ],
     items: [
-      { label: 'Dynamic Interviews', href: '/dashboard/interviews/dynamic', desc: 'AI-powered interview simulations' },
-      { label: 'Interview Feedback', href: '/dashboard/interviews/feedback', desc: 'Review performance and improve' },
-      { label: 'Resume Builder', href: '/dashboard/resumes', desc: 'Create and manage professional resumes' },
-      { label: 'Job Listings', href: '/dashboard/jobs', desc: 'Browse and apply to positions' },
-      { label: 'Skill Analytics', href: '/dashboard/skill-analytics', desc: 'Identify skill gaps and growth areas' },
+      { id: 'interviews', label: 'Dynamic Interviews', desc: 'AI-powered interview simulations', href: '/dashboard/interviews/dynamic' },
+      { id: 'feedback', label: 'Interview Feedback', desc: 'Review performance and improve', href: '/dashboard/interviews/feedback' },
+      { id: 'resume', label: 'Resume Builder', desc: 'Create and manage professional resumes', href: '/dashboard/resumes' },
+      { id: 'jobs', label: 'Job Listings', desc: 'Browse and apply to positions', href: '/dashboard/jobs' },
+      { id: 'skills', label: 'Skill Analytics', desc: 'Identify skill gaps and growth areas', href: '/dashboard/skill-analytics' },
     ],
   },
   {
+    id: 'administration',
     title: 'Administration',
     icon: Shield,
+    content: 'The administration panel gives platform and tenant admins the tools to manage users, teams, security, and platform settings. User management covers account creation, role assignment, and access revocation. Team management lets you organize users into groups for shared resources and permissions. Security settings control authentication methods, session policies, and OAuth configurations. Audit logs record every administrative action for compliance and troubleshooting.',
+    features: [
+      { title: 'User lifecycle management', text: 'Create, suspend, or delete accounts. Assign roles (learner, admin, superadmin) and manage authentication providers.' },
+      { title: 'Team organization', text: 'Group users into teams with shared access to resources, courses, and billing. Team admins can manage their members.' },
+      { title: 'Security controls', text: 'Configure password policies, session timeouts, OAuth providers (Google, GitHub), and MFA requirements.' },
+      { title: 'Audit trail', text: 'Every admin action is logged with timestamp, actor, action type, and details. Export logs for external compliance.' },
+    ],
     items: [
-      { label: 'User Management', href: '/dashboard/admin/users', desc: 'Create and manage user accounts' },
-      { label: 'Team Management', href: '/dashboard/admin/team', desc: 'Organize users into teams' },
-      { label: 'Platform Settings', href: '/dashboard/admin/settings', desc: 'Configure global platform options' },
-      { label: 'Security Settings', href: '/dashboard/admin/security', desc: 'Configure authentication and access controls' },
-      { label: 'Audit Logs', href: '/dashboard/admin/audit-logs', desc: 'Track all administrative changes' },
-      { label: 'System Health', href: '/dashboard/admin/system', desc: 'Monitor platform performance and status' },
+      { id: 'user-mgmt', label: 'User Management', desc: 'Create and manage user accounts', href: '/dashboard/admin/users' },
+      { id: 'team-mgmt', label: 'Team Management', desc: 'Organize users into teams', href: '/dashboard/admin/team' },
+      { id: 'platform-settings', label: 'Platform Settings', desc: 'Configure global platform options', href: '/dashboard/admin/settings' },
+      { id: 'security', label: 'Security Settings', desc: 'Configure authentication and access controls', href: '/dashboard/admin/security' },
+      { id: 'audit', label: 'Audit Logs', desc: 'Track all administrative changes', href: '/dashboard/admin/audit-logs' },
+      { id: 'system-health', label: 'System Health', desc: 'Monitor platform performance and status', href: '/dashboard/admin/system' },
     ],
   },
   {
+    id: 'billing',
     title: 'Billing & Plans',
     icon: Settings,
+    content: 'CodeSpectra offers tiered subscription plans that scale with your needs. The free tier provides access to basic scanning and a limited number of challenges. Paid plans unlock advanced analysis, unlimited challenges, full course access, interview simulations, and priority support. Billing is managed through Razorpay with support for monthly and annual billing cycles. Admins can configure organization-wide billing and provision seats for their team.',
+    features: [
+      { title: 'Tiered plans', text: 'Choose from Free, Pro, and Enterprise tiers. Each tier adds more scans, challenges, courses, and support options.' },
+      { title: 'Flexible billing', text: 'Monthly and annual billing cycles. Annual plans include a discount. Switch or cancel anytime from the billing dashboard.' },
+      { title: 'Team billing', text: 'Enterprise admins can manage organization-wide subscriptions, allocate seats, and view consolidated billing.' },
+      { title: 'Invoice history', text: 'All payments, invoices, and receipts are available in the billing dashboard. Download past invoices for accounting.' },
+    ],
     items: [
-      { label: 'Pricing Plans', href: '/pricing', desc: 'Compare available subscription tiers' },
-      { label: 'Subscription Management', href: '/dashboard/billing', desc: 'Manage your active subscription' },
-      { label: 'Payment Methods', href: '/dashboard/billing', desc: 'Add and manage payment options' },
-      { label: 'Invoices & Receipts', href: '/dashboard/billing', desc: 'View and download billing history' },
-      { label: 'Admin Billing', href: '/dashboard/admin/pricing', desc: 'Configure organization billing' },
+      { id: 'pricing', label: 'Pricing Plans', desc: 'Compare available subscription tiers', href: '/pricing' },
+      { id: 'subscription', label: 'Subscription Management', desc: 'Manage your active subscription', href: '/dashboard/billing' },
+      { id: 'payment', label: 'Payment Methods', desc: 'Add and manage payment options', href: '/dashboard/billing' },
+      { id: 'invoices', label: 'Invoices & Receipts', desc: 'View and download billing history', href: '/dashboard/billing' },
+      { id: 'admin-billing', label: 'Admin Billing', desc: 'Configure organization billing', href: '/dashboard/admin/pricing' },
     ],
   },
   {
+    id: 'integrations',
     title: 'Integrations',
     icon: Terminal,
+    content: 'Integrations extend CodeSpectra\'s functionality by connecting with the tools you already use. GitHub integration enables automatic code scanning when you push to a repository — every pull request gets a quality report before merge. Google Sign-In provides one-click authentication. Slack integration sends scan results and challenge notifications to your workspace. Razorpay powers the billing system. OpenAI provides AI-driven code explanations and fix suggestions. Each integration is configured from the admin settings panel and requires your explicit authorization.',
+    features: [
+      { title: 'GitHub auto-scan', text: 'Connect your repositories to scan every push and pull request. Quality gate results appear directly in the PR conversation.' },
+      { title: 'Google OAuth', text: 'Sign in with your Google account. No separate password to remember. Configure which Google Workspace domains are allowed.' },
+      { title: 'Slack notifications', text: 'Receive scan results, challenge reminders, and system alerts in your Slack workspace. Configure per-channel webhooks.' },
+      { title: 'AI integration', text: 'OpenAI powers fix suggestions, code explanations, and interview question generation. No API key setup needed on your end.' },
+    ],
     items: [
-      { label: 'GitHub', href: '/dashboard/admin/integrations', desc: 'Repository scanning and OAuth' },
-      { label: 'Google Sign-In', href: '/auth/login', desc: 'OAuth authentication with Google' },
-      { label: 'Slack', href: '/dashboard/admin/settings', desc: 'Real-time notifications in Slack' },
-      { label: 'Razorpay', href: '/dashboard/admin/pricing', desc: 'Payment processing integration' },
-      { label: 'OpenAI', href: '/dashboard/admin/settings', desc: 'AI-powered code explanations' },
-      { label: 'Email (SMTP)', href: '/dashboard/admin/settings', desc: 'Configure email notifications' },
+      { id: 'github', label: 'GitHub', desc: 'Repository scanning and OAuth', href: '/dashboard/admin/integrations' },
+      { id: 'google', label: 'Google Sign-In', desc: 'OAuth authentication with Google', href: '/auth/login' },
+      { id: 'slack', label: 'Slack', desc: 'Real-time notifications in Slack', href: '/dashboard/admin/settings' },
+      { id: 'razorpay', label: 'Razorpay', desc: 'Payment processing integration', href: '/dashboard/admin/pricing' },
+      { id: 'openai', label: 'OpenAI', desc: 'AI-powered code explanations', href: '/dashboard/admin/settings' },
+      { id: 'email', label: 'Email (SMTP)', desc: 'Configure email notifications', href: '/dashboard/admin/settings' },
     ],
   },
   {
+    id: 'api',
     title: 'API & Developers',
     icon: Terminal,
+    content: 'CodeSpectra exposes a REST API that lets you integrate code analysis, challenge data, and user management into your own tools and workflows. Authentication uses Firebase Auth tokens or API keys. The code analysis endpoint accepts source code and returns issues with severity, location, and suggested fixes. Webhooks notify your server when scans complete, challenges are created, or user status changes. Rate limits ensure fair usage across all API consumers.',
+    features: [
+      { title: 'RESTful design', text: 'All endpoints follow REST conventions with JSON request/response bodies. Base URL is available in the API reference.' },
+      { title: 'Firebase Auth', text: 'Authenticate with Firebase ID tokens or custom API keys. Tokens are validated server-side for each request.' },
+      { title: 'Webhook events', text: 'Subscribe to events like scan.completed, challenge.submitted, or user.updated. Payloads include full context for processing.' },
+      { title: 'Usage quotas', text: 'Rate limits are applied per API key or user. Check the response headers for remaining quota and reset time.' },
+    ],
     items: [
-      { label: 'Authentication', href: '/api-reference#auth', desc: 'Firebase Auth integration' },
-      { label: 'REST API', href: '/api-reference', desc: 'API endpoints and usage' },
-      { label: 'Code Analysis API', href: '/api-reference#analyze', desc: 'Programmatic code scanning' },
-      { label: 'Webhooks', href: '/api-reference#webhooks', desc: 'Event-driven integrations' },
-      { label: 'Rate Limits', href: '/api-reference', desc: 'API usage limits and best practices' },
+      { id: 'auth-api', label: 'Authentication', desc: 'Firebase Auth integration', href: '/api-reference#auth' },
+      { id: 'rest-api', label: 'REST API', desc: 'API endpoints and usage', href: '/api-reference' },
+      { id: 'analyze-api', label: 'Code Analysis API', desc: 'Programmatic code scanning', href: '/api-reference#analyze' },
+      { id: 'webhooks', label: 'Webhooks', desc: 'Event-driven integrations', href: '/api-reference#webhooks' },
+      { id: 'rate-limits', label: 'Rate Limits', desc: 'API usage limits and best practices', href: '/api-reference' },
     ],
   },
 ]
@@ -119,8 +207,8 @@ export default function DocsPage() {
 
   const filteredSections = useMemo(() => {
     const q = searchQuery.trim().toLowerCase()
-    if (!q) return docStructure
-    return docStructure
+    if (!q) return docSections
+    return docSections
       .map((s) => ({
         ...s,
         items: s.items.filter(
@@ -129,6 +217,15 @@ export default function DocsPage() {
       }))
       .filter((s) => s.items.length > 0)
   }, [searchQuery])
+
+  const scrollToSection = (id: string) => {
+    setSidebarOpen(false)
+    const el = document.getElementById(id)
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'start' })
+      setActiveSection(id)
+    }
+  }
 
   return (
     <PublicPageWrapper>
@@ -149,13 +246,19 @@ export default function DocsPage() {
               </button>
             </div>
             <nav className="flex-1 overflow-y-auto p-4 space-y-1">
-              {docStructure.map((section) => {
+              {docSections.map((section) => {
                 const Icon = section.icon
-                const isActive = activeSection === section.title
+                const isActive = activeSection === section.id
                 return (
-                  <div key={section.title}>
+                  <div key={section.id}>
                     <button
-                      onClick={() => setActiveSection(isActive ? null : section.title)}
+                      onClick={() => {
+                        if (activeSection === section.id) {
+                          setActiveSection(null)
+                        } else {
+                          scrollToSection(section.id)
+                        }
+                      }}
                       className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium hover:bg-muted transition-colors"
                     >
                       <Icon className="h-4 w-4 text-muted-foreground" />
@@ -166,7 +269,7 @@ export default function DocsPage() {
                       <div className="ml-6 mt-1 space-y-0.5">
                         {section.items.map((item) => (
                           <Link
-                            key={item.label}
+                            key={item.id}
                             href={item.href}
                             className="block rounded-md px-3 py-1.5 text-sm text-muted-foreground hover:text-foreground hover:bg-muted/50 transition-colors"
                           >
@@ -189,7 +292,7 @@ export default function DocsPage() {
 
         {/* Main content */}
         <main className="flex-1 min-w-0">
-          <div className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
+          <div className="max-w-4xl mx-auto px-4 sm:px-6 lg:px-8 py-8">
             {/* Mobile menu button & breadcrumb */}
             <div className="flex items-center gap-3 mb-8">
               <button onClick={() => setSidebarOpen(true)} className="lg:hidden p-2 -ml-2 hover:bg-muted rounded-lg">
@@ -222,7 +325,7 @@ export default function DocsPage() {
                   <p className="text-muted-foreground">No results found for &quot;{searchQuery}&quot;</p>
                 ) : (
                   filteredSections.map((section) => (
-                    <div key={section.title}>
+                    <div key={section.id}>
                       <h3 className="text-lg font-semibold mb-3 flex items-center gap-2">
                         <section.icon className="h-4 w-4 text-primary" />
                         {section.title}
@@ -230,7 +333,7 @@ export default function DocsPage() {
                       <div className="grid gap-2 sm:grid-cols-2">
                         {section.items.map((item) => (
                           <Link
-                            key={item.label}
+                            key={item.id}
                             href={item.href}
                             className="group rounded-lg border border-border/40 p-4 hover:border-primary/40 hover:bg-primary/5 transition-all"
                           >
@@ -251,41 +354,59 @@ export default function DocsPage() {
                 <div className="mb-12">
                   <h1 className="text-4xl font-bold mb-3">CodeSpectra Documentation</h1>
                   <p className="text-lg text-muted-foreground max-w-2xl">
-                    Everything you need to know about using CodeSpectra. Browse by category below or use the search to find specific topics.
+                    Everything you need to know about using CodeSpectra. Browse the sections below or use the search to find specific topics.
                   </p>
                 </div>
 
-                <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                  {docStructure.map((section) => {
+                {/* Inline documentation sections */}
+                <div className="space-y-20">
+                  {docSections.map((section) => {
                     const Icon = section.icon
                     return (
-                      <Link
-                        key={section.title}
-                        href={section.items[0].href}
-                        className="group rounded-xl border border-border/40 p-6 hover:border-primary/40 hover:shadow-sm transition-all"
-                      >
-                        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10 mb-4 group-hover:bg-primary/20 transition-colors">
-                          <Icon className="h-5 w-5 text-primary" />
+                      <section key={section.id} id={section.id} className="scroll-mt-24">
+                        <div className="flex items-center gap-3 mb-4">
+                          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+                            <Icon className="h-5 w-5 text-primary" />
+                          </div>
+                          <h2 className="text-2xl font-bold">{section.title}</h2>
                         </div>
-                        <h3 className="font-semibold mb-1 group-hover:text-primary transition-colors">{section.title}</h3>
-                        <p className="text-sm text-muted-foreground mb-3">{section.items.length} topics</p>
-                        <ul className="space-y-1.5">
-                          {section.items.slice(0, 4).map((item) => (
-                            <li key={item.label} className="text-xs text-muted-foreground flex items-center gap-1.5">
-                              <span className="h-1 w-1 rounded-full bg-muted-foreground/40 shrink-0" />
-                              {item.label}
-                            </li>
+
+                        <p className="text-muted-foreground leading-relaxed mb-6">
+                          {section.content}
+                        </p>
+
+                        <div className="grid gap-4 sm:grid-cols-2 mb-8">
+                          {section.features.map((feature) => (
+                            <div key={feature.title} className="rounded-lg border border-border/40 p-4">
+                              <div className="flex items-start gap-3">
+                                <CheckCircle className="h-5 w-5 shrink-0 text-primary mt-0.5" />
+                                <div>
+                                  <h4 className="font-medium text-sm mb-1">{feature.title}</h4>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">{feature.text}</p>
+                                </div>
+                              </div>
+                            </div>
                           ))}
-                          {section.items.length > 4 && (
-                            <li className="text-xs text-primary">+{section.items.length - 4} more</li>
-                          )}
-                        </ul>
-                      </Link>
+                        </div>
+
+                        <div className="flex flex-wrap gap-2">
+                          {section.items.slice(0, 4).map((item) => (
+                            <Link
+                              key={item.id}
+                              href={item.href}
+                              className="inline-flex items-center gap-1.5 rounded-full border border-border/40 px-4 py-1.5 text-sm hover:border-primary/40 hover:text-primary transition-colors"
+                            >
+                              {item.label}
+                              <ArrowRight className="h-3 w-3" />
+                            </Link>
+                          ))}
+                        </div>
+                      </section>
                     )
                   })}
                 </div>
 
-                <div className="mt-16 rounded-xl border border-primary/20 bg-primary/5 p-8">
+                <div className="mt-20 rounded-xl border border-primary/20 bg-primary/5 p-8">
                   <div className="flex items-start gap-4">
                     <MessageSquare className="mt-0.5 h-6 w-6 shrink-0 text-primary" />
                     <div>
@@ -312,3 +433,4 @@ export default function DocsPage() {
     </PublicPageWrapper>
   )
 }
+

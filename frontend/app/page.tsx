@@ -11,7 +11,7 @@ import { PlatformWorkspaceIllustration } from '@/components/landing/platform-wor
 import { CapabilityIllustration } from '@/components/landing/capability-illustration'
 import { ProcessShowcase, type ProcessStep } from '@/components/landing/process-showcase'
 import { useHasSupabaseSession } from '@/hooks/use-has-supabase-session'
-import { PublicPageWrapper } from '@/app/public-layout'
+import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
 
 type Capability = { number: string; title: string; description: string }
 
