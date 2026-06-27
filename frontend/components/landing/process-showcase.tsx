@@ -361,7 +361,7 @@ export function ProcessShowcase({ steps, className }: ProcessShowcaseProps) {
           </p>
         </header>
 
-        <div className="mx-auto grid w-full max-w-7xl grid-cols-1 items-stretch gap-8 sm:gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)] lg:items-center lg:gap-10 xl:gap-14">
+        <div className="mx-auto grid w-full max-w-full sm:max-w-7xl grid-cols-1 items-stretch gap-8 sm:gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)] lg:items-center lg:gap-10 xl:gap-14">
           {/* Steps — second on mobile so code shows first */}
           <div className="order-2 min-w-0 space-y-0 self-start lg:order-1">
             {steps.map((s, i) => {
