@@ -9,7 +9,6 @@ import { Label } from "@/components/ui/label";
 import {
   AlertCircle,
   ArrowRight,
-  Check,
   Code2,
   Eye,
   EyeOff,
@@ -20,11 +19,9 @@ import {
   Sparkles,
   Terminal,
   User,
-  X,
   Zap,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
-import { cn } from "@/lib/utils";
 
 function SignupInner() {
   const router = useRouter();
@@ -32,7 +29,9 @@ function SignupInner() {
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signUpWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
@@ -48,6 +47,12 @@ function SignupInner() {
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
+
+    if (password !== confirmPassword) {
+      setError("Passwords do not match");
+      return;
+    }
+
     setLoading(true);
 
     try {
@@ -106,42 +111,59 @@ function SignupInner() {
         <div className="relative space-y-8 max-w-lg">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur px-3 py-1 text-xs text-muted-foreground">
             <Sparkles className="h-3 w-3 text-primary" />
-            Code quality + competitive coding, one platform
+            Join 10,000+ developers leveling up
           </div>
           <h1 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.05]">
-            Ship cleaner code.<br />
-            <span className="text-primary">Win the competition.</span>
+            Your code, graded.<br />
+            <span className="text-primary">Your skills, ranked.</span>
           </h1>
           <p className="text-muted-foreground text-base leading-relaxed">
-            CodeSpectra fuses SonarQube-grade static analysis with a HackerRank-style arena. Scan, fix, and compete — all in one workspace.
+            Get a free CodeSpectra account: unlimited code scans, AI fixes, and access to the coding arena with real test cases across 40+ languages.
           </p>
           <div className="grid grid-cols-1 gap-3 text-sm">
-            <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-                <Zap className="h-4 w-4" />
-              </span>
-              <span className="text-foreground/85">AI fix suggestions on every issue</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
-                <Terminal className="h-4 w-4" />
-              </span>
-              <span className="text-foreground/85">40+ languages, real test cases, live judging</span>
-            </div>
-            <div className="flex items-center gap-3">
-              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary">
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary shrink-0">
                 <Code2 className="h-4 w-4" />
               </span>
-              <span className="text-foreground/85">Quality gates that block bad pushes</span>
+              <span className="text-foreground/85">Unlimited code quality scans on your repos</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary shrink-0">
+                <Terminal className="h-4 w-4" />
+              </span>
+              <span className="text-foreground/85">Daily coding challenges with real-time judging</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary shrink-0">
+                <Zap className="h-4 w-4" />
+              </span>
+              <span className="text-foreground/85">Climb the leaderboard, earn ranks and badges</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="flex h-7 w-7 items-center justify-center rounded-md bg-primary/15 text-primary shrink-0">
+                <Github className="h-4 w-4" />
+              </span>
+              <span className="text-foreground/85">GitHub integration in two clicks</span>
+            </div>
+          </div>
+          <div className="grid grid-cols-3 gap-3 pt-2">
+            <div className="rounded-lg border border-border bg-card/60 backdrop-blur px-4 py-3">
+              <div className="flex items-center gap-1 text-2xl font-bold tracking-tight">40+</div>
+              <div className="text-xs text-muted-foreground mt-1">Languages</div>
+            </div>
+            <div className="rounded-lg border border-border bg-card/60 backdrop-blur px-4 py-3">
+              <div className="flex items-center gap-1 text-2xl font-bold tracking-tight">180K</div>
+              <div className="text-xs text-muted-foreground mt-1">Daily scans</div>
+            </div>
+            <div className="rounded-lg border border-border bg-card/60 backdrop-blur px-4 py-3">
+              <div className="flex items-center gap-1 text-2xl font-bold tracking-tight">2.4M</div>
+              <div className="text-xs text-muted-foreground mt-1">Issues fixed</div>
             </div>
           </div>
         </div>
         <div className="relative flex items-center justify-between text-xs text-muted-foreground">
           <span>&copy; 2026 CodeSpectra</span>
-          <div className="flex items-center gap-4">
-            <Link href="/privacy" className="hover:text-foreground transition">Privacy</Link>
-            <Link href="/terms" className="hover:text-foreground transition">Terms</Link>
-          </div>
+          <Link href="/" className="hover:text-foreground transition">&larr; Back to home</Link>
         </div>
       </aside>
 
@@ -195,7 +217,7 @@ function SignupInner() {
               <span className="w-full border-t" />
             </div>
             <div className="relative flex justify-center text-xs uppercase tracking-wider">
-              <span className="bg-background px-3 text-muted-foreground">or sign up with email</span>
+              <span className="bg-background px-3 text-muted-foreground">or use your email</span>
             </div>
           </div>
 
@@ -265,27 +287,39 @@ function SignupInner() {
                   {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                 </button>
               </div>
-              {password.length > 0 && (
-                <div className="space-y-1.5 pt-1">
-                  {passwordChecks.map((check) => (
-                    <div key={check.label} className="flex items-center gap-2 text-xs">
-                      {check.met ? (
-                        <Check className="w-3 h-3 text-green-500 shrink-0" />
-                      ) : (
-                        <X className="w-3 h-3 text-muted-foreground/40 shrink-0" />
-                      )}
-                      <span className={cn(check.met ? "text-green-500" : "text-muted-foreground")}>
-                        {check.label}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              )}
+              <p className="text-xs text-muted-foreground">Min 8 characters.</p>
             </div>
 
-            <Button type="submit" disabled={loading} className="w-full h-11 gap-2">
-              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-              {loading ? "Creating account..." : "Create account"}
+            <div className="space-y-2">
+              <Label htmlFor="confirm">Confirm password</Label>
+              <div className="relative">
+                <Lock className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                <Input
+                  id="confirm"
+                  type={showConfirm ? "text" : "password"}
+                  placeholder="Repeat your password"
+                  value={confirmPassword}
+                  onChange={(e) => setConfirmPassword(e.target.value)}
+                  className="pl-9 pr-10 h-11"
+                  required
+                  minLength={8}
+                  autoComplete="new-password"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowConfirm(!showConfirm)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground transition-colors"
+                  tabIndex={-1}
+                >
+                  {showConfirm ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                </button>
+              </div>
+            </div>
+
+            <Button type="submit" disabled={loading} className="w-full h-11 group">
+              {loading ? <Loader2 className="w-4 h-4 animate-spin" /> : null}
+              Create free account
+              {!loading && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
             </Button>
           </form>
 
