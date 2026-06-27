@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Code2, ArrowRight, Menu, X, Github, Library } from 'lucide-react'
+import { Code2, ArrowRight, Menu, X, Github } from 'lucide-react'
 import { useState } from 'react'
 import { useHasSupabaseSession } from '@/hooks/use-has-supabase-session'
+import { ThemeSwitcher } from '@/components/theme-switcher'
 import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
 
 export const DASHBOARD_HREF = '/dashboard'
@@ -39,7 +40,10 @@ export function PublicPageWrapper({
               <Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors">Pricing</Link>
             </div>
 
-            {/* Auth Buttons */}
+            {/* Theme + Auth Buttons */}
+            <div className="hidden md:flex items-center gap-1">
+              <ThemeSwitcher />
+            </div>
             <div className="hidden md:flex items-center gap-3">
               {hasSession ? (
                 <Button size="sm" asChild className="gap-1.5">
@@ -79,7 +83,11 @@ export function PublicPageWrapper({
               <Link href="/docs" className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">Docs</Link>
               <Link href="/support" className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">Support</Link>
               <Link href="/pricing" className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">Pricing</Link>
-              <div className="flex gap-2 pt-3 px-3">
+              <div className="flex items-center gap-3 px-3 pt-3">
+                <span className="text-sm text-muted-foreground">Theme</span>
+                <ThemeSwitcher />
+              </div>
+              <div className="flex gap-2 px-3 pt-2">
                 {hasSession ? (
                   <Button size="sm" asChild className="w-full gap-1">
                     <Link href={DASHBOARD_HREF}>

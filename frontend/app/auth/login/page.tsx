@@ -111,7 +111,7 @@ function LoginInner() {
         <div aria-hidden className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
         <div className="relative flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_40px_-8px_hsl(var(--primary)/0.7)]">
-            <Terminal className="h-5 w-5" />
+            <Code2 className="h-5 w-5" />
           </div>
           <span className="text-lg font-semibold tracking-tight">CodeSpectra</span>
         </div>
@@ -147,6 +147,30 @@ function LoginInner() {
               <span className="text-foreground/85">Quality gates that block bad pushes</span>
             </div>
           </div>
+          {/* Code preview card */}
+          <div className="relative rounded-xl border border-border bg-card/70 backdrop-blur p-4 shadow-2xl">
+            <div className="flex items-center gap-2 pb-3 border-b border-border">
+              <span className="h-2.5 w-2.5 rounded-full bg-destructive/70" />
+              <span className="h-2.5 w-2.5 rounded-full bg-amber-400/70" />
+              <span className="h-2.5 w-2.5 rounded-full bg-primary/70" />
+              <span className="ml-3 text-xs text-muted-foreground font-mono">analysis.ts</span>
+            </div>
+            <pre className="pt-3 text-xs leading-relaxed font-mono text-foreground/85 overflow-hidden">
+              <span className="text-muted-foreground">// 1 bug, 2 smells found</span>
+              {"\n"}
+              <span className="text-primary">function</span> <span className="text-foreground">analyze</span>(<span className="text-muted-foreground">code</span>) {"{"}
+              {"\n"}
+              {"  "}<span className="text-primary">if</span> (code == null) {"{"}
+              {"\n"}
+              {"    "}<span className="text-foreground/60">// 🟢 use === instead</span>
+              {"\n"}
+              {"  }"}
+              {"\n"}
+              {"  "}<span className="text-primary">return</span> <span className="text-foreground">runQualityGate</span>(code)
+              {"\n"}
+              {"}"}
+            </pre>
+          </div>
         </div>
         <div className="relative flex items-center justify-between text-xs text-muted-foreground">
           <span>&copy; 2026 CodeSpectra</span>
@@ -163,7 +187,7 @@ function LoginInner() {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Terminal className="h-5 w-5" />
+              <Code2 className="h-5 w-5" />
             </div>
             <span className="text-lg font-semibold">CodeSpectra</span>
           </div>

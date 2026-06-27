@@ -104,7 +104,7 @@ function SignupInner() {
         <div aria-hidden className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
         <div className="relative flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_40px_-8px_hsl(var(--primary)/0.7)]">
-            <Terminal className="h-5 w-5" />
+            <Code2 className="h-5 w-5" />
           </div>
           <span className="text-lg font-semibold tracking-tight">CodeSpectra</span>
         </div>
@@ -173,7 +173,7 @@ function SignupInner() {
           {/* Mobile logo */}
           <div className="lg:hidden flex items-center gap-2">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Terminal className="h-5 w-5" />
+              <Code2 className="h-5 w-5" />
             </div>
             <span className="text-lg font-semibold">CodeSpectra</span>
           </div>
