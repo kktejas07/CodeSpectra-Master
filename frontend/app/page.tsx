@@ -153,10 +153,10 @@ export async function bootstrap() {
   const integrations = [
     { name: 'GitHub', category: 'Connect your repositories' },
     { name: 'Google', category: 'Sign in with Google' },
-    { name: 'Stripe', category: 'Plans & checkout' },
+    { name: 'Razorpay', category: 'Plans & checkout' },
     { name: 'Slack', category: 'Notifications' },
     { name: 'OpenAI', category: 'AI explanations & fixes' },
-    { name: 'Supabase', category: 'Secure accounts & data' },
+    { name: 'MongoDB', category: 'Secure data storage' },
   ]
 
   return (
@@ -541,7 +541,7 @@ export async function bootstrap() {
               <span className="text-muted-foreground">you already rely on.</span>
             </h2>
             <p className="text-muted-foreground mt-6 max-w-2xl mx-auto">
-              When you link accounts, CodeSpectra can use GitHub for repos, Google for easier sign-in, Stripe for plans,
+              When you link accounts, CodeSpectra can use GitHub for repos, Google for easier sign-in, Razorpay for plans,
               Slack for notifications, and AI models for explanations and suggested fixes—so the tools feel familiar.
             </p>
           </div>
