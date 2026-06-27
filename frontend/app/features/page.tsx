@@ -2,6 +2,7 @@
 
 import { Card } from '@/components/ui/card'
 import { Code2, Zap, Shield, BarChart3, GitBranch, Cpu } from 'lucide-react'
+import { PublicPageWrapper } from '@/app/public-layout'
 
 export default function FeaturesPage() {
   const features = [
@@ -38,6 +39,7 @@ export default function FeaturesPage() {
   ]
 
   return (
+    <PublicPageWrapper>
     <div className="min-h-screen bg-background">
       {/* Header */}
       <div className="pt-20 pb-16 px-4 sm:px-6 lg:px-8 max-w-7xl mx-auto text-center">
@@ -108,5 +110,6 @@ export default function FeaturesPage() {
         </div>
       </div>
     </div>
+    </PublicPageWrapper>
   )
 }

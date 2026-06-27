@@ -2,9 +2,10 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Code2, ArrowRight, Menu, X, Github } from 'lucide-react'
+import { Code2, ArrowRight, Menu, X, Github, Library } from 'lucide-react'
 import { useState } from 'react'
 import { useHasSupabaseSession } from '@/hooks/use-has-supabase-session'
+import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
 
 const DASHBOARD_HREF = '/dashboard'
 
@@ -110,69 +111,71 @@ export function PublicPageWrapper({
       </main>
 
       {/* Footer */}
-      <footer className="border-t border-border/40 py-16">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 mb-12">
+      <footer className="relative overflow-hidden border-t border-border/40 bg-muted/15 py-20 dark:bg-muted/10 lg:py-24">
+        <FooterAnimatedBackdrop />
+        <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
-              <Link href="/" className="flex items-center gap-2 mb-4">
+              <Link href="/" className="flex items-center gap-2 mb-6">
                 <div className="w-8 h-8 bg-primary rounded-lg flex items-center justify-center">
                   <Code2 className="w-4 h-4 text-primary-foreground" />
                 </div>
-                <span className="text-lg font-semibold">CodeSpectra</span>
+                <span className="font-semibold text-lg">CodeSpectra</span>
               </Link>
-              <p className="text-sm text-muted-foreground">
-                The platform for modern development teams.
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                CodeSpectra helps you learn and improve: scan your code, fix issues with guidance and AI support, practice
+                challenges, take courses and exams, train for interviews, earn certificates, and explore opportunities.
               </p>
             </div>
-            
             <div>
-              <h4 className="font-semibold mb-4">Product</h4>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li><Link href="/#capabilities" className="hover:text-foreground transition-colors">Features</Link></li>
-                <li><Link href="/pricing" className="hover:text-foreground transition-colors">Pricing</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition-colors">Security</Link></li>
+              <h4 className="font-semibold text-foreground text-sm mb-6">Product</h4>
+              <ul className="space-y-4">
+                <li><Link href="/features" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Features</Link></li>
+                <li><Link href="/pricing" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Pricing</Link></li>
               </ul>
             </div>
-            
             <div>
-              <h4 className="font-semibold mb-4">Resources</h4>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li><Link href="/docs" className="hover:text-foreground transition-colors">Documentation</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition-colors">API Reference</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition-colors">Blog</Link></li>
+              <h4 className="font-semibold text-foreground text-sm mb-6">Resources</h4>
+              <ul className="space-y-4">
+                <li><Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</Link></li>
+                <li><Link href="/api-reference" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">API reference</Link></li>
+                <li><Link href="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Support</Link></li>
               </ul>
             </div>
-            
             <div>
-              <h4 className="font-semibold mb-4">Company</h4>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-foreground transition-colors">About</Link></li>
-                <li><Link href="/support" className="hover:text-foreground transition-colors">Contact</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition-colors">Careers</Link></li>
+              <h4 className="font-semibold text-foreground text-sm mb-6">Company</h4>
+              <ul className="space-y-4">
+                <li><Link href="/about" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">About</Link></li>
+                <li><Link href="/contact" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Contact</Link></li>
               </ul>
             </div>
-            
             <div>
-              <h4 className="font-semibold mb-4">Legal</h4>
-              <ul className="space-y-3 text-sm text-muted-foreground">
-                <li><Link href="#" className="hover:text-foreground transition-colors">Privacy</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition-colors">Terms</Link></li>
-                <li><Link href="#" className="hover:text-foreground transition-colors">Cookies</Link></li>
+              <h4 className="font-semibold text-foreground text-sm mb-6">Legal</h4>
+              <ul className="space-y-4">
+                <li><Link href="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Privacy</Link></li>
+                <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Terms</Link></li>
+                <li><Link href="/cookies" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Cookies</Link></li>
               </ul>
             </div>
           </div>
-
-          <div className="border-t border-border/40 pt-8 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <p className="text-sm text-muted-foreground">
-              © 2026 CodeSpectra. All rights reserved.
-            </p>
-            <div className="flex gap-4">
-              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Github className="w-5 h-5" />
-              </Link>
-              <Link href="#" className="text-muted-foreground hover:text-foreground transition-colors">
-                <Code2 className="w-5 h-5" />
-              </Link>
+          <div className="flex flex-col gap-6 border-t border-border/40 pt-10 sm:flex-row sm:items-center sm:justify-between">
+            <p className="text-xs text-muted-foreground">© 2026 CodeSpectra. All rights reserved.</p>
+            <div className="flex flex-wrap items-center gap-4 sm:justify-end">
+              <div className="flex items-center gap-2 rounded-full border border-border/50 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
+                <span className="relative flex h-2 w-2 shrink-0">
+                  <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40" />
+                  <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+                </span>
+                All systems operational
+              </div>
+              <div className="flex items-center gap-5">
+                <a href="https://github.com/Devender0077/CodeSpectra-Master" target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="CodeSpectra on GitHub">
+                  <Github className="h-5 w-5" />
+                </a>
+                <Link href="/docs" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="Documentation">
+                  <Code2 className="h-5 w-5" />
+                </Link>
+              </div>
             </div>
           </div>
         </div>
