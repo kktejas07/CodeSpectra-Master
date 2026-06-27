@@ -1,7 +1,19 @@
 'use client'
 
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
-import { getFirebaseAuth, getFirebaseAuthSync } from './firebase'
+import {
+  onAuthStateChanged,
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  updateProfile,
+  signInWithPopup,
+  GoogleAuthProvider,
+  GithubAuthProvider,
+  sendPasswordResetEmail,
+  confirmPasswordReset,
+  signOut as firebaseSignOut,
+} from 'firebase/auth'
+import { getFirebaseAuth } from './firebase'
 import type { User } from 'firebase/auth'
 
 export interface AuthUser {
@@ -36,14 +48,10 @@ function toAuthUser(firebaseUser: User): AuthUser {
   }
 }
 
-function getFirebaseModule() {
-  return import('firebase/auth')
-}
-
-async function withAuth<T>(fn: (auth: import('firebase/auth').Auth) => Promise<T>): Promise<T> {
-  const auth = await getFirebaseAuth()
-  if (!auth) throw new Error('Firebase not available')
-  return fn(auth)
+function getAuth() {
+  const a = getFirebaseAuth()
+  if (!a) throw new Error('Firebase not available')
+  return a
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -51,104 +59,82 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    let cancelled = false
-
-    getFirebaseAuth().then((auth) => {
-      if (cancelled || !auth) {
-        if (!cancelled) setLoading(false)
-        return
-      }
-
-      getFirebaseModule().then(({ onAuthStateChanged }) => {
-        if (cancelled) return
-
-        const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-          if (cancelled) return
-          if (firebaseUser) {
-            setUser(toAuthUser(firebaseUser))
-            await createSession(firebaseUser)
-          } else {
-            setUser(null)
-            await clearSession()
-          }
-          setLoading(false)
-        })
-
-        if (getFirebaseAuthSync()) {
-          setLoading(false)
+    try {
+      const auth = getAuth()
+      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+        if (firebaseUser) {
+          setUser(toAuthUser(firebaseUser))
+          try {
+            const idToken = await firebaseUser.getIdToken()
+            await fetch('/api/auth/session', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ idToken }),
+            })
+          } catch { /* session sync is optional */ }
+        } else {
+          setUser(null)
+          try { await fetch('/api/auth/session', { method: 'DELETE' }) } catch {}
         }
+        setLoading(false)
       })
-    })
-
-    return () => { cancelled = true }
+      return () => unsubscribe()
+    } catch (e) {
+      console.warn('[Auth] Init error:', e)
+      setLoading(false)
+    }
   }, [])
 
-  const signInWithEmail = async (email: string, password: string) => {
-    await withAuth(async (auth) => {
-      const { signInWithEmailAndPassword } = await getFirebaseModule()
-      await signInWithEmailAndPassword(auth, email, password)
-    })
+  const signInWithEmailFn = async (email: string, password: string) => {
+    await signInWithEmailAndPassword(getAuth(), email, password)
   }
 
-  const signUpWithEmail = async (email: string, password: string, name: string) => {
-    await withAuth(async (auth) => {
-      const { createUserWithEmailAndPassword } = await getFirebaseModule()
-      await createUserWithEmailAndPassword(auth, email, password)
-    })
+  const signUpWithEmailFn = async (email: string, password: string, name: string) => {
+    const auth = getAuth()
+    const cred = await createUserWithEmailAndPassword(auth, email, password)
+    if (cred.user) {
+      await updateProfile(cred.user, { displayName: name })
+    }
   }
 
-  const signInWithGoogle = async () => {
-    const auth = await getFirebaseAuth()
-    if (!auth) return
-    const { signInWithPopup, GoogleAuthProvider } = await getFirebaseModule()
+  const signInWithGoogleFn = async () => {
+    const auth = getAuth()
     const provider = new GoogleAuthProvider()
     provider.addScope('email')
     provider.addScope('profile')
     await signInWithPopup(auth, provider)
   }
 
-  const signInWithGithub = async () => {
-    const auth = await getFirebaseAuth()
-    if (!auth) return
-    const { signInWithPopup, GithubAuthProvider } = await getFirebaseModule()
+  const signInWithGithubFn = async () => {
+    const auth = getAuth()
     const provider = new GithubAuthProvider()
     provider.addScope('user:email')
     await signInWithPopup(auth, provider)
   }
 
-  const signOut = async () => {
-    await withAuth(async (auth) => {
-      const { signOut: firebaseSignOut } = await getFirebaseModule()
-      await firebaseSignOut(auth)
-    })
+  const signOutFn = async () => {
+    await firebaseSignOut(getAuth())
   }
 
-  const sendPasswordReset = async (email: string) => {
-    await withAuth(async (auth) => {
-      const { sendPasswordResetEmail } = await getFirebaseModule()
-      await sendPasswordResetEmail(auth, email)
-    })
+  const sendPasswordResetFn = async (email: string) => {
+    await sendPasswordResetEmail(getAuth(), email)
   }
 
-  const confirmPasswordResetAction = async (code: string, newPassword: string) => {
-    await withAuth(async (auth) => {
-      const { confirmPasswordReset } = await getFirebaseModule()
-      await confirmPasswordReset(auth, code, newPassword)
-    })
+  const confirmPasswordResetFn = async (code: string, newPassword: string) => {
+    await confirmPasswordReset(getAuth(), code, newPassword)
   }
 
   return (
     <AuthContext.Provider
       value={{
-        user,
-        loading,
-        signInWithEmail,
-        signUpWithEmail,
-        signInWithGoogle,
-        signInWithGithub,
-        signOut,
-        sendPasswordReset,
-        confirmPasswordReset: confirmPasswordResetAction,
+        user, loading,
+        signInWithEmail: signInWithEmailFn,
+        signUpWithEmail: signUpWithEmailFn,
+        signInWithGoogle: signInWithGoogleFn,
+        signInWithGithub: signInWithGithubFn,
+        signOut: signOutFn,
+        sendPasswordReset: sendPasswordResetFn,
+        confirmPasswordReset: confirmPasswordResetFn,
       }}
     >
       {children}
@@ -159,20 +145,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
   if (!ctx) {
-    return { user: null, loading: true, signInWithEmail: async () => {}, signUpWithEmail: async () => {}, signInWithGoogle: async () => {}, signInWithGithub: async () => {}, signOut: async () => {}, sendPasswordReset: async () => {}, confirmPasswordReset: async () => {} }
+    return {
+      user: null, loading: true,
+      signInWithEmail: async () => { throw new Error('Auth not initialized') },
+      signUpWithEmail: async () => { throw new Error('Auth not initialized') },
+      signInWithGoogle: async () => { throw new Error('Auth not initialized') },
+      signInWithGithub: async () => { throw new Error('Auth not initialized') },
+      signOut: async () => {},
+      sendPasswordReset: async () => { throw new Error('Auth not initialized') },
+      confirmPasswordReset: async () => { throw new Error('Auth not initialized') },
+    }
   }
   return ctx
-}
-
-async function createSession(firebaseUser: User) {
-  const idToken = await firebaseUser.getIdToken()
-  await fetch('/api/auth/session', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ idToken }),
-  })
-}
-
-async function clearSession() {
-  await fetch('/api/auth/session', { method: 'DELETE' })
 }

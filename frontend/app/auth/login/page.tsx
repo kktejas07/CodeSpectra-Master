@@ -35,6 +35,28 @@ function LoginInner() {
   const [error, setError] = useState<string | null>(null);
   const { signInWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
 
+  const isDevMode = searchParams.get("dev") === "1";
+  const devAccounts = [
+    { role: "Superadmin", email: "superadmin@codespectra.com", password: "SuperAdmin123!" },
+    { role: "Admin", email: "admin@codespectra.com", password: "TenantAdmin123!" },
+    { role: "User", email: "demo@codespectra.com", password: "DemoPass123!" },
+  ];
+
+  async function handleDevLogin(accEmail: string, accPassword: string) {
+    setError(null);
+    setLoading(true);
+    try {
+      await signInWithEmail(accEmail, accPassword);
+      router.push("/dashboard");
+      router.refresh();
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Dev login failed";
+      setError(msg);
+    } finally {
+      setLoading(false);
+    }
+  }
+
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError(null);
@@ -206,6 +228,31 @@ function LoginInner() {
             Create one
           </Link>
         </p>
+
+        {isDevMode && (
+          <div className="bg-card border border-border/40 rounded-xl p-4 space-y-3">
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-amber-500" />
+              <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">
+                Dev quick login
+              </p>
+            </div>
+            <div className="grid gap-2">
+              {devAccounts.map((acc) => (
+                <button
+                  key={acc.role}
+                  type="button"
+                  onClick={() => handleDevLogin(acc.email, acc.password)}
+                  disabled={loading}
+                  className="flex items-center justify-between w-full px-3 py-2 text-sm rounded-lg border border-border/40 hover:bg-muted/50 transition-colors disabled:opacity-50"
+                >
+                  <span className="font-medium">{acc.role}</span>
+                  <span className="text-xs text-muted-foreground">{acc.email}</span>
+                </button>
+              ))}
+            </div>
+          </div>
+        )}
       </div>
     </div>
   );

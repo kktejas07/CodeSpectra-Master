@@ -5,7 +5,7 @@ import { useEffect } from 'react'
 const HEARTBEAT_MS = 45_000
 
 /**
- * Periodically pings `/api/auth/get-session` so server-side "last seen"
+ * Periodically pings `/api/auth/session` so server-side "last seen"
  * tracking can update for the current authenticated user. No-op when not
  * logged in.
  */
@@ -15,9 +15,8 @@ export function ActivityHeartbeat() {
     const ping = async () => {
       if (cancelled) return
       try {
-        await fetch('/api/auth/get-session', {
+        await fetch('/api/auth/session', {
           cache: 'no-store',
-          credentials: 'include',
         })
       } catch {
         /* offline / network blip — ignore */

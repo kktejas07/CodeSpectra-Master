@@ -18,11 +18,11 @@ export const metadata: Metadata = {
     'CodeSpectra: Real-time code analysis, competitive challenges, and AI-powered learning for developers',
   icons: {
     icon: [
-      { url: '/icon-light-32x32.png', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.png', media: '(prefers-color-scheme: dark)' },
+      { url: '/icon-light-32x32.svg', type: 'image/svg+xml', media: '(prefers-color-scheme: light)' },
+      { url: '/icon-dark-32x32.svg', type: 'image/svg+xml', media: '(prefers-color-scheme: dark)' },
       { url: '/icon.svg', type: 'image/svg+xml' },
     ],
-    apple: '/apple-icon.png',
+    apple: '/apple-icon.svg',
   },
 }
 
@@ -47,7 +47,9 @@ export default function RootLayout({
           enableSystem
           storageKey="codespectra-theme"
         >
-          <ToastProvider>{children}</ToastProvider>
+          <AuthProvider>
+            <ToastProvider>{children}</ToastProvider>
+          </AuthProvider>
         </ThemeProvider>
       </body>
     </html>
