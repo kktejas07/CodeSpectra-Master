@@ -40,26 +40,24 @@ export function setFirebaseConfig(config: FirebaseConfig): void {
 export function prefetchFirebaseConfig(): Promise<FirebaseConfig | null> {
   if (typeof window === 'undefined') return Promise.resolve(null)
   if (_dynamicConfig) return Promise.resolve(_dynamicConfig)
-  if (buildConfig()) return Promise.resolve(buildConfig())
   return fetch('/api/firebase-config', { credentials: 'omit' })
     .then((r) => (r.ok ? r.json() : null))
     .then((data: Record<string, string> | null) => {
-      if (!data) return null
-      const cfg: FirebaseConfig = {
-        apiKey: data.apiKey || '',
-        authDomain: data.authDomain || '',
-        projectId: data.projectId || '',
-        storageBucket: data.storageBucket || '',
-        messagingSenderId: data.messagingSenderId || '',
-        appId: data.appId || '',
+      if (data?.apiKey && data?.projectId) {
+        _dynamicConfig = {
+          apiKey: data.apiKey,
+          authDomain: data.authDomain || '',
+          projectId: data.projectId,
+          storageBucket: data.storageBucket || '',
+          messagingSenderId: data.messagingSenderId || '',
+          appId: data.appId || '',
+        }
+        return _dynamicConfig
       }
-      if (cfg.apiKey && cfg.projectId) {
-        _dynamicConfig = cfg
-        return cfg
-      }
+      if (buildConfig()) return buildConfig()
       return null
     })
-    .catch(() => null)
+    .catch(() => (buildConfig() ? buildConfig() : null))
 }
 
 export function getFirebaseAuth(): Auth | null {

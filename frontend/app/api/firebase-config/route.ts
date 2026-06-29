@@ -13,7 +13,7 @@ export async function GET() {
   }
   const missing = Object.entries(config).filter(([, v]) => !v)
   if (missing.length > 0) {
-    return NextResponse.json(null, { status: 204 })
+    return NextResponse.json({}, { status: 200 })
   }
   return NextResponse.json(config)
 }
