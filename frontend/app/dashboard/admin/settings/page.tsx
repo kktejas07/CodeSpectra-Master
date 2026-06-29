@@ -15,6 +15,7 @@ import {
   Mail,
   KeyRound,
   ExternalLink,
+  Flame,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -1081,140 +1082,112 @@ function SystemSettingsInner() {
                 </div>
 
                 {/* Firebase client SDK config */}
-                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="firebase-config-section">
+                <div className="space-y-4 rounded-lg border border-primary/30 bg-primary/5 p-5" data-testid="firebase-config-section">
                   <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">Firebase Auth SDK</p>
-                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                      Dynamic
-                    </span>
+                    <div className="flex items-center gap-2.5">
+                      <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
+                        <Flame className="h-4 w-4 text-primary" />
+                      </div>
+                      <p className="text-sm font-semibold text-foreground">Firebase Auth SDK</p>
+                    </div>
+                    {secretsMeta.firebase_api_key &&
+                    secretsMeta.firebase_auth_domain &&
+                    secretsMeta.firebase_project_id &&
+                    secretsMeta.firebase_app_id ? (
+                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide">
+                        ✓ Active
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide">
+                        Not configured
+                      </span>
+                    )}
                   </div>
-                  <p className="text-xs text-muted-foreground">
+                  <p className="text-xs text-muted-foreground leading-relaxed">
                     Client-side Firebase config used by the auth UI. Stored in MongoDB and served to the
                     browser — no build-time env vars or redeploy needed. Find these values in your{' '}
                     <a
                       href="https://console.firebase.google.com"
                       target="_blank"
                       rel="noopener noreferrer"
-                      className="text-primary underline-offset-4 hover:underline"
+                      className="font-medium text-primary underline-offset-4 hover:underline"
                     >
                       Firebase Console → Project settings → General → Your apps → Web app
                     </a>
-                    . Cloud function env vars must still be set server-side.
+                    . Admin SDK credentials (service account) must still be set as environment variables on the server.
                   </p>
-                  <div className="grid gap-3 sm:grid-cols-2">
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        API Key
-                      </label>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground">API Key</Label>
                       <Input
                         value={secretsDraft.firebase_api_key}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, firebase_api_key: e.target.value }))
                         }
-                        placeholder="AIzaSy…"
-                        className="mt-1 font-mono"
+                        placeholder={secretsMeta.firebase_api_key || "AIzaSy…"}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
                         autoComplete="off"
                       />
-                      {secretsMeta.firebase_api_key ? (
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground break-all">
-                          Saved: {String(secretsMeta.firebase_api_key)}
-                        </p>
-                      ) : null}
                     </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Auth Domain
-                      </label>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground">Auth Domain</Label>
                       <Input
                         value={secretsDraft.firebase_auth_domain}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, firebase_auth_domain: e.target.value }))
                         }
-                        placeholder="your-project.firebaseapp.com"
-                        className="mt-1 font-mono"
+                        placeholder={secretsMeta.firebase_auth_domain || "your-project.firebaseapp.com"}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
                         autoComplete="off"
                       />
-                      {secretsMeta.firebase_auth_domain ? (
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground break-all">
-                          Saved: {String(secretsMeta.firebase_auth_domain)}
-                        </p>
-                      ) : null}
                     </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Project ID
-                      </label>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground">Project ID</Label>
                       <Input
                         value={secretsDraft.firebase_project_id}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, firebase_project_id: e.target.value }))
                         }
-                        placeholder="your-project"
-                        className="mt-1 font-mono"
+                        placeholder={secretsMeta.firebase_project_id || "your-project"}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
                         autoComplete="off"
                       />
-                      {secretsMeta.firebase_project_id ? (
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground break-all">
-                          Saved: {String(secretsMeta.firebase_project_id)}
-                        </p>
-                      ) : null}
                     </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Storage Bucket
-                      </label>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground">Storage Bucket</Label>
                       <Input
                         value={secretsDraft.firebase_storage_bucket}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, firebase_storage_bucket: e.target.value }))
                         }
-                        placeholder="your-project.appspot.com"
-                        className="mt-1 font-mono"
+                        placeholder={secretsMeta.firebase_storage_bucket || "your-project.appspot.com"}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
                         autoComplete="off"
                       />
-                      {secretsMeta.firebase_storage_bucket ? (
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground break-all">
-                          Saved: {String(secretsMeta.firebase_storage_bucket)}
-                        </p>
-                      ) : null}
                     </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        Messaging Sender ID
-                      </label>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground">Messaging Sender ID</Label>
                       <Input
                         value={secretsDraft.firebase_messaging_sender_id}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, firebase_messaging_sender_id: e.target.value }))
                         }
-                        placeholder="123456789012"
-                        className="mt-1 font-mono"
+                        placeholder={secretsMeta.firebase_messaging_sender_id || "123456789012"}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
                         autoComplete="off"
                       />
-                      {secretsMeta.firebase_messaging_sender_id ? (
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground break-all">
-                          Saved: {String(secretsMeta.firebase_messaging_sender_id)}
-                        </p>
-                      ) : null}
                     </div>
-                    <div>
-                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
-                        App ID
-                      </label>
+                    <div className="space-y-1.5">
+                      <Label className="text-foreground">App ID</Label>
                       <Input
                         value={secretsDraft.firebase_app_id}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, firebase_app_id: e.target.value }))
                         }
-                        placeholder="1:123456789012:web:abc123"
-                        className="mt-1 font-mono"
+                        placeholder={secretsMeta.firebase_app_id || "1:123456789012:web:abc123"}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
                         autoComplete="off"
                       />
-                      {secretsMeta.firebase_app_id ? (
-                        <p className="mt-1 font-mono text-[11px] text-muted-foreground break-all">
-                          Saved: {String(secretsMeta.firebase_app_id)}
-                        </p>
-                      ) : null}
                     </div>
                   </div>
                 </div>
