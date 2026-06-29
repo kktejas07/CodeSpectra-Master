@@ -1,10 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, BookOpen, Award, Play } from 'lucide-react'
+import { Clock, BookOpen, Play, Loader } from 'lucide-react'
 
 interface Exam {
   id: string
@@ -15,151 +15,81 @@ interface Exam {
   questions: number
   passingScore: number
   description: string
-  date?: string
-  status: 'available' | 'in_progress' | 'completed'
+  status: string
   score?: number
+  date?: string
 }
 
 export default function ExamsPage() {
-  const [exams] = useState<Exam[]>([
-    {
-      id: '1',
-      title: 'JavaScript Fundamentals',
-      subject: 'JavaScript',
-      level: 'Beginner',
-      duration: 60,
-      questions: 50,
-      passingScore: 70,
-      description: 'Test your knowledge of JavaScript basics',
-      status: 'available',
-    },
-    {
-      id: '2',
-      title: 'React Advanced Patterns',
-      subject: 'React',
-      level: 'Advanced',
-      duration: 90,
-      questions: 40,
-      passingScore: 75,
-      description: 'Master advanced React patterns and hooks',
-      status: 'available',
-    },
-    {
-      id: '3',
-      title: 'Python Data Science',
-      subject: 'Python',
-      level: 'Intermediate',
-      duration: 120,
-      questions: 60,
-      passingScore: 80,
-      description: 'Data science with Python and popular libraries',
-      status: 'completed',
-      score: 85,
-      date: '2024-04-10',
-    },
-  ])
-
+  const [exams, setExams] = useState<Exam[]>([])
+  const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState({ level: '', subject: '' })
 
-  const filteredExams = exams.filter(exam => 
+  useEffect(() => {
+    fetch('/api/exams')
+      .then(r => r.json())
+      .then(json => { if (json.data) setExams(json.data) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  const filteredExams = exams.filter(exam =>
     (!filter.level || exam.level === filter.level) &&
     (!filter.subject || exam.subject === filter.subject)
   )
 
   const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'Beginner':
-        return 'bg-green-500/20 text-green-700'
-      case 'Intermediate':
-        return 'bg-yellow-500/20 text-yellow-700'
-      case 'Advanced':
-        return 'bg-red-500/20 text-red-700'
-      default:
-        return ''
-    }
+    const l = level.toLowerCase()
+    if (l === 'beginner') return 'bg-green-500/20 text-green-700'
+    if (l === 'intermediate') return 'bg-yellow-500/20 text-yellow-700'
+    if (l === 'advanced') return 'bg-red-500/20 text-red-700'
+    return 'bg-muted text-muted-foreground'
   }
 
+  if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-          <BookOpen className="w-8 h-8 text-primary" />
-          Coding Exams
-        </h1>
-        <p className="text-muted-foreground mt-2">Test and certify your programming skills</p>
+        <h1 className="text-3xl font-bold">Exams</h1>
+        <p className="text-muted-foreground mt-1">Take certification exams to validate your skills</p>
       </div>
 
-      {/* Filters */}
-      <Card className="p-4">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Level</label>
-            <select
-              value={filter.level}
-              onChange={(e) => setFilter({ ...filter, level: e.target.value })}
-              className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-            >
-              <option value="">All levels</option>
-              <option value="Beginner">Beginner</option>
-              <option value="Intermediate">Intermediate</option>
-              <option value="Advanced">Advanced</option>
-            </select>
-          </div>
-          <div>
-            <label className="block text-sm font-medium text-foreground mb-1">Subject</label>
-            <select
-              value={filter.subject}
-              onChange={(e) => setFilter({ ...filter, subject: e.target.value })}
-              className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-            >
-              <option value="">All subjects</option>
-              <option value="JavaScript">JavaScript</option>
-              <option value="React">React</option>
-              <option value="Python">Python</option>
-            </select>
-          </div>
-        </div>
-      </Card>
-
-      {/* Exams List */}
-      <div className="space-y-4">
-        {filteredExams.map((exam) => (
-          <Card key={exam.id} className="p-6">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <h3 className="text-xl font-bold text-foreground">{exam.title}</h3>
-                  <Badge className={getLevelColor(exam.level)}>{exam.level}</Badge>
-                  {exam.status === 'completed' && exam.score && (
-                    <Badge className="bg-green-500/20 text-green-700">
-                      <Award className="w-3 h-3 mr-1" />
-                      {exam.score}%
-                    </Badge>
-                  )}
+      {exams.length === 0 ? (
+        <Card className="border-border/60 p-10 text-center">
+          <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <p className="mt-3 text-muted-foreground">No exams available yet.</p>
+        </Card>
+      ) : (
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+          {filteredExams.map(exam => (
+            <Card key={exam.id} className="border-border/60 p-5">
+              <div className="mb-3 flex items-start justify-between gap-2">
+                <div>
+                  <h3 className="font-semibold text-foreground">{exam.title}</h3>
+                  <p className="text-xs text-muted-foreground">{exam.subject}</p>
                 </div>
-                <p className="text-muted-foreground mb-3">{exam.description}</p>
-                <div className="flex flex-wrap gap-4 text-sm text-muted-foreground">
-                  <span className="flex items-center gap-1">
-                    <Clock className="w-4 h-4" />
-                    {exam.duration} mins
-                  </span>
-                  <span>{exam.questions} questions</span>
-                  <span>Pass: {exam.passingScore}%</span>
-                </div>
+                <Badge variant="outline" className={getLevelColor(exam.level)}>{exam.level}</Badge>
               </div>
-              {exam.status === 'available' && (
-                <Button className="gap-2">
-                  <Play className="w-4 h-4" />
-                  Start Exam
-                </Button>
-              )}
-              {exam.status === 'completed' && (
-                <Button variant="outline">View Results</Button>
-              )}
-            </div>
-          </Card>
-        ))}
-      </div>
+              <p className="mb-4 line-clamp-2 text-xs text-muted-foreground">{exam.description}</p>
+              <div className="mb-4 flex items-center gap-4 text-xs text-muted-foreground">
+                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{exam.duration} min</span>
+                <span>{exam.questions} questions</span>
+                <span>Pass: {exam.passingScore}%</span>
+              </div>
+              {exam.status === 'completed' ? (
+                <div className="mb-3 p-2 rounded bg-green-500/10 text-xs text-green-700">
+                  Score: {exam.score}% - Completed
+                </div>
+              ) : null}
+              <Button variant="outline" size="sm" className="w-full gap-2">
+                <Play className="h-3.5 w-3.5" />
+                {exam.status === 'completed' ? 'Retake' : 'Start'} Exam
+              </Button>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

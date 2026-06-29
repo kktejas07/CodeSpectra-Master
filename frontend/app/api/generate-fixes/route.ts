@@ -111,31 +111,6 @@ async function persistGeneratedFixes(params: {
   return { rows }
 }
 
-const MOCK_FIXES: GeneratedFix[] = [
-  {
-    issue_id: 'issue_1',
-    issue_severity: 'major',
-    issue_description: 'Use === instead of ==',
-    original_code: 'if (x == 5) { }',
-    suggested_code: 'if (x === 5) { }',
-    fix_explanation:
-      'Using === prevents type coercion issues and is more explicit about type checking.',
-    confidence_score: 0.95,
-    line_number: 5,
-  },
-  {
-    issue_id: 'issue_2',
-    issue_severity: 'minor',
-    issue_description: 'Add error handling',
-    original_code: 'const result = JSON.parse(data)',
-    suggested_code:
-      'try {\n  const result = JSON.parse(data)\n} catch (error) {\n  console.error("Parse error:", error)\n}',
-    fix_explanation:
-      'JSON.parse can throw an error if the string is not valid JSON. Always wrap it in a try-catch block.',
-    confidence_score: 0.88,
-    line_number: 12,
-  },
-]
 
 export async function POST(request: Request): Promise<NextResponse> {
   let body: Record<string, unknown>
@@ -239,11 +214,9 @@ Return ONLY valid JSON matching the schema.`,
   } catch (error) {
     console.error('[CodeSpectra] Generate fixes error:', error)
     return NextResponse.json({
-      success: true,
-      fixes: MOCK_FIXES,
-      count: MOCK_FIXES.length,
-      degraded: true,
-    })
+      success: false,
+      error: 'Failed to generate fixes. The AI service may be unavailable.',
+    }, { status: 503 })
   }
 }
 

@@ -1,15 +1,33 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, Lock, Shield } from 'lucide-react'
+import { AlertTriangle, Lock, Shield, Loader } from 'lucide-react'
+
+interface SecuritySetting {
+  name: string
+  status: string
+  icon: string
+}
+
+const ICONS: Record<string, React.ComponentType<any>> = {
+  Lock, Shield, 'alert-triangle': AlertTriangle,
+}
 
 export default function Security() {
-  const securitySettings = [
-    { name: 'Two-Factor Authentication', status: 'enabled', icon: Lock },
-    { name: 'IP Whitelist', status: 'disabled', icon: Shield },
-    { name: 'API Rate Limiting', status: 'enabled', icon: AlertTriangle },
-  ]
+  const [settings, setSettings] = useState<SecuritySetting[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/admin/security')
+      .then(r => r.json())
+      .then(json => { if (json.data) setSettings(json.data) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
+
+  if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
 
   return (
     <div className="space-y-6">
@@ -18,27 +36,32 @@ export default function Security() {
         <p className="text-muted-foreground mt-1">Manage system security configurations</p>
       </div>
 
-      <div className="space-y-4">
-        {securitySettings.map((setting) => {
-          const Icon = setting.icon
-          return (
-            <Card key={setting.name} className="p-6 flex items-center justify-between">
-              <div className="flex items-center gap-4">
-                <Icon className="w-8 h-8 text-primary" />
-                <div>
-                  <h3 className="font-medium">{setting.name}</h3>
-                  <p className={`text-sm mt-1 ${
-                    setting.status === 'enabled' ? 'text-green-600' : 'text-orange-600'
-                  }`}>
-                    {setting.status === 'enabled' ? '✓ Enabled' : '○ Disabled'}
-                  </p>
+      {settings.length === 0 ? (
+        <Card className="border-border/60 p-10 text-center">
+          <Shield className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <p className="mt-3 text-muted-foreground">No security settings configured yet.</p>
+        </Card>
+      ) : (
+        <div className="space-y-4">
+          {settings.map(s => {
+            const Icon = ICONS[s.icon] || Shield
+            return (
+              <Card key={s.name} className="p-6 flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <Icon className="w-8 h-8 text-primary" />
+                  <div>
+                    <h3 className="font-medium">{s.name}</h3>
+                    <p className={`text-sm mt-1 ${s.status === 'enabled' ? 'text-green-600' : 'text-orange-600'}`}>
+                      {s.status === 'enabled' ? 'Enabled' : 'Disabled'}
+                    </p>
+                  </div>
                 </div>
-              </div>
-              <Button variant="outline">Configure</Button>
-            </Card>
-          )
-        })}
-      </div>
+                <Button variant="outline">Configure</Button>
+              </Card>
+            )
+          })}
+        </div>
+      )}
 
       <Card className="p-6 bg-red-500/5 border-red-500/30">
         <div className="flex items-start gap-4">
