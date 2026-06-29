@@ -194,7 +194,7 @@ export default function UserProfilePage({
                 <div className="flex-1">
                   {r.problem ? (
                     <Link
-                      href={`/problems/${r.problem.slug}`}
+                      href={`/dashboard/problems/${r.problem.slug}`}
                       className="font-medium hover:underline"
                     >
                       {r.problem.title}

@@ -18,6 +18,7 @@ import {
 import { Button } from '@/components/ui/button'
 import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
+import { AnalysisPanel } from '@/components/ai/analysis-panel'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -131,8 +132,14 @@ export default function ProblemDetailPage() {
 
   function onChangeLanguage(next: string) {
     setLanguage(next)
-    if (problem?.starter_code?.[next]) setSource(problem.starter_code[next])
+    const newCode = problem?.starter_code?.[next]
+    if (newCode) {
+      setSource(newCode)
+    } else {
+      setSource(`// ${SUPPORTED_LANGS.find(l => l.id === next)?.label || next} solution\n\n`)
+    }
     setResult(null)
+    setAnalysis(null)
   }
 
   async function execute(mode: 'run' | 'submit') {
@@ -202,12 +209,12 @@ export default function ProblemDetailPage() {
 
   if (loadError) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="flex items-center justify-center p-6 py-20">
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-6 max-w-md">
           <h2 className="font-semibold text-destructive mb-1">Could not load problem</h2>
           <p className="text-sm text-muted-foreground">{loadError}</p>
           <Link
-            href="/problems"
+            href="/dashboard/problems"
             className="inline-flex items-center gap-1 text-primary mt-3 text-sm"
           >
             <ArrowLeft className="h-4 w-4" /> Back to problems
@@ -219,14 +226,14 @@ export default function ProblemDetailPage() {
 
   if (!problem) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
+      <div className="flex items-center justify-center py-40">
         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
       </div>
     )
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
       {/* AI Proctoring — silent monitor pinned top-right */}
       <ProctorMonitor sessionKind="problem" sessionId={problem.slug} />
 
@@ -234,7 +241,7 @@ export default function ProblemDetailPage() {
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0">
         <div className="flex items-center gap-3 min-w-0">
           <Link
-            href="/problems"
+            href="/dashboard/problems"
             className="flex items-center gap-1.5 text-muted-foreground hover:text-foreground text-sm"
             data-testid="back-to-problems"
           >

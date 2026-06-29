@@ -137,7 +137,7 @@ export default function AssessmentPage() {
           </Link>
           <nav className="hidden md:flex items-center gap-6 text-sm text-muted-foreground">
             <Link href="/assessment" className="text-foreground">Assessment</Link>
-            <Link href="/problems" className="hover:text-foreground">Problems</Link>
+            <Link href="/dashboard/problems" className="hover:text-foreground">Problems</Link>
             <Link href="/dashboard/agent" className="hover:text-foreground">Agent</Link>
             <Link href="/dashboard" className="hover:text-foreground">Dashboard</Link>
           </nav>
@@ -175,7 +175,7 @@ export default function AssessmentPage() {
                   Get started <ArrowRight className="h-4 w-4 ml-1" />
                 </Button>
               </Link>
-              <Link href="/problems">
+              <Link href="/dashboard/problems">
                 <Button size="lg" variant="outline" data-testid="hero-try-ide">
                   Try the IDE
                 </Button>

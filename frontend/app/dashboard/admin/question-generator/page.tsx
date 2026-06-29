@@ -140,11 +140,11 @@ export default function QuestionGeneratorPage() {
                   <FileCheck2 className="h-4 w-4" />
                   Published — open it at{' '}
                   <a
-                    href={`/problems/${(result.problem as { slug?: string }).slug || ''}`}
+                    href={`/dashboard/problems/${(result.problem as { slug?: string }).slug || ''}`}
                     className="underline"
                     data-testid="qgen-open-link"
                   >
-                    /problems/{(result.problem as { slug?: string }).slug || '...'}
+                    /dashboard/problems/{(result.problem as { slug?: string }).slug || '...'}
                   </a>
                 </div>
               )}

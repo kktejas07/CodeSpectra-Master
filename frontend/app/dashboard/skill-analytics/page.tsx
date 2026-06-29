@@ -182,7 +182,7 @@ export default function SkillAnalyticsPage() {
       ) : (
         <div className="rounded-lg border border-border/60 bg-card/40 p-4 text-sm text-muted-foreground">
           Submit at least 3 problems on the{' '}
-          <a href="/problems" className="text-primary underline">
+          <a href="/dashboard/problems" className="text-primary underline">
             Problems page
           </a>{' '}
           to unlock your AI growth plan.
