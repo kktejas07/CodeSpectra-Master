@@ -4,7 +4,6 @@
  */
 
 export const ADMIN_NEW_USER_EMAIL_DELIVERIES = [
-  'supabase_invite',
   'resend_recovery',
   'resend_magiclink',
   'sendgrid_recovery',
@@ -22,7 +21,7 @@ export function normalizeAdminNewUserEmailDelivery(v: unknown): AdminNewUserEmai
   if ((ADMIN_NEW_USER_EMAIL_DELIVERIES as readonly string[]).includes(s)) {
     return s as AdminNewUserEmailDelivery
   }
-  return 'supabase_invite'
+  return 'resend_recovery'
 }
 
 export type GeneralPlatformSettings = {
@@ -57,7 +56,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   maintenance_mode: false,
   require_email_verification: false,
   show_public_leaderboard: true,
-  admin_new_user_email_delivery: 'supabase_invite',
+  admin_new_user_email_delivery: 'resend_recovery',
 }
 
 export function mergeGeneralPlatformSettings(

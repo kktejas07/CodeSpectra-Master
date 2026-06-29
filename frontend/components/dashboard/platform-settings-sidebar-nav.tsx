@@ -10,6 +10,7 @@ import {
   Users,
   KeyRound,
   CreditCard,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -29,6 +30,7 @@ const ITEMS: {
   { id: 'product', label: 'Product & access', icon: Users },
   { id: 'integrations', label: 'Integrations', icon: KeyRound },
   { id: 'payments', label: 'Payments & billing', icon: CreditCard },
+  { id: 'email-templates', label: 'Email templates', icon: FileText },
 ]
 
 export function PlatformSettingsSidebarNav({

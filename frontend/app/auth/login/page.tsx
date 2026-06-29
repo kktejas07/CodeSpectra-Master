@@ -39,7 +39,6 @@ function LoginInner() {
     { role: "Superadmin", email: "superadmin@codespectra.com", password: "SuperAdmin123!" },
     { role: "Tenant admin", email: "admin@codespectra.com", password: "TenantAdmin123!" },
     { role: "User", email: "demo@codespectra.com", password: "DemoPass123!" },
-    { role: "Recruiter", email: "recruiter@codespectra.com", password: "RecruiterPass123!" },
   ];
 
   async function handleDevLogin(accEmail: string, accPassword: string) {

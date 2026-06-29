@@ -10,7 +10,6 @@ const DEV_ACCOUNTS = [
   { email: 'superadmin@codespectra.com', password: 'SuperAdmin123!', role: 'superadmin', name: 'Super Admin' },
   { email: 'admin@codespectra.com', password: 'TenantAdmin123!', role: 'tenant_admin', name: 'Tenant Admin' },
   { email: 'demo@codespectra.com', password: 'DemoPass123!', role: 'user', name: 'Demo User' },
-  { email: 'recruiter@codespectra.com', password: 'RecruiterPass123!', role: 'user', name: 'Recruiter' },
 ]
 
 export async function POST() {

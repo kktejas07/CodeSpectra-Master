@@ -26,7 +26,7 @@ export function newToken(): string {
     .replace(/=+$/, '')
 }
 
-export type IdCardRoleVariant = 'user' | 'admin' | 'tenant' | 'recruiter'
+export type IdCardRoleVariant = 'user' | 'admin' | 'tenant'
 
 export interface IdCardTokenDoc {
   id: string
@@ -110,8 +110,6 @@ export function roleToVariant(role?: string | null): IdCardRoleVariant {
     case 'tenant_admin':
     case 'tenant':
       return 'tenant'
-    case 'recruiter':
-      return 'recruiter'
     default:
       return 'user'
   }

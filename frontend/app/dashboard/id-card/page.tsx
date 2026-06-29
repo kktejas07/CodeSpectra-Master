@@ -23,7 +23,7 @@ import {
   RotateCcw,
 } from 'lucide-react'
 
-type Variant = 'user' | 'admin' | 'tenant' | 'recruiter'
+type Variant = 'user' | 'admin' | 'tenant'
 
 interface IdCardResponse {
   token: string
@@ -46,7 +46,6 @@ const VARIANTS: Array<{ key: Variant; label: string; ring: string; bg: string }>
   { key: 'user', label: 'Builder', ring: 'ring-emerald-500/60', bg: 'from-emerald-500/20' },
   { key: 'admin', label: 'Superadmin', ring: 'ring-fuchsia-500/60', bg: 'from-fuchsia-500/20' },
   { key: 'tenant', label: 'Tenant admin', ring: 'ring-sky-500/60', bg: 'from-sky-500/20' },
-  { key: 'recruiter', label: 'Recruiter', ring: 'ring-amber-500/60', bg: 'from-amber-500/20' },
 ]
 
 export default function IdCardPage() {

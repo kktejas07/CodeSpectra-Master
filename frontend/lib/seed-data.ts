@@ -1,10 +1,7 @@
 /**
- * Seed Data Management System
- * Manages test data for development and staging environments
- * Automatically detects and cleans up seed data before production
+ * Seed Data Management System (legacy — Supabase version removed).
+ * Seed data is now handled by MongoDB seed scripts.
  */
-
-import { supabase } from './supabase-client'
 
 /**
  * Seed data marker - added to all seed data for identification

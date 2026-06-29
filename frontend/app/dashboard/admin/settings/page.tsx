@@ -19,6 +19,7 @@ import {
   Eye,
   EyeOff,
   CreditCard,
+  FileText,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -46,6 +47,7 @@ import {
 } from '@/lib/platform-settings-nav'
 import { isStripePriceId } from '@/lib/pricing-catalog'
 import { PricingCatalogStripeHint } from '@/components/dashboard/pricing-catalog-stripe-hint'
+import { emailTemplates } from '@/lib/email-templates'
 
 type General = GeneralPlatformSettings
 type GeneralKey = keyof General
@@ -130,6 +132,57 @@ const emptySecretsDraft = (): SecretsDraft => ({
   firebase_messaging_sender_id: '',
   firebase_app_id: '',
 })
+
+function EmailTemplatesSection() {
+  const [expanded, setExpanded] = useState<Record<string, boolean>>({})
+
+  const TEMPLATES = [
+    { id: 'welcomeEmail' as const, label: 'Welcome email', desc: 'Sent after user registration', sample: { name: 'John' } },
+    { id: 'jobApplicationConfirmation' as const, label: 'Job application confirmation', desc: 'Sent when a user applies to a job', sample: { jobTitle: 'Software Engineer', companyName: 'Acme Inc' } },
+    { id: 'examStartedNotification' as const, label: 'Exam started', desc: 'Sent when a user starts an exam', sample: { examTitle: 'JavaScript Fundamentals' } },
+    { id: 'subscriptionConfirmation' as const, label: 'Subscription confirmation', desc: 'Sent after successful subscription', sample: { planName: 'Pro', amount: 29 } },
+    { id: 'invoiceNotification' as const, label: 'Invoice notification', desc: 'Sent when a new invoice is generated', sample: { invoiceId: 'INV-001', amount: 29 } },
+  ]
+
+  return (
+    <div className="space-y-4 px-6 py-5">
+      {TEMPLATES.map((tpl) => {
+        const tplFn = emailTemplates[tpl.id]
+        const preview = tplFn ? tplFn(...Object.values(tpl.sample) as [never]) : null
+        return (
+          <div key={tpl.id} className="rounded-lg border border-border/60 bg-muted/15 p-4">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-medium text-foreground">{tpl.label}</p>
+                <p className="text-xs text-muted-foreground">{tpl.desc}</p>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => setExpanded((v) => ({ ...v, [tpl.id]: !v[tpl.id] }))}
+              >
+                {expanded[tpl.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                {expanded[tpl.id] ? 'Hide preview' : 'Preview'}
+              </Button>
+            </div>
+            {expanded[tpl.id] && preview && (
+              <div className="mt-4 rounded-md border border-border/40 bg-background p-4">
+                <div className="mb-3 text-xs text-muted-foreground font-mono">
+                  Subject: {preview.subject}
+                </div>
+                <div
+                  className="prose prose-sm max-w-none dark:prose-invert rounded-md border border-border/20 bg-white p-4 text-black [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mb-1 [&_strong]:font-semibold"
+                  dangerouslySetInnerHTML={{ __html: preview.html }}
+                />
+              </div>
+            )}
+          </div>
+        )
+      })}
+    </div>
+  )
+}
 
 function SystemSettingsInner() {
   const gate = useRoleGate({ require: 'superadmin' })
@@ -443,7 +496,7 @@ function SystemSettingsInner() {
               <AlertDescription className="text-muted-foreground">
                 General settings use the <code className="rounded bg-muted px-1 text-xs">general</code> row in{' '}
                 <code className="rounded bg-muted px-1 text-xs">platform_settings</code>. Requires a superadmin
-                session and a server Supabase key.
+                session.
               </AlertDescription>
             </Alert>
           ) : null}
@@ -624,28 +677,17 @@ function SystemSettingsInner() {
             </div>
 
             <Alert className="rounded-lg border-border/60 bg-muted/20">
-              <AlertTitle className="text-sm">SMTP &amp; Auth templates (Supabase)</AlertTitle>
+              <AlertTitle className="text-sm">Email templates</AlertTitle>
               <AlertDescription className="text-xs text-muted-foreground">
-                Custom SMTP and invite templates are not stored in CodeSpectra. Configure them in the Supabase project:{' '}
+                Transactional email templates are configured in{' '}
                 <Link
-                  href="https://supabase.com/docs/guides/auth/auth-smtp"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
+                  href={platformSettingsHref('email-templates')}
+                  className="font-medium text-primary underline-offset-4 hover:underline"
                 >
-                  Auth SMTP <ExternalLink className="h-3 w-3" />
+                  Email templates
                 </Link>
-                ,{' '}
-                <Link
-                  href="https://supabase.com/dashboard/project/_/auth/templates"
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 font-medium text-primary underline-offset-4 hover:underline"
-                >
-                  email templates <ExternalLink className="h-3 w-3" />
-                </Link>
-                . Set <code className="rounded bg-muted px-1 text-xs">NEXT_PUBLIC_APP_URL</code> for correct invite
-                redirects.
+                . SMTP settings are configured above.
+                Set <code className="rounded bg-muted px-1 text-xs">NEXT_PUBLIC_APP_URL</code> for correct invite redirects.
               </AlertDescription>
             </Alert>
 
@@ -1234,16 +1276,16 @@ function SystemSettingsInner() {
                       { key: 'firebase_messaging_sender_id', label: 'Messaging Sender ID', ph: '123456789012' },
                       { key: 'firebase_app_id', label: 'App ID', ph: '1:123456789012:web:abc123' },
                     ].map(({ key, label, ph }) => (
-                      <div key={key} className="space-y-1.5">
+                          <div key={key} className="space-y-1.5">
                         <Label className="text-foreground">{label}</Label>
                         <div className="relative">
                           <Input
-                            value={secretsDraft[key as keyof SecretsDraft]}
+                            value={secretsDraft[key as keyof SecretsDraft] || String(secretsMeta[key] || '')}
                             onChange={(e) =>
                               setSecretsDraft((d) => ({ ...d, [key]: e.target.value }))
                             }
                             type={visibleFields[key] ? 'text' : 'password'}
-                            placeholder={String(secretsMeta[key] || ph)}
+                            placeholder={String(secretsMeta[key] ? '' : ph)}
                             className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
                             autoComplete="off"
                           />
@@ -1260,21 +1302,6 @@ function SystemSettingsInner() {
                     ))}
                   </div>
                 </div>
-
-                <Alert className="rounded-lg border-border/60 bg-muted/20">
-                  <Mail className="h-4 w-4" />
-                  <AlertTitle className="text-sm">Transactional email</AlertTitle>
-                  <AlertDescription className="text-xs text-muted-foreground">
-                    Configure delivery method and API keys in{' '}
-                    <Link
-                      href={platformSettingsHref('mail')}
-                      className="font-medium text-primary underline-offset-4 hover:underline"
-                    >
-                      Mail & invitations
-                    </Link>
-                    . This avoids duplicate fields and keeps invite mail settings in one place.
-                  </AlertDescription>
-                </Alert>
 
               </div>
               <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
@@ -1596,6 +1623,25 @@ function SystemSettingsInner() {
                   )}
                   Save payments
                 </Button>
+              </div>
+            </Card>
+          ) : null}
+
+          {section === 'email-templates' ? (
+            <Card className="rounded-xl border-border/60 shadow-sm">
+              <div className="border-b border-border/60 px-6 py-4">
+                <div className="flex items-center gap-2">
+                  <FileText className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Email templates</h3>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Preview and manage transactional email templates used by the platform.
+                </p>
+              </div>
+              <EmailTemplatesSection />
+              <div className="border-t border-border/60 px-6 py-3 text-xs text-muted-foreground">
+                Email templates are defined in code and rendered server-side. To customise, edit{' '}
+                <code className="rounded bg-muted px-1 text-xs">frontend/lib/email-templates.ts</code>.
               </div>
             </Card>
           ) : null}

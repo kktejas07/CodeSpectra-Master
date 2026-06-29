@@ -8,7 +8,7 @@
  *     token,            // url-safe token
  *     url,              // absolute https URL embedded in the QR
  *     qr_svg,           // inline SVG string (ready to drop into the page)
- *     role_variant,     // 'user' | 'admin' | 'tenant' | 'recruiter'
+ *     role_variant,     // 'user' | 'admin' | 'tenant'
  *     payload: { name, email, role, xp, level, achievements }
  *   }
  *
@@ -18,6 +18,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import type { IdCardRoleVariant } from '@/lib/db/qr-events'
 import {
   getOrCreateIdCardToken,
   idCardTokens,
@@ -47,8 +48,8 @@ export async function GET(req: NextRequest) {
   const url = new URL(req.url)
   const requestedVariant = url.searchParams.get('variant') || ''
   const variant =
-    ['user', 'admin', 'tenant', 'recruiter'].includes(requestedVariant)
-      ? (requestedVariant as 'user' | 'admin' | 'tenant' | 'recruiter')
+    (['user', 'admin', 'tenant'] as IdCardRoleVariant[]).includes(requestedVariant)
+      ? (requestedVariant as IdCardRoleVariant)
       : roleToVariant(user.role)
 
   const snapshot = { name: user.fullName || user.name || '', email: user.email, role: user.role }
@@ -121,8 +122,8 @@ export async function POST(req: NextRequest) {
 
   const requestedVariant = url.searchParams.get('variant') || ''
   const variant =
-    ['user', 'admin', 'tenant', 'recruiter'].includes(requestedVariant)
-      ? (requestedVariant as 'user' | 'admin' | 'tenant' | 'recruiter')
+    (['user', 'admin', 'tenant'] as IdCardRoleVariant[]).includes(requestedVariant)
+      ? (requestedVariant as IdCardRoleVariant)
       : roleToVariant(user.role)
 
   const col = await idCardTokens()
