@@ -64,16 +64,13 @@ async function buildClient(): Promise<MongoClient> {
 }
 
 function getClientPromise(): Promise<MongoClient> {
-  if (process.env.NODE_ENV === "development") {
-    if (!global._mongoClientPromise) {
-      global._mongoClientPromise = buildClient().catch((err) => {
-        global._mongoClientPromise = undefined;
-        throw err;
-      });
-    }
-    return global._mongoClientPromise;
+  if (!global._mongoClientPromise) {
+    global._mongoClientPromise = buildClient().catch((err) => {
+      global._mongoClientPromise = undefined;
+      throw err;
+    });
   }
-  return buildClient();
+  return global._mongoClientPromise;
 }
 
 export async function getMongoClient(): Promise<MongoClient> {
