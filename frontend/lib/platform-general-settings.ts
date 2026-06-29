@@ -9,6 +9,10 @@ export const ADMIN_NEW_USER_EMAIL_DELIVERIES = [
   'resend_magiclink',
   'sendgrid_recovery',
   'sendgrid_magiclink',
+  'postal_recovery',
+  'postal_magiclink',
+  'smtp_recovery',
+  'smtp_magiclink',
 ] as const
 
 export type AdminNewUserEmailDelivery = (typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number]
@@ -24,6 +28,8 @@ export function normalizeAdminNewUserEmailDelivery(v: unknown): AdminNewUserEmai
 export type GeneralPlatformSettings = {
   platform_name: string
   platform_tagline: string
+  logo_url: string
+  favicon_url: string
   support_email: string
   support_link_url: string
   timezone: string
@@ -40,6 +46,8 @@ export type GeneralPlatformSettings = {
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   platform_name: 'CodeSpectra',
   platform_tagline: '',
+  logo_url: '',
+  favicon_url: '',
   support_email: 'support@codespectra.com',
   support_link_url: '',
   timezone: 'UTC',

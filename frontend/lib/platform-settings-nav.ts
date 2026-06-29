@@ -4,6 +4,7 @@ export const PLATFORM_SETTINGS_SECTIONS = [
   'ops',
   'product',
   'integrations',
+  'payments',
 ] as const
 
 export type PlatformSettingsSection = (typeof PLATFORM_SETTINGS_SECTIONS)[number]

@@ -12,8 +12,11 @@ export async function GET() {
     appId: secrets.firebase_app_id,
   }
   const missing = Object.entries(config).filter(([, v]) => !v)
-  if (missing.length > 0) {
+  if (missing.length === 6) {
     return NextResponse.json({}, { status: 200 })
+  }
+  for (const [k] of missing) {
+    delete config[k]
   }
   return NextResponse.json(config)
 }

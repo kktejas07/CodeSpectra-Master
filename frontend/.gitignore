@@ -31,3 +31,6 @@ supabase/.branches/
 
 # Local MCP config (may contain project-specific URLs)
 .mcp.json
+
+# Backup / migration files
+_backup_supabase_auth/

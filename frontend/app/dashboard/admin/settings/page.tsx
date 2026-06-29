@@ -16,6 +16,9 @@ import {
   KeyRound,
   ExternalLink,
   Flame,
+  Eye,
+  EyeOff,
+  CreditCard,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -59,6 +62,8 @@ const locales = [
 const BRANDING_KEYS: GeneralKey[] = [
   'platform_name',
   'platform_tagline',
+  'logo_url',
+  'favicon_url',
   'support_email',
   'support_link_url',
   'timezone',
@@ -74,6 +79,10 @@ const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], 
   resend_magiclink: 'Resend — magic sign-in link',
   sendgrid_recovery: 'SendGrid — password reset link',
   sendgrid_magiclink: 'SendGrid — magic sign-in link',
+  postal_recovery: 'Postal — password reset link',
+  postal_magiclink: 'Postal — magic sign-in link',
+  smtp_recovery: 'SMTP — password reset link',
+  smtp_magiclink: 'SMTP — magic sign-in link',
 }
 
 type SecretsDraft = {
@@ -131,7 +140,7 @@ function SystemSettingsInner() {
   const addToast = useToast()
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState<
-    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | null
+    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | null
   >(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [form, setForm] = useState<General>(defaults)
@@ -142,7 +151,18 @@ function SystemSettingsInner() {
     resend_from_email: '',
     sendgrid_api_key: '',
     sendgrid_from_email: '',
+    postal_server: '',
+    postal_api_key: '',
+    postal_from_email: '',
+    smtp_host: '',
+    smtp_port: '',
+    smtp_user: '',
+    smtp_pass: '',
+    smtp_from_email: '',
   })
+
+  const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({})
+  const toggleVisible = (key: string) => setVisibleFields((v) => ({ ...v, [key]: !v[key] }))
 
   useEffect(() => {
     if (!gate.ready) return
@@ -321,6 +341,16 @@ function SystemSettingsInner() {
         secBody.sendgrid_api_key = mailSecretsDraft.sendgrid_api_key.trim()
       if (mailSecretsDraft.sendgrid_from_email.trim())
         secBody.sendgrid_from_email = mailSecretsDraft.sendgrid_from_email.trim()
+      if (mailSecretsDraft.postal_server.trim()) secBody.postal_server = mailSecretsDraft.postal_server.trim()
+      if (mailSecretsDraft.postal_api_key.trim()) secBody.postal_api_key = mailSecretsDraft.postal_api_key.trim()
+      if (mailSecretsDraft.postal_from_email.trim())
+        secBody.postal_from_email = mailSecretsDraft.postal_from_email.trim()
+      if (mailSecretsDraft.smtp_host.trim()) secBody.smtp_host = mailSecretsDraft.smtp_host.trim()
+      if (mailSecretsDraft.smtp_port.trim()) secBody.smtp_port = mailSecretsDraft.smtp_port.trim()
+      if (mailSecretsDraft.smtp_user.trim()) secBody.smtp_user = mailSecretsDraft.smtp_user.trim()
+      if (mailSecretsDraft.smtp_pass.trim()) secBody.smtp_pass = mailSecretsDraft.smtp_pass.trim()
+      if (mailSecretsDraft.smtp_from_email.trim())
+        secBody.smtp_from_email = mailSecretsDraft.smtp_from_email.trim()
       if (Object.keys(secBody).length > 0) {
         const sres = await fetch('/api/admin/server-secrets', {
           method: 'PATCH',
@@ -335,6 +365,14 @@ function SystemSettingsInner() {
           resend_from_email: '',
           sendgrid_api_key: '',
           sendgrid_from_email: '',
+          postal_server: '',
+          postal_api_key: '',
+          postal_from_email: '',
+          smtp_host: '',
+          smtp_port: '',
+          smtp_user: '',
+          smtp_pass: '',
+          smtp_from_email: '',
         })
         await reloadSecrets()
       }
@@ -376,9 +414,9 @@ function SystemSettingsInner() {
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Platform settings</h1>
             <p className="mt-1 text-sm text-muted-foreground">
               Use the sidebar under <strong>Platform settings</strong> to switch sections.{' '}
-              <strong>Mail & email APIs</strong> configures invitations plus Resend/SendGrid keys (always visible
-              there). <strong>Stripe & billing</strong> holds the Stripe API secret and webhook
-              signing secret. <strong>Stripe price IDs</strong> for dashboard checkout are edited under{' '}
+              <strong>Mail & email APIs</strong> configures invitations plus email provider keys.{' '}
+              <strong>Payments & billing</strong> holds Razorpay and legacy Stripe credentials.{' '}
+              Stripe price IDs for dashboard checkout are edited under{' '}
               <Link href="/dashboard/admin/pricing" className="font-medium text-primary underline-offset-4 hover:underline">
                 Pricing management
               </Link>{' '}
@@ -438,6 +476,40 @@ function SystemSettingsInner() {
                 className="mt-1.5 h-10 rounded-lg border-border/60 bg-background"
                 placeholder="Ship quality software with confidence"
               />
+            </div>
+            <div>
+              <Label htmlFor="logo_url">Logo URL (optional)</Label>
+              <Input
+                id="logo_url"
+                type="url"
+                value={form.logo_url}
+                onChange={(e) => setForm((f) => ({ ...f, logo_url: e.target.value }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                placeholder="https://storage.example.com/logo.png"
+              />
+              {form.logo_url ? (
+                <div className="mt-2 flex items-center gap-3">
+                  <img src={form.logo_url} alt="logo preview" className="h-10 w-auto rounded border object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  <span className="text-xs text-muted-foreground">Preview</span>
+                </div>
+              ) : null}
+            </div>
+            <div>
+              <Label htmlFor="favicon_url">Favicon URL (optional)</Label>
+              <Input
+                id="favicon_url"
+                type="url"
+                value={form.favicon_url}
+                onChange={(e) => setForm((f) => ({ ...f, favicon_url: e.target.value }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                placeholder="https://storage.example.com/favicon.ico"
+              />
+              {form.favicon_url ? (
+                <div className="mt-2 flex items-center gap-3">
+                  <img src={form.favicon_url} alt="favicon preview" className="h-8 w-8 rounded border object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
+                  <span className="text-xs text-muted-foreground">Preview</span>
+                </div>
+              ) : null}
             </div>
             <div>
               <Label htmlFor="support_email">Support email</Label>
@@ -654,6 +726,134 @@ function SystemSettingsInner() {
                   />
                 </div>
               </div>
+
+              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
+                <p className="text-sm font-medium text-foreground">Postal</p>
+                <p className="text-xs text-muted-foreground">
+                  Self-hosted Postal mail server. Server URL, API key, and from address.
+                </p>
+                {secretsMeta.has_postal_api_key ? (
+                  <p className="font-mono text-xs text-muted-foreground">
+                    Current key: {String(secretsMeta.postal_api_key_masked ?? '—')}
+                  </p>
+                ) : null}
+                <div>
+                  <Label htmlFor="mail_postal_server">Postal server URL</Label>
+                  <Input
+                    id="mail_postal_server"
+                    type="url"
+                    placeholder={String(secretsMeta.postal_server || 'https://postal.yourdomain.com')}
+                    value={mailSecretsDraft.postal_server}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, postal_server: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mail_postal_key">Postal API key</Label>
+                  <Input
+                    id="mail_postal_key"
+                    type="password"
+                    autoComplete="off"
+                    value={mailSecretsDraft.postal_api_key}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, postal_api_key: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mail_postal_from">From address</Label>
+                  <Input
+                    id="mail_postal_from"
+                    type="text"
+                    placeholder={String(secretsMeta.postal_from_email || 'noreply@yourdomain.com')}
+                    value={mailSecretsDraft.postal_from_email}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, postal_from_email: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background text-sm"
+                  />
+                </div>
+              </div>
+
+              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
+                <p className="text-sm font-medium text-foreground">SMTP</p>
+                <p className="text-xs text-muted-foreground">
+                  Generic SMTP server. Host, port, credentials, and from address.
+                </p>
+                {secretsMeta.has_smtp_pass ? (
+                  <p className="font-mono text-xs text-muted-foreground">
+                    SMTP configured
+                  </p>
+                ) : null}
+                <div>
+                  <Label htmlFor="mail_smtp_host">SMTP host</Label>
+                  <Input
+                    id="mail_smtp_host"
+                    type="text"
+                    placeholder={String(secretsMeta.smtp_host || 'smtp.example.com')}
+                    value={mailSecretsDraft.smtp_host}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, smtp_host: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mail_smtp_port">SMTP port</Label>
+                  <Input
+                    id="mail_smtp_port"
+                    type="number"
+                    placeholder={String(secretsMeta.smtp_port || '587')}
+                    value={mailSecretsDraft.smtp_port}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, smtp_port: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mail_smtp_user">SMTP username</Label>
+                  <Input
+                    id="mail_smtp_user"
+                    type="text"
+                    placeholder={String(secretsMeta.smtp_user || 'user@example.com')}
+                    value={mailSecretsDraft.smtp_user}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, smtp_user: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mail_smtp_pass">SMTP password</Label>
+                  <Input
+                    id="mail_smtp_pass"
+                    type="password"
+                    autoComplete="off"
+                    value={mailSecretsDraft.smtp_pass}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, smtp_pass: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="mail_smtp_from">From address</Label>
+                  <Input
+                    id="mail_smtp_from"
+                    type="email"
+                    placeholder={String(secretsMeta.smtp_from_email || 'noreply@yourdomain.com')}
+                    value={mailSecretsDraft.smtp_from_email}
+                    onChange={(e) =>
+                      setMailSecretsDraft((d) => ({ ...d, smtp_from_email: e.target.value }))
+                    }
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background text-sm"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
@@ -789,113 +989,22 @@ function SystemSettingsInner() {
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
                   <KeyRound className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">Payments & integrations</h3>
+                  <h3 className="font-semibold text-foreground">Integrations</h3>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Configure <strong>Razorpay</strong> credentials below. Keys are stored encrypted at
-                  rest in MongoDB and read by every payment endpoint — no redeploy required.
-                  Resend / SendGrid lives in{' '}
+                  Additional service integrations — no redeploy required.
+                  Payments &amp; billing are in{' '}
+                  <Link href={platformSettingsHref('payments')} className="font-medium text-primary underline-offset-4 hover:underline">
+                    Payments &amp; billing
+                  </Link>
+                  . Mail keys are in{' '}
                   <Link href={platformSettingsHref('mail')} className="font-medium text-primary underline-offset-4 hover:underline">
-                    Mail & email APIs
+                    Mail &amp; email APIs
                   </Link>
                   .
                 </p>
               </div>
               <div className="space-y-6 px-6 py-5">
-
-                {/* Razorpay — primary payment gateway */}
-                <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4" data-testid="rzp-section">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">Razorpay (primary)</p>
-                    {secretsMeta.has_razorpay_key_id && secretsMeta.has_razorpay_key_secret ? (
-                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                        ✓ Active
-                      </span>
-                    ) : (
-                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                        Not configured
-                      </span>
-                    )}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Get test keys at{' '}
-                    <Link
-                      href="https://dashboard.razorpay.com/app/keys"
-                      target="_blank"
-                      className="text-primary underline-offset-4 hover:underline"
-                    >
-                      Razorpay Dashboard → Settings → API Keys
-                    </Link>
-                    . Use <code className="rounded bg-muted px-1">rzp_test_…</code> for development.
-                  </p>
-                  <div>
-                    <Label htmlFor="sec_rzp_id">Key ID</Label>
-                    {secretsMeta.has_razorpay_key_id ? (
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">
-                        Current: {String(secretsMeta.razorpay_key_id_masked ?? '—')}
-                      </p>
-                    ) : null}
-                    <Input
-                      id="sec_rzp_id"
-                      autoComplete="off"
-                      value={secretsDraft.razorpay_key_id}
-                      onChange={(e) =>
-                        setSecretsDraft((d) => ({ ...d, razorpay_key_id: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      placeholder="rzp_test_xxxxxxxxxxxx"
-                      data-testid="rzp-key-id-input"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sec_rzp_sk">Key secret</Label>
-                    {secretsMeta.has_razorpay_key_secret ? (
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">
-                        Current: {String(secretsMeta.razorpay_key_secret_masked ?? '—')}
-                      </p>
-                    ) : null}
-                    <Input
-                      id="sec_rzp_sk"
-                      type="password"
-                      autoComplete="off"
-                      value={secretsDraft.razorpay_key_secret}
-                      onChange={(e) =>
-                        setSecretsDraft((d) => ({ ...d, razorpay_key_secret: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      placeholder="••••••••••••••••••••"
-                      data-testid="rzp-key-secret-input"
-                    />
-                  </div>
-                  <div>
-                    <Label htmlFor="sec_rzp_wh">Webhook signing secret (optional)</Label>
-                    {secretsMeta.has_razorpay_webhook_secret ? (
-                      <p className="mt-1 font-mono text-xs text-muted-foreground">
-                        Current: {String(secretsMeta.razorpay_webhook_secret_masked ?? '—')}
-                      </p>
-                    ) : null}
-                    <Input
-                      id="sec_rzp_wh"
-                      type="password"
-                      autoComplete="off"
-                      value={secretsDraft.razorpay_webhook_secret}
-                      onChange={(e) =>
-                        setSecretsDraft((d) => ({ ...d, razorpay_webhook_secret: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      placeholder="paste from Razorpay → Webhooks page"
-                      data-testid="rzp-webhook-input"
-                    />
-                  </div>
-                  <p className="text-[11px] text-muted-foreground">
-                    Webhook URL to register in Razorpay:{' '}
-                    <code className="rounded bg-muted px-1">
-                      {typeof window !== 'undefined'
-                        ? `${window.location.origin}/api/billing/webhook`
-                        : '<your-domain>/api/billing/webhook'}
-                    </code>
-                  </p>
-                </div>
 
                 {/* Trusted Origins editor */}
                 <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="origins-section">
@@ -1117,84 +1226,44 @@ function SystemSettingsInner() {
                     . Admin SDK credentials (service account) must still be set as environment variables on the server.
                   </p>
                   <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="space-y-1.5">
-                      <Label className="text-foreground">API Key</Label>
-                      <Input
-                        value={secretsDraft.firebase_api_key}
-                        onChange={(e) =>
-                          setSecretsDraft((d) => ({ ...d, firebase_api_key: e.target.value }))
-                        }
-                        placeholder={secretsMeta.firebase_api_key || "AIzaSy…"}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-foreground">Auth Domain</Label>
-                      <Input
-                        value={secretsDraft.firebase_auth_domain}
-                        onChange={(e) =>
-                          setSecretsDraft((d) => ({ ...d, firebase_auth_domain: e.target.value }))
-                        }
-                        placeholder={secretsMeta.firebase_auth_domain || "your-project.firebaseapp.com"}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-foreground">Project ID</Label>
-                      <Input
-                        value={secretsDraft.firebase_project_id}
-                        onChange={(e) =>
-                          setSecretsDraft((d) => ({ ...d, firebase_project_id: e.target.value }))
-                        }
-                        placeholder={secretsMeta.firebase_project_id || "your-project"}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-foreground">Storage Bucket</Label>
-                      <Input
-                        value={secretsDraft.firebase_storage_bucket}
-                        onChange={(e) =>
-                          setSecretsDraft((d) => ({ ...d, firebase_storage_bucket: e.target.value }))
-                        }
-                        placeholder={secretsMeta.firebase_storage_bucket || "your-project.appspot.com"}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-foreground">Messaging Sender ID</Label>
-                      <Input
-                        value={secretsDraft.firebase_messaging_sender_id}
-                        onChange={(e) =>
-                          setSecretsDraft((d) => ({ ...d, firebase_messaging_sender_id: e.target.value }))
-                        }
-                        placeholder={secretsMeta.firebase_messaging_sender_id || "123456789012"}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                        autoComplete="off"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-foreground">App ID</Label>
-                      <Input
-                        value={secretsDraft.firebase_app_id}
-                        onChange={(e) =>
-                          setSecretsDraft((d) => ({ ...d, firebase_app_id: e.target.value }))
-                        }
-                        placeholder={secretsMeta.firebase_app_id || "1:123456789012:web:abc123"}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                        autoComplete="off"
-                      />
-                    </div>
+                    {[
+                      { key: 'firebase_api_key', label: 'API Key', ph: 'AIzaSy…' },
+                      { key: 'firebase_auth_domain', label: 'Auth Domain', ph: 'your-project.firebaseapp.com' },
+                      { key: 'firebase_project_id', label: 'Project ID', ph: 'your-project' },
+                      { key: 'firebase_storage_bucket', label: 'Storage Bucket', ph: 'your-project.appspot.com' },
+                      { key: 'firebase_messaging_sender_id', label: 'Messaging Sender ID', ph: '123456789012' },
+                      { key: 'firebase_app_id', label: 'App ID', ph: '1:123456789012:web:abc123' },
+                    ].map(({ key, label, ph }) => (
+                      <div key={key} className="space-y-1.5">
+                        <Label className="text-foreground">{label}</Label>
+                        <div className="relative">
+                          <Input
+                            value={secretsDraft[key as keyof SecretsDraft]}
+                            onChange={(e) =>
+                              setSecretsDraft((d) => ({ ...d, [key]: e.target.value }))
+                            }
+                            type={visibleFields[key] ? 'text' : 'password'}
+                            placeholder={String(secretsMeta[key] || ph)}
+                            className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                            autoComplete="off"
+                          />
+                          <button
+                            type="button"
+                            tabIndex={-1}
+                            onClick={() => toggleVisible(key)}
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          >
+                            {visibleFields[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                      </div>
+                    ))}
                   </div>
                 </div>
 
                 <Alert className="rounded-lg border-border/60 bg-muted/20">
                   <Mail className="h-4 w-4" />
-                  <AlertTitle className="text-sm">Transactional email (Resend / SendGrid)</AlertTitle>
+                  <AlertTitle className="text-sm">Transactional email</AlertTitle>
                   <AlertDescription className="text-xs text-muted-foreground">
                     Configure delivery method and API keys in{' '}
                     <Link
@@ -1207,8 +1276,140 @@ function SystemSettingsInner() {
                   </AlertDescription>
                 </Alert>
 
-                <div className="space-y-3 opacity-70">
-                  <p className="text-sm font-medium text-foreground">Stripe (legacy)</p>
+              </div>
+              <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
+                <Button
+                  className="gap-2 rounded-lg"
+                  onClick={() => void saveSecrets()}
+                  disabled={savingKey !== null}
+                >
+                  {savingKey === 'integrations' ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Save className="h-4 w-4" />
+                  )}
+                  Save integrations
+                </Button>
+              </div>
+            </Card>
+          ) : null}
+          {section === 'payments' ? (
+            <Card className="rounded-xl border-border/60 shadow-sm">
+              <div className="border-b border-border/60 px-6 py-4">
+                <div className="flex items-center gap-2">
+                  <CreditCard className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Payments &amp; billing</h3>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Configure <strong>Razorpay</strong> credentials below. Keys are stored encrypted at
+                  rest in MongoDB and read by every payment endpoint — no redeploy required.
+                  Stripe fields below are kept for historical webhooks only.
+                </p>
+              </div>
+              <div className="space-y-6 px-6 py-5">
+
+                {/* Razorpay — primary payment gateway */}
+                <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4" data-testid="rzp-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Razorpay (primary)</p>
+                    {secretsMeta.has_razorpay_key_id && secretsMeta.has_razorpay_key_secret ? (
+                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        ✓ Active
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Get test keys at{' '}
+                    <Link
+                      href="https://dashboard.razorpay.com/app/keys"
+                      target="_blank"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      Razorpay Dashboard → Settings → API Keys
+                    </Link>
+                    . Use <code className="rounded bg-muted px-1">rzp_test_…</code> for development.
+                  </p>
+                  <div>
+                    <Label htmlFor="pay_rzp_id">Key ID</Label>
+                    {secretsMeta.has_razorpay_key_id ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_key_id_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="pay_rzp_id"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_key_id}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_key_id: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="rzp_test_xxxxxxxxxxxx"
+                      data-testid="rzp-key-id-input"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="pay_rzp_sk">Key secret</Label>
+                    {secretsMeta.has_razorpay_key_secret ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_key_secret_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="pay_rzp_sk"
+                      type="password"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_key_secret}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_key_secret: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="••••••••••••••••••••"
+                      data-testid="rzp-key-secret-input"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="pay_rzp_wh">Webhook signing secret (optional)</Label>
+                    {secretsMeta.has_razorpay_webhook_secret ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.razorpay_webhook_secret_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <Input
+                      id="pay_rzp_wh"
+                      type="password"
+                      autoComplete="off"
+                      value={secretsDraft.razorpay_webhook_secret}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, razorpay_webhook_secret: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="paste from Razorpay → Webhooks page"
+                      data-testid="rzp-webhook-input"
+                    />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Webhook URL to register in Razorpay:{' '}
+                    <code className="rounded bg-muted px-1">
+                      {typeof window !== 'undefined'
+                        ? `${window.location.origin}/api/billing/webhook`
+                        : '<your-domain>/api/billing/webhook'}
+                    </code>
+                  </p>
+                </div>
+
+                {/* Stripe (legacy) */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Stripe (legacy)</p>
+                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                      Legacy
+                    </span>
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     Kept for historical webhooks only. Razorpay is the active gateway.
                   </p>
@@ -1218,9 +1419,9 @@ function SystemSettingsInner() {
                     </p>
                   ) : null}
                   <div>
-                    <Label htmlFor="sec_stripe_sk">Stripe secret key</Label>
+                    <Label htmlFor="pay_stripe_sk">Stripe secret key</Label>
                     <Input
-                      id="sec_stripe_sk"
+                      id="pay_stripe_sk"
                       type="password"
                       autoComplete="off"
                       value={secretsDraft.stripe_secret_key}
@@ -1237,9 +1438,9 @@ function SystemSettingsInner() {
                     </p>
                   ) : null}
                   <div>
-                    <Label htmlFor="sec_stripe_wh">Stripe webhook signing secret</Label>
+                    <Label htmlFor="pay_stripe_wh">Stripe webhook signing secret</Label>
                     <Input
-                      id="sec_stripe_wh"
+                      id="pay_stripe_wh"
                       type="password"
                       autoComplete="off"
                       value={secretsDraft.stripe_webhook_secret}
@@ -1252,6 +1453,7 @@ function SystemSettingsInner() {
                   </div>
                 </div>
 
+                {/* Stripe Checkout price IDs */}
                 <div className="space-y-4 border-t border-border/40 pt-6">
                   <p className="text-sm font-medium text-foreground">Stripe Checkout price IDs</p>
                   <p className="text-xs text-muted-foreground">
@@ -1278,9 +1480,9 @@ function SystemSettingsInner() {
                   ) : null}
                   <div className="grid gap-4 sm:grid-cols-2">
                     <div>
-                      <Label htmlFor="sec_price_pro_m">Pro — monthly</Label>
+                      <Label htmlFor="pay_price_pro_m">Pro — monthly</Label>
                       <Input
-                        id="sec_price_pro_m"
+                        id="pay_price_pro_m"
                         value={secretsDraft.stripe_price_pro_monthly}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, stripe_price_pro_monthly: e.target.value }))
@@ -1303,9 +1505,9 @@ function SystemSettingsInner() {
                       </p>
                     </div>
                     <div>
-                      <Label htmlFor="sec_price_pro_y">Pro — yearly</Label>
+                      <Label htmlFor="pay_price_pro_y">Pro — yearly</Label>
                       <Input
-                        id="sec_price_pro_y"
+                        id="pay_price_pro_y"
                         value={secretsDraft.stripe_price_pro_yearly}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, stripe_price_pro_yearly: e.target.value }))
@@ -1328,15 +1530,12 @@ function SystemSettingsInner() {
                       </p>
                     </div>
                     <div>
-                      <Label htmlFor="sec_price_ent_m">Enterprise — monthly</Label>
+                      <Label htmlFor="pay_price_ent_m">Enterprise — monthly</Label>
                       <Input
-                        id="sec_price_ent_m"
+                        id="pay_price_ent_m"
                         value={secretsDraft.stripe_price_enterprise_monthly}
                         onChange={(e) =>
-                          setSecretsDraft((d) => ({
-                            ...d,
-                            stripe_price_enterprise_monthly: e.target.value,
-                          }))
+                          setSecretsDraft((d) => ({ ...d, stripe_price_enterprise_monthly: e.target.value }))
                         }
                         placeholder="price_xxxxxxxxxxxxxxxx"
                         spellCheck={false}
@@ -1356,15 +1555,12 @@ function SystemSettingsInner() {
                       </p>
                     </div>
                     <div>
-                      <Label htmlFor="sec_price_ent_y">Enterprise — yearly</Label>
+                      <Label htmlFor="pay_price_ent_y">Enterprise — yearly</Label>
                       <Input
-                        id="sec_price_ent_y"
+                        id="pay_price_ent_y"
                         value={secretsDraft.stripe_price_enterprise_yearly}
                         onChange={(e) =>
-                          setSecretsDraft((d) => ({
-                            ...d,
-                            stripe_price_enterprise_yearly: e.target.value,
-                          }))
+                          setSecretsDraft((d) => ({ ...d, stripe_price_enterprise_yearly: e.target.value }))
                         }
                         placeholder="price_xxxxxxxxxxxxxxxx"
                         spellCheck={false}
@@ -1385,6 +1581,7 @@ function SystemSettingsInner() {
                     </div>
                   </div>
                 </div>
+
               </div>
               <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
                 <Button
@@ -1392,12 +1589,12 @@ function SystemSettingsInner() {
                   onClick={() => void saveSecrets()}
                   disabled={savingKey !== null}
                 >
-                  {savingKey === 'integrations' ? (
+                  {savingKey === 'payments' ? (
                     <Loader2 className="h-4 w-4 animate-spin" />
                   ) : (
                     <Save className="h-4 w-4" />
                   )}
-                  Save integrations
+                  Save payments
                 </Button>
               </div>
             </Card>
