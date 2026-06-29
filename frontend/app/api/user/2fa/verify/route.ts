@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { authenticator } from 'otplib/authenticator'
+import { TOTP } from 'otplib'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
@@ -22,7 +22,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: '2FA not set up. Call setup first.' }, { status: 400 })
     }
 
-    const isValid = authenticator.verify({ token, secret: user.totp_secret })
+    const totp = new TOTP()
+    const isValid = totp.verify({ token, secret: user.totp_secret })
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
     }

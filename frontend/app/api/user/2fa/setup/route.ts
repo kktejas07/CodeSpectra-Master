@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { authenticator } from 'otplib/authenticator'
+import { generateSecret, generateURI } from 'otplib'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
@@ -10,9 +10,13 @@ export async function POST() {
   }
 
   try {
-    const secret = authenticator.generateSecret()
-    const service = 'CodeSpectra'
-    const otpauth = authenticator.keyuri(gate.user.email, service, secret)
+    const secret = generateSecret()
+    const otpauth = generateURI({
+      type: 'totp',
+      issuer: 'CodeSpectra',
+      label: gate.user.email,
+      secret,
+    })
 
     const db = await getMongoDb()
     await db.collection('user').updateOne(
