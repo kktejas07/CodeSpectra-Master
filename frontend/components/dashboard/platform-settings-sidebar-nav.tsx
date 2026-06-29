@@ -9,6 +9,8 @@ import {
   Sliders,
   Users,
   KeyRound,
+  CreditCard,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -26,7 +28,9 @@ const ITEMS: {
   { id: 'mail', label: 'Mail & email APIs', icon: Mail },
   { id: 'ops', label: 'Operations', icon: Sliders },
   { id: 'product', label: 'Product & access', icon: Users },
-  { id: 'integrations', label: 'Payments & integrations', icon: KeyRound },
+  { id: 'integrations', label: 'Integrations', icon: KeyRound },
+  { id: 'payments', label: 'Payments & billing', icon: CreditCard },
+  { id: 'email-templates', label: 'Email templates', icon: FileText },
 ]
 
 export function PlatformSettingsSidebarNav({

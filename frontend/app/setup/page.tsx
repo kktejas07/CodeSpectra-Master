@@ -42,7 +42,7 @@ export default function SetupPage() {
       }
     } catch (err) {
       const errorMsg = err instanceof Error ? err.message : 'An error occurred during setup.'
-      setError(`Connection error: ${errorMsg}. Please check your Supabase configuration.`)
+      setError(`Connection error: ${errorMsg}. Please check your database configuration.`)
     } finally {
       setLoading(false)
     }

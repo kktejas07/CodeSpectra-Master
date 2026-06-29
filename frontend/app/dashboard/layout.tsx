@@ -88,18 +88,33 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [userRole, setUserRole] = useState<UserRole | null>(null)
 
   const { user: fbUser, signOut } = useAuth()
+
+  useEffect(() => {
+    if (!fbUser) { setUserRole(null); return }
+    let cancelled = false
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data?.user) return
+        setUserRole((data.user.role || 'user') as UserRole)
+      })
+      .catch(() => { if (!cancelled) setUserRole('user') })
+    return () => { cancelled = true }
+  }, [fbUser])
+
   const userProfile = useMemo(() => {
-    if (!fbUser) return null
+    if (!fbUser || !userRole) return null
     return {
       id: fbUser.uid,
       email: fbUser.email || '',
       full_name: fbUser.displayName || 'User',
-      role: 'user' as UserRole,
+      role: userRole,
       tenant_id: null,
     }
-  }, [fbUser])
+  }, [fbUser, userRole])
 
   useEffect(() => {
     try {

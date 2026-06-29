@@ -39,7 +39,6 @@ function LoginInner() {
     { role: "Superadmin", email: "superadmin@codespectra.com", password: "SuperAdmin123!" },
     { role: "Tenant admin", email: "admin@codespectra.com", password: "TenantAdmin123!" },
     { role: "User", email: "demo@codespectra.com", password: "DemoPass123!" },
-    { role: "Recruiter", email: "recruiter@codespectra.com", password: "RecruiterPass123!" },
   ];
 
   async function handleDevLogin(accEmail: string, accPassword: string) {
@@ -125,7 +124,7 @@ function LoginInner() {
             <span className="text-primary">Win the competition.</span>
           </h1>
           <p className="text-muted-foreground text-base leading-relaxed">
-            CodeSpectra fuses SonarQube-grade static analysis with a HackerRank-style arena. Scan, fix, and compete — all in one workspace.
+            AI-powered static analysis meets competitive coding challenges. Scan, fix, and compete — all in one workspace.
           </p>
           <div className="grid grid-cols-1 gap-3 text-sm">
             <div className="flex items-center gap-3">

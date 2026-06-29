@@ -10,13 +10,13 @@ import { Globe3D } from '@/components/globe-3d'
 import { PlatformWorkspaceIllustration } from '@/components/landing/platform-workspace-illustration'
 import { CapabilityIllustration } from '@/components/landing/capability-illustration'
 import { ProcessShowcase, type ProcessStep } from '@/components/landing/process-showcase'
-import { useHasSupabaseSession } from '@/hooks/use-has-supabase-session'
+import { useHasUserSession } from '@/hooks/use-has-supabase-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
 
 type Capability = { number: string; title: string; description: string }
 
 export default function Home() {
-  const hasSession = useHasSupabaseSession()
+  const hasSession = useHasUserSession()
   const [displayedText, setDisplayedText] = useState('')
   const [currentWord, setCurrentWord] = useState(0)
   

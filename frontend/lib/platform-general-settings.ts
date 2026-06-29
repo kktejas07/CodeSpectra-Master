@@ -4,11 +4,14 @@
  */
 
 export const ADMIN_NEW_USER_EMAIL_DELIVERIES = [
-  'supabase_invite',
   'resend_recovery',
   'resend_magiclink',
   'sendgrid_recovery',
   'sendgrid_magiclink',
+  'postal_recovery',
+  'postal_magiclink',
+  'smtp_recovery',
+  'smtp_magiclink',
 ] as const
 
 export type AdminNewUserEmailDelivery = (typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number]
@@ -18,12 +21,14 @@ export function normalizeAdminNewUserEmailDelivery(v: unknown): AdminNewUserEmai
   if ((ADMIN_NEW_USER_EMAIL_DELIVERIES as readonly string[]).includes(s)) {
     return s as AdminNewUserEmailDelivery
   }
-  return 'supabase_invite'
+  return 'resend_recovery'
 }
 
 export type GeneralPlatformSettings = {
   platform_name: string
   platform_tagline: string
+  logo_url: string
+  favicon_url: string
   support_email: string
   support_link_url: string
   timezone: string
@@ -40,6 +45,8 @@ export type GeneralPlatformSettings = {
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   platform_name: 'CodeSpectra',
   platform_tagline: '',
+  logo_url: '',
+  favicon_url: '',
   support_email: 'support@codespectra.com',
   support_link_url: '',
   timezone: 'UTC',
@@ -49,7 +56,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   maintenance_mode: false,
   require_email_verification: false,
   show_public_leaderboard: true,
-  admin_new_user_email_delivery: 'supabase_invite',
+  admin_new_user_email_delivery: 'resend_recovery',
 }
 
 export function mergeGeneralPlatformSettings(

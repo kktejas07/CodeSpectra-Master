@@ -1,11 +1,9 @@
-import { supabase } from '@/lib/supabase-client'
-
 /**
  * Comprehensive test suite for Phase 6 & 7
  * Run: npm test -- tests/api.test.ts
  */
 
-describe('API Endpoints - Supabase Integration', () => {
+describe('API Endpoints', () => {
   
   describe('Jobs API', () => {
     it('should fetch jobs from Supabase', async () => {

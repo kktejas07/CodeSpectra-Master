@@ -25,7 +25,7 @@ import {
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
-type Variant = 'user' | 'admin' | 'tenant' | 'recruiter'
+type Variant = 'user' | 'admin' | 'tenant'
 
 interface UserResp {
   kind: 'user'
@@ -69,14 +69,12 @@ const VARIANT_GRADIENT: Record<string, string> = {
   user: 'from-emerald-500/30 via-emerald-500/5 to-transparent',
   admin: 'from-fuchsia-500/30 via-fuchsia-500/5 to-transparent',
   tenant: 'from-sky-500/30 via-sky-500/5 to-transparent',
-  recruiter: 'from-amber-500/30 via-amber-500/5 to-transparent',
 }
 
 const VARIANT_RING: Record<string, string> = {
   user: 'ring-emerald-500/60',
   admin: 'ring-fuchsia-500/60',
   tenant: 'ring-sky-500/60',
-  recruiter: 'ring-amber-500/60',
 }
 
 export default function QrScanPage({

@@ -3,14 +3,9 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import {
   onAuthStateChanged,
-  signInWithEmailAndPassword,
-  createUserWithEmailAndPassword,
-  updateProfile,
   signInWithPopup,
   GoogleAuthProvider,
   GithubAuthProvider,
-  sendPasswordResetEmail,
-  confirmPasswordReset,
   signOut as firebaseSignOut,
 } from 'firebase/auth'
 import { getFirebaseAuth, prefetchFirebaseConfig, setFirebaseConfig } from './firebase'
@@ -21,7 +16,6 @@ export interface AuthUser {
   email: string | null
   displayName: string | null
   photoURL: string | null
-  getIdToken: () => Promise<string>
 }
 
 interface AuthContextValue {
@@ -38,14 +32,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-function toAuthUser(firebaseUser: User): AuthUser {
-  return {
-    uid: firebaseUser.uid,
-    email: firebaseUser.email,
-    displayName: firebaseUser.displayName,
-    photoURL: firebaseUser.photoURL,
-    getIdToken: () => firebaseUser.getIdToken(),
-  }
+function toAuthUser(u: { uid: string; email: string | null; displayName?: string | null; photoURL?: string | null }): AuthUser {
+  return { uid: u.uid, email: u.email, displayName: u.displayName || null, photoURL: u.photoURL || null }
 }
 
 function getAuth() {
@@ -67,13 +55,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         if (cfg) setFirebaseConfig(cfg)
         const a = getFirebaseAuth()
         if (!a) {
-          if (!cancelled) setLoading(false)
+          if (!cancelled) { setLoading(false); return }
           return
         }
         unsubscribe = onAuthStateChanged(a, async (firebaseUser) => {
           if (cancelled) return
           if (firebaseUser) {
-            setUser(toAuthUser(firebaseUser))
+            setUser(toAuthUser({ uid: firebaseUser.uid, email: firebaseUser.email, displayName: firebaseUser.displayName, photoURL: firebaseUser.photoURL }))
             try {
               const idToken = await firebaseUser.getIdToken()
               await fetch('/api/auth/session', {
@@ -101,15 +89,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, [])
 
   const signInWithEmailFn = async (email: string, password: string) => {
-    await signInWithEmailAndPassword(getAuth(), email, password)
+    const res = await fetch('/api/auth/login', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Login failed')
+    setUser(toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name }))
   }
 
   const signUpWithEmailFn = async (email: string, password: string, name: string) => {
-    const auth = getAuth()
-    const cred = await createUserWithEmailAndPassword(auth, email, password)
-    if (cred.user) {
-      await updateProfile(cred.user, { displayName: name })
-    }
+    const res = await fetch('/api/auth/signup', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email, password, name }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Signup failed')
+    setUser(toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name }))
   }
 
   const signInWithGoogleFn = async () => {
@@ -117,25 +115,31 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GoogleAuthProvider()
     provider.addScope('email')
     provider.addScope('profile')
-    await signInWithPopup(auth, provider)
+    const cred = await signInWithPopup(auth, provider)
+    setUser(toAuthUser({ uid: cred.user.uid, email: cred.user.email, displayName: cred.user.displayName, photoURL: cred.user.photoURL }))
   }
 
   const signInWithGithubFn = async () => {
     const auth = getAuth()
     const provider = new GithubAuthProvider()
     provider.addScope('user:email')
-    await signInWithPopup(auth, provider)
+    const cred = await signInWithPopup(auth, provider)
+    setUser(toAuthUser({ uid: cred.user.uid, email: cred.user.email, displayName: cred.user.displayName, photoURL: cred.user.photoURL }))
   }
 
   const signOutFn = async () => {
-    await firebaseSignOut(getAuth())
+    try { await firebaseSignOut(getAuth()) } catch { /* ignore if Firebase not configured */ }
+    await fetch('/api/auth/session', { method: 'DELETE' })
+    setUser(null)
   }
 
   const sendPasswordResetFn = async (email: string) => {
+    const { sendPasswordResetEmail } = await import('firebase/auth')
     await sendPasswordResetEmail(getAuth(), email)
   }
 
   const confirmPasswordResetFn = async (code: string, newPassword: string) => {
+    const { confirmPasswordReset } = await import('firebase/auth')
     await confirmPasswordReset(getAuth(), code, newPassword)
   }
 

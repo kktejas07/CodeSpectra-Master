@@ -3,6 +3,8 @@ import { cookies } from 'next/headers'
 import { getAdminAuthInstance } from './firebase-admin'
 import { bootSchedulerOnce } from './boot-scheduler'
 import { isSuperAdmin, isAdmin, normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
+import { users as getUsersCollection } from '@/lib/db/admin'
+import { verifySessionToken, type SessionPayload } from '@/lib/session'
 
 export type UserRole = RBACUserRole
 
@@ -14,45 +16,74 @@ export interface APIUser {
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
 
+async function lookupRole(uid: string): Promise<UserRole> {
+  try {
+    const userCol = await getUsersCollection()
+    const profile = await userCol.findOne({ id: uid })
+    if (profile?.role) return normalizeUserRole(profile.role as string)
+  } catch {
+    /* fall through to default */
+  }
+  return 'user'
+}
+
+function fromSessionPayload(p: SessionPayload): APIUser {
+  return {
+    id: p.uid,
+    email: p.email,
+    role: normalizeUserRole(p.role),
+  }
+}
+
 export async function getAPIUser(): Promise<APIUser | null> {
   bootSchedulerOnce()
   try {
     const adminAuth = await getAdminAuthInstance()
-    if (!adminAuth) return null
-
     const cookieStore = await cookies()
     const sessionCookie = cookieStore.get(SESSION_COOKIE_NAME)?.value
 
     if (sessionCookie) {
-      try {
-        const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
-        if (decoded) {
-          return {
-            id: decoded.uid,
-            email: decoded.email || '',
-            role: normalizeUserRole((decoded as Record<string, unknown>).role as string | undefined),
+      // Try Firebase session cookie first
+      if (adminAuth) {
+        try {
+          const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
+          if (decoded) {
+            return {
+              id: decoded.uid,
+              email: decoded.email || '',
+              role: await lookupRole(decoded.uid),
+            }
           }
+        } catch {
+          /* invalid cookie — try JWT fallback */
         }
-      } catch {
-        /* invalid cookie — fall through to Bearer token check */
+      }
+
+      // Fallback: verify as JWT (DB auth session)
+      const payload = await verifySessionToken(sessionCookie)
+      if (payload) {
+        return fromSessionPayload(payload)
       }
     }
 
-    const headersList = await headers()
-    const authHeader = headersList.get('authorization')
-    if (authHeader?.startsWith('Bearer ')) {
-      const token = authHeader.slice(7)
-      try {
-        const decoded = await adminAuth.verifyIdToken(token)
-        if (decoded) {
-          return {
-            id: decoded.uid,
-            email: decoded.email || '',
-            role: normalizeUserRole((decoded as Record<string, unknown>).role as string | undefined),
+    // Bearer token (Firebase-only)
+    if (adminAuth) {
+      const headersList = await headers()
+      const authHeader = headersList.get('authorization')
+      if (authHeader?.startsWith('Bearer ')) {
+        const token = authHeader.slice(7)
+        try {
+          const decoded = await adminAuth.verifyIdToken(token)
+          if (decoded) {
+            return {
+              id: decoded.uid,
+              email: decoded.email || '',
+              role: await lookupRole(decoded.uid),
+            }
           }
+        } catch {
+          /* invalid token */
         }
-      } catch {
-        /* invalid token */
       }
     }
 

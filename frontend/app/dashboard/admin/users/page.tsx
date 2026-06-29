@@ -23,8 +23,7 @@ import {
 import { useToast } from '@/lib/toast-context'
 import { formatRelativeTime } from '@/lib/date-utils'
 import type { AdminUserListRow } from '@/lib/admin-users'
-// Supabase realtime was removed; the page now polls /api/admin/users instead.
-// import { supabase } from '@/lib/supabase-client'
+// The page now polls /api/admin/users instead of using realtime.
 import { normalizeUserRole, type UserRole } from '@/lib/rbac'
 
 type TableUser = {

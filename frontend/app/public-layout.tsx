@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Code2, CodeXml, ArrowRight, Menu, X, Github } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
-import { useHasSupabaseSession } from '@/hooks/use-has-supabase-session'
+import { useHasUserSession } from '@/hooks/use-has-supabase-session'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
 import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
 
@@ -16,7 +16,7 @@ export function PublicPageWrapper({
 }: {
   children: React.ReactNode
 }) {
-  const hasSession = useHasSupabaseSession()
+  const hasSession = useHasUserSession()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
 

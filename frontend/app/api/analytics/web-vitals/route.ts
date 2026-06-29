@@ -45,39 +45,53 @@ function normalizeEvent(raw: z.infer<typeof eventSchema>) {
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const gate = await requireAuth()
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
-  }
-
-  let parsed: z.infer<typeof bodySchema>
   try {
-    const json: unknown = await request.json()
-    parsed = bodySchema.parse(json)
-  } catch {
-    return NextResponse.json({ error: 'Invalid JSON or schema' }, { status: 400 })
-  }
-
-  const items = 'events' in parsed ? parsed.events : [parsed]
-  const now = nowIso()
-  const docs = items.map((item) => {
-    const n = normalizeEvent(item)
-    if ('error' in n) throw new Error(n.error)
-    return {
-      id: newId(),
-      user_id: gate.user.id,
-      ...n.row,
-      created_at: now,
+    const gate = await requireAuth()
+    if ('error' in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
-  })
 
-  try {
-    const col = await webVitalsEvents()
-    await col.insertMany(docs as unknown as Parameters<typeof col.insertMany>[0])
-    return NextResponse.json({ ok: true, inserted: docs.length })
+    let parsed: z.infer<typeof bodySchema>
+    try {
+      const json: unknown = await request.json()
+      parsed = bodySchema.parse(json)
+    } catch {
+      return NextResponse.json({ error: 'Invalid JSON or schema' }, { status: 400 })
+    }
+
+    const items = 'events' in parsed ? parsed.events : [parsed]
+    const now = nowIso()
+    const docs: Array<Record<string, unknown>> = []
+    for (const item of items) {
+      const n = normalizeEvent(item)
+      if ('error' in n) {
+        console.warn('[CodeSpectra] Skipping unsupported metric:', n.error)
+        continue
+      }
+      docs.push({
+        id: newId(),
+        user_id: gate.user.id,
+        ...n.row,
+        created_at: now,
+      })
+    }
+
+    if (docs.length === 0) {
+      return NextResponse.json({ ok: true, inserted: 0 })
+    }
+
+    try {
+      const col = await webVitalsEvents()
+      await col.insertMany(docs as unknown as Parameters<typeof col.insertMany>[0])
+      return NextResponse.json({ ok: true, inserted: docs.length })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed to store vitals'
+      console.error('[CodeSpectra] web_vitals_events insert:', msg)
+      return NextResponse.json({ error: msg }, { status: 500 })
+    }
   } catch (e) {
-    const msg = e instanceof Error ? e.message : 'Failed to store vitals'
-    console.error('[CodeSpectra] web_vitals_events insert:', msg)
+    const msg = e instanceof Error ? e.message : 'Internal error'
+    console.error('[CodeSpectra] web_vitals unhandled:', msg)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

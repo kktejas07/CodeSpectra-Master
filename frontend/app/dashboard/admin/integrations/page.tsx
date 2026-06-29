@@ -39,7 +39,7 @@ export default function IntegrationsPage() {
         <Plug className="h-4 w-4" />
         <AlertTitle>Built-in vs connected</AlertTitle>
         <AlertDescription className="text-muted-foreground">
-          The scanner, interviews, and dashboards run in this platform. SonarQube and similar rows are{' '}
+          The scanner, interviews, and dashboards run in this platform. Third-party analysis integrations are{' '}
           <strong className="font-medium text-foreground">optional bridges</strong> so you can reuse an existing quality
           server or notify Slack — they are not separate “plugins” you install in the browser.
         </AlertDescription>

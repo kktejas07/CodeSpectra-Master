@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import {
   getDefaultDashboard,
+  isSuperAdmin,
+  isAdmin,
   type UserRole,
 } from '@/lib/rbac'
 
@@ -19,6 +21,7 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
   const router = useRouter()
   const { user, loading } = useAuth()
   const [ready, setReady] = useState(false)
+  const [userRole, setUserRole] = useState<UserRole | null>(null)
 
   useEffect(() => {
     if (loading) return
@@ -26,17 +29,39 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
       router.push('/auth/login')
       return
     }
-    setReady(true)
-  }, [loading, user, router, opts.require])
+    let cancelled = false
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled) return
+        const role = (data?.user?.role || 'user') as UserRole
+        setUserRole(role)
+        setReady(true)
+      })
+      .catch(() => {
+        if (!cancelled) {
+          setUserRole('user')
+          setReady(true)
+        }
+      })
+    return () => { cancelled = true }
+  }, [loading, user, router])
 
-  const profile = user
+  const profile = user && userRole
     ? {
         id: user.uid,
         email: user.email || '',
         name: user.displayName || undefined,
-        role: 'user' as UserRole,
+        role: userRole,
       }
     : null
 
-  return { ready, allowed: ready, user: profile, loading }
+  const allowed = ready && (() => {
+    if (!opts.require || opts.require === 'auth') return true
+    if (opts.require === 'superadmin') return isSuperAdmin(userRole!)
+    if (opts.require === 'admin') return isAdmin(userRole!)
+    return false
+  })()
+
+  return { ready, allowed, user: profile, loading }
 }

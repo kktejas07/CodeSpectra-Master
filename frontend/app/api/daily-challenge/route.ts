@@ -14,58 +14,66 @@ export const runtime = 'nodejs'
  * has submitted any accepted solution).
  */
 export async function GET(_req: NextRequest): Promise<NextResponse> {
-  const user = await getAPIUser()
-  const probsCol = await problems()
-  const allProblems = await probsCol
-    .find({}, { projection: { id: 1, slug: 1, title: 1, difficulty: 1, topics: 1 } })
-    .toArray()
-  if (allProblems.length === 0) {
-    return NextResponse.json({ problem: null, streak: 0, today: todayKey() })
-  }
-
-  const today = todayKey()
-  const idx = simpleHash(today) % allProblems.length
-  const problem = allProblems[idx]
-
-  // Compute the user's streak.
-  let streak = 0
-  let solvedToday = false
-  if (user) {
-    const db = await getMongoDb()
-    const recent = await db
-      .collection('submissions')
-      .find(
-        { user_id: user.id, status: 'accepted' },
-        { projection: { created_at: 1, problem_slug: 1 } },
-      )
-      .sort({ created_at: -1 })
-      .limit(120)
+  try {
+    const user = await getAPIUser()
+    const probsCol = await problems()
+    const allProblems = await probsCol
+      .find({}, { projection: { id: 1, slug: 1, title: 1, difficulty: 1, topics: 1 } })
       .toArray()
-    const days = new Set<string>()
-    for (const s of recent) {
-      if (typeof s.created_at === 'string') {
-        days.add(s.created_at.slice(0, 10))
+    if (allProblems.length === 0) {
+      return NextResponse.json({ problem: null, streak: 0, today: todayKey() })
+    }
+
+    const today = todayKey()
+    const idx = simpleHash(today) % allProblems.length
+    const problem = allProblems[idx]
+
+    // Compute the user's streak.
+    let streak = 0
+    let solvedToday = false
+    if (user) {
+      const db = await getMongoDb()
+      const recent = await db
+        .collection('submissions')
+        .find(
+          { user_id: user.id, status: 'accepted' },
+          { projection: { created_at: 1, problem_slug: 1 } },
+        )
+        .sort({ created_at: -1 })
+        .limit(120)
+        .toArray()
+      const days = new Set<string>()
+      for (const s of recent) {
+        if (typeof s.created_at === 'string') {
+          days.add(s.created_at.slice(0, 10))
+        }
+      }
+      solvedToday = days.has(today)
+      let cursor = new Date()
+      while (days.has(toKey(cursor))) {
+        streak += 1
+        cursor.setUTCDate(cursor.getUTCDate() - 1)
       }
     }
-    solvedToday = days.has(today)
-    let cursor = new Date()
-    while (days.has(toKey(cursor))) {
-      streak += 1
-      cursor.setUTCDate(cursor.getUTCDate() - 1)
-    }
-  }
 
-  return NextResponse.json({
-    today,
-    problem: {
-      slug: problem.slug,
-      title: problem.title,
-      difficulty: problem.difficulty,
-      topics: problem.topics,
-    },
-    streak,
-    solved_today: solvedToday,
-  })
+    return NextResponse.json({
+      today,
+      problem: {
+        slug: problem.slug,
+        title: problem.title,
+        difficulty: problem.difficulty,
+        topics: problem.topics,
+      },
+      streak,
+      solved_today: solvedToday,
+    })
+  } catch (error) {
+    console.error('[CodeSpectra] daily-challenge error:', error)
+    return NextResponse.json(
+      { error: 'Internal server error', today: todayKey(), problem: null, streak: 0, solved_today: false },
+      { status: 500 },
+    )
+  }
 }
 
 function todayKey(): string {

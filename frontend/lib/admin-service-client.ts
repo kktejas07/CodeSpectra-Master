@@ -1,8 +1,6 @@
 /**
- * Phase 7 stub — legacy Supabase service-role client.
- * Anything calling `getServiceSupabase()` is dead code that needs to be
- * migrated to MongoDB; this returns `null` so the legacy `if (!supabase)
- * return 503` branch fires cleanly.
+ * Legacy Supabase client — removed. All callers have been migrated to MongoDB.
+ * This stub exists only for type compatibility with any remaining references.
  */
 
 export function getServiceSupabase(): null {

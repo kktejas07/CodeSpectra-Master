@@ -1,170 +1,102 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowRight, Code, Users, Brain, MessageSquare, Lock, Briefcase, Clock } from 'lucide-react'
+import { ArrowRight, Code, Users, Brain, MessageSquare, Lock, Briefcase, Clock, Loader } from 'lucide-react'
 import Link from 'next/link'
 
+interface InterviewType {
+  id: string
+  title: string
+  description: string
+  duration: string
+  difficulty: string
+  available: boolean
+  roles: string[]
+}
+
+const ICONS: Record<string, React.ReactNode> = {
+  coding: <Code className="w-6 h-6" />,
+  'system-design': <Briefcase className="w-6 h-6" />,
+  behavioral: <MessageSquare className="w-6 h-6" />,
+  'ai-fluency': <Brain className="w-6 h-6" />,
+}
+
 export default function InterviewPage() {
-  const interviews = [
-    {
-      id: 'coding',
-      title: 'Coding Interview',
-      description: 'Strengthen problem-solving speed, coding accuracy, and confidence by solving real-world problems.',
-      icon: <Code className="w-6 h-6" />,
-      duration: '60 mins',
-      difficulty: 'Medium',
-      available: true,
-      roles: ['Software Engineer', 'Frontend Developer', 'Backend Developer'],
-    },
-    {
-      id: 'system-design',
-      title: 'System Design',
-      description: 'Improve your ability to design scalable systems and clearly justify architectural decisions.',
-      icon: <Briefcase className="w-6 h-6" />,
-      duration: '90 mins',
-      difficulty: 'Hard',
-      available: false,
-      roles: ['Senior Engineer', 'Architect'],
-    },
-    {
-      id: 'behavioral',
-      title: 'Behavioral Interview',
-      description: 'Practice behavioral questions in a mock setting. Refine your storytelling and STAR method.',
-      icon: <MessageSquare className="w-6 h-6" />,
-      duration: '45 mins',
-      difficulty: 'Easy',
-      available: true,
-      roles: ['All Roles'],
-    },
-    {
-      id: 'ai-fluency',
-      title: 'AI Fluency Assessment',
-      description: 'Demonstrate your ability to build with AI and use AI tools to solve problems and improve your workflow.',
-      icon: <Brain className="w-6 h-6" />,
-      duration: '30 mins',
-      difficulty: 'Medium',
-      available: true,
-      roles: ['All Roles'],
-    },
-  ]
+  const [interviews, setInterviews] = useState<InterviewType[]>([])
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    fetch('/api/interviews/types')
+      .then(r => r.json())
+      .then(json => { if (json.data) setInterviews(json.data) })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [])
 
   return (
     <div className="space-y-8">
-      {/* Header */}
-      <div className="space-y-2">
+      <div>
         <div className="flex items-center gap-2">
           <Briefcase className="w-6 h-6 text-primary" />
           <h1 className="text-3xl font-bold text-foreground">AI-Powered Mock Interviews</h1>
         </div>
-        <p className="text-foreground/60">
-          Ace your next job interview by practicing with AI-powered mock interviews. Choose your role and get started.
-        </p>
+        <p className="text-muted-foreground mt-1">Practice with AI-powered mock interviews. Choose your role and get started.</p>
       </div>
 
-      {/* CTA Banner */}
       <Card className="p-8 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           <div>
             <h3 className="text-2xl font-bold text-foreground mb-2">Ready for Your Next Interview?</h3>
-            <p className="text-foreground/60">
-              Start a mock interview session with AI feedback. Upload your resume and configure your devices.
-            </p>
+            <p className="text-muted-foreground">Start a mock interview session with AI feedback. Upload your resume and configure your devices.</p>
           </div>
-          <Button asChild size="lg" className="gap-2 whitespace-nowrap">
-            <Link href="/dashboard/interviews/setup">
-              Start Interview
-              <ArrowRight className="w-4 h-4" />
-            </Link>
+          <Button asChild size="lg" className="gap-2">
+            <Link href="/dashboard/interviews/setup">Start Interview <ArrowRight className="w-4 h-4" /></Link>
           </Button>
         </div>
       </Card>
 
-      {/* Interview Types Grid */}
-      <div className="space-y-4">
-        <h2 className="text-2xl font-bold text-foreground">Interview Types</h2>
-        <div className="grid md:grid-cols-2 gap-6">
-          {interviews.map((interview) => (
-            <Card
-              key={interview.id}
-              className={`p-6 transition-all ${
-                interview.available
-                  ? 'hover:shadow-lg hover:border-primary/50 cursor-pointer'
-                  : 'opacity-60'
-              }`}
-            >
-              <div className="space-y-4">
-                {/* Header */}
-                <div className="flex items-start justify-between">
-                  <div className="flex items-start gap-3 flex-1">
-                    <div className={`p-3 rounded-lg ${
-                      interview.available
-                        ? 'bg-primary/10'
-                        : 'bg-muted'
-                    }`}>
-                      {interview.icon}
-                    </div>
-                    <div className="flex-1">
-                      <h3 className="font-bold text-lg text-foreground">
-                        {interview.title}
-                      </h3>
-                    </div>
-                  </div>
-                  {!interview.available && (
-                    <Lock className="w-5 h-5 text-muted-foreground" />
-                  )}
+      {loading ? (
+        <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : interviews.length === 0 ? (
+        <Card className="border-border/60 p-10 text-center">
+          <Briefcase className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <p className="mt-3 text-muted-foreground">No interview types available yet.</p>
+        </Card>
+      ) : (
+        <div className="grid gap-6 sm:grid-cols-2">
+          {interviews.map(interview => (
+            <Card key={interview.id} className={`border-border/60 p-6 ${!interview.available ? 'opacity-60' : ''}`}>
+              <div className="flex items-start gap-4 mb-4">
+                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
+                  {ICONS[interview.id] || <Briefcase className="w-6 h-6" />}
                 </div>
-
-                {/* Description */}
-                <p className="text-sm text-foreground/60 leading-relaxed">
-                  {interview.description}
-                </p>
-
-                {/* Details Grid */}
-                <div className="grid grid-cols-3 gap-2 text-xs">
-                  <div className="p-2 bg-muted rounded">
-                    <p className="text-foreground/60 font-medium">Duration</p>
-                    <p className="text-foreground font-semibold">{interview.duration}</p>
+                <div className="flex-1">
+                  <div className="flex items-center gap-2">
+                    <h3 className="font-semibold text-foreground">{interview.title}</h3>
+                    {!interview.available && <Lock className="h-4 w-4 text-muted-foreground" />}
                   </div>
-                  <div className="p-2 bg-muted rounded">
-                    <p className="text-foreground/60 font-medium">Difficulty</p>
-                    <p className="text-foreground font-semibold">{interview.difficulty}</p>
-                  </div>
-                  <div className="p-2 bg-muted rounded">
-                    <p className="text-foreground/60 font-medium">Roles</p>
-                    <p className="text-foreground font-semibold">{interview.roles.length}</p>
-                  </div>
+                  <p className="text-sm text-muted-foreground mt-1">{interview.description}</p>
                 </div>
-
-                {/* Roles */}
-                <div className="flex flex-wrap gap-1">
-                  {interview.roles.map((role) => (
-                    <Badge key={role} variant="outline" className="text-xs">
-                      {role}
-                    </Badge>
-                  ))}
-                </div>
-
-                {/* CTA */}
-                {interview.available ? (
-                  <Button asChild className="w-full gap-2">
-                    <Link href="/dashboard/interviews/setup">
-                      Try for Free
-                      <ArrowRight className="w-4 h-4" />
-                    </Link>
-                  </Button>
-                ) : (
-                  <Button disabled className="w-full gap-2">
-                    <Lock className="w-4 h-4" />
-                    Coming Soon
-                  </Button>
-                )}
               </div>
+              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-4">
+                <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{interview.duration}</span>
+                <Badge variant="outline" className="text-[10px]">{interview.difficulty}</Badge>
+              </div>
+              <div className="flex flex-wrap gap-1.5 mb-4">
+                {interview.roles.map(r => <Badge key={r} variant="secondary" className="text-[10px]">{r}</Badge>)}
+              </div>
+              <Link href={interview.available ? `/dashboard/interviews/${interview.id}` : '#'}>
+                <Button variant="outline" size="sm" className="w-full gap-2" disabled={!interview.available}>
+                  {interview.available ? 'Start' : 'Coming Soon'} <ArrowRight className="h-3.5 w-3.5" />
+                </Button>
+              </Link>
             </Card>
           ))}
         </div>
-      </div>
+      )}
     </div>
   )
 }

@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { cookies } from 'next/headers'
 import { users as getUsersCollection } from '@/lib/db/admin'
+import { verifySessionToken } from '@/lib/session'
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
 const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7 * 1000
@@ -12,7 +13,7 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
     const existing = await userCol.findOne({ id: uid })
     if (!existing) {
       await userCol.insertOne({
-        id: uid,
+        _id: uid,
         email,
         name: displayName || email?.split('@')[0] || 'User',
         fullName: displayName || email?.split('@')[0] || 'User',
@@ -20,7 +21,7 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
-      })
+      } as any)
     }
   } catch (e) {
     console.error('[Session] Profile sync error:', e)
@@ -84,29 +85,42 @@ export async function GET() {
     return NextResponse.json({ user: null })
   }
 
-  try {
-    const auth = await getAdminAuthInstance()
-    if (!auth) {
-      return NextResponse.json({ user: null })
+  // Try Firebase session cookie
+  const auth = await getAdminAuthInstance()
+  if (auth) {
+    try {
+      const decoded = await auth.verifySessionCookie(sessionCookie, true)
+      if (decoded) {
+        const userCol = await getUsersCollection()
+        const profile = await userCol.findOne({ id: decoded.uid })
+        return NextResponse.json({
+          user: {
+            uid: decoded.uid,
+            email: decoded.email || null,
+            role: profile?.role || 'user',
+            fullName: profile?.fullName || profile?.name || decoded.name || null,
+          },
+        })
+      }
+    } catch {
+      /* invalid Firebase cookie — try JWT fallback */
     }
+  }
 
-    const decoded = await auth.verifySessionCookie(sessionCookie, true)
-    if (!decoded) {
-      return NextResponse.json({ user: null })
-    }
-
+  // Fallback: verify as JWT (DB auth session)
+  const payload = await verifySessionToken(sessionCookie)
+  if (payload) {
     const userCol = await getUsersCollection()
-    const profile = await userCol.findOne({ id: decoded.uid })
-
+    const profile = await userCol.findOne({ id: payload.uid })
     return NextResponse.json({
       user: {
-        uid: decoded.uid,
-        email: decoded.email || null,
-        role: profile?.role || 'user',
-        fullName: profile?.fullName || profile?.name || decoded.name || null,
+        uid: payload.uid,
+        email: payload.email,
+        role: payload.role,
+        fullName: profile?.fullName || profile?.name || null,
       },
     })
-  } catch {
-    return NextResponse.json({ user: null })
   }
+
+  return NextResponse.json({ user: null })
 }
