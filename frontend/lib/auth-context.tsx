@@ -13,7 +13,7 @@ import {
   confirmPasswordReset,
   signOut as firebaseSignOut,
 } from 'firebase/auth'
-import { getFirebaseAuth } from './firebase'
+import { getFirebaseAuth, prefetchFirebaseConfig, setFirebaseConfig } from './firebase'
 import type { User } from 'firebase/auth'
 
 export interface AuthUser {
@@ -59,29 +59,44 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    try {
-      const auth = getAuth()
-      const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
-        if (firebaseUser) {
-          setUser(toAuthUser(firebaseUser))
-          try {
-            const idToken = await firebaseUser.getIdToken()
-            await fetch('/api/auth/session', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ idToken }),
-            })
-          } catch { /* session sync is optional */ }
-        } else {
-          setUser(null)
-          try { await fetch('/api/auth/session', { method: 'DELETE' }) } catch {}
+    let unsubscribe: (() => void) | null = null
+    let cancelled = false
+    const init = async () => {
+      try {
+        const cfg = await prefetchFirebaseConfig()
+        if (cfg) setFirebaseConfig(cfg)
+        const a = getFirebaseAuth()
+        if (!a) {
+          if (!cancelled) setLoading(false)
+          return
         }
-        setLoading(false)
-      })
-      return () => unsubscribe()
-    } catch (e) {
-      console.warn('[Auth] Init error:', e)
-      setLoading(false)
+        unsubscribe = onAuthStateChanged(a, async (firebaseUser) => {
+          if (cancelled) return
+          if (firebaseUser) {
+            setUser(toAuthUser(firebaseUser))
+            try {
+              const idToken = await firebaseUser.getIdToken()
+              await fetch('/api/auth/session', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ idToken }),
+              })
+            } catch { /* session sync is optional */ }
+          } else {
+            setUser(null)
+            try { await fetch('/api/auth/session', { method: 'DELETE' }) } catch {}
+          }
+          if (!cancelled) setLoading(false)
+        })
+      } catch (e) {
+        console.warn('[Auth] Init error:', e)
+        if (!cancelled) setLoading(false)
+      }
+    }
+    init()
+    return () => {
+      cancelled = true
+      unsubscribe?.()
     }
   }, [])
 

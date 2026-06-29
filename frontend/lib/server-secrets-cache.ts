@@ -38,6 +38,13 @@ export type ServerSecretsRecord = {
   stripe_price_pro_yearly?: string
   stripe_price_enterprise_monthly?: string
   stripe_price_enterprise_yearly?: string
+  // --- Firebase client config (superadmin settings UI, no redeploy) ----
+  firebase_api_key?: string
+  firebase_auth_domain?: string
+  firebase_project_id?: string
+  firebase_storage_bucket?: string
+  firebase_messaging_sender_id?: string
+  firebase_app_id?: string
 }
 
 interface PlatformSettingDoc {

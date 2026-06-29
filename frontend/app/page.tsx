@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ArrowRight, Code2, Library } from 'lucide-react'
@@ -19,24 +19,6 @@ export default function Home() {
   const hasSession = useHasSupabaseSession()
   const [displayedText, setDisplayedText] = useState('')
   const [currentWord, setCurrentWord] = useState(0)
-  // Scroll-reveal: observe all .scroll-reveal sections
-  useEffect(() => {
-    const targets = document.querySelectorAll<HTMLElement>('.scroll-reveal')
-    if (!targets.length) return
-    const io = new IntersectionObserver(
-      (entries) => {
-        for (const e of entries) {
-          if (e.isIntersecting) {
-            e.target.classList.add('revealed')
-            io.unobserve(e.target)
-          }
-        }
-      },
-      { threshold: 0.12, rootMargin: '0px 0px -50px 0px' }
-    )
-    targets.forEach((t) => io.observe(t))
-    return () => io.disconnect()
-  }, [])
   
   const words = ['analyze', 'practice', 'learn', 'certify']
   const widestWord = words.reduce((a, b) => (a.length >= b.length ? a : b))
@@ -257,7 +239,7 @@ export async function bootstrap() {
       </section>
 
       {/* Capabilities — Optimus-style stacked rows (blue / gray / black on white) */}
-      <section id="capabilities" className="scroll-reveal scroll-mt-24 border-b border-border/40 py-24 lg:py-32">
+      <section id="capabilities" className="scroll-mt-24 border-b border-border/40 py-24 lg:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <div className="mb-14 max-w-3xl lg:mb-20">
             <span className="mb-6 inline-flex items-center gap-3 font-mono text-sm text-muted-foreground">
@@ -296,10 +278,10 @@ export async function bootstrap() {
         </div>
       </section>
 
-      <ProcessShowcase steps={processSteps} className="scroll-reveal" />
+      <ProcessShowcase steps={processSteps} />
 
       {/* Platform — copy + SVG side by side from md; stats full width below */}
-      <section className="scroll-reveal overflow-hidden border-t border-border/40 py-24 lg:py-32">
+      <section className="overflow-hidden border-t border-border/40 py-24 lg:py-32">
         <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
           <p className="mb-6 text-sm text-muted-foreground md:mb-8">Platform</p>
 
@@ -345,7 +327,7 @@ export async function bootstrap() {
       </section>
 
       {/* Integrations Section */}
-      <section id="integrations" className="scroll-reveal py-24 lg:py-32 border-t border-border/40 scroll-mt-24">
+      <section id="integrations" className="py-24 lg:py-32 border-t border-border/40 scroll-mt-24">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <p className="text-sm text-muted-foreground mb-3">Integrations</p>
@@ -378,7 +360,7 @@ export async function bootstrap() {
       </section>
 
       {/* Security Section */}
-      <section id="trust" className="scroll-reveal scroll-mt-24 border-t border-border/40 py-24 lg:py-32">
+      <section id="trust" className="scroll-mt-24 border-t border-border/40 py-24 lg:py-32">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="mb-16">
             <p className="text-sm text-muted-foreground mb-3">Security & access</p>
@@ -431,7 +413,7 @@ export async function bootstrap() {
       </section>
 
       {/* CTA Section */}
-      <section className="scroll-reveal py-24 lg:py-32 border-t border-border/40">
+      <section className="py-24 lg:py-32 border-t border-border/40">
         <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
           <h2 className="text-4xl sm:text-5xl font-bold mb-6 tracking-tight">
             Start using

@@ -30,6 +30,13 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'stripe_price_pro_yearly',
   'stripe_price_enterprise_monthly',
   'stripe_price_enterprise_yearly',
+  // Firebase client config (plain — these are public API keys)
+  'firebase_api_key',
+  'firebase_auth_domain',
+  'firebase_project_id',
+  'firebase_storage_bucket',
+  'firebase_messaging_sender_id',
+  'firebase_app_id',
 ]
 
 const ALL_FIELDS: (keyof ServerSecretsRecord)[] = [...SECRET_FIELDS, ...PLAIN_FIELDS]
