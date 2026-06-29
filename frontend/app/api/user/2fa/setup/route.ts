@@ -24,10 +24,7 @@ export async function POST() {
       { $set: { totp_secret: secret, totp_enabled: false, totp_setup_at: new Date().toISOString() } }
     )
 
-    const QRCode = await import('qrcode')
-    const qrCodeDataUrl = await QRCode.toDataURL(otpauth)
-
-    return NextResponse.json({ secret, qrCode: qrCodeDataUrl, otpauth })
+    return NextResponse.json({ secret, otpauth })
   } catch (error) {
     console.error('[CodeSpectra] 2FA setup error:', error)
     return NextResponse.json({ error: 'Failed to setup 2FA' }, { status: 500 })

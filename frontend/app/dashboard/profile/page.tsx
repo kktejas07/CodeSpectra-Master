@@ -128,7 +128,8 @@ function LearningHeatmap({ cells: rawCells }: { cells: number[][] | null }) {
 function TwoFactorAuth() {
   const [status, setStatus] = useState<{ enabled: boolean; setupAt?: string | null; verifiedAt?: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
-  const [setupData, setSetupData] = useState<{ secret: string; qrCode: string } | null>(null)
+  const [setupData, setSetupData] = useState<{ secret: string; otpauth: string } | null>(null)
+  const [qrCode, setQrCode] = useState('')
   const [verifyToken, setVerifyToken] = useState('')
   const [verifyError, setVerifyError] = useState('')
   const [verifying, setVerifying] = useState(false)
@@ -149,7 +150,12 @@ function TwoFactorAuth() {
     try {
       const res = await fetch('/api/user/2fa/setup', { method: 'POST' })
       const json = await res.json()
-      if (json.qrCode) setSetupData({ secret: json.secret, qrCode: json.qrCode })
+      if (json.otpauth) {
+        setSetupData({ secret: json.secret, otpauth: json.otpauth })
+        const QRCode = await import('qrcode')
+        const url = await QRCode.toDataURL(json.otpauth, { width: 200, margin: 2 })
+        setQrCode(url)
+      }
     } catch { /* ignore */ }
     setLoading(false)
   }
@@ -166,6 +172,7 @@ function TwoFactorAuth() {
       const json = await res.json()
       if (json.success) {
         setSetupData(null)
+        setQrCode('')
         setVerifyToken('')
         await fetchStatus()
       } else {
@@ -180,6 +187,8 @@ function TwoFactorAuth() {
     try {
       await fetch('/api/user/2fa/disable', { method: 'POST' })
       setStatus(null)
+      setQrCode('')
+      setSetupData(null)
       await fetchStatus()
     } catch { /* ignore */ }
   }
@@ -210,7 +219,7 @@ function TwoFactorAuth() {
         <div className="space-y-3">
           <p className="text-xs text-muted-foreground">Scan with authenticator app, then enter the 6-digit code:</p>
           {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img src={setupData.qrCode} alt="QR Code" className="mx-auto h-40 w-40 rounded border" />
+          {qrCode ? <img src={qrCode} alt="QR Code" className="mx-auto h-40 w-40 rounded border" /> : <div className="mx-auto h-40 w-40 rounded border flex items-center justify-center"><Loader className="h-5 w-5 animate-spin text-muted-foreground" /></div>}
           <p className="text-center text-[10px] text-muted-foreground break-all font-mono">{setupData.secret}</p>
           <div className="flex gap-2">
             <input
