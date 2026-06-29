@@ -48,7 +48,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
     const gate = await requireAuth()
     if ('error' in gate) {
-      return NextResponse.json({ error: gate.error }, { status: gate.status })
+      return NextResponse.json({ ok: true, inserted: 0 })
     }
 
     let parsed: z.infer<typeof bodySchema>

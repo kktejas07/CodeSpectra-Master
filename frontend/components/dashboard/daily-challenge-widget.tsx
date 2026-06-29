@@ -96,7 +96,7 @@ export function DailyChallengeWidget() {
             </div>
           )}
           <Link
-            href={`/problems/${data.problem.slug}`}
+            href={`/dashboard/problems/${data.problem.slug}`}
             className="inline-flex items-center gap-1 rounded-md bg-primary text-primary-foreground px-3 py-1.5 text-xs font-medium hover:bg-primary/90"
             data-testid="daily-cta"
           >

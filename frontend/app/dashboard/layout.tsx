@@ -154,6 +154,7 @@ export default function DashboardLayout({
 
     const baseLeaves: NavLeaf[] = [
       { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
+      { href: '/dashboard/problems', icon: CodeIcon, label: 'Problems' },
       { href: '/dashboard/tracks', icon: LayersIcon, label: 'Tracks' },
       { href: '/dashboard/scanner?mode=manual', icon: CodeIcon, label: 'Scanner' },
       { href: '/dashboard/agent', icon: Bot, label: 'Agent' },
