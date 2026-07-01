@@ -47,6 +47,7 @@ import {
   Camera as CameraIcon,
   Layers as LayersIcon,
   CreditCard as CreditCardIcon,
+  Shield,
   type LucideIcon,
 } from 'lucide-react'
 import { Breadcrumbs } from '@/components/breadcrumbs'
@@ -179,6 +180,7 @@ export default function DashboardLayout({
         { href: p.integrations, icon: Plug, label: 'Integrations' },
         { href: p.speedInsights, icon: Gauge, label: 'Speed Insights' },
         { href: p.cdn, icon: Globe2, label: 'CDN' },
+        { href: p.permissions, icon: Shield, label: 'Permissions' },
         { href: p.pricing, icon: FileText, label: 'Pricing' },
         // Admin-only domains added in Phase 11. Server enforces 403 — but the
         // links would otherwise be orphan dead-ends in the UI.

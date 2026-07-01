@@ -5,7 +5,26 @@
  * - **user** — Individual end user.
  *
  * Legacy DB value `admin` is normalized to **tenant_admin** (never confuse with superadmin).
+ *
+ * ─── PERMISSION RULE ───
+ * When adding a new dashboard page:
+ *   1. Add the route to the appropriate list in `lib/page-permissions.ts`
+ *      (ADMIN_ONLY_ROUTES / TENANT_ADMIN_ROUTES / ALL_USER_ROUTES)
+ *   2. The RBAC lists below are AUTO-GENERATED from page-permissions.
+ *      Do NOT manually edit SUPERADMIN_PAGES / TENANT_ADMIN_PAGES / USER_PAGES.
+ *   3. Run `yarn build` — it validates correctness at build time.
+ *   4. Check /dashboard/admin/permissions to verify.
  */
+import {
+  ADMIN_ONLY_ROUTES,
+  TENANT_ADMIN_ROUTES,
+  ALL_USER_ROUTES,
+  ROUTE_LABELS,
+  buildPermissionMatrix,
+  getRequiredRoleForRoute,
+  type PagePermission,
+} from '@/lib/page-permissions'
+
 export type UserRole = 'superadmin' | 'tenant_admin' | 'user'
 
 /** Canonical dashboard URLs (filesystem still uses `/dashboard/admin/...`; names here describe intent). */
@@ -13,7 +32,6 @@ export const DASHBOARD_ROUTES = {
   userHome: '/dashboard',
   /** Platform operator (superadmin) — global console */
   platform: {
-    /** Operations overview: live KPIs, charts, audit viewer. */
     system: '/dashboard/admin/system',
     users: '/dashboard/admin/users',
     roles: '/dashboard/admin/roles',
@@ -28,10 +46,9 @@ export const DASHBOARD_ROUTES = {
     resumes: '/dashboard/admin/resumes',
     codeathons: '/dashboard/admin/codeathons',
     exams: '/dashboard/admin/exams',
-    /** RUM-style vitals dashboard (UI shell; wire metrics from your analytics store or Supabase logs). */
     speedInsights: '/dashboard/admin/speed-insights',
-    /** CDN / edge configuration shell (caches, redirects, routing rules). */
     cdn: '/dashboard/admin/cdn',
+    permissions: '/dashboard/admin/permissions',
     workflows: '/dashboard/admin/workflows',
     questionGenerator: '/dashboard/admin/question-generator',
     hackathons: '/dashboard/admin/hackathons',
@@ -42,9 +59,7 @@ export const DASHBOARD_ROUTES = {
   },
 } as const
 
-export function normalizeUserRole(
-  raw: string | null | undefined
-): UserRole {
+export function normalizeUserRole(raw: string | null | undefined): UserRole {
   const r = (raw || 'user').toLowerCase().trim()
   if (r === 'superadmin') return 'superadmin'
   if (r === 'tenant_admin' || r === 'admin') return 'tenant_admin'
@@ -52,112 +67,32 @@ export function normalizeUserRole(
   return 'user'
 }
 
-const P = DASHBOARD_ROUTES.platform
-const O = DASHBOARD_ROUTES.organization
-
-/** All paths a platform superadmin may hit (includes org team for support). */
+/**
+ * AUTO-GENERATED from page-permissions.ts — do NOT edit manually.
+ * Add routes to page-permissions.ts instead.
+ */
 export const SUPERADMIN_PAGES: string[] = [
   DASHBOARD_ROUTES.userHome,
-  P.system,
-  P.users,
-  P.roles,
-  P.analytics,
-  P.auditLogs,
-  P.integrations,
-  P.pricing,
-  P.security,
-  P.settings,
-  P.teams,
-  P.jobs,
-  P.resumes,
-  P.codeathons,
-  P.exams,
-  P.speedInsights,
-  P.cdn,
-  O.team,
-  '/dashboard/challenges',
-  '/dashboard/interviews',
-  '/dashboard/interviews/feedback',
-  '/dashboard/learning',
-  '/dashboard/profile',
-  '/dashboard/achievements',
-  '/dashboard/analytics',
-  '/dashboard/scanner',
-  '/dashboard/arena',
-  '/dashboard/settings',
-  '/dashboard/billing',
-  '/dashboard/notifications',
-  '/dashboard/support',
-  '/dashboard/prepare',
-  '/dashboard/certifications',
-  '/dashboard/resumes',
-  '/dashboard/jobs',
-  '/dashboard/codeathons',
-  '/dashboard/leaderboard',
-  '/dashboard/admin/workflows',
-  '/dashboard/admin/question-generator',
-  '/dashboard/admin/hackathons',
-  '/dashboard/problems',
-  '/dashboard/tracks',
-  '/dashboard/agent',
-  '/dashboard/skill-analytics',
-  '/dashboard/identity-verify',
-  '/dashboard/pricing',
-  '/dashboard/id-card',
-  '/dashboard/search',
-  '/dashboard/notifications/preferences',
+  ...ADMIN_ONLY_ROUTES,
+  ...TENANT_ADMIN_ROUTES,
+  ...ALL_USER_ROUTES,
 ]
 
 /**
- * Tenant admin: product + **organization team only**.
- * Explicitly **no** `/dashboard/admin` platform hub, users, roles, audit, etc.
+ * AUTO-GENERATED from page-permissions.ts — do NOT edit manually.
  */
 export const TENANT_ADMIN_PAGES: string[] = [
   DASHBOARD_ROUTES.userHome,
-  O.team,
-  '/dashboard/scanner',
-  '/dashboard/arena',
-  '/dashboard/settings',
-  '/dashboard/billing',
-  '/dashboard/notifications',
-  '/dashboard/support',
-  '/dashboard/challenges',
-  '/dashboard/interviews',
-  '/dashboard/learning',
-  '/dashboard/profile',
-  '/dashboard/achievements',
-  '/dashboard/analytics',
-  '/dashboard/problems',
-  '/dashboard/tracks',
-  '/dashboard/agent',
-  '/dashboard/skill-analytics',
-  '/dashboard/identity-verify',
-  '/dashboard/pricing',
+  ...TENANT_ADMIN_ROUTES,
+  ...ALL_USER_ROUTES,
 ]
 
+/**
+ * AUTO-GENERATED from page-permissions.ts — do NOT edit manually.
+ */
 export const USER_PAGES: string[] = [
   DASHBOARD_ROUTES.userHome,
-  '/dashboard/scanner',
-  '/dashboard/arena',
-  '/dashboard/settings',
-  '/dashboard/billing',
-  '/dashboard/notifications',
-  '/dashboard/support',
-  '/dashboard/challenges',
-  '/dashboard/interviews',
-  '/dashboard/learning',
-  '/dashboard/profile',
-  '/dashboard/achievements',
-  '/dashboard/problems',
-  '/dashboard/tracks',
-  '/dashboard/agent',
-  '/dashboard/skill-analytics',
-  '/dashboard/identity-verify',
-  '/dashboard/pricing',
-  '/dashboard/prepare',
-  '/dashboard/certifications',
-  '/dashboard/leaderboard',
-  '/dashboard/id-card',
+  ...ALL_USER_ROUTES,
 ]
 
 export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
@@ -167,64 +102,32 @@ export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
 }
 
 export interface UserWithPermissions {
-  id: string
-  email: string
-  full_name: string | null
-  role: UserRole
-  is_active: boolean
-  tenant_id?: string
+  id: string; email: string; full_name: string | null; role: UserRole
+  is_active: boolean; tenant_id?: string
 }
 
 export function canAccessPage(role: UserRole, pathname: string): boolean {
   const allowedPages = ACCESSIBLE_PAGES[role] || []
   const basePath = pathname.split('?')[0]
-
-  return allowedPages.some(
-    (page) => basePath === page || basePath.startsWith(page + '/')
-  )
+  return allowedPages.some((page) => basePath === page || basePath.startsWith(page + '/'))
 }
 
-export function getAccessiblePages(role: UserRole): string[] {
-  return ACCESSIBLE_PAGES[role] || []
-}
+export function getAccessiblePages(role: UserRole): string[] { return ACCESSIBLE_PAGES[role] || [] }
+export function isSuperAdmin(role: UserRole): boolean { return role === 'superadmin' }
+export function isTenantAdmin(role: UserRole): boolean { return role === 'tenant_admin' }
+export function isAdmin(role: UserRole): boolean { return role === 'tenant_admin' || role === 'superadmin' }
 
-export function isSuperAdmin(role: UserRole): boolean {
-  return role === 'superadmin'
-}
-
-/** Organization admin only (not platform superadmin). */
-export function isTenantAdmin(role: UserRole): boolean {
-  return role === 'tenant_admin'
-}
-
-/**
- * Anyone who can manage an org or the platform (tenant_admin **or** superadmin).
- * Use for APIs that allow both; use `isSuperAdmin` / `isTenantAdmin` when you must distinguish.
- */
-export function isAdmin(role: UserRole): boolean {
-  return role === 'tenant_admin' || role === 'superadmin'
-}
-
-/** True if `userRole` satisfies `requiredRole` for route/feature checks. */
 export function hasRole(userRole: UserRole, requiredRole: UserRole): boolean {
-  if (requiredRole === 'superadmin') {
-    return userRole === 'superadmin'
-  }
-  if (requiredRole === 'tenant_admin') {
-    return userRole === 'tenant_admin' || userRole === 'superadmin'
-  }
+  if (requiredRole === 'superadmin') return userRole === 'superadmin'
+  if (requiredRole === 'tenant_admin') return userRole === 'tenant_admin' || userRole === 'superadmin'
   return true
 }
 
 export function getDefaultDashboard(role: UserRole): string {
   switch (role) {
-    case 'superadmin':
-      return P.system
-    case 'tenant_admin':
-      return O.team
-    case 'user':
-    default:
-      return DASHBOARD_ROUTES.userHome
+    case 'superadmin': return DASHBOARD_ROUTES.platform.system
+    case 'tenant_admin': return DASHBOARD_ROUTES.organization.team
+    default: return DASHBOARD_ROUTES.userHome
   }
 }
 
@@ -236,3 +139,7 @@ export function getRoleLabel(role: UserRole): string {
   }
   return labels[role] || role
 }
+
+// Re-export for convenience
+export { ADMIN_ONLY_ROUTES, TENANT_ADMIN_ROUTES, ALL_USER_ROUTES, ROUTE_LABELS, buildPermissionMatrix, getRequiredRoleForRoute }
+export type { PagePermission }

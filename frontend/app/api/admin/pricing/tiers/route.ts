@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireSuperAdmin } from '@/lib/route-auth'
 import { pricingTiers, newId, nowIso } from '@/lib/db/misc'
 
 const FALLBACK_TIERS = [
@@ -9,6 +9,10 @@ const FALLBACK_TIERS = [
 ]
 
 export async function GET(_req: NextRequest) {
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   try {
     const col = await pricingTiers()
     const data = await col.find({}).sort({ sort_order: 1 }).toArray()
@@ -20,7 +24,7 @@ export async function GET(_req: NextRequest) {
 }
 
 export async function POST(req: NextRequest) {
-  const gate = await requireAuth()
+  const gate = await requireSuperAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }

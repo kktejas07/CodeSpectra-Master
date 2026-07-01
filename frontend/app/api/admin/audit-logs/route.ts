@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireSuperAdmin } from '@/lib/route-auth'
 import { adminAuditLogs } from '@/lib/db/misc'
 
 export async function GET(req: NextRequest) {
-  const gate = await requireAuth()
+  const gate = await requireSuperAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
