@@ -1,9 +1,9 @@
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/route-auth'
+import { requireAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
 export async function GET() {
-  const gate = await requireSuperAdmin()
+  const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()

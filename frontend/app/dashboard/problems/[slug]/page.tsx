@@ -69,31 +69,38 @@ interface RunResponse {
   submissionId: string | null
 }
 
-const SUPPORTED_LANGS = [
-  { id: 'python', label: 'Python 3' },
-  { id: 'javascript', label: 'JavaScript' },
-  { id: 'typescript', label: 'TypeScript' },
-  { id: 'cpp', label: 'C++' },
-  { id: 'java', label: 'Java' },
-  { id: 'go', label: 'Go' },
-  { id: 'rust', label: 'Rust' },
-  { id: 'csharp', label: 'C#' },
-  { id: 'ruby', label: 'Ruby' },
-  { id: 'php', label: 'PHP' },
-] as const
-
-const MONACO_LANG: Record<string, string> = {
-  python: 'python',
-  javascript: 'javascript',
-  typescript: 'typescript',
-  cpp: 'cpp',
-  java: 'java',
-  go: 'go',
-  rust: 'rust',
-  csharp: 'csharp',
-  ruby: 'ruby',
-  php: 'php',
-}
+const TOP_LANGUAGES = [
+  { id: 'python', label: 'Python 3', monaco: 'python' },
+  { id: 'javascript', label: 'JavaScript', monaco: 'javascript' },
+  { id: 'typescript', label: 'TypeScript', monaco: 'typescript' },
+  { id: 'java', label: 'Java', monaco: 'java' },
+  { id: 'cpp', label: 'C++', monaco: 'cpp' },
+  { id: 'c', label: 'C', monaco: 'c' },
+  { id: 'csharp', label: 'C#', monaco: 'csharp' },
+  { id: 'go', label: 'Go', monaco: 'go' },
+  { id: 'rust', label: 'Rust', monaco: 'rust' },
+  { id: 'ruby', label: 'Ruby', monaco: 'ruby' },
+  { id: 'php', label: 'PHP', monaco: 'php' },
+  { id: 'swift', label: 'Swift', monaco: 'swift' },
+  { id: 'kotlin', label: 'Kotlin', monaco: 'kotlin' },
+  { id: 'scala', label: 'Scala', monaco: 'scala' },
+  { id: 'dart', label: 'Dart', monaco: 'dart' },
+  { id: 'bash', label: 'Bash', monaco: 'shell' },
+  { id: 'perl', label: 'Perl', monaco: 'perl' },
+  { id: 'haskell', label: 'Haskell', monaco: 'haskell' },
+  { id: 'lua', label: 'Lua', monaco: 'lua' },
+  { id: 'rscript', label: 'R', monaco: 'r' },
+  { id: 'julia', label: 'Julia', monaco: 'julia' },
+  { id: 'elixir', label: 'Elixir', monaco: 'elixir' },
+  { id: 'clojure', label: 'Clojure', monaco: 'clojure' },
+  { id: 'groovy', label: 'Groovy', monaco: 'groovy' },
+  { id: 'ocaml', label: 'OCaml', monaco: 'ocaml' },
+  { id: 'erlang', label: 'Erlang', monaco: 'erlang' },
+  { id: 'racket', label: 'Racket', monaco: 'racket' },
+  { id: 'sqlite3', label: 'SQL', monaco: 'sql' },
+  { id: 'zig', label: 'Zig', monaco: 'zig' },
+  { id: 'nim', label: 'Nim', monaco: 'nim' },
+]
 
 export default function ProblemDetailPage() {
   const params = useParams<{ slug: string }>()
@@ -111,6 +118,15 @@ export default function ProblemDetailPage() {
   const sourceRef = useRef(source)
   sourceRef.current = source
 
+  const [isDark, setIsDark] = useState(true)
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
+
   useEffect(() => {
     if (!slug) return // wait for params to resolve
     void (async () => {
@@ -121,7 +137,7 @@ export default function ProblemDetailPage() {
         const p = json as Problem
         setProblem(p)
         const initialLang =
-          SUPPORTED_LANGS.find((l) => p.starter_code?.[l.id])?.id || 'python'
+          TOP_LANGUAGES.find((l) => p.starter_code?.[l.id])?.id || 'python'
         setLanguage(initialLang)
         setSource(p.starter_code?.[initialLang] ?? '// Write your solution here\n')
       } catch (e) {
@@ -136,7 +152,7 @@ export default function ProblemDetailPage() {
     if (newCode) {
       setSource(newCode)
     } else {
-      setSource(`// ${SUPPORTED_LANGS.find(l => l.id === next)?.label || next} solution\n\n`)
+      setSource(`// ${TOP_LANGUAGES.find(l => l.id === next)?.label || next} solution\n\n`)
     }
     setResult(null)
     setAnalysis(null)
@@ -371,7 +387,7 @@ export default function ProblemDetailPage() {
               className="bg-background border border-border rounded px-3 h-9 text-sm focus:outline-none focus:ring-1 focus:ring-primary"
               data-testid="language-select"
             >
-              {SUPPORTED_LANGS.map((l) => (
+              {TOP_LANGUAGES.map((l) => (
                 <option key={l.id} value={l.id}>
                   {l.label}
                 </option>
@@ -412,8 +428,8 @@ export default function ProblemDetailPage() {
           <div className="flex-1 min-h-0">
             <Editor
               height="100%"
-              language={MONACO_LANG[language] || 'plaintext'}
-              theme="vs-dark"
+              language={TOP_LANGUAGES.find(l => l.id === language)?.monaco || 'plaintext'}
+              theme={isDark ? 'vs-dark' : 'vs'}
               value={source}
               onChange={(v) => setSource(v ?? '')}
               options={{
@@ -451,7 +467,7 @@ export default function ProblemDetailPage() {
               )}
               {tab === 'results' && <ResultsPanel result={result} running={running !== null} />}
               {tab === 'console' && (
-                <pre className="text-xs font-mono text-muted-foreground whitespace-pre-wrap">
+                <pre className={isDark ? "text-xs font-mono text-green-400 bg-black/50 p-2 rounded whitespace-pre-wrap" : "text-xs font-mono text-green-800 bg-gray-100 p-2 rounded whitespace-pre-wrap"}>
                   {result?.stderr_excerpt ||
                     '// stdout/stderr from your last run will appear here'}
                 </pre>

@@ -89,7 +89,17 @@ function CodeScannerPageInner() {
         const res = await fetch('/api/runtimes', { credentials: 'include' })
         const data = await res.json()
         if (!cancelled && Array.isArray(data.runtimes)) {
-          setRuntimes(data.runtimes)
+          const popularIds = new Set([
+            'bash','c','c++','csharp','clojure','dart','elixir','erlang','go',
+            'fortran','groovy','haskell','java','javascript','julia','kotlin',
+            'lua','nim','ocaml','perl','php','python','rscript','racket','ruby',
+            'rust','scala','sqlite3','swift','typescript','zig',
+            'csharp.net','dotnet','fsharp.net','basic.net','deno','mono',
+            'coffeescript','crystal','d','lisp','octave','pascal','powershell',
+            'prolog','pure','raku','smalltalk','vlang',
+          ])
+          const filtered = data.runtimes.filter((r: any) => popularIds.has(r.language))
+          setRuntimes(filtered.length > 0 ? filtered : data.runtimes)
           setRuntimesLoading(false)
         }
       } catch {
@@ -326,7 +336,7 @@ function CodeScannerPageInner() {
                     Paste your code and click <strong>Scan Code</strong> to see detailed analysis
                   </p>
                   <p className="text-xs text-foreground/50 mt-2">
-                    Supports: {runtimesLoading ? 'Loading...' : runtimes.length > 0 ? runtimes.map(rt => rt.language).join(', ') : 'JavaScript, TypeScript, Python, Java, C++, C#, Go, Rust'}
+                    Supports: {runtimesLoading ? 'Loading...' : runtimes.length > 0 ? runtimes.map(rt => rt.language).join(', ') : 'Popular languages (auto-detected from engine)'}
                   </p>
                 </div>
               </Card>

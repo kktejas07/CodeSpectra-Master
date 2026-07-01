@@ -45,6 +45,8 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/hackathons',
   '/dashboard/admin/ai-inventory',
   '/dashboard/admin/system',
+  '/dashboard/admin/permissions',
+  '/dashboard/admin/plans',
 ]
 
 /**
@@ -142,6 +144,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/question-generator': 'Question Generator',
   '/dashboard/admin/hackathons': 'Hackathons',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
+  '/dashboard/admin/permissions': 'Role & Permissions',
+  '/dashboard/admin/plans': 'Subscription Plans',
   '/dashboard/admin/team': 'Organization',
   '/dashboard/arena': 'Arena',
   '/dashboard/problems': 'Problems',

@@ -200,6 +200,7 @@ export default function DashboardLayout({
         { href: p.speedInsights, icon: Gauge, label: 'Speed Insights' },
         { href: p.cdn, icon: Globe2, label: 'CDN' },
         { href: p.permissions, icon: Shield, label: 'Permissions' },
+        { href: p.plans, icon: FileText, label: 'Plans' },
         { href: p.pricing, icon: FileText, label: 'Pricing' },
         // Admin-only domains added in Phase 11. Server enforces 403 — but the
         // links would otherwise be orphan dead-ends in the UI.
@@ -221,7 +222,8 @@ export default function DashboardLayout({
 
     if (isTenantAdmin(role)) {
       return [
-        { type: 'link', item: { href: DASHBOARD_ROUTES.organization.team, icon: Home, label: 'Organization' } },
+        { type: 'link', item: { href: '/dashboard', icon: Home, label: 'Overview' } },
+        { type: 'link', item: { href: DASHBOARD_ROUTES.organization.team, icon: Users, label: 'Organization' } },
         ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
       ]
     }

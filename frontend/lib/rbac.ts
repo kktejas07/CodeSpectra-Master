@@ -49,6 +49,7 @@ export const DASHBOARD_ROUTES = {
     speedInsights: '/dashboard/admin/speed-insights',
     cdn: '/dashboard/admin/cdn',
     permissions: '/dashboard/admin/permissions',
+    plans: '/dashboard/admin/plans',
     workflows: '/dashboard/admin/workflows',
     questionGenerator: '/dashboard/admin/question-generator',
     hackathons: '/dashboard/admin/hackathons',
@@ -126,7 +127,7 @@ export function hasRole(userRole: UserRole, requiredRole: UserRole): boolean {
 export function getDefaultDashboard(role: UserRole): string {
   switch (role) {
     case 'superadmin': return DASHBOARD_ROUTES.platform.system
-    case 'tenant_admin': return DASHBOARD_ROUTES.organization.team
+    case 'tenant_admin': return DASHBOARD_ROUTES.userHome
     default: return DASHBOARD_ROUTES.userHome
   }
 }

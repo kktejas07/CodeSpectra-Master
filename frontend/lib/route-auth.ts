@@ -6,6 +6,7 @@ import { normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
 import { users as getUsersCollection } from '@/lib/db/admin'
 import { verifySessionToken, type SessionPayload } from '@/lib/session'
 import { checkResourcePermission } from '@/lib/permissions-db'
+import { getPlanForRole, isFeatureEnabled, isPageAllowed } from '@/lib/plans'
 import { getMongoDb } from '@/lib/mongodb'
 
 export type UserRole = RBACUserRole
@@ -124,4 +125,28 @@ export async function requirePermission(resource: string, action: string = 'read
   const perms = await getPermissionsForRole(user.role)
   if (checkResourcePermission(perms as any, resource, action as any)) return { user }
   return { error: `Forbidden - ${action} on ${resource} denied`, status: 403 as const }
+}
+
+/**
+ * Check if the current user's plan allows a feature.
+ * Returns 402 Payment Required if the plan doesn't include the feature.
+ */
+export async function requirePlanFeature(feature: string) {
+  const user = await getAPIUser()
+  if (!user) return { error: 'Unauthorized', status: 401 as const }
+
+  try {
+    const db = await getMongoDb()
+    const userDoc = await db.collection('users').findOne({ id: user.id })
+    const planId = userDoc?.plan || 'free'
+    const plan = await getPlanForRole(planId)
+
+    if (!plan) return { error: 'No active plan', status: 402 as const }
+    if (!isFeatureEnabled(plan, feature)) {
+      return { error: `Plan upgrade required - feature '${feature}' is not available on your plan`, status: 402 as const }
+    }
+    return { user, plan }
+  } catch {
+    return { error: 'Failed to verify plan', status: 500 as const }
+  }
 }
