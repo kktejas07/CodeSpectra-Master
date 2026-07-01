@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Plus, Search, Loader, Users } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Team {
   id: number
@@ -15,6 +16,9 @@ interface Team {
 }
 
 export default function TeamsManagement() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
 

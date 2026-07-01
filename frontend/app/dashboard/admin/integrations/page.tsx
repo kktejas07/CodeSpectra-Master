@@ -6,8 +6,12 @@ import { IntegrationList } from '@/components/integrations/integration-list'
 import { IntegrationStatus } from '@/components/integrations/integration-status'
 import { GitHubIntegrationSetup } from '@/components/integrations/github-setup-dialog'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function IntegrationsPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [githubDialogOpen, setGithubDialogOpen] = useState(false)
 
   const handleConnect = (integrationId: string) => {

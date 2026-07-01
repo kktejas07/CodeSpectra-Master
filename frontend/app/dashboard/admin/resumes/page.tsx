@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Plus, Trash2, Brain, Download } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Resume {
   id: string
@@ -17,6 +18,9 @@ interface Resume {
 }
 
 export default function AdminResumesPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [resumes] = useState<Resume[]>([
     {
       id: '1',

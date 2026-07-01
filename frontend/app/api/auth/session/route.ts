@@ -98,6 +98,7 @@ export async function GET() {
             uid: decoded.uid,
             email: decoded.email || null,
             role: profile?.role || 'user',
+            plan: profile?.plan || 'free',
             fullName: profile?.fullName || profile?.name || decoded.name || null,
           },
         })
@@ -117,6 +118,7 @@ export async function GET() {
         uid: payload.uid,
         email: payload.email,
         role: payload.role,
+        plan: profile?.plan || 'free',
         fullName: profile?.fullName || profile?.name || null,
       },
     })

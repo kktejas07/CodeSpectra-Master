@@ -24,6 +24,7 @@ import {
   Workflow as WorkflowIcon,
 } from 'lucide-react'
 import CronPicker from '@/components/workflows/cron-picker'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const WorkflowBuilder = dynamic(
   () => import('@/components/workflows/workflow-builder'),
@@ -66,6 +67,9 @@ interface RunResult {
 type Tab = 'visual' | 'json'
 
 export default function WorkflowsPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [items, setItems] = useState<WorkflowSummary[]>([])
   const [selected, setSelected] = useState<string | null>(null)
   const [draft, setDraft] = useState<string>('')

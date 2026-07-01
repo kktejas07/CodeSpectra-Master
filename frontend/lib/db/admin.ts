@@ -24,6 +24,7 @@ export interface BetterAuthUserDoc {
   createdAt: Date
   updatedAt: Date
   role?: string | null
+  plan?: string | null
   fullName?: string | null
   tenantId?: string | null
   organizationId?: string | null

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireSuperAdmin } from '@/lib/route-auth'
 import { permissions } from '@/lib/db/admin'
 
 /**
@@ -8,7 +8,7 @@ import { permissions } from '@/lib/db/admin'
  * an empty array when the collection is empty (no seed yet).
  */
 export async function GET() {
-  const gate = await requireAuth()
+  const gate = await requireSuperAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }

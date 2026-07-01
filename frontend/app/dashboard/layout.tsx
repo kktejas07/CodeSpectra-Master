@@ -50,6 +50,7 @@ import {
   Shield,
   type LucideIcon,
 } from 'lucide-react'
+import { isPageAllowed, type PlanDefinition } from '@/lib/plans'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
@@ -90,6 +91,7 @@ export default function DashboardLayout({
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const [userPlan, setUserPlan] = useState<string>('free')
 
   const { user: fbUser, signOut } = useAuth()
 
@@ -101,6 +103,7 @@ export default function DashboardLayout({
       .then(data => {
         if (cancelled || !data?.user) return
         setUserRole((data.user.role || 'user') as UserRole)
+        setUserPlan(data.user.plan || 'free')
       })
       .catch(() => { if (!cancelled) setUserRole('user') })
     return () => { cancelled = true }
@@ -190,6 +193,8 @@ export default function DashboardLayout({
     const role = normalizeUserRole(userProfile.role)
     const p = DASHBOARD_ROUTES.platform
 
+    let entries: NavEntry[] = []
+
     if (isSuperAdmin(role)) {
       const platformItems: NavLeaf[] = [
         { href: p.users, icon: Users, label: 'Users' },
@@ -202,8 +207,6 @@ export default function DashboardLayout({
         { href: p.permissions, icon: Shield, label: 'Permissions' },
         { href: p.plans, icon: FileText, label: 'Plans' },
         { href: p.pricing, icon: FileText, label: 'Pricing' },
-        // Admin-only domains added in Phase 11. Server enforces 403 — but the
-        // links would otherwise be orphan dead-ends in the UI.
         { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
         { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
       ]
@@ -212,27 +215,29 @@ export default function DashboardLayout({
         icon: Settings,
         label: 'Platform settings',
       }
-      return [
+      entries = [
         { type: 'link', item: { href: p.system, icon: Home, label: 'Operations overview' } },
         ...platformItems.map((item) => ({ type: 'link' as const, item })),
         ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
         { type: 'link', item: platformSettingsLeaf },
       ]
-    }
-
-    if (isTenantAdmin(role)) {
-      return [
+    } else if (isTenantAdmin(role)) {
+      entries = [
         { type: 'link', item: { href: '/dashboard', icon: Home, label: 'Overview' } },
         { type: 'link', item: { href: DASHBOARD_ROUTES.organization.team, icon: Users, label: 'Organization' } },
         ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
       ]
+    } else {
+      entries = [
+        { type: 'link', item: { href: '/dashboard', icon: Home, label: 'Overview' } },
+        ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
+      ]
     }
 
-    return [
-      { type: 'link', item: { href: '/dashboard', icon: Home, label: 'Overview' } },
-      ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
-    ]
-  }, [userProfile?.role])
+    return entries.filter(entry =>
+      isPageAllowed({ plan: userPlan } as PlanDefinition, entry.item.href)
+    )
+  }, [userProfile?.role, userPlan])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {

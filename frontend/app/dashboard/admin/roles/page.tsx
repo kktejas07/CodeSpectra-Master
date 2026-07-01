@@ -15,6 +15,7 @@ import {
   Check,
 } from 'lucide-react'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Role {
   id: string
@@ -111,6 +112,9 @@ const ALL_PERMISSIONS = [
 ]
 
 export default function RolesPermissions() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [roles, setRoles] = useState<Role[]>(MOCK_ROLES)
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
   const [selectedRole, setSelectedRole] = useState<Role | null>(MOCK_ROLES[0])

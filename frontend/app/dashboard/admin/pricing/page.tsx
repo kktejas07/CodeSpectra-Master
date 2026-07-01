@@ -8,8 +8,12 @@ import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Plus, Edit2, Trash2, Settings } from 'lucide-react';
+import { usePageGuard } from '@/lib/use-page-guard';
 
 export default function PricingAdminPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [selectedTier, setSelectedTier] = useState(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
 

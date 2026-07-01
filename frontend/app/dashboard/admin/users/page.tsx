@@ -25,6 +25,7 @@ import { formatRelativeTime } from '@/lib/date-utils'
 import type { AdminUserListRow } from '@/lib/admin-users'
 // The page now polls /api/admin/users instead of using realtime.
 import { normalizeUserRole, type UserRole } from '@/lib/rbac'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 type TableUser = {
   id: string
@@ -50,6 +51,9 @@ function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
 }
 
 export default function UsersManagement() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const addToast = useToast()
   const [rows, setRows] = useState<AdminUserListRow[]>([])
   const [loading, setLoading] = useState(true)

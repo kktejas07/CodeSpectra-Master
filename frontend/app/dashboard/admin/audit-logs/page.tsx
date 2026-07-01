@@ -27,6 +27,7 @@ import {
   Search,
   Clock,
 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 type Severity = 'info' | 'warning' | 'critical'
 type Outcome = 'success' | 'failure' | 'denied'
@@ -65,6 +66,9 @@ function resourceIcon(t: string) {
 }
 
 export default function AuditLogsPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [logs, setLogs] = useState<AuditRow[]>([])
   const [stats, setStats] = useState({ total: 0, critical: 0, warning: 0, denied: 0 })
   const [loading, setLoading] = useState(true)

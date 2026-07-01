@@ -25,6 +25,7 @@ import {
   ExternalLink,
   Trash2,
 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Hackathon {
   id: string
@@ -41,6 +42,9 @@ interface Hackathon {
 }
 
 export default function HackathonsAdminPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [items, setItems] = useState<Hackathon[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)

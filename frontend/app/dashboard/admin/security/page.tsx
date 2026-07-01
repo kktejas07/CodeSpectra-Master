@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { AlertTriangle, Lock, Shield, Loader } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface SecuritySetting {
   name: string
@@ -16,6 +17,9 @@ const ICONS: Record<string, React.ComponentType<any>> = {
 }
 
 export default function Security() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [settings, setSettings] = useState<SecuritySetting[]>([])
   const [loading, setLoading] = useState(true)
 

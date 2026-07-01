@@ -28,6 +28,7 @@ import { executeOnce } from '@/lib/piston'
 import { getUserXp } from '@/lib/db/leaderboard'
 import { xpEvents } from '@/lib/db/leaderboard'
 import { getMongoDb } from '@/lib/mongodb'
+import { requireAuth } from '@/lib/route-auth'
 import { xpToLevel } from '@/lib/leaderboard-utils'
 
 export const runtime = 'nodejs'
@@ -237,6 +238,9 @@ async function toolCall(name: string, args: Record<string, unknown>) {
 }
 
 export async function POST(req: NextRequest) {
+  const authGate = await requireAuth()
+  if ('error' in authGate) return NextResponse.json({ jsonrpc: '2.0', id: null, error: { code: -32000, message: 'Authentication required' } })
+
   let body: JsonRpcRequest
   try {
     body = (await req.json()) as JsonRpcRequest

@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Loader2, Sparkles, FileCheck2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 type Diff = 'easy' | 'medium' | 'hard'
 
@@ -12,6 +13,9 @@ interface GenResult {
 }
 
 export default function QuestionGeneratorPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [role, setRole] = useState('Backend Engineer')
   const [difficulty, setDifficulty] = useState<Diff>('medium')
   const [topics, setTopics] = useState('arrays, hash maps')

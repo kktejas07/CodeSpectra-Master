@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { getMongoDb } from '@/lib/mongodb'
+import { requireSuperAdmin } from '@/lib/route-auth'
 
 const DEMO_USERS = [
   { email: 'superadmin@codespectra.com', password: 'SuperAdmin123!', name: 'Super Admin', role: 'superadmin' },
@@ -10,6 +11,9 @@ const DEMO_USERS = [
 ]
 
 export async function POST() {
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
   try {
     const db = await getMongoDb()
     const usersCol = db.collection('users')

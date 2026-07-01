@@ -31,28 +31,6 @@ export interface PlanDefinition {
 
 // ─── Default Plans ──────────────────────────────────────
 
-const ALL_PAGES = [
-  '/dashboard', '/dashboard/arena', '/dashboard/problems', '/dashboard/tracks',
-  '/dashboard/scanner', '/dashboard/agent', '/dashboard/learning',
-  '/dashboard/skill-analytics', '/dashboard/identity-verify',
-  '/dashboard/leaderboard', '/dashboard/achievements', '/dashboard/certifications',
-  '/dashboard/pricing', '/dashboard/challenges', '/dashboard/interviews',
-  '/dashboard/prepare', '/dashboard/profile', '/dashboard/settings',
-  '/dashboard/billing', '/dashboard/notifications', '/dashboard/support',
-  '/dashboard/search', '/dashboard/id-card', '/dashboard/codeathons',
-  '/dashboard/jobs', '/dashboard/exams', '/dashboard/resumes', '/dashboard/analytics',
-  '/dashboard/notifications/preferences', '/dashboard/interviews/feedback',
-]
-
-const PRO_ONLY_PAGES = [
-  '/dashboard/agent', '/dashboard/skill-analytics',
-  '/dashboard/certifications', '/dashboard/codeathons',
-]
-
-const ENTERPRISE_ONLY_PAGES = [
-  '/dashboard/interviews/feedback', '/dashboard/admin/team',
-]
-
 export function getDefaultPlans(): PlanDefinition[] {
   return [
     {
@@ -151,8 +129,17 @@ export function isPageAllowed(plan: PlanDefinition | null, page: string): boolea
   if (plan.plan === 'enterprise') return true
   if (plan.plan === 'pro') return true
   if (plan.plan === 'free') {
-    const excludedPages = [...PRO_ONLY_PAGES, ...ENTERPRISE_ONLY_PAGES]
-    return !excludedPages.some(p => page === p || page.startsWith(p + '/'))
+    const excludedPatterns = [
+      '/dashboard/admin',
+      '/dashboard/agent',
+      '/dashboard/skill-analytics',
+      '/dashboard/certifications',
+      '/dashboard/interviews/feedback',
+      '/dashboard/codeathons',
+      '/dashboard/jobs',
+      '/dashboard/resumes',
+    ]
+    return !excludedPatterns.some(p => page === p || page.startsWith(p + '/'))
   }
   return true
 }
@@ -167,23 +154,4 @@ export function getFeatureLimit(plan: PlanDefinition | null, featureKey: string)
   return feature.limit ?? 0
 }
 
-/**
- * Combined check: user has role permission AND plan allows the feature.
- */
-export function checkAccess(
-  rolePermissions: string[],
-  plan: PlanDefinition | null,
-  page: string,
-  feature?: string
-): { allowed: boolean; reason?: string } {
-  // Role check
-  const hasRoleAccess = rolePermissions.some(r => page === r || page.startsWith(r + '/'))
-  if (!hasRoleAccess) return { allowed: false, reason: 'Role does not permit access to this page' }
 
-  // Plan check
-  if (!plan) return { allowed: false, reason: 'No active plan' }
-  if (!isPageAllowed(plan, page)) return { allowed: false, reason: `Plan '${plan.name}' does not include this page` }
-  if (feature && !isFeatureEnabled(plan, feature)) return { allowed: false, reason: `Plan '${plan.name}' does not include feature '${feature}'` }
-
-  return { allowed: true }
-}

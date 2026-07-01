@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Trophy, Plus, Edit, Trash2, Eye } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Codeathon {
   id: string
@@ -18,6 +19,9 @@ interface Codeathon {
 }
 
 export default function AdminCodeathonsPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [codeathons, setCodeathons] = useState<Codeathon[]>([
     {
       id: '1',

@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   ExternalLink,
 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface CategorySummary {
   id: string
@@ -75,6 +76,9 @@ const STATUS_COLOR: Record<InventoryItem['status'], string> = {
 }
 
 export default function AiInventoryPage() {
+  const gate = usePageGuard('superadmin')
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+
   const [tab, setTab] = useState<Tab>('inventory')
   const [summary, setSummary] = useState<CategorySummary[] | null>(null)
   const [activeCategory, setActiveCategory] = useState<string | null>(null)
