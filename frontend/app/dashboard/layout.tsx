@@ -234,9 +234,12 @@ export default function DashboardLayout({
       ]
     }
 
-    return entries.filter(entry =>
-      isPageAllowed({ plan: userPlan } as PlanDefinition, entry.item.href)
-    )
+    return entries.filter(entry => {
+      // Superadmin sees everything regardless of plan
+      if (isSuperAdmin(role)) return true
+      // Other roles are filtered by plan
+      return isPageAllowed({ plan: userPlan } as PlanDefinition, entry.item.href)
+    })
   }, [userProfile?.role, userPlan])
 
   const toggleSidebarCollapsed = () => {
