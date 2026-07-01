@@ -14,6 +14,8 @@ ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
 ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
 ENV NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
 ENV PISTON_URL=http://piston:2000/api/v2
+# Install Docker CLI for cache management operations
+RUN apk add --no-cache docker-cli
 WORKDIR /app
 COPY package.json .
 RUN yarn install --frozen-lockfile 2>/dev/null || yarn install

@@ -303,8 +303,8 @@ export default function SystemAdminDashboard() {
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
-                    <p className="text-xs font-medium text-foreground">Piston package cache</p>
-                    <p className="text-[10px] text-muted-foreground">Health check (clear via Piston CLI)</p>
+                    <p className="text-xs font-medium text-foreground">Piston restart</p>
+                    <p className="text-[10px] text-muted-foreground">Restart Piston container (re-index packages)</p>
                   </div>
                   <Button
                     variant="outline"
@@ -317,30 +317,30 @@ export default function SystemAdminDashboard() {
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
-                    <p className="text-xs font-medium text-foreground">System memory cache</p>
-                    <p className="text-[10px] text-muted-foreground">Run: echo 3 &gt; /proc/sys/vm/drop_caches on host</p>
+                    <p className="text-xs font-medium text-foreground">System cleanup</p>
+                    <p className="text-[10px] text-muted-foreground">Docker prune + report memory usage</p>
                   </div>
                   <Button
                     variant="outline"
                     size="sm"
-                    disabled={true}
-                    className="opacity-50 cursor-not-allowed"
+                    disabled={clearing === 'system'}
+                    onClick={() => clearCache('system')}
                   >
-                    SSH only
+                    {clearing === 'system' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Zap className="h-3 w-3" />}
                   </Button>
                 </div>
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium text-foreground">Docker system prune</p>
-                    <p className="text-[10px] text-muted-foreground">Run: docker system prune -f on host</p>
+                    <p className="text-[10px] text-muted-foreground">Remove unused images, containers, volumes</p>
                   </div>
                   <Button
-                    variant="outline"
+                    variant="destructive"
                     size="sm"
-                    disabled={true}
-                    className="opacity-50 cursor-not-allowed"
+                    disabled={clearing === 'docker'}
+                    onClick={() => clearCache('docker')}
                   >
-                    SSH only
+                    {clearing === 'docker' ? <RefreshCw className="h-3 w-3 animate-spin" /> : <Trash2 className="h-3 w-3" />}
                   </Button>
                 </div>
               </div>
