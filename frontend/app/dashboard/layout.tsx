@@ -202,15 +202,7 @@ export default function DashboardLayout({
 
     if (isTenantAdmin(role)) {
       return [
-        { type: 'link', item: { href: '/dashboard', icon: Home, label: 'Overview' } },
-        {
-          type: 'link',
-          item: {
-            href: DASHBOARD_ROUTES.organization.team,
-            icon: Users,
-            label: 'Organization',
-          },
-        },
+        { type: 'link', item: { href: DASHBOARD_ROUTES.organization.team, icon: Home, label: 'Organization' } },
         ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
       ]
     }
@@ -264,6 +256,9 @@ export default function DashboardLayout({
     }
     if (href === '/dashboard') {
       return pathname === '/dashboard'
+    }
+    if (href === '/dashboard/admin/team') {
+      return pathname === href || pathname.startsWith('/dashboard/admin/team')
     }
     if (href === '/dashboard/admin/system') {
       return pathname === href || pathname.startsWith(`${href}/`)
