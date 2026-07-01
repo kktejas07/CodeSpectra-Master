@@ -128,7 +128,7 @@ function ArenaChallengeInner() {
           <h1 className="text-3xl font-bold text-foreground">{challenge.title}</h1>
         </div>
         <div className="flex flex-wrap items-center gap-2">
-          <Badge className={diffStyles[challenge.difficulty] ?? ''}>{challenge.difficulty.toUpperCase()}</Badge>
+          <Badge className={diffStyles[challenge.difficulty] ?? ''}>{challenge.difficulty?.toUpperCase() || 'EASY'}</Badge>
           <Badge variant="secondary">{challenge.category}</Badge>
           <Badge variant="outline">{challenge.points} pts</Badge>
           {source === 'ai' ? (

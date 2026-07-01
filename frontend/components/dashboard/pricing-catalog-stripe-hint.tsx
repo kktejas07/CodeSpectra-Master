@@ -16,7 +16,7 @@ function formatUsdCents(cents: number | null | undefined): string {
 }
 
 function tierByName(tiers: TierRow[], name: string): TierRow | undefined {
-  const n = name.toLowerCase()
+  const n = (name || '').toLowerCase()
   return tiers.find((t) => String(t.name).toLowerCase() === n)
 }
 

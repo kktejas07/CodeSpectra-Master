@@ -71,8 +71,8 @@ export default function SupportPortalPage() {
   const filteredQuestions = searchQuery
     ? allQuestions.filter(
         (q) =>
-          q.q.toLowerCase().includes(searchQuery.toLowerCase()) ||
-          q.a.toLowerCase().includes(searchQuery.toLowerCase())
+          (q.q || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+          (q.a || '').toLowerCase().includes(searchQuery.toLowerCase())
       )
     : allQuestions
 

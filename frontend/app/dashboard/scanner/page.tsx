@@ -214,8 +214,8 @@ function CodeScannerPageInner() {
                     <option value="">Loading languages...</option>
                   ) : runtimes.length > 0 ? (
                     runtimes.map((rt) => (
-                      <option key={rt.language} value={rt.language}>
-                        {rt.language.charAt(0).toUpperCase() + rt.language.slice(1)}
+                      <option key={rt.language || rt.version} value={rt.language}>
+                        {(rt.language || '').charAt(0).toUpperCase() + (rt.language || '').slice(1)}
                       </option>
                     ))
                   ) : (
@@ -326,7 +326,7 @@ function CodeScannerPageInner() {
                     Paste your code and click <strong>Scan Code</strong> to see detailed analysis
                   </p>
                   <p className="text-xs text-foreground/50 mt-2">
-                    Supports: {runtimesLoading ? 'Loading...' : runtimes.length > 0 ? runtimes.map(rt => rt.language.charAt(0).toUpperCase() + rt.language.slice(1)).join(', ') : 'JavaScript, TypeScript, Python, Java, C++, C#, Go, Rust'}
+                    Supports: {runtimesLoading ? 'Loading...' : runtimes.length > 0 ? runtimes.map(rt => rt.language).join(', ') : 'JavaScript, TypeScript, Python, Java, C++, C#, Go, Rust'}
                   </p>
                 </div>
               </Card>

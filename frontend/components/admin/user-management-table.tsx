@@ -44,8 +44,8 @@ export function UserManagementTable({
 
   const filteredUsers = users.filter((user) => {
     const matchesSearch =
-      user.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      user.email.toLowerCase().includes(searchQuery.toLowerCase())
+      (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
+      (user.email || '').toLowerCase().includes(searchQuery.toLowerCase())
     const canon = normalizeUserRole(user.role)
     const matchesRole =
       roleFilter === 'all' || canon === (roleFilter as 'superadmin' | 'tenant_admin' | 'user')

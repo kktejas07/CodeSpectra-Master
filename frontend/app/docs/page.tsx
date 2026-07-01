@@ -299,8 +299,8 @@ export default function DocsPage() {
     return docSections
       .map((s) => ({
         ...s,
-        items: s.items.filter(
-          (a) => a.label.toLowerCase().includes(q) || s.title.toLowerCase().includes(q) || a.desc.toLowerCase().includes(q)
+        items: (s.items || []).filter(
+          (a) => (a.label || '').toLowerCase().includes(q) || (s.title || '').toLowerCase().includes(q) || (a.desc || '').toLowerCase().includes(q)
         ),
       }))
       .filter((s) => s.items.length > 0)

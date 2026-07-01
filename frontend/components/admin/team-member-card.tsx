@@ -111,7 +111,7 @@ export function TeamMemberCard({
 
               <div className="flex items-center gap-2">
                 <Badge className={getRoleColor(member.role)}>
-                  {member.role.charAt(0).toUpperCase() + member.role.slice(1)}
+                  {(member.role || 'user').charAt(0).toUpperCase() + (member.role || 'user').slice(1)}
                 </Badge>
                 <Badge className={getStatusColor(member.status)}>
                   {member.status}
