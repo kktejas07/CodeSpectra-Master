@@ -1,18 +1,15 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import {
-  type RoleDefinition,
-  discoverAllResources,
-  getDefaultRolePermissions,
-  mergePermissions,
-} from '@/lib/permissions-db'
+import { getDefaultRolePermissions, discoverAllResources } from '@/lib/permissions-db'
+import { invalidatePermissionCache } from '@/lib/route-auth'
 import type { UserRole } from '@/lib/rbac'
 
 export const dynamic = 'force-dynamic'
 
 /**
- * GET /api/admin/permissions/roles — list all roles with their permissions
+ * GET /api/admin/permissions/roles
+ * Auto-seeds roles if the collection is empty, then returns all roles.
  */
 export async function GET() {
   const gate = await requireSuperAdmin()
@@ -21,14 +18,28 @@ export async function GET() {
   try {
     const db = await getMongoDb()
     const col = db.collection('roles')
-    const roles = await col.find({}).toArray()
+    let roles = await col.find({}).toArray()
 
+    // Auto-seed if empty
     if (roles.length === 0) {
-      return NextResponse.json({ roles: [], message: 'No roles found. Seed the database first.' })
+      const now = new Date().toISOString()
+      const systemRoles: UserRole[] = ['superadmin', 'tenant_admin', 'user']
+      const docs = systemRoles.map(role => ({
+        role,
+        name: role === 'superadmin' ? 'Platform Admin' : role === 'tenant_admin' ? 'Organization Admin' : 'User',
+        description: `Default ${role} role — auto-generated`,
+        permissions: getDefaultRolePermissions(role),
+        isSystem: true,
+        createdAt: now,
+        updatedAt: now,
+      }))
+      await col.insertMany(docs)
+      invalidatePermissionCache()
+      roles = await col.find({}).toArray()
     }
 
-    // Enrich with auto-discovered resources
     const allResources = discoverAllResources()
+
     return NextResponse.json({
       roles: roles.map(r => ({
         _id: r._id,
@@ -48,19 +59,17 @@ export async function GET() {
 }
 
 /**
- * POST /api/admin/permissions/roles — create or update a role
+ * POST /api/admin/permissions/roles
+ * Create or update a role with its permissions.
  */
 export async function POST(request: Request) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   let body: { role: string; name: string; description?: string; permissions?: any[] }
-  try {
-    body = await request.json()
-  } catch {
+  try { body = await request.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
-
   if (!body.role || !body.name) {
     return NextResponse.json({ error: 'role and name are required' }, { status: 400 })
   }
@@ -68,56 +77,30 @@ export async function POST(request: Request) {
   try {
     const db = await getMongoDb()
     const col = db.collection('roles')
+    const defaults = body.permissions || []
+    const allResources = discoverAllResources()
 
-    const role: RoleDefinition = {
+    // Merge with auto-discovered resources: preserve custom, add new
+    const mergedPermissions = allResources.map(r => {
+      const existing = defaults.find((p: any) => p.resource === r.resource)
+      return existing || { resource: r.resource, resourceType: r.resourceType, label: r.label, actions: [] }
+    })
+
+    const now = new Date().toISOString()
+    const doc = {
       role: body.role,
       name: body.name,
       description: body.description || '',
-      permissions: body.permissions || [],
+      permissions: mergedPermissions,
       isSystem: ['superadmin', 'tenant_admin', 'user'].includes(body.role),
-      updatedAt: new Date().toISOString(),
+      updatedAt: now,
     }
 
-    const existing = await col.findOne({ role: body.role })
-    if (existing) {
-      await col.updateOne({ role: body.role }, { $set: role })
-    } else {
-      await col.insertOne({ ...role, createdAt: new Date().toISOString() })
-    }
+    await col.updateOne({ role: body.role }, { $set: doc }, { upsert: true })
+    invalidatePermissionCache()
 
-    return NextResponse.json({ role })
+    return NextResponse.json({ role: doc })
   } catch (e: any) {
     return NextResponse.json({ error: e.message }, { status: 500 })
-  }
-}
-
-/**
- * GET /api/admin/permissions/check?resource=users&action=delete
- * Check if the current user has permission for an action.
- * Used by API routes for enforcement.
- */
-export async function checkPermission(userId: string, resource: string, action: string): Promise<boolean> {
-  try {
-    const db = await getMongoDb()
-    const usersCol = db.collection('users')
-    const rolesCol = db.collection('roles')
-
-    const user = await usersCol.findOne({ _id: userId })
-    if (!user || !user.role) return false
-
-    const role = await rolesCol.findOne({ role: user.role })
-    if (!role) return false
-
-    const permissions: any[] = role.permissions || []
-    return permissions.some((p: any) => {
-      if (!p.resource || !p.actions) return false
-      const resourceMatch = p.resource === resource ||
-        p.resource === `entity:${resource}` ||
-        resource.startsWith((p.resource || '').replace('entity:', '') + '/')
-      if (!resourceMatch) return false
-      return p.actions.includes('manage') || p.actions.includes(action)
-    })
-  } catch {
-    return false
   }
 }
