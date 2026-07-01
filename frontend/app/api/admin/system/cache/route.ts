@@ -1,18 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { invalidateServerSecretsCache } from '@/lib/server-secrets-cache'
-import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
-
-function safeExec(cmd: string, timeout = 10000): { ok: boolean; output: string } {
-  try {
-    const out = execSync(cmd, { timeout, encoding: 'utf-8' }).trim()
-    return { ok: true, output: out || 'done' }
-  } catch (e: any) {
-    return { ok: false, output: e?.stderr?.toString() || e?.message || 'failed' }
-  }
-}
 
 export const dynamic = 'force-dynamic'
 
@@ -23,9 +13,7 @@ export async function POST(request: Request) {
   }
 
   let body: { type?: string }
-  try {
-    body = await request.json()
-  } catch {
+  try { body = await request.json() } catch {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
@@ -34,11 +22,10 @@ export async function POST(request: Request) {
   switch (type) {
     case 'next': {
       try {
-        const nextDir = path.join(process.cwd(), '.next', 'cache')
-        if (fs.existsSync(nextDir)) {
-          fs.rmSync(nextDir, { recursive: true, force: true })
+        const cacheDir = path.join(process.cwd(), '.next', 'cache')
+        if (fs.existsSync(cacheDir)) {
+          fs.rmSync(cacheDir, { recursive: true, force: true })
         }
-        // Also remove prerender cache entries
         const serverDir = path.join(process.cwd(), '.next', 'server')
         const removeMeta = (dir: string) => {
           if (!fs.existsSync(dir)) return
@@ -51,7 +38,8 @@ export async function POST(request: Request) {
           }
         }
         removeMeta(serverDir)
-        return NextResponse.json({ message: 'Next.js cache cleared' })
+        invalidateServerSecretsCache()
+        return NextResponse.json({ message: 'Next.js cache + secrets cache cleared' })
       } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 })
       }
@@ -63,24 +51,23 @@ export async function POST(request: Request) {
     }
 
     case 'piston': {
-      const { ok, output } = safeExec(
-        'docker exec codespectra-piston sh -c "rm -rf /piston/packages/*/.installed 2>/dev/null; echo done"',
-        5000
-      )
-      if (!ok) return NextResponse.json({ error: output }, { status: 500 })
-      return NextResponse.json({ message: 'Piston package cache cleared (reinstall needed)' })
+      try {
+        const res = await fetch('http://codespectra-piston:2000/api/v2/runtimes', {
+          signal: AbortSignal.timeout(5000),
+        })
+        if (!res.ok) throw new Error(`Piston returned ${res.status}`)
+        return NextResponse.json({ message: 'Piston is running — reinstall packages via Piston CLI' })
+      } catch (e: any) {
+        return NextResponse.json({ error: `Piston unreachable: ${e.message}` }, { status: 500 })
+      }
     }
 
+    case 'docker':
     case 'system': {
-      const { ok, output } = safeExec('echo 3 > /proc/sys/vm/drop_caches', 5000)
-      if (!ok) return NextResponse.json({ error: output }, { status: 500 })
-      return NextResponse.json({ message: 'System page cache dropped' })
-    }
-
-    case 'docker': {
-      const { ok, output } = safeExec('docker system prune -f --volumes 2>&1', 30000)
-      if (!ok) return NextResponse.json({ error: output }, { status: 500 })
-      return NextResponse.json({ message: output || 'Docker system pruned' })
+      return NextResponse.json({
+        message: 'This operation requires host-level access. Run directly on the server via SSH.',
+        hint: 'ssh root@server "docker system prune -f" or "echo 3 > /proc/sys/vm/drop_caches"',
+      })
     }
 
     default:
