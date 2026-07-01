@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ interface Codeathon {
 }
 
 export default function CodeathonsPage() {
+  const router = useRouter()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState({ status: '', difficulty: '' })
@@ -75,7 +77,7 @@ export default function CodeathonsPage() {
                 <span className="flex items-center gap-1"><Users className="h-3 w-3" />{h.participants}</span>
                 <span>{h.totalPrize}</span>
               </div>
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" onClick={() => router.push(`/dashboard/codeathons/${h.id}`)}>
                 {h.registered ? 'Manage' : 'Register'}
               </Button>
             </Card>

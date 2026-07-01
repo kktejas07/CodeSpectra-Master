@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { BookOpen, CheckCircle, Play, Download, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { useToast } from '@/lib/toast-context'
 
 const lessons = [
   {
@@ -38,6 +39,7 @@ const lessons = [
 ]
 
 export default function CoursePage({ params }: { params: { id: string } }) {
+  const addToast = useToast()
   const [activeLesson, setActiveLesson] = useState(1)
   const completed = lessons.filter((l) => l.completed).length
 
@@ -75,15 +77,15 @@ export default function CoursePage({ params }: { params: { id: string } }) {
 
       {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-        {/* Video Section */}
-        <div className="lg:col-span-3 space-y-4">
-          <div className="aspect-video rounded-lg bg-background border border-border flex items-center justify-center">
-            <div className="text-center">
-              <Play className="w-16 h-16 text-primary/50 mx-auto mb-3" />
-              <p className="text-foreground/60">Video Player</p>
-              <p className="text-sm text-foreground/50">Video content coming soon</p>
-            </div>
-          </div>
+         {/* Content Section */}
+         <div className="lg:col-span-3 space-y-4">
+           <div className="aspect-video rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-border flex items-center justify-center">
+             <div className="text-center px-6">
+               <BookOpen className="w-12 h-12 text-primary/40 mx-auto mb-3" />
+               <p className="text-foreground/70 font-medium">{currentLesson.title}</p>
+               <p className="text-sm text-muted-foreground mt-1">Reading material below</p>
+             </div>
+           </div>
 
           {/* Lesson Content */}
           <div className="rounded-lg bg-card border border-border p-6 space-y-4">
@@ -92,7 +94,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
             <div className="prose prose-invert max-w-none space-y-4">
               <div className="text-foreground/70 space-y-3">
                 <p>
-                  In this lesson, we'll explore the fundamentals of {currentLesson.title.toLowerCase()}.
+                  In this lesson, we'll explore the fundamentals of {(currentLesson.title || '').toLowerCase()}.
                   This is a crucial concept for understanding more advanced data structures.
                 </p>
 
@@ -127,7 +129,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
                 <CheckCircle className="w-4 h-4 mr-2" />
                 Mark as Complete
               </Button>
-              <Button variant="outline" className="flex-1" size="sm">
+              <Button variant="outline" className="flex-1" size="sm" onClick={() => addToast({ type: 'info', title: 'Coming soon', message: 'Downloadable notes will be available soon!' })}>
                 <Download className="w-4 h-4 mr-2" />
                 Download Notes
               </Button>
@@ -173,7 +175,7 @@ export default function CoursePage({ params }: { params: { id: string } }) {
               <MessageCircle className="w-4 h-4" />
               Discussion
             </h3>
-            <Button variant="outline" size="sm" className="w-full text-xs">
+            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => addToast({ type: 'info', title: 'Coming soon', message: 'Q&A feature will be available soon!' })}>
               Ask a Question
             </Button>
           </div>

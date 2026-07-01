@@ -33,6 +33,8 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'smtp_from_email',
   'trusted_origins_extra',
   'piston_url',
+  'piston_run_timeout_ms',
+  'piston_max_concurrent',
   'github_client_id',
   'stripe_price_pro_monthly',
   'stripe_price_pro_yearly',

@@ -2,9 +2,10 @@
 
 import { useMemo, useState, Suspense, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap } from 'lucide-react'
+import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle } from 'lucide-react'
 import { parseScannerMode } from '@/lib/scanner-modes'
 import { Button } from '@/components/ui/button'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Card } from '@/components/ui/card'
 import { AdvancedMetrics } from '@/components/scanner/advanced-metrics'
 import { SuggestedFixes } from '@/components/scanner/suggested-fixes'
@@ -77,6 +78,26 @@ function CodeScannerPageInner() {
   const [aiGeneratedFixes, setAiGeneratedFixes] = useState<Array<Record<string, unknown>> | null>(null)
   const [aiFixDegraded, setAiFixDegraded] = useState(false)
   const [appliedDbFixIds, setAppliedDbFixIds] = useState<Set<string>>(() => new Set())
+  const [runtimes, setRuntimes] = useState<Array<{language:string, version:string, aliases:string[]}>>([])
+  const [runtimesLoading, setRuntimesLoading] = useState(true)
+
+  useEffect(() => {
+    if (mode !== 'manual') return
+    let cancelled = false
+    void (async () => {
+      try {
+        const res = await fetch('/api/runtimes', { credentials: 'include' })
+        const data = await res.json()
+        if (!cancelled && Array.isArray(data.runtimes)) {
+          setRuntimes(data.runtimes)
+          setRuntimesLoading(false)
+        }
+      } catch {
+        if (!cancelled) setRuntimesLoading(false)
+      }
+    })()
+    return () => { cancelled = true }
+  }, [mode])
 
   useEffect(() => {
     if (mode !== 'manual' && mode !== 'github') return
@@ -189,14 +210,17 @@ function CodeScannerPageInner() {
                   onChange={(e) => setLanguage(e.target.value)}
                   className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
                 >
-                  <option value="javascript">JavaScript</option>
-                  <option value="typescript">TypeScript</option>
-                  <option value="python">Python</option>
-                  <option value="java">Java</option>
-                  <option value="cpp">C++</option>
-                  <option value="csharp">C#</option>
-                  <option value="go">Go</option>
-                  <option value="rust">Rust</option>
+                  {runtimesLoading ? (
+                    <option value="">Loading languages...</option>
+                  ) : runtimes.length > 0 ? (
+                    runtimes.map((rt) => (
+                      <option key={rt.language} value={rt.language}>
+                        {rt.language.charAt(0).toUpperCase() + rt.language.slice(1)}
+                      </option>
+                    ))
+                  ) : (
+                    <option value="">No runtimes loaded</option>
+                  )}
                 </select>
               </div>
 
@@ -302,7 +326,7 @@ function CodeScannerPageInner() {
                     Paste your code and click <strong>Scan Code</strong> to see detailed analysis
                   </p>
                   <p className="text-xs text-foreground/50 mt-2">
-                    Supports: JavaScript, TypeScript, Python, Java, C++, C#, Go, Rust
+                    Supports: {runtimesLoading ? 'Loading...' : runtimes.length > 0 ? runtimes.map(rt => rt.language.charAt(0).toUpperCase() + rt.language.slice(1)).join(', ') : 'JavaScript, TypeScript, Python, Java, C++, C#, Go, Rust'}
                   </p>
                 </div>
               </Card>
@@ -547,35 +571,27 @@ function CodeScannerPageInner() {
 
       {/* Feature Overview */}
       {mode === 'manual' && (
-        <Card className="bg-linear-to-r from-primary/10 to-primary/5 border border-primary/20 p-6">
-          <h3 className="font-semibold text-foreground mb-3">Available Tools</h3>
-          <div className="grid md:grid-cols-2 gap-3">
-            <div className="text-sm text-foreground/70">
-              <span className="font-medium">Manual Analysis:</span> Scan code directly
-            </div>
-            <div className="text-sm text-foreground/70">
-              <span className="font-medium">GitHub:</span> Connect and scan repositories
-            </div>
-            <div className="text-sm text-foreground/70">
-              <span className="font-medium">Trends:</span> Track quality over time
-            </div>
-            <div className="text-sm text-foreground/70">
-              <span className="font-medium">Quality Gates:</span> Set quality standards
-            </div>
-            <div className="text-sm text-foreground/70">
-              <span className="font-medium">Code Review:</span> Collaborative reviews
-            </div>
-            <div className="text-sm text-foreground/70">
-              <span className="font-medium">Configuration:</span> Customize scanner rules
-            </div>
-            <div className="text-sm text-foreground/70">
-              <span className="font-medium">Reports:</span> Export analysis results
-            </div>
-            <div className="text-sm text-foreground/70">
-              <span className="font-medium">Insights:</span> Dashboard analytics
-            </div>
-          </div>
-        </Card>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <Button variant="ghost" size="sm" className="text-muted-foreground">
+                <HelpCircle className="h-4 w-4 mr-1" /> Scanner tools
+              </Button>
+            </TooltipTrigger>
+            <TooltipContent side="bottom" className="max-w-[300px] p-3">
+              <div className="grid gap-1.5 text-xs">
+                <p><strong>Manual Analysis:</strong> Scan code directly</p>
+                <p><strong>GitHub:</strong> Connect and scan repos</p>
+                <p><strong>Trends:</strong> Track quality over time</p>
+                <p><strong>Quality Gates:</strong> Set quality standards</p>
+                <p><strong>Code Review:</strong> Collaborative reviews</p>
+                <p><strong>Configuration:</strong> Customize rules</p>
+                <p><strong>Reports:</strong> Export results</p>
+                <p><strong>Insights:</strong> Dashboard analytics</p>
+              </div>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       )}
     </div>
   )

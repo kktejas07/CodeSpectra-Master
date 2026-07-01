@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { useToast } from '@/lib/toast-context'
 import { DollarSign, Briefcase, MapPinIcon, Loader, Search } from 'lucide-react'
 
 interface JobPosting {
@@ -22,6 +23,7 @@ interface JobPosting {
 }
 
 export default function JobsPage() {
+  const addToast = useToast()
   const [jobs, setJobs] = useState<JobPosting[]>([])
   const [loading, setLoading] = useState(true)
   const [searchTerm, setSearchTerm] = useState('')
@@ -36,7 +38,7 @@ export default function JobsPage() {
   }, [])
 
   const filteredJobs = jobs.filter(job => {
-    const matchesSearch = job.title.toLowerCase().includes(searchTerm.toLowerCase()) || job.company.toLowerCase().includes(searchTerm.toLowerCase())
+    const matchesSearch = (job.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || (job.company || '').toLowerCase().includes(searchTerm.toLowerCase())
     const matchesLocation = !filter.location || job.location.includes(filter.location)
     const matchesType = !filter.jobType || job.jobType === filter.jobType
     const matchesLevel = !filter.level || job.experienceLevel === filter.level
@@ -85,7 +87,7 @@ export default function JobsPage() {
                 <span>{job.jobType}</span>
                 <span>{job.applicants} applicants</span>
               </div>
-              <Button variant="outline" size="sm" className="w-full">Apply Now</Button>
+              <Button variant="outline" size="sm" className="w-full" onClick={() => addToast({ type: 'info', title: 'Coming soon', message: 'Job application feature is coming soon!' })}>Apply Now</Button>
             </Card>
           ))}
         </div>

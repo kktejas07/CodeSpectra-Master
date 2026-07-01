@@ -33,7 +33,7 @@ export default function AchievementsPage() {
   }, [])
 
   const earnedCount = achievements.filter(a => a.earned).length
-  const userBadges = achievements.filter(a => a.earned).map(a => a.name.toLowerCase().replace(/\s+/g, '-'))
+  const userBadges = achievements.filter(a => a.earned).map(a => (a.name || '').toLowerCase().replace(/\s+/g, '-'))
 
   if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
 

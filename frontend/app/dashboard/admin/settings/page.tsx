@@ -93,6 +93,8 @@ type SecretsDraft = {
   razorpay_webhook_secret: string
   trusted_origins_extra: string
   piston_url: string
+  piston_run_timeout_ms: string
+  piston_max_concurrent: string
   github_app_token: string
   github_client_id: string
   github_client_secret: string
@@ -116,6 +118,8 @@ const emptySecretsDraft = (): SecretsDraft => ({
   razorpay_webhook_secret: '',
   trusted_origins_extra: '',
   piston_url: '',
+  piston_run_timeout_ms: '',
+  piston_max_concurrent: '',
   github_app_token: '',
   github_client_id: '',
   github_client_secret: '',
@@ -250,10 +254,24 @@ function SystemSettingsInner() {
   }, [gate.ready, addToast])
 
   const reloadSecrets = useCallback(async () => {
-    const secRes = await fetch('/api/admin/server-secrets', { credentials: 'include' })
-    const secJson = await secRes.json().catch(() => ({}))
-    if (secRes.ok && secJson.secrets) {
-      setSecretsMeta(secJson.secrets as Record<string, unknown>)
+    try {
+      const secRes = await fetch('/api/admin/server-secrets', { credentials: 'include' })
+      const secJson = await secRes.json().catch(() => ({}))
+      if (secRes.ok && secJson.secrets) {
+        setSecretsMeta(secJson.secrets as Record<string, unknown>)
+        // Pre-populate draft with visible plain values for immediate feedback
+        const meta = secJson.secrets as Record<string, unknown>
+        setSecretsDraft((d) => ({
+          ...d,
+          piston_url: typeof meta.piston_url === 'string' ? meta.piston_url : d.piston_url || '',
+          piston_run_timeout_ms: typeof meta.piston_run_timeout_ms === 'string' ? meta.piston_run_timeout_ms : d.piston_run_timeout_ms || '',
+          piston_max_concurrent: typeof meta.piston_max_concurrent === 'string' ? meta.piston_max_concurrent : d.piston_max_concurrent || '',
+        }))
+      } else if (!secRes.ok) {
+        console.error('[reloadSecrets] HTTP', secRes.status)
+      }
+    } catch (e) {
+      console.error('[reloadSecrets] fetch error:', e)
     }
   }, [])
 
@@ -261,6 +279,9 @@ function SystemSettingsInner() {
     if (loading) return
     setSecretsDraft((d) => ({
       ...d,
+      piston_url: typeof secretsMeta.piston_url === 'string' ? String(secretsMeta.piston_url).trim() : d.piston_url || '',
+      piston_run_timeout_ms: typeof secretsMeta.piston_run_timeout_ms === 'string' ? String(secretsMeta.piston_run_timeout_ms).trim() : d.piston_run_timeout_ms || '',
+      piston_max_concurrent: typeof secretsMeta.piston_max_concurrent === 'string' ? String(secretsMeta.piston_max_concurrent).trim() : d.piston_max_concurrent || '',
       stripe_price_pro_monthly: isStripePriceId(secretsMeta.stripe_price_pro_monthly)
         ? String(secretsMeta.stripe_price_pro_monthly).trim()
         : d.stripe_price_pro_monthly,
@@ -1126,6 +1147,53 @@ function SystemSettingsInner() {
                       Currently using in-process executor (subprocess, no sandbox).
                     </p>
                   )}
+
+                  <div className="grid grid-cols-2 gap-3 pt-2">
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Run timeout (ms)
+                      </label>
+                      <Input
+                        id="sec_piston_run_timeout"
+                        value={secretsDraft.piston_run_timeout_ms}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, piston_run_timeout_ms: e.target.value }))
+                        }
+                        placeholder="5000"
+                        className="mt-1 font-mono"
+                        data-testid="piston-run-timeout-input"
+                      />
+                      {secretsMeta.piston_run_timeout_ms ? (
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                          Saved: {String(secretsMeta.piston_run_timeout_ms)}ms
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">Default: 5000ms</p>
+                      )}
+                    </div>
+                    <div>
+                      <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
+                        Max concurrent jobs
+                      </label>
+                      <Input
+                        id="sec_piston_max_concurrent"
+                        value={secretsDraft.piston_max_concurrent}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, piston_max_concurrent: e.target.value }))
+                        }
+                        placeholder="30"
+                        className="mt-1 font-mono"
+                        data-testid="piston-max-concurrent-input"
+                      />
+                      {secretsMeta.piston_max_concurrent ? (
+                        <p className="mt-0.5 font-mono text-[11px] text-muted-foreground">
+                          Saved: {String(secretsMeta.piston_max_concurrent)} jobs
+                        </p>
+                      ) : (
+                        <p className="mt-0.5 text-[11px] text-muted-foreground">Default: unlimited</p>
+                      )}
+                    </div>
+                  </div>
                 </div>
 
                 {/* GitHub App token */}

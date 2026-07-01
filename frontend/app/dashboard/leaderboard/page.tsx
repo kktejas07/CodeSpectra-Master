@@ -76,9 +76,9 @@ export default function LeaderboardPage() {
     if (!q) return entries
     return entries.filter(
       (e) =>
-        e.name.toLowerCase().includes(q) ||
-        e.title.toLowerCase().includes(q) ||
-        e.language.toLowerCase().includes(q)
+        (e.name || '').toLowerCase().includes(q) ||
+        (e.title || '').toLowerCase().includes(q) ||
+        (e.language || '').toLowerCase().includes(q)
     )
   }, [entries, search])
 

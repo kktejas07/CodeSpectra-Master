@@ -119,7 +119,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt }: Di
     ctx.fillText(now, 40, 334)
 
     const link = document.createElement('a')
-    link.download = `codespectra-id-${name.replace(/\s+/g, '-').toLowerCase()}.png`
+    link.download = `codespectra-id-${(name || '').replace(/\s+/g, '-').toLowerCase()}.png`
     link.href = canvas.toDataURL()
     link.click()
   }

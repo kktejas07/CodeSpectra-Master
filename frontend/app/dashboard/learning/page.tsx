@@ -1,7 +1,7 @@
 'use client'
 
 import { Suspense, useEffect, useMemo, useState } from 'react'
-import { useSearchParams } from 'next/navigation'
+import { useRouter, useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +23,7 @@ interface Course {
 }
 
 function LearningPageInner() {
+  const router = useRouter()
   const searchParams = useSearchParams()
   const { view, level, type } = useMemo(() => parseLearningParams(searchParams), [searchParams])
   const [courses, setCourses] = useState<Course[]>([])
@@ -107,7 +108,7 @@ function LearningPageInner() {
                   <p className="mt-1 text-[10px] text-muted-foreground">{course.progress}% complete</p>
                 </div>
               )}
-              <Button variant="outline" size="sm" className="w-full">
+              <Button variant="outline" size="sm" className="w-full" onClick={() => router.push(`/dashboard/learning/${course.id}`)}>
                 {course.progress ? 'Continue' : 'Start'} Course
               </Button>
             </Card>

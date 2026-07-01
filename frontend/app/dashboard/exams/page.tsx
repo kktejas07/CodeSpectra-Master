@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -21,6 +22,7 @@ interface Exam {
 }
 
 export default function ExamsPage() {
+  const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState({ level: '', subject: '' })
@@ -39,7 +41,7 @@ export default function ExamsPage() {
   )
 
   const getLevelColor = (level: string) => {
-    const l = level.toLowerCase()
+    const l = (level || '').toLowerCase()
     if (l === 'beginner') return 'bg-green-500/20 text-green-700'
     if (l === 'intermediate') return 'bg-yellow-500/20 text-yellow-700'
     if (l === 'advanced') return 'bg-red-500/20 text-red-700'
@@ -82,7 +84,7 @@ export default function ExamsPage() {
                   Score: {exam.score}% - Completed
                 </div>
               ) : null}
-              <Button variant="outline" size="sm" className="w-full gap-2">
+              <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => router.push(`/dashboard/exams/${exam.id}`)}>
                 <Play className="h-3.5 w-3.5" />
                 {exam.status === 'completed' ? 'Retake' : 'Start'} Exam
               </Button>

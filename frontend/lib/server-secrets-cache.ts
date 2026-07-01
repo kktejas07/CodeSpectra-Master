@@ -36,6 +36,8 @@ export type ServerSecretsRecord = {
   trusted_origins_extra?: string
   // --- Code execution backend (Piston-compatible URL, no trailing slash) -
   piston_url?: string
+  piston_run_timeout_ms?: string
+  piston_max_concurrent?: string
   // --- GitHub App (PR-comment posting) -----------------------------------
   github_app_token?: string
   // --- GitHub OAuth App (lets users connect their account) ---------------

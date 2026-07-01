@@ -65,7 +65,7 @@ export default function TracksPage() {
   function trackProblemCount(track: TrackDef): number {
     let n = 0
     for (const topic of track.topics) {
-      n += counts[topic.toLowerCase()] || 0
+      n += counts[(topic || '').toLowerCase()] || 0
     }
     return n
   }
@@ -92,7 +92,7 @@ export default function TracksPage() {
             const count = trackProblemCount(t)
             const Icon = TRACK_ICONS[t.id] || Code2
             return (
-              <Link key={t.id} href={`/problems?topic=${encodeURIComponent(t.topics[0] || '')}`} className="group">
+              <Link key={t.id} href={`/dashboard/problems?topic=${encodeURIComponent(t.topics[0] || '')}`} className="group">
                 <Card className={cn('p-5 h-full transition border-border/60 hover:border-primary/40 hover:bg-card/70', t.tone)}>
                   <div className="flex items-center gap-3 mb-3">
                     <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-background/60 text-primary">

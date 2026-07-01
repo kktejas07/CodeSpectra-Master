@@ -31,6 +31,53 @@ async function resolvePistonUrl(): Promise<string | null> {
   return null
 }
 
+async function resolvePistonRunTimeout(): Promise<number> {
+  try {
+    const secrets = await readServerSecrets()
+    const val = parseInt(secrets.piston_run_timeout_ms || '', 10)
+    if (val > 0) return val
+  } catch { /* fall through */ }
+  const env = parseInt(process.env.PISTON_RUN_TIMEOUT_MS || '', 10)
+  if (env > 0) return env
+  return 5000
+}
+
+async function resolvePistonMaxConcurrent(): Promise<number> {
+  try {
+    const secrets = await readServerSecrets()
+    const val = parseInt(secrets.piston_max_concurrent || '', 10)
+    if (val > 0) return val
+  } catch { /* fall through */ }
+  const env = parseInt(process.env.PISTON_MAX_CONCURRENT || '', 10)
+  if (env > 0) return env
+  return 0 // 0 = unlimited
+}
+
+let _concurrentJobs = 0
+const _pendingQueue: Array<{ resolve: () => void }> = []
+
+async function acquireSlot(): Promise<void> {
+  const max = await resolvePistonMaxConcurrent()
+  if (max <= 0) return
+  if (_concurrentJobs < max) {
+    _concurrentJobs++
+    return
+  }
+  return new Promise<void>((resolve) => {
+    _pendingQueue.push({ resolve })
+  })
+}
+
+function releaseSlot(): void {
+  const maxVal = _concurrentJobs
+  _concurrentJobs--
+  if (_pendingQueue.length > 0) {
+    const next = _pendingQueue.shift()!
+    _concurrentJobs++
+    next.resolve()
+  }
+}
+
 export interface PistonRuntime {
   language: string
   version: string
@@ -130,16 +177,19 @@ export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteRe
     throw new Error(`Unsupported language: ${opts.language}`)
   }
 
+  const timeoutMs = opts.timeoutMs ?? (await resolvePistonRunTimeout())
+
   const body = {
     language: opts.language,
     version,
     files: [{ name: filenameFor(opts.language), content: opts.source }],
     stdin: opts.stdin ?? '',
-    run_timeout: opts.timeoutMs ?? 5000,
-    compile_timeout: 10000,
+    run_timeout: timeoutMs,
+    compile_timeout: Math.max(timeoutMs, 10000),
     run_memory_limit: 256 * 1024 * 1024, // 256 MB
   }
 
+  await acquireSlot()
   let res: Response
   try {
     res = await fetch(`${baseUrl}/execute`, {
@@ -148,12 +198,14 @@ export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteRe
       body: JSON.stringify(body),
     })
   } catch (e) {
+    releaseSlot()
     // Network failure → degrade gracefully to local executor.
     if (isLocallySupported(opts.language)) return localExecuteOnce(opts)
     throw e
   }
 
   if (!res.ok) {
+    releaseSlot()
     // Whitelist / quota errors are common on the public Piston instance — fall
     // back to local execution rather than hard-failing the user.
     if ((res.status === 401 || res.status === 403 || res.status === 429) &&
@@ -163,6 +215,7 @@ export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteRe
     const txt = await res.text()
     throw new Error(`Piston execute failed: ${res.status} ${txt.slice(0, 200)}`)
   }
+  releaseSlot()
   return (await res.json()) as PistonExecuteResult
 }
 

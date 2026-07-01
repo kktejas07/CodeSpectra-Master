@@ -32,6 +32,9 @@ export const DASHBOARD_ROUTES = {
     speedInsights: '/dashboard/admin/speed-insights',
     /** CDN / edge configuration shell (caches, redirects, routing rules). */
     cdn: '/dashboard/admin/cdn',
+    workflows: '/dashboard/admin/workflows',
+    questionGenerator: '/dashboard/admin/question-generator',
+    hackathons: '/dashboard/admin/hackathons',
   },
   /** Enterprise / org customer (tenant_admin) */
   organization: {
@@ -79,7 +82,6 @@ export const SUPERADMIN_PAGES: string[] = [
   '/dashboard/profile',
   '/dashboard/achievements',
   '/dashboard/analytics',
-  '/dashboard/code-scanner',
   '/dashboard/scanner',
   '/dashboard/arena',
   '/dashboard/settings',
@@ -92,6 +94,18 @@ export const SUPERADMIN_PAGES: string[] = [
   '/dashboard/jobs',
   '/dashboard/codeathons',
   '/dashboard/leaderboard',
+  '/dashboard/admin/workflows',
+  '/dashboard/admin/question-generator',
+  '/dashboard/admin/hackathons',
+  '/dashboard/problems',
+  '/dashboard/tracks',
+  '/dashboard/agent',
+  '/dashboard/skill-analytics',
+  '/dashboard/identity-verify',
+  '/dashboard/pricing',
+  '/dashboard/id-card',
+  '/dashboard/search',
+  '/dashboard/notifications/preferences',
 ]
 
 /**
@@ -113,6 +127,12 @@ export const TENANT_ADMIN_PAGES: string[] = [
   '/dashboard/profile',
   '/dashboard/achievements',
   '/dashboard/analytics',
+  '/dashboard/problems',
+  '/dashboard/tracks',
+  '/dashboard/agent',
+  '/dashboard/skill-analytics',
+  '/dashboard/identity-verify',
+  '/dashboard/pricing',
 ]
 
 export const USER_PAGES: string[] = [
@@ -128,6 +148,16 @@ export const USER_PAGES: string[] = [
   '/dashboard/learning',
   '/dashboard/profile',
   '/dashboard/achievements',
+  '/dashboard/problems',
+  '/dashboard/tracks',
+  '/dashboard/agent',
+  '/dashboard/skill-analytics',
+  '/dashboard/identity-verify',
+  '/dashboard/pricing',
+  '/dashboard/prepare',
+  '/dashboard/certifications',
+  '/dashboard/leaderboard',
+  '/dashboard/id-card',
 ]
 
 export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {

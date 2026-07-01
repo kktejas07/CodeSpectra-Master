@@ -1,45 +1,48 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { ChallengeEditor } from '@/components/challenges/challenge-editor'
+import { Loader2 } from 'lucide-react'
+
+interface ChallengeData {
+  id: string
+  title: string
+  description: string
+  examples: Array<{ input: string; output: string; explanation?: string }>
+  initialCode: string
+}
 
 export default function ChallengePage({ params }: { params: { id: string } }) {
   const challengeId = params.id
+  const [challenge, setChallenge] = useState<ChallengeData | null>(null)
+  const [loading, setLoading] = useState(true)
 
-  // Sample challenge data - would be fetched from API in production
-  const challenge = {
-    id: challengeId,
-    title: 'Simple Array Sum',
-    description: `Given an array of integers, find the sum of all elements.
+  useEffect(() => {
+    fetch(`/api/challenges/${challengeId}`, { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (data && !data.error) {
+          setChallenge(data)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [challengeId])
 
-For example, if the array is [1, 2, 3, 4, 5], the sum should be 15.
+  if (loading) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
 
-You need to implement a function that takes an array as input and returns the sum of all its elements.
-
-Constraints:
-- Array length will be between 1 and 100,000
-- Each element will be between -1,000,000 and 1,000,000
-- You must handle both positive and negative numbers`,
-    examples: [
-      {
-        input: '[1, 2, 3, 4, 5]',
-        output: '15',
-        explanation: 'The sum of 1 + 2 + 3 + 4 + 5 = 15',
-      },
-      {
-        input: '[10, 20, 30]',
-        output: '60',
-        explanation: 'The sum of 10 + 20 + 30 = 60',
-      },
-      {
-        input: '[-5, 10, -3]',
-        output: '2',
-        explanation: 'The sum of -5 + 10 + (-3) = 2',
-      },
-    ],
-    initialCode: `function simpleArraySum(arr) {
-  // Write your solution here
-  return 0;
-}`,
+  if (!challenge) {
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <p className="text-muted-foreground">Challenge not found.</p>
+      </div>
+    )
   }
 
   return (
