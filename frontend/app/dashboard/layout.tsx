@@ -50,7 +50,7 @@ import {
   Shield,
   type LucideIcon,
 } from 'lucide-react'
-import { isPageAllowed, type PlanDefinition } from '@/lib/plans'
+import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'

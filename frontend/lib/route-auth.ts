@@ -6,7 +6,8 @@ import { normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
 import { users as getUsersCollection } from '@/lib/db/admin'
 import { verifySessionToken, type SessionPayload } from '@/lib/session'
 import { checkResourcePermission } from '@/lib/permissions-db'
-import { getPlanForRole, isFeatureEnabled, isPageAllowed } from '@/lib/plans'
+import { isFeatureEnabled, isPageAllowed } from '@/lib/plans-client'
+import { getPlanForRole } from '@/lib/plans'
 import { getMongoDb } from '@/lib/mongodb'
 
 export type UserRole = RBACUserRole

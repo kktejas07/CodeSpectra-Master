@@ -1,7 +1,8 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { getDefaultPlans, invalidatePlanCache } from '@/lib/plans'
+import { getDefaultPlans } from '@/lib/plans-client'
+import { invalidatePlanCache } from '@/lib/plans'
 
 export const dynamic = 'force-dynamic'
 

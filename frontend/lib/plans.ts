@@ -1,97 +1,22 @@
 /**
- * Subscription plan system — integrated with role-based permissions.
+ * Server-side plan functions (requires MongoDB).
+ * Do NOT import from client components — use lib/plans-client.ts instead.
  *
- * Plans define feature limits and page access for each subscription tier.
- * Combined with roles: user must have BOTH the right role AND the right plan
- * to access a feature.
- *
- * Stored in MongoDB `plans` collection.
+ * Re-exports client-safe types from plans-client.ts for convenience.
  */
 
-export interface PlanFeature {
-  key: string
-  label: string
-  description: string
-  enabled: boolean
-  limit?: number // -1 = unlimited
-  type: 'boolean' | 'count' | 'pages'
-}
+// Re-export client-safe functions and types
+export {
+  isFeatureEnabled, isPageAllowed, getFeatureLimit,
+  getDefaultPlans,
+  type PlanFeature, type PlanDefinition,
+} from '@/lib/plans-client'
 
-export interface PlanDefinition {
-  _id?: string
-  plan: string // 'free' | 'pro' | 'enterprise'
-  name: string
-  description: string
-  price?: string
-  features: PlanFeature[]
-  isDefault?: boolean
-  createdAt?: string
-  updatedAt?: string
-}
-
-// ─── Default Plans ──────────────────────────────────────
-
-export function getDefaultPlans(): PlanDefinition[] {
-  return [
-    {
-      plan: 'free',
-      name: 'Free',
-      description: 'Basic access to coding problems and scanner',
-      features: [
-        { key: 'max_scans_per_day', label: 'Scans per day', description: 'Maximum code scans per day', enabled: true, limit: 10, type: 'count' },
-        { key: 'max_challenges', label: 'Challenges', description: 'Maximum challenges per month', enabled: true, limit: 5, type: 'count' },
-        { key: 'piston_concurrent', label: 'Concurrent executions', description: 'Max parallel code executions', enabled: true, limit: 2, type: 'count' },
-        { key: 'ai_features', label: 'AI Features', description: 'AI code review, hints, analysis', enabled: false, limit: 0, type: 'boolean' },
-        { key: 'code_review', label: 'AI Code Review', description: 'AI-powered code review', enabled: false, limit: 0, type: 'boolean' },
-        { key: 'certifications', label: 'Certifications', description: 'Official certifications', enabled: false, limit: 0, type: 'boolean' },
-        { key: 'analytics', label: 'Advanced Analytics', description: 'Detailed performance analytics', enabled: false, limit: 0, type: 'boolean' },
-        { key: 'allowed_pages', label: 'Accessible Pages', description: 'Pages available on this plan', enabled: true, limit: -1, type: 'pages' },
-      ],
-      isDefault: true,
-    },
-    {
-      plan: 'pro',
-      name: 'Pro',
-      description: 'Full access to all coding features + AI',
-      price: '$29/month',
-      features: [
-        { key: 'max_scans_per_day', label: 'Scans per day', description: 'Maximum code scans per day', enabled: true, limit: 100, type: 'count' },
-        { key: 'max_challenges', label: 'Challenges', description: 'Maximum challenges per month', enabled: true, limit: 50, type: 'count' },
-        { key: 'piston_concurrent', label: 'Concurrent executions', description: 'Max parallel code executions', enabled: true, limit: 10, type: 'count' },
-        { key: 'ai_features', label: 'AI Features', description: 'AI code review, hints, analysis', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'code_review', label: 'AI Code Review', description: 'AI-powered code review', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'certifications', label: 'Certifications', description: 'Official certifications', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'analytics', label: 'Advanced Analytics', description: 'Detailed performance analytics', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'allowed_pages', label: 'Accessible Pages', description: 'Pages available on this plan', enabled: true, limit: -1, type: 'pages' },
-      ],
-    },
-    {
-      plan: 'enterprise',
-      name: 'Enterprise',
-      description: 'Everything + team management + priority support',
-      price: '$99/month',
-      features: [
-        { key: 'max_scans_per_day', label: 'Scans per day', description: 'Maximum code scans per day', enabled: true, limit: -1, type: 'count' },
-        { key: 'max_challenges', label: 'Challenges', description: 'Maximum challenges per month', enabled: true, limit: -1, type: 'count' },
-        { key: 'piston_concurrent', label: 'Concurrent executions', description: 'Max parallel code executions', enabled: true, limit: 30, type: 'count' },
-        { key: 'ai_features', label: 'AI Features', description: 'AI code review, hints, analysis', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'code_review', label: 'AI Code Review', description: 'AI-powered code review', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'certifications', label: 'Certifications', description: 'Official certifications', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'analytics', label: 'Advanced Analytics', description: 'Detailed performance analytics', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'team_management', label: 'Team Management', description: 'Manage organization team', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'priority_support', label: 'Priority Support', description: '24/7 priority support', enabled: true, limit: -1, type: 'boolean' },
-        { key: 'allowed_pages', label: 'Accessible Pages', description: 'Pages available on this plan', enabled: true, limit: -1, type: 'pages' },
-      ],
-    },
-  ]
-}
-
-// ─── Plan Checking ──────────────────────────────────────
-
-let _planCache: Map<string, PlanDefinition> | null = null
+// In-memory plan cache
+let _planCache: Map<string, import('@/lib/plans-client').PlanDefinition> | null = null
 let _planCacheAt = 0
 
-export async function getPlanForRole(plan: string): Promise<PlanDefinition | null> {
+export async function getPlanForRole(plan: string): Promise<import('@/lib/plans-client').PlanDefinition | null> {
   const now = Date.now()
   if (_planCache && now - _planCacheAt < 300_000) {
     return _planCache.get(plan) || null
@@ -101,7 +26,7 @@ export async function getPlanForRole(plan: string): Promise<PlanDefinition | nul
     const db = await getMongoDb()
     const plans = await db.collection('plans').find({}).toArray()
     _planCache = new Map()
-    for (const p of plans) _planCache.set(p.plan, p as unknown as PlanDefinition)
+    for (const p of plans) _planCache.set(p.plan, p as unknown as import('@/lib/plans-client').PlanDefinition)
     _planCacheAt = now
     return _planCache.get(plan) || null
   } catch {
@@ -110,48 +35,3 @@ export async function getPlanForRole(plan: string): Promise<PlanDefinition | nul
 }
 
 export function invalidatePlanCache() { _planCache = null; _planCacheAt = 0 }
-
-/**
- * Check if a specific feature is enabled for a plan.
- */
-export function isFeatureEnabled(plan: PlanDefinition | null, featureKey: string): boolean {
-  if (!plan) return false
-  const feature = plan.features.find(f => f.key === featureKey)
-  return feature?.enabled ?? false
-}
-
-/**
- * Check if a page is allowed for a plan.
- * Enterprise and Pro get all pages. Free gets limited pages.
- */
-export function isPageAllowed(plan: PlanDefinition | null, page: string): boolean {
-  if (!plan) return false
-  if (plan.plan === 'enterprise') return true
-  if (plan.plan === 'pro') return true
-  if (plan.plan === 'free') {
-    const excludedPatterns = [
-      '/dashboard/admin',
-      '/dashboard/agent',
-      '/dashboard/skill-analytics',
-      '/dashboard/certifications',
-      '/dashboard/interviews/feedback',
-      '/dashboard/codeathons',
-      '/dashboard/jobs',
-      '/dashboard/resumes',
-    ]
-    return !excludedPatterns.some(p => page === p || page.startsWith(p + '/'))
-  }
-  return true
-}
-
-/**
- * Get feature limit (returns -1 for unlimited).
- */
-export function getFeatureLimit(plan: PlanDefinition | null, featureKey: string): number {
-  if (!plan) return 0
-  const feature = plan.features.find(f => f.key === featureKey)
-  if (!feature || !feature.enabled) return 0
-  return feature.limit ?? 0
-}
-
-
