@@ -47,7 +47,6 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
   const { user, loading } = useAuth()
   const [ready, setReady] = useState(false)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
-  const [dbAllowedRoutes, setDbAllowedRoutes] = useState<string[]>([])
 
   useEffect(() => {
     if (loading) return
@@ -59,10 +58,6 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
         if (cancelled) return
         const role = (data?.user?.role || 'user') as UserRole
         setUserRole(role)
-        // Fetch DB-driven permissions in background
-        fetchAllowedRoutes(role).then(routes => {
-          if (!cancelled) setDbAllowedRoutes(routes)
-        })
         setReady(true)
       })
       .catch(() => {
@@ -77,15 +72,7 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
 
   const allowed = ready && (() => {
     if (!opts.require || opts.require === 'auth') return true
-    // Check DB permissions first
-    if (dbAllowedRoutes.length > 0) {
-      const currentPath = window.location.pathname
-      const hasPermission = dbAllowedRoutes.some(r =>
-        currentPath === r || currentPath.startsWith(r + '/')
-      )
-      if (hasPermission) return true
-    }
-    // Fallback to role-based check
+    // Fallback to role-based check (DB permissions add granularity but never restrict role access)
     if (opts.require === 'superadmin') return isSuperAdmin(userRole!)
     if (opts.require === 'admin') return isAdmin(userRole!)
     return false
