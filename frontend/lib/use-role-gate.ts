@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import {
@@ -19,77 +19,67 @@ interface RoleGate {
 
 export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } = {}): RoleGate {
   const router = useRouter()
-  const { user, loading: authLoading } = useAuth()
+  const { user: fbUser, loading: fbLoading } = useAuth()
   const [ready, setReady] = useState(false)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
-  const [sessionUser, setSessionUser] = useState<{ id: string; email: string; role: UserRole } | null>(null)
+  const triedRef = useRef(false)
 
   useEffect(() => {
-    // Check session API first — this uses the server-side cookie
-    // which is more reliable than Firebase's client-side state
+    if (triedRef.current) return
+    triedRef.current = true
+
     let cancelled = false
+
+    // Try session cookie first (works immediately)
     fetch('/api/auth/session', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (cancelled) return
         if (data?.user) {
-          const role = (data.user.role || 'user') as UserRole
-          setUserRole(role)
-          setSessionUser({
-            id: data.user.uid,
-            email: data.user.email || '',
-            role,
-          })
+          setUserRole((data.user.role || 'user') as UserRole)
           setReady(true)
+          return
         }
-        // Don't redirect immediately — wait for Firebase to possibly catch up
+        // Session failed — wait for Firebase to catch up (up to 3 seconds)
+        let attempts = 0
+        const check = setInterval(() => {
+          attempts++
+          if (cancelled) { clearInterval(check); return }
+          // Re-check session (Firebase may have synced by now)
+          fetch('/api/auth/session', { credentials: 'include' })
+            .then(r => r.ok ? r.json() : null)
+            .then(retryData => {
+              if (cancelled) return
+              if (retryData?.user) {
+                clearInterval(check)
+                setUserRole((retryData.user.role || 'user') as UserRole)
+                setReady(true)
+              } else if (attempts >= 5) {
+                clearInterval(check)
+                // Final attempt failed — redirect to login
+                const loginUrl = new URL('/auth/login', window.location.origin)
+                loginUrl.searchParams.set('redirectTo', window.location.pathname)
+                router.replace(loginUrl.toString())
+              }
+            })
+        }, 800)
+        return () => clearInterval(check)
       })
-      .catch(() => { /* retry below */ })
+      .catch(() => {
+        if (!cancelled) {
+          const loginUrl = new URL('/auth/login', window.location.origin)
+          loginUrl.searchParams.set('redirectTo', window.location.pathname)
+          router.replace(loginUrl.toString())
+        }
+      })
+
     return () => { cancelled = true }
-  }, [])
+  }, [router])
 
-  // If Firebase eventually loads, sync with session
-  useEffect(() => {
-    if (authLoading) return
-    if (user && sessionUser) {
-      // Both Firebase and session agree — user is logged in
-      // sessionUser already set, no change needed
-    } else if (!user && !sessionUser && !authLoading && !ready) {
-      // Both failed — redirect to login
-      const loginUrl = new URL('/auth/login', window.location.origin)
-      loginUrl.searchParams.set('redirectTo', window.location.pathname)
-      router.replace(loginUrl.toString())
-    } else if (!sessionUser && !authLoading && !ready) {
-      // Retry session check after a short delay (Firebase may need time)
-      const timer = setTimeout(() => {
-        fetch('/api/auth/session', { credentials: 'include' })
-          .then(r => r.ok ? r.json() : null)
-          .then(data => {
-            if (data?.user) {
-              const role = (data.user.role || 'user') as UserRole
-              setUserRole(role)
-              setSessionUser({ id: data.user.uid, email: data.user.email || '', role })
-              setReady(true)
-            } else {
-              const loginUrl = new URL('/auth/login', window.location.origin)
-              loginUrl.searchParams.set('redirectTo', window.location.pathname)
-              router.replace(loginUrl.toString())
-            }
-          })
-          .catch(() => {
-            const loginUrl = new URL('/auth/login', window.location.origin)
-            loginUrl.searchParams.set('redirectTo', window.location.pathname)
-            router.replace(loginUrl.toString())
-          })
-      }, 2000)
-      return () => clearTimeout(timer)
-    }
-  }, [authLoading, user, sessionUser, ready, router])
-
-  const profile = (user || sessionUser) && userRole ? {
-    id: sessionUser?.id || user?.uid || '',
-    email: sessionUser?.email || user?.email || '',
-    name: user?.displayName || undefined,
+  const profile = fbUser && userRole ? {
+    id: fbUser.uid,
+    email: fbUser.email || '',
+    name: fbUser.displayName || undefined,
     role: userRole,
   } : null
 
