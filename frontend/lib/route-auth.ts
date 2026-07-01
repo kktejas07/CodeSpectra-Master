@@ -92,35 +92,24 @@ export async function requireAuth() {
   return { user }
 }
 
-/** requireAdmin: checks DB permissions, falling back to role-based check */
+/** requireAdmin: role-based check (DB permissions add granularity, never restrict) */
 export async function requireAdmin() {
   const user = await getAPIUser()
   if (!user) return { error: 'Unauthorized', status: 401 as const }
-  // DB-driven check: user has any admin-level permission
-  const perms = await getPermissionsForRole(user.role)
-  const hasAdminAccess = perms.some(p =>
-    p.resource.startsWith('/dashboard/admin') ||
-    p.resource.startsWith('entity:') && p.actions.includes('manage')
-  )
-  if (!hasAdminAccess && user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+  // Role check first — this is the baseline. DB permissions only add finer control.
+  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
     return { error: 'Forbidden - Admin access required', status: 403 as const }
   }
   return { user }
 }
 
-/** requireSuperAdmin: checks DB permissions, falling back to role-based check */
+/** requireSuperAdmin: role-based check (DB permissions add granularity, never restrict) */
 export async function requireSuperAdmin() {
   const user = await getAPIUser()
   if (!user) return { error: 'Unauthorized', status: 401 as const }
-  // DB-driven check
+  // Role check first — this is the baseline. DB permissions only add finer control.
   if (user.role !== 'superadmin') {
-    const perms = await getPermissionsForRole(user.role)
-    const hasSuperAdminPage = perms.some(p =>
-      p.resource === '/dashboard/admin' || p.resource === '/dashboard/admin/system'
-    )
-    if (!hasSuperAdminPage) {
-      return { error: 'Forbidden - Superadmin access required', status: 403 as const }
-    }
+    return { error: 'Forbidden - Superadmin access required', status: 403 as const }
   }
   return { user }
 }

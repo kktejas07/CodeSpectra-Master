@@ -125,6 +125,25 @@ export default function DashboardLayout({
     }
   }, [])
 
+  // Global session expiry handler — intercept 401 on API calls, redirect to login
+  useEffect(() => {
+    const originalFetch = window.fetch
+    window.fetch = async function (...args: Parameters<typeof fetch>) {
+      const response = await originalFetch(...args)
+      if (response.status === 401) {
+        const url = args[0]?.toString() || ''
+        // Only redirect for API calls, not for page loads (proxy.ts handles those)
+        if (url.includes('/api/') && !url.includes('/api/auth/')) {
+          const loginUrl = new URL('/auth/login', window.location.origin)
+          loginUrl.searchParams.set('redirectTo', window.location.pathname)
+          window.location.href = loginUrl.toString()
+        }
+      }
+      return response
+    }
+    return () => { window.fetch = originalFetch }
+  }, [])
+
   useEffect(() => {
     if (!userProfile?.id) return
     let cancelled = false
