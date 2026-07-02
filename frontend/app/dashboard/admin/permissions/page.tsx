@@ -213,12 +213,12 @@ export default function PermissionsPage() {
                       <td key={action} className="px-1 py-1.5 text-center">
                         <button
                           onClick={() => togglePerm(r.resource, action)}
-                          className={`inline-flex h-6 w-6 items-center justify-center rounded text-[10px] font-medium transition-all ${
+                          className={`inline-flex h-6 w-6 items-center justify-center rounded border text-[10px] font-medium transition-all ${
                             actions.includes(action) || (action !== 'manage' && actions.includes('manage'))
-                              ? 'bg-primary text-primary-foreground shadow-sm'
-                              : 'text-muted-foreground/30 hover:bg-muted hover:text-muted-foreground'
+                              ? 'bg-primary text-primary-foreground border-primary shadow-sm'
+                              : 'border-muted-foreground/20 text-muted-foreground/30 hover:border-primary/40 hover:text-muted-foreground'
                           }`}
-                        >{actions.includes(action) || (action !== 'manage' && actions.includes('manage')) ? '✓' : '·'}</button>
+                        >{actions.includes(action) || (action !== 'manage' && actions.includes('manage')) ? '✓' : ''}</button>
                       </td>
                     ))}
                   </tr>
