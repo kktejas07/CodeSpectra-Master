@@ -236,37 +236,6 @@ export async function bootstrap() {
       { id: 'rate-limits', label: 'Rate Limits', desc: 'API usage limits and best practices', href: '/api-reference' },
     ],
   },
-  {
-    id: 'admin-console',
-    title: 'Admin Console',
-    icon: Shield,
-    badge: 'Admin',
-    content: 'The admin console provides platform operators with tools to manage users, roles, permissions, subscriptions, and system health. Each page below has a help icon (?) that shows detailed guidance on hover. This section documents what each admin page does.',
-    features: [
-      { title: 'Operations Overview', text: 'Live server health metrics and cache management tools. Auto-refreshes periodically for real-time monitoring.' },
-      { title: 'Users Management', text: 'View, edit, and delete user accounts. Edit profile includes display name, subscription plan, and active/inactive status. Change role and delete from the row dropdown menu.' },
-      { title: 'User Assignments', text: 'Assign roles (Platform Admin, Org Admin, User) to individual users. Shows summary counts per role.' },
-      { title: 'Role Permissions', text: 'Toggle what each role can access via a checkmark matrix. Resources auto-discover from page routes and API entities. Changes take effect immediately in MongoDB.' },
-      { title: 'Subscription Plans', text: 'Free, Pro, and Enterprise plans. Toggle features per plan, set usage limits. Plans auto-seed on first access.' },
-      { title: 'Audit Logs', text: 'Track admin actions, role changes, and security events. Filter by event type and date range.' },
-      { title: 'Integrations', text: 'Manage third-party connections: GitHub App for PR scanning, email providers, and billing.' },
-      { title: 'Speed Insights', text: 'Performance monitoring dashboard showing Core Web Vitals for your application. Filtered by page and time range.' },
-      { title: 'CDN & Edge', text: 'Configure edge caching, redirects, and routing rules through your CDN provider.' },
-      { title: 'AI Inventory', text: 'Auto-discovered AI surfaces catalog: prompts, agents, automation chains. Dependency audit for security vulnerabilities.' },
-      { title: 'Workflows', text: 'Visual workflow builder with trigger, HTTP, AI, MongoDB, log, and delay nodes. Cron scheduler for automated tasks.' },
-    ],
-    items: [
-      { id: 'admin-system', label: 'Operations Overview', desc: 'Server health, containers, cache management', href: '/dashboard/admin/system' },
-      { id: 'admin-users', label: 'Users Management', desc: 'View, edit, delete user accounts', href: '/dashboard/admin/users' },
-      { id: 'admin-roles', label: 'User Assignments', desc: 'Assign roles to individual users', href: '/dashboard/admin/roles' },
-      { id: 'admin-permissions', label: 'Role Permissions', desc: 'Toggle access per role', href: '/dashboard/admin/permissions' },
-      { id: 'admin-plans', label: 'Subscription Plans', desc: 'Manage feature access per tier', href: '/dashboard/admin/plans' },
-      { id: 'admin-audit', label: 'Audit Logs', desc: 'Track admin actions and security events', href: '/dashboard/admin/audit-logs' },
-      { id: 'admin-integrations', label: 'Integrations', desc: 'GitHub, email, billing connections', href: '/dashboard/admin/integrations' },
-      { id: 'admin-speed', label: 'Speed Insights', desc: 'Core Web Vitals monitoring', href: '/dashboard/admin/speed-insights' },
-      { id: 'admin-settings', label: 'Platform Settings', desc: 'Branding, email, ops, product config', href: '/dashboard/admin/settings' },
-    ],
-  },
 ]
 
 function CodeBlock({ example }: { example: CodeExample }) {
