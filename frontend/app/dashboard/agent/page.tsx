@@ -14,9 +14,11 @@ import {
   Sparkles,
   Terminal,
   Wand2,
+  HelpCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -109,11 +111,18 @@ export default function AgentPage() {
           <div className="flex h-8 w-8 items-center justify-center rounded-md bg-linear-to-br from-primary to-primary/70 shadow">
             <Sparkles className="h-4 w-4 text-primary-foreground" />
           </div>
-          <div>
+          <div className="flex items-center gap-1.5">
             <h1 className="text-sm font-semibold">Agent Workspace</h1>
-            <p className="text-xs text-muted-foreground">
-              Multi-step coding agent · Claude Sonnet 4.5
-            </p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="bottom">
+                  <p className="text-xs max-w-[250px]">Multi-step coding agent · Claude Sonnet 4.5</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </div>
         </div>
         <div className="flex items-center gap-2">

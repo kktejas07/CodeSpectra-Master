@@ -5,9 +5,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Trophy, Medal, Award, Loader2, CheckCircle2 } from 'lucide-react'
+import { Trophy, Medal, Award, Loader2, CheckCircle2, HelpCircle } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 function PodiumIcon({ rank }: { rank: number }) {
   if (rank === 1) {
@@ -106,15 +107,19 @@ export default function LeaderboardPage() {
     <div className="space-y-6">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div>
-          <h1 className="text-4xl font-bold mb-2">Leaderboards</h1>
-          <p className="text-muted-foreground max-w-2xl">
-            <strong className="text-foreground">Global</strong> uses the{' '}
-            <code className="text-xs">leaderboard</code> table. <strong className="text-foreground">Team</strong> filters
-            by your profile&apos;s <code className="text-xs">organization_id</code>.{' '}
-            <strong className="text-foreground">Monthly</strong> sums accepted{' '}
-            <code className="text-xs">submissions</code> points for the current UTC month. Refreshes on DB changes and
-            every 45s.
-          </p>
+          <div className="flex items-center gap-2">
+            <h1 className="text-4xl font-bold mb-2">Leaderboards</h1>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help mb-2" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[280px]">Compare your ranking across global, team, and monthly leaderboards. Top performers earn badges and recognition.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
         </div>
         <div className="inline-flex rounded-lg border border-border/40 bg-muted/50 p-0.5">
           {tabBtn('global', 'Global')}

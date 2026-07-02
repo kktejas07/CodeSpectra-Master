@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Trophy, Zap, BookOpen, Target, Flame, Code2, Loader } from 'lucide-react'
+import { Trophy, Zap, BookOpen, Target, Flame, Code2, Loader, HelpCircle } from 'lucide-react'
 import { BadgesShowcase } from '@/components/achievements/badges-showcase'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Achievement {
   id: number
@@ -43,8 +44,17 @@ export default function AchievementsPage() {
         <div className="flex items-center gap-2">
           <Trophy className="w-6 h-6 text-primary" />
           <h1 className="text-3xl font-bold text-foreground">Achievements & Badges</h1>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Showcase your platform achievements and earned skill badges.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </div>
-        <p className="text-muted-foreground mt-1">Showcase your platform achievements and earned skill badges.</p>
       </div>
 
       {achievements.length === 0 ? (

@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Download, Trash2, Brain, FileText, Upload } from 'lucide-react'
+import { Plus, Download, Trash2, Brain, FileText, Upload, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Resume {
   id: string
@@ -76,8 +77,17 @@ export default function ResumesPage() {
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <FileText className="w-8 h-8 text-primary" />
             My Resumes
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[250px]">Upload and manage your resumes with AI analysis</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </h1>
-          <p className="text-muted-foreground mt-2">Upload and manage your resumes with AI analysis</p>
         </div>
         <label className="cursor-pointer">
           <Button className="gap-2" asChild>

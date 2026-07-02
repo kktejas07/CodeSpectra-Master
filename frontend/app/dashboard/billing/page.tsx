@@ -347,7 +347,7 @@ function BillingContent() {
       <DashboardPageHeader
         icon={CreditCard}
         title="Billing & subscriptions"
-        description="Upgrade, switch annual or monthly billing, manage your card on file, and download receipts. Checkout is simulated here; connect Stripe for production cards and webhooks."
+        description="Upgrade, change billing cycle, manage payment methods, and download receipts."
         actions={
           <Button
             variant="outline"

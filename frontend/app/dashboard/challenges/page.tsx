@@ -4,8 +4,9 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Lock, Star, Code, Zap, CheckCircle, ArrowRight, Loader, Trophy } from 'lucide-react'
+import { Lock, Star, Code, Zap, CheckCircle, ArrowRight, Loader, Trophy, HelpCircle } from 'lucide-react'
 import Link from 'next/link'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Challenge {
   id: string
@@ -47,8 +48,19 @@ export default function ChallengesPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Challenges</h1>
-        <p className="text-muted-foreground mt-1">Practice coding, system design, and behavioral interviews</p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold text-foreground">Challenges</h1>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Practice coding, system design, and behavioral interviews</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
       {loading ? (
