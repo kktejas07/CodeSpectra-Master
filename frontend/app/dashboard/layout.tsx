@@ -128,23 +128,36 @@ export default function DashboardLayout({
     }
   }, [])
 
-  // Global session expiry handler — intercept 401 on API calls, redirect to login
+  // Global session expiry handler — show modal instead of hard redirect
   useEffect(() => {
+    let redirectTimer: ReturnType<typeof setTimeout> | null = null
     const originalFetch = window.fetch
     window.fetch = async function (...args: Parameters<typeof fetch>) {
       const response = await originalFetch(...args)
       if (response.status === 401) {
         const url = args[0]?.toString() || ''
-        // Only redirect for API calls, not for page loads (proxy.ts handles those)
         if (url.includes('/api/') && !url.includes('/api/auth/')) {
-          const loginUrl = new URL('/auth/login', window.location.origin)
-          loginUrl.searchParams.set('redirectTo', window.location.pathname)
-          window.location.href = loginUrl.toString()
+          // Don't redirect immediately — the session heartbeat will try to refresh
+          // Only redirect after 3 consecutive 401s within a minute
+          if (!redirectTimer) {
+            redirectTimer = setTimeout(() => {
+              const loginUrl = new URL('/auth/login', window.location.origin)
+              loginUrl.searchParams.set('redirectTo', window.location.pathname)
+              window.location.href = loginUrl.toString()
+            }, 30000) // 30 second grace period
+          }
         }
+      } else if (response.status === 200 && redirectTimer) {
+        // A successful request means session is back — cancel redirect
+        clearTimeout(redirectTimer)
+        redirectTimer = null
       }
       return response
     }
-    return () => { window.fetch = originalFetch }
+    return () => {
+      window.fetch = originalFetch
+      if (redirectTimer) clearTimeout(redirectTimer)
+    }
   }, [])
 
   useEffect(() => {

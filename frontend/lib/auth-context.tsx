@@ -1,15 +1,19 @@
 'use client'
 
-import { createContext, useContext, useEffect, useState, type ReactNode } from 'react'
 import {
-  onAuthStateChanged,
-  signInWithPopup,
+  createContext,
+  useContext,
+  useEffect,
+  useState,
+  type ReactNode,
+} from 'react'
+import {
   GoogleAuthProvider,
   GithubAuthProvider,
-  signOut as firebaseSignOut,
+  signInWithPopup,
 } from 'firebase/auth'
-import { getFirebaseAuth, prefetchFirebaseConfig, setFirebaseConfig } from './firebase'
-import type { User } from 'firebase/auth'
+import { getFirebaseAuth, getAuth, firebaseSignOut } from './firebase'
+import { prefetchFirebaseConfig, setFirebaseConfig } from './firebase-client-config'
 
 export interface AuthUser {
   uid: string
@@ -21,6 +25,8 @@ export interface AuthUser {
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
+  sessionExpired: boolean
+  clearSessionExpired: () => void
   signInWithEmail: (email: string, password: string) => Promise<void>
   signUpWithEmail: (email: string, password: string, name: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
@@ -36,46 +42,51 @@ function toAuthUser(u: { uid: string; email: string | null; displayName?: string
   return { uid: u.uid, email: u.email, displayName: u.displayName || null, photoURL: u.photoURL || null }
 }
 
-function getAuth() {
-  const a = getFirebaseAuth()
-  if (!a) throw new Error('Firebase not available')
-  return a
-}
-
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
+  const [sessionExpired, setSessionExpired] = useState(false)
+  const clearSessionExpired = () => setSessionExpired(false)
 
+  // Sync Firebase token → session cookie (silent refresh)
   useEffect(() => {
-    let unsubscribe: (() => void) | null = null
+    let unsub: (() => void) | null = null
     let cancelled = false
+
     const init = async () => {
       try {
         const cfg = await prefetchFirebaseConfig()
         if (cfg) setFirebaseConfig(cfg)
         const a = getFirebaseAuth()
-        if (!a) {
-          if (!cancelled) { setLoading(false); return }
-          return
-        }
-        unsubscribe = onAuthStateChanged(a, async (firebaseUser) => {
+        if (!a) { if (!cancelled) setLoading(false); return }
+
+        // Listen for token changes (fires on every token refresh — keeps session alive)
+        unsub = a.onIdTokenChanged(async (fbUser) => {
           if (cancelled) return
-          if (firebaseUser) {
-            setUser(toAuthUser({ uid: firebaseUser.uid, email: firebaseUser.email, displayName: firebaseUser.displayName, photoURL: firebaseUser.photoURL }))
+          if (fbUser) {
+            setUser(toAuthUser(fbUser))
             try {
-              const idToken = await firebaseUser.getIdToken()
+              const idToken = await fbUser.getIdToken()
               await fetch('/api/auth/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken }),
               })
-            } catch { /* session sync is optional */ }
+            } catch { /* non-critical */ }
           } else {
-            setUser(null)
-            try { await fetch('/api/auth/session', { method: 'DELETE' }) } catch {}
+            // Firebase signed out — check if session cookie is still valid
+            try {
+              const res = await fetch('/api/auth/session', { credentials: 'include' })
+              const data = await res.json()
+              if (!data?.user) {
+                setUser(null)
+                setSessionExpired(true)
+              }
+            } catch { setUser(null) }
           }
           if (!cancelled) setLoading(false)
         })
+        return () => { unsub() }
       } catch (e) {
         console.warn('[Auth] Init error:', e)
         if (!cancelled) setLoading(false)
@@ -84,11 +95,30 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     init()
     return () => {
       cancelled = true
-      unsubscribe?.()
+      unsub?.()
     }
   }, [])
 
+  // Session heartbeat — keep the server session alive every 10 minutes
+  useEffect(() => {
+    if (loading || !user) return
+    const interval = setInterval(async () => {
+      try {
+        const a = getFirebaseAuth()
+        if (!a?.currentUser) return
+        const idToken = await a.currentUser.getIdToken(true) // force refresh
+        await fetch('/api/auth/session', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ idToken }),
+        })
+      } catch { /* heartbeat failed — will retry next interval */ }
+    }, 10 * 60 * 1000) // every 10 minutes
+    return () => clearInterval(interval)
+  }, [loading, user])
+
   const signInWithEmailFn = async (email: string, password: string) => {
+    setSessionExpired(false)
     const res = await fetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -113,10 +143,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const signInWithGoogleFn = async () => {
     const auth = getAuth()
     const provider = new GoogleAuthProvider()
-    provider.addScope('email')
-    provider.addScope('profile')
+    provider.addScope('email'); provider.addScope('profile')
     const cred = await signInWithPopup(auth, provider)
-    setUser(toAuthUser({ uid: cred.user.uid, email: cred.user.email, displayName: cred.user.displayName, photoURL: cred.user.photoURL }))
+    setUser(toAuthUser(cred.user))
   }
 
   const signInWithGithubFn = async () => {
@@ -124,38 +153,47 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GithubAuthProvider()
     provider.addScope('user:email')
     const cred = await signInWithPopup(auth, provider)
-    setUser(toAuthUser({ uid: cred.user.uid, email: cred.user.email, displayName: cred.user.displayName, photoURL: cred.user.photoURL }))
+    setUser(toAuthUser(cred.user))
   }
 
   const signOutFn = async () => {
-    try { await firebaseSignOut(getAuth()) } catch { /* ignore if Firebase not configured */ }
+    try { await firebaseSignOut(getAuth()) } catch {}
     await fetch('/api/auth/session', { method: 'DELETE' })
     setUser(null)
+    setSessionExpired(false)
   }
 
   const sendPasswordResetFn = async (email: string) => {
-    const { sendPasswordResetEmail } = await import('firebase/auth')
-    await sendPasswordResetEmail(getAuth(), email)
+    const res = await fetch('/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Failed to send reset email')
   }
 
   const confirmPasswordResetFn = async (code: string, newPassword: string) => {
-    const { confirmPasswordReset } = await import('firebase/auth')
-    await confirmPasswordReset(getAuth(), code, newPassword)
+    const res = await fetch('/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ code, newPassword }),
+    })
+    const json = await res.json()
+    if (!res.ok) throw new Error(json.error || 'Failed to reset password')
   }
 
   return (
-    <AuthContext.Provider
-      value={{
-        user, loading,
-        signInWithEmail: signInWithEmailFn,
-        signUpWithEmail: signUpWithEmailFn,
-        signInWithGoogle: signInWithGoogleFn,
-        signInWithGithub: signInWithGithubFn,
-        signOut: signOutFn,
-        sendPasswordReset: sendPasswordResetFn,
-        confirmPasswordReset: confirmPasswordResetFn,
-      }}
-    >
+    <AuthContext.Provider value={{
+      user, loading, sessionExpired, clearSessionExpired,
+      signInWithEmail: signInWithEmailFn,
+      signUpWithEmail: signUpWithEmailFn,
+      signInWithGoogle: signInWithGoogleFn,
+      signInWithGithub: signInWithGithubFn,
+      signOut: signOutFn,
+      sendPasswordReset: sendPasswordResetFn,
+      confirmPasswordReset: confirmPasswordResetFn,
+    }}>
       {children}
     </AuthContext.Provider>
   )
@@ -163,17 +201,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
 export function useAuth(): AuthContextValue {
   const ctx = useContext(AuthContext)
-  if (!ctx) {
-    return {
-      user: null, loading: true,
-      signInWithEmail: async () => { throw new Error('Auth not initialized') },
-      signUpWithEmail: async () => { throw new Error('Auth not initialized') },
-      signInWithGoogle: async () => { throw new Error('Auth not initialized') },
-      signInWithGithub: async () => { throw new Error('Auth not initialized') },
-      signOut: async () => {},
-      sendPasswordReset: async () => { throw new Error('Auth not initialized') },
-      confirmPasswordReset: async () => { throw new Error('Auth not initialized') },
-    }
-  }
+  if (!ctx) throw new Error('useAuth must be used within AuthProvider')
   return ctx
 }
