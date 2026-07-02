@@ -15,7 +15,7 @@ export async function PATCH(
 
   const userId = params.userId
 
-  let body: { role?: string; full_name?: string }
+  let body: { role?: string; full_name?: string; status?: string; plan?: string }
   try {
     body = await request.json()
   } catch {
@@ -23,12 +23,10 @@ export async function PATCH(
   }
 
   const updates: Record<string, unknown> = {}
-  if (body.role !== undefined) {
-    updates.role = normalizeUserRole(body.role)
-  }
-  if (body.full_name !== undefined) {
-    updates.fullName = body.full_name.trim()
-  }
+  if (body.role !== undefined) updates.role = normalizeUserRole(body.role)
+  if (body.full_name !== undefined) updates.fullName = body.full_name.trim()
+  if (body.status !== undefined) updates.status = body.status === 'active' ? 'active' : 'inactive'
+  if (body.plan !== undefined) updates.plan = body.plan
 
   if (Object.keys(updates).length === 0) {
     return NextResponse.json({ error: 'Nothing to update' }, { status: 400 })

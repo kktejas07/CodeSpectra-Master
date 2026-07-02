@@ -17,6 +17,7 @@ export type AdminUserListRow = {
   joinedAt: string
   lastActiveAt: string | null
   updated_at: string | null
+  plan?: string | null
   organization_id?: string | null
 }
 
@@ -27,6 +28,7 @@ export type ProfileRow = {
   role: string
   created_at: string
   updated_at: string
+  plan?: string | null
   username?: string | null
   organization_id?: string | null
 }
@@ -68,6 +70,7 @@ export function buildAdminUserRow(
     created_at: createdAt,
     joinedAt: createdAt,
     updated_at: profile?.updated_at ?? null,
+    plan: profile?.plan ?? null,
     organization_id: profile?.organization_id ?? null,
   }
 }

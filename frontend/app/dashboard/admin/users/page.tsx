@@ -35,6 +35,7 @@ type TableUser = {
   status: 'active' | 'inactive'
   joinedAt: string
   lastActive: string
+  plan: string
 }
 
 function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
@@ -47,6 +48,7 @@ function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
     status: row.status,
     joinedAt: row.joinedAt,
     lastActive: row.lastActiveAt ? formatRelativeTime(row.lastActiveAt) : 'Never',
+    plan: (row as any).plan || 'free',
   }
 }
 
@@ -169,15 +171,13 @@ export default function UsersManagement() {
     }
   }
 
-  const handleConfirmRole = async (payload: { role?: string; full_name?: string }) => {
+  const handleConfirmRole = async (payload: { role?: string; full_name?: string; status?: string; plan?: string }) => {
     if (!selectedUser) return
     const body: Record<string, string> = {}
-    if (payload.role !== undefined) {
-      body.role = normalizeUserRole(payload.role)
-    }
-    if (payload.full_name !== undefined) {
-      body.full_name = payload.full_name.trim()
-    }
+    if (payload.role !== undefined) body.role = normalizeUserRole(payload.role)
+    if (payload.full_name !== undefined) body.full_name = payload.full_name.trim()
+    if (payload.status !== undefined) body.status = payload.status
+    if (payload.plan !== undefined) body.plan = payload.plan
     if (Object.keys(body).length === 0) return
     try {
       const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
@@ -190,13 +190,12 @@ export default function UsersManagement() {
       if (!res.ok) {
         throw new Error(json.error || 'Update failed')
       }
-      const title =
-        body.full_name !== undefined && body.role === undefined
-          ? 'Display name updated'
-          : body.role !== undefined && body.full_name === undefined
-            ? 'Role updated'
-            : 'User saved'
-      addToast({ type: 'success', title })
+      const parts: string[] = []
+      if (body.full_name !== undefined) parts.push('Name')
+      if (body.role !== undefined) parts.push('Role')
+      if (body.status !== undefined) parts.push('Status')
+      if (body.plan !== undefined) parts.push('Plan')
+      addToast({ type: 'success', title: `${parts.join(', ')} updated` })
       try {
         await loadUsers()
       } catch {
@@ -301,6 +300,8 @@ export default function UsersManagement() {
         userName={selectedUser?.name}
         initialFullName={selectedUser?.name}
         currentRole={selectedUser?.role}
+        currentStatus={selectedUser?.status}
+        currentPlan={selectedUser?.plan}
         onOpenChange={setRoleDialogOpen}
         onConfirm={handleConfirmRole}
       />

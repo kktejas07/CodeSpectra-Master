@@ -26,6 +26,7 @@ export async function GET() {
         email: u.email,
         full_name: u.fullName ?? u.name ?? null,
         role: normalizeUserRole(u.role),
+        plan: (u as any).plan || 'free',
         created_at:
           typeof u.createdAt === 'string'
             ? u.createdAt
