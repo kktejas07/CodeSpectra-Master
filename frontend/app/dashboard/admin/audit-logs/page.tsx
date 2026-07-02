@@ -67,7 +67,6 @@ function resourceIcon(t: string) {
 
 export default function AuditLogsPage() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [logs, setLogs] = useState<AuditRow[]>([])
   const [stats, setStats] = useState({ total: 0, critical: 0, warning: 0, denied: 0 })
@@ -101,6 +100,8 @@ export default function AuditLogsPage() {
   const filtered = useMemo(() => {
     return logs
   }, [logs])
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   return (
     <div className="space-y-8">

@@ -20,7 +20,6 @@ interface JobPosting {
 
 export default function AdminJobsPage() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [jobs, setJobs] = useState<JobPosting[]>([
     {
@@ -57,6 +56,8 @@ export default function AdminJobsPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newJob, setNewJob] = useState({ title: '', company: '', location: '' })
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const handleCreateJob = (e: React.FormEvent) => {
     e.preventDefault()

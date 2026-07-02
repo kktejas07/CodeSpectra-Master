@@ -43,7 +43,6 @@ interface Hackathon {
 
 export default function HackathonsAdminPage() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [items, setItems] = useState<Hackathon[]>([])
   const [loading, setLoading] = useState(true)
@@ -78,6 +77,8 @@ export default function HackathonsAdminPage() {
   useEffect(() => {
     void load()
   }, [load])
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   async function create() {
     if (!form.name.trim()) return

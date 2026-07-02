@@ -10,9 +10,10 @@ import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function IntegrationsPage() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [githubDialogOpen, setGithubDialogOpen] = useState(false)
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const handleConnect = (integrationId: string) => {
     if (integrationId === 'github') {

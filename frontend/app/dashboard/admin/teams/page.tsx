@@ -17,7 +17,6 @@ interface Team {
 
 export default function TeamsManagement() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
@@ -30,6 +29,7 @@ export default function TeamsManagement() {
       .finally(() => setLoading(false))
   }, [])
 
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
   if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
 
   return (

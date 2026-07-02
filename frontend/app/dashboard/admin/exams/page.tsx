@@ -21,7 +21,6 @@ interface Exam {
 
 export default function AdminExamsPage() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [exams, setExams] = useState<Exam[]>([
     {
@@ -50,6 +49,8 @@ export default function AdminExamsPage() {
 
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newExam, setNewExam] = useState({ title: '', subject: '', level: 'Beginner' })
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const handleCreateExam = (e: React.FormEvent) => {
     e.preventDefault()

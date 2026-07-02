@@ -18,7 +18,6 @@ const ICONS: Record<string, React.ComponentType<any>> = {
 
 export default function Security() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [settings, setSettings] = useState<SecuritySetting[]>([])
   const [loading, setLoading] = useState(true)
@@ -31,6 +30,7 @@ export default function Security() {
       .finally(() => setLoading(false))
   }, [])
 
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
   if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
 
   return (

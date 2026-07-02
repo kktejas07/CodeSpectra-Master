@@ -14,7 +14,6 @@ interface GenResult {
 
 export default function QuestionGeneratorPage() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [role, setRole] = useState('Backend Engineer')
   const [difficulty, setDifficulty] = useState<Diff>('medium')
@@ -24,6 +23,8 @@ export default function QuestionGeneratorPage() {
   const [result, setResult] = useState<GenResult | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [publish, setPublish] = useState(true)
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   async function generate() {
     setBusy(true)

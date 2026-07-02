@@ -52,7 +52,6 @@ function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
 
 export default function UsersManagement() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const addToast = useToast()
   const [rows, setRows] = useState<AdminUserListRow[]>([])
@@ -124,6 +123,8 @@ export default function UsersManagement() {
     () => rows.map((r) => mapRowToTableUser(r, tick)),
     [rows, tick]
   )
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const handleEdit = (user: TableUser) => {
     setSelectedUser(user)

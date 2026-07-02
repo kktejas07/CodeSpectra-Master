@@ -68,7 +68,6 @@ type Tab = 'visual' | 'json'
 
 export default function WorkflowsPage() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [items, setItems] = useState<WorkflowSummary[]>([])
   const [selected, setSelected] = useState<string | null>(null)
@@ -118,6 +117,8 @@ export default function WorkflowsPage() {
       return null
     }
   }, [draft])
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   function patchDraft(patch: Partial<WorkflowSummary>) {
     if (!parsedDraft) return

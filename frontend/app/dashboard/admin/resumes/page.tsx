@@ -19,7 +19,6 @@ interface Resume {
 
 export default function AdminResumesPage() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [resumes] = useState<Resume[]>([
     {
@@ -43,6 +42,8 @@ export default function AdminResumesPage() {
   ])
 
   const [jdText, setJdText] = useState('Looking for a Full-Stack Developer with React and Node.js experience')
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   return (
     <div className="space-y-6">

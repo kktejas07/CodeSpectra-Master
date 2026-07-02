@@ -113,12 +113,13 @@ const ALL_PERMISSIONS = [
 
 export default function RolesPermissions() {
   const gate = usePageGuard('superadmin')
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   const [roles, setRoles] = useState<Role[]>(MOCK_ROLES)
   const [users, setUsers] = useState<User[]>(MOCK_USERS)
   const [selectedRole, setSelectedRole] = useState<Role | null>(MOCK_ROLES[0])
   const [activeTab, setActiveTab] = useState('roles')
+
+  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   return (
     <div className="space-y-8">
