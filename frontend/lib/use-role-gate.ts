@@ -40,12 +40,11 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
           setReady(true)
           return
         }
-        // Session failed — wait for Firebase to catch up (up to 3 seconds)
+        // Session failed — wait for Firebase to catch up (up to 15 seconds)
         let attempts = 0
         const check = setInterval(() => {
           attempts++
           if (cancelled) { clearInterval(check); return }
-          // Re-check session (Firebase may have synced by now)
           fetch('/api/auth/session', { credentials: 'include' })
             .then(r => r.ok ? r.json() : null)
             .then(retryData => {
@@ -54,15 +53,14 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
                 clearInterval(check)
                 setUserRole((retryData.user.role || 'user') as UserRole)
                 setReady(true)
-              } else if (attempts >= 5) {
+              } else if (attempts >= 10) {
                 clearInterval(check)
-                // Final attempt failed — redirect to login
                 const loginUrl = new URL('/auth/login', window.location.origin)
                 loginUrl.searchParams.set('redirectTo', window.location.pathname)
                 router.replace(loginUrl.toString())
               }
             })
-        }, 800)
+        }, 1500)
         return () => clearInterval(check)
       })
       .catch(() => {
