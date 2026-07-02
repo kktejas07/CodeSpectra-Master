@@ -26,8 +26,10 @@ import {
   CheckCircle2,
   Search,
   Clock,
+  HelpCircle,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 type Severity = 'info' | 'warning' | 'critical'
 type Outcome = 'success' | 'failure' | 'denied'
@@ -113,7 +115,19 @@ export default function AuditLogsPage() {
             </div>
             <div>
               <h1 className="text-3xl font-bold text-foreground">Audit logs</h1>
-              <p className="text-muted-foreground">Immutable trail of privileged actions</p>
+              <div className="flex items-center gap-1.5">
+                <p className="text-muted-foreground">Immutable trail of privileged actions</p>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                    </TooltipTrigger>
+                    <TooltipContent side="right">
+                      <p className="text-xs max-w-[250px]">Every privileged action is recorded immutably. Filter by severity, outcome, or search across actor, action, and resource.</p>
+                    </TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
+              </div>
             </div>
           </div>
         </div>
@@ -131,19 +145,52 @@ export default function AuditLogsPage() {
 
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="border-border/60 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Events</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Events</p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-[200px]">Total audit events in current view</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <p className="mt-1 text-2xl font-bold text-foreground">{stats.total}</p>
-          <p className="text-xs text-muted-foreground">Total audit events</p>
         </Card>
         <Card className="border-border/60 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Critical</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Critical</p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-[200px]">Role & policy changes marked critical</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <p className="mt-1 text-2xl font-bold text-foreground">{stats.critical}</p>
-          <p className="text-xs text-muted-foreground">Role & policy changes</p>
         </Card>
         <Card className="border-border/60 p-4">
-          <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Denied / failed</p>
+          <div className="flex items-center gap-1.5">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Denied / failed</p>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent>
+                  <p className="text-xs max-w-[200px]">Authz denials & validation errors</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <p className="mt-1 text-2xl font-bold text-foreground">{stats.denied}</p>
-          <p className="text-xs text-muted-foreground">Authz & validation errors</p>
         </Card>
       </div>
 

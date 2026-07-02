@@ -11,11 +11,11 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import { Activity, CheckCircle2, Gauge, Info, TriangleAlert } from 'lucide-react'
+import { Activity, CheckCircle2, Gauge, HelpCircle, Info, TriangleAlert } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRoleGate } from '@/lib/use-role-gate'
 import { DASHBOARD_ROUTES } from '@/lib/rbac'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 type VitalsSummary = {
   range: string
@@ -130,11 +130,19 @@ export default function SpeedInsightsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Speed Insights</h1>
-            <p className="mt-1 text-muted-foreground">
-              Superadmin view of <strong className="text-foreground">web_vitals_events</strong> (p75 by metric, optional
-              route filter). Events are posted from the dashboard shell via{' '}
-              <span className="font-mono">POST /api/analytics/web-vitals</span>.
-            </p>
+            <div className="flex items-center gap-1.5 mt-1">
+              <p className="text-muted-foreground">Web vitals p75 by metric from real user events</p>
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-xs max-w-[250px]">Superadmin view of web_vitals_events (p75 by metric, optional route filter). Events are posted from the dashboard shell via POST /api/analytics/web-vitals.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
@@ -163,17 +171,22 @@ export default function SpeedInsightsPage() {
         </div>
       </div>
 
-      <Alert className="border-border/60 bg-muted/30">
-        <Info className="h-4 w-4" />
-        <AlertTitle>Data sources</AlertTitle>
-        <AlertDescription className="text-muted-foreground">
-          Aggregates load from <span className="font-mono">GET /api/analytics/web-vitals/summary</span> (superadmin,
-          cookie session). {summaryLoading ? 'Refreshing…' : summary ? `${summary.sampleSize} raw rows in window.` : ''}
-          {summaryError ? (
-            <span className="mt-2 block text-destructive">Error: {summaryError}</span>
-          ) : null}
-        </AlertDescription>
-      </Alert>
+      <div className="flex items-center gap-2 text-sm text-muted-foreground">
+        <Info className="h-4 w-4 shrink-0" />
+        <span>Data from <span className="font-mono">GET /api/analytics/web-vitals/summary</span></span>
+        {summaryLoading ? <span className="ml-2 text-xs opacity-60">Refreshing…</span> : summary ? <span className="ml-2 text-xs opacity-60">{summary.sampleSize} raw rows in window</span> : null}
+        {summaryError ? <span className="ml-2 text-xs text-destructive">{summaryError}</span> : null}
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p className="text-xs max-w-[250px]">Aggregates load from the web-vitals summary endpoint. Requires superadmin cookie session.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
+      </div>
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
         {METRIC_CARDS.map(({ key, title }) => {
@@ -247,19 +260,25 @@ export default function SpeedInsightsPage() {
 
       <Card className="border-border/60 p-6">
         <div className="mb-4 flex items-center justify-between">
-          <h2 className="text-lg font-semibold text-foreground">Countries</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold text-foreground">Geography</h2>
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[250px]">Geo data is not stored on vitals events yet. Extend the table and reporter when regional breakdowns are needed.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
           <Button variant="outline" size="sm" asChild>
             <a href={DASHBOARD_ROUTES.platform.cdn}>Open CDN map</a>
           </Button>
         </div>
-        <div className="grid gap-6 lg:grid-cols-[1fr_280px]">
-          <div className="flex min-h-[220px] items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/20 text-sm text-muted-foreground">
-            Geo is not stored on vitals events yet — extend the table and reporter when you need regional breakdowns.
-          </div>
-          <div className="space-y-3 text-sm text-muted-foreground">
-            <p>World map and regional ranking can consume the same summary API once `country` (or `geo`) exists.</p>
-            <p className="text-xs">Filters above re-fetch the summary.</p>
-          </div>
+        <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/20 text-sm text-muted-foreground">
+          No geographic data available — add `country` field to web_vitals_events for regional mapping.
         </div>
       </Card>
     </div>

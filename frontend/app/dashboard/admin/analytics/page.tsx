@@ -2,7 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
-import { BarChart3, TrendingUp, Users, Activity, Code2, ListOrdered } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { BarChart3, HelpCircle, TrendingUp, Users, Activity, Code2, ListOrdered } from 'lucide-react'
 import { useRoleGate } from '@/lib/use-role-gate'
 
 type Metrics = {
@@ -47,21 +48,27 @@ export default function Analytics() {
   const stats = metrics
     ? [
         { label: 'Total users', value: String(metrics.totalUsers), icon: Users, hint: 'Registered accounts' },
-        { label: 'Active (15m)', value: String(metrics.activeNow), icon: Activity, hint: 'Recent in-app activity' },
-        { label: 'Challenges', value: String(metrics.challengesCount), icon: Code2, hint: 'Published challenges' },
-        { label: 'Submissions', value: String(metrics.submissionsCount), icon: ListOrdered, hint: 'All-time submissions' },
-        { label: 'Leaderboard rows', value: String(metrics.leaderboardRows), icon: TrendingUp, hint: 'Ranked entries' },
+        { label: 'Active (15m)', value: String(metrics.activeNow), icon: Activity, hint: 'Users with recent in-app activity' },
+        { label: 'Challenges', value: String(metrics.challengesCount), icon: Code2, hint: 'Total published challenges' },
+        { label: 'Submissions', value: String(metrics.submissionsCount), icon: ListOrdered, hint: 'All-time code submissions' },
+        { label: 'Leaderboard', value: String(metrics.leaderboardRows), icon: TrendingUp, hint: 'Ranked leaderboard entries' },
       ]
     : []
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center gap-2">
         <h1 className="text-3xl font-bold">Insights</h1>
-        <p className="mt-1 text-muted-foreground">
-          High-level KPIs from the database. For charts and audit context, open{' '}
-          <strong>Operations overview</strong> (`/dashboard/admin/system`).
-        </p>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p className="text-xs max-w-[250px]">High-level KPIs from the database. For charts and audit context, see Operations overview.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {error && (
@@ -75,9 +82,20 @@ export default function Analytics() {
             <Card key={stat.label} className="p-6">
               <div className="flex items-start justify-between gap-2">
                 <div className="min-w-0">
-                  <p className="text-sm text-muted-foreground">{stat.label}</p>
+                  <div className="flex items-center gap-1.5">
+                    <p className="text-sm text-muted-foreground">{stat.label}</p>
+                    <TooltipProvider>
+                      <Tooltip>
+                        <TooltipTrigger asChild>
+                          <HelpCircle className="h-3 w-3 text-muted-foreground cursor-help" />
+                        </TooltipTrigger>
+                        <TooltipContent side="bottom">
+                          <p className="text-xs max-w-[200px]">{stat.hint}</p>
+                        </TooltipContent>
+                      </Tooltip>
+                    </TooltipProvider>
+                  </div>
                   <p className="mt-2 text-3xl font-bold tabular-nums">{stat.value}</p>
-                  <p className="mt-1 text-xs text-muted-foreground">{stat.hint}</p>
                 </div>
                 <Icon className="h-8 w-8 shrink-0 text-primary/50" />
               </div>
@@ -87,13 +105,22 @@ export default function Analytics() {
       </div>
 
       <Card className="p-6">
-        <h2 className="mb-2 flex items-center gap-2 font-semibold">
+        <div className="flex items-center gap-2">
           <BarChart3 className="h-5 w-5 text-primary" />
-          Deeper analytics
-        </h2>
-        <p className="text-sm text-muted-foreground">
-          Trend lines, role distribution, and submission histograms are on the operations overview page so we keep this
-          view lightweight and avoid duplicating the same charts in three places.
+          <h2 className="font-semibold">Analysis detail</h2>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Trend lines, role distribution, and submission histograms live on the Operations overview to keep this view lightweight.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
+        <p className="mt-1 text-sm text-muted-foreground">
+          See Operations overview for trend charts, role distribution, and histograms.
         </p>
       </Card>
     </div>
