@@ -38,11 +38,16 @@ export async function GET() {
 
       // buildAdminUserRow expects a Supabase User-like object as 1st arg.
       // We pass the minimum shape it reads.
+      // Use updatedAt as proxy for last activity when no real last_sign_in_at exists
+      const lastActive = u.updatedAt ? 
+        (typeof u.updatedAt === 'string' ? u.updatedAt : u.updatedAt?.toISOString?.() ?? null) :
+        null
+
       const fakeAuthUser = {
         id: profile.id,
         email: u.email,
         created_at: profile.created_at,
-        last_sign_in_at: null,
+        last_sign_in_at: lastActive,
         email_confirmed_at: u.emailVerified ? profile.created_at : null,
         user_metadata: { full_name: profile.full_name, role: profile.role },
         app_metadata: {},
