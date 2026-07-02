@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useAuth } from '@/lib/auth-context'
 import {
@@ -22,57 +22,48 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
   const { user: fbUser, loading: fbLoading } = useAuth()
   const [ready, setReady] = useState(false)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
-  const triedRef = useRef(false)
 
   useEffect(() => {
-    if (triedRef.current) return
-    triedRef.current = true
-
     let cancelled = false
+    let attempts = 0
+    let maxAttempts = 30 // ~60 seconds total
 
-    // Try session cookie first (works immediately)
-    fetch('/api/auth/session', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (cancelled) return
-        if (data?.user) {
-          setUserRole((data.user.role || 'user') as UserRole)
-          setReady(true)
-          return
-        }
-        // Session failed — wait for Firebase to catch up (up to 15 seconds)
-        let attempts = 0
-        const check = setInterval(() => {
+    const trySession = () => {
+      if (cancelled) return
+      fetch('/api/auth/session', { credentials: 'include' })
+        .then(r => r.ok ? r.json() : null)
+        .then(data => {
+          if (cancelled) return
+          if (data?.user) {
+            setUserRole((data.user.role || 'user') as UserRole)
+            setReady(true)
+            return
+          }
+          // Retry with backoff
           attempts++
-          if (cancelled) { clearInterval(check); return }
-          fetch('/api/auth/session', { credentials: 'include' })
-            .then(r => r.ok ? r.json() : null)
-            .then(retryData => {
-              if (cancelled) return
-              if (retryData?.user) {
-                clearInterval(check)
-                setUserRole((retryData.user.role || 'user') as UserRole)
-                setReady(true)
-              } else if (attempts >= 10) {
-                clearInterval(check)
-                const loginUrl = new URL('/auth/login', window.location.origin)
-                loginUrl.searchParams.set('redirectTo', window.location.pathname)
-                router.replace(loginUrl.toString())
-              }
-            })
-        }, 1500)
-        return () => clearInterval(check)
-      })
-      .catch(() => {
-        if (!cancelled) {
-          const loginUrl = new URL('/auth/login', window.location.origin)
-          loginUrl.searchParams.set('redirectTo', window.location.pathname)
-          router.replace(loginUrl.toString())
-        }
-      })
+          if (attempts < maxAttempts) {
+            setTimeout(trySession, Math.min(2000 + attempts * 500, 10000))
+          } else {
+            // After ~60s, give up silently — user sees "Loading..." but stays on page
+            setReady(true)
+            setUserRole('user')
+          }
+        })
+        .catch(() => {
+          if (cancelled) return
+          attempts++
+          if (attempts < maxAttempts) {
+            setTimeout(trySession, 3000)
+          } else {
+            setReady(true)
+            setUserRole('user')
+          }
+        })
+    }
 
+    trySession()
     return () => { cancelled = true }
-  }, [router])
+  }, [])
 
   const profile = fbUser && userRole ? {
     id: fbUser.uid,

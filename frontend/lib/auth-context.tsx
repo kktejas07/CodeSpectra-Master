@@ -100,21 +100,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
-  // Session heartbeat — keep the server session alive every 10 minutes
+  // Session heartbeat — keep the server session alive every 5 minutes
   useEffect(() => {
     if (loading || !user) return
     const interval = setInterval(async () => {
       try {
         const a = getFirebaseAuth()
         if (!a?.currentUser) return
-        const idToken = await a.currentUser.getIdToken(true) // force refresh
+        const idToken = await a.currentUser.getIdToken(true)
         await fetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
         })
       } catch { /* heartbeat failed — will retry next interval */ }
-    }, 10 * 60 * 1000) // every 10 minutes
+    }, 5 * 60 * 1000) // every 5 minutes
     return () => clearInterval(interval)
   }, [loading, user])
 

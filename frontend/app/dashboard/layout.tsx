@@ -152,7 +152,7 @@ export default function DashboardLayout({
     }
   }, [])
 
-  // Global session expiry handler — show modal instead of hard redirect
+  // Global session expiry handler — 2 minute grace period before redirect
   useEffect(() => {
     let redirectTimer: ReturnType<typeof setTimeout> | null = null
     const originalFetch = window.fetch
@@ -161,18 +161,15 @@ export default function DashboardLayout({
       if (response.status === 401) {
         const url = args[0]?.toString() || ''
         if (url.includes('/api/') && !url.includes('/api/auth/')) {
-          // Don't redirect immediately — the session heartbeat will try to refresh
-          // Only redirect after 3 consecutive 401s within a minute
           if (!redirectTimer) {
             redirectTimer = setTimeout(() => {
               const loginUrl = new URL('/auth/login', window.location.origin)
               loginUrl.searchParams.set('redirectTo', window.location.pathname)
               window.location.href = loginUrl.toString()
-            }, 30000) // 30 second grace period
+            }, 120000) // 2 minute grace period
           }
         }
       } else if (response.status === 200 && redirectTimer) {
-        // A successful request means session is back — cancel redirect
         clearTimeout(redirectTimer)
         redirectTimer = null
       }
