@@ -126,7 +126,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard': 'Overview',
   '/dashboard/admin/system': 'Operations Overview',
   '/dashboard/admin/users': 'Users Management',
-  '/dashboard/admin/roles': 'Roles Management',
+  '/dashboard/admin/roles': 'User Assignments',
   '/dashboard/admin/analytics': 'Insights',
   '/dashboard/admin/audit-logs': 'Audit Logs',
   '/dashboard/admin/integrations': 'Integrations',

@@ -211,7 +211,7 @@ export default function DashboardLayout({
     if (isSuperAdmin(role)) {
       const platformItems: NavLeaf[] = [
         { href: p.users, icon: Users, label: 'Users' },
-        { href: p.roles, icon: Lock, label: 'Roles' },
+        { href: p.roles, icon: Lock, label: 'Uses Roles' },
         { href: p.analytics, icon: BarChart3, label: 'Insights' },
         { href: p.auditLogs, icon: ScrollText, label: 'Audit logs' },
         { href: p.integrations, icon: Plug, label: 'Integrations' },
