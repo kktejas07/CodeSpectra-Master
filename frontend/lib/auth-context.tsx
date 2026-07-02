@@ -11,9 +11,10 @@ import {
   GoogleAuthProvider,
   GithubAuthProvider,
   signInWithPopup,
+  getAuth,
+  signOut as firebaseSignOut,
 } from 'firebase/auth'
-import { getFirebaseAuth, getAuth, firebaseSignOut } from './firebase'
-import { prefetchFirebaseConfig, setFirebaseConfig } from './firebase-client-config'
+import { getFirebaseAuth, prefetchFirebaseConfig, setFirebaseConfig } from './firebase'
 
 export interface AuthUser {
   uid: string
