@@ -115,6 +115,25 @@ export async function POST(request: Request) {
     await updateUserById(newUserId, { role, fullName: full_name })
 
     const created = await getUserById(newUserId)
+
+    // Send welcome email if Postal or other provider is configured
+    let welcomeEmailSent = false
+    let delivery = 'none'
+    try {
+      const { sendEmailViaPostal } = await import('@/lib/transactional-mail')
+      const { emailTemplates } = await import('@/lib/email-templates')
+      const template = emailTemplates.welcomeEmail(full_name)
+      await sendEmailViaPostal({
+        to: email,
+        subject: template.subject,
+        html: template.html,
+      })
+      welcomeEmailSent = true
+      delivery = 'postal'
+    } catch {
+      // Postal not configured or send failed — that's OK
+    }
+
     return NextResponse.json({
       user: {
         id: newUserId,
@@ -126,8 +145,8 @@ export async function POST(request: Request) {
             ? created.createdAt.toISOString()
             : (created?.createdAt as unknown as string) ?? new Date().toISOString(),
       },
-      welcomeEmailSent: false,
-      delivery: 'none',
+      welcomeEmailSent,
+      delivery,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to create user'
