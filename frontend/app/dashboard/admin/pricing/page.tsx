@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Edit2, Trash2, Settings } from 'lucide-react';
+import { Plus, Edit2, Trash2, Settings, HelpCircle } from 'lucide-react';
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard';
 
 export default function PricingAdminPage() {
@@ -75,11 +76,18 @@ export default function PricingAdminPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Pricing Management</h1>
-          <p className="text-muted-foreground mt-1">
-            Configure catalog tiers and feature flags. Stripe API keys and <code className="rounded bg-muted px-1 text-xs">price_…</code> IDs for
-            Checkout live under Platform settings → Stripe & billing.
-          </p>
+          <h1 className="text-3xl font-bold">Pricing Management
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[250px]">Configure catalog tiers and feature flags. Stripe API keys and price_&hellip; IDs for Checkout live under Platform settings &rarr; Stripe &amp; billing.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </h1>
         </div>
         <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
           <DialogTrigger asChild>

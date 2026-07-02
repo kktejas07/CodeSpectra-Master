@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Trophy, Plus, Edit, Trash2, Eye } from 'lucide-react'
+import { Trophy, Plus, Edit, Trash2, Eye, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Codeathon {
@@ -88,8 +89,17 @@ export default function AdminCodeathonsPage() {
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Trophy className="w-8 h-8 text-primary" />
             Codeathon Management
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[250px]">Manage coding competitions and hackathons</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </h1>
-          <p className="text-muted-foreground mt-2">Manage coding competitions and hackathons</p>
         </div>
         <Button onClick={() => setShowCreateModal(true)} className="gap-2">
           <Plus className="w-4 h-4" />

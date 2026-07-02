@@ -24,7 +24,9 @@ import {
   Download,
   ScanLine,
   Trash2,
+  HelpCircle,
 } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Hackathon {
   id: string
@@ -195,15 +197,21 @@ export default function HackathonDetailPage({
         <div className="flex flex-wrap items-center gap-3">
           <h1 className="flex items-center gap-2 text-3xl font-bold">
             <Trophy className="h-7 w-7 text-primary" /> {event.name}
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[250px]">/{event.slug} &middot; {event.num_teams} teams cap &middot; max {event.max_per_team}/team &middot; {event.timeout_minutes} min &middot; ends {new Date(event.ends_at).toLocaleString()}</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </h1>
           <Badge variant={event.status === 'live' ? 'default' : 'secondary'} className="uppercase">
             {event.status}
           </Badge>
         </div>
-        <p className="text-sm text-muted-foreground">
-          /{event.slug} · {event.num_teams} teams cap · max {event.max_per_team}/team · {event.timeout_minutes} min ·
-          ends {new Date(event.ends_at).toLocaleString()}
-        </p>
       </header>
 
       {error && (

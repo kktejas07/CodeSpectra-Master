@@ -21,7 +21,9 @@ import {
   AlertTriangle,
   CheckCircle2,
   ExternalLink,
+  HelpCircle,
 } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface CategorySummary {
@@ -160,12 +162,17 @@ export default function AiInventoryPage() {
       <header className="space-y-2">
         <h1 className="flex items-center gap-2 text-3xl font-bold">
           <ScanLine className="h-7 w-7 text-primary" /> AI inventory
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Auto-discovered catalog of every AI surface in CodeSpectra: automations, agents, LLM models, MCP tools, connectors, GenAI run logs, and recommended open-source frameworks.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </h1>
-        <p className="max-w-2xl text-sm text-muted-foreground">
-          Auto-discovered catalog of every AI surface in CodeSpectra:
-          automations, agents, LLM models, MCP tools, connectors,
-          GenAI run logs, and recommended open-source frameworks.
-        </p>
       </header>
 
       <div className="flex gap-1">

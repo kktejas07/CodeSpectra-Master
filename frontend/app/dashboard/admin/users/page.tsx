@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Users, Plus, Loader2 } from 'lucide-react'
+import { Users, Plus, Loader2, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { UserManagementTable } from '@/components/admin/user-management-table'
 import {
   RoleAssignmentDialog,
@@ -265,12 +266,17 @@ export default function UsersManagement() {
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
             <Users className="w-8 h-8 text-primary" />
             Users Management
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[250px]">Use Edit for display names and Change role for access level, or remove accounts. New users without a manual password follow Platform settings &rarr; Admin user invitations. Last active combines recent sign-in and in-app activity.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </h1>
-          <p className="text-muted-foreground mt-2">
-            Use Edit for display names and Change role for access level, or remove accounts. New users without a manual
-            password follow <strong>Platform settings → Admin user invitations</strong> (invite or secure link). Last
-            active combines recent sign-in and in-app activity.
-          </p>
         </div>
         <Button className="gap-2 shrink-0" onClick={() => setAddOpen(true)} disabled={loading}>
           <Plus className="w-4 h-4" />

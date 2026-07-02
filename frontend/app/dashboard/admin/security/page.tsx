@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { AlertTriangle, Lock, Shield, Loader } from 'lucide-react'
+import { AlertTriangle, Lock, Shield, Loader, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface SecuritySetting {
@@ -36,8 +37,18 @@ export default function Security() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold">Security Settings</h1>
-        <p className="text-muted-foreground mt-1">Manage system security configurations</p>
+        <h1 className="text-3xl font-bold">Security Settings
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Manage system security configurations</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </h1>
       </div>
 
       {settings.length === 0 ? (

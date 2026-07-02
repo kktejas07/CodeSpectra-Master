@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/lib/toast-context'
-import { Users, Loader2, Search, Trash2 } from 'lucide-react'
+import { Users, Loader2, Search, Trash2, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { normalizeUserRole } from '@/lib/rbac'
 import Link from 'next/link'
@@ -76,12 +77,18 @@ export default function UserRoleAssignments() {
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"><Users className="h-6 w-6 text-primary" /></div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">User Role Assignments</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">
-              Assign roles to users.{' '}
-              <Link href="/dashboard/admin/permissions" className="text-primary underline underline-offset-2">Manage role permissions</Link>{' '}
-              to control what each role can access.
-            </p>
+            <h1 className="text-3xl font-bold text-foreground">User Role Assignments
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-xs max-w-[250px]">Assign roles to users. Manage role permissions to control what each role can access.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </h1>
           </div>
         </div>
         <Button onClick={fetchUsers} variant="outline" size="sm"><Loader2 className="h-4 w-4 mr-1" />Refresh</Button>

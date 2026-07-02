@@ -3,7 +3,8 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Plus, Search, Loader, Users } from 'lucide-react'
+import { Plus, Search, Loader, Users, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -36,8 +37,18 @@ export default function TeamsManagement() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-3xl font-bold">Teams Management</h1>
-          <p className="text-muted-foreground mt-1">Manage organization teams</p>
+          <h1 className="text-3xl font-bold">Teams Management
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[250px]">Manage organization teams</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </h1>
         </div>
         <Button className="gap-2"><Plus className="w-4 h-4" />Create Team</Button>
       </div>

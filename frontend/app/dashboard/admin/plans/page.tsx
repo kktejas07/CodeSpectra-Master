@@ -8,7 +8,8 @@ import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { Loader2, Crown, CheckCircle2, XCircle, Save, RefreshCw } from 'lucide-react'
+import { Loader2, Crown, CheckCircle2, XCircle, Save, RefreshCw, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface PlanDef {
   _id?: string; plan: string; name: string; description: string
@@ -94,8 +95,18 @@ export default function PlansPage() {
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"><Crown className="h-6 w-6 text-primary" /></div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Subscription Plans</h1>
-            <p className="text-muted-foreground text-sm mt-0.5">Manage feature access per subscription tier. Changes take effect immediately.</p>
+            <h1 className="text-3xl font-bold text-foreground">Subscription Plans
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-xs max-w-[250px]">Manage feature access per subscription tier. Changes take effect immediately.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </h1>
           </div>
         </div>
         <Button onClick={fetchPlans} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
