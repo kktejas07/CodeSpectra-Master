@@ -80,7 +80,7 @@ export default function PermissionsPage() {
         ...p, actions: editing[p.resource] !== undefined ? editing[p.resource] : p.actions
       })))
       const body = reseed
-        ? { role: selectedRole, name: currentRole?.name || selectedRole, permissions: [] }
+        ? { reseed: true }
         : { ...currentRole, permissions }
 
       const res = await fetch('/api/admin/permissions/roles', {
@@ -129,7 +129,7 @@ export default function PermissionsPage() {
         </div>
         <div className="flex gap-2">
           <Button onClick={fetchRoles} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
-          <Button onClick={() => save(true)} disabled={saving} variant="outline" size="sm"><Database className="h-4 w-4 mr-1" />Reseed</Button>
+          <Button onClick={() => save(true)} disabled={saving} variant="outline" size="sm"><Database className="h-4 w-4 mr-1" />Reseed All</Button>
         </div>
       </div>
 
@@ -191,7 +191,7 @@ export default function PermissionsPage() {
                 <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[12%]">Create</th>
                 <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[12%]">Update</th>
                 <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[12%]">Delete</th>
-                <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[12%]">All</th>
+                <th className="px-1 py-2 text-center font-medium text-muted-foreground w-[12%]">Manage</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-border/20">

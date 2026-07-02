@@ -120,12 +120,12 @@ export function getDefaultRolePermissions(role: UserRole): ResourcePermission[] 
   switch (role) {
     case 'superadmin':
       return [
-        // Full page access
+        // Full page access — manage = all CRUD
         ...pageResources.filter(r =>
           ADMIN_ONLY_ROUTES.includes(r.resource) ||
           TENANT_ADMIN_ROUTES.includes(r.resource) ||
           ALL_USER_ROUTES.includes(r.resource)
-        ).map(r => ({ ...r, actions: ['read'] as PermissionAction[] })),
+        ).map(r => ({ ...r, actions: ['manage'] as PermissionAction[] })),
         // Full entity access (manage = all CRUD)
         ...entityResources.map(r => ({ ...r, actions: ['manage'] as PermissionAction[] })),
       ]
