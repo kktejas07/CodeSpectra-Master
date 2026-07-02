@@ -92,6 +92,7 @@ export default function DashboardLayout({
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [userPlan, setUserPlan] = useState<string>('free')
+  const [allowedDbRoutes, setAllowedDbRoutes] = useState<Set<string>>(new Set())
 
   const { user: fbUser, signOut } = useAuth()
 
@@ -108,6 +109,29 @@ export default function DashboardLayout({
       .catch(() => { if (!cancelled) setUserRole('user') })
     return () => { cancelled = true }
   }, [fbUser])
+
+  // Fetch DB-driven permissions for sidebar filtering — works for all roles
+  useEffect(() => {
+    if (!userRole) return
+    let cancelled = false
+    fetch('/api/admin/permissions/roles', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data?.roles) return
+        const roleData = data.roles.find((r: any) => r.role === userRole)
+        if (!roleData) return
+        const perms = (roleData.permissions || []) as any[]
+        const routes = new Set<string>()
+        perms.forEach((p: any) => {
+          if (p.resourceType === 'page' && (p.actions?.includes('read') || p.actions?.includes('manage'))) {
+            routes.add(p.resource)
+          }
+        })
+        if (routes.size > 0) setAllowedDbRoutes(routes)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [userRole])
 
   const userProfile = useMemo(() => {
     if (!fbUser || !userRole) return null
@@ -248,12 +272,20 @@ export default function DashboardLayout({
     }
 
     return entries.filter(entry => {
+      // If DB permissions are loaded, use them as source of truth for page access
+      if (allowedDbRoutes.size > 0) {
+        // Get base path (strip query params)
+        const basePath = entry.item.href.split('?')[0]
+        const isInDb = allowedDbRoutes.has(basePath) ||
+          Array.from(allowedDbRoutes).some(r => basePath.startsWith(r + '/'))
+        if (!isInDb) return false
+      }
       // Superadmin sees everything regardless of plan
       if (isSuperAdmin(role)) return true
       // Other roles are filtered by plan
       return isPageAllowed({ plan: userPlan } as PlanDefinition, entry.item.href)
     })
-  }, [userProfile?.role, userPlan])
+  }, [userProfile?.role, userPlan, allowedDbRoutes])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
