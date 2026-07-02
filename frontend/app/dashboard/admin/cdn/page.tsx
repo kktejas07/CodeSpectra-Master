@@ -3,7 +3,8 @@
 import { Card } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Button } from '@/components/ui/button'
-import { Globe2, Info, ExternalLink } from 'lucide-react'
+import { Globe2, Info, ExternalLink, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { useRoleGate } from '@/lib/use-role-gate'
 
 export default function CdnAdminPage() {
@@ -21,10 +22,18 @@ export default function CdnAdminPage() {
             <Globe2 className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">CDN & Edge</h1>
-            <p className="mt-1 text-muted-foreground">
-              Manage edge caching, redirects, and routing rules for your CodeSpectra deployment.
-            </p>
+            <h1 className="text-3xl font-bold text-foreground">CDN &amp; Edge
+              <TooltipProvider>
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
+                  </TooltipTrigger>
+                  <TooltipContent side="right">
+                    <p className="text-xs max-w-[250px]">Manage edge caching, redirects, and routing rules for your CodeSpectra deployment.</p>
+                  </TooltipContent>
+                </Tooltip>
+              </TooltipProvider>
+            </h1>
           </div>
         </div>
       </div>

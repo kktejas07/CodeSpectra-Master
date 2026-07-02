@@ -22,7 +22,9 @@ import {
   CheckCircle2,
   XCircle,
   Workflow as WorkflowIcon,
+  HelpCircle,
 } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import CronPicker from '@/components/workflows/cron-picker'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -207,13 +209,17 @@ export default function WorkflowsPage() {
           <h1 className="text-3xl font-bold flex items-center gap-2">
             <WorkflowIcon className="h-7 w-7 text-primary" />
             Workflow automation
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
+                </TooltipTrigger>
+                <TooltipContent side="right">
+                  <p className="text-xs max-w-[250px]">Compose pipelines visually or via JSON. Built-in node types: trigger.manual, http.request, ai.complete, mongo.find, log, delay.</p>
+                </TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
           </h1>
-          <p className="mt-1 max-w-xl text-sm text-muted-foreground">
-            Compose pipelines visually or via JSON. Built-in node types:
-            <code> trigger.manual</code>, <code>http.request</code>,
-            <code> ai.complete</code>, <code>mongo.find</code>, <code>log</code>,
-            <code> delay</code>.
-          </p>
         </div>
         <Button
           onClick={() => {

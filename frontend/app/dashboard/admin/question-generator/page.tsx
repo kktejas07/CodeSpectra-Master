@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Loader2, Sparkles, FileCheck2 } from 'lucide-react'
+import { Loader2, Sparkles, FileCheck2, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -55,11 +56,18 @@ export default function QuestionGeneratorPage() {
   return (
     <div className="space-y-6" data-testid="qgen-page">
       <div>
-        <h1 className="text-2xl font-bold">AI Question Generator</h1>
-        <p className="text-sm text-muted-foreground">
-          Generate fresh coding interview problems on demand — tuned for the role you&apos;re
-          hiring for. Optionally publish straight to the Problems library.
-        </p>
+        <h1 className="text-2xl font-bold">AI Question Generator
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Generate fresh coding interview problems on demand &mdash; tuned for the role you&apos;re hiring for. Optionally publish straight to the Problems library.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </h1>
       </div>
 
       <div className="grid lg:grid-cols-2 gap-4">

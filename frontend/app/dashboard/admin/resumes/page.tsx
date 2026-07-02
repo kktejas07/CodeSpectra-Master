@@ -4,7 +4,8 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Plus, Trash2, Brain, Download } from 'lucide-react'
+import { FileText, Plus, Trash2, Brain, Download, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Resume {
@@ -51,8 +52,17 @@ export default function AdminResumesPage() {
         <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
           <FileText className="w-8 h-8 text-primary" />
           Resume AI Analysis
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Analyze resumes with AI and match against job descriptions</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
         </h1>
-        <p className="text-muted-foreground mt-2">Analyze resumes with AI and match against job descriptions</p>
       </div>
 
       {/* JD Matcher */}

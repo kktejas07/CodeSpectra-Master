@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Users, UserPlus, Activity, Settings, Loader, Code, Trophy, Mail, TrendingUp } from 'lucide-react'
+import { Users, UserPlus, Activity, Settings, Loader, Code, Trophy, Mail, TrendingUp, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -46,8 +47,18 @@ export default function TeamManagement() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold text-foreground">Organization</h1>
-        <p className="text-muted-foreground mt-1">Manage your team and monitor organization activity.</p>
+        <h1 className="text-3xl font-bold text-foreground">Organization
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Manage your team and monitor organization activity.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </h1>
       </div>
 
       {/* Stats */}
