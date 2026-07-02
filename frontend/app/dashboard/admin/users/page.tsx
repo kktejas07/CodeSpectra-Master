@@ -158,11 +158,9 @@ export default function UsersManagement() {
         throw new Error(json.error || 'Delete failed')
       }
       addToast({ type: 'success', title: 'User deleted' })
-      try {
-        await loadUsers()
-      } catch {
-        /* ignore */
-      }
+      // Optimistic: remove from local state immediately
+      setRows(prev => prev.filter(r => r.id !== deleteId))
+      try { await loadUsers() } catch { /* ignore */ }
     } catch (e) {
       const msg = e instanceof Error ? e.message : 'Delete failed'
       addToast({ type: 'error', title: 'Delete failed', message: msg })
