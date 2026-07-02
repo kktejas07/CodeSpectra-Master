@@ -22,6 +22,9 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
         createdAt: new Date(),
         updatedAt: new Date(),
       } as any)
+    } else {
+      // Update last active on every login
+      await userCol.updateOne({ id: uid }, { $set: { updatedAt: new Date() } })
     }
   } catch (e) {
     console.error('[Session] Profile sync error:', e)
@@ -93,6 +96,8 @@ export async function GET() {
       if (decoded) {
         const userCol = await getUsersCollection()
         const profile = await userCol.findOne({ id: decoded.uid })
+        // Update lastActive timestamp (non-blocking)
+        userCol.updateOne({ id: decoded.uid }, { $set: { updatedAt: new Date() } }).catch(() => {})
         return NextResponse.json({
           user: {
             uid: decoded.uid,
@@ -113,6 +118,8 @@ export async function GET() {
   if (payload) {
     const userCol = await getUsersCollection()
     const profile = await userCol.findOne({ id: payload.uid })
+    // Update lastActive timestamp (non-blocking)
+    userCol.updateOne({ id: payload.uid }, { $set: { updatedAt: new Date() } }).catch(() => {})
     return NextResponse.json({
       user: {
         uid: payload.uid,
