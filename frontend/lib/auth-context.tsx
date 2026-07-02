@@ -49,6 +49,23 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [sessionExpired, setSessionExpired] = useState(false)
   const clearSessionExpired = () => setSessionExpired(false)
 
+  // Immediate session check — don't wait for Firebase
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (data?.user) {
+          setUser(toAuthUser({
+            uid: data.user.uid,
+            email: data.user.email,
+            displayName: data.user.fullName,
+          }))
+          setLoading(false)
+        }
+      })
+      .catch(() => {})
+  }, [])
+
   // Sync Firebase token → session cookie (silent refresh)
   useEffect(() => {
     let unsub: (() => void) | null = null
@@ -75,11 +92,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               })
             } catch { /* non-critical */ }
           } else {
-            // Firebase signed out — check if session cookie is still valid
+            // Firebase not available yet — use session cookie as fallback
             try {
               const res = await fetch('/api/auth/session', { credentials: 'include' })
               const data = await res.json()
-              if (!data?.user) {
+              if (data?.user) {
+                // Session cookie is valid — set user from session data
+                setUser(toAuthUser({
+                  uid: data.user.uid,
+                  email: data.user.email,
+                  displayName: data.user.fullName,
+                }))
+              } else {
                 setUser(null)
                 setSessionExpired(true)
               }
