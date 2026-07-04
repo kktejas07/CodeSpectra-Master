@@ -131,8 +131,8 @@ export function CodeDiffViewer({
         <Button onClick={onApply} className="flex-1" size="sm">
           Apply This Fix
         </Button>
-        <Button variant="outline" size="sm">
-          Preview Impact
+        <Button variant="outline" size="sm" onClick={() => setShowDiff((v) => !v)}>
+          {showDiff ? 'Hide Diff' : 'Show Diff'}
         </Button>
       </div>
     </Card>

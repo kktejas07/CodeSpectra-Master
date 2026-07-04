@@ -10,7 +10,23 @@ import {
   getGitHubRepositories,
   getRepositoryFiles,
   type GitHubRepoListItem,
+  type FileContent,
 } from '@/lib/github-service'
+
+function guessLanguageFromPath(filePath: string): string {
+  const ext = (filePath.split('.').pop() || '').toLowerCase()
+  const map: Record<string, string> = {
+    ts: 'typescript', tsx: 'typescript', js: 'javascript', jsx: 'javascript',
+    py: 'python', rb: 'ruby', go: 'go', rs: 'rust', java: 'java',
+    kt: 'kotlin', swift: 'swift', cs: 'csharp', cpp: 'cpp', c: 'c',
+    php: 'php', pl: 'perl', r: 'r', scala: 'scala', lua: 'lua',
+    sh: 'bash', bash: 'bash', zsh: 'bash', fish: 'bash',
+    sql: 'sql', html: 'html', htm: 'html', css: 'css', scss: 'scss',
+    less: 'less', json: 'json', xml: 'xml', yaml: 'yaml', yml: 'yaml',
+    md: 'markdown', mdx: 'markdown', vue: 'vue', svelte: 'svelte',
+  }
+  return map[ext] || 'text'
+}
 
 interface FileNode {
   name: string

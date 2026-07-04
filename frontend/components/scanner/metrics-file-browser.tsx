@@ -123,8 +123,8 @@ export function MetricsFileBrowser({ files = [], onSelectFile }: MetricsFileBrow
                     <td className="px-4 py-3 flex items-center gap-2">
                       <FileCode className="w-4 h-4 text-foreground/60" />
                       <div>
-                        <p className="font-medium text-foreground text-sm">{file.path.split('/').pop()}</p>
-                        <p className="text-xs text-foreground/50">{file.path}</p>
+                        <p className="font-medium text-foreground text-sm">{(file.path || '').split('/').pop()}</p>
+                        <p className="text-xs text-foreground/50">{file.path || 'Unknown'}</p>
                       </div>
                     </td>
                     <td className="px-4 py-3 text-right text-sm font-medium">{file.loc}</td>

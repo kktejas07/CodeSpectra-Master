@@ -38,14 +38,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     scanCtx = `Scan id ${scan.id}; language ${scan.language}; type ${scan.scan_type}.`
   }
 
-  const result = await backendPost<Record<string, unknown>>(
-    '/internal/ai/code-review',
-    {
-      code: body.code.slice(0, 16_000),
-      language: body.language || 'javascript',
-      context: scanCtx,
-    },
-  )
+  let result: Record<string, unknown>
+  try {
+    result = await backendPost<Record<string, unknown>>(
+      '/internal/ai/code-review',
+      {
+        code: body.code.slice(0, 16_000),
+        language: body.language || 'javascript',
+        context: scanCtx,
+      },
+    )
+  } catch (err) {
+    console.error('[CodeSpectra] AI code-review error:', err)
+    return NextResponse.json({ success: false, error: 'AI service unavailable' }, { status: 502 })
+  }
 
   // Persist.
   const reviewsCol = await aiCodeReviews()
@@ -59,5 +65,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   }
   await reviewsCol.insertOne(doc)
 
-  return NextResponse.json({ ...result, review_id: doc.id })
+  return NextResponse.json({
+    success: true,
+    fixes: result.fixes ?? [],
+    degraded: result.degraded ?? false,
+    review_id: doc.id,
+  })
 }

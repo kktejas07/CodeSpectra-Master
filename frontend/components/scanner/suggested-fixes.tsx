@@ -27,6 +27,16 @@ interface SuggestedFixesProps {
   onApplyFix?: (fixIndex: number) => void
 }
 
+const getSeverityTextColor = (severity: string) => {
+  const colors: Record<string, string> = {
+    critical: 'text-red-500',
+    major: 'text-orange-500',
+    minor: 'text-yellow-500',
+    info: 'text-blue-500',
+  }
+  return colors[severity] || colors.info
+}
+
 const getSeverityColor = (severity: string) => {
   const colors: Record<string, string> = {
     critical: 'bg-red-500/20 text-red-600 border-red-500/30',
@@ -106,7 +116,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                 className="w-full p-4 flex items-start justify-between gap-4 hover:bg-card/40 transition-colors"
               >
                 <div className="flex items-start gap-3 flex-1 text-left">
-                  <IconComponent className={`w-5 h-5 flex-shrink-0 mt-0.5 text-${issue.severity}`} />
+                  <IconComponent className={`w-5 h-5 flex-shrink-0 mt-0.5 ${getSeverityTextColor(issue.severity)}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap gap-y-0.5">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getSeverityColor(issue.severity)}`}>
@@ -136,13 +146,13 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                       <p className="text-xs font-medium text-foreground/70">Current Code</p>
                       <div className="bg-background/50 border border-border rounded p-3">
                         <pre className="text-xs text-foreground/60 overflow-auto max-h-40 whitespace-pre-wrap break-words">
-                          {issue.type === 'bug' ? 'const result = data.value;' : 'const value = userInput;'}
+                          {issue.message.slice(0, 120)}
                         </pre>
                         <Button
                           size="sm"
                           variant="ghost"
                           className="mt-2 text-xs h-6"
-                          onClick={() => copyCode('const result = data.value;', index * 2)}
+                          onClick={() => copyCode(issue.message, index * 2)}
                         >
                           {copiedIndex === index * 2 ? (
                             <>
@@ -161,23 +171,29 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
 
                     {/* Suggested Code */}
                     <div className="space-y-2">
-                      <p className="text-xs font-medium text-foreground/70">Suggested Fix (80% confident)</p>
+                      <p className="text-xs font-medium text-foreground/70">Suggested Fix</p>
                       <div className="bg-green-500/5 border border-green-500/20 rounded p-3">
                         <pre className="text-xs text-foreground/60 overflow-auto max-h-40 whitespace-pre-wrap break-words">
-                          {issue.type === 'bug' 
-                            ? 'const result = data?.value ?? null;'
-                            : 'const value = sanitizeInput(userInput);'}
+                          {issue.type === 'bug'
+                            ? '// Fix null safety issue\nconst result = data?.value ?? null;'
+                            : issue.type === 'vulnerability'
+                            ? '// Sanitize input to prevent injection\nconst value = sanitize(userInput);'
+                            : issue.type === 'code_smell'
+                            ? '// Improve code readability\nconst result = await process(data);'
+                            : '// Address security concern\nconst validated = validate(input);'}
                         </pre>
                         <Button
                           size="sm"
                           className="mt-2 text-xs h-6 bg-green-600 hover:bg-green-700"
                           onClick={() => {
-                            copyCode(
-                              issue.type === 'bug'
-                                ? 'const result = data?.value ?? null;'
-                                : 'const value = sanitizeInput(userInput);',
-                              index * 2 + 1
-                            )
+                            const suggested = issue.type === 'bug'
+                              ? 'const result = data?.value ?? null;'
+                              : issue.type === 'vulnerability'
+                              ? 'const value = sanitize(userInput);'
+                              : issue.type === 'code_smell'
+                              ? 'const result = await process(data);'
+                              : 'const validated = validate(input);'
+                            copyCode(suggested, index * 2 + 1)
                             onApplyFix?.(index)
                           }}
                         >
@@ -201,10 +217,10 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                   {issue.effortMinutes && (
                     <div className="bg-card/50 border border-border rounded p-3">
                       <p className="text-xs font-medium text-foreground mb-2">
-                        Why: {issue.type === 'bug' ? 'Prevents null reference errors' : 'Prevents injection attacks'}
+                        Why: {issue.message.slice(0, 80)}{issue.message.length > 80 ? '...' : ''}
                       </p>
                       <p className="text-xs text-foreground/60">
-                        Estimated effort: {issue.effortMinutes} minute{issue.effortMinutes !== 1 ? 's' : ''}
+                        Estimated fix effort: ~{issue.effortMinutes} minute{issue.effortMinutes !== 1 ? 's' : ''}
                       </p>
                     </div>
                   )}

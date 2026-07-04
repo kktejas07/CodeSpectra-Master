@@ -107,7 +107,7 @@ export function PRIntegration({ prs = [], loading = false }: PRIntegrationProps)
                       </Badge>
                     </div>
                     <p className="text-sm text-foreground/60 mt-1">
-                      #{pr.prNumber} • by {pr.author} • on branch <code className="bg-muted px-2 py-1 rounded text-xs">{pr.branch}</code>
+                      #{pr.prNumber} • by {pr.author} • on branch <code className="bg-muted px-2 py-1 rounded text-xs inline-block">{pr.branch}</code>
                     </p>
                   </div>
                 </div>

@@ -125,9 +125,9 @@ export function MetricsTrendChart({ data, metric = 'quality' }: MetricsTrendChar
         <h4 className="font-semibold text-foreground mb-4">{config.label} Trend</h4>
         <ResponsiveContainer width="100%" height={300}>
           <LineChart data={data} margin={{ top: 5, right: 30, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" stroke="var(--color-border)" />
-            <XAxis dataKey="date" stroke="var(--color-foreground-60)" />
-            <YAxis stroke="var(--color-foreground-60)" />
+            <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
+            <XAxis dataKey="date" stroke="#71717a" />
+            <YAxis stroke="#71717a" />
             <Tooltip content={<CustomTooltip />} />
             <Line
               type="monotone"

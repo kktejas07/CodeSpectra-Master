@@ -207,6 +207,50 @@ function CodeScannerPageInner() {
 
   return (
     <div className="space-y-6">
+      {/* Page Header - visible for all modes */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">
+            {mode === 'manual' && 'Code Scanner'}
+            {mode === 'github' && 'GitHub Repository Scan'}
+            {mode === 'trends' && 'Quality Trends'}
+            {mode === 'quality-gates' && 'Quality Gates'}
+            {mode === 'review' && 'Code Review'}
+            {mode === 'config' && 'Scanner Configuration'}
+            {mode === 'reports' && 'Reports'}
+            {mode === 'insights' && 'Insights'}
+            {mode === 'metrics' && 'File Metrics'}
+            {mode === 'hotspots' && 'Security Hotspots'}
+            {mode === 'ratings' && 'Quality Ratings'}
+            {mode === 'activity' && 'Activity Timeline'}
+            {mode === 'architecture' && 'Architecture'}
+            {mode === 'pr' && 'Pull Requests'}
+            {mode === 'branches' && 'Branch Analytics'}
+            {mode === 'team' && 'Team Leaderboard'}
+            {(!mode || mode === 'manual') && 'Code Scanner'}
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            {mode === 'manual' && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
+            {mode === 'github' && 'Connect your GitHub repositories and run automated quality scans on your codebase.'}
+            {mode === 'trends' && 'Track code quality metrics over time across your projects and team.'}
+            {mode === 'quality-gates' && 'Set quality standards and thresholds for your code to pass before merge.'}
+            {mode === 'review' && 'Review code collaboratively with comments, suggestions, and approval workflows.'}
+            {mode === 'config' && 'Configure scan rules, thresholds, file filters, and notification preferences.'}
+            {mode === 'reports' && 'Generate and export detailed code quality reports in PDF, JSON, or CSV format.'}
+            {mode === 'insights' && 'View aggregate analytics on code quality, issue trends, and team performance.'}
+            {mode === 'metrics' && 'Browse per-file code metrics including complexity, coverage, duplication, and LOC.'}
+            {mode === 'hotspots' && 'Review security-sensitive code locations that may need extra attention.'}
+            {mode === 'ratings' && 'View letter-grade quality ratings for security, reliability, and maintainability.'}
+            {mode === 'activity' && 'View all code analysis events including scans, reviews, and quality gates.'}
+            {mode === 'architecture' && 'Explore your codebase architecture — components, dependencies, and health.'}
+            {mode === 'pr' && 'View pull request quality analysis and gate status across your repositories.'}
+            {mode === 'branches' && 'Compare quality metrics across Git branches and track improvements.'}
+            {mode === 'team' && 'See how your team ranks in code quality contributions and issue resolution.'}
+            {(!mode || mode === 'manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
+          </p>
+        </div>
+      </div>
+
       {/* Manual Analysis Mode */}
       {mode === 'manual' && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">

@@ -257,7 +257,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
         <p className="text-sm text-foreground/60">
           Set up automatic weekly or monthly reports to be delivered via email
         </p>
-        <Button variant="outline" className="w-full" size="sm">
+        <Button variant="outline" className="w-full" size="sm" onClick={() => window.alert('Scheduled reports coming soon!')}>
           <Zap className="w-4 h-4 mr-2" />
           Configure Schedules
         </Button>

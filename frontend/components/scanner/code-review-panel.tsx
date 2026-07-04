@@ -58,7 +58,7 @@ export function CodeReviewPanel({
       <div className="flex gap-3">
         <Avatar className="w-8 h-8 flex-shrink-0">
           <AvatarImage src={comment.author.avatar} alt={comment.author.name} />
-          <AvatarFallback>{comment.author.name.charAt(0)}</AvatarFallback>
+          <AvatarFallback>{(comment.author.name || '?').charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>
 
         <div className="flex-1 space-y-2">

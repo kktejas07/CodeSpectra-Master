@@ -88,6 +88,7 @@ export interface FileContent {
   path: string
   content: string
   encoding?: string
+  error?: string
 }
 
 export async function getRepositoryFiles(
@@ -136,40 +137,65 @@ export async function generateAIFixes(args: {
   scanId?: string
   repository?: string
   files?: string[]
-}): Promise<{ ok: boolean; fixes: unknown[] }> {
+  code?: string
+  language?: string
+  issues?: Array<{
+    type: 'bug' | 'vulnerability' | 'code_smell' | 'security_hotspot' | 'duplicate'
+    severity: 'critical' | 'major' | 'minor' | 'info'
+    rule: string
+    message: string
+    line?: number
+    effortMinutes?: number
+  }>
+}): Promise<{
+  success: boolean
+  fixes?: unknown[]
+  error?: string
+  degraded?: boolean
+  retry_after?: number
+}> {
   const res = await fetch('/api/ai/code-review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(args),
   })
-  if (!res.ok) return { ok: false, fixes: [] }
-  const json = (await res.json()) as { fixes?: unknown[] }
-  return { ok: true, fixes: json.fixes ?? [] }
+  if (!res.ok) return { success: false, error: `Request failed: ${res.status}` }
+  const json = (await res.json()) as { fixes?: unknown[]; degraded?: boolean }
+  return { success: true, fixes: json.fixes ?? [], degraded: json.degraded }
 }
 
-export async function applySuggestedFix(fixId: string): Promise<{ ok: boolean }> {
+export async function applySuggestedFix(fixId: string): Promise<{ success: boolean; error?: string }> {
   const res = await fetch(`/api/ai/fixes/${encodeURIComponent(fixId)}/apply`, {
     method: 'POST',
   })
-  return { ok: res.ok }
+  const json = (await res.json()) as { success?: boolean; error?: string }
+  if (!res.ok || !json.success) {
+    return { success: false, error: json.error || `Failed: ${res.status}` }
+  }
+  return { success: true }
 }
 
 export async function applySuggestedFixBatch(
   fixIds: string[],
-): Promise<{ ok: boolean; applied: number }> {
+): Promise<{ success: boolean; applied_ids?: string[]; error?: string }> {
   const res = await fetch('/api/ai/fixes/apply-batch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids: fixIds }),
   })
-  if (!res.ok) return { ok: false, applied: 0 }
-  const j = (await res.json()) as { applied?: number }
-  return { ok: true, applied: j.applied ?? 0 }
+  if (!res.ok) return { success: false, error: `Request failed: ${res.status}` }
+  const j = (await res.json()) as { applied?: number; error?: string }
+  if (j.error) return { success: false, error: j.error }
+  return { success: true, applied_ids: fixIds }
 }
 
-export async function unapplySuggestedFix(fixId: string): Promise<{ ok: boolean }> {
+export async function unapplySuggestedFix(fixId: string): Promise<{ success: boolean; error?: string }> {
   const res = await fetch(`/api/ai/fixes/${encodeURIComponent(fixId)}/unapply`, {
     method: 'POST',
   })
-  return { ok: res.ok }
+  const json = (await res.json()) as { success?: boolean; error?: string }
+  if (!res.ok || !json.success) {
+    return { success: false, error: json.error || `Failed: ${res.status}` }
+  }
+  return { success: true }
 }

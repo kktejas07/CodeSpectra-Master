@@ -98,7 +98,16 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
             />
           </div>
 
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={() => {
+            const json = JSON.stringify(filteredActivities, null, 2)
+            const blob = new Blob([json], { type: 'application/json' })
+            const url = URL.createObjectURL(blob)
+            const a = document.createElement('a')
+            a.href = url
+            a.download = `scan-activities-${new Date().toISOString().slice(0,10)}.json`
+            a.click()
+            URL.revokeObjectURL(url)
+          }}>
             <Download className="w-4 h-4" />
             Export
           </Button>
