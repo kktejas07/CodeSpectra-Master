@@ -107,6 +107,7 @@ export default function TeamManagement() {
             <Settings className="h-5 w-5 text-primary" /> Quick actions
           </h2>
           <div className="grid gap-2">
+            <ActionLink href="/dashboard/admin/team/activity" icon={<Activity className="h-4 w-4" />} label="Team activity" />
             <ActionLink href="/dashboard/admin/integrations" icon={<Settings className="h-4 w-4" />} label="Integrations" />
             <ActionLink href="/dashboard/admin/pricing" icon={<TrendingUp className="h-4 w-4" />} label="Pricing & plans" />
             <ActionLink href="/dashboard/billing" icon={<TrendingUp className="h-4 w-4" />} label="Billing" />

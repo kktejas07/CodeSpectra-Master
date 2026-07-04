@@ -13,15 +13,33 @@ import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { DailyChallengeWidget } from '@/components/dashboard/daily-challenge-widget'
+import { ContributionGraph } from '@/components/dashboard/contribution-graph'
+import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } from '@/lib/rbac'
+
+interface ActivityItem {
+  ts: string
+  type: string
+  title: string
+  meta: string
+  detail: string
+}
 
 export default function DashboardPage() {
   const router = useRouter()
   const { user: fbUser, loading: isPending } = useAuth()
   const addToast = useToast()
   const [role, setRole] = useState<string | null>(null)
-  const [stats, setStats] = useState({ scans: 0, reviews: 0, fixes: 0, challenges: 0, streak: 0, xp: 0 })
-  const [recentActivity, setRecentActivity] = useState<Array<{ type: string; label: string; time: string }>>([])
+  const [stats, setStats] = useState({ scans: 0, reviews: 0, fixes: 0, challenges: 0, dailyChallenges: 0, streak: 0, xp: 0 })
+  const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [heatmap, setHeatmap] = useState<{
+    cells: number[][] | null
+    dayLabels: string[]
+    monthLabels: Array<{ label: string; colIndex: number }>
+    tooltipData: Record<string, { date: string; count: number; types: { scan: number; review: number; fix: number; challenge: number } }>
+    totalContributions: number
+    totalActiveDays: number
+  } | null>(null)
 
   useEffect(() => {
     if (isPending) return
@@ -40,27 +58,34 @@ export default function DashboardPage() {
   }, [router, isPending, fbUser?.uid])
 
   useEffect(() => {
-    fetch('/api/user/stats', { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => {
-        if (!data.error) {
-          setStats({
-            scans: data.scans ?? 0,
-            reviews: data.reviews ?? 0,
-            fixes: data.fixes ?? 0,
-            challenges: data.challenges ?? 0,
-            streak: data.streak ?? 0,
-            xp: data.xp ?? 0,
-          })
-        }
-      })
-      .catch(() => {})
-    fetch('/api/user/activity?limit=5', { credentials: 'include' })
-      .then(r => r.json())
-      .then(data => {
-        if (Array.isArray(data.activities)) setRecentActivity(data.activities)
-      })
-      .catch(() => {})
+    Promise.all([
+      fetch('/api/user/stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      fetch('/api/user/activity?limit=10', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      fetch('/api/user/heatmap?weeks=14', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([statsData, activityData, heatmapData]) => {
+      if (statsData && !statsData.error) {
+        setStats({
+          scans: statsData.scans ?? 0,
+          reviews: statsData.reviews ?? 0,
+          fixes: statsData.fixes ?? 0,
+          challenges: statsData.challenges ?? 0,
+          dailyChallenges: statsData.dailyChallenges ?? 0,
+          streak: statsData.streak ?? 0,
+          xp: statsData.xp ?? 0,
+        })
+      }
+      if (activityData?.data) setActivities(activityData.data)
+      if (heatmapData?.cells) {
+        setHeatmap({
+          cells: heatmapData.cells,
+          dayLabels: heatmapData.dayLabels ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          monthLabels: heatmapData.monthLabels ?? [],
+          tooltipData: heatmapData.tooltipData ?? {},
+          totalContributions: heatmapData.totalContributions ?? 0,
+          totalActiveDays: heatmapData.totalActiveDays ?? 0,
+        })
+      }
+    })
   }, [])
 
   return (
@@ -107,13 +132,22 @@ export default function DashboardPage() {
               <Zap className="h-6 w-6 text-purple-500" />
             </div>
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">XP Earned</p>
-              <p className="text-2xl font-bold text-foreground">{stats.xp}</p>
+              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Fixes Applied</p>
+              <p className="text-2xl font-bold text-foreground">{stats.fixes}</p>
             </div>
           </div>
         </Card>
         <DailyChallengeWidget />
       </div>
+
+      <ContributionGraph
+        cells={heatmap?.cells ?? null}
+        dayLabels={heatmap?.dayLabels}
+        monthLabels={heatmap?.monthLabels}
+        tooltipData={heatmap?.tooltipData}
+        totalContributions={heatmap?.totalContributions ?? 0}
+        totalActiveDays={heatmap?.totalActiveDays ?? 0}
+      />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="border-border/60 p-6 lg:col-span-2">
@@ -161,32 +195,13 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <Card className="border-border/60 p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <Clock className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Recent activity</h2>
-          </div>
-          {recentActivity.length > 0 ? (
-            <div className="space-y-3">
-              {recentActivity.map((a, i) => (
-                <div key={i} className="flex items-center justify-between text-sm">
-                  <span className="text-muted-foreground truncate">{a.label}</span>
-                  <span className="text-xs text-muted-foreground/60 ml-2 shrink-0">{a.time}</span>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <p className="text-sm text-muted-foreground">No recent activity. Start coding!</p>
-          )}
-          <div className="mt-4 pt-4 border-t border-border/60">
-            <Link href="/dashboard/profile">
-              <Button variant="outline" size="sm" className="w-full gap-2">
-                <ArrowRight className="h-4 w-4" />
-                View full profile
-              </Button>
-            </Link>
-          </div>
-        </Card>
+        <ActivityTimeline
+          activities={activities}
+          limit={6}
+          showViewAll={true}
+          title="Recent activity"
+          subtitle="Your latest contributions"
+        />
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
@@ -203,6 +218,10 @@ export default function DashboardPage() {
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Challenges completed</span>
               <span className="text-sm font-medium text-foreground">{stats.challenges}</span>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className="text-sm text-muted-foreground">Daily challenges</span>
+              <span className="text-sm font-medium text-foreground">{stats.dailyChallenges}</span>
             </div>
             <div className="flex items-center justify-between">
               <span className="text-sm text-muted-foreground">Reviews</span>

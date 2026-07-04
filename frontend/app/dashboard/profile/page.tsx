@@ -1,34 +1,25 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
 import { DigitalIdCard } from '@/components/dashboard/digital-id-card'
-import type { LucideIcon } from 'lucide-react'
+import { ContributionGraph } from '@/components/dashboard/contribution-graph'
+import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import {
   Edit2,
   Trophy,
   Target,
   Flame,
   Shield,
-  Zap,
-  Crosshair,
-  Cloud,
   Clock,
-  BookOpen,
   GitCommit,
   GitPullRequest,
   FolderGit2,
-  Sparkles,
-  Calendar,
-  Code2,
-  Search,
-  Smartphone,
-  Key,
-  Lock,
+  Activity,
   Loader,
   CheckCircle2,
   XCircle,
@@ -40,89 +31,6 @@ interface ActivityItem {
   title: string
   meta: string
   detail: string
-}
-
-function timeAgo(iso: string): string {
-  const diff = Date.now() - new Date(iso).getTime()
-  const mins = Math.floor(diff / 60000)
-  if (mins < 1) return 'Just now'
-  if (mins < 60) return `${mins}m ago`
-  const hrs = Math.floor(mins / 60)
-  if (hrs < 24) return `${hrs}h ago`
-  const days = Math.floor(hrs / 24)
-  if (days < 7) return `${days}d ago`
-  return iso.slice(0, 10)
-}
-
-function activityIcon(type: string) {
-  switch (type) {
-    case 'scan': return <Search className="h-4 w-4 text-muted-foreground" />
-    case 'review': return <Code2 className="h-4 w-4 text-muted-foreground" />
-    case 'fix': return <Zap className="h-4 w-4 text-muted-foreground" />
-    default: return <Sparkles className="h-4 w-4 text-muted-foreground" />
-  }
-}
-
-function LearningHeatmap({ cells: rawCells }: { cells: number[][] | null }) {
-  const cells = useMemo(() => {
-    if (rawCells && rawCells.length > 0) return rawCells
-    return Array.from({ length: 14 }, () => Array(7).fill(0))
-  }, [rawCells])
-
-  const hasData = rawCells && rawCells.some(w => w.some(c => c > 0))
-
-  const level = (n: number) => {
-    const base = 'rounded-sm border border-border/40 '
-    const tones = [
-      'bg-muted/40',
-      'bg-primary/15',
-      'bg-primary/35',
-      'bg-primary/55',
-      'bg-primary/80',
-    ]
-    return base + (tones[n] ?? tones[0])
-  }
-
-  return (
-    <Card className="border-border/60 p-6">
-      <div className="mb-4 flex flex-wrap items-end justify-between gap-2">
-        <div>
-          <h2 className="text-lg font-semibold text-foreground">Learning activity</h2>
-          <p className="text-sm text-muted-foreground">Scans & reviews per day — last 14 weeks</p>
-        </div>
-        <Badge variant="secondary" className="font-normal">
-          <Calendar className="mr-1 h-3.5 w-3.5" />
-          2026
-        </Badge>
-      </div>
-      {!hasData ? (
-        <p className="py-8 text-center text-sm text-muted-foreground">
-          No activity yet — run a code scan to start tracking
-        </p>
-      ) : (
-        <>
-          <div className="flex gap-1 overflow-x-auto pb-1">
-            {cells.map((week, wi) => (
-              <div key={wi} className="flex flex-col gap-1">
-                {week.map((n, di) => (
-                  <div key={di} className={`h-3.5 w-3.5 shrink-0 ${level(n)}`} title={`Level ${n}`} />
-                ))}
-              </div>
-            ))}
-          </div>
-          <div className="mt-3 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-            <span>Less</span>
-            <div className="flex gap-1">
-              {[0, 1, 2, 3, 4].map((n) => (
-                <div key={n} className={`h-3.5 w-3.5 rounded-sm ${level(n)}`} />
-              ))}
-            </div>
-            <span>More</span>
-          </div>
-        </>
-      )}
-    </Card>
-  )
 }
 
 function TwoFactorAuth() {
@@ -257,7 +165,14 @@ export default function ProfilePage() {
   const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string } | null>(null)
   const [stats, setStats] = useState<Record<string, number> | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
-  const [heatmapCells, setHeatmapCells] = useState<number[][] | null>(null)
+  const [heatmapData, setHeatmapData] = useState<{
+    cells: number[][] | null
+    dayLabels: string[]
+    monthLabels: Array<{ label: string; colIndex: number }>
+    tooltipData: Record<string, { date: string; count: number; types: { scan: number; review: number; fix: number; challenge: number } }>
+    totalContributions: number
+    totalActiveDays: number
+  } | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
@@ -267,13 +182,22 @@ export default function ProfilePage() {
           fetch('/api/auth/me').then(r => r.json()).catch(() => null),
           fetch('/api/user/stats').then(r => r.json()).catch(() => null),
           fetch('/api/user/activity?limit=10').then(r => r.json()).catch(() => null),
-          fetch('/api/user/heatmap').then(r => r.json()).catch(() => null),
+          fetch('/api/user/heatmap?weeks=14').then(r => r.json()).catch(() => null),
         ])
 
         if (userRes?.user) setUser(userRes.user)
         if (statsRes && !statsRes.error) setStats(statsRes)
         if (activityRes?.data) setActivity(activityRes.data)
-        if (heatmapRes?.cells) setHeatmapCells(heatmapRes.cells)
+        if (heatmapRes?.cells) {
+          setHeatmapData({
+            cells: heatmapRes.cells,
+            dayLabels: heatmapRes.dayLabels ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+            monthLabels: heatmapRes.monthLabels ?? [],
+            tooltipData: heatmapRes.tooltipData ?? {},
+            totalContributions: heatmapRes.totalContributions ?? 0,
+            totalActiveDays: heatmapRes.totalActiveDays ?? 0,
+          })
+        }
       } catch {
         /* render with defaults */
       } finally {
@@ -363,63 +287,50 @@ export default function ProfilePage() {
           />
         </Card>
 
-        <LearningHeatmap cells={heatmapCells} />
+        <ContributionGraph
+          cells={heatmapData?.cells ?? null}
+          dayLabels={heatmapData?.dayLabels}
+          monthLabels={heatmapData?.monthLabels}
+          tooltipData={heatmapData?.tooltipData}
+          totalContributions={heatmapData?.totalContributions ?? 0}
+          totalActiveDays={heatmapData?.totalActiveDays ?? 0}
+        />
 
-        <Card className="border-border/60 p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Recent activity</h2>
-          </div>
-          {activity.length === 0 ? (
-            <p className="py-6 text-center text-sm text-muted-foreground">
-              No recent activity. Start by running a code scan or completing a review.
-            </p>
-          ) : (
-            <div className="relative space-y-0 border-l border-border pl-5">
-              {activity.map((item, idx) => (
-                <div key={idx} className="relative pb-6 last:pb-0">
-                  <span className="absolute -left-[21px] top-1 flex h-3 w-3 rounded-full border-2 border-background bg-primary" />
-                  <div className="flex flex-wrap items-center gap-2">
-                    {activityIcon(item.type)}
-                    <p className="font-medium text-foreground">{item.title}</p>
-                  </div>
-                  <p className="text-xs text-muted-foreground">{item.meta}</p>
-                  <p className="text-xs text-muted-foreground/80">{item.detail}</p>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
+        <ActivityTimeline
+          activities={activity}
+          title="Recent activity"
+          subtitle="Your latest contributions and actions"
+        />
 
         {hasStats && (
           <div className="grid gap-6 lg:grid-cols-2">
             <Card className="border-border/60 p-6">
               <div className="mb-4 flex items-center gap-2">
                 <Trophy className="h-5 w-5 text-primary" />
-                <h2 className="text-lg font-semibold text-foreground">Contributions</h2>
+                <h2 className="text-lg font-semibold text-foreground">Contribution breakdown</h2>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-center">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-primary">
-                    <Search className="h-5 w-5" strokeWidth={1.75} />
+                    <Activity className="h-5 w-5" strokeWidth={1.75} />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">{stats?.scans ?? 0} scans</p>
                 </div>
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-center">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-primary">
-                    <Code2 className="h-5 w-5" strokeWidth={1.75} />
+                    <FolderGit2 className="h-5 w-5" strokeWidth={1.75} />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">{stats?.reviews ?? 0} reviews</p>
                 </div>
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-center">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-primary">
-                    <Zap className="h-5 w-5" strokeWidth={1.75} />
+                    <CheckCircle2 className="h-5 w-5" strokeWidth={1.75} />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">{stats?.fixes ?? 0} fixes</p>
                 </div>
                 <div className="rounded-lg border border-border/60 bg-muted/20 p-3 text-center">
                   <div className="mx-auto flex h-10 w-10 items-center justify-center rounded-lg border border-border/60 bg-background text-primary">
-                    <FolderGit2 className="h-5 w-5" strokeWidth={1.75} />
+                    <Trophy className="h-5 w-5" strokeWidth={1.75} />
                   </div>
                   <p className="mt-2 text-xs font-semibold text-foreground">{stats?.integrations ?? 0} integrations</p>
                 </div>

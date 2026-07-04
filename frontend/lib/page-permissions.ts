@@ -147,6 +147,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/permissions': 'Role & Permissions',
   '/dashboard/admin/plans': 'Subscription Plans',
   '/dashboard/admin/team': 'Organization',
+  '/dashboard/admin/team/activity': 'Team Activity',
   '/dashboard/arena': 'Arena',
   '/dashboard/problems': 'Problems',
   '/dashboard/tracks': 'Tracks',
