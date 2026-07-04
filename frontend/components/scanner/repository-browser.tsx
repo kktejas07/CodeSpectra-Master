@@ -39,47 +39,9 @@ interface FileNode {
 interface RepositoryBrowserProps {
   onSelectRepository?: (repo: GitHubRepoListItem) => void
   onSelectFile?: (file: FileNode, repo: GitHubRepoListItem) => void
-  /** Called after `/api/analyze-code` succeeds for a GitHub file (includes `scanId` when persisted). */
   onGitHubScanResult?: (payload: Record<string, unknown>) => void
-  /** Parent can show a spinner while a file scan runs. */
   scanBusy?: boolean
   onScanBusyChange?: (busy: boolean) => void
-}
-
-function guessLanguageFromPath(path: string): string {
-  const ext = path.split('.').pop()?.toLowerCase() || ''
-  const map: Record<string, string> = {
-    ts: 'typescript',
-    tsx: 'typescript',
-    mts: 'typescript',
-    cts: 'typescript',
-    js: 'javascript',
-    jsx: 'javascript',
-    mjs: 'javascript',
-    cjs: 'javascript',
-    py: 'python',
-    go: 'go',
-    rs: 'rust',
-    java: 'java',
-    cs: 'csharp',
-    cpp: 'cpp',
-    cc: 'cpp',
-    cxx: 'cpp',
-    h: 'cpp',
-    rb: 'ruby',
-    php: 'php',
-    swift: 'swift',
-    kt: 'kotlin',
-    kts: 'kotlin',
-    scala: 'scala',
-    md: 'markdown',
-    json: 'json',
-    yml: 'yaml',
-    yaml: 'yaml',
-    vue: 'javascript',
-    svelte: 'javascript',
-  }
-  return map[ext] || 'javascript'
 }
 
 export function RepositoryBrowser({
