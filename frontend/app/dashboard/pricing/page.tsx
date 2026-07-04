@@ -22,14 +22,17 @@ const PLAN_COLORS: Record<string, string> = {
 export default function PricingPage() {
   const addToast = useToast()
   const [plans, setPlans] = useState<PlanDef[]>([])
+  const [currency, setCurrency] = useState('USD')
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/admin/plans', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => { if (data?.plans) setPlans(data.plans) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch('/api/admin/plans', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+      fetch('/api/admin/platform-settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
+    ]).then(([plansData, settingsData]) => {
+      if (plansData?.plans) setPlans(plansData.plans)
+      if (settingsData?.settings?.platform_currency) setCurrency(settingsData.settings.platform_currency)
+    }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
   const handleUpgrade = async (planId: string) => {
@@ -65,8 +68,8 @@ export default function PricingPage() {
     }
   }
 
+const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency === 'JPY' ? '¥' : '$'
   const formatLimit = (v: number) => v === -1 || v === 0 ? 'Unlimited' : String(v)
-  const getLimitSuffix = (key: string) => key.includes('day') ? '/day' : key.includes('month') ? '/mo' : ''
 
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading plans…</div>
 
@@ -87,7 +90,7 @@ export default function PricingPage() {
                 <h2 className="text-xl font-bold text-foreground">{plan.name}</h2>
                 <p className="text-sm text-muted-foreground mt-1">{plan.description}</p>
                 <div className="mt-4">
-                  <span className="text-4xl font-bold text-foreground">{plan.price || 'Free'}</span>
+                  <span className="text-4xl font-bold text-foreground">{plan.price ? `${currSymbol}${plan.price.replace('$', '').replace('/month', '')}` : 'Free'}</span>
                   {plan.price && <span className="text-sm text-muted-foreground">/mo</span>}
                 </div>
               </div>
