@@ -1,15 +1,27 @@
-'use client';
+'use client'
 
-import { useState, useEffect } from 'react';
-import useSWR from 'swr';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Badge } from '@/components/ui/badge';
-import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
-import { Plus, Edit2, Trash2, Settings, HelpCircle } from 'lucide-react';
+import { useEffect, useState } from 'react'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Switch } from '@/components/ui/switch'
+import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { usePageGuard } from '@/lib/use-page-guard';
+import { Crown, CheckCircle2, XCircle, Save, RefreshCw, Loader2, HelpCircle } from 'lucide-react'
+import { useToast } from '@/lib/toast-context'
+import { usePageGuard } from '@/lib/use-page-guard'
+import Link from 'next/link'
+
+interface PlanDef {
+  _id?: string; plan: string; name: string; description: string
+  price?: string; features: any[]; isDefault?: boolean
+}
+
+const PLAN_COLORS: Record<string, string> = {
+  free: 'bg-green-500/20 text-green-700',
+  pro: 'bg-blue-500/20 text-blue-700',
+  enterprise: 'bg-purple-500/20 text-purple-700',
+}
 
 export default function PricingAdminPage() {
   const gate = usePageGuard('superadmin')
@@ -72,19 +84,20 @@ export default function PricingAdminPage() {
   return (
     <div className="space-y-8">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold">Pricing Management
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs max-w-[250px]">Configure catalog tiers and feature flags. Stripe API keys and price_&hellip; IDs for Checkout live under Platform settings &rarr; Stripe &amp; billing.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </h1>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"><Crown className="h-6 w-6 text-primary" /></div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Pricing & Plans</h1>
+            <p className="text-muted-foreground text-sm mt-0.5">
+              Same plans as{' '}
+              <Link href="/dashboard/admin/plans" className="text-primary underline">Subscription Plans</Link>
+              {' '}— configure there for feature toggles.
+            </p>
+          </div>
+        </div>
+        <div className="flex gap-2">
+          <Button onClick={fetchPlans} variant="outline" size="sm"><RefreshCw className="h-4 w-4 mr-1" />Refresh</Button>
+          <Button onClick={savePlan} disabled={saving} size="sm"><Save className="h-3 w-3 mr-1" />Save</Button>
         </div>
       </div>
 
