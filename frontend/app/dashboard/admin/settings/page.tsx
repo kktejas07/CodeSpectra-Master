@@ -61,6 +61,17 @@ const locales = [
   { id: 'de', label: 'Deutsch' },
 ]
 
+const currencies = [
+  { id: 'USD', label: 'USD — US Dollar ($)' },
+  { id: 'INR', label: 'INR — Indian Rupee (₹)' },
+  { id: 'EUR', label: 'EUR — Euro (€)' },
+  { id: 'GBP', label: 'GBP — British Pound (£)' },
+  { id: 'CAD', label: 'CAD — Canadian Dollar' },
+  { id: 'AUD', label: 'AUD — Australian Dollar' },
+  { id: 'SGD', label: 'SGD — Singapore Dollar' },
+  { id: 'JPY', label: 'JPY — Japanese Yen' },
+]
+
 const BRANDING_KEYS: GeneralKey[] = [
   'platform_name',
   'platform_tagline',
@@ -70,6 +81,7 @@ const BRANDING_KEYS: GeneralKey[] = [
   'support_link_url',
   'timezone',
   'default_locale',
+  'platform_currency',
 ]
 const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode']
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
@@ -1365,7 +1377,23 @@ function SystemSettingsInner() {
                           >
                             {visibleFields[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
-                        </div>
+            <div>
+              <Label htmlFor="platform_currency">Platform currency</Label>
+              <Select
+                value={form.platform_currency}
+                onValueChange={(v) => setForm((f) => ({ ...f, platform_currency: v }))}
+              >
+                <SelectTrigger id="platform_currency" className="mt-1.5 h-10 w-full rounded-lg border-border/60">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
                       </div>
                     ))}
                   </div>
