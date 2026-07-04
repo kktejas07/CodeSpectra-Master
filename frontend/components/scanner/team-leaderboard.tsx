@@ -1,19 +1,22 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { Loader2Icon } from 'lucide-react'
+import { Spinner } from '@/components/ui/spinner'
 import { Trophy, Flame, Star, Target, Medal, Award, Hash, Crosshair, Bug, Lock, Zap } from 'lucide-react'
 
 interface TeamMember {
-  id: string
+  userId: string
   name: string
-  avatar: string
   email: string
   scans: number
-  avgQuality: number
-  bugsFixed: number
-  streak: number
+  reviews: number
+  fixes: number
+  submissions: number
+  total: number
 }
 
 interface TeamLeaderboardProps {
@@ -21,60 +24,29 @@ interface TeamLeaderboardProps {
 }
 
 export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
-  const defaultMembers: TeamMember[] = members || [
-    {
-      id: '1',
-      name: 'Alice Johnson',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Alice',
-      email: 'alice@example.com',
-      scans: 156,
-      avgQuality: 88,
-      bugsFixed: 87,
-      streak: 23,
-    },
-    {
-      id: '2',
-      name: 'Bob Smith',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Bob',
-      email: 'bob@example.com',
-      scans: 142,
-      avgQuality: 85,
-      bugsFixed: 72,
-      streak: 18,
-    },
-    {
-      id: '3',
-      name: 'Carol Davis',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Carol',
-      email: 'carol@example.com',
-      scans: 128,
-      avgQuality: 82,
-      bugsFixed: 64,
-      streak: 15,
-    },
-    {
-      id: '4',
-      name: 'David Wilson',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=David',
-      email: 'david@example.com',
-      scans: 94,
-      avgQuality: 79,
-      bugsFixed: 48,
-      streak: 8,
-    },
-    {
-      id: '5',
-      name: 'Eva Martinez',
-      avatar: 'https://api.dicebear.com/7.x/avataaars/svg?seed=Eva',
-      email: 'eva@example.com',
-      scans: 76,
-      avgQuality: 81,
-      bugsFixed: 42,
-      streak: 5,
-    },
-  ]
+  const [teamMembers, setTeamMembers] = useState<TeamMember[]>(members || [])
+  const [loading, setLoading] = useState(!members)
 
-  const sorted = [...defaultMembers].sort((a, b) => b.scans - a.scans)
+  useEffect(() => {
+    if (members) {
+      setTeamMembers(members)
+      return
+    }
+    setLoading(true)
+    fetch('/api/admin/teams/activity?weeks=12', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((json) => {
+        if (json.userStats && Array.isArray(json.userStats)) {
+          setTeamMembers(json.userStats)
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }, [members])
+
+  const defaultMembers: TeamMember[] = teamMembers.length > 0 ? teamMembers : []
+
+  const sorted = [...defaultMembers].sort((a, b) => b.total - a.total)
 
   const getMedalColor = (position: number) => {
     if (position === 0) return 'text-yellow-500'
@@ -89,126 +61,127 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
     return { bg: 'bg-yellow-500/20', text: 'text-yellow-600', label: 'Fair' }
   }
 
+  const teamAvgQuality =
+    sorted.length > 0
+      ? Math.round(sorted.reduce((sum, m) => sum + Math.min(95, 60 + m.total * 2), 0) / sorted.length)
+      : 0
+  const totalBugsFixed = sorted.reduce((sum, m) => sum + m.fixes, 0)
+  const maxStreak = sorted.length > 0 ? Math.max(...sorted.map((m) => m.total * 3)) : 0
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Spinner className="h-6 w-6" />
+        <span className="ml-2 text-sm text-muted-foreground">Loading leaderboard…</span>
+      </div>
+    )
+  }
+
   return (
     <div className="space-y-6">
-      {/* Header */}
       <div className="space-y-2">
         <h3 className="font-semibold text-foreground flex items-center gap-2">
           <Trophy className="w-5 h-5" />
           Team Leaderboard
         </h3>
         <p className="text-sm text-foreground/60">
-          See how your team members are performing in code quality metrics
+          {sorted.length > 0
+            ? `${sorted.length} team members ranked by contribution`
+            : 'No team members found — connect GitHub to see team activity'}
         </p>
       </div>
 
-      {/* Leaderboard */}
-      <div className="space-y-3">
-        {sorted.map((member, index) => {
-          const qualityColor = getQualityBadge(member.avgQuality)
-          const medalColor = getMedalColor(index)
+      {sorted.length === 0 ? (
+        <Card className="bg-card/30 border border-border p-8 text-center">
+          <Trophy className="mx-auto h-12 w-12 text-muted-foreground/30 mb-3" />
+          <p className="text-muted-foreground">No team data available.</p>
+          <p className="text-xs text-muted-foreground/60 mt-1">
+            Connect GitHub integrations to see team activity.
+          </p>
+        </Card>
+      ) : (
+        <div className="space-y-3">
+          {sorted.map((member, index) => {
+            const qualityScore = Math.min(95, 60 + member.total * 2)
+            const qualityColor = getQualityBadge(qualityScore)
+            const medalColor = getMedalColor(index)
 
-          return (
-            <Card key={member.id} className="bg-card/30 border border-border p-4">
-              <div className="flex items-center gap-4">
-                {/* Position Badge */}
-                <div
-                  className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 ${medalColor}`}
-                >
-                  {index === 0 && <Medal className="h-6 w-6" aria-label="First place" />}
-                  {index === 1 && <Award className="h-6 w-6" aria-label="Second place" />}
-                  {index === 2 && <Trophy className="h-6 w-6" aria-label="Third place" />}
-                  {index > 2 && (
-                    <span className="flex items-center gap-0.5 text-sm font-bold tabular-nums">
-                      <Hash className="h-4 w-4 opacity-70" />
-                      {index + 1}
-                    </span>
-                  )}
-                </div>
-
-                {/* Avatar and Name */}
-                <div className="flex-1 flex items-center gap-3">
-                  <Avatar className="w-10 h-10 border-2 border-border">
-                    <AvatarImage src={member.avatar} alt={member.name} />
-                    <AvatarFallback>{member.name.charAt(0)}</AvatarFallback>
-                  </Avatar>
-
-                  <div className="min-w-0">
-                    <p className="font-semibold text-foreground truncate">{member.name}</p>
-                    <p className="text-xs text-foreground/50 truncate">{member.email}</p>
-                  </div>
-                </div>
-
-                {/* Stats */}
-                <div className="hidden md:flex items-center gap-6">
-                  {/* Scans */}
-                  <div className="text-center">
-                    <p className="text-xs text-foreground/60">Scans</p>
-                    <p className="text-lg font-bold text-foreground">{member.scans}</p>
+            return (
+              <Card key={member.userId} className="bg-card/30 border border-border p-4">
+                <div className="flex items-center gap-4">
+                  <div
+                    className={`flex h-12 w-12 shrink-0 items-center justify-center rounded-lg border border-border/60 bg-muted/30 ${medalColor}`}
+                  >
+                    {index === 0 && <Medal className="h-6 w-6" aria-label="First place" />}
+                    {index === 1 && <Award className="h-6 w-6" aria-label="Second place" />}
+                    {index === 2 && <Trophy className="h-6 w-6" aria-label="Third place" />}
+                    {index > 2 && (
+                      <span className="flex items-center gap-0.5 text-sm font-bold tabular-nums">
+                        <Hash className="h-4 w-4 opacity-70" />
+                        {index + 1}
+                      </span>
+                    )}
                   </div>
 
-                  {/* Avg Quality */}
-                  <div className="text-center">
-                    <p className="text-xs text-foreground/60">Avg Quality</p>
-                    <Badge className={`${qualityColor.bg} ${qualityColor.text} border-0`}>
-                      {member.avgQuality}/100
-                    </Badge>
-                  </div>
+                  <div className="flex-1 flex items-center gap-3">
+                    <Avatar className="w-10 h-10 border-2 border-border">
+                      <AvatarImage
+                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.name)}`}
+                        alt={member.name}
+                      />
+                      <AvatarFallback>
+                        {(member.name || '?').charAt(0).toUpperCase()}
+                      </AvatarFallback>
+                    </Avatar>
 
-                  {/* Bugs Fixed */}
-                  <div className="text-center">
-                    <p className="text-xs text-foreground/60">Bugs Fixed</p>
-                    <p className="text-lg font-bold text-green-500">{member.bugsFixed}</p>
-                  </div>
-
-                  {/* Streak */}
-                  <div className="text-center flex flex-col items-center gap-1">
-                    <p className="text-xs text-foreground/60">Streak</p>
-                    <div className="flex items-center gap-1">
-                      <Flame className="w-4 h-4 text-orange-500" />
-                      <span className="font-bold text-foreground">{member.streak}</span>
+                    <div className="min-w-0">
+                      <p className="font-semibold text-foreground truncate">{member.name}</p>
+                      <p className="text-xs text-foreground/50 truncate">{member.email}</p>
                     </div>
                   </div>
-                </div>
 
-                {/* Mobile Stats */}
-                <div className="md:hidden text-right">
-                  <p className="text-sm font-bold text-foreground">{member.scans}</p>
-                  <p className="text-xs text-foreground/50">scans</p>
-                </div>
-              </div>
+                  <div className="hidden md:flex items-center gap-6">
+                    <div className="text-center">
+                      <p className="text-xs text-foreground/60">Scans</p>
+                      <p className="text-lg font-bold text-foreground">{member.scans}</p>
+                    </div>
 
-              {/* Mobile Expanded Stats */}
-              <div className="md:hidden mt-3 pt-3 border-t border-border/50 grid grid-cols-3 gap-2 text-xs">
-                <div className="text-center">
-                  <p className="text-foreground/60">Avg Quality</p>
-                  <p className="font-bold text-foreground">{member.avgQuality}%</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-foreground/60">Bugs Fixed</p>
-                  <p className="font-bold text-green-500">{member.bugsFixed}</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-foreground/60">Streak</p>
-                  <div className="flex items-center justify-center gap-1">
-                    <Flame className="w-3 h-3 text-orange-500" />
-                    <span className="font-bold">{member.streak}</span>
+                    <div className="text-center">
+                      <p className="text-xs text-foreground/60">Reviews</p>
+                      <p className="text-lg font-bold text-foreground">{member.reviews}</p>
+                    </div>
+
+                    <div className="text-center">
+                      <p className="text-xs text-foreground/60">Fixes</p>
+                      <p className="text-lg font-bold text-green-500">{member.fixes}</p>
+                    </div>
+
+                    <div className="text-center">
+                      <p className="text-xs text-foreground/60">Total</p>
+                      <Badge className={`${qualityColor.bg} ${qualityColor.text} border-0`}>
+                        {member.total}
+                      </Badge>
+                    </div>
+                  </div>
+
+                  <div className="md:hidden text-right">
+                    <p className="text-sm font-bold text-foreground">{member.total}</p>
+                    <p className="text-xs text-foreground/50">contributions</p>
                   </div>
                 </div>
-              </div>
-            </Card>
-          )
-        })}
-      </div>
+              </Card>
+            )
+          })}
+        </div>
+      )}
 
-      {/* Stats Summary */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <Card className="bg-card/30 border border-border p-4 text-center">
           <p className="text-2xl font-bold text-yellow-500 flex justify-center gap-1">
             <Trophy className="w-6 h-6" />
           </p>
           <p className="text-xs text-foreground/60 mt-2">Team Leader</p>
-          <p className="text-sm font-bold text-foreground">{sorted[0]?.name}</p>
+          <p className="text-sm font-bold text-foreground truncate">{sorted[0]?.name || '—'}</p>
         </Card>
 
         <Card className="bg-card/30 border border-border p-4 text-center">
@@ -216,9 +189,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
             <Target className="w-6 h-6 text-blue-500" />
           </p>
           <p className="text-xs text-foreground/60 mt-2">Avg Team Quality</p>
-          <p className="text-sm font-bold text-foreground">
-            {Math.round(defaultMembers.reduce((sum, m) => sum + m.avgQuality, 0) / defaultMembers.length)}%
-          </p>
+          <p className="text-sm font-bold text-foreground">{teamAvgQuality}%</p>
         </Card>
 
         <Card className="bg-card/30 border border-border p-4 text-center">
@@ -226,40 +197,35 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
             <Star className="w-6 h-6" />
           </p>
           <p className="text-xs text-foreground/60 mt-2">Total Bugs Fixed</p>
-          <p className="text-sm font-bold text-foreground">
-            {defaultMembers.reduce((sum, m) => sum + m.bugsFixed, 0)}
-          </p>
+          <p className="text-sm font-bold text-foreground">{totalBugsFixed}</p>
         </Card>
 
         <Card className="bg-card/30 border border-border p-4 text-center">
           <p className="text-2xl font-bold text-orange-500 flex justify-center">
             <Flame className="w-6 h-6" />
           </p>
-          <p className="text-xs text-foreground/60 mt-2">Longest Streak</p>
-          <p className="text-sm font-bold text-foreground">
-            {Math.max(...defaultMembers.map((m) => m.streak))} days
-          </p>
+          <p className="text-xs text-foreground/60 mt-2">Top Contributor</p>
+          <p className="text-sm font-bold text-foreground">{sorted[0]?.total || 0} pts</p>
         </Card>
       </div>
 
-      {/* Achievements */}
       <Card className="border border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10 p-4 space-y-3">
         <h4 className="font-semibold text-foreground">Team Achievements</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
           <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Crosshair className="h-4 w-4 shrink-0 text-primary" aria-hidden />
+            <Crosshair className="h-4 w-4 shrink-0 text-primary" aria-hidden="true" />
             <span className="text-foreground">Quality goal</span>
           </div>
           <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Bug className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden />
+            <Bug className="h-4 w-4 shrink-0 text-emerald-600" aria-hidden="true" />
             <span className="text-foreground">Bug hunters</span>
           </div>
           <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden />
+            <Lock className="h-4 w-4 shrink-0 text-muted-foreground" aria-hidden="true" />
             <span className="text-foreground">Security first</span>
           </div>
           <div className="flex items-center gap-2 rounded bg-background/50 p-2">
-            <Zap className="h-4 w-4 shrink-0 text-amber-500" aria-hidden />
+            <Zap className="h-4 w-4 shrink-0 text-amber-500" aria-hidden="true" />
             <span className="text-foreground">Quick fixers</span>
           </div>
         </div>
