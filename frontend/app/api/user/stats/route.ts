@@ -52,6 +52,7 @@ export async function GET() {
       fixes: fixCount,
       integrations: integrationCount,
       challenges: submissionCount,
+      submissions: submissionCount,
       dailyChallenges: dailyChallengeCount,
       streak,
       memberSince: createdAt ? new Date(createdAt).toISOString() : null,
