@@ -4,281 +4,136 @@ import { useCallback, useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select'
-import { Activity, CheckCircle2, Gauge, HelpCircle, Info, TriangleAlert } from 'lucide-react'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Activity, CheckCircle2, Gauge, HelpCircle, Info, TriangleAlert, Timer, MousePointer, Layout } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { useRoleGate } from '@/lib/use-role-gate'
-import { DASHBOARD_ROUTES } from '@/lib/rbac'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 type VitalsSummary = {
-  range: string
-  route: string
-  since: string
-  sampleSize: number
-  p75: Record<string, number | null>
+  range: string; route: string; since: string
+  sampleSize: number; p75: Record<string, number | null>
   countsByMetric: Record<string, number>
 }
 
-function formatP75(name: string, value: number | null): string {
+function fmtP75(name: string, value: number | null): string {
   if (value == null) return '—'
   if (name === 'CLS') return value.toFixed(3)
   return `${Math.round(value)} ms`
 }
 
-function lcpExperienceLabel(ms: number | null): { label: string; sub: string; tone: string; Icon: typeof CheckCircle2 } {
-  if (ms == null) {
-    return {
-      label: 'No LCP data',
-      sub: 'Collect events in this range',
-      tone: 'border-border/60 bg-muted/20 text-muted-foreground',
-      Icon: Activity,
-    }
-  }
-  if (ms <= 2500) {
-    return {
-      label: 'Great',
-      sub: 'LCP p75 ≤ 2.5s (CrUX-style)',
-      tone: 'border-emerald-500/40 bg-emerald-500/5 text-emerald-700 dark:text-emerald-300',
-      Icon: CheckCircle2,
-    }
-  }
-  if (ms <= 4000) {
-    return {
-      label: 'Needs improvement',
-      sub: 'LCP p75 between 2.5s and 4s',
-      tone: 'border-amber-500/40 bg-amber-500/5 text-amber-700 dark:text-amber-300',
-      Icon: Activity,
-    }
-  }
-  return {
-    label: 'Poor',
-    sub: 'LCP p75 > 4s',
-    tone: 'border-red-500/40 bg-red-500/5 text-red-600 dark:text-red-400',
-    Icon: TriangleAlert,
-  }
+function rating(ms: number | null): { label: string; color: string } {
+  if (ms == null) return { label: 'No data', color: 'text-muted-foreground' }
+  if (ms <= 2500) return { label: 'Good', color: 'text-green-500' }
+  if (ms <= 4000) return { label: 'Needs work', color: 'text-amber-500' }
+  return { label: 'Poor', color: 'text-red-500' }
 }
 
-const METRIC_CARDS: { key: string; title: string }[] = [
-  { key: 'LCP', title: 'Largest Contentful Paint' },
-  { key: 'INP', title: 'Interaction to Next Paint' },
-  { key: 'CLS', title: 'Cumulative Layout Shift' },
-  { key: 'FCP', title: 'First Contentful Paint' },
-  { key: 'TTFB', title: 'Time to First Byte' },
-  { key: 'FID', title: 'First Input Delay (legacy)' },
+const METRICS = [
+  { key: 'LCP', title: 'Largest Contentful Paint', icon: Layout, desc: 'Loading performance — time until main content is visible' },
+  { key: 'FCP', title: 'First Contentful Paint', icon: Timer, desc: 'Time until first content renders on screen' },
+  { key: 'INP', title: 'Interaction to Next Paint', icon: MousePointer, desc: 'Responsiveness — delay after user interaction' },
+  { key: 'CLS', title: 'Cumulative Layout Shift', icon: Layout, desc: 'Visual stability — how much the page layout shifts' },
+  { key: 'TTFB', title: 'Time to First Byte', icon: Timer, desc: 'Server response time' },
+  { key: 'FID', title: 'First Input Delay', icon: MousePointer, desc: 'Time to respond to first user interaction (legacy)' },
 ]
 
 export default function SpeedInsightsPage() {
   const gate = useRoleGate({ require: 'superadmin' })
-  const [ready, setReady] = useState(false)
   const [range, setRange] = useState('24h')
   const [routeScope, setRouteScope] = useState('all')
   const [summary, setSummary] = useState<VitalsSummary | null>(null)
-  const [summaryLoading, setSummaryLoading] = useState(false)
-  const [summaryError, setSummaryError] = useState<string | null>(null)
+  const [loading, setLoading] = useState(false)
 
-  const loadSummary = useCallback(async () => {
-    if (!ready) return
-    setSummaryLoading(true)
-    setSummaryError(null)
+  const load = useCallback(async () => {
+    if (!gate.ready) return
+    setLoading(true)
     try {
       const q = new URLSearchParams({ range, route: routeScope })
       const res = await fetch(`/api/analytics/web-vitals/summary?${q}`, { credentials: 'include' })
-      const body = (await res.json()) as VitalsSummary & { error?: string }
-      if (!res.ok) {
-        setSummary(null)
-        setSummaryError(body.error || res.statusText)
-        return
-      }
-      setSummary(body)
-    } catch (e) {
-      setSummary(null)
-      setSummaryError(e instanceof Error ? e.message : 'Failed to load summary')
-    } finally {
-      setSummaryLoading(false)
-    }
-  }, [ready, range, routeScope])
+      const body = await res.json()
+      if (res.ok) setSummary(body)
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [gate.ready, range, routeScope])
 
-  useEffect(() => {
-    if (!gate.ready) return
-    setReady(true)
-  }, [gate.ready])
+  useEffect(() => { void load() }, [load])
 
-  useEffect(() => {
-    void loadSummary()
-  }, [loadSummary])
-
-  if (!ready) {
-    return <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">Loading…</div>
-  }
-
-  const lcp = summary?.p75?.LCP ?? null
-  const exp = lcpExperienceLabel(lcp)
+  if (!gate.ready) return <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   return (
     <div className="space-y-8">
       <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
         <div className="flex items-start gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-            <Gauge className="h-6 w-6 text-primary" />
-          </div>
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10"><Gauge className="h-6 w-6 text-primary" /></div>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Speed Insights</h1>
             <div className="flex items-center gap-1.5 mt-1">
-              <p className="text-muted-foreground">Web vitals p75 by metric from real user events</p>
-              <TooltipProvider>
-                <Tooltip>
-                  <TooltipTrigger asChild>
-                    <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                  </TooltipTrigger>
-                  <TooltipContent side="right">
-                    <p className="text-xs max-w-[250px]">Superadmin view of web_vitals_events (p75 by metric, optional route filter). Events are posted from the dashboard shell via POST /api/analytics/web-vitals.</p>
-                  </TooltipContent>
-                </Tooltip>
-              </TooltipProvider>
+              <p className="text-muted-foreground">Core Web Vitals from real user sessions</p>
+              <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent side="right"><p className="text-xs max-w-[250px]">Real User Monitoring (RUM) — p75 percentiles from web_vitals_events. Events posted from the dashboard shell via POST /api/analytics/web-vitals.</p></TooltipContent></Tooltip></TooltipProvider>
             </div>
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <Select value={range} onValueChange={setRange}>
-            <SelectTrigger className="w-[180px] border-border/60 bg-card">
-              <SelectValue placeholder="Range" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="24h">Last 24 hours</SelectItem>
-              <SelectItem value="7d">Last 7 days</SelectItem>
-              <SelectItem value="30d">Last 30 days</SelectItem>
-            </SelectContent>
+            <SelectTrigger className="w-[150px] h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="24h">Last 24 hours</SelectItem><SelectItem value="7d">Last 7 days</SelectItem><SelectItem value="30d">Last 30 days</SelectItem></SelectContent>
           </Select>
           <Select value={routeScope} onValueChange={setRouteScope}>
-            <SelectTrigger className="w-[220px] border-border/60 bg-card">
-              <SelectValue placeholder="Route" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">All routes</SelectItem>
-              <SelectItem value="/">Landing /</SelectItem>
-              <SelectItem value="/dashboard">/dashboard</SelectItem>
-              <SelectItem value="/dashboard/scanner">/dashboard/scanner</SelectItem>
-              <SelectItem value="/auth/login">/auth/login</SelectItem>
-            </SelectContent>
+            <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue /></SelectTrigger>
+            <SelectContent><SelectItem value="all">All routes</SelectItem><SelectItem value="/">Landing /</SelectItem><SelectItem value="/dashboard">/dashboard</SelectItem><SelectItem value="/dashboard/scanner">/dashboard/scanner</SelectItem></SelectContent>
           </Select>
+          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+            {loading ? 'Refreshing…' : 'Refresh'}
+          </Button>
         </div>
       </div>
 
-      <div className="flex items-center gap-2 text-sm text-muted-foreground">
-        <Info className="h-4 w-4 shrink-0" />
-        <span>Data from <span className="font-mono">GET /api/analytics/web-vitals/summary</span></span>
-        {summaryLoading ? <span className="ml-2 text-xs opacity-60">Refreshing…</span> : summary ? <span className="ml-2 text-xs opacity-60">{summary.sampleSize} raw rows in window</span> : null}
-        {summaryError ? <span className="ml-2 text-xs text-destructive">{summaryError}</span> : null}
-        <TooltipProvider>
-          <Tooltip>
-            <TooltipTrigger asChild>
-              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-            </TooltipTrigger>
-            <TooltipContent side="right">
-              <p className="text-xs max-w-[250px]">Aggregates load from the web-vitals summary endpoint. Requires superadmin cookie session.</p>
-            </TooltipContent>
-          </Tooltip>
-        </TooltipProvider>
+      {/* Data source info */}
+      <div className="flex items-center gap-2 text-xs text-muted-foreground">
+        <Info className="h-3.5 w-3.5 shrink-0" />
+        <span>Real user events from <code className="bg-muted px-1 rounded">web_vitals_events</code> collection</span>
+        {summary && <Badge variant="secondary" className="text-[10px]">{summary.sampleSize} samples</Badge>}
       </div>
 
+      {/* Metric cards */}
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-        {METRIC_CARDS.map(({ key, title }) => {
+        {METRICS.map(({ key, title, icon: Icon, desc }) => {
           const p75 = summary?.p75?.[key] ?? null
           const n = summary?.countsByMetric?.[key] ?? 0
+          const r = rating(key === 'CLS' ? (p75 != null ? p75 * 1000 : null) : p75)
           return (
-            <Card key={key} className="border-border/60 p-6">
-              <div className="mb-2 flex items-center justify-between gap-2">
-                <h2 className="text-sm font-semibold text-foreground">{title}</h2>
-                <Badge variant="outline" className="font-mono font-normal text-muted-foreground">
-                  {key}
-                </Badge>
+            <Card key={key} className="border-border/60 p-5">
+              <div className="flex items-center justify-between mb-3">
+                <div className="flex items-center gap-2">
+                  <Icon className="h-4 w-4 text-muted-foreground" />
+                  <h2 className="text-sm font-semibold">{title}</h2>
+                </div>
+                <Badge variant="outline" className="font-mono text-[10px]">{key}</Badge>
               </div>
-              <p className="text-2xl font-semibold tracking-tight text-foreground">{formatP75(key, p75)}</p>
-              <p className="mt-2 text-xs text-muted-foreground">
-                p75 · {n} sample{n === 1 ? '' : 's'} · {range}
-                {routeScope !== 'all' ? ` · route ${routeScope}` : ''}
-              </p>
+              <p className="text-2xl font-bold tabular-nums">{fmtP75(key, p75)}</p>
+              <div className="flex items-center justify-between mt-2">
+                <span className={`text-xs font-medium ${r.color}`}>{r.label}</span>
+                <span className="text-xs text-muted-foreground">{n} samples</span>
+              </div>
+              <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3 w-3 text-muted-foreground cursor-help mt-2" /></TooltipTrigger><TooltipContent side="bottom"><p className="text-xs max-w-[200px]">{desc}</p></TooltipContent></Tooltip></TooltipProvider>
             </Card>
           )
         })}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-        {(() => {
-          const Icon = exp.Icon
-          return (
-            <Card className={cn('border p-6', exp.tone)}>
-              <div className="flex items-center gap-2">
-                <Icon className="h-5 w-5 shrink-0" />
-                <div>
-                  <p className="font-semibold">{exp.label}</p>
-                  <p className="text-xs opacity-80">{exp.sub}</p>
-                </div>
-              </div>
-              <p className="mt-4 text-sm text-muted-foreground">
-                {lcp != null ? `Current LCP p75: ${Math.round(lcp)} ms` : 'No LCP samples for this filter.'}
-              </p>
-            </Card>
-          )
-        })()}
-        <Card className="border-border/60 bg-muted/10 p-6">
-          <div className="flex items-center gap-2">
-            <Activity className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <div>
-              <p className="font-semibold text-foreground">INP health</p>
-              <p className="text-xs text-muted-foreground">p75 ≤ 200 ms is a common target</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            {summary?.p75?.INP != null
-              ? `INP p75: ${Math.round(summary.p75.INP)} ms (${summary.countsByMetric?.INP ?? 0} samples)`
-              : 'No INP samples in this window.'}
-          </p>
-        </Card>
-        <Card className="border-border/60 bg-muted/10 p-6">
-          <div className="flex items-center gap-2">
-            <Gauge className="h-5 w-5 shrink-0 text-muted-foreground" />
-            <div>
-              <p className="font-semibold text-foreground">CLS stability</p>
-              <p className="text-xs text-muted-foreground">Lower is better (&lt; 0.1 good)</p>
-            </div>
-          </div>
-          <p className="mt-4 text-sm text-muted-foreground">
-            {summary?.p75?.CLS != null
-              ? `CLS p75: ${summary.p75.CLS.toFixed(3)} (${summary.countsByMetric?.CLS ?? 0} samples)`
-              : 'No CLS samples in this window.'}
-          </p>
-        </Card>
-      </div>
-
-      <Card className="border-border/60 p-6">
-        <div className="mb-4 flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold text-foreground">Geography</h2>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs max-w-[250px]">Geo data is not stored on vitals events yet. Extend the table and reporter when regional breakdowns are needed.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
-          <Button variant="outline" size="sm" asChild>
-            <a href={DASHBOARD_ROUTES.platform.cdn}>Open CDN map</a>
-          </Button>
+      {/* Summary bar */}
+      <Card className="border-border/60 p-4 flex items-center justify-between">
+        <div className="flex items-center gap-4 text-sm">
+          <span className="text-muted-foreground">Window:</span>
+          <Badge variant="outline">{range}</Badge>
+          <Badge variant="outline">{routeScope === 'all' ? 'All routes' : routeScope}</Badge>
+          {summary && <span className="text-muted-foreground text-xs">{summary.sampleSize} total events</span>}
         </div>
-        <div className="flex min-h-[180px] items-center justify-center rounded-lg border border-dashed border-border/60 bg-muted/20 text-sm text-muted-foreground">
-          No geographic data available — add `country` field to web_vitals_events for regional mapping.
+        <div className="flex items-center gap-2">
+          <Badge className={summary?.p75?.LCP && summary.p75.LCP <= 2500 ? 'bg-green-500/20 text-green-700' : 'bg-amber-500/20 text-amber-700'}>
+            {summary?.p75?.LCP && summary.p75.LCP <= 2500 ? 'LCP ✓' : 'LCP needs attention'}
+          </Badge>
         </div>
       </Card>
     </div>
