@@ -2,8 +2,9 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2, ArrowRight, Search, Code2, Trophy } from 'lucide-react'
+import { Loader2, ArrowRight, Search, Code2, Trophy, HelpCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface ProblemSummary {
   id: string
@@ -59,8 +60,19 @@ export default function ProblemsListPage() {
           <Trophy className="h-3 w-3" />
           <span>Practice arena · 40+ languages · Real-time judging</span>
         </div>
-        <h1 className="text-3xl font-bold tracking-tight">Solve problems</h1>
-        <p className="text-muted-foreground mt-2">Real test cases, real judging, real submissions. Sharpen your skills then compete in Codeathons.</p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold tracking-tight">Solve problems</h1>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Real test cases, real judging, real submissions. Sharpen your skills then compete in Codeathons.</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
       <div className="flex flex-col sm:flex-row gap-3">

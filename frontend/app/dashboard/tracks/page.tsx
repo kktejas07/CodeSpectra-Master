@@ -14,9 +14,11 @@ import {
   Sparkles,
   Terminal,
   TrendingUp,
+  HelpCircle,
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const TRACK_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   python: FileCode2,
@@ -72,9 +74,18 @@ export default function TracksPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div className="flex items-center gap-2">
         <h1 className="text-3xl font-bold">Tech-stack tracks</h1>
-        <p className="text-sm text-muted-foreground">Pick a stack and grind through curated problems.</p>
+        <TooltipProvider>
+          <Tooltip>
+            <TooltipTrigger asChild>
+              <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+            </TooltipTrigger>
+            <TooltipContent side="right">
+              <p className="text-xs max-w-[250px]">Pick a stack and grind through curated problems.</p>
+            </TooltipContent>
+          </Tooltip>
+        </TooltipProvider>
       </div>
 
       {loading ? (

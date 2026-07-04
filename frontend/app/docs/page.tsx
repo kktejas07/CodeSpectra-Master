@@ -77,7 +77,7 @@ export async function bootstrap() {
     codeExample: {
       lang: 'bash',
       caption: 'Trigger a scan via the API',
-      code: `curl -X POST https://api.codespectra.dev/analyze \\
+      code: `curl -X POST https://api.example.com/analyze \\
   -H "Authorization: Bearer <token>" \\
   -H "Content-Type: application/json" \\
   -d '{

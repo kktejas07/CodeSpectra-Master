@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Trophy, Users, Clock, Loader } from 'lucide-react'
+import { Trophy, Users, Clock, Loader, HelpCircle } from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Codeathon {
   id: string
@@ -51,8 +52,19 @@ export default function CodeathonsPage() {
   return (
     <div className="space-y-8">
       <div>
-        <h1 className="text-3xl font-bold">Codeathons</h1>
-        <p className="text-muted-foreground mt-1">Compete in hackathons and coding competitions</p>
+        <div className="flex items-center gap-2">
+          <h1 className="text-3xl font-bold">Codeathons</h1>
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
+              </TooltipTrigger>
+              <TooltipContent side="right">
+                <p className="text-xs max-w-[250px]">Compete in hackathons and coding competitions</p>
+              </TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+        </div>
       </div>
 
       {codeathons.length === 0 ? (

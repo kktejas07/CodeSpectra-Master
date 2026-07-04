@@ -168,16 +168,20 @@ export default function PlansPage() {
                 <div key={f.key} className="flex items-center justify-between rounded-md border border-border/50 p-3">
                   <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">{f.label}</p>
-                    <p className="text-xs text-muted-foreground">{f.description}</p>
+                    {f.description && <p className="text-xs text-muted-foreground">{f.description}</p>}
                   </div>
                   <div className="flex items-center gap-3 shrink-0 ml-3">
                     {f.type === 'count' && f.enabled && (
-                      <Input
-                        type="number"
-                        value={f.limit}
-                        onChange={e => updateLimit(f.key, parseInt(e.target.value) || 0)}
-                        className="w-16 h-7 text-xs"
-                      />
+                      f.limit === -1 ? (
+                        <Badge variant="outline" className="text-xs">Unlimited</Badge>
+                      ) : (
+                        <Input
+                          type="number"
+                          value={f.limit}
+                          onChange={e => updateLimit(f.key, parseInt(e.target.value) || 0)}
+                          className="w-16 h-7 text-xs"
+                        />
+                      )
                     )}
                     <Switch
                       checked={f.enabled}
