@@ -59,6 +59,7 @@ export async function PATCH(request: Request) {
     'require_email_verification',
     'show_public_leaderboard',
     'admin_new_user_email_delivery',
+    'platform_currency',
   ] as const
 
   try {

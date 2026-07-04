@@ -38,6 +38,8 @@ export type GeneralPlatformSettings = {
   maintenance_mode: boolean
   require_email_verification: boolean
   show_public_leaderboard: boolean
+  /** Platform-wide currency for pricing display */
+  platform_currency: string
   /** How to notify users when an admin creates an account without setting a password. */
   admin_new_user_email_delivery: AdminNewUserEmailDelivery
 }
@@ -56,6 +58,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   maintenance_mode: false,
   require_email_verification: false,
   show_public_leaderboard: true,
+  platform_currency: 'USD',
   admin_new_user_email_delivery: 'resend_recovery',
 }
 
