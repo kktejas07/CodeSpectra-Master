@@ -446,7 +446,7 @@ function BillingContent() {
                       <td className="px-4 py-3 font-mono text-xs">{inv.id.slice(0, 8)}…</td>
                       <td className="px-4 py-3">{inv.date}</td>
                       <td className="px-4 py-3">
-                        ${inv.amount.toFixed(2)} {inv.currency}
+                          {(inv.currency || 'USD').toUpperCase() === 'INR' ? '₹' : '$'}{inv.amount.toFixed(2)}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className="capitalize">
