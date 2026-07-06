@@ -16,6 +16,7 @@ export const SCANNER_MODE_VALUES = [
   'architecture',
   'pr',
   'branches',
+  'chat',
 ] as const
 
 export type ScannerMode = (typeof SCANNER_MODE_VALUES)[number]

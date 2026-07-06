@@ -17,6 +17,7 @@ import {
   GitBranch,
   GitPullRequest,
   Zap,
+  MessageSquare,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { parseScannerMode, scannerHref, type ScannerMode } from '@/lib/scanner-modes'
@@ -29,6 +30,7 @@ const PRIMARY: Item[] = [
   { mode: 'trends', label: 'Trends', icon: <BarChart3 className="h-4 w-4" /> },
   { mode: 'quality-gates', label: 'Quality Gates', icon: <Plus className="h-4 w-4" /> },
   { mode: 'review', label: 'Code Review', icon: <FileText className="h-4 w-4" /> },
+  { mode: 'chat', label: 'Codebase Chat', icon: <MessageSquare className="h-4 w-4" /> },
 ]
 
 const QUALITY: Item[] = [

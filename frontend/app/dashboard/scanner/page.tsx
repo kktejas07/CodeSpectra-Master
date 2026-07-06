@@ -29,6 +29,7 @@ import { PRIntegration } from '@/components/scanner/pr-integration'
 import { BranchAnalytics } from '@/components/scanner/branch-analytics'
 import { AIFixesPanel } from '@/components/scanner/ai-fixes-panel'
 import { CodeEditor } from '@/components/code-scanner/code-editor'
+import { CodebaseChatSidebar } from '@/components/scanner/codebase-chat-sidebar'
 
 interface AnalysisResult {
   id: string
@@ -227,6 +228,7 @@ function CodeScannerPageInner() {
             {mode === 'pr' && 'Pull Requests'}
             {mode === 'branches' && 'Branch Analytics'}
             {mode === 'team' && 'Team Leaderboard'}
+            {mode === 'chat' && 'Codebase Assistant'}
             {(!mode || mode === 'manual') && 'Code Scanner'}
           </h1>
           <p className="text-muted-foreground mt-1">
@@ -246,6 +248,7 @@ function CodeScannerPageInner() {
             {mode === 'pr' && 'View pull request quality analysis and gate status across your repositories.'}
             {mode === 'branches' && 'Compare quality metrics across Git branches and track improvements.'}
             {mode === 'team' && 'See how your team ranks in code quality contributions and issue resolution.'}
+            {mode === 'chat' && 'Interact with your codebase files using our advanced Gemini AI Assistant.'}
             {(!mode || mode === 'manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
           </p>
         </div>
@@ -621,6 +624,26 @@ function CodeScannerPageInner() {
       {/* Team Mode */}
       {mode === 'team' && (
         <TeamLeaderboard />
+      )}
+
+      {/* Codebase Chat Mode */}
+      {mode === 'chat' && (
+        <div className="max-w-4xl mx-auto">
+          <CodebaseChatSidebar 
+            scanId={analysis?.scanId}
+            files={analysis ? [
+              {
+                path: 'analyzed_snippet',
+                language: analysis.language || 'typescript',
+                loc: 120,
+                complexity: analysis.complexityScore || 5,
+                bugs: analysis.bugs || 0,
+                vulnerabilities: analysis.vulnerabilities || 0,
+                codeSmells: analysis.codeSmells || 0,
+              }
+            ] : []}
+          />
+        </div>
       )}
 
       {/* Feature Overview */}
