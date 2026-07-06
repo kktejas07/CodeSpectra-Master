@@ -19,7 +19,7 @@ log_err() {
 log_msg "Initiating immediate pre-operation safeguard backup..."
 
 # Find MongoDB container using docker ps format by name pattern
-CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep -E "mongo" | head -n 1)
+CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep -E "codespectra-mongo" | head -n 1)
 
 if [ -z "$CONTAINER_NAME" ]; then
     log_err "MongoDB container not found by name pattern. Aborting pre-operation safeguard."
@@ -32,7 +32,7 @@ SAFEGUARD_FILE="$BACKUP_DIR/pre_op_$TIMESTAMP.tar.gz"
 
 # Run mongodump inside container
 docker exec "$CONTAINER_NAME" rm -rf /tmp/mongodump
-if ! docker exec "$CONTAINER_NAME" mongodump --gzip --out=/tmp/mongodump >> "$LOG_FILE" 2>&1; then
+if ! docker exec "$CONTAINER_NAME" mongodump --uri="mongodb://mongo:kfgXeV32FU2WPp1tERVs@localhost:27017/?authSource=admin" --gzip --out=/tmp/mongodump >> "$LOG_FILE" 2>&1; then
     log_err "Pre-operation mongodump failed."
     exit 1
 fi
