@@ -21,7 +21,7 @@ log_err() {
 log_msg "Starting MongoDB backup process..."
 
 # Find MongoDB container using docker ps format by name pattern
-CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep -E "mongo" | head -n 1)
+CONTAINER_NAME=$(docker ps --format '{{.Names}}' | grep -E "codespectra-mongo" | head -n 1)
 
 if [ -z "$CONTAINER_NAME" ]; then
     log_err "MongoDB container not found by name pattern. Aborting backup."
@@ -37,7 +37,7 @@ TEMP_ARCHIVE="/tmp/mongo_backup_$TIMESTAMP.tar.gz"
 # Run mongodump inside container
 log_msg "Executing mongodump inside container..."
 docker exec "$CONTAINER_NAME" rm -rf /tmp/mongodump
-if ! docker exec "$CONTAINER_NAME" mongodump --gzip --out=/tmp/mongodump >> "$LOG_FILE" 2>&1; then
+if ! docker exec "$CONTAINER_NAME" mongodump --uri="mongodb://mongo:kfgXeV32FU2WPp1tERVs@localhost:27017/?authSource=admin" --gzip --out=/tmp/mongodump >> "$LOG_FILE" 2>&1; then
     log_err "mongodump execution failed."
     exit 1
 fi
