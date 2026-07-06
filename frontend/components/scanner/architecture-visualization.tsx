@@ -1,8 +1,10 @@
+'use client'
+
 import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Edit2, ZoomIn, ZoomOut } from 'lucide-react'
+import { Plus, Trash2, Edit2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
 
 interface Component {
   id: string
@@ -36,15 +38,18 @@ export function ArchitectureVisualization({
   onDeleteComponent,
 }: ArchitectureVisualizationProps) {
   const [zoom, setZoom] = useState(100)
+  const [pan, setPan] = useState({ x: 0, y: 0 })
+  const [dragStart, setDragStart] = useState<{ x: number; y: number } | null>(null)
   const [selectedComponent, setSelectedComponent] = useState<string | null>(null)
+  const [hoveredComponent, setHoveredComponent] = useState<string | null>(null)
 
   const getHealthColor = (health: string) => {
     const colors: Record<string, string> = {
-      healthy: 'bg-green-500/20 text-green-600',
-      warning: 'bg-yellow-500/20 text-yellow-600',
-      critical: 'bg-red-500/20 text-red-600',
+      healthy: 'bg-green-500/20 text-green-500 border-green-500/30',
+      warning: 'bg-yellow-500/20 text-yellow-500 border-yellow-500/30',
+      critical: 'bg-red-500/20 text-red-500 border-red-500/30',
     }
-    return colors[health] || 'bg-gray-500/20 text-gray-600'
+    return colors[health] || 'bg-gray-500/20 text-gray-500'
   }
 
   const getComponentIcon = (type: string) => {
@@ -57,54 +62,183 @@ export function ArchitectureVisualization({
     return icons[type] || '◯'
   }
 
+  // Pre-calculate circular node layout positions for interactive graph view
+  const width = 600
+  const height = 400
+  const cx = width / 2
+  const cy = height / 2
+  const radius = Math.min(width, height) * 0.35
+
+  const nodePositions = components.reduce<Record<string, { x: number; y: number }>>((acc, comp, index) => {
+    const angle = (2 * Math.PI * index) / (components.length || 1)
+    acc[comp.id] = {
+      x: cx + radius * Math.cos(angle),
+      y: cy + radius * Math.sin(angle),
+    }
+    return acc
+  }, {})
+
+  const handleMouseDown = (e: React.MouseEvent<SVGSVGElement>) => {
+    setDragStart({ x: e.clientX - pan.x, y: e.clientY - pan.y })
+  }
+
+  const handleMouseMove = (e: React.MouseEvent<SVGSVGElement>) => {
+    if (!dragStart) return
+    setPan({
+      x: e.clientX - dragStart.x,
+      y: e.clientY - dragStart.y,
+    })
+  }
+
+  const handleMouseUp = () => {
+    setDragStart(null)
+  }
+
+  const resetView = () => {
+    setZoom(100)
+    setPan({ x: 0, y: 0 })
+  }
+
   const getRelatedDependencies = (componentId: string) => {
     return dependencies.filter((dep) => dep.from === componentId || dep.to === componentId)
   }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold mb-2">Architecture</h1>
-        <p className="text-foreground/60">Visualize your codebase structure, components, and dependencies</p>
-      </div>
-
-      {/* Controls */}
-      <div className="flex justify-between items-center">
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setZoom(Math.max(50, zoom - 10))}
-            className="gap-2"
-          >
-            <ZoomOut className="w-4 h-4" />
-            Zoom Out
-          </Button>
-          <div className="px-3 py-2 bg-card rounded border border-border text-sm font-medium">
-            {zoom}%
-          </div>
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => setZoom(Math.min(200, zoom + 10))}
-            className="gap-2"
-          >
-            <ZoomIn className="w-4 h-4" />
-            Zoom In
-          </Button>
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold mb-2">Architecture Map</h1>
+          <p className="text-foreground/60">Visualize, interact with, and analyze project component relationships.</p>
         </div>
-
-        <Button onClick={onAddComponent} className="gap-2">
+        <Button onClick={onAddComponent} className="gap-2 shrink-0">
           <Plus className="w-4 h-4" />
           Add Component
         </Button>
       </div>
 
+      {/* SVG Canvas Card */}
+      <Card className="relative overflow-hidden bg-card/50 backdrop-blur border border-border/80 h-[400px]">
+        <div className="absolute top-4 left-4 z-10 flex gap-1 bg-background/80 backdrop-blur rounded-md border border-border p-1">
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.max(50, zoom - 15))}>
+            <ZoomOut className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={resetView}>
+            <Maximize2 className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setZoom(Math.min(200, zoom + 15))}>
+            <ZoomIn className="w-4 h-4" />
+          </Button>
+        </div>
+        <div className="absolute top-4 right-4 z-10 bg-background/80 backdrop-blur rounded border border-border px-3 py-1 text-xs font-mono text-muted-foreground">
+          Zoom: {zoom}%
+        </div>
+
+        <svg
+          className="w-full h-full cursor-grab active:cursor-grabbing select-none"
+          onMouseDown={handleMouseDown}
+          onMouseMove={handleMouseMove}
+          onMouseUp={handleMouseUp}
+          onMouseLeave={handleMouseUp}
+        >
+          {/* Arrowhead marker definition */}
+          <defs>
+            <marker
+              id="arrow"
+              viewBox="0 0 10 10"
+              refX="18"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(var(--muted-foreground))" opacity="0.6" />
+            </marker>
+            <marker
+              id="arrow-active"
+              viewBox="0 0 10 10"
+              refX="18"
+              refY="5"
+              markerWidth="6"
+              markerHeight="6"
+              orient="auto-start-reverse"
+            >
+              <path d="M 0 0 L 10 5 L 0 10 z" fill="hsl(var(--primary))" />
+            </marker>
+          </defs>
+
+          <g transform={`translate(${pan.x}, ${pan.y}) scale(${zoom / 100})`}>
+            {/* Draw Dependency Lines */}
+            {dependencies.map((dep, idx) => {
+              const start = nodePositions[dep.from]
+              const end = nodePositions[dep.to]
+              if (!start || !end) return null
+              const isHighlighted =
+                selectedComponent === dep.from ||
+                selectedComponent === dep.to ||
+                hoveredComponent === dep.from ||
+                hoveredComponent === dep.to
+              return (
+                <line
+                  key={`line-${idx}`}
+                  x1={start.x}
+                  y1={start.y}
+                  x2={end.x}
+                  y2={end.y}
+                  stroke={isHighlighted ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
+                  strokeWidth={isHighlighted ? 2.5 : 1}
+                  strokeDasharray={dep.type === 'imports' ? '5,5' : undefined}
+                  markerEnd={isHighlighted ? 'url(#arrow-active)' : 'url(#arrow)'}
+                  className="transition-all duration-300"
+                />
+              )
+            })}
+
+            {/* Draw Node Circles */}
+            {components.map((comp) => {
+              const pos = nodePositions[comp.id]
+              if (!pos) return null
+              const isSelected = selectedComponent === comp.id
+              const isHovered = hoveredComponent === comp.id
+              return (
+                <g
+                  key={`node-${comp.id}`}
+                  transform={`translate(${pos.x}, ${pos.y})`}
+                  className="cursor-pointer"
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    setSelectedComponent(comp.id === selectedComponent ? null : comp.id)
+                  }}
+                  onMouseEnter={() => setHoveredComponent(comp.id)}
+                  onMouseLeave={() => setHoveredComponent(null)}
+                >
+                  <circle
+                    r="24"
+                    fill="hsl(var(--card))"
+                    stroke={isSelected || isHovered ? 'hsl(var(--primary))' : 'hsl(var(--border))'}
+                    strokeWidth={isSelected ? 3 : 1.5}
+                    className="transition-all duration-200 drop-shadow-md"
+                  />
+                  <text dy="6" textAnchor="middle" className="text-lg select-none pointer-events-none">
+                    {getComponentIcon(comp.type)}
+                  </text>
+                  <text
+                    dy="38"
+                    textAnchor="middle"
+                    className="text-xs font-semibold fill-foreground select-none pointer-events-none drop-shadow-sm"
+                  >
+                    {comp.name}
+                  </text>
+                </g>
+              )
+            })}
+          </g>
+        </svg>
+      </Card>
+
       <div className="grid lg:grid-cols-3 gap-6">
         {/* Components List */}
         <div className="lg:col-span-2 space-y-4">
           <h2 className="text-xl font-bold">Components</h2>
-
           {components.length === 0 ? (
             <Card className="p-8 text-center border-dashed">
               <p className="text-foreground/60">No components yet. Add your first component to get started.</p>
@@ -131,7 +265,7 @@ export function ArchitectureVisualization({
                     </div>
 
                     <div className="flex items-center gap-2">
-                      <Badge className={getHealthColor(comp.health)}>
+                      <Badge variant="outline" className={getHealthColor(comp.health)}>
                         {comp.health}
                       </Badge>
                       <Button
@@ -162,10 +296,9 @@ export function ArchitectureVisualization({
           )}
         </div>
 
-        {/* Dependencies */}
+        {/* Dependencies Detail */}
         <div className="space-y-4">
           <h2 className="text-xl font-bold">Dependencies</h2>
-
           {selectedComponent ? (
             <div className="space-y-3">
               {getRelatedDependencies(selectedComponent).length === 0 ? (
@@ -205,13 +338,13 @@ export function ArchitectureVisualization({
             </div>
           ) : (
             <Card className="p-4 text-center bg-card/30 border-dashed">
-              <p className="text-sm text-foreground/60">Select a component to view its dependencies</p>
+              <p className="text-sm text-foreground/60">Select a component node in the map to view dependencies</p>
             </Card>
           )}
         </div>
       </div>
 
-      {/* Architecture Stats */}
+      {/* Stats footer */}
       <Card className="p-6 bg-gradient-to-r from-primary/10 to-primary/5 border border-primary/20">
         <h3 className="font-semibold text-foreground mb-4">Architecture Overview</h3>
         <div className="grid md:grid-cols-4 gap-4">
