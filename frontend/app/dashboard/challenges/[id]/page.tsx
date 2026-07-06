@@ -57,3 +57,5 @@ export default function ChallengePage({ params }: { params: { id: string } }) {
     </div>
   )
 }
+
+

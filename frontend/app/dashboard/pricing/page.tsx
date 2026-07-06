@@ -139,3 +139,5 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
     </div>
   )
 }
+
+

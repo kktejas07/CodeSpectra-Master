@@ -233,3 +233,5 @@ export default function GlobalSearchPage() {
     </div>
   )
 }
+
+

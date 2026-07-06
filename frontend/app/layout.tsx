@@ -1,9 +1,9 @@
 import type { Metadata } from 'next'
 import { JetBrains_Mono } from 'next/font/google'
-import { ToastProvider } from '@/lib/toast-context'
-import { ThemeProvider } from 'next-themes'
-import { AuthProvider } from '@/lib/auth-context'
+import { Providers } from '@/components/providers'
 import './globals.css'
+
+export const dynamic = 'force-dynamic'
 
 const mono = JetBrains_Mono({
   subsets: ['latin'],
@@ -16,14 +16,6 @@ export const metadata: Metadata = {
   title: 'CodeSpectra - Master Code Through AI',
   description:
     'CodeSpectra: Real-time code analysis, competitive challenges, and AI-powered learning for developers',
-  icons: {
-    icon: [
-      { url: '/icon-light-32x32.svg', type: 'image/svg+xml', media: '(prefers-color-scheme: light)' },
-      { url: '/icon-dark-32x32.svg', type: 'image/svg+xml', media: '(prefers-color-scheme: dark)' },
-      { url: '/icon.svg', type: 'image/svg+xml' },
-    ],
-    apple: '/apple-icon.svg',
-  },
 }
 
 export default function RootLayout({
@@ -41,16 +33,7 @@ export default function RootLayout({
         className="antialiased bg-background text-foreground font-mono"
         suppressHydrationWarning
       >
-        <ThemeProvider
-          attribute="class"
-          defaultTheme="dark"
-          enableSystem
-          storageKey="codespectra-theme"
-        >
-          <AuthProvider>
-            <ToastProvider>{children}</ToastProvider>
-          </AuthProvider>
-        </ThemeProvider>
+        <Providers>{children}</Providers>
       </body>
     </html>
   )
