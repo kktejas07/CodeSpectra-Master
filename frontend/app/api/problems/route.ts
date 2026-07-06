@@ -48,7 +48,7 @@ export async function GET(request: NextRequest) {
   const seedList = SEED_PROBLEMS.filter((p) => {
     if (!p.is_published) return false
     if (difficulty && p.difficulty !== difficulty) return false
-    if (search && !p.title.toLowerCase().includes(search.toLowerCase())) return false
+    if (search && !(p.title || '').toLowerCase().includes(search.toLowerCase())) return false
     return true
   }).map(({ test_cases: _t, starter_code: _s, statement_md: _m, ...rest }) => ({
     ...rest,

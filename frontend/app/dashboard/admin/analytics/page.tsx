@@ -218,3 +218,5 @@ function KpiCard({ icon, color, label, value, trend, hint }: { icon: React.React
     </Card>
   )
 }
+
+

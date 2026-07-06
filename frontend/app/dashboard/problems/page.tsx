@@ -1,18 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2, ArrowRight, Search, Code2, Trophy, HelpCircle } from 'lucide-react'
+import { Loader2, ArrowRight, Search, Trophy, HelpCircle } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-
-interface ProblemSummary {
-  id: string
-  slug: string
-  title: string
-  difficulty: 'easy' | 'medium' | 'hard'
-  topics: string[]
-}
+import { usePageGuard } from '@/lib/use-page-guard'
+import { useProblemsViewModel, type ProblemSummary } from './use-problems-viewmodel'
 
 const DIFFICULTY_TONE: Record<ProblemSummary['difficulty'], string> = {
   easy: 'text-primary border-primary/30 bg-primary/10',
@@ -21,37 +14,16 @@ const DIFFICULTY_TONE: Record<ProblemSummary['difficulty'], string> = {
 }
 
 export default function ProblemsListPage() {
-  const [problems, setProblems] = useState<ProblemSummary[]>([])
-  const [loading, setLoading] = useState(true)
-  const [error, setError] = useState<string | null>(null)
-  const [q, setQ] = useState('')
-  const [difficulty, setDifficulty] = useState<string>('all')
+  const gate = usePageGuard('user')
+  const { loading, error, q, setQ, difficulty, setDifficulty, filtered } = useProblemsViewModel()
 
-  const load = useCallback(async () => {
-    setLoading(true)
-    setError(null)
-    try {
-      const params = new URLSearchParams()
-      if (difficulty !== 'all') params.set('difficulty', difficulty)
-      if (q) params.set('q', q)
-      const res = await fetch(`/api/problems?${params.toString()}`, { cache: 'no-store' })
-      const json = (await res.json()) as { data?: ProblemSummary[]; error?: string }
-      if (!res.ok) throw new Error(json.error || 'Failed to load problems')
-      setProblems(json.data || [])
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setLoading(false)
-    }
-  }, [difficulty, q])
-
-  useEffect(() => { void load() }, [load])
-
-  const filtered = problems.filter((p) => {
-    if (!q) return true
-    const title = p.title || ''
-    return title.toLowerCase().includes(q.toLowerCase())
-  })
+  if (!gate.ready) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
+  }
 
   return (
     <div className="space-y-8">
@@ -122,7 +94,7 @@ export default function ProblemsListPage() {
                     </div>
                   </div>
                 </div>
-                <div className="flex items-center gap-4 shrink-0">
+                <div className="flex items-center shrink-0 gap-4">
                   <span className={`text-xs px-2 py-0.5 rounded border capitalize ${DIFFICULTY_TONE[p.difficulty] || ''}`}>{p.difficulty}</span>
                   <ArrowRight className="h-4 w-4 text-muted-foreground group-hover:text-primary group-hover:translate-x-0.5 transition-transform" />
                 </div>

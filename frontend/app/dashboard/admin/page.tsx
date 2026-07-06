@@ -5,3 +5,5 @@ import { DASHBOARD_ROUTES } from '@/lib/rbac'
 export default function AdminIndexRedirect() {
   redirect(DASHBOARD_ROUTES.platform.system)
 }
+
+

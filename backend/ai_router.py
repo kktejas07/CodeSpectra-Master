@@ -19,8 +19,8 @@ from fastapi import APIRouter, HTTPException
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
-from emergentintegrations.llm.chat import (
-    LlmChat,
+from ai_client import (
+    DirectAiClient as LlmChat,
     UserMessage,
     TextDelta,
     StreamDone,
@@ -51,9 +51,10 @@ def _build_chat(model_role: str, session_id: str, system_message: str) -> LlmCha
     provider, model = MODEL_REGISTRY.get(model_role, MODEL_REGISTRY["fast"])
     return LlmChat(
         api_key=EMERGENT_LLM_KEY,
-        session_id=session_id,
+        provider=provider,
+        model=model,
         system_message=system_message,
-    ).with_model(provider, model)
+    )
 
 
 # =============== /chat (SSE stream) ===============
@@ -421,9 +422,9 @@ async def identity_verify(req: IdentityVerifyReq) -> dict[str, Any]:
     # Note: emergentintegrations supports image input via UserMessage(text=, image_url=)
     # If that fails on some providers we fall back to a textual challenge prompt.
     try:
-        from emergentintegrations.llm.chat import ImageContent  # type: ignore
+        from ai_client import ImageContent
         has_image = True
-    except Exception:  # noqa: BLE001
+    except Exception:
         has_image = False
 
     system = (

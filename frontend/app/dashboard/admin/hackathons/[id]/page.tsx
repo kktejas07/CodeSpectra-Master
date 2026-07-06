@@ -356,3 +356,5 @@ export default function HackathonDetailPage({
     </div>
   )
 }
+
+

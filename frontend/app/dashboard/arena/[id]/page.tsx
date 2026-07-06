@@ -277,3 +277,5 @@ export default function ArenaChallengePage() {
     </Suspense>
   )
 }
+
+

@@ -1,5 +1,7 @@
 'use client'
 
+export const dynamic = 'force-dynamic'
+
 import Link from 'next/link'
 import { useState, useEffect, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
@@ -10,7 +12,7 @@ import { Globe3D } from '@/components/globe-3d'
 import { PlatformWorkspaceIllustration } from '@/components/landing/platform-workspace-illustration'
 import { CapabilityIllustration } from '@/components/landing/capability-illustration'
 import { ProcessShowcase, type ProcessStep } from '@/components/landing/process-showcase'
-import { useHasUserSession } from '@/hooks/use-has-supabase-session'
+import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
 
 type Capability = { number: string; title: string; description: string }

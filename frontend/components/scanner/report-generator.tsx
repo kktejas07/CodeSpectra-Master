@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader } from '@/components/ui/loader'
 import { FileText, Download, Mail, Share2, Calendar, Zap, Loader2 } from 'lucide-react'
 
 interface ReportData {
@@ -131,7 +130,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
   if (loading) {
     return (
       <div className="flex items-center justify-center py-12">
-        <Loader className="h-6 w-6" />
+        <Loader2 className="h-6 w-6 animate-spin" />
         <span className="ml-2 text-sm text-muted-foreground">Loading report data…</span>
       </div>
     )

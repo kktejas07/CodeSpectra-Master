@@ -662,3 +662,5 @@ export default function CodeScannerPage() {
     </Suspense>
   )
 }
+
+
