@@ -1,15 +1,59 @@
 import { getMongoDb } from '@/lib/mongodb'
 import { MODEL_OPTIONS, type UserAISettings } from '@/lib/ai/model-options'
+import { type LLMConfig, LLM_PROVIDERS } from '@/lib/llm-config'
 
 type ModelPrefKey = keyof UserAISettings
-type ModelResult = { providerOverride: string; modelOverride: string; modelRole: 'reasoning' | 'fast' }
+type ModelResult = { providerOverride: string; modelOverride: string; modelRole: 'reasoning' | 'fast'; endpointOverride?: string }
 
 // In-memory TTL cache — user model preferences change rarely.
 const _cache = new Map<string, { value: ModelResult; expires: number }>()
 const CACHE_TTL_MS = 60_000
 
+/** Map a free-form provider name to a backend enum the AI router understands. */
+function normalizeProvider(provider: string): string {
+  const lower = provider.toLowerCase()
+  if (lower === 'opencode' || lower === 'omnirouter') return 'opencode'
+  if (lower === 'gemini') return 'gemini'
+  if (lower === 'anthropic') return 'anthropic'
+  if (lower === 'openai') return 'openai'
+  return lower
+}
+
+/** Read the global LLM config from platform_settings. Returns null if not configured. */
+async function readPlatformLlmConfig(): Promise<LLMConfig | null> {
+  try {
+    const db = await getMongoDb()
+    const doc = await db.collection('platform_settings').findOne({ key: 'llm' })
+    if (!doc?.value) return null
+    const cfg = doc.value as unknown as LLMConfig
+    if (!cfg.provider || !cfg.model) return null
+    // Skip if provider was explicitly cleared
+    if (LLM_PROVIDERS.every(p => p.id !== cfg.provider)) return null
+    return cfg
+  } catch {
+    return null
+  }
+}
+
 async function resolveModelInner(userId: string, feature: ModelPrefKey): ReturnType<typeof resolveModel> {
-  const result = { providerOverride: '', modelOverride: '', modelRole: 'reasoning' as const }
+  const result: ModelResult = { providerOverride: '', modelOverride: '', modelRole: 'reasoning' }
+
+  // 1. Check global LLM config first (superadmin-set)
+  try {
+    const platformCfg = await readPlatformLlmConfig()
+    if (platformCfg) {
+      result.providerOverride = normalizeProvider(platformCfg.provider)
+      result.modelOverride = platformCfg.model
+      // All features use the same single model now, default to 'reasoning' role
+      result.modelRole = 'reasoning'
+      if (platformCfg.endpoint) {
+        result.endpointOverride = platformCfg.endpoint
+      }
+      return result
+    }
+  } catch { /* fall through to user settings */ }
+
+  // 2. Fall back to per-user model preference
   try {
     const db = await getMongoDb()
     const prefs = await db.collection('user_ai_settings').findOne({ user_id: userId })
@@ -17,20 +61,17 @@ async function resolveModelInner(userId: string, feature: ModelPrefKey): ReturnT
     if (modelId) {
       const found = MODEL_OPTIONS.find(m => m.id === modelId)
       if (found) {
-        result.providerOverride = found.provider
+        result.providerOverride = normalizeProvider(found.provider)
         result.modelOverride = found.model
         result.modelRole = found.role === 'fast' ? 'fast' : 'reasoning'
       }
     }
   } catch { /* use defaults */ }
+
   return result
 }
 
-export async function resolveModel(userId: string, feature: ModelPrefKey): Promise<{
-  providerOverride: string
-  modelOverride: string
-  modelRole: 'reasoning' | 'fast'
-}> {
+export async function resolveModel(userId: string, feature: ModelPrefKey): Promise<ModelResult> {
   const cacheKey = `${userId}:${feature}`
   const cached = _cache.get(cacheKey)
   if (cached && cached.expires > Date.now()) return cached.value
@@ -39,7 +80,6 @@ export async function resolveModel(userId: string, feature: ModelPrefKey): Promi
   return value
 }
 
-// Allow cache-busting on profile update
 export function invalidateModelCache(userId: string) {
   for (const key of _cache.keys()) {
     if (key.startsWith(`${userId}:`)) _cache.delete(key)

@@ -20,7 +20,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
 
-  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'grade_model')
+  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'grade_model')
 
   let body: GenReq
   try {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       topics: body.topics || [],
       language_hint: body.language_hint || 'python',
     },
-    { providerOverride, modelOverride, modelRole },
+    { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
   )) as Record<string, unknown>
 
   const gens = await aiGeneratedProblems()

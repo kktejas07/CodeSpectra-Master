@@ -28,11 +28,13 @@ class DirectAiClient:
         provider: str,
         model: str,
         system_message: str = "",
+        base_url: str = "",
     ) -> None:
         self.api_key = api_key
         self.provider = provider
         self.model = model
         self.system_message = system_message
+        self.base_url = base_url
 
     async def stream_message(
         self, message: UserMessage
@@ -55,7 +57,7 @@ class DirectAiClient:
                     chunk.usage["input_chars"] = input_chars
                     chunk.usage["output_chars"] = output_chars
                 yield chunk
-        elif self.provider == "openai":
+        elif self.provider == "openai" or self.provider == "opencode":
             async for chunk in self._stream_openai(message):
                 if isinstance(chunk, TextDelta):
                     output_chars += len(chunk.content)
@@ -190,11 +192,13 @@ class DirectAiClient:
     async def _stream_openai(
         self, message: UserMessage
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
-        url = "https://api.openai.com/v1/chat/completions"
+        base = self.base_url.strip().rstrip("/") if self.base_url else "https://api.openai.com/v1"
+        url = f"{base}/chat/completions"
         headers = {
-            "Authorization": f"Bearer {self.api_key}",
             "Content-Type": "application/json",
         }
+        if self.api_key:
+            headers["Authorization"] = f"Bearer {self.api_key}"
         messages = []
         if self.system_message:
             messages.append({"role": "system", "content": self.system_message})

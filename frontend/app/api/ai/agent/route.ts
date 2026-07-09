@@ -17,7 +17,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'chat_model')
+  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'chat_model')
 
   const rateCheck = rateLimitAI(req, user.id)
   if (!rateCheck.ok) {
@@ -44,7 +44,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       language: body.language || 'python',
       max_steps: Math.max(1, Math.min(5, body.max_steps || 3)),
     },
-    { providerOverride, modelOverride, modelRole },
+    { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
   )
   return NextResponse.json(result)
 }

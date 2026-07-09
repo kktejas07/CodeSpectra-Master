@@ -16,7 +16,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'review_model')
+  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'review_model')
 
   let body: VerifyReq
   try {
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       id_photo_data_url: body.id_data_url,
       candidate_name: body.candidate_name || null,
     },
-    { providerOverride, modelOverride, modelRole },
+    { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
   )) as { match?: boolean; confidence?: number; reasoning?: string; warnings?: string[] }
 
   const status: 'approved' | 'rejected' | 'manual_review' =

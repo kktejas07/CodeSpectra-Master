@@ -78,36 +78,40 @@ def _resolve_key(provider: str, request_headers=None) -> str:
     """
     Resolve API key for a given provider.
     Priority:
-      1. Provider-specific header (x-anthropic-api-key, x-gemini-api-key)
-      2. Provider-specific env var (ANTHROPIC_API_KEY, GEMINI_API_KEY)
+      1. Provider-specific header (x-anthropic-api-key, x-gemini-api-key, x-openai-api-key)
+      2. Provider-specific env var (ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY)
 
 
     """
+    key_header_map = {
+        "anthropic": "x-anthropic-api-key",
+        "gemini": "x-gemini-api-key",
+        "openai": "x-openai-api-key",
+        "opencode": "x-openai-api-key",
+    }
     if request_headers:
-        if provider == "anthropic":
-            hdr = request_headers.get("x-anthropic-api-key", "")
+        header = key_header_map.get(provider)
+        if header:
+            hdr = request_headers.get(header, "")
             if hdr:
                 return hdr
-        elif provider == "gemini":
-            hdr = request_headers.get("x-gemini-api-key", "")
-            if hdr:
-                return hdr
-        elif provider == "openai":
-            hdr = request_headers.get("x-openai-api-key", "")
-            if hdr:
-                return hdr
-    if provider == "anthropic" and ENV_ANTHROPIC:
-        return ENV_ANTHROPIC
-    if provider == "gemini" and ENV_GEMINI:
-        return ENV_GEMINI
-    if provider == "openai" and ENV_OPENAI:
-        return ENV_OPENAI
-
+    env_map = {
+        "anthropic": ENV_ANTHROPIC,
+        "gemini": ENV_GEMINI,
+        "openai": ENV_OPENAI,
+        "opencode": ENV_OPENAI,
+    }
+    val = env_map.get(provider)
+    if val:
+        return val
     return ""
 
 
 def _ensure_key(key: str, provider: str = "ai") -> None:
     if not key:
+        # Some opencode endpoints work without a key
+        if provider == "opencode":
+            return
         raise HTTPException(
             status_code=500,
             detail=f"{provider.upper()}_API_KEY not configured. Add it in Settings → Integrations → AI Providers, "
@@ -116,7 +120,7 @@ def _ensure_key(key: str, provider: str = "ai") -> None:
         )
 
 
-def _build_chat(model_role: str, session_id: str, system_message: str, api_key_or_headers: Union[str, dict, None] = None, provider_override: Optional[str] = None, model_override: Optional[str] = None) -> LlmChat:
+def _build_chat(model_role: str, session_id: str, system_message: str, api_key_or_headers: Union[str, dict, None] = None, provider_override: Optional[str] = None, model_override: Optional[str] = None, endpoint_override: Optional[str] = None) -> LlmChat:
     if provider_override and model_override:
         provider = provider_override
         model = model_override
@@ -126,7 +130,8 @@ def _build_chat(model_role: str, session_id: str, system_message: str, api_key_o
     if not key:
         key = _resolve_key(provider, None)
     _ensure_key(key, provider)
-    return LlmChat(api_key=key, provider=provider, model=model, system_message=system_message)
+    base_url = endpoint_override or ""
+    return LlmChat(api_key=key, provider=provider, model=model, system_message=system_message, base_url=base_url)
 
 
 def _build_fallback_chat(model_role: str, system_message: str, api_key_or_headers: Union[str, dict, None] = None) -> LlmChat:
@@ -154,6 +159,7 @@ class ChatStreamReq(BaseModel):
     model_role: str = "reasoning"  # 'reasoning' | 'fast'
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 DEFAULT_CHAT_SYSTEM = (

@@ -55,6 +55,7 @@ interface ChatStreamArgs {
   modelRole?: 'reasoning' | 'fast'
   providerOverride?: string
   modelOverride?: string
+  endpointOverride?: string
 }
 
 /**
@@ -76,6 +77,7 @@ export async function backendChatStream(args: ChatStreamArgs): Promise<Response>
       ...(args.providerOverride && args.modelOverride ? {
         provider_override: args.providerOverride,
         model_override: args.modelOverride,
+        endpoint_override: args.endpointOverride || '',
       } : {}),
     }),
   })
@@ -90,6 +92,7 @@ export async function backendComplete(args: {
   responseFormat?: 'text' | 'json'
   providerOverride?: string
   modelOverride?: string
+  endpointOverride?: string
 }): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string }> {
   const headers = await backendHeaders()
   const res = await fetch(`${BACKEND}/internal/ai/complete`, {
@@ -104,6 +107,7 @@ export async function backendComplete(args: {
       ...(args.providerOverride && args.modelOverride ? {
         provider_override: args.providerOverride,
         model_override: args.modelOverride,
+        endpoint_override: args.endpointOverride || '',
       } : {}),
     }),
   })
@@ -117,7 +121,7 @@ export async function backendComplete(args: {
 export async function backendPost<T = unknown>(
   path: string,
   body: unknown,
-  opts?: { providerOverride?: string; modelOverride?: string; modelRole?: 'reasoning' | 'fast' },
+  opts?: { providerOverride?: string; modelOverride?: string; modelRole?: 'reasoning' | 'fast'; endpointOverride?: string },
 ): Promise<T> {
   const headers = await backendHeaders()
   const res = await fetch(`${BACKEND}${path}`, {
@@ -129,6 +133,7 @@ export async function backendPost<T = unknown>(
         provider_override: opts.providerOverride,
         model_override: opts.modelOverride,
         model_role: opts.modelRole ?? 'reasoning',
+        endpoint_override: opts.endpointOverride || '',
       } : {}),
     }),
   })
