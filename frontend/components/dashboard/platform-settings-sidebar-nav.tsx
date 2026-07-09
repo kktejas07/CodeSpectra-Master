@@ -11,6 +11,8 @@ import {
   KeyRound,
   CreditCard,
   FileText,
+  Globe2,
+  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -102,6 +104,36 @@ export function PlatformSettingsSidebarNav({
             </Link>
           )
         })}
+      </div>
+
+      {/* External settings pages */}
+      <div className="border-t border-border/30 mx-2 py-2">
+        <Link
+          href="/dashboard/admin/settings/cloudflare"
+          onClick={onNavigate}
+          className={cn(
+            'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+            'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+            collapsed && 'lg:justify-center lg:px-2',
+          )}
+          title="Cloudflare"
+        >
+          <Globe2 className="h-4 w-4 shrink-0 opacity-90" />
+          <span className={cn('truncate', collapsed && 'lg:sr-only')}>Cloudflare</span>
+        </Link>
+        <Link
+          href="/dashboard/admin/settings/llm"
+          onClick={onNavigate}
+          className={cn(
+            'flex items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+            'text-muted-foreground hover:bg-muted/50 hover:text-foreground',
+            collapsed && 'lg:justify-center lg:px-2',
+          )}
+          title="LLM Configuration"
+        >
+          <Sparkles className="h-4 w-4 shrink-0 opacity-90" />
+          <span className={cn('truncate', collapsed && 'lg:sr-only')}>LLM Configuration</span>
+        </Link>
       </div>
     </div>
   )
