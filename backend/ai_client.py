@@ -42,6 +42,9 @@ class DirectAiClient:
         elif self.provider == "anthropic":
             async for chunk in self._stream_anthropic(message):
                 yield chunk
+        elif self.provider == "openai":
+            async for chunk in self._stream_openai(message):
+                yield chunk
         else:
             # Fallback mock/error
             yield TextDelta(content=f"Unsupported provider: {self.provider}")
@@ -160,6 +163,53 @@ class DirectAiClient:
                                     delta = event.get("delta", {})
                                     if delta.get("type") == "text_delta":
                                         yield TextDelta(content=delta.get("text", ""))
+                            except Exception:
+                                continue
+            except Exception as e:
+                yield TextDelta(content=f"Request failed: {e}")
+        yield StreamDone()
+
+    async def _stream_openai(
+        self, message: UserMessage
+    ) -> AsyncGenerator[TextDelta | StreamDone, None]:
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        messages = []
+        if self.system_message:
+            messages.append({"role": "system", "content": self.system_message})
+        text = message.text or ""
+        messages.append({"role": "user", "content": text})
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+            "max_tokens": 4096,
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    if response.status_code != 200:
+                        err_body = await response.aread()
+                        yield TextDelta(content=f"OpenAI API Error: {response.status_code} - {err_body.decode('utf-8')}")
+                        yield StreamDone()
+                        return
+
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                event = json.loads(data_str)
+                                choice = event.get("choices", [{}])[0]
+                                delta = choice.get("delta", {})
+                                if delta.get("content"):
+                                    yield TextDelta(content=delta["content"])
                             except Exception:
                                 continue
             except Exception as e:

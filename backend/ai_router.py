@@ -49,6 +49,7 @@ router = APIRouter(prefix="/internal/ai", tags=["internal-ai"])
 
 ENV_ANTHROPIC = os.environ.get("ANTHROPIC_API_KEY", "")
 ENV_GEMINI = os.environ.get("GEMINI_API_KEY", "")
+ENV_OPENAI = os.environ.get("OPENAI_API_KEY", "")
 
 # ---------- model registry ----------
 # Map logical "role" names to (provider, model). Two main models used:
@@ -72,7 +73,6 @@ def _resolve_key(provider: str, request_headers=None) -> str:
 
     """
     if request_headers:
-        # Check provider-specific header first
         if provider == "anthropic":
             hdr = request_headers.get("x-anthropic-api-key", "")
             if hdr:
@@ -81,11 +81,16 @@ def _resolve_key(provider: str, request_headers=None) -> str:
             hdr = request_headers.get("x-gemini-api-key", "")
             if hdr:
                 return hdr
-    # Check provider-specific env var
+        elif provider == "openai":
+            hdr = request_headers.get("x-openai-api-key", "")
+            if hdr:
+                return hdr
     if provider == "anthropic" and ENV_ANTHROPIC:
         return ENV_ANTHROPIC
     if provider == "gemini" and ENV_GEMINI:
         return ENV_GEMINI
+    if provider == "openai" and ENV_OPENAI:
+        return ENV_OPENAI
 
     return ""
 
