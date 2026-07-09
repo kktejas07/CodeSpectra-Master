@@ -16,6 +16,10 @@ export const metadata: Metadata = {
   title: 'CodeSpectra - Master Code Through AI',
   description:
     'CodeSpectra: Real-time code analysis, competitive challenges, and AI-powered learning for developers',
+  icons: {
+    icon: '/icon.svg',
+    apple: '/apple-icon.svg',
+  },
 }
 
 export default function RootLayout({
