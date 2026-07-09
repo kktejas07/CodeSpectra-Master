@@ -26,7 +26,9 @@ import {
   Trash2,
   HelpCircle,
   CheckCircle,
+  Timer,
 } from 'lucide-react'
+import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Hackathon {
@@ -189,7 +191,7 @@ export default function HackathonDetailPage({
   }
 
   return (
-    <div className="space-y-6" data-testid="hackathon-detail-page">
+    <div className="space-y-8 px-6 py-8" data-testid="hackathon-detail-page">
       <Link
         href="/dashboard/admin/hackathons"
         className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"
@@ -197,10 +199,10 @@ export default function HackathonDetailPage({
         <ArrowLeft className="h-3 w-3" /> All events
       </Link>
 
-      <header className="space-y-2">
-        <div className="flex flex-wrap items-center gap-3">
-          <h1 className="flex items-center gap-2 text-3xl font-bold">
-            <Trophy className="h-7 w-7 text-primary" /> {event.name}
+      <header className="space-y-3">
+        <div className="flex flex-wrap items-start gap-x-4 gap-y-2">
+          <h1 className="flex flex-wrap items-center gap-2 text-3xl font-bold leading-tight">
+            <Trophy className="h-7 w-7 text-primary flex-shrink-0" /> <span className="break-words">{event.name}</span>
             <TooltipProvider>
               <Tooltip>
                 <TooltipTrigger asChild>
@@ -215,6 +217,16 @@ export default function HackathonDetailPage({
           <Badge variant={event.status === 'live' ? 'default' : 'secondary'} className="uppercase">
             {event.status}
           </Badge>
+          {event.status === 'open' && (
+            <span className="flex items-center gap-1 text-xs text-yellow-500">
+              <Timer className="h-3 w-3" /> Starts <Countdown targetIso={event.starts_at} />
+            </span>
+          )}
+          {event.status === 'live' && (
+            <span className="flex items-center gap-1 text-xs text-green-500">
+              <Timer className="h-3 w-3" /> Ends <Countdown targetIso={event.ends_at} />
+            </span>
+          )}
         </div>
       </header>
 
@@ -224,7 +236,7 @@ export default function HackathonDetailPage({
         </Card>
       )}
 
-      <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+      <h2 className="pt-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         Teams ({teams.length} / {event.num_teams})
       </h2>
 

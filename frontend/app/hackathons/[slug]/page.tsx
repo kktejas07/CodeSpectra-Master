@@ -145,6 +145,16 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
             <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1">
               <CalendarDays className="h-3 w-3" /> {starts.toLocaleString()}
             </span>
+            {!isClosed && !isLive && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-yellow-500">
+                <Timer className="h-3 w-3" /> Starts in <Countdown targetIso={hackathon.starts_at} />
+              </span>
+            )}
+            {isLive && !isClosed && (
+              <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-green-500">
+                <Timer className="h-3 w-3" /> Ends in <Countdown targetIso={hackathon.ends_at} />
+              </span>
+            )}
             <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1">
               <Clock className="h-3 w-3" /> {hackathon.timeout_minutes} min · {hackathon.tasks?.length || 0} problems
             </span>

@@ -1,0 +1,26 @@
+{
+  "expo": {
+    "name": "CodeSpectra",
+    "slug": "codespectra-mobile",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "dark",
+    "splash": {
+      "backgroundColor": "#09090b"
+    },
+    "assetBundlePatterns": ["**/*"],
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "dev.codespectra.mobile",
+      "buildNumber": "1.0.0"
+    },
+    "android": {
+      "package": "dev.codespectra.mobile",
+      "versionCode": 1,
+      "adaptiveIcon": {
+        "backgroundColor": "#09090b"
+      }
+    }
+  }
+}

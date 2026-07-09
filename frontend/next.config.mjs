@@ -5,17 +5,12 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
-  // Pin workspace when a parent folder has another lockfile.
-
-  // Allow the Emergent preview domain to load Next.js dev resources (HMR, etc.).
   allowedDevOrigins: [
-    'code-spectrum-6.preview.emergentagent.com',
-    'code-spectrum-6.cluster-12.preview.emergentcf.cloud',
     '*.preview.emergentagent.com',
     '*.preview.emergentcf.cloud',
   ],
+  serverExternalPackages: ['mongodb', 'nodemailer', 'bcryptjs'],
   typescript: {
-    // TODO: set ignoreBuildErrors to false once all TS errors are resolved
     ignoreBuildErrors: true,
   },
   images: {
