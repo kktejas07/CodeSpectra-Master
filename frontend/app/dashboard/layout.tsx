@@ -677,7 +677,7 @@ export default function DashboardLayout({
         </div>
 
         {/* Page Content — one max width for every dashboard route */}
-        <main className="p-4 lg:p-6">
+        <main className="px-4 py-5 lg:px-6 lg:py-8">
           <div className="mx-auto w-full max-w-7xl">{children}</div>
         </main>
       </div>
