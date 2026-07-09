@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Loader2, Zap } from 'lucide-react'
+import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Loader2, Activity } from 'lucide-react'
 
 type ComponentStatus = { name: string; status: 'operational' | 'degraded' | 'down'; latency?: number; message?: string }
 
@@ -39,7 +39,7 @@ export default function StatusPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className={`flex h-10 w-10 items-center justify-center rounded-lg bg-card ${overallIcon}`}>
-            <Zap className="h-5 w-5" />
+            <Activity className="h-5 w-5" />
           </div>
           <div>
             <h1 className="text-2xl font-bold">System Status</h1>
