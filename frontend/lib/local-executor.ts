@@ -99,17 +99,19 @@ export async function localExecuteOnce(
   const { cmd, args } = spec.command(filePath)
   const timeoutMs = Math.max(500, Math.min(15000, opts.timeoutMs ?? 5000))
 
+  const childEnv: Record<string, string> = {
+    // strip secrets that the running code shouldn't see
+    PATH: process.env.PATH || '',
+    HOME: dir,
+    LANG: 'C.UTF-8',
+  }
+
   return new Promise<PistonExecuteResult>((resolve) => {
     const child = spawn(cmd, args, {
       cwd: dir,
       timeout: timeoutMs,
       killSignal: 'SIGKILL',
-      env: {
-        // strip secrets that the running code shouldn't see
-        PATH: process.env.PATH || '',
-        HOME: dir,
-        LANG: 'C.UTF-8',
-      },
+      env: childEnv as NodeJS.ProcessEnv,
     })
 
     const stdoutChunks: Buffer[] = []

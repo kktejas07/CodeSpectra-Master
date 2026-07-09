@@ -26,6 +26,8 @@ export interface GitHubRepoListItem {
   html_url: string
   language: string | null
   stargazers_count: number
+  /** Convenience alias for `stargazers_count` (GitHub's real API field name). */
+  stars?: number
   updated_at: string
   owner: { login: string; avatar_url: string }
 }
@@ -71,11 +73,15 @@ export async function getGitHubIntegration(): Promise<{
  * through `/api/github/repos` (server-side) to keep the token off the
  * client. Returns an empty list if the user isn't connected.
  */
-export async function getGitHubRepositories(page = 1): Promise<GitHubRepoListItem[]> {
-  const res = await fetch(`/api/github/repos?page=${page}`, { cache: 'no-store' })
-  if (!res.ok) return []
-  const json = (await res.json()) as { items?: GitHubRepoListItem[] }
-  return json.items ?? []
+export async function getGitHubRepositories(page = 1): Promise<{ success: boolean; repositories: GitHubRepoListItem[]; error?: string }> {
+  try {
+    const res = await fetch(`/api/github/repos?page=${page}`, { cache: 'no-store' })
+    if (!res.ok) return { success: false, repositories: [], error: 'Failed to fetch' }
+    const json = await res.json() as { items?: GitHubRepoListItem[]; error?: string }
+    return { success: true, repositories: json.items ?? [], error: json.error }
+  } catch (e) {
+    return { success: false, repositories: [], error: String(e) }
+  }
 }
 
 // ----------------------------------------------------------------------------
@@ -190,12 +196,21 @@ export async function applySuggestedFixBatch(
 }
 
 export async function unapplySuggestedFix(fixId: string): Promise<{ success: boolean; error?: string }> {
-  const res = await fetch(`/api/ai/fixes/${encodeURIComponent(fixId)}/unapply`, {
+  const res = await fetch('/api/ai/unapply-fix', {
     method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ fix_id: fixId }),
   })
-  const json = (await res.json()) as { success?: boolean; error?: string }
-  if (!res.ok || !json.success) {
-    return { success: false, error: json.error || `Failed: ${res.status}` }
-  }
-  return { success: true }
+  if (!res.ok) return { success: false, error: 'Request failed' }
+  return res.json()
+}
+
+export async function linkGitHubRepository(repoId: number, repoName: string, repoUrl: string): Promise<{ success: boolean; error?: string }> {
+  const res = await fetch('/api/github/link', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ repo_id: repoId, name: repoName, url: repoUrl }),
+  })
+  if (!res.ok) return { success: false, error: 'Failed to link repository' }
+  return res.json()
 }

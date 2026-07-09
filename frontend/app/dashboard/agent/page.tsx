@@ -15,12 +15,16 @@ import {
   Terminal,
   Wand2,
   HelpCircle,
+  Settings2,
 } from 'lucide-react'
+import { ModelSelector } from '@/components/ai/model-selector'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
+
+const STEPS = ['analyze', 'fix', 're-analyze', 'finalize']
 
 interface AgentStep {
   step: number
@@ -142,12 +146,11 @@ export default function AgentPage() {
             className="h-8 rounded-md border border-border bg-background px-2 text-xs"
             data-testid="agent-steps"
           >
-            <option value={1}>1 step</option>
-            <option value={2}>2 steps</option>
-            <option value={3}>3 steps</option>
-            <option value={4}>4 steps</option>
-            <option value={5}>5 steps</option>
+            {STEPS.map((s: string) => (
+              <option key={s} value={s}>{s} steps</option>
+            ))}
           </select>
+          <ModelSelector feature="chat_model" />
         </div>
       </header>
 

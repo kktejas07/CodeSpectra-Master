@@ -47,14 +47,15 @@ export async function GET(
     return NextResponse.json({ error: 'slug required' }, { status: 400 })
   }
 
+  const escaped = decoded.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
   const db = await getMongoDb()
   const users = db.collection('user')
 
-  // Try id, email-localpart prefix, then case-insensitive name match.
+  // Try id, email-localpart prefix, then exact email match.
   const user = ((await (ObjectId.isValid(decoded)
     ? users.findOne({ _id: new ObjectId(decoded) })
     : Promise.resolve(null))) ||
-    (await users.findOne({ email: { $regex: `^${decoded}@`, $options: 'i' } })) ||
+    (await users.findOne({ email: { $regex: `^${escaped}@`, $options: 'i' } })) ||
     (await users.findOne({ email: decoded.toLowerCase() }))) as UserDoc | null
 
   if (!user) return NextResponse.json({ error: 'user not found' }, { status: 404 })

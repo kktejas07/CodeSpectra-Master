@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { pricingTiers, newId, nowIso } from '@/lib/db/misc'
 
+export const dynamic = 'force-dynamic'
+
 const FALLBACK_TIERS = [
   { id: '1', name: 'Free', price_monthly: 0, description: 'Get started', sort_order: 1 },
   { id: '2', name: 'Pro', price_monthly: 2999, description: 'For professionals', sort_order: 2 },

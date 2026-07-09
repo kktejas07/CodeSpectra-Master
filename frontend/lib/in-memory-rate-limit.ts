@@ -33,3 +33,10 @@ export function clientLimiterKeyFromRequest(request: Request, userId: string | n
   const ip = xf?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
   return `ip:${ip}`
 }
+
+// AI-specific rate limit: authenticated users get 30 requests/min, anonymous get 5/min
+export function rateLimitAI(request: Request, userId: string | null): { ok: true } | { ok: false; retryAfterSec: number } {
+  const key = clientLimiterKeyFromRequest(request, userId)
+  const maxHits = userId ? 30 : 5
+  return rateLimitSlidingWindow(`ai:${key}`, maxHits, 60_000)
+}

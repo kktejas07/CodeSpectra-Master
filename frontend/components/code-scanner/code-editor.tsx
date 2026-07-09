@@ -62,8 +62,9 @@ export function CodeEditor({
         script.src = 'https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs/loader.min.js'
         script.onload = () => {
           if (window.require) {
-            window.require.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs' } })
-            window.require(['vs/editor/editor.main'], () => {
+            const r = window.require as any
+            r.config({ paths: { vs: 'https://cdn.jsdelivr.net/npm/monaco-editor@latest/min/vs' } })
+            r(['vs/editor/editor.main'], () => {
               monacoRef.current = window.monaco
               initializeEditor()
               setLoading(false)

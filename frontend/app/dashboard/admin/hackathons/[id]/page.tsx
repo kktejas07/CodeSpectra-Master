@@ -25,6 +25,7 @@ import {
   ScanLine,
   Trash2,
   HelpCircle,
+  CheckCircle,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
@@ -39,6 +40,8 @@ interface Hackathon {
   starts_at: string
   ends_at: string
   status: 'draft' | 'open' | 'live' | 'closed'
+  results_released?: boolean
+  released_at?: string
 }
 
 interface Team {
@@ -71,6 +74,7 @@ export default function HackathonDetailPage({
   const [error, setError] = useState<string | null>(null)
   const [qrCache, setQrCache] = useState<Record<string, string>>({})
   const [grant, setGrant] = useState<Record<string, GrantState>>({})
+  const [busy, setBusy] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -114,7 +118,7 @@ export default function HackathonDetailPage({
   function updateGrant(teamId: string, patch: Partial<GrantState>) {
     setGrant((g) => ({
       ...g,
-      [teamId]: { xp: '', achievement: '', busy: false, ...g[teamId], ...patch },
+      [teamId]: { ...{ xp: '', achievement: '', busy: false }, ...g[teamId], ...patch },
     }))
   }
 
@@ -353,6 +357,41 @@ export default function HackathonDetailPage({
           })}
         </div>
       )}
+
+      {/* Results Management */}
+      <Card className="p-5 border-primary/20">
+        <h2 className="flex items-center gap-2 text-sm font-semibold mb-3">
+          <Trophy className="h-4 w-4 text-primary" /> Results Management
+        </h2>
+        <p className="text-xs text-muted-foreground mb-3">
+          {event.results_released
+            ? `Results were released at ${event.released_at ? new Date(event.released_at).toLocaleString() : 'unknown'}.`
+            : 'Scores are currently hidden from participants. Release results to make them visible on the leaderboard.'}
+        </p>
+        {event.results_released ? (
+          <Badge variant="default" className="gap-1">
+            <CheckCircle className="h-3 w-3" /> Results Released
+          </Badge>
+        ) : (
+          <Button onClick={async () => {
+            if (!confirm('Release all results to participants? This action cannot be undone.')) return
+            setBusy(true)
+            try {
+              const res = await fetch(`/api/hackathons/${id}/release-results`, { method: 'POST' })
+              const data = await res.json()
+              if (!res.ok) throw new Error(data.error)
+              await load()
+            } catch (e) {
+              setError(e instanceof Error ? e.message : String(e))
+            } finally {
+              setBusy(false)
+            }
+          }} disabled={busy}>
+            {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+            Release All Results
+          </Button>
+        )}
+      </Card>
     </div>
   )
 }

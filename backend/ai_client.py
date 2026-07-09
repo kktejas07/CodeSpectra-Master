@@ -50,9 +50,8 @@ class DirectAiClient:
     async def _stream_gemini(
         self, message: UserMessage
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
-        # Determine API Key: use passed key or environment variable
         key = self.api_key or ""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:streamGenerateContent?key={key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:streamGenerateContent"
         
         parts = []
         if message.text:
@@ -74,9 +73,13 @@ class DirectAiClient:
                 "parts": [{"text": self.system_message}]
             }
 
+        headers = {}
+        if key:
+            headers["x-goog-api-key"] = key
+
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
-                async with client.stream("POST", url, json=payload) as response:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
                     if response.status_code != 200:
                         err_body = await response.aread()
                         yield TextDelta(content=f"Gemini API Error: {response.status_code} - {err_body.decode('utf-8')}")

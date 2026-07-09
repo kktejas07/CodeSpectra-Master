@@ -1,7 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
+import { resolveModel } from '@/lib/ai/get-user-model'
 import { problems } from '@/lib/db/problems'
+import { rateLimitAI } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -15,6 +17,16 @@ interface HintReq {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'hints_model')
+
+  const rateCheck = rateLimitAI(req, user.id)
+  if (!rateCheck.ok) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },
+      { status: 429 },
+    )
+  }
 
   let body: HintReq
   try {
@@ -38,6 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       current_code: body.current_code || '',
       hint_level: Math.max(1, Math.min(4, body.hint_level || 1)),
     },
+    { providerOverride, modelOverride, modelRole },
   )
   return NextResponse.json(result)
 }

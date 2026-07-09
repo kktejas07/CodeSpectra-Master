@@ -15,6 +15,7 @@ const nextConfig = {
     '*.preview.emergentcf.cloud',
   ],
   typescript: {
+    // TODO: set ignoreBuildErrors to false once all TS errors are resolved
     ignoreBuildErrors: true,
   },
   images: {

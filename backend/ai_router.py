@@ -13,9 +13,11 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-from typing import Any, AsyncGenerator, Optional
+import time
+from collections import defaultdict
+from typing import Any, AsyncGenerator, Optional, Union
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from pydantic import BaseModel, Field
 
@@ -26,14 +28,33 @@ from ai_client import (
     StreamDone,
 )
 
+# In-process rate limiter for AI endpoints (defense-in-depth).
+# Keyed by client IP / session_id; 60 requests per minute per session.
+_rl: dict[str, list[float]] = defaultdict(list)
+
+def _check_rate_limit(key: str, max_hits: int = 60, window_sec: int = 60) -> None:
+    now = time.time()
+    hits = [t for t in _rl.get(key, []) if now - t < window_sec]
+    if len(hits) >= max_hits:
+        retry_after = int(window_sec - (now - hits[0]))
+        raise HTTPException(
+            status_code=429,
+            detail=f"Rate limit exceeded. Try again in {max(1, retry_after)}s.",
+        )
+    hits.append(now)
+    _rl[key] = hits
+
 router = APIRouter(prefix="/internal/ai", tags=["internal-ai"])
 
-EMERGENT_LLM_KEY = os.environ.get("EMERGENT_LLM_KEY", "")
+
+ENV_ANTHROPIC = os.environ.get("ANTHROPIC_API_KEY", "")
+ENV_GEMINI = os.environ.get("GEMINI_API_KEY", "")
 
 # ---------- model registry ----------
 # Map logical "role" names to (provider, model). Two main models used:
 # - "reasoning": Claude Sonnet 4.5 — chatbot, code review, grading, agents
-# - "fast":      Gemini 3 Flash    — hints, question generation, analysis
+# - "fast":      Gemini 3 Flash    — hints, question generation, analysis (FREE tier available)
+# - "vision":    Gemini 3 Flash    — identity verification
 MODEL_REGISTRY: dict[str, tuple[str, str]] = {
     "reasoning": ("anthropic", "claude-sonnet-4-5-20250929"),
     "fast": ("gemini", "gemini-3-flash-preview"),
@@ -41,16 +62,62 @@ MODEL_REGISTRY: dict[str, tuple[str, str]] = {
 }
 
 
-def _ensure_key() -> None:
-    if not EMERGENT_LLM_KEY:
-        raise HTTPException(status_code=500, detail="EMERGENT_LLM_KEY not configured")
+def _resolve_key(provider: str, request_headers=None) -> str:
+    """
+    Resolve API key for a given provider.
+    Priority:
+      1. Provider-specific header (x-anthropic-api-key, x-gemini-api-key)
+      2. Provider-specific env var (ANTHROPIC_API_KEY, GEMINI_API_KEY)
 
 
-def _build_chat(model_role: str, session_id: str, system_message: str) -> LlmChat:
-    _ensure_key()
-    provider, model = MODEL_REGISTRY.get(model_role, MODEL_REGISTRY["fast"])
+    """
+    if request_headers:
+        # Check provider-specific header first
+        if provider == "anthropic":
+            hdr = request_headers.get("x-anthropic-api-key", "")
+            if hdr:
+                return hdr
+        elif provider == "gemini":
+            hdr = request_headers.get("x-gemini-api-key", "")
+            if hdr:
+                return hdr
+    # Check provider-specific env var
+    if provider == "anthropic" and ENV_ANTHROPIC:
+        return ENV_ANTHROPIC
+    if provider == "gemini" and ENV_GEMINI:
+        return ENV_GEMINI
+
+    return ""
+
+
+def _ensure_key(key: str, provider: str = "ai") -> None:
+    if not key:
+        raise HTTPException(
+            status_code=500,
+            detail=f"{provider.upper()}_API_KEY not configured. Add it in Settings → Integrations → AI Providers, "
+                   f"or set the {provider.upper()}_API_KEY environment variable. "
+                   f"Gemini has a free tier at aistudio.google.com/apikey"
+        )
+
+
+def _build_chat(model_role: str, session_id: str, system_message: str, api_key_or_headers: Union[str, dict, None] = None, provider_override: Optional[str] = None, model_override: Optional[str] = None) -> LlmChat:
+    if provider_override and model_override:
+        provider = provider_override
+        model = model_override
+    else:
+        provider, model = MODEL_REGISTRY.get(model_role, MODEL_REGISTRY["fast"])
+    # Resolve key based on provider and headers/env
+    if api_key_or_headers is None:
+        key = _resolve_key(provider, None)
+    elif isinstance(api_key_or_headers, str):
+        # Direct string key override
+        key = api_key_or_headers
+    else:
+        # Dict-like (request.headers)
+        key = _resolve_key(provider, api_key_or_headers)
+    _ensure_key(key, provider)
     return LlmChat(
-        api_key=EMERGENT_LLM_KEY,
+        api_key=key,
         provider=provider,
         model=model,
         system_message=system_message,
@@ -70,6 +137,8 @@ class ChatStreamReq(BaseModel):
     history: list[ChatHistoryMsg] = Field(default_factory=list)
     user_message: str
     model_role: str = "reasoning"  # 'reasoning' | 'fast'
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 DEFAULT_CHAT_SYSTEM = (
@@ -84,20 +153,18 @@ DEFAULT_CHAT_SYSTEM = (
 
 
 @router.post("/chat")
-async def chat_stream(req: ChatStreamReq) -> StreamingResponse:
+async def chat_stream(request: Request, req: ChatStreamReq) -> StreamingResponse:
+    _check_rate_limit(f"chat:{req.session_id or 'anon'}", 30, 60)
     """SSE stream that emits {"delta":"..."} JSON events ending with [DONE]."""
     system = req.system_message or DEFAULT_CHAT_SYSTEM
-    chat = _build_chat(req.model_role, req.session_id, system)
+    chat = _build_chat(req.model_role, req.session_id, system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
 
     # Replay history so the model has context across turns.
-    # emergentintegrations keeps session state internally per session_id,
-    # but to be deterministic across stateless servers we prepend history
-    # into the system message as a transcript when provided.
     if req.history:
         transcript = "\n\nPrior conversation transcript:\n" + "\n".join(
             f"{m.role.upper()}: {m.content}" for m in req.history[-12:]
         )
-        chat = _build_chat(req.model_role, req.session_id, system + transcript)
+        chat = _build_chat(req.model_role, req.session_id, system + transcript, request.headers, provider_override=req.provider_override, model_override=req.model_override)
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
         try:
@@ -130,11 +197,14 @@ class CompleteReq(BaseModel):
     user_message: str
     model_role: str = "fast"
     response_format: str = "text"  # 'text' | 'json'
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/complete")
-async def complete(req: CompleteReq) -> dict[str, Any]:
-    chat = _build_chat(req.model_role, req.session_id, req.system_message)
+async def complete(request: Request, req: CompleteReq) -> dict[str, Any]:
+    _check_rate_limit("complete", 60, 60)
+    chat = _build_chat(req.model_role, req.session_id, req.system_message, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     try:
         async for ev in chat.stream_message(UserMessage(text=req.user_message)):
@@ -188,10 +258,13 @@ class HintsReq(BaseModel):
     language: str = "python"
     current_code: Optional[str] = None
     hint_level: int = 1  # 1=nudge, 2=approach, 3=pseudo-code, 4=solution
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/hints")
-async def smart_hints(req: HintsReq) -> dict[str, Any]:
+async def smart_hints(request: Request, req: HintsReq) -> dict[str, Any]:
+    _check_rate_limit("hints", 120, 60)
     level_brief = {
         1: "a SHORT non-spoiler nudge focused on the right data structure or insight — no algorithm name, no code, max 2 sentences.",
         2: "the high-level APPROACH — what algorithm/pattern fits, time/space complexity. No code yet.",
@@ -210,7 +283,7 @@ async def smart_hints(req: HintsReq) -> dict[str, Any]:
         f"Candidate's current code:\n```\n{(req.current_code or '<empty>')[:4000]}\n```\n\n"
         f"Return ONLY: {level_brief}"
     )
-    chat = _build_chat("fast", f"hints:{req.problem_title}:{req.hint_level}", system)
+    chat = _build_chat("fast", f"hints:{req.problem_title}:{req.hint_level}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -226,10 +299,13 @@ class CodeReviewReq(BaseModel):
     code: str
     language: str = "javascript"
     context: Optional[str] = None  # e.g., scan issues summary
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/code-review")
-async def code_review(req: CodeReviewReq) -> dict[str, Any]:
+async def code_review(request: Request, req: CodeReviewReq) -> dict[str, Any]:
+    _check_rate_limit("code-review", 30, 60)
     system = (
         "You are a senior staff engineer doing a strict but constructive code review. "
         "Return JSON ONLY with keys: summary (string), strengths (string[]), "
@@ -242,7 +318,7 @@ async def code_review(req: CodeReviewReq) -> dict[str, Any]:
         f"Code:\n```{req.language}\n{req.code[:12000]}\n```\n\n"
         "Return ONLY a single JSON object — no prose, no markdown fences."
     )
-    chat = _build_chat("reasoning", f"review:{abs(hash(req.code))%10**8}", system)
+    chat = _build_chat("reasoning", f"review:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -262,10 +338,13 @@ class CodeAnalysisReq(BaseModel):
     problem_title: Optional[str] = None
     passed_tests: Optional[int] = None
     total_tests: Optional[int] = None
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/code-analysis")
-async def code_analysis(req: CodeAnalysisReq) -> dict[str, Any]:
+async def code_analysis(request: Request, req: CodeAnalysisReq) -> dict[str, Any]:
+    _check_rate_limit("code-analysis", 60, 60)
     system = (
         "You are an automated code analyzer. Given a candidate's submission, "
         "return JSON ONLY with keys: time_complexity (string like 'O(n log n)'), "
@@ -282,7 +361,7 @@ async def code_analysis(req: CodeAnalysisReq) -> dict[str, Any]:
         f"Code:\n```{req.language}\n{req.code[:8000]}\n```\n\n"
         "Return ONLY one JSON object."
     )
-    chat = _build_chat("fast", f"analysis:{abs(hash(req.code))%10**8}", system)
+    chat = _build_chat("fast", f"analysis:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -302,10 +381,13 @@ class GradeReq(BaseModel):
     rubric: dict[str, int]  # criterion -> max points (e.g., {"correctness":40, ...})
     passed_tests: Optional[int] = None
     total_tests: Optional[int] = None
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/grade")
-async def grade(req: GradeReq) -> dict[str, Any]:
+async def grade(request: Request, req: GradeReq) -> dict[str, Any]:
+    _check_rate_limit("grade", 60, 60)
     rubric_text = "\n".join(f"- {k} (max {v})" for k, v in req.rubric.items())
     system = (
         "You are an automated technical grader. Score the submission strictly using "
@@ -321,7 +403,7 @@ async def grade(req: GradeReq) -> dict[str, Any]:
         f"Code:\n```{req.language}\n{req.code[:8000]}\n```\n\n"
         "Return ONLY one JSON object."
     )
-    chat = _build_chat("reasoning", f"grade:{abs(hash(req.code))%10**8}", system)
+    chat = _build_chat("reasoning", f"grade:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -339,10 +421,13 @@ class GenerateProblemReq(BaseModel):
     difficulty: str = "medium"  # easy | medium | hard
     topics: list[str] = Field(default_factory=list)
     language_hint: str = "python"
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/generate-problem")
-async def generate_problem(req: GenerateProblemReq) -> dict[str, Any]:
+async def generate_problem(request: Request, req: GenerateProblemReq) -> dict[str, Any]:
+    _check_rate_limit("generate-problem", 20, 60)
     topics_s = ", ".join(req.topics) if req.topics else "any data-structures / algorithms"
     system = (
         "You create production-quality coding interview problems. Return JSON ONLY "
@@ -362,7 +447,7 @@ async def generate_problem(req: GenerateProblemReq) -> dict[str, Any]:
         "Avoid common LeetCode-named problems. Be creative.\n"
         "Return ONLY one JSON object."
     )
-    chat = _build_chat("reasoning", f"qgen:{req.role}:{req.difficulty}", system)
+    chat = _build_chat("reasoning", f"qgen:{req.role}:{req.difficulty}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -378,10 +463,13 @@ async def generate_problem(req: GenerateProblemReq) -> dict[str, Any]:
 class SkillInsightsReq(BaseModel):
     user_name: Optional[str] = None
     submissions_summary: list[dict[str, Any]]  # [{problem, difficulty, passed, total, time_ms, language, topics}]
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/skill-insights")
-async def skill_insights(req: SkillInsightsReq) -> dict[str, Any]:
+async def skill_insights(request: Request, req: SkillInsightsReq) -> dict[str, Any]:
+    _check_rate_limit("skill-insights", 30, 60)
     system = (
         "You are a skills coach analyzing a developer's coding submissions. "
         "Return JSON ONLY: { strengths:string[], weak_topics:string[], "
@@ -394,7 +482,7 @@ async def skill_insights(req: SkillInsightsReq) -> dict[str, Any]:
         f"{json.dumps(req.submissions_summary[:80], indent=2)}\n\n"
         "Return ONLY one JSON object."
     )
-    chat = _build_chat("fast", f"insights:{req.user_name or 'anon'}", system)
+    chat = _build_chat("fast", f"insights:{req.user_name or 'anon'}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -411,15 +499,17 @@ class IdentityVerifyReq(BaseModel):
     selfie_data_url: str  # data:image/png;base64,...
     id_photo_data_url: str
     candidate_name: Optional[str] = None
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/identity-verify")
-async def identity_verify(req: IdentityVerifyReq) -> dict[str, Any]:
+async def identity_verify(request: Request, req: IdentityVerifyReq) -> dict[str, Any]:
+    _check_rate_limit("identity-verify", 10, 60)
     """
     Use Gemini vision to compare a live selfie against a government ID photo.
     Returns a confidence score (0-100) and a decision.
     """
-    # Note: emergentintegrations supports image input via UserMessage(text=, image_url=)
     # If that fails on some providers we fall back to a textual challenge prompt.
     try:
         from ai_client import ImageContent
@@ -434,7 +524,7 @@ async def identity_verify(req: IdentityVerifyReq) -> dict[str, Any]:
         "match=true with confidence>=70."
     )
 
-    chat = _build_chat("vision", "identity-verify", system)
+    chat = _build_chat("vision", "identity-verify", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
 
     if has_image:
         try:
@@ -484,10 +574,13 @@ class AgentReq(BaseModel):
     code: str
     language: str = "python"
     max_steps: int = 3
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
 
 
 @router.post("/agent")
-async def agentic_fix(req: AgentReq) -> dict[str, Any]:
+async def agentic_fix(request: Request, req: AgentReq) -> dict[str, Any]:
+    _check_rate_limit("agent", 10, 60)
     """
     Simple agentic loop: analyze → fix → re-analyze → return final code + step log.
     """
@@ -507,7 +600,7 @@ async def agentic_fix(req: AgentReq) -> dict[str, Any]:
             f"```\n{code[:8000]}\n```\n\n"
             f"Step {step + 1}/{req.max_steps}. Return ONLY one JSON object."
         )
-        chat = _build_chat("reasoning", f"agent:{abs(hash(req.code))%10**8}:{step}", system)
+        chat = _build_chat("reasoning", f"agent:{abs(hash(req.code))%10**8}:{step}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
         buf: list[str] = []
         async for ev in chat.stream_message(UserMessage(text=user)):
             if isinstance(ev, TextDelta):

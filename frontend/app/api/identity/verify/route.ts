@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
+import { resolveModel } from '@/lib/ai/get-user-model'
 import { identityVerifications, newId, nowIso } from '@/lib/db/ai'
 
 export const runtime = 'nodejs'
@@ -14,6 +15,8 @@ interface VerifyReq {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'review_model')
 
   let body: VerifyReq
   try {
@@ -40,6 +43,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       id_photo_data_url: body.id_data_url,
       candidate_name: body.candidate_name || null,
     },
+    { providerOverride, modelOverride, modelRole },
   )) as { match?: boolean; confidence?: number; reasoning?: string; warnings?: string[] }
 
   const status: 'approved' | 'rejected' | 'manual_review' =

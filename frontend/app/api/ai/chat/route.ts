@@ -7,7 +7,9 @@ import {
   nowIso,
 } from '@/lib/db/ai'
 import { backendChatStream } from '@/lib/ai/backend'
+import { MODEL_OPTIONS } from '@/lib/ai/model-options'
 import { codeScans } from '@/lib/db/scans'
+import { rateLimitAI } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -30,6 +32,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const rateCheck = rateLimitAI(req, user.id)
+  if (!rateCheck.ok) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },
+      { status: 429 },
+    )
+  }
+
   let body: ChatPostBody
   try {
     body = (await req.json()) as ChatPostBody
@@ -97,13 +108,32 @@ export async function POST(req: NextRequest): Promise<Response> {
     'Be concise, use fenced code blocks for code, and prefer actionable next steps.' +
     extraContext
 
+  // Resolve user's preferred model from DB
+  let providerOverride = '', modelOverride = '', modelRole: 'reasoning' | 'fast' = 'reasoning'
+  try {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const db = await getMongoDb()
+    const prefs = await db.collection('user_ai_settings').findOne({ user_id: user.id })
+    const chatModel = prefs?.settings?.chat_model as string | undefined
+    if (chatModel) {
+      const found = MODEL_OPTIONS.find(m => m.id === chatModel)
+      if (found) {
+        providerOverride = found.provider
+        modelOverride = found.model
+        modelRole = found.role === 'fast' ? 'fast' : 'reasoning'
+      }
+    }
+  } catch { /* use defaults */ }
+
   // Stream from backend, simultaneously buffering to persist the assistant turn.
   const upstream = await backendChatStream({
     sessionId,
     systemMessage,
     history: history.map((m) => ({ role: m.role, content: m.content })),
     userMessage: message,
-    modelRole: 'reasoning',
+    modelRole,
+    providerOverride: providerOverride || undefined,
+    modelOverride: modelOverride || undefined,
   })
 
   if (!upstream.ok || !upstream.body) {

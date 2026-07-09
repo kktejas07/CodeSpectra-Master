@@ -89,6 +89,31 @@ export async function verifyWebhookSignature(
   return safeEqual(expected, signature)
 }
 
+/** Create a Razorpay order. */
+export async function createRazorpayOrder(params: {
+  amount_paise: number
+  currency: string
+  receipt: string
+  notes?: Record<string, string>
+}): Promise<RazorpayOrder> {
+  const rp = await getRazorpay()
+  const order = await rp.orders.create({
+    amount: params.amount_paise,
+    currency: params.currency,
+    receipt: params.receipt,
+    notes: params.notes,
+  })
+  return { id: order.id, amount: order.amount as number, currency: order.currency || '', receipt: order.receipt || '', status: order.status || '' }
+}
+
+interface RazorpayOrder {
+  id: string
+  amount: number
+  currency: string
+  receipt: string
+  status: string
+}
+
 function safeEqual(a: string, b: string): boolean {
   if (a.length !== b.length) return false
   try {

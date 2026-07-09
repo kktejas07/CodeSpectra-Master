@@ -6,7 +6,7 @@
  *
  *   1.  automations          (workflows authored by admins)
  *   2.  mcp_servers          (this app exposes one — /api/mcp)
- *   3.  llm_models           (model IDs we call via emergent integrations)
+ *   3.  llm_models           (model IDs we call via AI providers)
  *   4.  rag_docs             (RAG hint sources — currently submissions stderr)
  *   5.  agents               (the Agent View routes + scanner agent)
  *   6.  bot_replies          (chat / hint / grading routes)
@@ -260,7 +260,6 @@ const LLM_MODELS: InventoryItem[] = [
     purpose: 'Reasoning model used by /api/ai/code-review and AI code-review bot.',
     module: 'lib/ai/backend.ts',
     status: 'active',
-    meta: { provider: 'anthropic', billing: 'emergent-llm-key' },
   },
   {
     id: 'llm-gpt-4o-mini',
@@ -269,7 +268,6 @@ const LLM_MODELS: InventoryItem[] = [
     purpose: 'Fast chat completions via Vercel AI SDK.',
     module: 'app/api/ai/chat/route.ts',
     status: 'active',
-    meta: { provider: 'openai', billing: 'emergent-llm-key' },
   },
   {
     id: 'llm-nano-banana',
@@ -278,7 +276,6 @@ const LLM_MODELS: InventoryItem[] = [
     purpose: 'Image generation (used by question-generator for problem cover art).',
     module: 'app/api/ai/generate-problem/route.ts',
     status: 'inactive',
-    meta: { provider: 'google', billing: 'emergent-llm-key' },
   },
 ]
 
@@ -376,9 +373,9 @@ async function discoverAutomations(): Promise<InventoryItem[]> {
 async function discoverAgents(): Promise<InventoryItem[]> {
   return [
     {
-      id: 'agent-emergent-view',
+      id: 'agent-interactive',
       category: 'agents',
-      name: 'Emergent Agent (interactive)',
+      name: 'Interactive AI Agent',
       purpose: 'Multi-step reasoning agent exposed via /api/ai/agent.',
       module: 'app/api/ai/agent/route.ts',
       status: 'active',
@@ -466,10 +463,10 @@ async function discoverConnectors(): Promise<InventoryItem[]> {
       status: 'active',
     },
     {
-      id: 'conn-emergent-llm',
+      id: 'conn-llm-gateway',
       category: 'connectors',
-      name: 'Emergent LLM key',
-      purpose: 'Universal multi-provider LLM gateway (openai, anthropic, gemini).',
+      name: 'Multi-provider LLM keys',
+      purpose: 'Universal multi-provider LLM gateway (anthropic, gemini).',
       module: 'lib/ai/backend.ts',
       status: 'active',
     },
@@ -513,7 +510,6 @@ async function discoverPlugins(): Promise<InventoryItem[]> {
     { id: 'plugin-monaco', category: 'plugins', name: 'Monaco Editor', purpose: 'Browser-side code editor used in the sandbox.', module: 'node_modules/@monaco-editor/react', status: 'active' },
     { id: 'plugin-reactflow', category: 'plugins', name: '@xyflow/react (React Flow)', purpose: 'Visual graph builder for workflows.', module: 'components/workflows/workflow-builder.tsx', status: 'active' },
     { id: 'plugin-qrcode', category: 'plugins', name: 'qrcode', purpose: 'SVG QR generation for ID cards + team scoreboards.', module: 'lib/qr.ts', status: 'active' },
-    { id: 'plugin-emergent-integrations', category: 'plugins', name: 'emergentintegrations', purpose: 'Universal LLM SDK used by the FastAPI router.', module: '/app/backend/ai_router.py', status: 'active' },
   ]
 }
 

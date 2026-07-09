@@ -115,3 +115,29 @@ export async function sendEmail(to: string, template: { subject: string; html: s
   console.log(`[Email] Sending to ${to}: ${template.subject}`)
   return { success: true, messageId: `msg_${Date.now()}` }
 }
+
+export const hackathonEmailTemplates = {
+  resultsReleased: (params: {
+    eventName: string
+    teamName: string
+    rank: number
+    totalTeams: number
+    score: number
+    resultsUrl: string
+  }) => ({
+    subject: `Results are out! ${params.eventName} — Your team ranked #${params.rank}`,
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Results Released! 🏆</h1>
+      <p style="margin:0 0 16px;color:#4b5563">The results for <strong style="color:#1f2937">${params.eventName}</strong> are now available.</p>
+      <div style="background:#f3f4f6;border-radius:6px;padding:16px;margin:0 0 16px">
+        <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#4b5563;width:100%">
+          <tr><td style="padding:2px 0">Team</td><td style="text-align:right;font-weight:600;color:#1f2937">${params.teamName}</td></tr>
+          <tr><td style="padding:2px 0">Rank</td><td style="text-align:right;font-weight:600;color:#1f2937">#${params.rank} of ${params.totalTeams}</td></tr>
+          <tr><td style="padding:2px 0">Score</td><td style="text-align:right;font-weight:600;color:#1f2937">${params.score} XP</td></tr>
+        </table>
+      </div>
+      ${baseStyles.button(params.resultsUrl, 'View Full Results')}
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px">Download your certificate and share your achievement on LinkedIn from the results page.</p>
+    ${baseStyles.footer}`,
+  }),
+}

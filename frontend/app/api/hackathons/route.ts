@@ -20,6 +20,8 @@ import {
   newId,
   nowIso,
   type HackathonDoc,
+  type HackathonTask,
+  type HackathonRule,
 } from '@/lib/db/qr-events'
 
 export const runtime = 'nodejs'
@@ -85,6 +87,21 @@ export async function POST(req: NextRequest) {
     slug = `${slugify(body.name)}-${suffix}`
   }
 
+  const tasks: HackathonTask[] = (body.tasks || []).map((t: Record<string, unknown>, i: number) => ({
+    problem_slug: String(t.problem_slug || ''),
+    problem_title: String(t.problem_title || ''),
+    points: Number(t.points) || 100,
+    difficulty: String(t.difficulty || 'medium'),
+    required: t.required !== false,
+    order: i,
+  }))
+
+  const rulesHackathon: HackathonRule[] = (body.rules || []).map((r: Record<string, unknown>) => ({
+    type: (r.type as HackathonRule['type']) || 'general',
+    title: String(r.title || ''),
+    description: String(r.description || ''),
+  }))
+
   const doc: HackathonDoc = {
     id: newId(),
     name: body.name,
@@ -96,6 +113,17 @@ export async function POST(req: NextRequest) {
     starts_at: startsAt.toISOString(),
     ends_at: endsAt.toISOString(),
     status: 'open',
+    tasks,
+    rules: rulesHackathon,
+    scoring: {
+      auto_grade: body.scoring?.auto_grade !== false,
+      points_per_problem: Number(body.scoring?.points_per_problem) || 100,
+      bonus_time: Number(body.scoring?.bonus_time) || 0,
+      penalty_per_attempt: Number(body.scoring?.penalty_per_attempt) || 0,
+    },
+    results_released: false,
+    banner_url: body.banner_url || '',
+    color_theme: body.color_theme || '',
     created_by: user.id,
     created_at: nowIso(),
     updated_at: nowIso(),

@@ -6,7 +6,7 @@ import { ChevronDown } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 
 export default function FAQPage() {
-  const [openIndex, setOpenIndex] = useState(0)
+  const [openIndex, setOpenIndex] = useState<string | null>(null)
 
   const faqs = [
     {

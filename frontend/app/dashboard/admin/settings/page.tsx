@@ -122,6 +122,9 @@ type SecretsDraft = {
   firebase_storage_bucket: string
   firebase_messaging_sender_id: string
   firebase_app_id: string
+  anthropic_api_key: string
+  gemini_api_key: string
+  openai_api_key: string
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
@@ -147,6 +150,9 @@ const emptySecretsDraft = (): SecretsDraft => ({
   firebase_storage_bucket: '',
   firebase_messaging_sender_id: '',
   firebase_app_id: '',
+  anthropic_api_key: '',
+  gemini_api_key: '',
+  openai_api_key: '',
 })
 
 function EmailTemplatesSection() {
@@ -927,11 +933,90 @@ function SystemSettingsInner() {
                     }
                     className="mt-1.5 h-10 rounded-lg border-border/60 bg-background text-sm"
                   />
+                  </div>
                 </div>
+
+                {/* AI / LLM Keys */}
+                <div className="space-y-4 rounded-lg border border-border/60 bg-card/40 p-4">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">AI / LLM Providers</p>
+                    <span className="rounded-full bg-green-500/15 text-green-500 px-2 py-0.5 text-[10px] uppercase tracking-wide">Multiple</span>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Configure at least one AI provider. The platform tries providers in order:
+                    <strong>Google Gemini has a free tier</strong> —
+                    you can use it with no cost.
+                  </p>
+
+                  {/* Gemini (free tier available) */}
+                  <div className="space-y-1.5 rounded-md border border-green-500/20 bg-green-500/5 p-3">
+                    <div className="flex items-center justify-between">
+                      <Label className="text-green-600 dark:text-green-400">Google Gemini — Free Tier Available</Label>
+                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600">Free</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Get a free API key from{' '}
+                      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google AI Studio</a>.
+                      Free tier: 60 requests/min on Gemini 2.0 Flash.
+                    </p>
+                    {secretsMeta.has_gemini_api_key ? (
+                      <p className="text-xs font-mono text-muted-foreground">Key saved: {String(secretsMeta.gemini_api_key_masked ?? '—')}</p>
+                    ) : null}
+                    <Input
+                      value={secretsDraft.gemini_api_key}
+                      onChange={(e) => setSecretsDraft((d) => ({ ...d, gemini_api_key: e.target.value }))}
+                      type={visibleFields.gemini_api_key ? 'text' : 'password'}
+                      placeholder={secretsMeta.has_gemini_api_key ? '' : 'AIzaSy...'}
+                      className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  {/* Anthropic (paid) */}
+                  <div className="space-y-1.5 p-3">
+                    <Label>Anthropic Claude (Paid)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Used for reasoning tasks (chat, code review, grading, agent).
+                      Get a key from{' '}
+                      <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">console.anthropic.com</a>.
+                    </p>
+                    {secretsMeta.has_anthropic_api_key ? (
+                      <p className="text-xs font-mono text-muted-foreground">Key saved: {String(secretsMeta.anthropic_api_key_masked ?? '—')}</p>
+                    ) : null}
+                    <Input
+                      value={secretsDraft.anthropic_api_key}
+                      onChange={(e) => setSecretsDraft((d) => ({ ...d, anthropic_api_key: e.target.value }))}
+                      type={visibleFields.anthropic_api_key ? 'text' : 'password'}
+                      placeholder={secretsMeta.has_anthropic_api_key ? '' : 'sk-ant-...'}
+                      className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      autoComplete="off"
+                    />
+                  </div>
+
+                  {/* OpenAI (for interview service) */}
+                  <div className="space-y-1.5 p-3">
+                    <Label>OpenAI (Optional — for interviews)</Label>
+                    <p className="text-xs text-muted-foreground">
+                      Used by the live interview AI service (OpenAI GPT-4).
+                      Get a key from{' '}
+                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">platform.openai.com</a>.
+                    </p>
+                    {secretsMeta.has_openai_api_key ? (
+                      <p className="text-xs font-mono text-muted-foreground">Key saved: {String(secretsMeta.openai_api_key_masked ?? '—')}</p>
+                    ) : null}
+                    <Input
+                      value={secretsDraft.openai_api_key}
+                      onChange={(e) => setSecretsDraft((d) => ({ ...d, openai_api_key: e.target.value }))}
+                      type={visibleFields.openai_api_key ? 'text' : 'password'}
+                      placeholder={secretsMeta.has_openai_api_key ? '' : 'sk-...'}
+                      className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      autoComplete="off"
+                    />
+                  </div>
+                </div>
+
               </div>
-            </div>
-          </div>
-          <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
+              <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
             <Button
               className="gap-2 rounded-lg"
               onClick={() => void saveInvitationsAndOptionalMailSecrets()}
@@ -940,6 +1025,7 @@ function SystemSettingsInner() {
               {savingKey === 'mail' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
               Save mail &amp; API keys
             </Button>
+          </div>
           </div>
         </Card>
           ) : null}

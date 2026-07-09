@@ -26,7 +26,6 @@ function verifyGitHubSignature(
   signatureHeader: string | null,
   secret: string,
 ): boolean {
-  if (!secret) return true
   if (!signatureHeader?.startsWith('sha256=')) return false
 
   const expected = `sha256=${createHmac('sha256', secret).update(rawBody, 'utf8').digest('hex')}`
@@ -42,13 +41,19 @@ function verifyGitHubSignature(
 
 export async function POST(request: NextRequest) {
   const rawBody = await request.text()
-  const secret = process.env.GITHUB_WEBHOOK_SECRET || ''
+  const secret = process.env.GITHUB_WEBHOOK_SECRET
 
-  if (secret) {
-    const sig = request.headers.get('x-hub-signature-256')
-    if (!verifyGitHubSignature(rawBody, sig, secret)) {
-      return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
-    }
+  if (!secret) {
+    console.error('[CodeSpectra] GITHUB_WEBHOOK_SECRET not configured — webhooks disabled.')
+    return NextResponse.json(
+      { error: 'GITHUB_WEBHOOK_SECRET not configured. Set it in env or platform_settings to accept webhooks.' },
+      { status: 500 },
+    )
+  }
+
+  const sig = request.headers.get('x-hub-signature-256')
+  if (!verifyGitHubSignature(rawBody, sig, secret)) {
+    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
   }
 
   let payload: Record<string, unknown> = {}

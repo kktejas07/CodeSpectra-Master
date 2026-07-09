@@ -1,5 +1,5 @@
 import { useEffect, useState } from 'react';
-import { useAuth } from './use-auth';
+import { useAuth } from '@/lib/auth-context';
 
 export function useFeatureFlag(featureName: string) {
   const { user } = useAuth();

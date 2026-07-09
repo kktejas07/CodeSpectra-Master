@@ -1,0 +1,248 @@
+> **Auto-Generated Documentation**
+> **Last Updated**: 2026-07-08
+> **Source**: CodeSpectra Codebase Audit
+> **Auto-Update Rule**: This document must be regenerated when API endpoints or database schemas change.
+
+# Admin API
+
+## Admin User Management
+
+### GET /api/admin/users
+List all users. Returns user rows with profile data.
+
+**Auth**: `requireSuperAdmin()`
+
+**Response (200):**
+```json
+{
+  "users": [
+    {
+      "id": "uuid",
+      "email": "user@example.com",
+      "full_name": "John Doe",
+      "role": "user",
+      "plan": "free",
+      "created_at": "2026-01-15T00:00:00Z",
+      "updated_at": "2026-07-01T00:00:00Z",
+      "last_sign_in_at": null,
+      "provider": "email",
+      "identities": [],
+      "is_active": true,
+      "is_verified": false,
+      "scan_count": 0
+    }
+  ]
+}
+```
+
+### POST /api/admin/users
+Provision a new user (Firebase account + MongoDB profile).
+
+**Auth**: `requireSuperAdmin()`
+
+**Request Body:**
+```json
+{
+  "email": "newuser@example.com",
+  "password": "tempPass123!",
+  "full_name": "New User",
+  "role": "user"
+}
+```
+
+**Response (200):**
+```json
+{
+  "user": {
+    "id": "firebase_uid",
+    "email": "newuser@example.com",
+    "full_name": "New User",
+    "role": "user",
+    "created_at": "..."
+  },
+  "welcomeEmailSent": false,
+  "delivery": "none"
+}
+```
+
+### GET /api/admin/users/[userId]
+Get single user details.
+
+**Auth**: `requireSuperAdmin()`
+
+### PATCH /api/admin/users/[userId]
+Update user (role, name, isActive).
+
+### DELETE /api/admin/users/[userId]
+Delete user.
+
+## Admin Teams
+
+### GET /api/admin/teams
+List all teams.
+
+**Auth**: `requireSuperAdmin()`
+
+### GET /api/admin/teams/members
+List all team members.
+
+**Auth**: `requireSuperAdmin()`
+
+### GET /api/admin/teams/activity
+Team activity report — aggregates scan counts, review counts, submissions per team member.
+
+**Auth**: `requireSuperAdmin()`
+
+## Admin Permissions
+
+### GET /api/admin/permissions/roles
+List all RBAC roles with their permissions.
+
+**Auth**: `requireSuperAdmin()`
+
+**Response (200):**
+```json
+[{ "id": "...", "role": "superadmin", "permissions": [{ "resource": "*", "actions": ["*"] }] }]
+```
+
+### POST /api/admin/permissions/roles
+Create a new role.
+
+### PUT /api/admin/permissions/roles
+Update a role.
+
+### POST /api/admin/permissions/seed
+Seed default roles (`superadmin`, `tenant_admin`, `user`) into the `roles` collection.
+
+**Auth**: `requireSuperAdmin()`
+
+## Admin Platform Settings
+
+### GET /api/admin/platform-settings
+List all platform settings.
+
+**Auth**: `requireSuperAdmin()`
+
+### PUT /api/admin/platform-settings
+Update platform settings.
+
+## Admin Pricing
+
+### GET /api/admin/pricing/tiers
+List pricing tiers.
+
+### POST /api/admin/pricing/tiers
+Create pricing tier.
+
+### GET /api/admin/pricing/features
+List pricing features.
+
+### POST /api/admin/pricing/features
+Create pricing feature.
+
+### GET /api/admin/pricing/tiers/[id]/features
+List features for a tier.
+
+### POST /api/admin/pricing/tiers/[id]/features
+Add feature to tier.
+
+### DELETE /api/admin/pricing/tiers/[id]/features/[featureId]
+Remove feature from tier.
+
+## Admin Plans
+
+### GET /api/admin/plans
+List all pricing plans from the `plans` collection.
+
+### POST /api/admin/plans
+Create a new plan.
+
+## Admin Security
+
+### GET /api/admin/security
+List security settings.
+
+**Auth**: `requireSuperAdmin()`
+
+**Response (200):**
+```json
+{
+  "data": [
+    { "name": "Two-Factor Authentication", "status": "enabled", "icon": "Lock" },
+    { "name": "IP Whitelist", "status": "disabled", "icon": "Shield" },
+    { "name": "API Rate Limiting", "status": "enabled", "icon": "alert-triangle" }
+  ]
+}
+```
+
+## Admin Audit Logs
+
+### GET /api/admin/audit-logs
+List admin audit trail.
+
+**Auth**: `requireSuperAdmin()`
+
+**Response (200):**
+```json
+{
+  "data": [
+    {
+      "id": "a1",
+      "ts": "2026-06-29T14:22:01Z",
+      "actor": "superadmin@codespectra.com",
+      "actorIp": "203.0.113.10",
+      "action": "platform_settings.update",
+      "resource": "general",
+      "resourceType": "settings",
+      "severity": "info",
+      "outcome": "success",
+      "detail": "maintenance_mode toggled"
+    }
+  ]
+}
+```
+
+## Admin System
+
+### GET /api/admin/system/stats
+System statistics (user counts, scan counts, DB status).
+
+### GET /api/admin/system/cache
+View or clear in-memory permission cache.
+
+### GET /api/admin/metrics
+Platform-wide metrics (aggregate scan counts, active users).
+
+### GET /api/admin/server-secrets
+List server secrets (encrypted keys).
+
+### POST /api/admin/server-secrets
+Set a server secret.
+
+### POST /api/admin/test-emails
+Test email delivery configuration.
+
+## List of All Admin Routes
+
+| Route | Methods | Auth | Collection(s) |
+|-------|---------|------|---------------|
+| `/api/admin/users` | GET, POST | superadmin | `user` |
+| `/api/admin/users/[userId]` | GET, PATCH, DELETE | superadmin | `user` |
+| `/api/admin/teams` | GET | superadmin | `teams` |
+| `/api/admin/teams/members` | GET | superadmin | `team_members` |
+| `/api/admin/teams/activity` | GET | superadmin | multiple |
+| `/api/admin/permissions/roles` | GET, POST, PUT | superadmin | `roles` |
+| `/api/admin/permissions/seed` | POST | superadmin | `roles` |
+| `/api/admin/platform-settings` | GET, PUT | superadmin | `platform_settings` |
+| `/api/admin/pricing/tiers` | GET, POST | superadmin | `pricing_tiers` |
+| `/api/admin/pricing/features` | GET, POST | superadmin | `pricing_features` |
+| `/api/admin/pricing/tiers/[id]/features` | GET, POST | superadmin | `tier_features` |
+| `/api/admin/pricing/tiers/[id]/features/[featureId]` | POST, DELETE | superadmin | `tier_features` |
+| `/api/admin/plans` | GET, POST | superadmin | `plans` |
+| `/api/admin/security` | GET | superadmin | `security_settings` |
+| `/api/admin/audit-logs` | GET | superadmin | `admin_audit_logs` |
+| `/api/admin/system/stats` | GET | superadmin | multiple |
+| `/api/admin/system/cache` | GET, POST | superadmin | in-memory |
+| `/api/admin/metrics` | GET | superadmin | multiple |
+| `/api/admin/server-secrets` | GET, POST | superadmin | `server_secrets` |
+| `/api/admin/test-emails` | POST | superadmin | N/A (Postal) |

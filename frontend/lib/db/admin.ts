@@ -60,6 +60,10 @@ export interface NotificationDoc {
   type: string
   is_read: boolean
   read_at?: string | null
+  link?: string
+  icon?: string
+  category?: string
+  metadata?: Record<string, unknown>
   created_at: string
 }
 

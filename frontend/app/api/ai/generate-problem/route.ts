@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
+import { resolveModel } from '@/lib/ai/get-user-model'
 import { aiGeneratedProblems, newId, nowIso } from '@/lib/db/ai'
 import { problems } from '@/lib/db/problems'
 
@@ -19,6 +20,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
 
+  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'grade_model')
+
   let body: GenReq
   try {
     body = (await req.json()) as GenReq
@@ -34,6 +37,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       topics: body.topics || [],
       language_hint: body.language_hint || 'python',
     },
+    { providerOverride, modelOverride, modelRole },
   )) as Record<string, unknown>
 
   const gens = await aiGeneratedProblems()

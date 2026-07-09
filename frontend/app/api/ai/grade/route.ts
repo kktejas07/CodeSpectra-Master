@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
+import { resolveModel } from '@/lib/ai/get-user-model'
 import { aiGrades, newId, nowIso } from '@/lib/db/ai'
 
 export const runtime = 'nodejs'
@@ -28,6 +29,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
+  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'grade_model')
+
   let body: GradeReq
   try {
     body = (await req.json()) as GradeReq
@@ -38,14 +41,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const rubric = body.rubric && Object.keys(body.rubric).length > 0 ? body.rubric : DEFAULT_RUBRIC
 
-  const result = await backendPost<Record<string, unknown>>('/internal/ai/grade', {
-    code: body.code.slice(0, 10_000),
-    language: body.language || 'python',
-    problem_title: body.problem_title || null,
-    rubric,
-    passed_tests: body.passed_tests ?? null,
-    total_tests: body.total_tests ?? null,
-  })
+  const result = await backendPost<Record<string, unknown>>(
+    '/internal/ai/grade',
+    {
+      code: body.code.slice(0, 10_000),
+      language: body.language || 'python',
+      problem_title: body.problem_title || null,
+      rubric,
+      passed_tests: body.passed_tests ?? null,
+      total_tests: body.total_tests ?? null,
+    },
+    { providerOverride, modelOverride, modelRole },
+  )
 
   const gradesCol = await aiGrades()
   const doc = {

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
+import { resolveModel } from '@/lib/ai/get-user-model'
 import { codeScans } from '@/lib/db/scans'
 import { aiCodeReviews, newId, nowIso } from '@/lib/db/ai'
 
@@ -16,6 +17,8 @@ interface ReviewReq {
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'review_model')
 
   let body: ReviewReq
   try {
@@ -47,6 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         language: body.language || 'javascript',
         context: scanCtx,
       },
+      { providerOverride, modelOverride, modelRole },
     )
   } catch (err) {
     console.error('[CodeSpectra] AI code-review error:', err)
