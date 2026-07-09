@@ -2,7 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
-import { sendEmail } from '@/lib/email-templates'
+import { sendEmail } from '@/lib/send-email'
 
 export const runtime = 'nodejs'
 
