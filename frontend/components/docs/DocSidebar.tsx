@@ -141,9 +141,6 @@ export function DocSidebar({ sections }: DocSidebarProps) {
                 >
                   <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
                   <span className="flex-1 text-left">{section.label}</span>
-                  <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full border border-border/40 text-muted-foreground">
-                    {section.badge}
-                  </span>
                   {isExpanded ? (
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
                   ) : (
