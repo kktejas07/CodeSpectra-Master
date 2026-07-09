@@ -48,6 +48,7 @@ import {
   Layers as LayersIcon,
   CreditCard as CreditCardIcon,
   Shield,
+  MessageSquare,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
