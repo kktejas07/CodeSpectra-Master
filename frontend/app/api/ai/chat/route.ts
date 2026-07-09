@@ -7,7 +7,7 @@ import {
   nowIso,
 } from '@/lib/db/ai'
 import { backendChatStream } from '@/lib/ai/backend'
-import { MODEL_OPTIONS } from '@/lib/ai/model-options'
+import { resolveModel } from '@/lib/ai/get-user-model'
 import { codeScans } from '@/lib/db/scans'
 import { rateLimitAI } from '@/lib/in-memory-rate-limit'
 
@@ -109,21 +109,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     extraContext
 
   // Resolve user's preferred model from DB
-  let providerOverride = '', modelOverride = '', modelRole: 'reasoning' | 'fast' = 'reasoning'
-  try {
-    const { getMongoDb } = await import('@/lib/mongodb')
-    const db = await getMongoDb()
-    const prefs = await db.collection('user_ai_settings').findOne({ user_id: user.id })
-    const chatModel = prefs?.settings?.chat_model as string | undefined
-    if (chatModel) {
-      const found = MODEL_OPTIONS.find(m => m.id === chatModel)
-      if (found) {
-        providerOverride = found.provider
-        modelOverride = found.model
-        modelRole = found.role === 'fast' ? 'fast' : 'reasoning'
-      }
-    }
-  } catch { /* use defaults */ }
+  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'chat_model')
 
   // Stream from backend, simultaneously buffering to persist the assistant turn.
   const upstream = await backendChatStream({

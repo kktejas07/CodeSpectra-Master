@@ -168,6 +168,9 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   skill_analytics: [
     { key: { user_id: 1, skill: 1 }, unique: true },
   ],
+  user_ai_settings: [
+    { key: { user_id: 1 }, unique: true },
+  ],
 }
 
 async function main() {
