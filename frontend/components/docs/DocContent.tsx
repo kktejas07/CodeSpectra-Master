@@ -6,7 +6,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeSlug from 'rehype-slug'
 import type { DocPage, DocSection } from '@/lib/docs'
-import { ChevronRight, Hash, BookOpen, User } from 'lucide-react'
+import { ChevronRight, Hash } from 'lucide-react'
 import Link from 'next/link'
 
 
@@ -15,11 +15,8 @@ interface DocContentProps {
   sections: DocSection[]
 }
 
-const ICONS: Record<string, React.ElementType> = { BookOpen, User }
-
 export function DocContent({ page, sections }: DocContentProps) {
   const currentSection = sections.find((s) => s.id === page.meta.section)
-
   const toc = useMemo(() => {
     return page.headings.filter((h) => h.level >= 2)
   }, [page.headings])
@@ -28,7 +25,7 @@ export function DocContent({ page, sections }: DocContentProps) {
     <div className="flex gap-12 min-w-0">
       <article className="flex-1 min-w-0 max-w-3xl">
         {/* Breadcrumb */}
-        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-6">
+        <nav className="flex items-center gap-2 text-sm text-muted-foreground mb-8">
           <Link href="/docs" className="hover:text-foreground transition-colors">
             Docs
           </Link>
@@ -44,23 +41,8 @@ export function DocContent({ page, sections }: DocContentProps) {
           <span className="text-foreground">{page.meta.title}</span>
         </nav>
 
-        {/* Section badge */}
-        {currentSection && (
-          <div className="flex items-center gap-2 mb-4">
-            <div className="flex h-6 w-6 items-center justify-center rounded-md bg-primary/10">
-              {(() => {
-                const Icon = ICONS[currentSection.icon] || BookOpen
-                return <Icon className="h-3.5 w-3.5 text-primary" />
-              })()}
-            </div>
-            <span className="text-xs font-medium px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">
-              {currentSection.badge}
-            </span>
-          </div>
-        )}
-
-        {/* Title from frontmatter */}
-        <h1 className="text-3xl font-bold mb-8">{page.meta.title}</h1>
+        {/* Page title */}
+        <h1 className="text-3xl font-bold mb-8 leading-tight">{page.meta.title}</h1>
 
         {/* Rendered markdown */}
         <div className="prose prose-zinc dark:prose-invert max-w-none prose-code:before:content-none prose-code:after:content-none prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40">

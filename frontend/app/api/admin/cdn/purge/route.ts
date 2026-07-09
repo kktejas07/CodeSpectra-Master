@@ -1,0 +1,66 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getAPIUser } from '@/lib/route-auth'
+import { getMongoDb } from '@/lib/mongodb'
+
+export const runtime = 'nodejs'
+
+export async function POST(req: NextRequest) {
+  const user = await getAPIUser()
+  if (!user || user.role !== 'superadmin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  let paths: string[] = []
+  try {
+    const body = await req.json()
+    paths = Array.isArray(body.paths) ? body.paths : (body.purge_all ? [] : ['/'])
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
+  }
+
+  const db = await getMongoDb()
+  const settings = await db.collection('platform_settings').findOne({})
+  const secrets = (settings?.value?.secrets || {}) as Record<string, string>
+
+  const zoneId = process.env.CLOUDFLARE_ZONE_ID?.trim() || secrets.cloudflare_zone_id?.trim() || ''
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || secrets.cloudflare_api_token?.trim() || ''
+
+  if (!zoneId || !apiToken) {
+    return NextResponse.json(
+      { error: 'Cloudflare not configured. Add Zone ID and API Token in Settings → Integrations.' },
+      { status: 503 },
+    )
+  }
+
+  const body: Record<string, unknown> = paths.length > 0 ? { files: paths } : { purge_everything: true }
+
+  try {
+    const res = await fetch(`https://api.cloudflare.com/client/v4/zones/${zoneId}/purge_cache`, {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+    })
+
+    const json = await res.json()
+
+    if (!res.ok || !json.success) {
+      return NextResponse.json(
+        { error: json.errors?.[0]?.message || `Cloudflare API error: ${res.status}` },
+        { status: 502 },
+      )
+    }
+
+    return NextResponse.json({
+      success: true,
+      paths: paths.length > 0 ? paths : ['/* (all)'],
+    })
+  } catch (e) {
+    return NextResponse.json(
+      { error: `Network error: ${(e as Error).message}` },
+      { status: 502 },
+    )
+  }
+}

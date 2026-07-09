@@ -125,6 +125,8 @@ type SecretsDraft = {
   anthropic_api_key: string
   gemini_api_key: string
   openai_api_key: string
+  cloudflare_zone_id: string
+  cloudflare_api_token: string
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
@@ -153,6 +155,8 @@ const emptySecretsDraft = (): SecretsDraft => ({
   anthropic_api_key: '',
   gemini_api_key: '',
   openai_api_key: '',
+  cloudflare_zone_id: '',
+  cloudflare_api_token: '',
 })
 
 function EmailTemplatesSection() {
@@ -507,9 +511,37 @@ function SystemSettingsInner() {
             <p className="mt-1 text-sm text-muted-foreground">
               Manage platform branding, email delivery, payments, and integrations. Environment variables override stored secrets.
             </p>
-          </div>
-        </div>
-      </div>
+                  </div>
+                </div>
+
+                  {/* Cloudflare */}
+                  <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold text-foreground">Cloudflare</p>
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">CDN</span>
+                    </div>
+                    <p className="text-xs text-muted-foreground">Zone ID and API token for cache purge. Token needs <code className="rounded bg-muted px-1">cache:purge</code> permission.</p>
+                    <div className="grid gap-3 sm:grid-cols-2">
+                      <div>
+                        <Label htmlFor="sec_cloudflare_zone_id">Zone ID</Label>
+                        <input id="sec_cloudflare_zone_id" type="text" value={secretsDraft.cloudflare_zone_id} onChange={(e) => setSecretsDraft((d) => ({ ...d, cloudflare_zone_id: e.target.value }))}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm" placeholder={secretsMeta.cloudflare_zone_id ? 'Saved: ' + String(secretsMeta.cloudflare_zone_id) : 'Zone ID'}
+                          data-testid="cloudflare-zone-id" autoComplete="off" />
+                      </div>
+                      <div>
+                        <Label htmlFor="sec_cloudflare_api_token">API Token</Label>
+                        <input id="sec_cloudflare_api_token" type={visibleFields.cloudflare_api_token ? 'text' : 'password'} value={secretsDraft.cloudflare_api_token}
+                          onChange={(e) => setSecretsDraft((d) => ({ ...d, cloudflare_api_token: e.target.value }))}
+                          className="mt-1.5 h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm"
+                          placeholder={secretsMeta.has_cloudflare_api_token ? 'Token saved' : 'cf-api-token-...'}
+                          data-testid="cloudflare-api-token" autoComplete="off" />
+                        <button type="button" onClick={() => setVisibleFields((p) => ({ ...p, cloudflare_api_token: !p.cloudflare_api_token }))}
+                          className="mt-1 text-xs text-muted-foreground hover:text-foreground">{visibleFields.cloudflare_api_token ? 'Hide' : 'Show'} token</button>
+                      </div>
+                    </div>
+                  </div>
+
+              </div>
 
       {loadError ? (
         <Alert variant="destructive" className="border-destructive/40">
