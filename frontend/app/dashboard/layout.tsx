@@ -223,6 +223,8 @@ export default function DashboardLayout({
       { href: '/dashboard/certifications', icon: Award, label: 'Certifications' },
       { href: '/dashboard/pricing', icon: CreditCardIcon, label: 'Pricing' },
       { href: '/dashboard/settings/ai', icon: SparklesIcon, label: 'AI Models' },
+      { href: '/dashboard/status', icon: Activity, label: 'Status' },
+      { href: '/dashboard/support', icon: MessageSquare, label: 'Support' },
     ]
 
     const role = normalizeUserRole(userProfile.role)

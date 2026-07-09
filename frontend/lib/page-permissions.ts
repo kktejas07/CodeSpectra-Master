@@ -76,6 +76,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/billing',
   '/dashboard/notifications',
   '/dashboard/support',
+  '/dashboard/status',
   '/dashboard/search',
   '/dashboard/id-card',
   '/dashboard/analytics',
