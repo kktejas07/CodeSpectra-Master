@@ -26,7 +26,7 @@ export function newToken(): string {
     .replace(/=+$/, '')
 }
 
-export type IdCardRoleVariant = 'user' | 'admin' | 'tenant'
+export type IdCardRoleVariant = string
 
 export interface IdCardTokenDoc {
   id: string
@@ -44,6 +44,21 @@ export interface IdCardTokenDoc {
   created_at: string
 }
 
+export interface HackathonTask {
+  problem_slug: string
+  problem_title: string
+  points: number
+  difficulty: string
+  required: boolean
+  order: number
+}
+
+export interface HackathonRule {
+  type: 'scoring' | 'submission' | 'conduct' | 'general'
+  title: string
+  description: string
+}
+
 export interface HackathonDoc {
   id: string
   name: string
@@ -58,6 +73,23 @@ export interface HackathonDoc {
   starts_at: string
   ends_at: string
   status: 'draft' | 'open' | 'live' | 'closed'
+  /** Assigned problems for this event */
+  tasks: HackathonTask[]
+  /** Event-specific rules */
+  rules: HackathonRule[]
+  /** Scoring config */
+  scoring: {
+    auto_grade: boolean
+    points_per_problem: number
+    bonus_time: number
+    penalty_per_attempt: number
+  }
+  /** Results visibility */
+  results_released: boolean
+  released_at?: string
+  /** Branding */
+  banner_url?: string
+  color_theme?: string
   created_by: string
   created_at: string
   updated_at: string
@@ -96,6 +128,27 @@ export async function hackathons(): Promise<Collection<HackathonDoc>> {
 }
 export async function hackathonTeams(): Promise<Collection<HackathonTeamDoc>> {
   return (await db()).collection<HackathonTeamDoc>('hackathon_teams')
+}
+
+export interface HackathonSubmissionDoc {
+  id: string
+  hackathon_id: string
+  team_id: string
+  problem_slug: string
+  repo_url?: string
+  commit_sha?: string
+  code?: string
+  score: number | null
+  max_score: number
+  status: 'pending' | 'under_review' | 'released'
+  feedback?: string
+  submitted_at: string
+  reviewed_at?: string
+  created_at: string
+}
+
+export async function hackathonSubmissions(): Promise<Collection<HackathonSubmissionDoc>> {
+  return (await db()).collection<HackathonSubmissionDoc>('hackathon_submissions')
 }
 
 /**

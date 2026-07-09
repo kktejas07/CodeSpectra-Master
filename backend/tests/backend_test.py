@@ -1,9 +1,9 @@
 """CodeSpectra backend tests — covers all 9+ AI features and auth flows.
 
 Strategy:
-- Use external preview URL where possible (what user sees).
 - Public /api/* routes go through the FastAPI proxy → Next.js.
 - Internal /internal/ai/* must NOT be reachable via ingress.
+- Targets local services only (Emergent preview URL removed).
 """
 import json
 import os
@@ -13,18 +13,10 @@ import uuid
 import pytest
 import requests
 
-EXTERNAL_URL = "https://codespectra-master.preview.emergentagent.com"
 INTERNAL_NEXT = "http://localhost:3000"
 INTERNAL_FASTAPI = "http://localhost:8001"
 
-BASE_URL = EXTERNAL_URL
-# fallback if preview unreachable
-try:
-    r = requests.get(f"{EXTERNAL_URL}/assessment", timeout=10)
-    if r.status_code != 200 or "Preview Unavailable" in r.text:
-        BASE_URL = INTERNAL_NEXT
-except Exception:
-    BASE_URL = INTERNAL_NEXT
+BASE_URL = INTERNAL_NEXT
 
 TEST_EMAIL = "qa@codespectra.dev"
 TEST_PASSWORD = "QApass123!"
@@ -158,9 +150,9 @@ class TestPublicSurface:
         assert "Streamline your recruitment" in body or "assessment" in body.lower()
 
     def test_internal_ai_not_exposed_publicly(self):
-        """External ingress must NOT reach /internal/ai/*."""
+        """Public ingress (Next.js app port) must NOT reach /internal/ai/*."""
         r = requests.post(
-            f"{EXTERNAL_URL}/internal/ai/chat",
+            f"{BASE_URL}/internal/ai/chat",
             json={"session_id": "x", "user_message": "hi"},
             timeout=15,
         )

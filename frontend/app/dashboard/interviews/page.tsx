@@ -1,104 +1,94 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { ArrowRight, Code, Users, Brain, MessageSquare, Lock, Briefcase, Clock, Loader } from 'lucide-react'
-import Link from 'next/link'
+import { Loader2, Video, Calendar, Clock, ArrowRight, Bot } from 'lucide-react'
 
-interface InterviewType {
-  id: string
-  title: string
-  description: string
-  duration: string
-  difficulty: string
-  available: boolean
-  roles: string[]
+interface Interview {
+  id: string; title: string; type: string; role: string
+  status: string; scheduled_at: string; duration_minutes: number
+  interviewer_id: string; candidate_id: string
+  questions: any[]; overall_score?: number
 }
 
-const ICONS: Record<string, React.ReactNode> = {
-  coding: <Code className="w-6 h-6" />,
-  'system-design': <Briefcase className="w-6 h-6" />,
-  behavioral: <MessageSquare className="w-6 h-6" />,
-  'ai-fluency': <Brain className="w-6 h-6" />,
-}
-
-export default function InterviewPage() {
-  const [interviews, setInterviews] = useState<InterviewType[]>([])
+export default function InterviewsPage() {
+  const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    fetch('/api/interviews/types')
-      .then(r => r.json())
-      .then(json => { if (json.data) setInterviews(json.data) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/interviews', { cache: 'no-store' })
+      if (res.ok) {
+        const j = await res.json()
+        setInterviews(j.items as Interview[])
+      }
+    } catch {} finally { setLoading(false) }
   }, [])
 
+  useEffect(() => { void load() }, [load])
+
+  const statusColor: Record<string, string> = {
+    scheduled: 'bg-blue-500/10 text-blue-500',
+    in_progress: 'bg-green-500/10 text-green-500',
+    completed: 'bg-muted text-muted-foreground',
+    cancelled: 'bg-destructive/10 text-destructive',
+  }
+
   return (
-    <div className="space-y-8">
-      <div>
-        <div className="flex items-center gap-2">
-          <Briefcase className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">AI-Powered Mock Interviews</h1>
-        </div>
-        <p className="text-muted-foreground mt-1">Practice with AI-powered mock interviews. Choose your role and get started.</p>
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-3xl font-bold flex items-center gap-2">
+          <Video className="h-7 w-7 text-primary" /> Interviews
+        </h1>
+        <Link href="/dashboard/interviews/schedule">
+          <Button><Video className="mr-1 h-4 w-4" /> Schedule Interview</Button>
+        </Link>
       </div>
 
-      <Card className="p-8 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <div className="flex flex-col md:flex-row items-center justify-between gap-6">
-          <div>
-            <h3 className="text-2xl font-bold text-foreground mb-2">Ready for Your Next Interview?</h3>
-            <p className="text-muted-foreground">Start a mock interview session with AI feedback. Upload your resume and configure your devices.</p>
-          </div>
-          <Button asChild size="lg" className="gap-2">
-            <Link href="/dashboard/interviews/setup">Start Interview <ArrowRight className="w-4 h-4" /></Link>
-          </Button>
-        </div>
-      </Card>
-
       {loading ? (
-        <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <Card className="flex h-32 items-center justify-center text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading interviews…
+        </Card>
       ) : interviews.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <Briefcase className="mx-auto h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No interview types available yet.</p>
+        <Card className="p-8 text-center text-sm text-muted-foreground">
+          <Bot className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />
+          No interviews yet. Schedule your first AI-powered interview.
         </Card>
       ) : (
-        <div className="grid gap-6 sm:grid-cols-2">
-          {interviews.map(interview => (
-            <Card key={interview.id} className={`border-border/60 p-6 ${!interview.available ? 'opacity-60' : ''}`}>
-              <div className="flex items-start gap-4 mb-4">
-                <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                  {ICONS[interview.id] || <Briefcase className="w-6 h-6" />}
-                </div>
-                <div className="flex-1">
-                  <div className="flex items-center gap-2">
-                    <h3 className="font-semibold text-foreground">{interview.title}</h3>
-                    {!interview.available && <Lock className="h-4 w-4 text-muted-foreground" />}
+        <div className="grid gap-4 md:grid-cols-2">
+          {interviews.map((iv) => (
+            <Link key={iv.id} href={`/dashboard/interviews/${iv.id}`}>
+              <Card className="p-5 hover:border-primary/40 transition-colors space-y-3">
+                <div className="flex items-start justify-between">
+                  <div>
+                    <h3 className="font-semibold">{iv.title}</h3>
+                    <p className="text-xs text-muted-foreground">{iv.role} · {iv.type}</p>
                   </div>
-                  <p className="text-sm text-muted-foreground mt-1">{interview.description}</p>
+                  <Badge variant="outline" className={statusColor[iv.status] || ''}>{iv.status}</Badge>
                 </div>
-              </div>
-              <div className="flex flex-wrap items-center gap-3 text-xs text-muted-foreground mb-4">
-                <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" />{interview.duration}</span>
-                <Badge variant="outline" className="text-[10px]">{interview.difficulty}</Badge>
-              </div>
-              <div className="flex flex-wrap gap-1.5 mb-4">
-                {interview.roles.map(r => <Badge key={r} variant="secondary" className="text-[10px]">{r}</Badge>)}
-              </div>
-              <Link href={interview.available ? `/dashboard/interviews/${interview.id}` : '#'}>
-                <Button variant="outline" size="sm" className="w-full gap-2" disabled={!interview.available}>
-                  {interview.available ? 'Start' : 'Coming Soon'} <ArrowRight className="h-3.5 w-3.5" />
-                </Button>
-              </Link>
-            </Card>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <Calendar className="h-3 w-3" /> {new Date(iv.scheduled_at).toLocaleString()}
+                  <Clock className="h-3 w-3 ml-2" /> {iv.duration_minutes} min
+                </div>
+                {iv.overall_score !== undefined && (
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 flex-1 rounded-full bg-muted overflow-hidden">
+                      <div className="h-full bg-primary rounded-full" style={{ width: `${iv.overall_score}%` }} />
+                    </div>
+                    <span className="text-xs font-medium">{Math.round(iv.overall_score)}%</span>
+                  </div>
+                )}
+                {iv.questions?.length > 0 && (
+                  <p className="text-xs text-muted-foreground">{iv.questions.length} questions answered</p>
+                )}
+              </Card>
+            </Link>
           ))}
         </div>
       )}
     </div>
   )
 }
-
-

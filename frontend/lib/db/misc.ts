@@ -67,8 +67,60 @@ export async function pricingFeatures(): Promise<Collection<Doc>> {
 export async function webVitalsEvents(): Promise<Collection<UserDoc>> {
   return (await db()).collection<UserDoc>('web_vitals_events')
 }
-export async function adminAuditLogs(): Promise<Collection<UserDoc>> {
-  return (await db()).collection<UserDoc>('admin_audit_logs')
+export async function adminAuditLogs(): Promise<Collection<AuditLogDoc>> {
+  return (await db()).collection<AuditLogDoc>('admin_audit_logs')
+}
+
+export interface AuditLogDoc {
+  id: string
+  ts: string
+  actor: string
+  actorIp: string
+  action: string
+  resource: string
+  resourceType: string
+  severity: 'info' | 'warning' | 'critical'
+  outcome: 'success' | 'denied'
+  detail?: string
+  user_id: string
+  created_at: string
+}
+
+export async function writeAuditLog(entry: Omit<AuditLogDoc, 'id' | 'ts' | 'created_at'>): Promise<void> {
+  try {
+    const col = await adminAuditLogs()
+    await col.insertOne({
+      id: newId(),
+      ts: nowIso(),
+      created_at: nowIso(),
+      ...entry,
+    } as AuditLogDoc)
+  } catch (e) {
+    console.error('[audit] Failed to write audit log:', e)
+  }
+}
+
+export function auditLogAction(
+  action: string,
+  outcome: 'success' | 'denied',
+  actor: string,
+  actorIp: string,
+  resource: string,
+  resourceType: string,
+  severity: 'info' | 'warning' | 'critical' = 'info',
+  detail?: string,
+): Omit<AuditLogDoc, 'id' | 'ts' | 'created_at'> {
+  return {
+    action,
+    outcome,
+    actor,
+    actorIp,
+    resource,
+    resourceType,
+    severity,
+    detail,
+    user_id: actor,
+  }
 }
 export async function featureFlags(): Promise<Collection<Doc>> {
   return (await db()).collection<Doc>('feature_flags')

@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
+import { Badge } from '@/components/ui/badge'
 import { MessageSquare, Send, Sparkles, Loader2, FileCode, Bot, User } from 'lucide-react'
 
 interface FileMetric {

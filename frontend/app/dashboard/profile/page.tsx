@@ -23,6 +23,7 @@ import {
   Loader,
   CheckCircle2,
   XCircle,
+  Smartphone,
 } from 'lucide-react'
 
 interface ActivityItem {

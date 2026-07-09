@@ -14,6 +14,10 @@ export type UserRole = RBACUserRole
 
 export interface APIUser {
   id: string; email: string; role: UserRole
+  /** Display name (populated from the auth token when present). */
+  name?: string
+  /** Full name (populated from the auth token when present). */
+  fullName?: string
 }
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
@@ -64,7 +68,7 @@ export async function getAPIUser(): Promise<APIUser | null> {
       if (adminAuth) {
         try {
           const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
-          if (decoded) return { id: decoded.uid, email: decoded.email || '', role: await lookupRole(decoded.uid) }
+          if (decoded) return { id: decoded.uid, email: decoded.email || '', role: await lookupRole(decoded.uid), name: decoded.name ?? undefined, fullName: decoded.name ?? undefined }
         } catch { /* fallback */ }
       }
       const payload = await verifySessionToken(sessionCookie)
@@ -77,7 +81,7 @@ export async function getAPIUser(): Promise<APIUser | null> {
       if (authHeader?.startsWith('Bearer ')) {
         try {
           const decoded = await adminAuth.verifyIdToken(authHeader.slice(7))
-          if (decoded) return { id: decoded.uid, email: decoded.email || '', role: await lookupRole(decoded.uid) }
+          if (decoded) return { id: decoded.uid, email: decoded.email || '', role: await lookupRole(decoded.uid), name: decoded.name ?? undefined, fullName: decoded.name ?? undefined }
         } catch { /* invalid */ }
       }
     }

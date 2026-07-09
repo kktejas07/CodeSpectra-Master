@@ -111,7 +111,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
           if (!cancelled) setLoading(false)
         })
-        return () => { unsub() }
+        return () => { unsub?.() }
       } catch (e) {
         console.warn('[Auth] Init error:', e)
         if (!cancelled) setLoading(false)

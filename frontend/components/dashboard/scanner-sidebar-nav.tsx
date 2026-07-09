@@ -18,6 +18,8 @@ import {
   GitPullRequest,
   Zap,
   MessageSquare,
+  Package,
+  Key,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { parseScannerMode, scannerHref, type ScannerMode } from '@/lib/scanner-modes'
@@ -27,6 +29,8 @@ type Item = { mode: ScannerMode; label: string; icon: ReactNode }
 const PRIMARY: Item[] = [
   { mode: 'manual', label: 'Manual Analysis', icon: <Code2 className="h-4 w-4" /> },
   { mode: 'github', label: 'GitHub Repos', icon: <Github className="h-4 w-4" /> },
+  { mode: 'dependencies', label: 'Dependency Scan', icon: <Package className="h-4 w-4" /> },
+  { mode: 'secrets', label: 'Secret Detection', icon: <Key className="h-4 w-4" /> },
   { mode: 'trends', label: 'Trends', icon: <BarChart3 className="h-4 w-4" /> },
   { mode: 'quality-gates', label: 'Quality Gates', icon: <Plus className="h-4 w-4" /> },
   { mode: 'review', label: 'Code Review', icon: <FileText className="h-4 w-4" /> },

@@ -30,6 +30,8 @@ import { BranchAnalytics } from '@/components/scanner/branch-analytics'
 import { AIFixesPanel } from '@/components/scanner/ai-fixes-panel'
 import { CodeEditor } from '@/components/code-scanner/code-editor'
 import { CodebaseChatSidebar } from '@/components/scanner/codebase-chat-sidebar'
+import { DependencyScannerPanel } from '@/components/scanner/dependency-scanner-panel'
+import { SecretScannerPanel } from '@/components/scanner/secret-scanner-panel'
 
 interface AnalysisResult {
   id: string
@@ -228,6 +230,8 @@ function CodeScannerPageInner() {
             {mode === 'pr' && 'Pull Requests'}
             {mode === 'branches' && 'Branch Analytics'}
             {mode === 'team' && 'Team Leaderboard'}
+            {mode === 'dependencies' && 'Dependency Vulnerability Scan'}
+            {mode === 'secrets' && 'Secret Detection'}
             {mode === 'chat' && 'Codebase Assistant'}
             {(!mode || mode === 'manual') && 'Code Scanner'}
           </h1>
@@ -248,6 +252,8 @@ function CodeScannerPageInner() {
             {mode === 'pr' && 'View pull request quality analysis and gate status across your repositories.'}
             {mode === 'branches' && 'Compare quality metrics across Git branches and track improvements.'}
             {mode === 'team' && 'See how your team ranks in code quality contributions and issue resolution.'}
+            {mode === 'dependencies' && 'Check project dependencies against the OSV vulnerability database and embedded security advisories.'}
+            {mode === 'secrets' && 'Scan source code for hardcoded API keys, tokens, passwords, private keys, and other secrets.'}
             {mode === 'chat' && 'Interact with your codebase files using our advanced Gemini AI Assistant.'}
             {(!mode || mode === 'manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
           </p>
@@ -624,6 +630,20 @@ function CodeScannerPageInner() {
       {/* Team Mode */}
       {mode === 'team' && (
         <TeamLeaderboard />
+      )}
+
+      {/* Dependency Scan Mode */}
+      {mode === 'dependencies' && (
+        <div className="max-w-4xl mx-auto">
+          <DependencyScannerPanel />
+        </div>
+      )}
+
+      {/* Secret Detection Mode */}
+      {mode === 'secrets' && (
+        <div className="max-w-4xl mx-auto">
+          <SecretScannerPanel />
+        </div>
       )}
 
       {/* Codebase Chat Mode */}

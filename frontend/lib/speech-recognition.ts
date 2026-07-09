@@ -18,17 +18,59 @@ export interface SpeechRecognitionResult {
   isFinal: boolean
 }
 
+// Minimal shape of a SpeechRecognition instance (Web Speech API is not fully
+// typed by the TS DOM lib, so we declare only the members we use).
+interface SpeechRecognitionInstance {
+  continuous: boolean
+  interimResults: boolean
+  language: string
+  maxAlternatives: number
+  onstart: (() => void) | null
+  onend: (() => void) | null
+  onerror: ((event: SpeechRecognitionErrorEvent) => void) | null
+  onresult: ((event: SpeechRecognitionEvent) => void) | null
+  start: () => void
+  stop: () => void
+  abort: () => void
+}
+
+type SpeechRecognitionConstructor = new () => SpeechRecognitionInstance
+
+// The Web Speech API event payloads (not present in the active TS DOM lib).
+interface SpeechRecognitionErrorEvent {
+  error: string
+}
+
+interface SpeechRecognitionAlternative {
+  transcript: string
+  confidence: number
+}
+
+interface WebSpeechResult extends ArrayLike<SpeechRecognitionAlternative> {
+  isFinal: boolean
+}
+
+interface SpeechRecognitionEvent {
+  resultIndex: number
+  results: ArrayLike<WebSpeechResult>
+}
+
+declare global {
+  interface Window {
+    SpeechRecognition?: SpeechRecognitionConstructor
+    webkitSpeechRecognition?: SpeechRecognitionConstructor
+  }
+}
+
 // Get the appropriate SpeechRecognition API
-const getSpeechRecognition = (): typeof SpeechRecognition | null => {
+const getSpeechRecognition = (): SpeechRecognitionConstructor | null => {
   if (typeof window === 'undefined') return null
 
-  const SpeechRecognition =
-    window.SpeechRecognition || (window as any).webkitSpeechRecognition
-  return SpeechRecognition
+  return window.SpeechRecognition || window.webkitSpeechRecognition || null
 }
 
 export class SpeechToTextManager {
-  private recognition: InstanceType<typeof SpeechRecognition> | null = null
+  private recognition: SpeechRecognitionInstance | null = null
   private isListening = false
   private transcript = ''
   private finalTranscript = ''
@@ -38,13 +80,13 @@ export class SpeechToTextManager {
   private onEndCallback: (() => void) | null = null
 
   constructor(config: SpeechRecognitionConfig = {}) {
-    const SpeechRecognition = getSpeechRecognition()
-    if (!SpeechRecognition) {
+    const Ctor = getSpeechRecognition()
+    if (!Ctor) {
       console.warn('Speech Recognition API not supported in this browser')
       return
     }
 
-    this.recognition = new SpeechRecognition()
+    this.recognition = new Ctor()
     this.recognition.continuous = config.continuous ?? true
     this.recognition.interimResults = config.interimResults ?? true
     this.recognition.language = config.language ?? 'en-US'

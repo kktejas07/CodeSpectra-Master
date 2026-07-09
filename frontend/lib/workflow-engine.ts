@@ -8,7 +8,7 @@
  * Built-in node types
  *   - trigger.manual : no-op, kicks off execution
  *   - http.request   : { url, method, headers, body }      -> fetch JSON
- *   - ai.complete    : { system, prompt }                  -> emergent LLM via backendComplete
+ *   - ai.complete    : { system, prompt }                  -> AI via backendComplete
  *   - mongo.find     : { collection, filter, limit }       -> JSON array
  *   - log            : { message }                         -> echoes message
  *   - delay          : { ms }                              -> setTimeout

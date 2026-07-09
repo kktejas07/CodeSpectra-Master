@@ -7,7 +7,10 @@ import {
   nowIso,
 } from '@/lib/db/ai'
 import { backendChatStream } from '@/lib/ai/backend'
+import { resolveModel } from '@/lib/ai/get-user-model'
+import { getMongoDb } from '@/lib/mongodb'
 import { codeScans } from '@/lib/db/scans'
+import { rateLimitAI } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -30,6 +33,15 @@ export async function POST(req: NextRequest): Promise<Response> {
   if (!user) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
+
+  const rateCheck = rateLimitAI(req, user.id)
+  if (!rateCheck.ok) {
+    return NextResponse.json(
+      { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },
+      { status: 429 },
+    )
+  }
+
   let body: ChatPostBody
   try {
     body = (await req.json()) as ChatPostBody
@@ -97,13 +109,18 @@ export async function POST(req: NextRequest): Promise<Response> {
     'Be concise, use fenced code blocks for code, and prefer actionable next steps.' +
     extraContext
 
+  // Resolve user's preferred model from DB
+  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'chat_model')
+
   // Stream from backend, simultaneously buffering to persist the assistant turn.
   const upstream = await backendChatStream({
     sessionId,
     systemMessage,
     history: history.map((m) => ({ role: m.role, content: m.content })),
     userMessage: message,
-    modelRole: 'reasoning',
+    modelRole,
+    providerOverride: providerOverride || undefined,
+    modelOverride: modelOverride || undefined,
   })
 
   if (!upstream.ok || !upstream.body) {
@@ -123,6 +140,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       controller.enqueue(
         encoder.encode(`data: ${JSON.stringify({ session_id: sessionId })}\n\n`),
       )
+      let usage: Record<string, number> | null = null
       const reader = upstream.body!.getReader()
       try {
         while (true) {
@@ -135,8 +153,9 @@ export async function POST(req: NextRequest): Promise<Response> {
               const payload = line.slice(6).trim()
               if (payload === '[DONE]') continue
               try {
-                const parsed = JSON.parse(payload) as { delta?: string }
+                const parsed = JSON.parse(payload) as { delta?: string; usage?: Record<string, number> }
                 if (parsed.delta) assistantBuf += parsed.delta
+                if (parsed.usage) usage = parsed.usage
               } catch {
                 /* ignore */
               }
@@ -167,6 +186,24 @@ export async function POST(req: NextRequest): Promise<Response> {
           sessionsCol
             .updateOne({ id: sessionId }, { $set: { updated_at: nowIso() } })
             .catch(() => null)
+        }
+        // Persist usage tracking (fire-and-forget).
+        if (usage) {
+          getMongoDb().then(db =>
+            db.collection('ai_usage_logs').insertOne({
+              id: newId(),
+              user_id: user.id,
+              session_id: sessionId,
+              feature: 'chat',
+              provider: '',  // will be enriched from model lookup
+              model: '',
+              input_chars: usage.input_chars || 0,
+              output_chars: usage.output_chars || 0,
+              estimated_input_tokens: Math.ceil((usage.input_chars || 0) / 4),
+              estimated_output_tokens: Math.ceil((usage.output_chars || 0) / 4),
+              created_at: nowIso(),
+            }).catch((err: unknown) => console.error('[ai/chat] usage persist err:', err))
+          )
         }
         controller.close()
       }

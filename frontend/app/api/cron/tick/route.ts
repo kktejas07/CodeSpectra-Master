@@ -29,7 +29,12 @@ startSchedulerLoop()
 
 function authorize(req: NextRequest): boolean {
   const expected = process.env.CRON_SECRET?.trim()
-  if (!expected) return true // no secret configured → allow (dev mode)
+  if (!expected) {
+    if (process.env.NODE_ENV === 'production') {
+      return false
+    }
+    return true // dev mode: allow without secret
+  }
   const url = new URL(req.url)
   const fromQuery = url.searchParams.get('secret') || ''
   const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')

@@ -1,34 +1,33 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/api-auth'
+import { getAPIUser } from '@/lib/route-auth'
+import { PaymentService } from '@/lib/payment-service'
+import { rateLimitAI } from '@/lib/in-memory-rate-limit'
 
-/** Backward-compatible: `GET /api/billing/checkout?plan=pro&interval=month` completes checkout and redirects. */
-export async function GET(req: NextRequest) {
-  try {
-    const user = await getAPIUser()
-    if (!user) {
-      return NextResponse.redirect(new URL('/auth/login', req.url))
-    }
-
-    return NextResponse.redirect(new URL('/dashboard/billing?error=no_service_key', req.url))
-  } catch (error) {
-    console.error('[CodeSpectra] Checkout GET error:', error)
-    return NextResponse.redirect(new URL('/dashboard/billing?error=checkout', req.url))
-  }
-}
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   try {
     const user = await getAPIUser()
-    if (!user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+    const rateCheck = rateLimitAI(req, user.id)
+    if (!rateCheck.ok) {
+      return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
     }
 
-    return NextResponse.json(
-      { error: 'Billing is not configured. Please configure a payment provider.' },
-      { status: 503 }
-    )
+    const { plan_id, country } = (await req.json()) as { plan_id?: string; country?: string }
+
+    const ps = new PaymentService()
+    const result = await ps.createCheckout(user.id, user.email, plan_id || 'pro_monthly', country)
+
+    return NextResponse.json(result)
   } catch (error) {
-    console.error('[CodeSpectra] Checkout POST error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    const msg = (error as Error).message
+    console.error('[billing/checkout]', msg)
+    if (msg.includes('No payment provider configured')) {
+      return NextResponse.json({ error: msg }, { status: 503 })
+    }
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

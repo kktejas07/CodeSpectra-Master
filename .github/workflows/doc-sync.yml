@@ -1,0 +1,38 @@
+# Documentation Sync
+
+Runs on PRs and pushes to detect documentation drift against code changes.
+
+```yaml
+name: Documentation Sync
+on:
+  pull_request:
+    paths:
+      - 'frontend/app/api/**/*.ts'
+      - 'frontend/lib/db/**/*.ts'
+      - 'frontend/app/**/page.tsx'
+      - 'backend/**/*.py'
+  push:
+    branches: [main]
+    paths:
+      - 'frontend/app/api/**/*.ts'
+      - 'frontend/lib/db/**/*.ts'
+
+jobs:
+  doc-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Check Documentation Drift
+        run: |
+          echo "Checking for documentation drift..."
+          # Count API routes
+          API_COUNT=$(find frontend/app/api -name "route.ts" | wc -l)
+          echo "API Routes: $API_COUNT"
+          # Check last updated timestamps
+          echo "Documentation files:"
+          find docs -name "*.md" -exec grep -l "Auto-Generated" {} \;
+      - name: Comment PR with Doc Status
+        if: github.event_name == 'pull_request'
+        run: |
+          echo "Documentation check complete. See docs/ for current state."
+```

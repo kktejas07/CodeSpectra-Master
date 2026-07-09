@@ -57,6 +57,10 @@ export type ServerSecretsRecord = {
   firebase_storage_bucket?: string
   firebase_messaging_sender_id?: string
   firebase_app_id?: string
+  // --- AI / LLM providers ------------------------------------------------
+  anthropic_api_key?: string    // Direct Anthropic key (Claude)
+  gemini_api_key?: string       // Direct Google key (Gemini — has free tier)
+  openai_api_key?: string       // Direct OpenAI key (GPT — used by interview service)
 }
 
 interface PlatformSettingDoc {

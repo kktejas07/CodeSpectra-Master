@@ -2,6 +2,8 @@
 
 import * as React from 'react'
 
+export const dynamic = 'force-dynamic'
+
 export default function GlobalError({
   error,
   reset,
@@ -11,21 +13,23 @@ export default function GlobalError({
 }) {
   return (
     <html lang="en">
-      <body className="flex min-h-screen flex-col items-center justify-center bg-background p-6 font-mono text-foreground antialiased">
-        <div className="w-full max-w-md rounded-lg border border-border bg-card p-6 shadow-lg">
-          <h2 className="text-xl font-bold text-destructive mb-2">Application Error</h2>
-          <p className="text-sm text-muted-foreground mb-4">
+      <body>
+        <div style={{
+          display: 'flex', minHeight: '100vh', flexDirection: 'column',
+          alignItems: 'center', justifyContent: 'center', padding: '1.5rem',
+          fontFamily: 'monospace', margin: 0, background: '#09090b', color: '#fafafa',
+        }}>
+          <h2 style={{ fontSize: '1.25rem', fontWeight: 700, color: '#ef4444' }}>
+            Application Error
+          </h2>
+          <p style={{ color: '#a1a1aa', margin: '0.5rem 0' }}>
             A critical error occurred. Please try reloading the page.
           </p>
-          {error.digest && (
-            <code className="block rounded bg-muted p-2 text-xs font-mono mb-4 truncate">
-              Digest: {error.digest}
-            </code>
-          )}
-          <button
-            onClick={() => reset()}
-            className="w-full rounded-md bg-primary px-4 py-2 text-sm font-semibold text-primary-foreground shadow transition-colors hover:bg-primary/90"
-          >
+          {error.digest && <code style={{ fontSize: '0.75rem', color: '#71717a' }}>Digest: {error.digest}</code>}
+          <button onClick={() => reset()} style={{
+            marginTop: '1rem', padding: '0.5rem 1rem', background: '#fafafa',
+            color: '#09090b', border: 'none', borderRadius: '0.375rem', cursor: 'pointer',
+          }}>
             Try Again
           </button>
         </div>

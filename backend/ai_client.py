@@ -9,7 +9,8 @@ class TextDelta:
         self.content = content
 
 class StreamDone:
-    pass
+    def __init__(self, usage: dict | None = None) -> None:
+        self.usage = usage or {}
 
 class UserMessage:
     def __init__(self, text: str = "", image_contents: list[Any] | None = None) -> None:
@@ -36,11 +37,31 @@ class DirectAiClient:
     async def stream_message(
         self, message: UserMessage
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
+        input_chars = len(self.system_message or "") + len(message.text or "")
+        output_chars = 0
         if self.provider == "gemini":
             async for chunk in self._stream_gemini(message):
+                if isinstance(chunk, TextDelta):
+                    output_chars += len(chunk.content)
+                elif isinstance(chunk, StreamDone):
+                    chunk.usage["input_chars"] = input_chars
+                    chunk.usage["output_chars"] = output_chars
                 yield chunk
         elif self.provider == "anthropic":
             async for chunk in self._stream_anthropic(message):
+                if isinstance(chunk, TextDelta):
+                    output_chars += len(chunk.content)
+                elif isinstance(chunk, StreamDone):
+                    chunk.usage["input_chars"] = input_chars
+                    chunk.usage["output_chars"] = output_chars
+                yield chunk
+        elif self.provider == "openai":
+            async for chunk in self._stream_openai(message):
+                if isinstance(chunk, TextDelta):
+                    output_chars += len(chunk.content)
+                elif isinstance(chunk, StreamDone):
+                    chunk.usage["input_chars"] = input_chars
+                    chunk.usage["output_chars"] = output_chars
                 yield chunk
         else:
             # Fallback mock/error
@@ -50,9 +71,8 @@ class DirectAiClient:
     async def _stream_gemini(
         self, message: UserMessage
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
-        # Determine API Key: use passed key or environment variable
         key = self.api_key or ""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:streamGenerateContent?key={key}"
+        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:streamGenerateContent"
         
         parts = []
         if message.text:
@@ -74,9 +94,13 @@ class DirectAiClient:
                 "parts": [{"text": self.system_message}]
             }
 
+        headers = {}
+        if key:
+            headers["x-goog-api-key"] = key
+
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
-                async with client.stream("POST", url, json=payload) as response:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
                     if response.status_code != 200:
                         err_body = await response.aread()
                         yield TextDelta(content=f"Gemini API Error: {response.status_code} - {err_body.decode('utf-8')}")
@@ -157,6 +181,53 @@ class DirectAiClient:
                                     delta = event.get("delta", {})
                                     if delta.get("type") == "text_delta":
                                         yield TextDelta(content=delta.get("text", ""))
+                            except Exception:
+                                continue
+            except Exception as e:
+                yield TextDelta(content=f"Request failed: {e}")
+        yield StreamDone()
+
+    async def _stream_openai(
+        self, message: UserMessage
+    ) -> AsyncGenerator[TextDelta | StreamDone, None]:
+        url = "https://api.openai.com/v1/chat/completions"
+        headers = {
+            "Authorization": f"Bearer {self.api_key}",
+            "Content-Type": "application/json",
+        }
+        messages = []
+        if self.system_message:
+            messages.append({"role": "system", "content": self.system_message})
+        text = message.text or ""
+        messages.append({"role": "user", "content": text})
+
+        payload = {
+            "model": self.model,
+            "messages": messages,
+            "stream": True,
+            "max_tokens": 4096,
+        }
+
+        async with httpx.AsyncClient(timeout=60.0) as client:
+            try:
+                async with client.stream("POST", url, headers=headers, json=payload) as response:
+                    if response.status_code != 200:
+                        err_body = await response.aread()
+                        yield TextDelta(content=f"OpenAI API Error: {response.status_code} - {err_body.decode('utf-8')}")
+                        yield StreamDone()
+                        return
+
+                    async for line in response.aiter_lines():
+                        if line.startswith("data: "):
+                            data_str = line[6:].strip()
+                            if data_str == "[DONE]":
+                                break
+                            try:
+                                event = json.loads(data_str)
+                                choice = event.get("choices", [{}])[0]
+                                delta = choice.get("delta", {})
+                                if delta.get("content"):
+                                    yield TextDelta(content=delta["content"])
                             except Exception:
                                 continue
             except Exception as e:

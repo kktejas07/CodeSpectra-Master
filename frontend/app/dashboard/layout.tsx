@@ -186,17 +186,17 @@ export default function DashboardLayout({
     let cancelled = false
     const loadUnread = async () => {
       try {
-        const res = await fetch('/api/notifications', { credentials: 'include' })
+        const res = await fetch('/api/notifications/unread', { credentials: 'include' })
         if (!res.ok) return
-        const list = (await res.json()) as { is_read?: boolean | null }[]
-        if (cancelled || !Array.isArray(list)) return
-        setUnreadNotifications(list.filter((n) => !n.is_read).length)
+        const data = (await res.json()) as { count?: number }
+        if (cancelled) return
+        setUnreadNotifications(data.count ?? 0)
       } catch {
         if (!cancelled) setUnreadNotifications(0)
       }
     }
     void loadUnread()
-    const t = window.setInterval(() => void loadUnread(), 45_000)
+    const t = window.setInterval(() => void loadUnread(), 30_000)
     return () => {
       cancelled = true
       window.clearInterval(t)
@@ -222,6 +222,7 @@ export default function DashboardLayout({
       { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
       { href: '/dashboard/certifications', icon: Award, label: 'Certifications' },
       { href: '/dashboard/pricing', icon: CreditCardIcon, label: 'Pricing' },
+      { href: '/dashboard/settings/ai', icon: SparklesIcon, label: 'AI Models' },
     ]
 
     const role = normalizeUserRole(userProfile.role)
@@ -629,10 +630,10 @@ export default function DashboardLayout({
               >
                 <Bell className="h-4 w-4 shrink-0" />
                 {unreadNotifications > 0 ? (
-                  <span
-                    className="absolute right-1 top-1 h-1.5 w-1.5 rounded-full bg-primary"
-                    aria-hidden
-                  />
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground leading-none"
+                    aria-label={`${unreadNotifications} unread notifications`}>
+                    {unreadNotifications > 9 ? '9+' : unreadNotifications}
+                  </span>
                 ) : null}
               </Link>
 

@@ -1,4 +1,35 @@
-import type { Issue, FileMetric, QualityGate } from '@/types/scanner'
+/**
+ * Local type definitions for the quality-gate calculator.
+ *
+ * `Issue`, `FileMetric`, and `QualityGate` were previously imported from
+ * `@/types/scanner`, which does not exist in this codebase (no shared module
+ * exports these shapes). They are declared here because they are only consumed
+ * by this module.
+ */
+export interface Issue {
+  type: 'vulnerability' | 'bug' | 'code_smell'
+  [key: string]: unknown
+}
+
+export interface FileMetric {
+  coverage: number
+  duplication: number
+  bugs?: number
+  vulnerabilities?: number
+  code_smells?: number
+  [key: string]: unknown
+}
+
+export interface QualityGate {
+  conditions: {
+    securityIssues: number
+    reliabilityIssues: number
+    maintainabilityIssues: number
+    coverage: number
+    duplications: number
+  }
+  [key: string]: unknown
+}
 
 /**
  * Calculate Quality Gate Status
@@ -87,9 +118,9 @@ export function getFailingConditions(
 export function filePassesGate(metric: FileMetric, gate: QualityGate): boolean {
   if (metric.coverage < gate.conditions.coverage) return false
   if (metric.duplication > gate.conditions.duplications) return false
-  if (metric.bugs > gate.conditions.reliabilityIssues) return false
-  if (metric.vulnerabilities > gate.conditions.securityIssues) return false
-  if (metric.code_smells > gate.conditions.maintainabilityIssues) return false
+  if ((metric.bugs ?? 0) > gate.conditions.reliabilityIssues) return false
+  if ((metric.vulnerabilities ?? 0) > gate.conditions.securityIssues) return false
+  if ((metric.code_smells ?? 0) > gate.conditions.maintainabilityIssues) return false
   return true
 }
 

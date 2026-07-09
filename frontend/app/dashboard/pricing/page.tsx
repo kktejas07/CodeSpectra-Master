@@ -44,8 +44,8 @@ export default function PricingPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
-      if (data.razorpay_order_id && window.Razorpay) {
-        const rzp = new window.Razorpay({
+      if (data.razorpay_order_id && (window as any).Razorpay) {
+        const rzp = new (window as any).Razorpay({
           key: data.razorpay_key_id,
           amount: data.amount,
           currency: data.currency || 'USD',
@@ -70,6 +70,10 @@ export default function PricingPage() {
 
 const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency === 'JPY' ? '¥' : '$'
   const formatLimit = (v: number) => v === -1 || v === 0 ? 'Unlimited' : String(v)
+  const getLimitSuffix = (key: string) => {
+    const map: Record<string, string> = { 'seats': ' /user', 'storage': ' GB', 'requests': ' /mo', 'api_calls': ' /mo' }
+    return map[key] || ''
+  }
 
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading plans…</div>
 

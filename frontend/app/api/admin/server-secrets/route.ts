@@ -17,6 +17,9 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'razorpay_webhook_secret',
   'github_app_token',
   'github_client_secret',
+  'anthropic_api_key',
+  'gemini_api_key',
+  'openai_api_key',
   // legacy
   'stripe_secret_key',
   'stripe_webhook_secret',

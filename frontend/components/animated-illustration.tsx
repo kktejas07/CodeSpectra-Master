@@ -202,6 +202,24 @@ function drawSecurity(ctx: CanvasRenderingContext2D, time: number, w: number, h:
   }
 }
 
+function drawCode(ctx: CanvasRenderingContext2D, time: number, w: number, h: number) {
+  const cx = w / 2, cy = h / 2
+  ctx.strokeStyle = '#38bdf8'
+  ctx.lineWidth = 2
+  for (let i = 0; i < 6; i++) {
+    const angle = (time / 1000) * 0.5 + (i * Math.PI * 2) / 6
+    const x = cx + Math.cos(angle) * 40
+    const y = cy + Math.sin(angle) * 40
+    ctx.beginPath()
+    ctx.moveTo(cx, cy)
+    ctx.lineTo(x, y)
+    ctx.stroke()
+  }
+  ctx.font = '24px monospace'
+  ctx.fillStyle = '#facc15'
+  ctx.fillText('</>', cx - 20, cy + 8)
+}
+
 function drawPerformance(ctx: CanvasRenderingContext2D, time: number, w: number, h: number) {
   const centerX = w / 2
   const centerY = h / 2
