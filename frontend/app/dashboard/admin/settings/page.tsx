@@ -505,16 +505,7 @@ function SystemSettingsInner() {
           <div>
             <h1 className="text-3xl font-bold tracking-tight text-foreground">Platform settings</h1>
             <p className="mt-1 text-sm text-muted-foreground">
-              Use the sidebar under <strong>Platform settings</strong> to switch sections.{' '}
-              <strong>Mail & email APIs</strong> configures invitations plus email provider keys.{' '}
-              <strong>Payments & billing</strong> holds Razorpay and legacy Stripe credentials.{' '}
-              Stripe price IDs for dashboard checkout are edited under{' '}
-              <Link href="/dashboard/admin/pricing" className="font-medium text-primary underline-offset-4 hover:underline">
-                Pricing management
-              </Link>{' '}
-              (same database values; no duplicate form). Host <code className="rounded bg-muted px-1 text-xs">.env</code>{' '}
-              variables override stored secrets when set (see project <code className="rounded bg-muted px-1 text-xs">.env.example</code>
-              ).
+              Manage platform branding, email delivery, payments, and integrations. Environment variables override stored secrets.
             </p>
           </div>
         </div>
@@ -1031,7 +1022,7 @@ function SystemSettingsInner() {
             </div>
             <p className="mt-1 text-sm text-muted-foreground">Registrations, email, and maintenance.</p>
           </div>
-          <div className="space-y-0 divide-y divide-border/60 px-6 py-2">
+          <div className="space-y-0 divide-y divide-border/60 px-6 py-5">
             <div className="flex items-center justify-between gap-4 py-4">
               <div className="space-y-0.5">
                 <Label htmlFor="allow_registration" className="text-foreground">
