@@ -28,33 +28,30 @@ const baseStyles = {
 
 export const emailTemplates = {
   welcomeEmail: (name: string) => ({
-    subject: `Welcome to CodeSpectra, ${name}! Start securing your code`,
+    subject: `Welcome to CodeSpectra, ${name}!`,
     html: `${baseStyles.wrapper}
-      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Welcome aboard, ${name}! 🎉</h1>
-      <p style="margin:0 0 16px;color:#4b5563">Your CodeSpectra account is ready. We're excited to help you ship better code with confidence.</p>
-      <p style="margin:0 0 6px;font-weight:600">Quick-start checklist:</p>
-      <table cellpadding="0" cellspacing="0" style="margin:0 0 16px">
-        <tr><td style="padding:4px 0">✅ &nbsp;Connect your GitHub repository</td></tr>
-        <tr><td style="padding:4px 0">✅ &nbsp;Run your first automated code scan</td></tr>
-        <tr><td style="padding:4px 0">✅ &nbsp;Set up team notifications in Slack</td></tr>
-        <tr><td style="padding:4px 0">✅ &nbsp;Explore the Arena — practice challenges & interviews</td></tr>
-      </table>
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Welcome aboard, ${name}!</h1>
+      <p style="margin:0 0 16px;color:#4b5563">Your CodeSpectra account is ready. Here's how to get started:</p>
+      <ul style="margin:0 0 16px;padding-left:20px;color:#4b5563">
+        <li style="margin:4px 0">Connect your GitHub repository</li>
+        <li style="margin:4px 0">Run your first automated code scan</li>
+        <li style="margin:4px 0">Set up team notifications</li>
+        <li style="margin:4px 0">Explore the Arena — practice challenges & interviews</li>
+      </ul>
       ${baseStyles.button('https://codespectra.com/dashboard', 'Go to Dashboard')}
-      <p style="margin:16px 0 0;color:#6b7280;font-size:13px">Questions? Reach our team at <a href="mailto:support@codespectra.com" style="color:#6366f1">support@codespectra.com</a></p>
     ${baseStyles.footer}`,
   }),
 
   jobApplicationConfirmation: (jobTitle: string, companyName: string, applicantName: string) => ({
     subject: `Application received — ${jobTitle} at ${companyName}`,
     html: `${baseStyles.wrapper}
-      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Application submitted ✓</h1>
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Application submitted</h1>
       <p style="margin:0 0 16px;color:#4b5563">Hi ${applicantName},</p>
-      <p style="margin:0 0 16px;color:#4b5563">We've received your application for the <strong style="color:#1f2937">${jobTitle}</strong> position at <strong style="color:#1f2937">${companyName}</strong>. The hiring team will review your profile and skills assessment results.</p>
+      <p style="margin:0 0 16px;color:#4b5563">We've received your application for the <strong>${jobTitle}</strong> position at <strong>${companyName}</strong>.</p>
       <div style="background:#f3f4f6;border-radius:6px;padding:16px;margin:0 0 16px">
         <p style="margin:0 0 4px;font-weight:600;font-size:14px">What happens next?</p>
-        <p style="margin:0;color:#4b5563;font-size:13px">1. Skills verification — your CodeSpectra scores are shared with the employer<br>2. Resume review by the hiring team (typically 3–5 business days)<br>3. Interview invitation if there's a match</p>
+        <p style="margin:0;color:#4b5563;font-size:13px">1. Skills verification<br>2. Resume review (3–5 business days)<br>3. Interview invitation if there's a match</p>
       </div>
-      <p style="margin:0 0 16px;color:#4b5563">Track your application status anytime in your dashboard.</p>
       ${baseStyles.button('https://codespectra.com/dashboard/applications', 'Track Application')}
     ${baseStyles.footer}`,
   }),
@@ -62,32 +59,31 @@ export const emailTemplates = {
   examStartedNotification: (examTitle: string, candidateName: string) => ({
     subject: `Exam started: ${examTitle}`,
     html: `${baseStyles.wrapper}
-      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Exam in progress ⌨️</h1>
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Exam in progress</h1>
       <p style="margin:0 0 16px;color:#4b5563">Hi ${candidateName},</p>
-      <p style="margin:0 0 16px;color:#4b5563">You've begun <strong style="color:#1f2937">${examTitle}</strong>. Here's a quick reminder of what to expect:</p>
-      <table cellpadding="0" cellspacing="0" style="margin:0 0 16px;font-size:14px;color:#4b5563">
-        <tr><td style="padding:3px 0">⏱ &nbsp;Keep an eye on the timer — auto-submit is enforced</td></tr>
-        <tr><td style="padding:3px 0">📝 &nbsp;Read each question carefully before answering</td></tr>
-        <tr><td style="padding:3px 0">💻 &nbsp;Use the built-in IDE for coding questions</td></tr>
-        <tr><td style="padding:3px 0">🔒 &nbsp;Don't navigate away — it may flag your attempt</td></tr>
-      </table>
-      <p style="margin:0;color:#4b5563">Good luck! You've got this. 💪</p>
+      <p style="margin:0 0 16px;color:#4b5563">You've begun <strong>${examTitle}</strong>. Keep these in mind:</p>
+      <ul style="margin:0 0 16px;padding-left:20px;color:#4b5563">
+        <li style="margin:4px 0">Watch the timer — auto-submit is enforced</li>
+        <li style="margin:4px 0">Read each question carefully before answering</li>
+        <li style="margin:4px 0">Use the built-in IDE for coding questions</li>
+        <li style="margin:4px 0">Don't navigate away — it may flag your attempt</li>
+      </ul>
+      <p style="margin:0;color:#4b5563">Good luck!</p>
     ${baseStyles.footer}`,
   }),
 
   subscriptionConfirmation: (planName: string, amount: number, currency = 'USD') => ({
     subject: `Welcome to ${planName} — your subscription is active`,
     html: `${baseStyles.wrapper}
-      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Subscription confirmed 🎉</h1>
-      <p style="margin:0 0 16px;color:#4b5563">Thank you for upgrading to <strong style="color:#1f2937">${planName}</strong>. Your premium features are now active.</p>
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Subscription confirmed</h1>
+      <p style="margin:0 0 16px;color:#4b5563">Thank you for upgrading to <strong>${planName}</strong>.</p>
       <div style="background:#f3f4f6;border-radius:6px;padding:16px;margin:0 0 16px">
         <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#4b5563;width:100%">
-          <tr><td style="padding:2px 0">Plan</td><td style="text-align:right;font-weight:600;color:#1f2937">${planName}</td></tr>
-          <tr><td style="padding:2px 0">Amount</td><td style="text-align:right;font-weight:600;color:#1f2937">${currency === 'USD' ? '$' : ''}${(amount / 100).toFixed(2)} ${currency !== 'USD' ? currency : ''}</td></tr>
-          <tr><td style="padding:2px 0">Next billing</td><td style="text-align:right;font-weight:600;color:#1f2937">${new Date(Date.now() + 30 * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>
+          <tr><td style="padding:2px 0">Plan</td><td style="text-align:right;font-weight:600">${planName}</td></tr>
+          <tr><td style="padding:2px 0">Amount</td><td style="text-align:right;font-weight:600">${currency === 'USD' ? '$' : ''}${(amount / 100).toFixed(2)} ${currency !== 'USD' ? currency : ''}</td></tr>
+          <tr><td style="padding:2px 0">Next billing</td><td style="text-align:right;font-weight:600">${new Date(Date.now() + 30 * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })}</td></tr>
         </table>
       </div>
-      <p style="margin:0 0 16px;color:#4b5563">Explore everything your plan includes:</p>
       ${baseStyles.button('https://codespectra.com/dashboard/billing', 'Manage Subscription')}
     ${baseStyles.footer}`,
   }),
@@ -95,18 +91,58 @@ export const emailTemplates = {
   invoiceNotification: (invoiceId: string, amount: number, planName: string, currency = 'USD') => ({
     subject: `Invoice #${invoiceId} ready — ${planName}`,
     html: `${baseStyles.wrapper}
-      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Invoice available 📄</h1>
-      <p style="margin:0 0 16px;color:#4b5563">Your latest invoice for <strong style="color:#1f2937">${planName}</strong> is ready.</p>
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Invoice available</h1>
+      <p style="margin:0 0 16px;color:#4b5563">Your latest invoice for <strong>${planName}</strong> is ready.</p>
       <div style="background:#f3f4f6;border-radius:6px;padding:16px;margin:0 0 16px">
         <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#4b5563;width:100%">
-          <tr><td style="padding:2px 0">Invoice</td><td style="text-align:right;font-weight:600;color:#1f2937">#${invoiceId}</td></tr>
-          <tr><td style="padding:2px 0">Amount</td><td style="text-align:right;font-weight:600;color:#1f2937">${currency === 'USD' ? '$' : ''}${(amount / 100).toFixed(2)} ${currency !== 'USD' ? currency : ''}</td></tr>
-          <tr><td style="padding:2px 0">Plan</td><td style="text-align:right;font-weight:600;color:#1f2937">${planName}</td></tr>
+          <tr><td style="padding:2px 0">Invoice</td><td style="text-align:right;font-weight:600">#${invoiceId}</td></tr>
+          <tr><td style="padding:2px 0">Amount</td><td style="text-align:right;font-weight:600">${currency === 'USD' ? '$' : ''}${(amount / 100).toFixed(2)} ${currency !== 'USD' ? currency : ''}</td></tr>
+          <tr><td style="padding:2px 0">Plan</td><td style="text-align:right;font-weight:600">${planName}</td></tr>
           <tr><td style="padding:2px 0">Status</td><td style="text-align:right;font-weight:600;color:#059669">Paid</td></tr>
         </table>
       </div>
       ${baseStyles.button('https://codespectra.com/dashboard/billing', 'Download Invoice')}
-      <p style="margin:12px 0 0;color:#6b7280;font-size:13px">Need help? <a href="mailto:billing@codespectra.com" style="color:#6366f1">billing@codespectra.com</a></p>
+    ${baseStyles.footer}`,
+  }),
+
+  passwordReset: () => ({
+    subject: 'Reset your CodeSpectra password',
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Password reset</h1>
+      <p style="margin:0 0 16px;color:#4b5563">Click the button below to reset your password. This link expires in 1 hour.</p>
+      ${baseStyles.button('{{.ResetURL}}', 'Reset Password')}
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px">If you didn't request this, you can safely ignore this email.</p>
+    ${baseStyles.footer}`,
+  }),
+
+  emailVerification: () => ({
+    subject: 'Verify your CodeSpectra email',
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Verify your email</h1>
+      <p style="margin:0 0 16px;color:#4b5563">Click the button below to confirm your email address and activate your account.</p>
+      ${baseStyles.button('{{.VerifyURL}}', 'Verify Email')}
+      <p style="margin:16px 0 0;color:#6b7280;font-size:13px">If you didn't create an account, ignore this email.</p>
+    ${baseStyles.footer}`,
+  }),
+
+  teamInvite: (teamName: string, invitedByName: string) => ({
+    subject: `You're invited to join ${teamName} on CodeSpectra`,
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Team invitation</h1>
+      <p style="margin:0 0 16px;color:#4b5563"><strong>${invitedByName}</strong> invited you to join <strong>${teamName}</strong> on CodeSpectra.</p>
+      ${baseStyles.button('{{.AcceptURL}}', 'Accept Invitation')}
+    ${baseStyles.footer}`,
+  }),
+
+  twoFactorBackup: () => ({
+    subject: '2FA backup codes — CodeSpectra',
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Two-factor authentication enabled</h1>
+      <p style="margin:0 0 16px;color:#4b5563">Your backup codes are listed below. Store them somewhere safe — each code can only be used once.</p>
+      <div style="background:#f3f4f6;border-radius:6px;padding:16px;margin:0 0 16px;font-family:monospace;font-size:14px;letter-spacing:1px">
+        {{.BackupCodes}}
+      </div>
+      <p style="margin:0;color:#6b7280;font-size:13px">If you lose access to your authenticator app, use a backup code to sign in.</p>
     ${baseStyles.footer}`,
   }),
 }
