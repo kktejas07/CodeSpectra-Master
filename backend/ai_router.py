@@ -13,7 +13,6 @@ from __future__ import annotations
 import asyncio
 import json
 import os
-import re
 import time
 from collections import defaultdict
 from typing import Any, AsyncGenerator, Optional, Union
@@ -57,37 +56,6 @@ def _client_ip(request: Request) -> str:
 
 
 router = APIRouter(prefix="/internal/ai", tags=["internal-ai"])
-
-
-# ---------- prompt injection detection ----------
-# Common patterns that indicate prompt injection / jailbreak attempts.
-_INJECTION_PATTERNS = [
-    re.compile(r"\bignore\s+(all\s+)?(previous|prior)\s+(instructions|prompts|messages|content)", re.I),
-    re.compile(r"\bforget\s+(everything|all)\s+(above|below|previous)", re.I),
-    re.compile(r"\byou\s+are\s+now\s+(an?\s+)?(ai|assistant|chatbot|bot)(?!\s+(expert|helpful))", re.I),
-    re.compile(r"<\|im_start\|>|<\|im_end\|>|<\|sys_", re.I),
-    re.compile(r"\{\{.*system.*\}\}", re.I),
-    re.compile(r"]\s*:\s*assistant\s*$", re.I),
-]
-
-
-def _check_prompt_injection(text: str, max_len: int = 4000) -> None:
-    """Check user-provided text for common prompt injection patterns.
-    Raises HTTP 400 if injection detected. Only checks the first N chars."""
-    if not text:
-        return
-    snippet = text[:max_len]
-    for i, pat in enumerate(_INJECTION_PATTERNS):
-        m = pat.search(snippet)
-        if m:
-            # Show the match location for debugging but don't leak the full input
-            start = max(0, m.start() - 20)
-            end = min(len(snippet), m.end() + 20)
-            context = snippet[start:end].replace("\n", "\\n")
-            raise HTTPException(
-                status_code=400,
-                detail=f"Prompt injection detected (pattern #{i + 1} at offset {m.start()}): ...{context}...",
-            )
 
 
 ENV_ANTHROPIC = os.environ.get("ANTHROPIC_API_KEY", "")
@@ -202,7 +170,6 @@ DEFAULT_CHAT_SYSTEM = (
 @router.post("/chat")
 async def chat_stream(request: Request, req: ChatStreamReq) -> StreamingResponse:
     _check_rate_limit(f"chat:{_client_ip(request)}:{req.session_id or 'anon'}", 30, 60)
-    _check_prompt_injection(req.user_message)
     """SSE stream that emits {"delta":"..."} JSON events ending with [DONE]."""
     system = req.system_message or DEFAULT_CHAT_SYSTEM
     chat = _build_chat(req.model_role, req.session_id, system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
@@ -256,7 +223,6 @@ class CompleteReq(BaseModel):
 @router.post("/complete")
 async def complete(request: Request, req: CompleteReq) -> dict[str, Any]:
     _check_rate_limit(f"complete:{_client_ip(request)}", 60, 60)
-    _check_prompt_injection(req.user_message)
     chat = _build_chat(req.model_role, req.session_id, req.system_message, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     try:
