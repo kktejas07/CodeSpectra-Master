@@ -1,5 +1,6 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
+import { getMongoDb } from '@/lib/mongodb'
 
 const SESSION_COOKIE = 'codespectra_session'
 
@@ -28,10 +29,24 @@ export interface SessionPayload {
   uid: string
   email: string
   role: string
+  ver?: number
 }
 
 export async function signSessionToken(payload: SessionPayload): Promise<string> {
-  return new SignJWT({ ...payload })
+  let ver = payload.ver
+  if (ver === undefined) {
+    try {
+      const db = await getMongoDb()
+      const user = await db.collection('user').findOne(
+        { id: payload.uid },
+        { projection: { session_version: 1 } },
+      )
+      ver = (user?.session_version as number) ?? 1
+    } catch {
+      ver = 1
+    }
+  }
+  return new SignJWT({ ...payload, ver })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
@@ -41,7 +56,21 @@ export async function signSessionToken(payload: SessionPayload): Promise<string>
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
     const { payload } = await jwtVerify(token, getSecret())
-    return payload as unknown as SessionPayload
+    const data = payload as unknown as SessionPayload
+    if (!data.uid) return null
+    // Check session version (revocation)
+    try {
+      const db = await getMongoDb()
+      const user = await db.collection('user').findOne(
+        { id: data.uid },
+        { projection: { session_version: 1 } },
+      )
+      const currentVer = (user?.session_version as number) ?? 1
+      if (data.ver !== undefined && data.ver < currentVer) return null
+    } catch {
+      // If DB check fails, allow token (defense-in-depth, not blocking)
+    }
+    return data
   } catch {
     return null
   }
@@ -68,4 +97,12 @@ export async function clearSessionCookie(): Promise<void> {
     path: '/',
     maxAge: 0,
   })
+}
+
+export async function revokeAllUserSessions(userId: string): Promise<void> {
+  const db = await getMongoDb()
+  await db.collection('user').updateOne(
+    { id: userId },
+    { $inc: { session_version: 1 } },
+  )
 }
