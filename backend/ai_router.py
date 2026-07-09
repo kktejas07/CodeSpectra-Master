@@ -78,36 +78,40 @@ def _resolve_key(provider: str, request_headers=None) -> str:
     """
     Resolve API key for a given provider.
     Priority:
-      1. Provider-specific header (x-anthropic-api-key, x-gemini-api-key)
-      2. Provider-specific env var (ANTHROPIC_API_KEY, GEMINI_API_KEY)
+      1. Provider-specific header (x-anthropic-api-key, x-gemini-api-key, x-openai-api-key)
+      2. Provider-specific env var (ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY)
 
 
     """
+    key_header_map = {
+        "anthropic": "x-anthropic-api-key",
+        "gemini": "x-gemini-api-key",
+        "openai": "x-openai-api-key",
+        "opencode": "x-openai-api-key",
+    }
     if request_headers:
-        if provider == "anthropic":
-            hdr = request_headers.get("x-anthropic-api-key", "")
+        header = key_header_map.get(provider)
+        if header:
+            hdr = request_headers.get(header, "")
             if hdr:
                 return hdr
-        elif provider == "gemini":
-            hdr = request_headers.get("x-gemini-api-key", "")
-            if hdr:
-                return hdr
-        elif provider == "openai":
-            hdr = request_headers.get("x-openai-api-key", "")
-            if hdr:
-                return hdr
-    if provider == "anthropic" and ENV_ANTHROPIC:
-        return ENV_ANTHROPIC
-    if provider == "gemini" and ENV_GEMINI:
-        return ENV_GEMINI
-    if provider == "openai" and ENV_OPENAI:
-        return ENV_OPENAI
-
+    env_map = {
+        "anthropic": ENV_ANTHROPIC,
+        "gemini": ENV_GEMINI,
+        "openai": ENV_OPENAI,
+        "opencode": ENV_OPENAI,
+    }
+    val = env_map.get(provider)
+    if val:
+        return val
     return ""
 
 
 def _ensure_key(key: str, provider: str = "ai") -> None:
     if not key:
+        # Some opencode endpoints work without a key
+        if provider == "opencode":
+            return
         raise HTTPException(
             status_code=500,
             detail=f"{provider.upper()}_API_KEY not configured. Add it in Settings → Integrations → AI Providers, "
@@ -116,7 +120,7 @@ def _ensure_key(key: str, provider: str = "ai") -> None:
         )
 
 
-def _build_chat(model_role: str, session_id: str, system_message: str, api_key_or_headers: Union[str, dict, None] = None, provider_override: Optional[str] = None, model_override: Optional[str] = None) -> LlmChat:
+def _build_chat(model_role: str, session_id: str, system_message: str, api_key_or_headers: Union[str, dict, None] = None, provider_override: Optional[str] = None, model_override: Optional[str] = None, endpoint_override: Optional[str] = None) -> LlmChat:
     if provider_override and model_override:
         provider = provider_override
         model = model_override
@@ -126,7 +130,8 @@ def _build_chat(model_role: str, session_id: str, system_message: str, api_key_o
     if not key:
         key = _resolve_key(provider, None)
     _ensure_key(key, provider)
-    return LlmChat(api_key=key, provider=provider, model=model, system_message=system_message)
+    base_url = endpoint_override or ""
+    return LlmChat(api_key=key, provider=provider, model=model, system_message=system_message, base_url=base_url)
 
 
 def _build_fallback_chat(model_role: str, system_message: str, api_key_or_headers: Union[str, dict, None] = None) -> LlmChat:
@@ -154,6 +159,7 @@ class ChatStreamReq(BaseModel):
     model_role: str = "reasoning"  # 'reasoning' | 'fast'
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 DEFAULT_CHAT_SYSTEM = (
@@ -172,14 +178,14 @@ async def chat_stream(request: Request, req: ChatStreamReq) -> StreamingResponse
     _check_rate_limit(f"chat:{_client_ip(request)}:{req.session_id or 'anon'}", 30, 60)
     """SSE stream that emits {"delta":"..."} JSON events ending with [DONE]."""
     system = req.system_message or DEFAULT_CHAT_SYSTEM
-    chat = _build_chat(req.model_role, req.session_id, system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat(req.model_role, req.session_id, system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
 
     # Replay history so the model has context across turns.
     if req.history:
         transcript = "\n\nPrior conversation transcript:\n" + "\n".join(
             f"{m.role.upper()}: {m.content}" for m in req.history[-12:]
         )
-        chat = _build_chat(req.model_role, req.session_id, system + transcript, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+        chat = _build_chat(req.model_role, req.session_id, system + transcript, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
 
     async def event_stream() -> AsyncGenerator[bytes, None]:
         try:
@@ -218,12 +224,13 @@ class CompleteReq(BaseModel):
     response_format: str = "text"  # 'text' | 'json'
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/complete")
 async def complete(request: Request, req: CompleteReq) -> dict[str, Any]:
     _check_rate_limit(f"complete:{_client_ip(request)}", 60, 60)
-    chat = _build_chat(req.model_role, req.session_id, req.system_message, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat(req.model_role, req.session_id, req.system_message, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
     buf: list[str] = []
     try:
         async for ev in chat.stream_message(UserMessage(text=req.user_message)):
@@ -291,6 +298,7 @@ class HintsReq(BaseModel):
     hint_level: int = 1  # 1=nudge, 2=approach, 3=pseudo-code, 4=solution
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/hints")
@@ -314,7 +322,7 @@ async def smart_hints(request: Request, req: HintsReq) -> dict[str, Any]:
         f"Candidate's current code:\n```\n{(req.current_code or '<empty>')[:4000]}\n```\n\n"
         f"Return ONLY: {level_brief}"
     )
-    chat = _build_chat("fast", f"hints:{req.problem_title}:{req.hint_level}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat("fast", f"hints:{req.problem_title}:{req.hint_level}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -332,6 +340,7 @@ class CodeReviewReq(BaseModel):
     context: Optional[str] = None  # e.g., scan issues summary
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/code-review")
@@ -349,7 +358,7 @@ async def code_review(request: Request, req: CodeReviewReq) -> dict[str, Any]:
         f"Code:\n```{req.language}\n{req.code[:12000]}\n```\n\n"
         "Return ONLY a single JSON object — no prose, no markdown fences."
     )
-    chat = _build_chat("reasoning", f"review:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat("reasoning", f"review:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -371,6 +380,7 @@ class CodeAnalysisReq(BaseModel):
     total_tests: Optional[int] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/code-analysis")
@@ -392,7 +402,7 @@ async def code_analysis(request: Request, req: CodeAnalysisReq) -> dict[str, Any
         f"Code:\n```{req.language}\n{req.code[:8000]}\n```\n\n"
         "Return ONLY one JSON object."
     )
-    chat = _build_chat("fast", f"analysis:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat("fast", f"analysis:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -414,6 +424,7 @@ class GradeReq(BaseModel):
     total_tests: Optional[int] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/grade")
@@ -434,7 +445,7 @@ async def grade(request: Request, req: GradeReq) -> dict[str, Any]:
         f"Code:\n```{req.language}\n{req.code[:8000]}\n```\n\n"
         "Return ONLY one JSON object."
     )
-    chat = _build_chat("reasoning", f"grade:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat("reasoning", f"grade:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -454,6 +465,7 @@ class GenerateProblemReq(BaseModel):
     language_hint: str = "python"
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/generate-problem")
@@ -478,7 +490,7 @@ async def generate_problem(request: Request, req: GenerateProblemReq) -> dict[st
         "Avoid common LeetCode-named problems. Be creative.\n"
         "Return ONLY one JSON object."
     )
-    chat = _build_chat("reasoning", f"qgen:{req.role}:{req.difficulty}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat("reasoning", f"qgen:{req.role}:{req.difficulty}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -496,6 +508,7 @@ class SkillInsightsReq(BaseModel):
     submissions_summary: list[dict[str, Any]]  # [{problem, difficulty, passed, total, time_ms, language, topics}]
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/skill-insights")
@@ -513,7 +526,7 @@ async def skill_insights(request: Request, req: SkillInsightsReq) -> dict[str, A
         f"{json.dumps(req.submissions_summary[:80], indent=2)}\n\n"
         "Return ONLY one JSON object."
     )
-    chat = _build_chat("fast", f"insights:{req.user_name or 'anon'}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat("fast", f"insights:{req.user_name or 'anon'}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
     buf: list[str] = []
     async for ev in chat.stream_message(UserMessage(text=user)):
         if isinstance(ev, TextDelta):
@@ -532,6 +545,7 @@ class IdentityVerifyReq(BaseModel):
     candidate_name: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/identity-verify")
@@ -555,7 +569,7 @@ async def identity_verify(request: Request, req: IdentityVerifyReq) -> dict[str,
         "match=true with confidence>=70."
     )
 
-    chat = _build_chat("vision", "identity-verify", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+    chat = _build_chat("vision", "identity-verify", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
 
     if has_image:
         try:
@@ -607,6 +621,7 @@ class AgentReq(BaseModel):
     max_steps: int = 3
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
 
 
 @router.post("/agent")
@@ -631,7 +646,7 @@ async def agentic_fix(request: Request, req: AgentReq) -> dict[str, Any]:
             f"```\n{code[:8000]}\n```\n\n"
             f"Step {step + 1}/{req.max_steps}. Return ONLY one JSON object."
         )
-        chat = _build_chat("reasoning", f"agent:{abs(hash(req.code))%10**8}:{step}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
+        chat = _build_chat("reasoning", f"agent:{abs(hash(req.code))%10**8}:{step}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
         buf: list[str] = []
         async for ev in chat.stream_message(UserMessage(text=user)):
             if isinstance(ev, TextDelta):

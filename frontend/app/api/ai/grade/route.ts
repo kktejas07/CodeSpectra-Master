@@ -29,7 +29,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'grade_model')
+  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'grade_model')
 
   let body: GradeReq
   try {
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       passed_tests: body.passed_tests ?? null,
       total_tests: body.total_tests ?? null,
     },
-    { providerOverride, modelOverride, modelRole },
+    { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
   )
 
   const gradesCol = await aiGrades()

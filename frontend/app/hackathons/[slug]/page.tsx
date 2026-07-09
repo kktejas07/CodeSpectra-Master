@@ -12,6 +12,7 @@ import {
   Copy, ExternalLink, Share2, Timer,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { Countdown } from '@/components/hackathons/countdown'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string

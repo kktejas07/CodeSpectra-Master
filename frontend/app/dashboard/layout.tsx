@@ -249,6 +249,7 @@ export default function DashboardLayout({
         { href: p.pricing, icon: FileText, label: 'Pricing' },
         { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
         { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
+        { href: '/dashboard/admin/settings/llm', icon: Sparkles, label: 'LLM Config' },
       ]
       const platformSettingsLeaf: NavLeaf = {
         href: p.settings,

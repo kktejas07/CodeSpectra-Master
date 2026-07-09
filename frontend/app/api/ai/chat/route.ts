@@ -110,7 +110,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     extraContext
 
   // Resolve user's preferred model from DB
-  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'chat_model')
+  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'chat_model')
 
   // Stream from backend, simultaneously buffering to persist the assistant turn.
   const upstream = await backendChatStream({
@@ -121,6 +121,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     modelRole,
     providerOverride: providerOverride || undefined,
     modelOverride: modelOverride || undefined,
+    endpointOverride: endpointOverride || undefined,
   })
 
   if (!upstream.ok || !upstream.body) {

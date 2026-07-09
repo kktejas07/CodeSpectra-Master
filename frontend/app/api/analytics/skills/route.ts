@@ -7,7 +7,7 @@ export async function GET() {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  const { providerOverride, modelOverride, modelRole } = await resolveModel(gate.user.id, 'hints_model')
+  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(gate.user.id, 'hints_model')
   // ponytail: model prefs resolved for future AI-powered skills analysis; no backend AI call yet
 
   try {

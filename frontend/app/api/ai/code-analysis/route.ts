@@ -17,7 +17,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'review_model')
+  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'review_model')
 
   let body: AnalysisReq
   try {
@@ -37,7 +37,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       passed_tests: body.passed_tests ?? null,
       total_tests: body.total_tests ?? null,
     },
-    { providerOverride, modelOverride, modelRole },
+    { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
   )
   return NextResponse.json(result)
 }

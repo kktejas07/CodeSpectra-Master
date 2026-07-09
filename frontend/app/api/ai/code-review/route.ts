@@ -18,7 +18,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'review_model')
+  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'review_model')
 
   let body: ReviewReq
   try {
@@ -50,7 +50,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         language: body.language || 'javascript',
         context: scanCtx,
       },
-      { providerOverride, modelOverride, modelRole },
+      { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
     )
   } catch (err) {
     console.error('[CodeSpectra] AI code-review error:', err)
