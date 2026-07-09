@@ -163,44 +163,52 @@ function EmailTemplatesSection() {
   const [expanded, setExpanded] = useState<Record<string, boolean>>({})
 
   const TEMPLATES = [
-    { id: 'welcomeEmail' as const, label: 'Welcome email', desc: 'Sent after user registration', sample: { name: 'John' } },
-    { id: 'jobApplicationConfirmation' as const, label: 'Job application confirmation', desc: 'Sent when a user applies to a job', sample: { jobTitle: 'Software Engineer', companyName: 'Acme Inc', applicantName: 'Jane' } },
-    { id: 'examStartedNotification' as const, label: 'Exam started', desc: 'Sent when a user starts an exam', sample: { examTitle: 'JavaScript Fundamentals', candidateName: 'Jane' } },
-    { id: 'subscriptionConfirmation' as const, label: 'Subscription confirmation', desc: 'Sent after successful subscription', sample: { planName: 'Pro', amount: 2999 } },
-    { id: 'invoiceNotification' as const, label: 'Invoice notification', desc: 'Sent when a new invoice is generated', sample: { invoiceId: 'INV-001', amount: 2999, planName: 'Pro' } },
+    { id: 'welcomeEmail' as const, label: 'Welcome email', desc: 'Sent after user registration', sample: { name: 'John' }, icon: '👋' },
+    { id: 'jobApplicationConfirmation' as const, label: 'Job application confirmation', desc: 'Sent when a user applies to a job', sample: { jobTitle: 'Software Engineer', companyName: 'Acme Inc', applicantName: 'Jane' }, icon: '📋' },
+    { id: 'examStartedNotification' as const, label: 'Exam started', desc: 'Sent when a user starts an exam', sample: { examTitle: 'JavaScript Fundamentals', candidateName: 'Jane' }, icon: '📝' },
+    { id: 'subscriptionConfirmation' as const, label: 'Subscription confirmation', desc: 'Sent after successful subscription', sample: { planName: 'Pro', amount: 2999 }, icon: '⭐' },
+    { id: 'invoiceNotification' as const, label: 'Invoice notification', desc: 'Sent when a new invoice is generated', sample: { invoiceId: 'INV-001', amount: 2999, planName: 'Pro' }, icon: '📄' },
+    { id: 'passwordReset' as const, label: 'Password reset', desc: 'Sent when user requests a password reset', sample: {}, icon: '🔑' },
+    { id: 'emailVerification' as const, label: 'Email verification', desc: 'Sent to verify email address', sample: {}, icon: '📧' },
+    { id: 'teamInvite' as const, label: 'Team invitation', desc: 'Sent when added to a team', sample: { teamName: 'Engineering', invitedByName: 'Alice' }, icon: '👥' },
+    { id: 'twoFactorBackup' as const, label: '2FA backup codes', desc: 'Sent when 2FA is enabled', sample: {}, icon: '🔐' },
   ]
 
   return (
-    <div className="space-y-4 px-6 py-5">
+    <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
       {TEMPLATES.map((tpl) => {
         const tplFn = emailTemplates[tpl.id]
         const preview = tplFn ? tplFn(...Object.values(tpl.sample) as [never]) : null
         return (
-          <div key={tpl.id} className="rounded-lg border border-border/60 bg-muted/15 p-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm font-medium text-foreground">{tpl.label}</p>
-                <p className="text-xs text-muted-foreground">{tpl.desc}</p>
+          <div key={tpl.id} className="rounded-lg border border-border/60 bg-card/40 p-4 hover:border-primary/20 transition-colors">
+            <div className="flex items-start justify-between">
+              <div className="flex items-start gap-3">
+                <span className="mt-0.5 text-lg">{tpl.icon}</span>
+                <div>
+                  <p className="text-sm font-medium text-foreground">{tpl.label}</p>
+                  <p className="text-xs text-muted-foreground mt-0.5">{tpl.desc}</p>
+                </div>
               </div>
               <Button
-                variant="outline"
+                variant="ghost"
                 size="sm"
-                className="gap-2"
+                className="gap-1.5 shrink-0"
                 onClick={() => setExpanded((v) => ({ ...v, [tpl.id]: !v[tpl.id] }))}
               >
-                {expanded[tpl.id] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                {expanded[tpl.id] ? 'Hide preview' : 'Preview'}
+                {expanded[tpl.id] ? 'Hide' : 'Preview'}
               </Button>
             </div>
             {expanded[tpl.id] && preview && (
-              <div className="mt-4 rounded-md border border-border/40 bg-background p-4">
-                <div className="mb-3 text-xs text-muted-foreground font-mono">
+              <div className="mt-4 rounded-lg border border-border/40 bg-background overflow-hidden">
+                <div className="border-b border-border/40 bg-muted/20 px-4 py-2 text-xs text-muted-foreground font-mono">
                   Subject: {preview.subject}
                 </div>
-                <div
-                  className="prose prose-sm max-w-none dark:prose-invert rounded-md border border-border/20 bg-white p-4 text-black [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mb-1 [&_strong]:font-semibold"
-                  dangerouslySetInnerHTML={{ __html: preview.html }}
-                />
+                <div className="p-4 max-h-[400px] overflow-y-auto">
+                  <div
+                    className="prose prose-sm max-w-none dark:prose-invert [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mb-1"
+                    dangerouslySetInnerHTML={{ __html: preview.html }}
+                  />
+                </div>
               </div>
             )}
           </div>

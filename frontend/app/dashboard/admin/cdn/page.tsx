@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,15 +8,14 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { 
   Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle, 
-  MapPin, CheckCircle2, ChevronRight, Activity, Cpu, CloudLightning 
+  MapPin, CheckCircle2, Activity, Loader2,
 } from 'lucide-react'
 
-interface EdgeNode {
-  id: string
-  location: string
-  status: 'healthy' | 'degraded' | 'maintenance'
-  latency: number
-  trafficShare: string
+interface CloudflareData {
+  configured: boolean
+  traffic?: { requests: number; cached: number; bytes: number; uniques: number; cacheRatio: number }
+  topCountries?: Array<{ country: string; requests: number }>
+  error?: string
 }
 
 interface WafRule {
@@ -32,14 +31,8 @@ export default function CdnAdminPage() {
   const { toast } = useToast()
   const [purging, setPurging] = useState(false)
   const [purgePath, setPurgePath] = useState('')
-  const [nodes, setNodes] = useState<EdgeNode[]>([
-    { id: '1', location: 'New York (US-East)', status: 'healthy', latency: 8, trafficShare: '28%' },
-    { id: '2', location: 'Frankfurt (EU-Central)', status: 'healthy', latency: 11, trafficShare: '24%' },
-    { id: '3', location: 'Tokyo (AP-Northeast)', status: 'healthy', latency: 14, trafficShare: '18%' },
-    { id: '4', location: 'Singapore (AP-Southeast)', status: 'healthy', latency: 19, trafficShare: '15%' },
-    { id: '5', location: 'Mumbai (AP-South)', status: 'healthy', latency: 22, trafficShare: '11%' },
-    { id: '6', location: 'Sydney (OC-Southeast)', status: 'healthy', latency: 28, trafficShare: '4%' },
-  ])
+  const [cfData, setCfData] = useState<CloudflareData | null>(null)
+  const [cfLoading, setCfLoading] = useState(true)
 
   const [wafRules, setWafRules] = useState<WafRule[]>([
     { id: '1', name: 'SQL Injection Protection', description: 'Detects and blocks SQL injection attempt patterns in incoming requests.', action: 'block', enabled: true },
@@ -48,15 +41,33 @@ export default function CdnAdminPage() {
     { id: '4', name: 'Bad Bot Ingress Blocker', description: 'Restricts unverified scrapers and vulnerability scanners from indexing pages.', action: 'challenge', enabled: false },
   ])
 
-  if (!gate.ready) {
-    return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-3">
-          <RefreshCw className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground animate-pulse">Loading CDN Configuration...</p>
-        </div>
-      </div>
-    )
+  useEffect(() => {
+    if (!gate.ready) return
+    fetch('/api/admin/cloudflare-analytics', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setCfData(d))
+      .catch(() => setCfData({ configured: false }))
+      .finally(() => setCfLoading(false))
+  }, [gate.ready])
+
+  const handlePurge = async (all: boolean) => {
+    setPurging(true)
+    try {
+      const res = await fetch('/api/admin/cdn/purge', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(all ? { purge_all: true } : { paths: purgePath ? [purgePath] : ['/'] }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Purge failed')
+      toast({ title: 'Cache purged', description: all ? 'All edge cache invalidated' : `Purged: ${(json.paths || []).join(', ')}`, variant: 'success' })
+      if (!all) setPurgePath('')
+    } catch (e) {
+      toast({ title: 'Purge failed', description: (e as Error).message, variant: 'destructive' })
+    } finally {
+      setPurging(false)
+    }
   }
 
   const handlePurge = (all: boolean) => {
@@ -117,57 +128,47 @@ export default function CdnAdminPage() {
 
       {/* Grid: 4 Metric Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="p-6 relative overflow-hidden bg-card/50 backdrop-blur-md border border-muted-foreground/10 hover:border-primary/20 transition-all duration-300">
+        <Card className="p-6 bg-card/50 border border-muted-foreground/10">
           <div className="flex items-center justify-between">
             <span className="text-sm font-medium text-muted-foreground">Cache Hit Rate</span>
-            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-              <Zap className="h-4 w-4 animate-pulse" />
-            </div>
+            <div className="p-2 rounded-lg bg-primary/10 text-primary"><Zap className="h-4 w-4" /></div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold tracking-tight">94.8%</span>
-            <p className="text-xs text-emerald-500 mt-1 flex items-center gap-1">
-              <span>+1.2%</span> vs last week
-            </p>
+            <span className="text-3xl font-bold">{cfLoading ? '...' : cfData?.traffic?.cacheRatio != null ? `${cfData.traffic.cacheRatio}%` : 'N/A'}</span>
+            {!cfLoading && !cfData?.configured && <p className="text-xs text-muted-foreground mt-1">Configure Cloudflare</p>}
           </div>
         </Card>
 
-        <Card className="p-6 relative overflow-hidden bg-card/50 backdrop-blur-md border border-muted-foreground/10 hover:border-fuchsia-500/20 transition-all duration-300">
+        <Card className="p-6 bg-card/50 border border-muted-foreground/10">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Edge Latency</span>
-            <div className="p-2 rounded-lg bg-fuchsia-500/10 text-fuchsia-500">
-              <Activity className="h-4 w-4 animate-pulse" />
-            </div>
+            <span className="text-sm font-medium text-muted-foreground">Total Requests</span>
+            <div className="p-2 rounded-lg bg-fuchsia-500/10 text-fuchsia-500"><Activity className="h-4 w-4" /></div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold tracking-tight">14ms</span>
-            <p className="text-xs text-muted-foreground mt-1">Origin Latency: 92ms</p>
+            <span className="text-3xl font-bold">{cfLoading ? '...' : cfData?.traffic?.requests?.toLocaleString() || 'N/A'}</span>
+            <p className="text-xs text-muted-foreground mt-1">{cfData?.traffic?.uniques?.toLocaleString()} unique visitors</p>
           </div>
         </Card>
 
-        <Card className="p-6 relative overflow-hidden bg-card/50 backdrop-blur-md border border-muted-foreground/10 hover:border-indigo-500/20 transition-all duration-300">
+        <Card className="p-6 bg-card/50 border border-muted-foreground/10">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">Bandwidth Offloaded</span>
-            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500">
-              <Globe2 className="h-4 w-4" />
-            </div>
+            <span className="text-sm font-medium text-muted-foreground">Bandwidth</span>
+            <div className="p-2 rounded-lg bg-indigo-500/10 text-indigo-500"><Globe2 className="h-4 w-4" /></div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold tracking-tight">4.82 TB</span>
-            <p className="text-xs text-indigo-500 mt-1">88.4% offload ratio</p>
+            <span className="text-3xl font-bold">{cfLoading ? '...' : cfData?.traffic?.bytes != null ? `${(cfData.traffic.bytes / 1073741824).toFixed(1)} GB` : 'N/A'}</span>
+            <p className="text-xs text-indigo-500 mt-1">{cfData?.traffic?.cached?.toLocaleString()} requests cached</p>
           </div>
         </Card>
 
-        <Card className="p-6 relative overflow-hidden bg-card/50 backdrop-blur-md border border-muted-foreground/10 hover:border-destructive/20 transition-all duration-300">
+        <Card className="p-6 bg-card/50 border border-muted-foreground/10">
           <div className="flex items-center justify-between">
-            <span className="text-sm font-medium text-muted-foreground">WAF Events Prevented</span>
-            <div className="p-2 rounded-lg bg-destructive/10 text-destructive">
-              <Shield className="h-4 w-4" />
-            </div>
+            <span className="text-sm font-medium text-muted-foreground">Edge Nodes</span>
+            <div className="p-2 rounded-lg bg-destructive/10 text-destructive"><Shield className="h-4 w-4" /></div>
           </div>
           <div className="mt-4">
-            <span className="text-3xl font-bold tracking-tight">1,482</span>
-            <p className="text-xs text-muted-foreground mt-1">12 blocks past 24h</p>
+            <span className="text-3xl font-bold">{cfData?.topCountries?.length || 0}</span>
+            <p className="text-xs text-muted-foreground mt-1">Countries served</p>
           </div>
         </Card>
       </div>
@@ -266,38 +267,40 @@ export default function CdnAdminPage() {
           </Card>
         </div>
 
-        {/* Right Col: Global Edge Locations Latency Tracker */}
+        {/* Right Col: Visitor Countries */}
         <div>
-          <Card className="p-6 border border-muted-foreground/10 bg-card/30 backdrop-blur-sm h-full flex flex-col">
+          <Card className="p-6 border border-muted-foreground/10 bg-card/30 h-full flex flex-col">
             <div className="flex items-center gap-3 border-b border-muted/50 pb-4 mb-4">
               <div className="p-2 rounded bg-fuchsia-500/10 text-fuchsia-500">
                 <Globe2 className="h-5 w-5" />
               </div>
               <div>
-                <h3 className="font-semibold text-lg">Global Edge Nodes</h3>
-                <p className="text-xs text-muted-foreground">Real-time telemetry of edge caching nodes.</p>
+                <h3 className="font-semibold text-lg">Visitor Countries</h3>
+                <p className="text-xs text-muted-foreground">Top countries by request volume.</p>
               </div>
             </div>
 
-            <div className="flex-1 space-y-4">
-              {nodes.map(node => (
-                <div key={node.id} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-muted-foreground/5">
-                  <div className="flex items-center gap-3">
-                    <MapPin className="h-4 w-4 text-fuchsia-500 shrink-0" />
-                    <div>
-                      <p className="text-sm font-medium">{node.location}</p>
-                      <span className="text-[10px] text-muted-foreground">Traffic Share: {node.trafficShare}</span>
+            <div className="flex-1 space-y-3">
+              {cfLoading ? (
+                <div className="flex items-center justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : !cfData?.configured ? (
+                <p className="text-xs text-muted-foreground text-center py-10">Configure Cloudflare in Settings → Cloudflare</p>
+              ) : cfData?.topCountries && cfData.topCountries.length > 0 ? (
+                cfData.topCountries.map((c, i) => (
+                  <div key={c.country} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-muted-foreground/5">
+                    <div className="flex items-center gap-3">
+                      <MapPin className="h-4 w-4 text-fuchsia-500 shrink-0" />
+                      <p className="text-sm font-medium">{c.country}</p>
+                    </div>
+                    <div className="text-right">
+                      <p className="text-sm font-semibold font-mono text-emerald-500">{c.requests.toLocaleString()}</p>
+                      <span className="text-[10px] text-muted-foreground">requests</span>
                     </div>
                   </div>
-                  <div className="text-right">
-                    <p className="text-sm font-semibold font-mono text-emerald-500">{node.latency}ms</p>
-                    <span className="text-[10px] text-muted-foreground flex items-center justify-end gap-1">
-                      <span className="h-1.5 w-1.5 rounded-full bg-emerald-500"></span>
-                      Online
-                    </span>
-                  </div>
-                </div>
-              ))}
+                ))
+              ) : (
+                <p className="text-xs text-muted-foreground text-center py-10">No traffic data yet</p>
+              )}
             </div>
           </Card>
         </div>

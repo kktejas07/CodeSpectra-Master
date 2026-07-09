@@ -136,14 +136,14 @@ export default function HackathonsAdminPage() {
       {creating && (
         <Card className="space-y-6 p-6">
           {/* Step indicator */}
-          <div className="flex gap-2 text-sm">
+          <div className="flex gap-3 text-sm">
             {[
               { n: 1, label: 'Basics' },
               { n: 2, label: 'Problems' },
               { n: 3, label: 'Rules & Scoring' },
             ].map((s) => (
               <button key={s.n} onClick={() => setStep(s.n)}
-                className={`px-3 py-1.5 rounded-md transition-colors ${step === s.n ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
+                className={`px-4 py-2 rounded-lg transition-colors ${step === s.n ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
                 {s.n}. {s.label}
               </button>
             ))}
@@ -151,18 +151,18 @@ export default function HackathonsAdminPage() {
 
           {/* Step 1: Basics */}
           {step === 1 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h3 className="font-semibold text-lg">Event Details</h3>
-              <div>
+              <div className="space-y-2">
                 <Label>Event name</Label>
                 <Input autoFocus value={form.name} onChange={(e) => setForm((f) => ({ ...f, name: e.target.value }))} placeholder="Frostbyte Winter 2026" />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Description</Label>
-                <Textarea rows={3} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the event, theme, and what participants will build..." />
+                <Textarea rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the event, theme, and what participants will build..." />
               </div>
-              <div className="grid gap-3 md:grid-cols-3">
-                <div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
                   <Label>Teams allowed</Label>
                   <Input type="number" min={1} max={500} value={form.num_teams} onChange={(e) => setForm((f) => ({ ...f, num_teams: Number(e.target.value) }))} />
                 </div>
@@ -198,7 +198,7 @@ export default function HackathonsAdminPage() {
 
           {/* Step 2: Problem/Task Selection */}
           {step === 2 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h3 className="font-semibold text-lg">Assign Problems</h3>
               <p className="text-sm text-muted-foreground">Search and select problems to include in this event.</p>
 
@@ -210,11 +210,11 @@ export default function HackathonsAdminPage() {
               {searchingProblems && <p className="text-xs text-muted-foreground">Searching...</p>}
 
               {problemResults.length > 0 && (
-                <div className="space-y-1 max-h-40 overflow-y-auto border rounded-md p-2">
+                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
                   {problemResults.map((p) => {
                     const added = form.tasks.find((t) => t.slug === p.slug)
                     return (
-                      <div key={p.slug} className="flex items-center justify-between p-2 rounded hover:bg-muted/50">
+                      <div key={p.slug} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50">
                         <div className="flex-1 min-w-0">
                           <p className="text-sm truncate">{p.title}</p>
                           <p className="text-xs text-muted-foreground">{p.slug} · {p.difficulty}</p>
@@ -265,12 +265,12 @@ export default function HackathonsAdminPage() {
 
           {/* Step 3: Rules & Scoring */}
           {step === 3 && (
-            <div className="space-y-4">
+            <div className="space-y-6">
               <h3 className="font-semibold text-lg">Rules & Scoring</h3>
 
-              <div className="space-y-3">
+              <div className="space-y-4">
                 {form.rules.map((r, i) => (
-                  <div key={i} className="rounded border p-3 space-y-2">
+                  <div key={i} className="rounded-lg border border-border/60 p-4 space-y-3">
                     <div className="flex items-center justify-between">
                       <Badge variant="outline">{r.type}</Badge>
                       <Button size="sm" variant="ghost" className="text-destructive h-6"
@@ -278,10 +278,16 @@ export default function HackathonsAdminPage() {
                         Remove
                       </Button>
                     </div>
-                    <Input placeholder="Rule title" value={r.title}
-                      onChange={(e) => setForm((f) => ({ ...f, rules: f.rules.map((x, idx) => idx === i ? { ...x, title: e.target.value } : x) }))} />
-                    <Textarea rows={2} placeholder="Rule description" value={r.description}
-                      onChange={(e) => setForm((f) => ({ ...f, rules: f.rules.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x) }))} />
+                    <div className="space-y-2">
+                      <Label>Rule title</Label>
+                      <Input value={r.title}
+                        onChange={(e) => setForm((f) => ({ ...f, rules: f.rules.map((x, idx) => idx === i ? { ...x, title: e.target.value } : x) }))} />
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Description</Label>
+                      <Textarea rows={2} value={r.description}
+                        onChange={(e) => setForm((f) => ({ ...f, rules: f.rules.map((x, idx) => idx === i ? { ...x, description: e.target.value } : x) }))} />
+                    </div>
                   </div>
                 ))}
                 <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
