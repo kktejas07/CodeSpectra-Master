@@ -529,25 +529,13 @@ function SystemSettingsInner() {
 
       <div className="min-w-0 space-y-6">
           {section === 'branding' ? (
-            <Alert className="rounded-xl border-border/60 bg-muted/30">
-              <Building2 className="h-4 w-4" />
-              <AlertTitle>How this is stored</AlertTitle>
-              <AlertDescription className="text-muted-foreground">
-                General settings use the <code className="rounded bg-muted px-1 text-xs">general</code> row in{' '}
-                <code className="rounded bg-muted px-1 text-xs">platform_settings</code>. Requires a superadmin
-                session.
-              </AlertDescription>
-            </Alert>
-          ) : null}
-
-          {section === 'branding' ? (
         <Card className="rounded-xl border-border/60 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
               <Building2 className="h-5 w-5 text-primary" />
               <h3 className="font-semibold text-foreground">Branding & support</h3>
             </div>
-            <p className="mt-1 text-sm text-muted-foreground">Name, support contacts, timezone, and default locale.</p>
+            <p className="mt-1 text-sm text-muted-foreground">Platform name, tagline, logo, support contacts, and locale.</p>
           </div>
           <div className="space-y-4 px-6 py-5">
             <div>
@@ -570,36 +558,48 @@ function SystemSettingsInner() {
               />
             </div>
             <div>
-              <Label htmlFor="logo_url">Logo URL (optional)</Label>
-              <Input
-                id="logo_url"
-                type="url"
-                value={form.logo_url}
-                onChange={(e) => setForm((f) => ({ ...f, logo_url: e.target.value }))}
-                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                placeholder="https://storage.example.com/logo.png"
+              <Label htmlFor="logo_upload">Logo (optional)</Label>
+              <input
+                id="logo_upload"
+                type="file"
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                className="mt-1.5 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2MB'); return }
+                  const reader = new FileReader()
+                  reader.onload = (ev) => setForm((f) => ({ ...f, logo_url: ev.target?.result as string || '' }))
+                  reader.readAsDataURL(file)
+                }}
               />
               {form.logo_url ? (
                 <div className="mt-2 flex items-center gap-3">
-                  <img src={form.logo_url} alt="logo preview" className="h-10 w-auto rounded border object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  <span className="text-xs text-muted-foreground">Preview</span>
+                  <img src={form.logo_url} alt="logo preview" className="h-10 w-auto rounded border object-contain" />
+                  <button onClick={() => setForm((f) => ({ ...f, logo_url: '' }))} className="text-xs text-destructive hover:underline">Remove</button>
                 </div>
               ) : null}
             </div>
             <div>
-              <Label htmlFor="favicon_url">Favicon URL (optional)</Label>
-              <Input
-                id="favicon_url"
-                type="url"
-                value={form.favicon_url}
-                onChange={(e) => setForm((f) => ({ ...f, favicon_url: e.target.value }))}
-                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                placeholder="https://storage.example.com/favicon.ico"
+              <Label htmlFor="favicon_upload">Favicon (optional)</Label>
+              <input
+                id="favicon_upload"
+                type="file"
+                accept="image/png,image/x-icon,image/svg+xml,image/webp"
+                className="mt-1.5 block w-full text-sm text-muted-foreground file:mr-3 file:rounded-lg file:border-0 file:bg-primary/10 file:px-3 file:py-1.5 file:text-sm file:font-medium file:text-primary hover:file:bg-primary/20"
+                onChange={(e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  if (file.size > 1 * 1024 * 1024) { alert('Favicon must be under 1MB'); return }
+                  const reader = new FileReader()
+                  reader.onload = (ev) => setForm((f) => ({ ...f, favicon_url: ev.target?.result as string || '' }))
+                  reader.readAsDataURL(file)
+                }}
               />
               {form.favicon_url ? (
                 <div className="mt-2 flex items-center gap-3">
-                  <img src={form.favicon_url} alt="favicon preview" className="h-8 w-8 rounded border object-contain" onError={(e) => { (e.target as HTMLImageElement).style.display = 'none' }} />
-                  <span className="text-xs text-muted-foreground">Preview</span>
+                  <img src={form.favicon_url} alt="favicon preview" className="h-8 w-8 rounded border object-contain" />
+                  <button onClick={() => setForm((f) => ({ ...f, favicon_url: '' }))} className="text-xs text-destructive hover:underline">Remove</button>
                 </div>
               ) : null}
             </div>
@@ -674,10 +674,7 @@ function SystemSettingsInner() {
               <h3 className="font-semibold text-foreground">Mail &amp; email APIs</h3>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              When a superadmin adds a user <strong>without</strong> typing a password, choose how they receive access.
-              Resend and SendGrid keys below are always available to configure (saved to server secrets); they are used
-              when you pick a Resend/SendGrid delivery method, and can be used by other app emails.{' '}
-              <strong>SMTP for Supabase Auth</strong> is configured in the Supabase dashboard, not here.
+              Choose how new users receive account access. Provider keys can also be configured server-side (<code className="rounded bg-muted px-1">RESEND_API_KEY</code>, etc.).
             </p>
           </div>
           <div className="space-y-4 px-6 py-5">
@@ -706,27 +703,22 @@ function SystemSettingsInner() {
                   ))}
                 </SelectContent>
               </Select>
-              <p className="mt-2 text-xs text-muted-foreground leading-relaxed">
-                <strong>Supabase invite</strong> uses your project&apos;s Auth email (configure SMTP under Supabase →
-                Authentication → Emails). <strong>Resend / SendGrid</strong> send links from this app. Optional: set{' '}
-                <code className="rounded bg-muted px-1 text-xs">RESEND_API_KEY</code>,{' '}
-                <code className="rounded bg-muted px-1 text-xs">SENDGRID_API_KEY</code>, etc. in the host environment —
-                they override secrets saved here.
+              <p className="mt-2 text-xs text-muted-foreground">
+                Supabase invite uses your Auth SMTP. Resend / SendGrid send from this app. Server env vars override saved keys.
               </p>
             </div>
 
             <Alert className="rounded-lg border-border/60 bg-muted/20">
               <AlertTitle className="text-sm">Email templates</AlertTitle>
               <AlertDescription className="text-xs text-muted-foreground">
-                Transactional email templates are configured in{' '}
+                Templates are configured in{' '}
                 <Link
                   href={platformSettingsHref('email-templates')}
                   className="font-medium text-primary underline-offset-4 hover:underline"
                 >
                   Email templates
                 </Link>
-                . SMTP settings are configured above.
-                Set <code className="rounded bg-muted px-1 text-xs">NEXT_PUBLIC_APP_URL</code> for correct invite redirects.
+                . Set <code className="rounded bg-muted px-1 text-xs">NEXT_PUBLIC_APP_URL</code> for correct invite links.
               </AlertDescription>
             </Alert>
 
@@ -1071,7 +1063,7 @@ function SystemSettingsInner() {
                 <Label htmlFor="maintenance_mode" className="text-foreground">
                   Maintenance mode
                 </Label>
-                <p className="text-sm text-muted-foreground">Surface a maintenance state to clients (wire in UI)</p>
+                <p className="text-sm text-muted-foreground">Show maintenance notice to all users</p>
               </div>
               <Switch
                 id="maintenance_mode"
@@ -1101,7 +1093,7 @@ function SystemSettingsInner() {
               <h3 className="font-semibold text-foreground">Product & access</h3>
             </div>
             <p className="mt-1 text-sm text-muted-foreground">
-              Sign-up flows, leaderboard visibility, and verification. Enforce in API routes and UI where relevant.
+              Sign-up flows, leaderboard visibility, and verification settings.
             </p>
           </div>
           <div className="grid gap-0 divide-y divide-border/60 sm:grid-cols-2 sm:divide-x sm:divide-y-0">
@@ -1153,12 +1145,11 @@ function SystemSettingsInner() {
                   <h3 className="font-semibold text-foreground">Integrations</h3>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Additional service integrations — no redeploy required.
-                  Payments &amp; billing are in{' '}
+                  Service integrations. Payments in{' '}
                   <Link href={platformSettingsHref('payments')} className="font-medium text-primary underline-offset-4 hover:underline">
                     Payments &amp; billing
                   </Link>
-                  . Mail keys are in{' '}
+                  , mail keys in{' '}
                   <Link href={platformSettingsHref('mail')} className="font-medium text-primary underline-offset-4 hover:underline">
                     Mail &amp; email APIs
                   </Link>
@@ -1176,14 +1167,10 @@ function SystemSettingsInner() {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Additional origins Better Auth should accept on{' '}
-                    <code className="rounded bg-muted px-1">/api/auth/*</code>. Localhost and the
-                    main app URL are already permitted. Add staging / new preview / custom domains
-                    here — no redeploy required.
+                    Additional origins for <code className="rounded bg-muted px-1">/api/auth/*</code>. One per line or comma-separated.
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    Format: one origin per line, OR comma-separated. Trailing slashes are stripped
-                    automatically. Only <code>http://</code> and <code>https://</code> origins are accepted.
+                    Trailing slashes stripped. Only <code>http://</code> and <code>https://</code>.
                   </p>
                   <textarea
                     id="sec_trusted_origins"
@@ -1212,19 +1199,7 @@ function SystemSettingsInner() {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Base URL of a Piston-compatible code execution server (no trailing slash).
-                    Leave empty to use the in-process subprocess executor
-                    (<code>python</code>, <code>node</code>, <code>tsx</code>, <code>bash</code> only).
-                    See{' '}
-                    <a
-                      href="https://github.com/engineer-man/piston#self-hosting"
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-primary underline-offset-4 hover:underline"
-                    >
-                      Piston self-hosting docs
-                    </a>{' '}
-                    for Docker / Render / Fly deploy.
+                    Piston-compatible code execution server URL. Leave empty for in-process executor (python, node, tsx, bash).
                   </p>
                   <Input
                     id="sec_piston_url"

@@ -26,7 +26,9 @@ import {
   Trash2,
   HelpCircle,
   CheckCircle,
+  Timer,
 } from 'lucide-react'
+import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Hackathon {
@@ -215,6 +217,16 @@ export default function HackathonDetailPage({
           <Badge variant={event.status === 'live' ? 'default' : 'secondary'} className="uppercase">
             {event.status}
           </Badge>
+          {event.status === 'open' && (
+            <span className="flex items-center gap-1 text-xs text-yellow-500">
+              <Timer className="h-3 w-3" /> Starts <Countdown targetIso={event.starts_at} />
+            </span>
+          )}
+          {event.status === 'live' && (
+            <span className="flex items-center gap-1 text-xs text-green-500">
+              <Timer className="h-3 w-3" /> Ends <Countdown targetIso={event.ends_at} />
+            </span>
+          )}
         </div>
       </header>
 
