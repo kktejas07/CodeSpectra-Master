@@ -4,7 +4,7 @@ import { useEffect, useState, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { BarChart3, HelpCircle, TrendingUp, Users, Activity, Code2, ListOrdered, Loader2, UserCheck, ArrowUp, ArrowDown } from 'lucide-react'
+import { BarChart3, HelpCircle, TrendingUp, Users, Activity, Code2, ListOrdered, Loader2, UserCheck, ArrowUp, ArrowDown, Globe2, Zap, Shield } from 'lucide-react'
 import { useRoleGate } from '@/lib/use-role-gate'
 import Link from 'next/link'
 
@@ -24,7 +24,9 @@ interface MetricsData {
 export default function Analytics() {
   const gate = useRoleGate({ require: 'superadmin' })
   const [data, setData] = useState<MetricsData | null>(null)
+  const [cfData, setCfData] = useState<{ configured: boolean; traffic?: { requests: number; cached: number; bytes: number; uniques: number; cacheRatio: number }; topCountries?: Array<{ country: string; requests: number }> } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [cfLoading, setCfLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [period, setPeriod] = useState('7d')
 
@@ -38,7 +40,12 @@ export default function Analytics() {
       setData(json)
       setLoading(false)
     }
+    const runCf = async () => {
+      setCfLoading(true)
+      try { const r = await fetch('/api/admin/cloudflare-analytics'); const j = await r.json(); setCfData(j) } catch {} finally { setCfLoading(false) }
+    }
     void run()
+    void runCf()
   }, [gate.ready])
 
   const growthPct = useMemo(() => {
@@ -183,6 +190,58 @@ export default function Analytics() {
         </Card>
       </div>
 
+      {/* Cloudflare CDN Analytics */}
+      <div className="space-y-4">
+        <div className="flex items-center gap-2">
+          <Globe2 className="h-5 w-5 text-primary" />
+          <h2 className="text-lg font-semibold">CDN & Edge Analytics</h2>
+          {cfLoading && <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />}
+        </div>
+
+        {cfData && !cfData.configured && (
+          <Card className="p-6 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
+            <Globe2 className="mx-auto h-8 w-8 text-muted-foreground mb-2" />
+            <p>Configure Cloudflare in Settings → Integrations to see CDN analytics.</p>
+          </Card>
+        )}
+
+        {cfData?.configured && cfData?.error && (
+          <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{cfData.error}</Card>
+        )}
+
+        {cfData?.traffic && (
+          <>
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-4">
+              <KpiCard icon={<Zap className="h-5 w-5 text-orange-500" />} color="bg-orange-500/10" label="Total Requests" value={cfData.traffic.requests} hint="Edge requests (30d)" />
+              <KpiCard icon={<BarChart3 className="h-5 w-5 text-blue-500" />} color="bg-blue-500/10" label="Unique Visitors" value={cfData.traffic.uniques} hint="Unique IPs (30d)" />
+              <KpiCard icon={<Shield className="h-5 w-5 text-green-500" />} color="bg-green-500/10" label="Cache Hit Rate" value={cfData.traffic.cacheRatio} hint="Percent served from edge cache" />
+              <KpiCard icon={<Globe2 className="h-5 w-5 text-purple-500" />} color="bg-purple-500/10" label="Bandwidth" value={Math.round(cfData.traffic.bytes / 1073741824)} hint="Total bandwidth in GB (30d)" suffix=" GB" />
+            </div>
+
+            {cfData.topCountries && cfData.topCountries.length > 0 && (
+              <Card className="p-6 border-border/60">
+                <h3 className="text-sm font-semibold mb-4">Top Visitor Countries</h3>
+                <div className="space-y-2">
+                  {cfData.topCountries.map((c) => {
+                    const maxReq = Math.max(...cfData.topCountries!.map((x) => x.requests), 1)
+                    const pct = Math.round((c.requests / maxReq) * 100)
+                    return (
+                      <div key={c.country} className="flex items-center gap-3">
+                        <span className="w-28 text-sm text-muted-foreground truncate">{c.country}</span>
+                        <div className="flex-1 h-4 rounded-full bg-muted/50 overflow-hidden">
+                          <div className="h-full rounded-full bg-primary/40 transition-all" style={{ width: `${pct}%` }} />
+                        </div>
+                        <span className="text-sm font-medium tabular-nums w-20 text-right">{c.requests.toLocaleString()}</span>
+                      </div>
+                    )
+                  })}
+                </div>
+              </Card>
+            )}
+          </>
+        )}
+      </div>
+
       <p className="text-xs text-muted-foreground text-center">
         Detailed audit logs, server health, and user management on{' '}
         <Link href="/dashboard/admin/system" className="text-primary underline">Operations Overview</Link>
@@ -191,7 +250,7 @@ export default function Analytics() {
   )
 }
 
-function KpiCard({ icon, color, label, value, trend, hint }: { icon: React.ReactNode; color: string; label: string; value: number; trend?: number; hint: string }) {
+function KpiCard({ icon, color, label, value, trend, hint, suffix }: { icon: React.ReactNode; color: string; label: string; value: number; trend?: number; hint: string; suffix?: string }) {
   return (
     <Card className="p-5 border-border/60">
       <div className="flex items-start justify-between">
@@ -205,7 +264,7 @@ function KpiCard({ icon, color, label, value, trend, hint }: { icon: React.React
               </Tooltip>
             </TooltipProvider>
           </div>
-          <p className="mt-1 text-2xl font-bold tabular-nums">{value.toLocaleString()}</p>
+          <p className="mt-1 text-2xl font-bold tabular-nums">{value.toLocaleString()}{suffix || ''}</p>
           {trend !== undefined && trend !== 0 && (
             <p className={`text-xs mt-0.5 flex items-center gap-1 ${trend > 0 ? 'text-green-600' : 'text-red-600'}`}>
               {trend > 0 ? <ArrowUp className="h-3 w-3" /> : <ArrowDown className="h-3 w-3" />}
