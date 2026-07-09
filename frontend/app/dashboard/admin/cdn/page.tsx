@@ -70,25 +70,6 @@ export default function CdnAdminPage() {
     }
   }
 
-  const handlePurge = (all: boolean) => {
-    setPurging(true)
-    setTimeout(() => {
-      setPurging(false)
-      if (all) {
-        toast({
-          title: 'Global Cache Purged',
-          description: 'Successfully invalidated all edge caches globally. Cache hit rates will temporarily drop.',
-        })
-      } else {
-        toast({
-          title: 'Path Cache Purged',
-          description: `Invalidated CDN cache files matching: "${purgePath || '/*'}"`,
-        })
-        setPurgePath('')
-      }
-    }, 1500)
-  }
-
   const toggleWafRule = (id: string) => {
     setWafRules(prev => prev.map(rule => {
       if (rule.id === id) {

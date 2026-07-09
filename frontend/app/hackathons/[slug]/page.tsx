@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Trophy, Users, Clock, CalendarDays, ScanLine,
   Sparkles, ArrowRight, CheckCircle, ListChecks, Shield,
-  Copy, ExternalLink, Share2,
+  Copy, ExternalLink, Share2, Timer,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 
