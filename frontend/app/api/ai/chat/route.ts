@@ -8,6 +8,7 @@ import {
 } from '@/lib/db/ai'
 import { backendChatStream } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
+import { getMongoDb } from '@/lib/mongodb'
 import { codeScans } from '@/lib/db/scans'
 import { rateLimitAI } from '@/lib/in-memory-rate-limit'
 
@@ -139,6 +140,7 @@ export async function POST(req: NextRequest): Promise<Response> {
       controller.enqueue(
         encoder.encode(`data: ${JSON.stringify({ session_id: sessionId })}\n\n`),
       )
+      let usage: Record<string, number> | null = null
       const reader = upstream.body!.getReader()
       try {
         while (true) {
@@ -151,8 +153,9 @@ export async function POST(req: NextRequest): Promise<Response> {
               const payload = line.slice(6).trim()
               if (payload === '[DONE]') continue
               try {
-                const parsed = JSON.parse(payload) as { delta?: string }
+                const parsed = JSON.parse(payload) as { delta?: string; usage?: Record<string, number> }
                 if (parsed.delta) assistantBuf += parsed.delta
+                if (parsed.usage) usage = parsed.usage
               } catch {
                 /* ignore */
               }
@@ -183,6 +186,24 @@ export async function POST(req: NextRequest): Promise<Response> {
           sessionsCol
             .updateOne({ id: sessionId }, { $set: { updated_at: nowIso() } })
             .catch(() => null)
+        }
+        // Persist usage tracking (fire-and-forget).
+        if (usage) {
+          getMongoDb().then(db =>
+            db.collection('ai_usage_logs').insertOne({
+              id: newId(),
+              user_id: user.id,
+              session_id: sessionId,
+              feature: 'chat',
+              provider: '',  // will be enriched from model lookup
+              model: '',
+              input_chars: usage.input_chars || 0,
+              output_chars: usage.output_chars || 0,
+              estimated_input_tokens: Math.ceil((usage.input_chars || 0) / 4),
+              estimated_output_tokens: Math.ceil((usage.output_chars || 0) / 4),
+              created_at: nowIso(),
+            }).catch((err: unknown) => console.error('[ai/chat] usage persist err:', err))
+          )
         }
         controller.close()
       }

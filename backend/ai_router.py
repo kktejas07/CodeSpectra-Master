@@ -183,11 +183,15 @@ async def chat_stream(request: Request, req: ChatStreamReq) -> StreamingResponse
     async def event_stream() -> AsyncGenerator[bytes, None]:
         try:
             user_msg = UserMessage(text=req.user_message)
+            usage = {}
             async for ev in chat.stream_message(user_msg):
                 if isinstance(ev, TextDelta):
                     yield f"data: {json.dumps({'delta': ev.content})}\n\n".encode()
                 elif isinstance(ev, StreamDone):
+                    usage = ev.usage or {}
                     break
+            if usage:
+                yield f"data: {json.dumps({'usage': usage})}\n\n".encode()
             yield b"data: [DONE]\n\n"
         except Exception as e:  # noqa: BLE001
             yield f"data: {json.dumps({'error': str(e)})}\n\n".encode()

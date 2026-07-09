@@ -9,7 +9,8 @@ class TextDelta:
         self.content = content
 
 class StreamDone:
-    pass
+    def __init__(self, usage: dict | None = None) -> None:
+        self.usage = usage or {}
 
 class UserMessage:
     def __init__(self, text: str = "", image_contents: list[Any] | None = None) -> None:
@@ -36,14 +37,31 @@ class DirectAiClient:
     async def stream_message(
         self, message: UserMessage
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
+        input_chars = len(self.system_message or "") + len(message.text or "")
+        output_chars = 0
         if self.provider == "gemini":
             async for chunk in self._stream_gemini(message):
+                if isinstance(chunk, TextDelta):
+                    output_chars += len(chunk.content)
+                elif isinstance(chunk, StreamDone):
+                    chunk.usage["input_chars"] = input_chars
+                    chunk.usage["output_chars"] = output_chars
                 yield chunk
         elif self.provider == "anthropic":
             async for chunk in self._stream_anthropic(message):
+                if isinstance(chunk, TextDelta):
+                    output_chars += len(chunk.content)
+                elif isinstance(chunk, StreamDone):
+                    chunk.usage["input_chars"] = input_chars
+                    chunk.usage["output_chars"] = output_chars
                 yield chunk
         elif self.provider == "openai":
             async for chunk in self._stream_openai(message):
+                if isinstance(chunk, TextDelta):
+                    output_chars += len(chunk.content)
+                elif isinstance(chunk, StreamDone):
+                    chunk.usage["input_chars"] = input_chars
+                    chunk.usage["output_chars"] = output_chars
                 yield chunk
         else:
             # Fallback mock/error
