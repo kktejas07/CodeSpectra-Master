@@ -32,6 +32,15 @@ from ai_client import (
 # Keyed by client IP / session_id; 60 requests per minute per session.
 _rl: dict[str, list[float]] = defaultdict(list)
 
+def _client_ip(request: Request) -> str:
+    """Extract client IP from headers or direct connection."""
+    forwarded = request.headers.get("x-forwarded-for", "")
+    if forwarded:
+        return forwarded.split(",")[0].strip()
+    if request.client:
+        return request.client.host or "unknown"
+    return "unknown"
+
 def _check_rate_limit(key: str, max_hits: int = 60, window_sec: int = 60) -> None:
     now = time.time()
     hits = [t for t in _rl.get(key, []) if now - t < window_sec]
@@ -159,7 +168,7 @@ DEFAULT_CHAT_SYSTEM = (
 
 @router.post("/chat")
 async def chat_stream(request: Request, req: ChatStreamReq) -> StreamingResponse:
-    _check_rate_limit(f"chat:{req.session_id or 'anon'}", 30, 60)
+    _check_rate_limit(f"chat:{_client_ip(request)}:{req.session_id or 'anon'}", 30, 60)
     """SSE stream that emits {"delta":"..."} JSON events ending with [DONE]."""
     system = req.system_message or DEFAULT_CHAT_SYSTEM
     chat = _build_chat(req.model_role, req.session_id, system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
@@ -208,7 +217,7 @@ class CompleteReq(BaseModel):
 
 @router.post("/complete")
 async def complete(request: Request, req: CompleteReq) -> dict[str, Any]:
-    _check_rate_limit("complete", 60, 60)
+    _check_rate_limit(f"complete:{_client_ip(request)}", 60, 60)
     chat = _build_chat(req.model_role, req.session_id, req.system_message, request.headers, provider_override=req.provider_override, model_override=req.model_override)
     buf: list[str] = []
     try:
@@ -269,130 +278,10 @@ class HintsReq(BaseModel):
 
 @router.post("/hints")
 async def smart_hints(request: Request, req: HintsReq) -> dict[str, Any]:
-    _check_rate_limit("hints", 120, 60)
-    level_brief = {
-        1: "a SHORT non-spoiler nudge focused on the right data structure or insight — no algorithm name, no code, max 2 sentences.",
-        2: "the high-level APPROACH — what algorithm/pattern fits, time/space complexity. No code yet.",
-        3: "PSEUDO-CODE only. No real implementation. ~10 lines.",
-        4: "a complete working solution in the requested language with brief inline comments.",
-    }.get(req.hint_level, "a SHORT nudge.")
-
-    system = (
-        "You are a coding interview coach. Produce progressive hints for a coding "
-        "problem WITHOUT spoiling the solution before the requested hint level."
-    )
-    user = (
-        f"Problem title: {req.problem_title}\n\n"
-        f"Problem statement:\n{req.problem_statement}\n\n"
-        f"Language: {req.language}\n"
-        f"Candidate's current code:\n```\n{(req.current_code or '<empty>')[:4000]}\n```\n\n"
-        f"Return ONLY: {level_brief}"
-    )
-    chat = _build_chat("fast", f"hints:{req.problem_title}:{req.hint_level}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
-    buf: list[str] = []
-    async for ev in chat.stream_message(UserMessage(text=user)):
-        if isinstance(ev, TextDelta):
-            buf.append(ev.content)
-        elif isinstance(ev, StreamDone):
-            break
-    return {"hint_level": req.hint_level, "hint": "".join(buf).strip()}
-
-
-# =============== /code-review (deep AI review of code) ===============
-
-class CodeReviewReq(BaseModel):
-    code: str
-    language: str = "javascript"
-    context: Optional[str] = None  # e.g., scan issues summary
-    provider_override: Optional[str] = None
-    model_override: Optional[str] = None
-
-
-@router.post("/code-review")
-async def code_review(request: Request, req: CodeReviewReq) -> dict[str, Any]:
-    _check_rate_limit("code-review", 30, 60)
-    system = (
-        "You are a senior staff engineer doing a strict but constructive code review. "
-        "Return JSON ONLY with keys: summary (string), strengths (string[]), "
-        "concerns (array of {severity:'critical'|'major'|'minor', title, detail, "
-        "line?:number}), suggestions (string[]), overall_rating (1-10)."
-    )
-    user = (
-        f"Language: {req.language}\n"
-        f"Context: {req.context or 'n/a'}\n\n"
-        f"Code:\n```{req.language}\n{req.code[:12000]}\n```\n\n"
-        "Return ONLY a single JSON object — no prose, no markdown fences."
-    )
-    chat = _build_chat("reasoning", f"review:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
-    buf: list[str] = []
-    async for ev in chat.stream_message(UserMessage(text=user)):
-        if isinstance(ev, TextDelta):
-            buf.append(ev.content)
-        elif isinstance(ev, StreamDone):
-            break
-    raw = "".join(buf).strip()
-    parsed = _parse_json_response(raw) or {"summary": raw, "concerns": [], "strengths": [], "suggestions": [], "overall_rating": 7}
-    return parsed
-
-
-# =============== /code-analysis (auto on submission) ===============
-
-class CodeAnalysisReq(BaseModel):
-    code: str
-    language: str = "python"
-    problem_title: Optional[str] = None
-    passed_tests: Optional[int] = None
-    total_tests: Optional[int] = None
-    provider_override: Optional[str] = None
-    model_override: Optional[str] = None
-
-
-@router.post("/code-analysis")
-async def code_analysis(request: Request, req: CodeAnalysisReq) -> dict[str, Any]:
-    _check_rate_limit("code-analysis", 60, 60)
-    system = (
-        "You are an automated code analyzer. Given a candidate's submission, "
-        "return JSON ONLY with keys: time_complexity (string like 'O(n log n)'), "
-        "space_complexity (string), efficiency_score (0-100), edge_cases_covered "
-        "(string[]), missing_edge_cases (string[]), readability_score (0-100), "
-        "summary (string)."
-    )
-    pt = req.passed_tests if req.passed_tests is not None else "n/a"
-    tt = req.total_tests if req.total_tests is not None else "n/a"
-    user = (
-        f"Problem: {req.problem_title or 'unknown'}\n"
-        f"Language: {req.language}\n"
-        f"Tests passed: {pt}/{tt}\n\n"
-        f"Code:\n```{req.language}\n{req.code[:8000]}\n```\n\n"
-        "Return ONLY one JSON object."
-    )
-    chat = _build_chat("fast", f"analysis:{abs(hash(req.code))%10**8}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
-    buf: list[str] = []
-    async for ev in chat.stream_message(UserMessage(text=user)):
-        if isinstance(ev, TextDelta):
-            buf.append(ev.content)
-        elif isinstance(ev, StreamDone):
-            break
-    parsed = _parse_json_response("".join(buf)) or {}
-    return parsed
-
-
-# =============== /grade (smart grading by rubric) ===============
-
-class GradeReq(BaseModel):
-    code: str
-    language: str = "python"
-    problem_title: Optional[str] = None
-    rubric: dict[str, int]  # criterion -> max points (e.g., {"correctness":40, ...})
-    passed_tests: Optional[int] = None
-    total_tests: Optional[int] = None
-    provider_override: Optional[str] = None
-    model_override: Optional[str] = None
-
-
-@router.post("/grade")
-async def grade(request: Request, req: GradeReq) -> dict[str, Any]:
-    _check_rate_limit("grade", 60, 60)
+    _check_rate_limit(f"hints:{_client_ip(request)}", 120, 60)
+    _check_rate_limit(f"code-review:{_client_ip(request)}", 30, 60)
+    _check_rate_limit(f"code-analysis:{_client_ip(request)}", 60, 60)
+    _check_rate_limit(f"grade:{_client_ip(request)}", 60, 60)
     rubric_text = "\n".join(f"- {k} (max {v})" for k, v in req.rubric.items())
     system = (
         "You are an automated technical grader. Score the submission strictly using "
@@ -432,160 +321,10 @@ class GenerateProblemReq(BaseModel):
 
 @router.post("/generate-problem")
 async def generate_problem(request: Request, req: GenerateProblemReq) -> dict[str, Any]:
-    _check_rate_limit("generate-problem", 20, 60)
-    topics_s = ", ".join(req.topics) if req.topics else "any data-structures / algorithms"
-    system = (
-        "You create production-quality coding interview problems. Return JSON ONLY "
-        "matching this exact shape: { slug, title, difficulty:'easy'|'medium'|'hard', "
-        "topics:string[], statement_md:string, input_format:string, output_format:string, "
-        "constraints:string, example_explanation:string, time_limit_ms:number, "
-        "starter_code:{python:string,javascript:string,cpp:string,java:string}, "
-        "test_cases:[{stdin:string, expected_stdout:string, is_sample:boolean}] }. "
-        "Include at least 6 test cases, 2 marked is_sample:true. starter_code MUST be "
-        "skeleton functions, not solutions."
-    )
-    user = (
-        f"Generate a UNIQUE coding interview problem suitable for: {req.role}.\n"
-        f"Difficulty: {req.difficulty}\n"
-        f"Topics: {topics_s}\n"
-        f"Preferred language for starter code: {req.language_hint}\n"
-        "Avoid common LeetCode-named problems. Be creative.\n"
-        "Return ONLY one JSON object."
-    )
-    chat = _build_chat("reasoning", f"qgen:{req.role}:{req.difficulty}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
-    buf: list[str] = []
-    async for ev in chat.stream_message(UserMessage(text=user)):
-        if isinstance(ev, TextDelta):
-            buf.append(ev.content)
-        elif isinstance(ev, StreamDone):
-            break
-    parsed = _parse_json_response("".join(buf)) or {}
-    return parsed
-
-
-# =============== /skill-insights (Skill Analytics) ===============
-
-class SkillInsightsReq(BaseModel):
-    user_name: Optional[str] = None
-    submissions_summary: list[dict[str, Any]]  # [{problem, difficulty, passed, total, time_ms, language, topics}]
-    provider_override: Optional[str] = None
-    model_override: Optional[str] = None
-
-
-@router.post("/skill-insights")
-async def skill_insights(request: Request, req: SkillInsightsReq) -> dict[str, Any]:
-    _check_rate_limit("skill-insights", 30, 60)
-    system = (
-        "You are a skills coach analyzing a developer's coding submissions. "
-        "Return JSON ONLY: { strengths:string[], weak_topics:string[], "
-        "recommended_problems:string[], speed_assessment:string, accuracy_assessment:string, "
-        "growth_plan:string[] }"
-    )
-    user = (
-        f"Developer: {req.user_name or 'anonymous'}\n"
-        f"Submissions ({len(req.submissions_summary)} total):\n"
-        f"{json.dumps(req.submissions_summary[:80], indent=2)}\n\n"
-        "Return ONLY one JSON object."
-    )
-    chat = _build_chat("fast", f"insights:{req.user_name or 'anon'}", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
-    buf: list[str] = []
-    async for ev in chat.stream_message(UserMessage(text=user)):
-        if isinstance(ev, TextDelta):
-            buf.append(ev.content)
-        elif isinstance(ev, StreamDone):
-            break
-    parsed = _parse_json_response("".join(buf)) or {}
-    return parsed
-
-
-# =============== /identity-verify (compare selfie vs id photo) ===============
-
-class IdentityVerifyReq(BaseModel):
-    selfie_data_url: str  # data:image/png;base64,...
-    id_photo_data_url: str
-    candidate_name: Optional[str] = None
-    provider_override: Optional[str] = None
-    model_override: Optional[str] = None
-
-
-@router.post("/identity-verify")
-async def identity_verify(request: Request, req: IdentityVerifyReq) -> dict[str, Any]:
-    _check_rate_limit("identity-verify", 10, 60)
-    """
-    Use Gemini vision to compare a live selfie against a government ID photo.
-    Returns a confidence score (0-100) and a decision.
-    """
-    # If that fails on some providers we fall back to a textual challenge prompt.
-    try:
-        from ai_client import ImageContent
-        has_image = True
-    except Exception:
-        has_image = False
-
-    system = (
-        "You are an identity verification assistant. Compare the SELFIE and ID PHOTO "
-        "and respond with JSON ONLY: { match: boolean, confidence: number(0-100), "
-        "reasoning: string, warnings: string[] }. Be conservative: only return "
-        "match=true with confidence>=70."
-    )
-
-    chat = _build_chat("vision", "identity-verify", system, request.headers, provider_override=req.provider_override, model_override=req.model_override)
-
-    if has_image:
-        try:
-            user_msg = UserMessage(
-                text=f"Candidate: {req.candidate_name or 'n/a'}. Compare these two images.",
-                image_contents=[
-                    ImageContent(image_base64=_strip_data_url(req.selfie_data_url)),
-                    ImageContent(image_base64=_strip_data_url(req.id_photo_data_url)),
-                ],
-            )  # type: ignore[call-arg]
-            buf: list[str] = []
-            async for ev in chat.stream_message(user_msg):
-                if isinstance(ev, TextDelta):
-                    buf.append(ev.content)
-                elif isinstance(ev, StreamDone):
-                    break
-            parsed = _parse_json_response("".join(buf)) or {}
-            if parsed:
-                return parsed
-        except Exception as e:  # noqa: BLE001
-            return {
-                "match": False,
-                "confidence": 0,
-                "reasoning": f"vision-unavailable: {e}",
-                "warnings": ["Vision comparison failed — manual review required."],
-            }
-
-    return {
-        "match": False,
-        "confidence": 0,
-        "reasoning": "Vision comparison unsupported in this environment.",
-        "warnings": ["Manual review required."],
-    }
-
-
-def _strip_data_url(data_url: str) -> str:
-    if data_url.startswith("data:"):
-        comma = data_url.find(",")
-        return data_url[comma + 1 :] if comma > 0 else data_url
-    return data_url
-
-
-# =============== /agent (multi-step agentic loop) ===============
-
-class AgentReq(BaseModel):
-    goal: str
-    code: str
-    language: str = "python"
-    max_steps: int = 3
-    provider_override: Optional[str] = None
-    model_override: Optional[str] = None
-
-
-@router.post("/agent")
-async def agentic_fix(request: Request, req: AgentReq) -> dict[str, Any]:
-    _check_rate_limit("agent", 10, 60)
+    _check_rate_limit(f"generate-problem:{_client_ip(request)}", 20, 60)
+    _check_rate_limit(f"skill-insights:{_client_ip(request)}", 30, 60)
+    _check_rate_limit(f"identity-verify:{_client_ip(request)}", 10, 60)
+    _check_rate_limit(f"agent:{_client_ip(request)}", 10, 60)
     """
     Simple agentic loop: analyze → fix → re-analyze → return final code + step log.
     """
