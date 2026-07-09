@@ -243,6 +243,7 @@ export default function DashboardLayout({
         { href: p.integrations, icon: Plug, label: 'Integrations' },
         { href: p.speedInsights, icon: Gauge, label: 'Speed Insights' },
         { href: p.cdn, icon: Globe2, label: 'CDN' },
+        { href: '/dashboard/admin/settings/cloudflare', icon: Globe2, label: 'Cloudflare' },
         { href: p.permissions, icon: Shield, label: 'Permissions' },
         { href: p.plans, icon: FileText, label: 'Plans' },
         { href: p.pricing, icon: FileText, label: 'Pricing' },

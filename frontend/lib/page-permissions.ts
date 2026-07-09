@@ -127,6 +127,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/pricing': 'Pricing Management',
   '/dashboard/admin/security': 'Security',
   '/dashboard/admin/settings': 'Platform Settings',
+  '/dashboard/admin/settings/cloudflare': 'Cloudflare',
   '/dashboard/admin/teams': 'Teams',
   '/dashboard/admin/jobs': 'Jobs Management',
   '/dashboard/admin/resumes': 'Resumes Management',
