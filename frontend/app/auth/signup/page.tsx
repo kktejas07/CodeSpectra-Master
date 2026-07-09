@@ -103,10 +103,12 @@ function SignupInner() {
       <aside className="hidden lg:flex relative overflow-hidden flex-col justify-between p-12 xl:p-16 bg-[radial-gradient(60%_60%_at_30%_20%,hsl(var(--primary)/0.18)_0%,transparent_60%),radial-gradient(40%_40%_at_80%_90%,hsl(var(--primary)/0.10)_0%,transparent_55%)]">
         <div aria-hidden className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
         <div className="relative flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_40px_-8px_hsl(var(--primary)/0.7)]">
-            <Code2 className="h-5 w-5" />
-          </div>
-          <span className="text-lg font-semibold tracking-tight">CodeSpectra</span>
+          <Link href="/" className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_40px_-8px_hsl(var(--primary)/0.7)]">
+              <Code2 className="h-5 w-5" />
+            </div>
+            <span className="text-lg font-semibold tracking-tight">CodeSpectra</span>
+          </Link>
         </div>
         <div className="relative space-y-8 max-w-lg">
           <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur px-3 py-1 text-xs text-muted-foreground">
@@ -170,12 +172,15 @@ function SignupInner() {
       {/* Signup form */}
       <main className="flex items-center justify-center px-6 py-10 sm:px-12">
         <div className="w-full max-w-md space-y-7">
-          {/* Mobile logo */}
-          <div className="lg:hidden flex items-center gap-2">
-            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
-              <Code2 className="h-5 w-5" />
-            </div>
-            <span className="text-lg font-semibold">CodeSpectra</span>
+          {/* Mobile logo + back */}
+          <div className="lg:hidden flex items-center justify-between">
+            <Link href="/" className="flex items-center gap-2">
+              <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+                <Code2 className="h-5 w-5" />
+              </div>
+              <span className="text-lg font-semibold">CodeSpectra</span>
+            </Link>
+            <Link href="/" className="text-xs text-muted-foreground hover:text-foreground">← Back to home</Link>
           </div>
 
           <div className="space-y-2">

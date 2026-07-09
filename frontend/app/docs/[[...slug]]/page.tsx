@@ -4,15 +4,10 @@ import { PublicPageWrapper } from '@/app/public-layout'
 import { DocSidebar } from '@/components/docs/DocSidebar'
 import { DocContent } from '@/components/docs/DocContent'
 import { getDocTree, resolveDoc } from '@/lib/docs'
-import { ArrowRight, BookOpen, User, FileText } from 'lucide-react'
+import { ArrowRight } from 'lucide-react'
 
 interface Props {
   params: Promise<{ slug?: string[] }>
-}
-
-const SECTION_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
-  BookOpen,
-  User,
 }
 
 export default async function DocsPage({ params }: Props) {
@@ -58,17 +53,10 @@ function DocLanding({
 
       <div className="space-y-16">
         {sections.map((section) => {
-          const Icon = SECTION_ICONS[section.icon] || FileText
           return (
             <section key={section.id}>
               <div className="flex items-center gap-3 mb-6">
-                <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary/10">
-                  <Icon className="h-4 w-4 text-primary" />
-                </div>
                 <h2 className="text-2xl font-bold">{section.label}</h2>
-                <span className="text-[11px] font-medium px-2 py-0.5 rounded-full border border-primary/20 text-primary bg-primary/5">
-                  {section.badge}
-                </span>
               </div>
 
               <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
