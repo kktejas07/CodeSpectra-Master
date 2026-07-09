@@ -1,46 +1,66 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
-import { supportTickets, newId, nowIso } from '@/lib/db/misc'
+import { getMongoDb } from '@/lib/mongodb'
+import { getAPIUser } from '@/lib/route-auth'
+import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
-export async function GET(_req: NextRequest) {
-  const gate = await requireAuth()
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
-  }
-  try {
-    const col = await supportTickets()
-    const list = await col
-      .find({ user_id: gate.user.id })
-      .sort({ created_at: -1 })
-      .toArray()
-    return NextResponse.json(list)
-  } catch (error) {
-    console.error('[CodeSpectra] Support tickets fetch error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
-  }
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+function newId() { return crypto.randomUUID() }
+function nowIso() { return new Date().toISOString() }
+
+export async function GET() {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const db = await getMongoDb()
+  const tickets = await db
+    .collection('support_tickets')
+    .find({ user_id: user.id })
+    .sort({ created_at: -1 })
+    .limit(50)
+    .toArray()
+
+  return NextResponse.json({ tickets })
 }
 
 export async function POST(req: NextRequest) {
-  const gate = await requireAuth()
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const ipKey = clientLimiterKeyFromRequest(req, user.id)
+  const ipCheck = rateLimitSlidingWindow(`support:ticket:${ipKey}`, 3, 60_000)
+  if (!ipCheck.ok) {
+    return NextResponse.json({ error: `Too many requests. Try in ${ipCheck.retryAfterSec}s.` }, { status: 429 })
   }
+
+  let subject = '', message = '', category = 'general'
   try {
-    const body = (await req.json()) as { title?: string; description?: string; priority?: string }
-    const doc = {
-      id: newId(),
-      user_id: gate.user.id,
-      title: body.title ?? '',
-      description: body.description ?? '',
-      priority: body.priority ?? 'medium',
-      status: 'open',
-      created_at: nowIso(),
-    }
-    const col = await supportTickets()
-    await col.insertOne(doc as unknown as Parameters<typeof col.insertOne>[0])
-    return NextResponse.json(doc)
-  } catch (error) {
-    console.error('[CodeSpectra] Support ticket creation error:', error)
-    return NextResponse.json({ error: String(error) }, { status: 500 })
+    const body = await req.json()
+    subject = String(body.subject || '').trim()
+    message = String(body.message || '').trim()
+    category = String(body.category || 'general').trim()
+  } catch {
+    return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
+
+  if (!subject || !message) {
+    return NextResponse.json({ error: 'Subject and message are required' }, { status: 400 })
+  }
+
+  const db = await getMongoDb()
+  const ticket = {
+    id: newId(),
+    user_id: user.id,
+    user_email: user.email,
+    subject,
+    message,
+    category,
+    status: 'open',
+    created_at: nowIso(),
+    updated_at: nowIso(),
+  }
+
+  await db.collection('support_tickets').insertOne(ticket)
+  return NextResponse.json({ ticket })
 }

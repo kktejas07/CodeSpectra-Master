@@ -1,227 +1,154 @@
 'use client'
 
-import { useState } from 'react'
-import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
-import { Badge } from '@/components/ui/badge'
-import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
-import { Plus, MessageSquare, Clock, AlertCircle, CheckCircle } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Loader2, Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2 } from 'lucide-react'
 
-interface Ticket {
-  id: string
-  title: string
-  description: string
-  priority: 'low' | 'medium' | 'high' | 'critical'
-  status: 'open' | 'in_progress' | 'closed'
-  createdAt: string
-  updatedAt: string
-  messageCount: number
-}
+type Ticket = { id: string; subject: string; message: string; category: string; status: string; created_at: string; updated_at: string }
 
 export default function SupportPage() {
-  const [tickets, setTickets] = useState<Ticket[]>([
-    {
-      id: 'TKT-001',
-      title: 'Code scanner not working',
-      description: 'Getting an error when trying to scan code',
-      priority: 'high',
-      status: 'in_progress',
-      createdAt: '2024-04-15',
-      updatedAt: '2024-04-17',
-      messageCount: 3,
-    },
-    {
-      id: 'TKT-002',
-      title: 'Integration setup help',
-      description: 'Need help setting up GitHub integration',
-      priority: 'medium',
-      status: 'open',
-      createdAt: '2024-04-16',
-      updatedAt: '2024-04-16',
-      messageCount: 1,
-    },
-    {
-      id: 'TKT-003',
-      title: 'Feature request: Dark mode',
-      description: 'Would love to see dark mode support',
-      priority: 'low',
-      status: 'closed',
-      createdAt: '2024-04-10',
-      updatedAt: '2024-04-14',
-      messageCount: 5,
-    },
-  ])
+  const [tickets, setTickets] = useState<Ticket[]>([])
+  const [loading, setLoading] = useState(true)
+  const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)
+  const [replies, setReplies] = useState<{ id: string; message: string; user_email: string; created_at: string }[]>([])
+  const [newMessage, setNewMessage] = useState('')
+  const [sending, setSending] = useState(false)
 
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [filterStatus, setFilterStatus] = useState<'all' | 'open' | 'in_progress' | 'closed'>('all')
-  const [newTicket, setNewTicket] = useState({ title: '', description: '', priority: 'medium' })
+  // New ticket form
+  const [showForm, setShowForm] = useState(false)
+  const [subject, setSubject] = useState('')
+  const [message, setMessage] = useState('')
+  const [category, setCategory] = useState('general')
 
-  const filteredTickets = filterStatus === 'all' ? tickets : tickets.filter(t => t.status === filterStatus)
+  const fetchTickets = useCallback(async () => {
+    try {
+      const res = await fetch('/api/support/tickets')
+      const json = await res.json()
+      setTickets(json.tickets || [])
+    } catch { /* ignore */ }
+    setLoading(false)
+  }, [])
 
-  const getStatusIcon = (status: string) => {
-    switch (status) {
-      case 'open':
-        return <AlertCircle className="w-4 h-4 text-orange-500" />
-      case 'in_progress':
-        return <Clock className="w-4 h-4 text-blue-500" />
-      case 'closed':
-        return <CheckCircle className="w-4 h-4 text-green-500" />
-      default:
-        return null
-    }
+  useEffect(() => { fetchTickets() }, [fetchTickets])
+
+  const openTicket = async (t: Ticket) => {
+    setSelectedTicket(t)
+    setNewMessage('')
+    try {
+      const res = await fetch(`/api/support/tickets/${t.id}`)
+      const json = await res.json()
+      setReplies(json.replies || [])
+    } catch { setReplies([]) }
   }
 
-  const getPriorityColor = (priority: string) => {
-    switch (priority) {
-      case 'critical':
-        return 'bg-red-500/20 text-red-700'
-      case 'high':
-        return 'bg-orange-500/20 text-orange-700'
-      case 'medium':
-        return 'bg-yellow-500/20 text-yellow-700'
-      case 'low':
-        return 'bg-green-500/20 text-green-700'
-      default:
-        return ''
-    }
+  const sendReply = async () => {
+    if (!newMessage.trim() || !selectedTicket) return
+    setSending(true)
+    try {
+      const res = await fetch(`/api/support/tickets/${selectedTicket.id}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ message: newMessage }),
+      })
+      if (res.ok) {
+        setNewMessage('')
+        const json = await res.json()
+        setReplies((p) => [...p, json.reply])
+      }
+    } catch { /* ignore */ }
+    setSending(false)
   }
 
-  const handleCreateTicket = async (e: React.FormEvent) => {
+  const createTicket = async (e: React.FormEvent) => {
     e.preventDefault()
-    const ticket: Ticket = {
-      id: `TKT-${String(tickets.length + 1).padStart(3, '0')}`,
-      ...newTicket,
-      priority: newTicket.priority as Ticket['priority'],
-      status: 'open',
-      createdAt: new Date().toISOString().split('T')[0],
-      updatedAt: new Date().toISOString().split('T')[0],
-      messageCount: 0,
-    }
-    setTickets([ticket, ...tickets])
-    setNewTicket({ title: '', description: '', priority: 'medium' })
-    setShowCreateModal(false)
+    if (!subject.trim() || !message.trim()) return
+    try {
+      const res = await fetch('/api/support/tickets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subject, message, category }),
+      })
+      if (res.ok) {
+        setShowForm(false)
+        setSubject('')
+        setMessage('')
+        fetchTickets()
+      }
+    } catch { /* ignore */ }
+  }
+
+  const statusBadge = (s: string) => {
+    if (s === 'open') return <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] text-green-500"><Clock className="h-2.5 w-2.5" /> Open</span>
+    if (s === 'in_progress') return <span className="flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] text-blue-500">In Progress</span>
+    return <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"><CheckCircle2 className="h-2.5 w-2.5" /> Closed</span>
+  }
+
+  if (selectedTicket) {
+    return (
+      <div className="mx-auto max-w-3xl space-y-6 px-6 py-10">
+        <button onClick={() => setSelectedTicket(null)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3 w-3" /> Back</button>
+        <div className="flex items-center justify-between">
+          <div>
+            <h2 className="text-xl font-bold">{selectedTicket.subject}</h2>
+            <p className="text-xs text-muted-foreground">{selectedTicket.category} · {new Date(selectedTicket.created_at).toLocaleDateString()}</p>
+          </div>
+          {statusBadge(selectedTicket.status)}
+        </div>
+        <div className="rounded-lg border border-border bg-card p-4 text-sm">{selectedTicket.message}</div>
+        <div className="space-y-3">
+          {replies.map((r) => (
+            <div key={r.id} className={`rounded-lg border p-3 text-sm ${r.user_email === selectedTicket.user_email ? 'border-border bg-card' : 'border-primary/20 bg-primary/5'}`}>
+              <p className="text-xs text-muted-foreground">{r.user_email} · {new Date(r.created_at).toLocaleString()}</p>
+              <p className="mt-1">{r.message}</p>
+            </div>
+          ))}
+        </div>
+        {selectedTicket.status !== 'closed' && (
+          <div className="flex gap-2">
+            <textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} rows={2} className="flex-1 rounded-lg border border-border bg-background p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Type your reply..." />
+            <button onClick={sendReply} disabled={sending || !newMessage.trim()} className="flex items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"><Send className="h-3.5 w-3.5" /> {sending ? 'Sending...' : 'Send'}</button>
+          </div>
+        )}
+      </div>
+    )
   }
 
   return (
-    <div className="space-y-6">
-      <DashboardPageHeader
-        icon={MessageSquare}
-        title="Support tickets"
-        description="Create tickets, track status, and follow up with the team."
-        actions={
-          <Button onClick={() => setShowCreateModal(true)} className="gap-2 rounded-lg">
-            <Plus className="h-4 w-4" />
-            New ticket
-          </Button>
-        }
-      />
-
-      {/* Filter Tabs */}
-      <div className="flex gap-2 border-b border-border/60">
-        {(['all', 'open', 'in_progress', 'closed'] as const).map((status) => (
-          <button
-            key={status}
-            onClick={() => setFilterStatus(status)}
-            className={`px-4 py-2 font-medium text-sm border-b-2 transition-colors ${
-              filterStatus === status
-                ? 'border-primary text-primary'
-                : 'border-transparent text-foreground/60 hover:text-foreground'
-            }`}
-          >
-            {status.replace('_', ' ')}
-          </button>
-        ))}
+    <div className="mx-auto max-w-3xl space-y-6 px-6 py-10">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card"><MessageSquare className="h-5 w-5 text-primary" /></div>
+          <div><h1 className="text-2xl font-bold">Support Tickets</h1><p className="text-sm text-muted-foreground">Get help from the team</p></div>
+        </div>
+        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><Plus className="h-4 w-4" /> {showForm ? 'Cancel' : 'New Ticket'}</button>
       </div>
 
-      {/* Tickets List */}
-      <div className="space-y-3">
-        {filteredTickets.map((ticket) => (
-          <Card
-            key={ticket.id}
-            className="cursor-pointer rounded-xl border-border/60 p-4 shadow-sm transition-colors hover:bg-muted/30"
-          >
-            <div className="flex items-start justify-between">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  {getStatusIcon(ticket.status)}
-                  <h3 className="font-semibold text-foreground">{ticket.title}</h3>
-                  <Badge className={getPriorityColor(ticket.priority)}>{ticket.priority}</Badge>
-                </div>
-                <p className="text-sm text-muted-foreground mb-2">{ticket.description}</p>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>ID: {ticket.id}</span>
-                  <span>Created: {ticket.createdAt}</span>
-                  <span className="flex items-center gap-1">
-                    <MessageSquare className="w-3 h-3" />
-                    {ticket.messageCount} messages
-                  </span>
-                </div>
-              </div>
-              <Button variant="outline" size="sm">
-                View
-              </Button>
-            </div>
-          </Card>
-        ))}
-      </div>
+      {showForm && (
+        <form onSubmit={createTicket} className="space-y-4 rounded-lg border border-border bg-card p-6">
+          <div><label className="text-sm font-medium">Subject</label><input value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Brief description" /></div>
+          <div><label className="text-sm font-medium">Category</label><select value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"><option value="general">General</option><option value="billing">Billing</option><option value="technical">Technical</option><option value="feature">Feature Request</option></select></div>
+          <div><label className="text-sm font-medium">Message</label><textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border border-border bg-background p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Describe your issue in detail..." /></div>
+          <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Submit Ticket</button>
+        </form>
+      )}
 
-      {/* Create Ticket Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md rounded-xl border-border/60 p-6 shadow-lg">
-            <h2 className="mb-4 text-xl font-semibold tracking-tight text-foreground">Create support ticket</h2>
-            <form onSubmit={handleCreateTicket} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Title</label>
-                <input
-                  type="text"
-                  value={newTicket.title}
-                  onChange={(e) => setNewTicket({ ...newTicket, title: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-                  required
-                />
+      {loading ? (
+        <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+      ) : tickets.length === 0 ? (
+        <div className="rounded-lg border border-dashed border-border p-12 text-center text-sm text-muted-foreground">No support tickets. Create one to get help.</div>
+      ) : (
+        <div className="space-y-2">
+          {tickets.map((t) => (
+            <button key={t.id} onClick={() => openTicket(t)} className="flex w-full items-center justify-between rounded-lg border border-border bg-card p-4 text-left hover:bg-muted/30">
+              <div className="min-w-0 space-y-0.5">
+                <p className="text-sm font-medium truncate">{t.subject}</p>
+                <p className="text-xs text-muted-foreground truncate">{t.category} · {new Date(t.created_at).toLocaleDateString()}</p>
               </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Description</label>
-                <textarea
-                  value={newTicket.description}
-                  onChange={(e) => setNewTicket({ ...newTicket, description: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground h-24 resize-none"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Priority</label>
-                <select
-                  value={newTicket.priority}
-                  onChange={(e) => setNewTicket({ ...newTicket, priority: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-                >
-                  <option value="low">Low</option>
-                  <option value="medium">Medium</option>
-                  <option value="high">High</option>
-                  <option value="critical">Critical</option>
-                </select>
-              </div>
-              <div className="flex gap-3">
-                <Button type="submit" className="flex-1">
-                  Create Ticket
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </Card>
+              {statusBadge(t.status)}
+            </button>
+          ))}
         </div>
       )}
     </div>
   )
 }
-
-
