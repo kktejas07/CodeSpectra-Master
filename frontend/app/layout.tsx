@@ -2,6 +2,7 @@ import type { Metadata } from 'next'
 import { JetBrains_Mono } from 'next/font/google'
 import { Providers } from '@/components/providers'
 import { LoadingWrapper } from '@/components/loading-wrapper'
+import './globals.css'
 
 export const dynamic = 'force-dynamic'
 
