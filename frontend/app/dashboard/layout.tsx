@@ -211,7 +211,35 @@ export default function DashboardLayout({
   const navEntries = useMemo((): NavEntry[] => {
     if (!userProfile?.role) return []
 
-    const baseLeaves: NavLeaf[] = [
+    const role = normalizeUserRole(userProfile.role)
+    const p = DASHBOARD_ROUTES.platform
+
+    // ── All possible nav entries across all roles ──
+    // Each entry is a (href, icon, label) tuple. The DB permission filter
+    // below is the sole gate — entries the user's role lacks "read" for are
+    // hidden. This lets superadmins grant (or revoke) any page to any role.
+    const allLeaves: NavLeaf[] = [
+      // Home
+      { href: '/dashboard', icon: Home, label: 'Overview' },
+      // Platform / admin pages
+      { href: p.system, icon: Home, label: 'Operations overview' },
+      { href: p.users, icon: Users, label: 'Users' },
+      { href: p.roles, icon: Lock, label: 'User Roles' },
+      { href: p.analytics, icon: BarChart3, label: 'Insights' },
+      { href: p.auditLogs, icon: ScrollText, label: 'Audit logs' },
+      { href: p.integrations, icon: Plug, label: 'Integrations' },
+      { href: p.speedInsights, icon: Gauge, label: 'Speed Insights' },
+      { href: p.cdn, icon: Globe2, label: 'CDN' },
+      { href: '/dashboard/admin/settings/cloudflare', icon: Globe2, label: 'Cloudflare' },
+      { href: p.permissions, icon: Shield, label: 'Permissions' },
+      { href: p.plans, icon: FileText, label: 'Plans' },
+      { href: p.pricing, icon: FileText, label: 'Pricing' },
+      { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
+      { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
+      { href: '/dashboard/admin/settings/llm', icon: Sparkles, label: 'LLM Config' },
+      { href: p.settings, icon: Settings, label: 'Platform settings' },
+      { href: DASHBOARD_ROUTES.organization.team, icon: Users, label: 'Organization' },
+      // User pages
       { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
       { href: '/dashboard/problems', icon: CodeIcon, label: 'Problems' },
       { href: '/dashboard/tracks', icon: LayersIcon, label: 'Tracks' },
@@ -229,65 +257,39 @@ export default function DashboardLayout({
       { href: '/dashboard/support', icon: MessageSquare, label: 'Support' },
     ]
 
-    const role = normalizeUserRole(userProfile.role)
-    const p = DASHBOARD_ROUTES.platform
-
-    let entries: NavEntry[] = []
-
-    if (isSuperAdmin(role)) {
-      const platformItems: NavLeaf[] = [
-        { href: p.users, icon: Users, label: 'Users' },
-        { href: p.roles, icon: Lock, label: 'Uses Roles' },
-        { href: p.analytics, icon: BarChart3, label: 'Insights' },
-        { href: p.auditLogs, icon: ScrollText, label: 'Audit logs' },
-        { href: p.integrations, icon: Plug, label: 'Integrations' },
-        { href: p.speedInsights, icon: Gauge, label: 'Speed Insights' },
-        { href: p.cdn, icon: Globe2, label: 'CDN' },
-        { href: p.permissions, icon: Shield, label: 'Permissions' },
-        { href: p.plans, icon: FileText, label: 'Plans' },
-        { href: p.pricing, icon: FileText, label: 'Pricing' },
-        { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
-        { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
-        { href: '/dashboard/admin/settings/llm', icon: Sparkles, label: 'LLM Config' },
-      ]
-      const platformSettingsLeaf: NavLeaf = {
-        href: p.settings,
-        icon: Settings,
-        label: 'Platform settings',
-      }
-      entries = [
-        { type: 'link', item: { href: p.system, icon: Home, label: 'Operations overview' } },
-        ...platformItems.map((item) => ({ type: 'link' as const, item })),
-        ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
-        { type: 'link', item: platformSettingsLeaf },
-      ]
-    } else if (isTenantAdmin(role)) {
-      entries = [
-        { type: 'link', item: { href: '/dashboard', icon: Home, label: 'Overview' } },
-        { type: 'link', item: { href: DASHBOARD_ROUTES.organization.team, icon: Users, label: 'Organization' } },
-        ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
-      ]
-    } else {
-      entries = [
-        { type: 'link', item: { href: '/dashboard', icon: Home, label: 'Overview' } },
-        ...baseLeaves.map((item) => ({ type: 'link' as const, item })),
-      ]
+    // If DB permissions are loaded, use them as the sole filter.
+    // Otherwise fall back to static role-based lists.
+    if (allowedDbRoutes.size > 0) {
+      return allLeaves
+        .filter(leaf => {
+          const basePath = leaf.href.split('?')[0]
+          return allowedDbRoutes.has(basePath) ||
+            Array.from(allowedDbRoutes).some(r => basePath.startsWith(r + '/'))
+        })
+        .map(leaf => ({ type: 'link' as const, item: leaf }))
     }
 
-    return entries.filter(entry => {
-      // If DB permissions are loaded, use them as source of truth for page access
-      if (allowedDbRoutes.size > 0) {
-        // Get base path (strip query params)
-        const basePath = entry.item.href.split('?')[0]
-        const isInDb = allowedDbRoutes.has(basePath) ||
-          Array.from(allowedDbRoutes).some(r => basePath.startsWith(r + '/'))
-        if (!isInDb) return false
-      }
-      // Superadmin sees everything regardless of plan
-      if (isSuperAdmin(role)) return true
-      // Other roles are filtered by plan
-      return isPageAllowed({ plan: userPlan } as PlanDefinition, entry.item.href)
-    })
+    // ── Fallback: static role-based nav (no DB permissions loaded yet) ──
+    if (isSuperAdmin(role)) {
+      return allLeaves.map(leaf => ({ type: 'link' as const, item: leaf }))
+    }
+    if (isTenantAdmin(role)) {
+      const allowedPrefixes = ['/dashboard', DASHBOARD_ROUTES.organization.team]
+      return allLeaves
+        .filter(leaf =>
+          allowedPrefixes.some(p => leaf.href.startsWith(p)) &&
+          !leaf.href.startsWith('/dashboard/admin/')
+        )
+        .map(leaf => ({ type: 'link' as const, item: leaf }))
+    }
+    // User
+    return allLeaves
+      .filter(leaf =>
+        leaf.href.startsWith('/dashboard') &&
+        !leaf.href.startsWith('/dashboard/admin/') &&
+        !leaf.href.startsWith(DASHBOARD_ROUTES.organization.team)
+      )
+      .map(leaf => ({ type: 'link' as const, item: leaf }))
   }, [userProfile?.role, userPlan, allowedDbRoutes])
 
   const toggleSidebarCollapsed = () => {

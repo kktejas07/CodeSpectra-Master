@@ -13,7 +13,7 @@ import { Badge } from '@/components/ui/badge'
 import { DASHBOARD_ROUTES } from '@/lib/rbac'
 import { AnalyticsDashboard, type AnalyticsDashboardProps } from '@/components/admin/analytics-dashboard'
 import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
-import { useRoleGate } from '@/lib/use-role-gate'
+import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 
 const emptyCharts: AnalyticsDashboardProps = {
@@ -58,7 +58,7 @@ function ProgressBar({ pct, color }: { pct: number; color: string }) {
 }
 
 export default function SystemAdminDashboard() {
-  const gate = useRoleGate({ require: 'superadmin' })
+  const gate = usePageGuard('/dashboard/admin/system')
   const addToast = useToast()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, superadmins: 0, admins: 0 })

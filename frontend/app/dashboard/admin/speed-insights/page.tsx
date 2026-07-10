@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Activity, CheckCircle2, Gauge, HelpCircle, Info, TriangleAlert, Timer, MousePointer, Layout } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { useRoleGate } from '@/lib/use-role-gate'
+import { usePageGuard } from '@/lib/use-page-guard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 type VitalsSummary = {
@@ -39,7 +39,7 @@ const METRICS = [
 ]
 
 export default function SpeedInsightsPage() {
-  const gate = useRoleGate({ require: 'superadmin' })
+  const gate = usePageGuard('/dashboard/admin/speed-insights')
   const [range, setRange] = useState('24h')
   const [routeScope, setRouteScope] = useState('all')
   const [summary, setSummary] = useState<VitalsSummary | null>(null)

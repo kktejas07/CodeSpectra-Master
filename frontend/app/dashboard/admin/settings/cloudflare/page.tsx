@@ -5,10 +5,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Loader2, Save, Globe2, Eye, EyeOff } from 'lucide-react'
-import { useRoleGate } from '@/lib/use-role-gate'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function CloudflareSettingsPage() {
-  const gate = useRoleGate({ require: 'superadmin' })
+  const gate = usePageGuard('/dashboard/admin/settings/cloudflare')
   const [zoneId, setZoneId] = useState('')
   const [apiToken, setApiToken] = useState('')
   const [savedZoneId, setSavedZoneId] = useState('')
