@@ -9,6 +9,7 @@ import {
   Sparkles,
   Target,
   TrendingUp,
+  Users,
   Zap,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'

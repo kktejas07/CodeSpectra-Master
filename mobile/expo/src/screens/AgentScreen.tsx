@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors, spacing, typography, commonStyles } from '../theme'
-import { AgentMessage } from '../api/client'
+import { AgentMessage, getApiUrl } from '../api/client'
 
 export default function AgentScreen() {
   const [messages, setMessages] = useState<AgentMessage[]>([
@@ -22,7 +22,8 @@ export default function AgentScreen() {
     setInput('')
     setLoading(true)
     try {
-      const res = await fetch('https://codespectra.forgetechno.com/api/ai/agent', {
+      const base = await getApiUrl()
+      const res = await fetch(`${base}/api/ai/agent`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

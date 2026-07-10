@@ -65,6 +65,7 @@
     "nodemailer": "^9.0.1",
     "otplib": "^13.4.1",
     "qrcode": "^1.5.4",
+    "qrcode.react": "^4.2.0",
     "razorpay": "^2.9.6",
     "react": "^19",
     "react-day-picker": "9.13.2",

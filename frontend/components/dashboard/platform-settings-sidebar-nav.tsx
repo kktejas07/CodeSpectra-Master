@@ -12,6 +12,7 @@ import {
   CreditCard,
   FileText,
   Globe2,
+  Smartphone,
   Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
