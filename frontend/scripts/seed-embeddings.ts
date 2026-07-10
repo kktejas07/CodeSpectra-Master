@@ -6,9 +6,7 @@
  */
 import { getMongoDb } from '@/lib/mongodb'
 
-const BACKEND_URL = process.env.INTERNAL_NEXT_URL
-  ? `http://localhost:8001/internal/ai`
-  : 'http://localhost:8001/internal/ai'
+const BACKEND_URL = process.env.INTERNAL_BACKEND_URL || 'http://codespectra-backend-cd7lq6:8000/internal/ai'
 
 async function getEmbedding(text: string): Promise<number[] | null> {
   try {
