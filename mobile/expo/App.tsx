@@ -1,9 +1,10 @@
 import React, { useState } from 'react'
 import { StatusBar } from 'expo-status-bar'
 import { NavigationContainer } from '@react-navigation/native'
+import { createNativeStackNavigator } from '@react-navigation/native-stack'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { Text, View } from 'react-native'
+import { Text } from 'react-native'
 
 import LoginScreen from './src/screens/LoginScreen'
 import ArenaScreen from './src/screens/ArenaScreen'
@@ -16,10 +17,23 @@ import LeaderboardScreen from './src/screens/LeaderboardScreen'
 import AchievementsScreen from './src/screens/AchievementsScreen'
 import LearningScreen from './src/screens/LearningScreen'
 import HackathonsScreen from './src/screens/HackathonsScreen'
+import ChallengeDetailScreen from './src/screens/ChallengeDetailScreen'
+import ProblemDetailScreen from './src/screens/ProblemDetailScreen'
+import HackathonDetailScreen from './src/screens/HackathonDetailScreen'
+import TrackDetailScreen from './src/screens/TrackDetailScreen'
 import { colors } from './src/theme'
 import type { User } from './src/api/client'
 
+const RootStack = createNativeStackNavigator()
 const Tab = createBottomTabNavigator()
+
+export type RootStackParamList = {
+  MainTabs: { user: User; onLogout: () => void }
+  ChallengeDetail: { challengeId: string }
+  ProblemDetail: { slug: string }
+  HackathonDetail: { id: string }
+  TrackDetail: { trackId: string }
+}
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
@@ -55,9 +69,6 @@ function MainTabs({ user, onLogout }: { user: User; onLogout: () => void }) {
       <Tab.Screen name="Achievements" component={AchievementsScreen} options={{ headerTitle: 'Achievements' }} />
       <Tab.Screen name="Certs" component={CertificationsScreen} options={{ headerTitle: 'Certifications' }} />
       <Tab.Screen name="Agent" component={AgentScreen} options={{ headerShown: false }} />
-      <Tab.Screen name="Profile">
-        {() => <ProfileScreen user={user} onLogout={onLogout} />}
-      </Tab.Screen>
       <Tab.Screen name="Profile" options={{ headerTitle: 'Profile' }}>
         {() => <ProfileScreen user={user} onLogout={onLogout} />}
       </Tab.Screen>
@@ -80,7 +91,15 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <NavigationContainer>
-        <MainTabs user={user} onLogout={() => setUser(null)} />
+        <RootStack.Navigator screenOptions={{ headerStyle: { backgroundColor: colors.background }, headerTintColor: colors.foreground }}>
+          <RootStack.Screen name="MainTabs" options={{ headerShown: false }}>
+            {() => <MainTabs user={user} onLogout={() => setUser(null)} />}
+          </RootStack.Screen>
+          <RootStack.Screen name="ChallengeDetail" component={ChallengeDetailScreen} options={{ title: 'Challenge' }} />
+          <RootStack.Screen name="ProblemDetail" component={ProblemDetailScreen} options={{ title: 'Problem' }} />
+          <RootStack.Screen name="HackathonDetail" component={HackathonDetailScreen} options={{ title: 'Hackathon' }} />
+          <RootStack.Screen name="TrackDetail" component={TrackDetailScreen} options={{ title: 'Track' }} />
+        </RootStack.Navigator>
         <StatusBar style="light" />
       </NavigationContainer>
     </SafeAreaProvider>

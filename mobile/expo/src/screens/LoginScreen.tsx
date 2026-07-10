@@ -4,7 +4,7 @@ import {
   StyleSheet, Alert, KeyboardAvoidingView, Platform, ScrollView,
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
-import { colors, spacing, typography, commonStyles } from '../theme'
+import { colors, spacing, shadows } from '../theme'
 import { api, User } from '../api/client'
 
 interface Props {
@@ -18,13 +18,17 @@ export default function LoginScreen({ onLogin }: Props) {
   const [loading, setLoading] = useState(false)
 
   const login = async () => {
-    if (!email.trim() || !password) return
+    if (!email.trim() || !password) {
+      Alert.alert('Required', 'Please enter your email and password.')
+      return
+    }
     setLoading(true)
     try {
       const res = await api.post<{ user: User }>('/api/auth/login', { email, password })
       onLogin(res.user)
     } catch (e: any) {
-      Alert.alert('Login failed', e.message)
+      const msg = e.message || 'Login failed'
+      Alert.alert('Sign In Failed', msg)
     } finally {
       setLoading(false)
     }
@@ -34,47 +38,90 @@ export default function LoginScreen({ onLogin }: Props) {
     <SafeAreaView style={styles.container}>
       <KeyboardAvoidingView behavior={Platform.OS === 'ios' ? 'padding' : 'height'} style={{ flex: 1 }}>
         <ScrollView contentContainerStyle={styles.scroll} keyboardShouldPersistTaps="handled">
-          <View style={styles.brand}>
-            <View style={styles.logo}>
-              <Text style={styles.logoText}>{'</>'}</Text>
+          <View style={styles.heroSection}>
+            <View style={styles.logoContainer}>
+              <View style={styles.logoRing}>
+                <Text style={styles.logoText}>{'</>'}</Text>
+              </View>
             </View>
             <Text style={styles.appName}>CodeSpectra</Text>
             <Text style={styles.tagline}>Master code through AI</Text>
           </View>
 
-          <View style={styles.form}>
-            
-
-            <Text style={styles.label}>Email</Text>
-            <TextInput
-              style={commonStyles.input}
-              value={email}
-              onChangeText={setEmail}
-              placeholder="you@example.com"
-              placeholderTextColor={colors.muted}
-              autoCapitalize="none"
-              keyboardType="email-address"
-            />
-
-            <Text style={[styles.label, { marginTop: spacing.lg }]}>Password</Text>
-            <View style={styles.passwordRow}>
-              <TextInput
-                style={[commonStyles.input, { flex: 1 }]}
-                value={password}
-                onChangeText={setPassword}
-                placeholder="••••••••"
-                placeholderTextColor={colors.muted}
-                secureTextEntry={!showPassword}
-              />
-              <TouchableOpacity onPress={() => setShowPassword(!showPassword)} style={styles.eye}>
-                <Text style={{ color: colors.muted, fontSize: 12 }}>{showPassword ? 'Hide' : 'Show'}</Text>
-              </TouchableOpacity>
+          <View style={styles.card}>
+            <View style={styles.cardHeader}>
+              <Text style={styles.cardTitle}>Sign In</Text>
+              <Text style={styles.cardSubtitle}>Access your account</Text>
             </View>
 
-            <TouchableOpacity style={[commonStyles.button, { marginTop: spacing['2xl'] }]} onPress={login} disabled={loading}>
-              {loading ? <ActivityIndicator color={colors.primaryForeground} /> : <Text style={commonStyles.buttonText}>Sign In</Text>}
-            </TouchableOpacity>
+            <View style={styles.form}>
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Email</Text>
+                <TextInput
+                  style={styles.input}
+                  value={email}
+                  onChangeText={setEmail}
+                  placeholder="you@example.com"
+                  placeholderTextColor={colors.muted}
+                  autoCapitalize="none"
+                  autoCorrect={false}
+                  keyboardType="email-address"
+                  textContentType="emailAddress"
+                  autoComplete="email"
+                />
+              </View>
+
+              <View style={styles.fieldGroup}>
+                <Text style={styles.label}>Password</Text>
+                <View style={styles.passwordWrapper}>
+                  <TextInput
+                    style={[styles.input, styles.passwordInput]}
+                    value={password}
+                    onChangeText={setPassword}
+                    placeholder="••••••••"
+                    placeholderTextColor={colors.muted}
+                    secureTextEntry={!showPassword}
+                    textContentType="password"
+                    autoComplete="password"
+                  />
+                  <TouchableOpacity
+                    style={styles.eyeButton}
+                    onPress={() => setShowPassword(!showPassword)}
+                    hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
+                  >
+                    <Text style={styles.eyeText}>{showPassword ? 'Hide' : 'Show'}</Text>
+                  </TouchableOpacity>
+                </View>
+              </View>
+
+              <TouchableOpacity
+                style={[styles.button, loading && styles.buttonDisabled]}
+                onPress={login}
+                disabled={loading}
+                activeOpacity={0.8}
+              >
+                {loading ? (
+                  <ActivityIndicator color={colors.primaryForeground} size="small" />
+                ) : (
+                  <Text style={styles.buttonText}>Sign In</Text>
+                )}
+              </TouchableOpacity>
+
+              <View style={styles.dividerRow}>
+                <View style={styles.dividerLine} />
+                <Text style={styles.dividerText}>or</Text>
+                <View style={styles.dividerLine} />
+              </View>
+
+              <TouchableOpacity style={styles.linkButton} activeOpacity={0.7}>
+                <Text style={styles.linkText}>Forgot password?</Text>
+              </TouchableOpacity>
+            </View>
           </View>
+
+          <Text style={styles.footerNote}>
+            By signing in, you agree to our Terms of Service and Privacy Policy.
+          </Text>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -84,18 +131,140 @@ export default function LoginScreen({ onLogin }: Props) {
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: colors.background },
   scroll: { flexGrow: 1, justifyContent: 'center', padding: spacing['2xl'] },
-  brand: { alignItems: 'center', marginBottom: spacing['4xl'] },
-  logo: {
-    width: 64, height: 64, borderRadius: 16,
-    backgroundColor: colors.primary, alignItems: 'center', justifyContent: 'center',
-    shadowColor: colors.primary, shadowOpacity: 0.4, shadowRadius: 20, shadowOffset: { width: 0, height: 0 },
-    elevation: 10,
+  heroSection: { alignItems: 'center', marginBottom: spacing['4xl'] },
+  logoContainer: { marginBottom: spacing.lg },
+  logoRing: {
+    width: 72,
+    height: 72,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '15',
+    borderWidth: 2,
+    borderColor: colors.primary,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  logoText: { fontSize: 28, fontWeight: '700', color: colors.primaryForeground },
-  appName: { ...typography.h1, marginTop: spacing.md },
-  tagline: { ...typography.bodySmall, marginTop: spacing.xs },
-  form: { width: '100%', maxWidth: 360, alignSelf: 'center' },
-  label: { ...typography.bodySmall, fontWeight: '600', color: colors.foreground, marginBottom: spacing.sm },
-  passwordRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.sm },
-  eye: { padding: spacing.sm + 2 },
+  logoText: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: colors.primary,
+    fontFamily: 'monospace',
+  },
+  appName: {
+    fontSize: 26,
+    fontWeight: '700',
+    color: colors.foreground,
+    fontFamily: 'monospace',
+    letterSpacing: -0.5,
+    marginBottom: spacing.xs,
+  },
+  tagline: {
+    fontSize: 14,
+    color: colors.muted,
+    fontFamily: 'monospace',
+  },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    padding: spacing['2xl'],
+    ...shadows.md,
+  },
+  cardHeader: { marginBottom: spacing['2xl'] },
+  cardTitle: {
+    fontSize: 20,
+    fontWeight: '700',
+    color: colors.foreground,
+    fontFamily: 'monospace',
+    marginBottom: spacing.xs,
+  },
+  cardSubtitle: {
+    fontSize: 13,
+    color: colors.mutedForeground,
+    fontFamily: 'monospace',
+  },
+  form: { gap: spacing.lg },
+  fieldGroup: { gap: spacing.sm },
+  label: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: colors.mutedForeground,
+    fontFamily: 'monospace',
+    letterSpacing: 0.5,
+    textTransform: 'uppercase',
+  },
+  input: {
+    backgroundColor: colors.background,
+    color: colors.foreground,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: colors.input,
+    paddingHorizontal: spacing.md,
+    paddingVertical: spacing.md,
+    fontSize: 14,
+    fontFamily: 'monospace',
+  },
+  passwordWrapper: { position: 'relative' },
+  passwordInput: { paddingRight: 56 },
+  eyeButton: {
+    position: 'absolute',
+    right: spacing.md,
+    top: 0,
+    bottom: 0,
+    justifyContent: 'center',
+  },
+  eyeText: {
+    fontSize: 12,
+    color: colors.primary,
+    fontFamily: 'monospace',
+    fontWeight: '600',
+  },
+  button: {
+    backgroundColor: colors.primary,
+    borderRadius: 8,
+    paddingVertical: spacing.md + 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: spacing.sm,
+  },
+  buttonDisabled: {
+    opacity: 0.7,
+  },
+  buttonText: {
+    color: colors.primaryForeground,
+    fontWeight: '700',
+    fontSize: 14,
+    fontFamily: 'monospace',
+    letterSpacing: 0.3,
+  },
+  dividerRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+    marginTop: spacing.md,
+  },
+  dividerLine: { flex: 1, height: 1, backgroundColor: colors.cardBorder },
+  dividerText: {
+    fontSize: 12,
+    color: colors.muted,
+    fontFamily: 'monospace',
+  },
+  linkButton: {
+    alignItems: 'center',
+    paddingVertical: spacing.sm,
+  },
+  linkText: {
+    fontSize: 13,
+    color: colors.primary,
+    fontFamily: 'monospace',
+    fontWeight: '500',
+  },
+  footerNote: {
+    fontSize: 11,
+    color: colors.muted,
+    fontFamily: 'monospace',
+    textAlign: 'center',
+    marginTop: spacing['2xl'],
+    lineHeight: 16,
+  },
 })

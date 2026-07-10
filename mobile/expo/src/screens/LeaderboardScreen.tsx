@@ -1,59 +1,182 @@
 import React, { useEffect, useState } from 'react'
 import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native'
+import { useSafeAreaInsets } from 'react-native-safe-area-context'
 import { api } from '../api/client'
-import { colors, spacing, typography } from '../theme'
+import { colors, spacing, commonStyles, shadows } from '../theme'
 
 interface LeaderboardEntry {
-  rank: number; name: string; xp: number; level: number; solved: number
+  rank: number
+  name: string
+  xp: number
+  level: number
+  solved: number
 }
+
+const rankColors = ['#EAB308', '#94A3B8', '#CD7F32']
 
 export default function LeaderboardScreen() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const insets = useSafeAreaInsets()
 
   useEffect(() => {
     api.get<{ items: LeaderboardEntry[] }>('/api/leaderboard')
-      .then(d => setEntries(d.items || [])).catch(console.error)
+      .then(d => setEntries(d.items || []))
+      .catch(console.error)
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.background }} size="large" color={colors.primary} />
-
   return (
-    <View style={{ flex: 1, backgroundColor: colors.background }}>
+    <View style={commonStyles.container}>
       <FlatList
         data={entries}
         keyExtractor={e => String(e.rank)}
-        contentContainerStyle={{ padding: spacing.lg }}
+        contentContainerStyle={{ padding: spacing['2xl'], paddingBottom: insets.bottom + 80 }}
         ListHeaderComponent={
-          <View style={{ marginBottom: spacing.xl }}>
-            <Text style={typography.h1}>Leaderboard</Text>
-            <Text style={[typography.bodySmall, { marginTop: spacing.xs }]}>Top performers this week</Text>
+          <View style={commonStyles.sectionHeader}>
+            <Text style={commonStyles.sectionTitle}>Leaderboard</Text>
           </View>
         }
         ListEmptyComponent={
-          <Text style={[typography.body, { textAlign: 'center', marginTop: spacing['4xl'] }]}>No data yet</Text>
-        }
-        renderItem={({ item }) => (
-          <View style={[styles.card, item.rank <= 3 && { borderColor: item.rank === 1 ? '#eab308' : item.rank === 2 ? '#94a3b8' : '#854d0e' }]}>
-            <View style={{ flexDirection: 'row', alignItems: 'center', gap: spacing.md }}>
-              <View style={[styles.rankBadge, item.rank <= 3 && { backgroundColor: item.rank === 1 ? '#eab30820' : item.rank === 2 ? '#94a3b820' : '#854d0e20' }]}>
-                <Text style={[typography.h3, { color: item.rank === 1 ? '#eab308' : item.rank === 2 ? '#94a3b8' : item.rank === 3 ? '#854d0e' : colors.foreground }]}>#{item.rank}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={typography.body}>{item.name}</Text>
-                <Text style={typography.caption}>{item.solved} solved · Lv {item.level}</Text>
-              </View>
-              <Text style={[typography.h3, { color: colors.primary }]}>{item.xp.toLocaleString()} XP</Text>
+          loading ? null : (
+            <View style={commonStyles.emptyState}>
+              <Text style={commonStyles.emptyText}>No rankings yet</Text>
+              <Text style={[commonStyles.emptyText, { marginTop: spacing.xs, fontSize: 12 }]}>
+                Complete challenges to appear here
+              </Text>
             </View>
-          </View>
-        )}
+          )
+        }
+        renderItem={({ item, index }) => {
+          const isTop = item.rank <= 3
+          const rankColor = rankColors[item.rank - 1] || colors.muted
+
+          return (
+            <View
+              style={[
+                styles.card,
+                index === 0 && styles.cardFirst,
+                isTop && { borderColor: rankColor + '40', borderWidth: 1 },
+              ]}
+            >
+              <View style={styles.cardMain}>
+                <View style={[styles.rankBadge, isTop && { backgroundColor: rankColor + '18' }]}>
+                  <Text style={[styles.rankText, isTop && { color: rankColor }]}>
+                    #{item.rank}
+                  </Text>
+                </View>
+
+                <View style={styles.userInfo}>
+                  <View style={styles.userAvatar}>
+                    <Text style={styles.userInitials}>
+                      {item.name ? item.name.slice(0, 2).toUpperCase() : '??'}
+                    </Text>
+                  </View>
+                  <View>
+                    <Text style={styles.userName}>{item.name || 'Anonymous'}</Text>
+                    <Text style={styles.userMeta}>{item.solved} solved · Lv {item.level}</Text>
+                  </View>
+                </View>
+
+                <View style={styles.xpBadge}>
+                  <Text style={styles.xpValue}>{item.xp.toLocaleString()}</Text>
+                  <Text style={styles.xpLabel}>XP</Text>
+                </View>
+              </View>
+            </View>
+          )
+        }}
       />
+      {loading && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" color={colors.primary} />
+        </View>
+      )}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.card, borderRadius: 10, padding: spacing.lg, marginBottom: spacing.sm, borderWidth: 1, borderColor: colors.cardBorder },
-  rankBadge: { width: 44, height: 44, borderRadius: 22, alignItems: 'center', justifyContent: 'center' },
+  card: {
+    backgroundColor: colors.card,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.cardBorder,
+    marginBottom: spacing.sm,
+    ...shadows.sm,
+  },
+  cardFirst: { marginTop: spacing.sm },
+  cardMain: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    padding: spacing.lg,
+    gap: spacing.md,
+  },
+  rankBadge: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    backgroundColor: colors.accent,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rankText: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.muted,
+    fontFamily: 'monospace',
+  },
+  userInfo: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: spacing.md,
+  },
+  userAvatar: {
+    width: 40,
+    height: 40,
+    borderRadius: 20,
+    backgroundColor: colors.primary + '15',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  userInitials: {
+    fontSize: 13,
+    fontWeight: '700',
+    color: colors.primary,
+    fontFamily: 'monospace',
+  },
+  userName: {
+    fontSize: 14,
+    fontWeight: '600',
+    color: colors.foreground,
+    fontFamily: 'monospace',
+  },
+  userMeta: {
+    fontSize: 12,
+    color: colors.muted,
+    fontFamily: 'monospace',
+  },
+  xpBadge: {
+    alignItems: 'flex-end',
+  },
+  xpValue: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: colors.primary,
+    fontFamily: 'monospace',
+  },
+  xpLabel: {
+    fontSize: 10,
+    color: colors.muted,
+    fontFamily: 'monospace',
+    textTransform: 'uppercase',
+    letterSpacing: 0.5,
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: colors.background + 'EE',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
 })

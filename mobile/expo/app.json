@@ -8,8 +8,7 @@
     "userInterfaceStyle": "dark",
     "splash": {
       "backgroundColor": "#09090b",
-      "resizeMode": "contain",
-      "image": "./assets/AppIcon.appiconset/1024.png"
+      "resizeMode": "contain"
     },
     "assetBundlePatterns": ["**/*"],
     "plugins": [
