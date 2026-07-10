@@ -307,24 +307,41 @@ function SystemSettingsInner() {
 
   useEffect(() => {
     if (loading) return
-    setSecretsDraft((d) => ({
-      ...d,
-      piston_url: typeof secretsMeta.piston_url === 'string' ? String(secretsMeta.piston_url).trim() : d.piston_url || '',
-      piston_run_timeout_ms: typeof secretsMeta.piston_run_timeout_ms === 'string' ? String(secretsMeta.piston_run_timeout_ms).trim() : d.piston_run_timeout_ms || '',
-      piston_max_concurrent: typeof secretsMeta.piston_max_concurrent === 'string' ? String(secretsMeta.piston_max_concurrent).trim() : d.piston_max_concurrent || '',
-      stripe_price_pro_monthly: isStripePriceId(secretsMeta.stripe_price_pro_monthly)
-        ? String(secretsMeta.stripe_price_pro_monthly).trim()
-        : d.stripe_price_pro_monthly,
-      stripe_price_pro_yearly: isStripePriceId(secretsMeta.stripe_price_pro_yearly)
-        ? String(secretsMeta.stripe_price_pro_yearly).trim()
-        : d.stripe_price_pro_yearly,
-      stripe_price_enterprise_monthly: isStripePriceId(secretsMeta.stripe_price_enterprise_monthly)
-        ? String(secretsMeta.stripe_price_enterprise_monthly).trim()
-        : d.stripe_price_enterprise_monthly,
-      stripe_price_enterprise_yearly: isStripePriceId(secretsMeta.stripe_price_enterprise_yearly)
-        ? String(secretsMeta.stripe_price_enterprise_yearly).trim()
-        : d.stripe_price_enterprise_yearly,
-    }))
+    // Pre-populate ALL plain-text fields from saved server secrets
+    setSecretsDraft((d) => {
+      const next = { ...d }
+      const plainFields = [
+        'piston_url', 'piston_run_timeout_ms', 'piston_max_concurrent',
+        'stripe_price_pro_monthly', 'stripe_price_pro_yearly',
+        'stripe_price_enterprise_monthly', 'stripe_price_enterprise_yearly',
+        'trusted_origins_extra', 'github_client_id',
+        'firebase_api_key', 'firebase_auth_domain', 'firebase_project_id',
+        'firebase_storage_bucket', 'firebase_messaging_sender_id', 'firebase_app_id',
+      ] as const
+      for (const k of plainFields) {
+        const v = secretsMeta[k]
+        if (typeof v === 'string' && v.trim()) {
+          (next as any)[k] = v.trim()
+        }
+      }
+      return next
+    })
+    // Pre-populate mail secrets from saved values
+    setMailSecretsDraft((d) => {
+      const next = { ...d }
+      const mailFields = [
+        'resend_from_email', 'sendgrid_from_email',
+        'postal_server', 'postal_from_email',
+        'smtp_host', 'smtp_port', 'smtp_user', 'smtp_from_email',
+      ] as const
+      for (const k of mailFields) {
+        const v = secretsMeta[k]
+        if (typeof v === 'string' && v.trim()) {
+          (next as any)[k] = v.trim()
+        }
+      }
+      return next
+    })
   }, [loading, secretsMeta])
 
   const saveKeys = useCallback(
@@ -403,7 +420,6 @@ function SystemSettingsInner() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error((json.error as string) || 'Save failed')
-      setSecretsDraft(emptySecretsDraft())
       await reloadSecrets()
       addToast({ type: 'success', title: 'Integrations saved' })
     } catch (e) {
@@ -464,20 +480,6 @@ function SystemSettingsInner() {
         })
         const sjson = await sres.json().catch(() => ({}))
         if (!sres.ok) throw new Error((sjson.error as string) || 'Secrets save failed')
-        setMailSecretsDraft({
-          resend_api_key: '',
-          resend_from_email: '',
-          sendgrid_api_key: '',
-          sendgrid_from_email: '',
-          postal_server: '',
-          postal_api_key: '',
-          postal_from_email: '',
-          smtp_host: '',
-          smtp_port: '',
-          smtp_user: '',
-          smtp_pass: '',
-          smtp_from_email: '',
-        })
         await reloadSecrets()
       }
 
@@ -739,17 +741,27 @@ function SystemSettingsInner() {
                 ) : null}
                 <div>
                   <Label htmlFor="mail_resend_key">Resend API key</Label>
-                  <Input
-                    id="mail_resend_key"
-                    type="password"
-                    autoComplete="off"
-                    placeholder="re_…"
-                    value={mailSecretsDraft.resend_api_key}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, resend_api_key: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="mail_resend_key"
+                      type={visibleFields.resend_api_key ? 'text' : 'password'}
+                      autoComplete="off"
+                      placeholder="re_…"
+                      value={mailSecretsDraft.resend_api_key}
+                      onChange={(e) =>
+                        setMailSecretsDraft((d) => ({ ...d, resend_api_key: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => toggleVisible('resend_api_key')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {visibleFields.resend_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="mail_resend_from">From address</Label>
@@ -778,16 +790,26 @@ function SystemSettingsInner() {
                 ) : null}
                 <div>
                   <Label htmlFor="mail_sg_key">SendGrid API key</Label>
-                  <Input
-                    id="mail_sg_key"
-                    type="password"
-                    autoComplete="off"
-                    value={mailSecretsDraft.sendgrid_api_key}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, sendgrid_api_key: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="mail_sg_key"
+                      type={visibleFields.sendgrid_api_key ? 'text' : 'password'}
+                      autoComplete="off"
+                      value={mailSecretsDraft.sendgrid_api_key}
+                      onChange={(e) =>
+                        setMailSecretsDraft((d) => ({ ...d, sendgrid_api_key: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => toggleVisible('sendgrid_api_key')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {visibleFields.sendgrid_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="mail_sg_from">From email (verified sender)</Label>
@@ -829,16 +851,26 @@ function SystemSettingsInner() {
                 </div>
                 <div>
                   <Label htmlFor="mail_postal_key">Postal API key</Label>
-                  <Input
-                    id="mail_postal_key"
-                    type="password"
-                    autoComplete="off"
-                    value={mailSecretsDraft.postal_api_key}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, postal_api_key: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="mail_postal_key"
+                      type={visibleFields.postal_api_key ? 'text' : 'password'}
+                      autoComplete="off"
+                      value={mailSecretsDraft.postal_api_key}
+                      onChange={(e) =>
+                        setMailSecretsDraft((d) => ({ ...d, postal_api_key: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => toggleVisible('postal_api_key')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {visibleFields.postal_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="mail_postal_from">From address</Label>
@@ -906,16 +938,26 @@ function SystemSettingsInner() {
                 </div>
                 <div>
                   <Label htmlFor="mail_smtp_pass">SMTP password</Label>
-                  <Input
-                    id="mail_smtp_pass"
-                    type="password"
-                    autoComplete="off"
-                    value={mailSecretsDraft.smtp_pass}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, smtp_pass: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="mail_smtp_pass"
+                      type={visibleFields.smtp_pass ? 'text' : 'password'}
+                      autoComplete="off"
+                      value={mailSecretsDraft.smtp_pass}
+                      onChange={(e) =>
+                        setMailSecretsDraft((d) => ({ ...d, smtp_pass: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => toggleVisible('smtp_pass')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {visibleFields.smtp_pass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div>
                   <Label htmlFor="mail_smtp_from">From address</Label>
@@ -1292,18 +1334,28 @@ function SystemSettingsInner() {
                       Current key: {String(secretsMeta.github_app_token_masked ?? '—')}
                     </p>
                   ) : null}
-                  <Input
-                    id="sec_github_app_token"
-                    type="password"
-                    value={secretsDraft.github_app_token}
-                    onChange={(e) =>
-                      setSecretsDraft((d) => ({ ...d, github_app_token: e.target.value }))
-                    }
-                    placeholder="ghp_…  (or  github_pat_…)"
-                    className="font-mono"
-                    data-testid="github-token-input"
-                    autoComplete="off"
-                  />
+                  <div className="relative">
+                    <Input
+                      id="sec_github_app_token"
+                      type={visibleFields.github_app_token ? 'text' : 'password'}
+                      value={secretsDraft.github_app_token}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, github_app_token: e.target.value }))
+                      }
+                      placeholder="ghp_…  (or  github_pat_…)"
+                      className="font-mono pr-10"
+                      data-testid="github-token-input"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => toggleVisible('github_app_token')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {visibleFields.github_app_token ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
 
                 {/* GitHub OAuth App (per-user "Connect GitHub" flow) */}
@@ -1356,17 +1408,27 @@ function SystemSettingsInner() {
                       <label className="text-[10px] uppercase tracking-wider text-muted-foreground">
                         Client secret
                       </label>
-                      <Input
-                        type="password"
-                        value={secretsDraft.github_client_secret}
-                        onChange={(e) =>
-                          setSecretsDraft((d) => ({ ...d, github_client_secret: e.target.value }))
-                        }
-                        placeholder="••••••••••••••••"
-                        className="font-mono"
-                        data-testid="github-client-secret-input"
-                        autoComplete="off"
-                      />
+                      <div className="relative">
+                        <Input
+                          type={visibleFields.github_client_secret ? 'text' : 'password'}
+                          value={secretsDraft.github_client_secret}
+                          onChange={(e) =>
+                            setSecretsDraft((d) => ({ ...d, github_client_secret: e.target.value }))
+                          }
+                          placeholder="••••••••••••••••"
+                          className="font-mono pr-10"
+                          data-testid="github-client-secret-input"
+                          autoComplete="off"
+                        />
+                        <button
+                          type="button"
+                          tabIndex={-1}
+                          onClick={() => toggleVisible('github_client_secret')}
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        >
+                          {visibleFields.github_client_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                        </button>
+                      </div>
                       {secretsMeta.has_github_client_secret ? (
                         <p className="mt-1 font-mono text-[11px] text-muted-foreground">
                           Current: {String(secretsMeta.github_client_secret_masked ?? '—')}
@@ -1528,17 +1590,28 @@ function SystemSettingsInner() {
                         Current: {String(secretsMeta.razorpay_key_id_masked ?? '—')}
                       </p>
                     ) : null}
-                    <Input
-                      id="pay_rzp_id"
-                      autoComplete="off"
-                      value={secretsDraft.razorpay_key_id}
-                      onChange={(e) =>
-                        setSecretsDraft((d) => ({ ...d, razorpay_key_id: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      placeholder="rzp_test_xxxxxxxxxxxx"
-                      data-testid="rzp-key-id-input"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="pay_rzp_id"
+                        type={visibleFields.razorpay_key_id ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.razorpay_key_id}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, razorpay_key_id: e.target.value }))
+                        }
+                        className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="rzp_test_xxxxxxxxxxxx"
+                        data-testid="rzp-key-id-input"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => toggleVisible('razorpay_key_id')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.razorpay_key_id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="pay_rzp_sk">Key secret</Label>
@@ -1547,18 +1620,28 @@ function SystemSettingsInner() {
                         Current: {String(secretsMeta.razorpay_key_secret_masked ?? '—')}
                       </p>
                     ) : null}
-                    <Input
-                      id="pay_rzp_sk"
-                      type="password"
-                      autoComplete="off"
-                      value={secretsDraft.razorpay_key_secret}
-                      onChange={(e) =>
-                        setSecretsDraft((d) => ({ ...d, razorpay_key_secret: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      placeholder="••••••••••••••••••••"
-                      data-testid="rzp-key-secret-input"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="pay_rzp_sk"
+                        type={visibleFields.razorpay_key_secret ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.razorpay_key_secret}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, razorpay_key_secret: e.target.value }))
+                        }
+                        className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="••••••••••••••••••••"
+                        data-testid="rzp-key-secret-input"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => toggleVisible('razorpay_key_secret')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.razorpay_key_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                   <div>
                     <Label htmlFor="pay_rzp_wh">Webhook signing secret (optional)</Label>
@@ -1567,18 +1650,28 @@ function SystemSettingsInner() {
                         Current: {String(secretsMeta.razorpay_webhook_secret_masked ?? '—')}
                       </p>
                     ) : null}
-                    <Input
-                      id="pay_rzp_wh"
-                      type="password"
-                      autoComplete="off"
-                      value={secretsDraft.razorpay_webhook_secret}
-                      onChange={(e) =>
-                        setSecretsDraft((d) => ({ ...d, razorpay_webhook_secret: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      placeholder="paste from Razorpay → Webhooks page"
-                      data-testid="rzp-webhook-input"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="pay_rzp_wh"
+                        type={visibleFields.razorpay_webhook_secret ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.razorpay_webhook_secret}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, razorpay_webhook_secret: e.target.value }))
+                        }
+                        className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="paste from Razorpay → Webhooks page"
+                        data-testid="rzp-webhook-input"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => toggleVisible('razorpay_webhook_secret')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.razorpay_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                   <p className="text-[11px] text-muted-foreground">
                     Webhook URL to register in Razorpay:{' '}
@@ -1608,17 +1701,27 @@ function SystemSettingsInner() {
                   ) : null}
                   <div>
                     <Label htmlFor="pay_stripe_sk">Stripe secret key</Label>
-                    <Input
-                      id="pay_stripe_sk"
-                      type="password"
-                      autoComplete="off"
-                      value={secretsDraft.stripe_secret_key}
-                      onChange={(e) =>
-                        setSecretsDraft((d) => ({ ...d, stripe_secret_key: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      placeholder="sk_live_… or sk_test_…"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="pay_stripe_sk"
+                        type={visibleFields.stripe_secret_key ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.stripe_secret_key}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, stripe_secret_key: e.target.value }))
+                        }
+                        className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="sk_live_… or sk_test_…"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => toggleVisible('stripe_secret_key')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.stripe_secret_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                   {secretsMeta.has_stripe_webhook_secret ? (
                     <p className="font-mono text-xs text-muted-foreground">
@@ -1627,17 +1730,27 @@ function SystemSettingsInner() {
                   ) : null}
                   <div>
                     <Label htmlFor="pay_stripe_wh">Stripe webhook signing secret</Label>
-                    <Input
-                      id="pay_stripe_wh"
-                      type="password"
-                      autoComplete="off"
-                      value={secretsDraft.stripe_webhook_secret}
-                      onChange={(e) =>
-                        setSecretsDraft((d) => ({ ...d, stripe_webhook_secret: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      placeholder="whsec_…"
-                    />
+                    <div className="relative">
+                      <Input
+                        id="pay_stripe_wh"
+                        type={visibleFields.stripe_webhook_secret ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.stripe_webhook_secret}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, stripe_webhook_secret: e.target.value }))
+                        }
+                        className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="whsec_…"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => toggleVisible('stripe_webhook_secret')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.stripe_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
                   </div>
                 </div>
 

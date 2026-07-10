@@ -90,7 +90,7 @@ export default function CloudflareSettingsPage() {
             value={zoneId}
             onChange={(e) => setZoneId(e.target.value)}
             className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder={savedZoneId ? `Current: ${savedZoneId}` : 'Cloudflare Zone ID'}
+            placeholder="Cloudflare Zone ID"
           />
         </div>
 
