@@ -15,7 +15,7 @@ import {
 
 export default function RagAdminPage() {
   const gate = usePageGuard('superadmin')
-  const { toast } = useToast()
+  const toast = useToast()
   const [stats, setStats] = useState<{ total: number; bySource: Record<string, number> } | null>(null)
   const [loading, setLoading] = useState(true)
   const [indexing, setIndexing] = useState(false)
