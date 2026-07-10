@@ -20,15 +20,12 @@ import { FloatingCodeParticles } from '@/components/landing/floating-code-partic
 import { TiltCard } from '@/components/ui/tilt-card'
 import { useScrollReveal } from '@/hooks/use-scroll-reveal'
 
-type Capability = { number: string; title: string; description: string }
-
 export default function Home() {
   const hasSession = useHasUserSession()
   const [loadingDone, setLoadingDone] = useState(false)
   const [displayedText, setDisplayedText] = useState('')
   const [currentWord, setCurrentWord] = useState(0)
 
-  const capabilitiesRef = useScrollReveal<HTMLDivElement>({ staggerDelay: 180 })
   const platformRef = useScrollReveal<HTMLDivElement>()
   const integrationsRef = useScrollReveal<HTMLDivElement>({ staggerDelay: 120 })
   const trustRef = useScrollReveal<HTMLDivElement>({ staggerDelay: 150 })
@@ -67,33 +64,6 @@ export default function Home() {
     { title: 'Learning & exams', subtitle: 'Structured lessons, progress, and timed assessments' },
     { title: 'Interview training', subtitle: 'Dynamic interviews, feedback, and resume tools' },
     { title: 'Certificates & jobs', subtitle: 'Credentials, listings, and applications in one place' },
-  ]
-
-  const capabilities: Capability[] = [
-    {
-      number: '01',
-      title: 'Understand the code you write',
-      description:
-        'Run scans on your work, review findings by severity, and use quality gates so you learn what to fix before it ships.',
-    },
-    {
-      number: '02',
-      title: 'Practice until it sticks',
-      description:
-        'Work through challenges, join arena-style sessions, and climb the leaderboard as you sharpen problem-solving skills.',
-    },
-    {
-      number: '03',
-      title: 'Learn with structure',
-      description:
-        'Follow learning paths, take exams to validate knowledge, and see your progress as you grow from lesson to lesson.',
-    },
-    {
-      number: '04',
-      title: 'Prepare for real interviews',
-      description:
-        'Train with dynamic interviews, capture feedback, polish your resume, explore roles, and earn certificates that reflect what you completed.',
-    },
   ]
 
   const processSteps: ProcessStep[] = [
