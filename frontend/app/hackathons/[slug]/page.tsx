@@ -124,8 +124,8 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
           <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">← CodeSpectra</Link>
           <div className="flex items-center gap-3">
             {myTeam && (
-              <Link href={`/dashboard/challenges`}>
-                <Button size="sm" variant="outline"><ListChecks className="h-3.5 w-3.5 mr-1" /> Go to Problems</Button>
+              <Link href={`/hackathons/${slug}/workspace`}>
+                <Button size="sm" variant="default"><ListChecks className="h-3.5 w-3.5 mr-1" /> Enter Workspace</Button>
               </Link>
             )}
             <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase">
