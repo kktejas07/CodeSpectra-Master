@@ -13,13 +13,14 @@ ENV NEXT_PUBLIC_FIREBASE_PROJECT_ID=${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
 ENV NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET=${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
 ENV NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID=${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
 ENV NEXT_PUBLIC_FIREBASE_APP_ID=${NEXT_PUBLIC_FIREBASE_APP_ID}
+ENV NEXT_PUBLIC_APP_URL=${NEXT_PUBLIC_APP_URL}
 ENV PISTON_URL=http://piston:2000/api/v2
-# Install Docker CLI for cache management operations
 RUN apk add --no-cache docker-cli
 WORKDIR /app
-COPY package.json .
+COPY frontend/package.json .
 RUN yarn install --frozen-lockfile 2>/dev/null || yarn install
-COPY . .
+COPY frontend/ .
+COPY docs/ ./docs/
 RUN yarn build
 EXPOSE 80
 CMD ["npx", "next", "start", "-p", "80"]
