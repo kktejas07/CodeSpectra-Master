@@ -347,6 +347,115 @@
     }
   }
 
+  /* Loading screen animations */
+  @keyframes loading-bar {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(200%);
+    }
+  }
+
+  .animate-loading-bar {
+    animation: loading-bar 1.2s ease-in-out infinite;
+  }
+
+  @keyframes cursor-blink {
+    0%, 100% {
+      opacity: 1;
+    }
+    50% {
+      opacity: 0;
+    }
+  }
+
+  .animate-cursor-blink {
+    animation: cursor-blink 1s step-end infinite;
+  }
+
+  /* Scroll reveal */
+  [data-reveal] {
+    opacity: 0;
+    transform: translateY(24px);
+    transition: opacity 0.7s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.7s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--reveal-delay, 0ms);
+  }
+
+  [data-reveal][data-revealed='true'] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  [data-reveal='hero'] {
+    opacity: 0;
+    transform: translateY(20px);
+    animation: fade-in 0.8s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    animation-delay: var(--reveal-delay, 0ms);
+  }
+
+  [data-reveal='hero'][data-revealed='true'] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    [data-reveal] {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+
+  /* Integration card 3D hover */
+  .integration-card {
+    transform-style: preserve-3d;
+    transition: transform 0.3s ease-out, box-shadow 0.3s ease-out;
+  }
+
+  .integration-card:hover {
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.15);
+  }
+
+  .dark .integration-card:hover {
+    box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.4), 0 0 0 1px hsl(var(--primary) / 0.15);
+  }
+
+  /* Section entrance staggered */
+  .section-stagger > [data-stagger] {
+    opacity: 0;
+    transform: translateY(16px);
+    transition: opacity 0.5s cubic-bezier(0.22, 1, 0.36, 1),
+                transform 0.5s cubic-bezier(0.22, 1, 0.36, 1);
+    transition-delay: var(--stagger-delay, 0ms);
+  }
+
+  .section-stagger.revealed > [data-stagger] {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .section-stagger > [data-stagger] {
+      opacity: 1 !important;
+      transform: none !important;
+    }
+  }
+
+  /* Smooth section divider glow */
+  @keyframes section-divider-pulse {
+    0%, 100% {
+      opacity: 0.3;
+    }
+    50% {
+      opacity: 0.7;
+    }
+  }
+
+  .section-divider-glow {
+    animation: section-divider-pulse 4s ease-in-out infinite;
+  }
+
   .capability-reveal {
     animation: capability-in 0.65s cubic-bezier(0.22, 1, 0.36, 1) both;
   }
