@@ -28,7 +28,7 @@ interface WafRule {
 
 export default function CdnAdminPage() {
   const gate = usePageGuard('superadmin')
-  const { toast } = useToast()
+  const toast = useToast()
   const [purging, setPurging] = useState(false)
   const [purgePath, setPurgePath] = useState('')
   const [cfData, setCfData] = useState<CloudflareData | null>(null)
@@ -61,10 +61,10 @@ export default function CdnAdminPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Purge failed')
-      toast({ title: 'Cache purged', description: all ? 'All edge cache invalidated' : `Purged: ${(json.paths || []).join(', ')}`, variant: 'success' })
+      toast({ type: 'success', title: 'Cache purged', message: all ? 'All edge cache invalidated' : `Purged: ${(json.paths || []).join(', ')}` })
       if (!all) setPurgePath('')
     } catch (e) {
-      toast({ title: 'Purge failed', description: (e as Error).message, variant: 'destructive' })
+      toast({ type: 'error', title: 'Purge failed', message: (e as Error).message })
     } finally {
       setPurging(false)
     }
@@ -75,8 +75,9 @@ export default function CdnAdminPage() {
       if (rule.id === id) {
         const nextState = !rule.enabled
         toast({
+          type: 'success',
           title: `Waf Rule ${nextState ? 'Enabled' : 'Disabled'}`,
-          description: `Successfully modified security status for "${rule.name}"`,
+          message: `Successfully modified security status for "${rule.name}"`,
         })
         return { ...rule, enabled: nextState }
       }

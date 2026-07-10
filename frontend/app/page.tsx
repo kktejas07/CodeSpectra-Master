@@ -3,7 +3,7 @@
 export const dynamic = 'force-dynamic'
 
 import Link from 'next/link'
-import { useState, useEffect, useCallback } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { ArrowRight, Code2, Library } from 'lucide-react'
