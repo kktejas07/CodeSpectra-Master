@@ -8,6 +8,15 @@ type RevealOptions = {
   staggerDelay?: number
 }
 
+function revealElement(el: Element, staggerDelay: number) {
+  const children = el.querySelectorAll<HTMLElement>('[data-reveal]')
+  children.forEach((child, i) => {
+    child.style.setProperty('--reveal-delay', `${i * staggerDelay}ms`)
+    child.dataset.revealed = 'true'
+  })
+  ;(el as HTMLElement).dataset.revealed = 'true'
+}
+
 export function useScrollReveal<T extends HTMLElement = HTMLDivElement>(
   options: RevealOptions = {}
 ) {
@@ -18,26 +27,30 @@ export function useScrollReveal<T extends HTMLElement = HTMLDivElement>(
     const el = ref.current
     if (!el) return
 
-    const children = el.querySelectorAll<HTMLElement>('[data-reveal]')
+    // Check initial visibility — set data-revealed on the next frame so CSS has time to paint
+    const raf = requestAnimationFrame(() => {
+      const rect = el.getBoundingClientRect()
+      const vh = window.innerHeight
+      const visible = rect.top < vh + parseInt(rootMargin) && rect.bottom > 0
+      if (visible) {
+        revealElement(el, staggerDelay)
+        return
+      }
 
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          if (children.length > 0) {
-            children.forEach((child, i) => {
-              child.style.setProperty('--reveal-delay', `${i * staggerDelay}ms`)
-              child.dataset.revealed = 'true'
-            })
+      // Not visible yet — wait for scroll
+      const observer = new IntersectionObserver(
+        ([entry]) => {
+          if (entry.isIntersecting) {
+            revealElement(el, staggerDelay)
+            observer.unobserve(el)
           }
-          el.dataset.revealed = 'true'
-          observer.unobserve(el)
-        }
-      },
-      { threshold, rootMargin }
-    )
+        },
+        { threshold, rootMargin }
+      )
+      observer.observe(el)
+    })
 
-    observer.observe(el)
-    return () => observer.disconnect()
+    return () => cancelAnimationFrame(raf)
   }, [threshold, rootMargin, staggerDelay])
 
   return ref

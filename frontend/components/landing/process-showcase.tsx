@@ -355,10 +355,18 @@ export function ProcessShowcase({ steps, className }: ProcessShowcaseProps) {
             <br />
             <span className="text-[hsl(var(--marketing-band-fg)/0.45)]">Infinite possibilities.</span>
           </h2>
-          <p className="mx-auto mt-3 max-w-2xl text-pretty text-xs leading-relaxed text-[hsl(var(--marketing-band-fg)/0.5)] sm:mt-4 sm:text-sm">
-            The timer matches each code sample: the bar fills while the snippet types, pauses briefly when complete, then
-            advances (looping while this section is in view). Tap a step to jump and restart.
-          </p>
+          <div className="mx-auto mt-3 flex items-center justify-center gap-3 sm:mt-4">
+            <span className="inline-flex items-center gap-1.5 rounded-full border border-[hsl(var(--marketing-band-fg)/0.12)] bg-[hsl(var(--marketing-band-fg)/0.04)] px-3 py-1 font-mono text-[10px] text-[hsl(var(--marketing-band-fg)/0.45)] sm:text-xs">
+              <span className="relative flex h-1.5 w-1.5">
+                <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
+                <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
+              </span>
+              Auto-advancing
+            </span>
+            <span className="font-mono text-[10px] text-[hsl(var(--marketing-band-fg)/0.3)] sm:text-xs">
+              Step <span className="tabular-nums text-[hsl(var(--marketing-band-fg)/0.55)]">{active + 1}</span> / {steps.length}
+            </span>
+          </div>
         </header>
 
         <div className="mx-auto grid w-full max-w-full sm:max-w-7xl grid-cols-1 items-stretch gap-8 sm:gap-10 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.18fr)] lg:items-center lg:gap-10 xl:gap-14">
@@ -386,14 +394,23 @@ export function ProcessShowcase({ steps, className }: ProcessShowcaseProps) {
                       {s.numeral}
                     </span>
                     <div className="min-w-0 flex-1">
-                      <h3
-                        className={cn(
-                          'text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl xl:text-3xl',
-                          on && 'text-[hsl(var(--marketing-band-fg)/0.98)]'
+                      <div className="flex items-center gap-2">
+                        <h3
+                          className={cn(
+                            'text-lg font-semibold tracking-tight sm:text-xl lg:text-2xl xl:text-3xl',
+                            on && 'text-[hsl(var(--marketing-band-fg)/0.98)]'
+                          )}
+                        >
+                          {s.title}
+                        </h3>
+                        {on && (
+                          <span className="inline-flex gap-1">
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
+                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" style={{ animationDelay: '600ms' }} />
+                          </span>
                         )}
-                      >
-                        {s.title}
-                      </h3>
+                      </div>
                       <p className="mt-2 text-sm leading-relaxed text-[hsl(var(--marketing-band-fg)/0.58)] sm:text-[15px]">
                         {s.description}
                       </p>

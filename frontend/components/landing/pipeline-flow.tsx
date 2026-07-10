@@ -258,7 +258,10 @@ export function PipelineFlow() {
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
               <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
             </span>
-            Live pipeline — steps auto-highlight in sequence
+            Auto-advancing
+            <span className="font-mono text-[10px] text-muted-foreground/50">
+              Step <span className="tabular-nums text-muted-foreground/70">{activeStep + 1}</span> / {steps.length}
+            </span>
           </div>
         </div>
       </div>

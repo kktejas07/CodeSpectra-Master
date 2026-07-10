@@ -14,8 +14,8 @@ import {
 } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
-import { LLM_PROVIDERS, PROVIDER_DEFAULTS, type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
-import { Save, Loader2, Sparkles, Eye, EyeOff, CheckCircle2, XCircle } from 'lucide-react'
+import { LLM_PROVIDERS, getProviderDefaults, type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
+import { Save, Loader2, Sparkles, Eye, EyeOff, CheckCircle2, XCircle, Wand2 } from 'lucide-react'
 
 export default function LlmConfigPage() {
   const gate = usePageGuard('superadmin')
@@ -41,10 +41,10 @@ export default function LlmConfigPage() {
     if (!draft) return
     const next = { ...draft, [key]: value }
     if (key === 'provider') {
-      const defaults = PROVIDER_DEFAULTS[value as LLMProviderId]
-      if (defaults) {
-        next.model = defaults.model
-        next.endpoint = defaults.endpoint
+      const defs = getProviderDefaults(value as LLMProviderId)
+      if (defs) {
+        next.model = defs.models[0] || next.model
+        next.endpoint = defs.endpoint
       }
     }
     setDraft(next)
@@ -125,7 +125,7 @@ export default function LlmConfigPage() {
                   <SelectItem key={p.id} value={p.id}>
                     <span className="flex items-center gap-2">
                       {p.label}
-                      {p.free ? <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600">Free</span> : null}
+                      {p.free ? <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600 shrink-0">Free</span> : null}
                     </span>
                   </SelectItem>
                 ))}
@@ -134,17 +134,41 @@ export default function LlmConfigPage() {
           </div>
 
           <div className="space-y-2">
-            <Label htmlFor="model">Model Name</Label>
-            <Input
-              id="model"
-              value={draft?.model || ''}
-              onChange={e => updateField('model', e.target.value)}
-              placeholder="gemini-2.0-flash"
-              className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              The model identifier (e.g. <code className="bg-muted px-1 rounded">gemini-2.0-flash</code>, <code className="bg-muted px-1 rounded">claude-sonnet-4-20250514</code>, <code className="bg-muted px-1 rounded">opencode-7b</code>)
-            </p>
+            <Label htmlFor="model">Model</Label>
+            {draft && (() => {
+              const defs = getProviderDefaults(draft.provider)
+              const models = defs?.models || []
+              return (
+                <div className="flex gap-2">
+                  <Select value={draft.model} onValueChange={v => updateField('model', v)}>
+                    <SelectTrigger id="model" className="h-10 flex-1 rounded-lg border-border/60 bg-background font-mono text-sm">
+                      <SelectValue placeholder="Select or type a model..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {models.map(m => (
+                        <SelectItem key={m} value={m}>
+                          <span className="font-mono text-sm">{m}</span>
+                        </SelectItem>
+                      ))}
+                      {draft.model && !models.includes(draft.model) && (
+                        <SelectItem value={draft.model}>
+                          <span className="font-mono text-sm text-primary">{draft.model} (custom)</span>
+                        </SelectItem>
+                      )}
+                    </SelectContent>
+                  </Select>
+                  {draft.model && !models.includes(draft.model) && (
+                    <Input
+                      value={draft.model}
+                      onChange={e => updateField('model', e.target.value)}
+                      className="h-10 w-48 rounded-lg border-border/60 bg-background font-mono text-sm hidden lg:block"
+                      placeholder="Custom model name..."
+                    />
+                  )}
+                </div>
+              )
+            })()}
+            <p className="text-xs text-muted-foreground">Available models auto-populated based on provider. Type a custom model if yours isn't listed.</p>
           </div>
 
           <div className="space-y-2">

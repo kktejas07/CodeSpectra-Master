@@ -104,35 +104,39 @@ MODEL_REGISTRY: dict[str, tuple[str, str]] = {
 
 
 def _resolve_key(provider: str, request_headers=None) -> str:
-    """
-    Resolve API key for a given provider.
-    Priority:
-      1. Provider-specific header (x-anthropic-api-key, x-gemini-api-key, x-openai-api-key)
-      2. Provider-specific env var (ANTHROPIC_API_KEY, GEMINI_API_KEY, OPENAI_API_KEY)
-
-
-    """
     key_header_map = {
         "anthropic": "x-anthropic-api-key",
         "gemini": "x-gemini-api-key",
         "openai": "x-openai-api-key",
         "opencode": "x-openai-api-key",
+        "omnirouter": "x-openai-api-key",
     }
-    if request_headers:
-        header = key_header_map.get(provider)
-        if header:
-            hdr = request_headers.get(header, "")
-            if hdr:
-                return hdr
     env_map = {
-        "anthropic": ENV_ANTHROPIC,
-        "gemini": ENV_GEMINI,
-        "openai": ENV_OPENAI,
-        "opencode": ENV_OPENAI,
+        "anthropic": "ANTHROPIC_API_KEY",
+        "gemini": "GEMINI_API_KEY",
+        "openai": "OPENAI_API_KEY",
+        "opencode": "OPENAI_API_KEY",
+        "omnirouter": "OPENAI_API_KEY",
     }
-    val = env_map.get(provider)
-    if val:
-        return val
+    header = key_header_map.get(provider)
+    env_var = env_map.get(provider)
+    if request_headers and header:
+        hdr = request_headers.get(header, "")
+        if hdr:
+            return hdr
+    # Fall back to generic header for any custom provider
+    if request_headers:
+        generic = request_headers.get("x-api-key", "")
+        if generic:
+            return generic
+    if env_var:
+        val = os.environ.get(env_var, "")
+        if val:
+            return val
+    # Generic fallback
+    generic_env = os.environ.get("LLM_API_KEY", "")
+    if generic_env:
+        return generic_env
     return ""
 
 

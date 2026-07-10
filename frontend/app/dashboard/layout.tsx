@@ -49,6 +49,7 @@ import {
   CreditCard as CreditCardIcon,
   Shield,
   MessageSquare,
+  Database,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -234,7 +235,8 @@ export default function DashboardLayout({
       { href: p.permissions, icon: Shield, label: 'Permissions' },
       { href: p.plans, icon: FileText, label: 'Plans' },
       { href: p.pricing, icon: FileText, label: 'Pricing' },
-      { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
+        { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
+        { href: '/dashboard/admin/rag', icon: Database, label: 'RAG & Embeddings' },
       { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
       { href: '/dashboard/admin/settings/llm', icon: Sparkles, label: 'LLM Config' },
       { href: p.settings, icon: Settings, label: 'Platform settings' },
