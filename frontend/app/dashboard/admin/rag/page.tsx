@@ -29,7 +29,7 @@ export default function RagAdminPage() {
       const d = await r.json()
       setStats(d)
     } catch {
-      toast({ title: 'Failed to load RAG stats', variant: 'destructive' })
+      toast({ type: 'error', title: 'Failed to load RAG stats' })
     } finally {
       setLoading(false)
     }
@@ -45,10 +45,10 @@ export default function RagAdminPage() {
     try {
       const r = await fetch('/api/admin/rag/reindex', { method: 'POST', credentials: 'include' })
       const d = await r.json()
-      toast({ title: d.ok ? `Re-indexed: ${d.count} items` : 'Re-index failed', variant: d.ok ? 'success' : 'destructive' })
+      toast({ type: d.ok ? 'success' : 'error', title: d.ok ? `Re-indexed: ${d.count} items` : 'Re-index failed' })
       loadStats()
     } catch {
-      toast({ title: 'Re-index request failed', variant: 'destructive' })
+      toast({ type: 'error', title: 'Re-index request failed' })
     } finally {
       setIndexing(false)
     }
@@ -68,7 +68,7 @@ export default function RagAdminPage() {
       const d = await r.json()
       setSearchResults(d.results || [])
     } catch {
-      toast({ title: 'Search failed', variant: 'destructive' })
+      toast({ type: 'error', title: 'Search failed' })
     } finally {
       setSearching(false)
     }

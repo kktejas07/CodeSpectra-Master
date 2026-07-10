@@ -19,7 +19,7 @@ import { Save, Loader2, Sparkles, Eye, EyeOff, CheckCircle2, XCircle, Wand2 } fr
 
 export default function LlmConfigPage() {
   const gate = usePageGuard('superadmin')
-  const { toast } = useToast()
+  const toast = useToast()
   const [config, setConfig] = useState<LLMConfig | null>(null)
   const [draft, setDraft] = useState<LLMConfig | null>(null)
   const [loading, setLoading] = useState(true)
@@ -33,7 +33,7 @@ export default function LlmConfigPage() {
     fetch('/api/admin/llm-config', { credentials: 'include' })
       .then(r => r.json())
       .then(d => { setConfig(d.config); setDraft(d.config) })
-      .catch(() => toast({ title: 'Failed to load config', variant: 'destructive' }))
+      .catch(() => toast({ type: 'error', title: 'Failed to load config' }))
       .finally(() => setLoading(false))
   }, [gate.ready])
 
@@ -64,9 +64,9 @@ export default function LlmConfigPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Save failed')
       setConfig({ ...draft })
-      toast({ title: 'LLM config saved', variant: 'success' })
+      toast({ type: 'success', title: 'LLM config saved' })
     } catch (e) {
-      toast({ title: 'Save failed', description: (e as Error).message, variant: 'destructive' })
+      toast({ type: 'error', title: 'Save failed', message: (e as Error).message })
     } finally {
       setSaving(false)
     }
