@@ -5,6 +5,19 @@ const projectRoot = path.dirname(fileURLToPath(import.meta.url))
 
 /** @type {import('next').NextConfig} */
 const nextConfig = {
+  async headers() {
+    return [
+      {
+        source: '/dashboard/identity-verify/:path*',
+        headers: [
+          {
+            key: 'Permissions-Policy',
+            value: 'camera=(self)',
+          },
+        ],
+      },
+    ]
+  },
   allowedDevOrigins: [
     '*.preview.emergentagent.com',
     '*.preview.emergentcf.cloud',
