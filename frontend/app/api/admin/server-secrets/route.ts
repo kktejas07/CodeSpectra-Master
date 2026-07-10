@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import {
   maskSecret,
+  isMaskedSecret,
   readServerSecrets,
   writeServerSecrets,
   type ServerSecretsRecord,
@@ -95,6 +96,9 @@ export async function PATCH(request: Request) {
     if (v === null) {
       patch[k] = undefined as never
     } else if (typeof v === 'string') {
+      // Ignore UI-masked values (bullet chars) so we never overwrite a stored
+      // secret with its mask.
+      if (isMaskedSecret(v)) continue
       patch[k] = v as never
     }
   }

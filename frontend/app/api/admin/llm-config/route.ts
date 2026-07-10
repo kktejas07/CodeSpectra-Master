@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { maskSecret } from '@/lib/server-secrets-cache'
+import { maskSecret, isMaskedSecret } from '@/lib/server-secrets-cache'
 import { LLM_CONFIG_DEFAULTS, LLM_PROVIDERS, type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
 
 const PLATFORM_KEY = 'llm'
@@ -39,7 +39,7 @@ export async function PATCH(request: Request) {
     provider: (body.provider && LLM_PROVIDERS.some(p => p.id === body.provider) ? body.provider : prev.provider) as LLMProviderId,
     model: typeof body.model === 'string' && body.model.trim() ? body.model.trim() : prev.model,
     endpoint: typeof body.endpoint === 'string' ? body.endpoint.trim() : prev.endpoint,
-    api_key: typeof body.api_key === 'string' ? body.api_key.trim() : prev.api_key,
+    api_key: typeof body.api_key === 'string' && !isMaskedSecret(body.api_key) ? body.api_key.trim() : prev.api_key,
   }
 
   await db.collection('platform_settings').updateOne(
