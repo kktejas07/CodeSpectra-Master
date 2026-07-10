@@ -10,7 +10,7 @@ const codeLines = [
   'const issues = analyzer.scan(code)',
   'issues.forEach(i => {',
   '  const fix = ai.suggestFix(i)',
-  '  console.log(\`Fixed: ${i.id}\`)',
+  '  console.log(`Fixed: ${i.id}`)',
   '})',
   'if (issues.length === 0) {',
   '  console.log("Clean build")',
@@ -20,34 +20,27 @@ const codeLines = [
 
 export function LoadingScreen({ onDone }: { onDone: () => void }) {
   const [progress, setProgress] = useState(0)
-  const [scanLine, setScanLine] = useState(0)
   const [visibleLines, setVisibleLines] = useState<number[]>([])
-  const lineRef = useRef<number[]>([])
+  const onDoneRef = useRef(onDone)
+  onDoneRef.current = onDone
 
+  // Single timeout that triggers both the progress animation and final completion
   useEffect(() => {
-    let raf = 0
-    let lineTimer = 0
     const start = performance.now()
+    let raf = 0
 
     const tick = (now: number) => {
       const elapsed = now - start
       const pct = Math.min(elapsed / LOAD_DURATION, 1)
       setProgress(pct)
-      setScanLine(pct * 100)
 
-      // Reveal code lines progressively
-      const lineCount = Math.floor(pct * codeLines.length * 1.5)
-      const newLines: number[] = []
-      for (let i = 0; i < Math.min(lineCount, codeLines.length); i++) {
-        newLines.push(i)
-      }
-      if (newLines.length !== lineRef.current.length) {
-        lineRef.current = newLines
-        setVisibleLines(newLines)
-      }
+      const lineCount = Math.min(Math.floor(pct * codeLines.length * 1.5), codeLines.length)
+      const arr: number[] = []
+      for (let i = 0; i < lineCount; i++) arr.push(i)
+      setVisibleLines(arr)
 
       if (pct >= 1) {
-        onDone()
+        onDoneRef.current()
         return
       }
       raf = requestAnimationFrame(tick)
@@ -55,7 +48,9 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [onDone])
+    // Intentionally no deps — runs once on mount, uses ref for onDone
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
 
   const pct = Math.round(progress * 100)
 
@@ -75,7 +70,7 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
       <div
         className="pointer-events-none absolute left-0 right-0 h-40 transition-all duration-75 ease-linear"
         style={{
-          top: `${scanLine - 10}%`,
+          top: `${progress * 100 - 10}%`,
           background:
             'linear-gradient(180deg, transparent 0%, rgba(52,211,153,0.06) 30%, rgba(52,211,153,0.12) 50%, rgba(52,211,153,0.06) 70%, transparent 100%)',
         }}
@@ -95,7 +90,6 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
 
         {/* Code window */}
         <div className="w-full overflow-hidden rounded-lg border border-zinc-800 bg-zinc-950 shadow-lg shadow-black/40">
-          {/* Window chrome */}
           <div className="flex items-center gap-1.5 border-b border-zinc-800/80 px-3 py-2">
             <span className="h-2 w-2 rounded-full bg-zinc-700" />
             <span className="h-2 w-2 rounded-full bg-zinc-700" />
@@ -105,13 +99,12 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
             </span>
           </div>
 
-          {/* Code content */}
           <div className="relative min-h-[180px] overflow-hidden p-4 font-mono text-xs leading-relaxed sm:min-h-[200px] sm:p-5 sm:text-sm">
             {/* Scan line */}
             <div
               className="pointer-events-none absolute left-0 right-0 h-6 transition-all duration-75 ease-linear"
               style={{
-                top: `${scanLine * 1.6 - 2}%`,
+                top: `${progress * 160 - 2}%`,
                 background:
                   'linear-gradient(90deg, transparent 0%, rgba(52,211,153,0.15) 20%, rgba(52,211,153,0.25) 50%, rgba(52,211,153,0.15) 80%, transparent 100%)',
               }}
@@ -119,7 +112,7 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
             <div
               className="pointer-events-none absolute left-0 right-0 h-px transition-all duration-75 ease-linear"
               style={{
-                top: `${scanLine * 1.6}%`,
+                top: `${progress * 160}%`,
                 background:
                   'linear-gradient(90deg, transparent 5%, rgba(52,211,153,0.7) 30%, rgba(52,211,153,0.9) 50%, rgba(52,211,153,0.7) 70%, transparent 95%)',
                 boxShadow: '0 0 8px rgba(52,211,153,0.3), 0 0 20px rgba(52,211,153,0.1)',
@@ -127,34 +120,26 @@ export function LoadingScreen({ onDone }: { onDone: () => void }) {
             />
 
             {codeLines.map((line, i) => {
-              const isScanned = i < visibleLines.length
-              const isActive =
-                isScanned &&
-                i === Math.min(visibleLines.length - 1, codeLines.length - 1)
-
+              const scanned = i < visibleLines.length
+              const active = scanned && i === Math.max(0, visibleLines.length - 1)
               return (
                 <div
                   key={i}
                   className={`whitespace-pre transition-all duration-300 ${
-                    isActive
-                      ? 'text-emerald-300'
-                      : isScanned
-                        ? 'text-zinc-400'
-                        : 'text-zinc-800'
+                    active ? 'text-emerald-300' : scanned ? 'text-zinc-400' : 'text-zinc-800'
                   }`}
                 >
                   <span className="mr-3 inline-block w-5 text-right text-zinc-700 select-none">
                     {i + 1}
                   </span>
                   {line}
-                  {isActive && (
+                  {active && (
                     <span className="ml-1 inline-block h-4 w-1.5 animate-pulse bg-emerald-400 align-[-2px]" />
                   )}
                 </div>
               )
             })}
 
-            {/* Blur fade for bottom */}
             <div className="pointer-events-none sticky bottom-0 left-0 right-0 h-8 bg-linear-to-t from-zinc-950 to-transparent" />
           </div>
         </div>
