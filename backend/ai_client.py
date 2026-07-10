@@ -57,7 +57,8 @@ class DirectAiClient:
                     chunk.usage["input_chars"] = input_chars
                     chunk.usage["output_chars"] = output_chars
                 yield chunk
-        elif self.provider == "openai" or self.provider == "opencode":
+        else:
+            # All other providers use OpenAI-compatible format (dynamic base_url)
             async for chunk in self._stream_openai(message):
                 if isinstance(chunk, TextDelta):
                     output_chars += len(chunk.content)
@@ -65,16 +66,13 @@ class DirectAiClient:
                     chunk.usage["input_chars"] = input_chars
                     chunk.usage["output_chars"] = output_chars
                 yield chunk
-        else:
-            # Fallback mock/error
-            yield TextDelta(content=f"Unsupported provider: {self.provider}")
-            yield StreamDone()
 
     async def _stream_gemini(
         self, message: UserMessage
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
+        base = self.base_url.strip().rstrip("/") if self.base_url else "https://generativelanguage.googleapis.com/v1beta"
         key = self.api_key or ""
-        url = f"https://generativelanguage.googleapis.com/v1beta/models/{self.model}:streamGenerateContent"
+        url = f"{base}/models/{self.model}:streamGenerateContent?key={key}"
         
         parts = []
         if message.text:
