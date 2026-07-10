@@ -375,6 +375,14 @@ function CodeScannerPageInner() {
                   const historyItem = scanHistory.find((h) => h.id === scan.id)
                   if (historyItem) setAnalysis(historyItem)
                 }}
+                onDelete={async (scanId) => {
+                  try {
+                    await fetch(`/api/scanner/issues?id=${scanId}`, { method: 'DELETE' })
+                    setScanHistory((prev) => prev.filter((s) => s.id !== scanId))
+                  } catch {
+                    console.error('Failed to delete scan')
+                  }
+                }}
               />
             )}
           </div>

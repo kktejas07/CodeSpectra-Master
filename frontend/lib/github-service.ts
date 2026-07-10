@@ -76,7 +76,7 @@ export async function getGitHubIntegration(): Promise<{
 export async function getGitHubRepositories(page = 1): Promise<{ success: boolean; repositories: GitHubRepoListItem[]; error?: string }> {
   try {
     const res = await fetch(`/api/github/repos?page=${page}`, { cache: 'no-store' })
-    if (res.status === 401 || res.status === 403) {
+    if (res.status === 400 || res.status === 401 || res.status === 403) {
       return { success: false, repositories: [], error: 'GitHub not connected. Use the GitHub tab to connect your account.' }
     }
     if (!res.ok) return { success: false, repositories: [], error: `Failed to fetch (${res.status})` }

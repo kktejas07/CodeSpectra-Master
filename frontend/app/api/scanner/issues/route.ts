@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
-import { listIssues, insertIssue, type CodeIssueDoc } from '@/lib/db/scans'
+import { deleteIssue, listIssues, insertIssue, type CodeIssueDoc } from '@/lib/db/scans'
 
 export async function GET(request: NextRequest) {
   try {
@@ -32,6 +32,29 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('[CodeSpectra] Issues list error:', error)
     return NextResponse.json({ error: 'Failed to fetch issues' }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+
+  try {
+    const { searchParams } = new URL(request.url)
+    const id = searchParams.get('id')
+    if (!id) {
+      return NextResponse.json({ error: 'Missing id' }, { status: 400 })
+    }
+    const deleted = await deleteIssue(id)
+    if (!deleted) {
+      return NextResponse.json({ error: 'Issue not found' }, { status: 404 })
+    }
+    return NextResponse.json({ success: true })
+  } catch (error) {
+    console.error('[CodeSpectra] Delete issue error:', error)
+    return NextResponse.json({ error: 'Failed to delete issue' }, { status: 500 })
   }
 }
 

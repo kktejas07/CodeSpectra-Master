@@ -268,6 +268,12 @@ export async function insertIssue(
   return doc
 }
 
+export async function deleteIssue(id: string): Promise<boolean> {
+  const col = await codeIssues()
+  const result = await col.deleteOne({ id })
+  return result.deletedCount > 0
+}
+
 // ---------- Activity repository ----------
 
 export async function logActivity(

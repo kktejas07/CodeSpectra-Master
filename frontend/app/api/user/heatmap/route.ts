@@ -43,19 +43,30 @@ export async function GET(req: NextRequest) {
     const dateKey = (d: Date) => d.toISOString().slice(0, 10)
 
     const buildDateMap = async (collection: string, type: 'scan' | 'review' | 'fix' | 'challenge', dateField = 'created_at') => {
-      const pipeline = [
-        { $match: matchStage },
-        {
-          $group: {
-            _id: { $dateToString: { format: '%Y-%m-%d', date: `$${dateField}` } },
-            count: { $sum: 1 }
+      try {
+        const pipeline = [
+          { $match: matchStage },
+          {
+            $group: {
+              _id: {
+                $dateToString: {
+                  format: '%Y-%m-%d',
+                  date: { $toDate: `$${dateField}` }
+                }
+              },
+              count: { $sum: 1 }
+            }
           }
+        ]
+        const results = await db.collection(collection).aggregate(pipeline).toArray()
+        const map: Record<string, number> = {}
+        for (const r of results) {
+          if (r._id && r._id !== 'Invalid Date') map[r._id] = r.count
         }
-      ]
-      const results = await db.collection(collection).aggregate(pipeline).toArray()
-      const map: Record<string, number> = {}
-      for (const r of results) map[r._id] = r.count
-      return map
+        return map
+      } catch {
+        return {}
+      }
     }
 
     const [scanMap, reviewMap, fixMap, challengeMap] = await Promise.all([
@@ -127,6 +138,14 @@ export async function GET(req: NextRequest) {
     })
   } catch (error) {
     console.error('[CodeSpectra] Error fetching contribution heatmap:', error)
-    return NextResponse.json({ error: 'Failed to fetch contribution heatmap' }, { status: 500 })
+    return NextResponse.json({
+      cells: Array.from({ length: weeks }, () => [0, 0, 0, 0, 0, 0, 0]),
+      dayLabels: ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+      monthLabels: [],
+      tooltipData: {},
+      totalActiveDays: 0,
+      totalContributions: 0,
+      _error: 'unavailable',
+    })
   }
 }
