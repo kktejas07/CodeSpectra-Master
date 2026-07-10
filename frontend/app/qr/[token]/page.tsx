@@ -145,9 +145,14 @@ export default function QrScanPage({
       />
       <main className="mx-auto max-w-2xl px-6 py-12">
         <div className="mb-6 flex items-center justify-between">
-          <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs uppercase tracking-wider text-muted-foreground">
-            <ScanLine className="h-3 w-3" /> Scanned
-          </span>
+          <div className="flex items-center gap-3">
+            <button onClick={() => window.history.back()} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+              ← Back
+            </button>
+            <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs uppercase tracking-wider text-muted-foreground">
+              <ScanLine className="h-3 w-3" /> Scanned
+            </span>
+          </div>
           <Link href="/" className="text-xs text-muted-foreground hover:text-foreground">
             CodeSpectra ↗
           </Link>

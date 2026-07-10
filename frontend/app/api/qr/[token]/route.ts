@@ -98,7 +98,7 @@ export async function GET(
       kind: 'team',
       role_variant: 'user',
       theme: { label: 'Team', accent: 'cyan', dashboard: hk ? `/hackathons/${hk.slug}` : '/' },
-      dashboard_url: hk ? `/hackathons/${hk.slug}/teams/${team.slug}` : '/',
+      dashboard_url: hk ? `/hackathons/${hk.slug}` : '/',
       team: {
         id: team.id,
         name: team.name,
