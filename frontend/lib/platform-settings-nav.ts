@@ -1,5 +1,7 @@
 export const PLATFORM_SETTINGS_SECTIONS = [
   'branding',
+  'cloudflare',
+  'llm',
   'mail',
   'ops',
   'product',
@@ -10,9 +12,7 @@ export const PLATFORM_SETTINGS_SECTIONS = [
 
 export type PlatformSettingsSection = (typeof PLATFORM_SETTINGS_SECTIONS)[number]
 
-export function parsePlatformSettingsSection(
-  raw: string | null | undefined
-): PlatformSettingsSection {
+export function parsePlatformSettingsSection(raw: string | null | undefined): PlatformSettingsSection {
   const s = (raw || '').toLowerCase().trim()
   if (PLATFORM_SETTINGS_SECTIONS.includes(s as PlatformSettingsSection)) {
     return s as PlatformSettingsSection

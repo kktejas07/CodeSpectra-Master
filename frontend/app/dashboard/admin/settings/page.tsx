@@ -32,6 +32,8 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloudflare-section'
+import { LlmSettingsSection } from '@/components/dashboard/settings/llm-section'
 import { useToast } from '@/lib/toast-context'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -672,7 +674,15 @@ function SystemSettingsInner() {
         </Card>
           ) : null}
 
-          {section === 'mail' ? (
+           {section === 'cloudflare' ? (
+             <CloudflareSettingsSection />
+           ) : null}
+
+           {section === 'llm' ? (
+             <LlmSettingsSection />
+           ) : null}
+
+           {section === 'mail' ? (
         <Card className="rounded-xl border-border/60 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
