@@ -33,7 +33,12 @@ const CLIENT_OPTS = {
 };
 
 async function connect(targetUri: string): Promise<MongoClient> {
-  const client = new MongoClient(targetUri, CLIENT_OPTS);
+  // URL-encode credentials to prevent SCRAM/btoa failures with non-ASCII passwords
+  const encoded = targetUri.replace(
+    /\/\/([^:]+):([^@]+)@/,
+    (_, user, pass) => `//${user}:${encodeURIComponent(pass)}@`,
+  );
+  const client = new MongoClient(encoded, CLIENT_OPTS);
   await client.connect();
   // Sanity ping
   await client.db(dbName).command({ ping: 1 });
