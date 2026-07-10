@@ -29,8 +29,6 @@
         }
       ]
     ],
-    "cli": {
-      "appVersionSource": "local"
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "dev.codespectra.mobile",
@@ -48,6 +46,9 @@
         "projectId": "6355ce0d-4fab-4c1c-b8ff-c0d06adcfd2b"
       }
     },
-    "owner": "devendervutukuru"
+    "owner": "devendervutukuru",
+    "cli": {
+      "appVersionSource": "local"
+    }
   }
 }
