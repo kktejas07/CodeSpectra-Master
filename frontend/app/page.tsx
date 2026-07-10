@@ -24,6 +24,15 @@ export default function Home() {
   const hasSession = useHasUserSession()
   const [loadingDone, setLoadingDone] = useState(false)
   const handleLoadingDone = useCallback(() => setLoadingDone(true), [])
+
+  // Reset loading screen when page is restored from bfcache (browser back/forward cache)
+  useEffect(() => {
+    const onShow = (e: PageTransitionEvent) => {
+      if (e.persisted) setLoadingDone(false)
+    }
+    window.addEventListener('pageshow', onShow)
+    return () => window.removeEventListener('pageshow', onShow)
+  }, [])
   const [displayedText, setDisplayedText] = useState('')
   const [currentWord, setCurrentWord] = useState(0)
 
