@@ -4,201 +4,367 @@ import type {
   RawAnalyzerSuggestion,
 } from '@/lib/scanner-analysis-mapper'
 
-interface RawFeature {
-  name: string
-  score: number
-  penalty: number
-}
+const LANG_SIGNATURES: [string, RegExp][] = [
+  ['typescript', /\b(interface|type |enum |namespace|declare |as |readonly|keyof|import .* from|export |&\b)/],
+  ['python', /\b(def |import |from |elif |self\.|__init__|lambda |yield |async def|@.*\))/],
+  ['javascript', /\b(const |let |var |function |=>|require\(|module\.exports|import .* from)/],
+  ['java', /\b(public |private |protected |void |static |class |extends |implements |new )/],
+  ['go', /\b(func |package |import \(|defer |chan |:=\b|go (func|select))/],
+  ['rust', /\b(fn |let mut|impl |struct |enum |match |-> |::|pub fn|unwrap\(\)|&'|!\b)/],
+  ['cpp', /\b(#include |std::|cout|cin|template |<.*>|virtual |override |nullptr)/],
+  ['c', /\b(#include |printf|scanf|main\(|malloc|struct |typedef|#define)/],
+  ['ruby', /\b(def |end$|puts |require |attr_|#.*|\@@|@@)/],
+  ['php', /<\?php|\$\w+\s*=|->|::/],
+  ['swift', /\b(func |guard |let |var |struct |enum |import Foundation|@.*\b)/],
+  ['kotlin', /\b(fun |val |var |data class|object |companion |sealed |::)/],
+  ['csharp', /\b(public class|private |protected |void |async Task|namespace |using |=>|\?.|\?\:)/],
+  ['sql', /\b(SELECT |FROM |WHERE |INSERT |UPDATE |DELETE |CREATE TABLE|DROP |JOIN |GROUP BY)/i],
+]
 
-function detectLanguage(code: string, hintedLanguage: string): string {
-  if (hintedLanguage && hintedLanguage !== 'plaintext') return hintedLanguage
-  const patterns: [string, RegExp][] = [
-    ['typescript', /\b(interface|type|enum|namespace|declare|as |readonly|keyof)\b/],
-    ['python', /\b(def|import|from|elif|self|__init__|lambda|yield)\b/],
-    ['java', /\b(public class|private|protected|void|static void|System\.out)\b/],
-    ['go', /\b(func|package|import defer|chan|goroutine|:=)\b/],
-    ['rust', /\b(fn|let mut|impl|struct|enum|match|->|::|pub fn|unwrap)\b/],
-    ['cpp', /\b(#include|std::|cout|cin|template|virtual|override)\b/],
-    ['c', /\b(#include|printf|scanf|main\(|malloc|struct|typedef)\b/],
-    ['ruby', /\b(def|end|puts|require|attr_|@@|@@)\b/],
-    ['php', /<\?php|\$\w+\s*=/],
-    ['swift', /\b(func|guard|let|var|struct|enum|import Foundation)\b/],
-    ['kotlin', /\b(fun|val|var|data class|object|companion|sealed)\b/],
-  ]
-  for (const [lang, re] of patterns) {
-    if (re.test(code)) return lang
+export function detectLanguage(code: string, hint?: string): string {
+  if (hint && hint !== 'plaintext') {
+    const normalised = hint.toLowerCase().replace(/[^a-z]/g, '')
+    const match = LANG_SIGNATURES.find(([k]) => k.toLowerCase().replace(/[^a-z]/g, '').startsWith(normalised.slice(0, 4)))
+    if (match) return hint.toLowerCase().split(/[^a-z]/)[0]
   }
-  return 'javascript'
+  let best = { lang: 'javascript', score: 0 }
+  for (const [lang, re] of LANG_SIGNATURES) {
+    const m = code.match(re)
+    if (m && m.length > best.score) best = { lang, score: m.length }
+  }
+  return best.lang
 }
 
-function scoreStructural(code: string, lang: string): RawFeature[] {
-  const features: RawFeature[] = []
+function isLikelyCode(code: string): number {
+  const lines = code.split('\n').filter(l => l.trim())
+  if (lines.length === 0) return 0
+
+  const checks = [
+    { score: (code.match(/\b(function|const|let|var|if|else|for|while|return|switch|case|break|continue|try|catch|throw|async|await|import|export|class|def|fn|func|public|private|protected|void|static|struct|enum)\b/g) || []).length },
+    { score: (code.match(/[{}();]/g) || []).length * 0.5 },
+    { score: (code.match(/\b\w+\s*\(/g) || []).length * 0.8 },
+    { score: (code.match(/[=<>!&|+\-*/%]/g) || []).length * 0.3 },
+    { score: (code.match(/^\s*(#include|using|import |from |package)\b/gm) || []).length },
+    { score: (code.match(/\w+\s*[=!<>]=?\s*\w/g) || []).length * 0.6 },
+  ]
+
+  const raw = checks.reduce((sum, c) => sum + c.score, 0)
+  return Math.min(10, raw / Math.max(lines.length, 1))
+}
+
+function findSecurityIssues(code: string): RawAnalyzerIssue[] {
+  const issues: RawAnalyzerIssue[] = []
   const lines = code.split('\n')
 
-  const longFunctions = lines.filter(l => l.length > 150).length
-  const nestedDepth = Math.max(0, ...lines.map(l => {
-    let d = 0; for (const c of l) { if (c === '{') d++; if (c === '}') d-- }
-    return d
-  }))
-  const commentLines = lines.filter(l => /^\s*(\/\/|\/\*|#|<!--)/.test(l.trim())).length
-  const blankLines = lines.filter(l => !l.trim()).length
-  const codeLines = lines.filter(l => l.trim().length > 0).length
-  const avgLineLen = codeLines > 0 ? lines.reduce((s, l) => s + l.length, 0) / codeLines : 0
-
-  features.push({ name: 'function_length', score: Math.max(0, 100 - longFunctions * 15), penalty: longFunctions * 15 })
-  features.push({ name: 'nesting_depth', score: Math.max(0, 100 - nestedDepth * 20), penalty: nestedDepth * 20 })
-  features.push({ name: 'comment_ratio', score: commentLines / Math.max(1, codeLines) > 0.3 ? 100 : Math.max(0, 70 - (commentLines / Math.max(1, codeLines)) * 100), penalty: Math.max(0, 30 - (commentLines / Math.max(1, codeLines)) * 30) })
-
-  const hasMain = /\bfunction\s+\w*[mM]ain|def\s+main|public\s+static\s+void\s+main|int\s+main\s*\(|fn\s+main|package\s+main/.test(code)
-  const hasTests = /\bdescribe\(|it\(|test\(|expect\(|assert|def test_|func Test|test_/.test(code)
-  features.push({ name: 'entry_point', score: hasMain ? 100 : 60, penalty: hasMain ? 0 : 40 })
-  features.push({ name: 'has_tests', score: hasTests ? 100 : 0, penalty: hasTests ? 0 : 10 })
-
-  const dangerousPatterns: [string, RegExp, string][] = [
-    ['eval', /\beval\s*\(/, 'Use of eval() — code injection risk'],
-    ['innerHTML', /\.innerHTML\s*=/, 'Direct innerHTML assignment — XSS risk'],
-    ['password_in_code', /password\s*[=:]\s*['"`][^'"`]+['"`]/i, 'Hardcoded password found'],
-    ['api_key_in_code', /api[_-]?key\s*[=:]\s*['"`][^'"`]{8,}['"`]/i, 'Hardcoded API key found'],
-    ['secret_in_code', /secret\s*[=:]\s*['"`][^'"`]+['"`]/i, 'Hardcoded secret found'],
-    ['token_in_code', /token\s*[=:]\s*['"`][^'"`]{10,}['"`]/i, 'Hardcoded token found'],
-    ['hardcoded_url', /https?:\/\/[^\s'"`]+['"`]\s*[;,)]/, 'Hardcoded URL — may expose internal services'],
-    ['shell_injection', /\bexec\s*\(|system\s*\(.*\$|popen\s*\(/, 'Shell command injection risk'],
-    ['sql_primitive', /['"`]\s*\+.*\+|['"`].*\%.*\+|`\$\{/, 'Possible SQL injection — use parameterized queries'],
-    ['path_traversal', /\.\.\/|\.\.\\|%2e%2e/i, 'Path traversal vulnerability risk'],
-    ['unsafe_redirect', /window\.location\s*=\s*['"`][^'"`]+\+|<meta http-equiv|refresh/i, 'Unvalidated redirect'],
-    ['debugger_statement', /\bdebugger\b/, 'debugger; statement left in production code'],
-    ['console_strict', /console\.(log|debug|info|warn)\s*\(/, 'Console output in production code'],
-    ['alert_strict', /\balert\s*\(|prompt\s*\(|confirm\s*\(/, 'Browser dialog in production code'],
-    ['any_type', /:\s*any\b/, 'TypeScript: avoid `any` type — use specific types'],
-    ['todo_fixme', /\b(TODO|FIXME|HACK|XXX)\b/i, 'TODO/FIXME comment needs resolution before production'],
-    ['magic_number', /\b\d{4,}\b(?!\s*[.-])/.test(code) ? /\b\d{4,}\b(?!\s*[.-])/ : /(?<!["'`\d])\b\d{3,}\b(?!\s*[.-])(?![Ee][+-]?\d)/, 'Magic numbers reduce code readability'],
-    ['empty_block', /\{\s*\}/, 'Empty code block — dead code or missing implementation'],
-    ['deep_nesting', /\{[^{]*\{[^{]*\{[^{]*\{/, 'Very deep nesting — consider refactoring'],
-    ['long_line', /\b.{140,}/, 'Excessively long line — split for readability'],
+  const patterns: [RegExp, string, string, 'error' | 'warning'][] = [
+    [/(?<!["'`]\w*)password\s*[=:]\s*['"`][^'"`]{2,}/i, 'hardcoded-credential', 'Hardcoded password/secret detected', 'error'],
+    [/(?<!["'`]\w*)(api[_-]?key|apikey|api_key)\s*[=:]\s*['"`][^'"`]{8,}/i, 'hardcoded-secret', 'Hardcoded API key detected', 'error'],
+    [/(?<!["'`]\w*)secret\s*[=:]\s*['"`][^'"`]{3,}/i, 'hardcoded-secret', 'Hardcoded secret detected', 'error'],
+    [/(?<!["'`]\w*)token\s*[=:]\s*['"`][^'"`]{10,}/i, 'hardcoded-token', 'Hardcoded auth token detected', 'error'],
+    [/\beval\s*\(/, 'no-eval', 'eval() is a code injection risk — avoid in production', 'error'],
+    [/\.innerHTML\s*=/, 'xss-innerHTML', 'Direct innerHTML assignment — XSS vulnerability', 'error'],
+    [/document\.write\s*\(/, 'xss-document-write', 'document.write can cause XSS attacks', 'error'],
+    [/(?<!["'`\w])https?:\/\/[^\s'"`]+['"`]\s*[;,)]/, 'hardcoded-url', 'Hardcoded URL — verify this is intentionally public', 'warning'],
+    [/\bexec\s*\(|system\s*\(.*\$|popen\s*\(/, 'shell-injection', 'Shell command injection vulnerability', 'error'],
+    [/\bpassword\s*[=<>!]+|==\s*['"`][^'"`]+['"`].*(?:&&|\|\|).*\w/, 'weak-auth', 'Weak or custom password comparison — use a proven auth library', 'error'],
+    [/\+\s*['"`][^'"`]+\+\s*(?:where|select|insert|update|delete)/i, 'sql-injection', 'String concatenation in SQL query — use parameterized queries', 'error'],
+    [/\+\s*['"`][^'"`]+\+\s*(?:exec|shell|cmd)/i, 'command-injection', 'String concatenation in command execution', 'error'],
+    [/\.\.\/|\.\.\\|%2e%2e/i, 'path-traversal', 'Path traversal — validate and sanitize user input paths', 'error'],
+    [/Math\.random\(\).*(?:password|token|key|secret|captcha)/i, 'weak-random', 'Math.random() is not cryptographically secure for security-sensitive values', 'error'],
+    [/(crypto\.createCipher|createDecipher)\b/, 'deprecated-crypto', 'Deprecated crypto API — use crypto.randomUUID or a modern library', 'warning'],
+    [/\bprocess\.env\.\w+\s*\|\|\s*['"`][^'"`]{3,}/, 'env-secret-fallback', 'Environment variable has a hardcoded fallback — secrets should error if missing', 'warning'],
+    [/\bdebugger\b/, 'debugger-statement', 'debugger; statement left in production code', 'warning'],
+    [/console\.(log|debug|info)\s*\(/, 'debug-output', 'Console output in production code — remove or use a logging library', 'warning'],
+    [/\balert\s*\(|\bprompt\s*\(|\bconfirm\s*\(/, 'browser-dialog', 'Browser dialog detected in production code', 'warning'],
+    [/\bsetTimeout\s*\(\s*['"`]/, 'string-setTimeout', 'setTimeout with string argument — eval risk', 'error'],
+    [/new\s+Function\s*\(/, 'new-function', 'new Function() is equivalent to eval()', 'error'],
+    [/(aws_access_key|aws_secret_access_key|aws_session_token)\s*[=:]/i, 'aws-credentials', 'Hardcoded AWS credentials detected', 'error'],
+    [/(ghp_|gho_|github_pat_)\w{30,}/i, 'github-token', 'Hardcoded GitHub token detected', 'error'],
+    [/(sk-|pk_)[A-Za-z0-9]{20,}/, 'api-token-strip', 'Hardcoded API token detected', 'error'],
   ]
-  for (const [rule, re, msg] of dangerousPatterns) {
-    if (re.test(code)) {
-      features.push({ name: rule, score: 0, penalty: 25 })
+
+  for (const [re, rule, msg, severity] of patterns) {
+    let match: RegExpExecArray | null
+    const regex = new RegExp(re.source, re.flags.includes('i') ? re.flags : re.flags + 'i')
+    while ((match = regex.exec(code)) !== null) {
+      const lineNum = code.substring(0, match.index).split('\n').length
+      issues.push({ line: lineNum, column: 1, message: msg, severity, rule, type: 'security' })
+      if (!re.global) break
     }
   }
 
-  return features
+  const sensitiveFuncs = ['crypto', 'bcrypt', 'jwt', 'auth', 'password', 'hash', 'verify', 'sign']
+  for (const [i, line] of lines.entries()) {
+    if (/\bprocess\.env\b/.test(line) && sensitiveFuncs.some(s => line.toLowerCase().includes(s))) {
+      issues.push({ line: i + 1, column: line.indexOf('process.env') + 1, message: 'process.env used near sensitive operation — ensure env vars are validated', severity: 'warning', rule: 'env-near-sensitive', type: 'security' })
+    }
+  }
+
+  return issues
 }
 
-function analyzeSecurity(code: string): { issues: RawAnalyzerIssue[], score: number } {
+function findCodeSmells(code: string, lang: string): RawAnalyzerIssue[] {
   const issues: RawAnalyzerIssue[] = []
-  let score = 100
+  const lines = code.split('\n')
 
-  const sensitivePatterns: [RegExp, string, string][] = [
-    [/password\s*[=:]\s*['"`][^'"`]{1,}/i, 'no-hardcoded-credentials', 'Hardcoded password detected'],
-    [/api[_-]?key\s*[=:]\s*['"`][^'"`]{8,}['"`]/i, 'no-hardcoded-secrets', 'Hardcoded API key detected'],
-    [/secret\s*[=:]\s*['"`][^'"`]{1,}/i, 'no-hardcoded-secrets', 'Hardcoded secret detected'],
-    [/token\s*[=:]\s*['"`][^'"`]{10,}['"`]/i, 'no-hardcoded-tokens', 'Hardcoded token detected'],
-    [/\beval\s*\(/, 'no-eval', 'eval() is a code injection risk'],
-    [/\.innerHTML\s*=/, 'no-innerHTML', 'Direct innerHTML can cause XSS'],
-    [/\bprocess\.env\.\w+\s*\|\|\s*['"`][^'"`]+['"`]/, 'env-default-secret', 'Environment variable fallback may expose secrets'],
-    [/Math\.random\(\).*password|Math\.random\(\).*token|Math\.random\(\).*key/, 'weak-random', 'Math.random() is not cryptographically secure'],
+  lines.forEach((line, i) => {
+    const ln = i + 1
+
+    if (/^\s*var\s+/.test(line)) {
+      issues.push({ line: ln, column: line.indexOf('var') + 1, message: "Use 'const' or 'let' instead of 'var'", severity: 'warning', rule: 'no-var', type: 'code_smell' })
+    }
+
+    if (/catch\s*\(\s*\w*\s*\)\s*\{\s*\}/.test(line)) {
+      issues.push({ line: ln, column: line.indexOf('catch') + 1, message: 'Empty catch block — errors are silently ignored', severity: 'error', rule: 'no-empty-catch', type: 'code_smell' })
+    }
+
+    if (line.includes('==') && !line.includes('===') && !line.includes('!==')) {
+      issues.push({ line: ln, column: line.indexOf('==') + 1, message: "Use strict equality ('===') to avoid type coercion bugs", severity: 'warning', rule: 'eqeqeq', type: 'code_smell' })
+    }
+
+    if (line.length > 150) {
+      issues.push({ line: ln, column: 151, message: `Line is ${line.length} chars — keep under 120 for readability`, severity: 'info', rule: 'max-len', type: 'style' })
+    }
+
+    const todoMatch = line.match(/\b(TODO|FIXME|HACK|XXX|NOTE):?\s*$/i)
+    if (todoMatch) {
+      issues.push({ line: ln, column: line.indexOf(todoMatch[0]) + 1, message: 'TODO/FIXME comment needs an assignee or description', severity: 'info', rule: 'no-todo', type: 'documentation' })
+    }
+
+    if (/\b\d{5,}\b/.test(line) && !line.includes('"') && !line.includes("'")) {
+      issues.push({ line: ln, column: line.indexOf(/\d{5,}/.exec(line)![0]) + 1, message: 'Magic number — extract to a named constant for readability', severity: 'info', rule: 'no-magic-numbers', type: 'code_smell' })
+    }
+
+    if (/^\s*\}\s*$/.test(line) && i > 0 && /^\s*\{?\s*$/.test(lines[i - 1])) {
+      issues.push({ line: ln, column: 1, message: 'Empty block — dead code or missing implementation', severity: 'info', rule: 'no-empty-blocks', type: 'code_smell' })
+    }
+
+    if (/\bany\b/.test(line) && (lang === 'typescript' || lang === 'javascript')) {
+      issues.push({ line: ln, column: line.indexOf('any') + 1, message: "TypeScript: avoid 'any' — use a specific type or unknown", severity: 'warning', rule: 'no-explicit-any', type: 'code_smell' })
+    }
+
+    if (/try\s*\{[\s\S]*?\}\s*catch/.test(line)) {
+      // ignore — multiline handled differently
+    }
+  })
+
+  const nestedDepthRe = /\{[^{]*\{[^{]*\{[^{]*\{[^{]*\{/
+  if (nestedDepthRe.test(code)) {
+    issues.push({ line: 1, column: 1, message: 'Very deep nesting (6+ levels) — consider extracting functions or using early returns', severity: 'warning', rule: 'max-depth', type: 'code_smell' })
+  }
+
+  const longFuncRe = /function\s+\w+\s*\([^\)]*\)\s*\{.{200,}/g
+  let mf: RegExpExecArray | null
+  const lfRegex = new RegExp(longFuncRe.source, 'g')
+  while ((mf = lfRegex.exec(code)) !== null) {
+    const lineNum = code.substring(0, mf.index).split('\n').length
+    issues.push({ line: lineNum, column: 1, message: 'Function exceeds 200 characters — split into smaller, focused functions', severity: 'info', rule: 'max-func-len', type: 'code_smell' })
+  }
+
+  return issues
+}
+
+function findSecurityHotspots(code: string): RawAnalyzerIssue[] {
+  const issues: RawAnalyzerIssue[] = []
+  const lines = code.split('\n')
+
+  const hotspotPatterns: [RegExp, string, string][] = [
+    [/\bcookie\s*\.?\s*(domain|path|secure|httponly|samesite)/i, 'cookie-security', 'Cookie configuration — ensure HttpOnly, Secure, SameSite flags are set'],
+    [/\.innerHTML\s*=|insertAdjacentHTML\s*\(/, 'dom-xss', 'DOM XSS: validate and sanitize before inserting HTML'],
+    [/localStorage\.|sessionStorage\./, 'client-storage', 'Client-side storage — do not store sensitive data without encryption'],
+    [/\bpostMessage\s*\(/, 'postmessage-risk', 'postMessage — always validate origin of incoming messages'],
+    [/\.addEventListener\s*\(\s*['"]click['"]\s*,\s*(?:function|\()\s*\(\s*\)\s*=>\s*\(/, 'inline-click-handler', 'Inline click handler — consider separating logic for clarity'],
+    [/<iframe[^>]*src\s*=\s*['"][^'"]*['"]/, 'iframe-src', 'iframe src — verify the embedded content is trusted'],
+    [/\beval\s*\(|new\s+Function\s*\(/, 'dynamic-code-execution', 'Dynamic code execution — audit for injection vectors'],
+    [/\borigin\s*[=<>]|request\.origin|\.origin\s*===/i, 'origin-validation', 'Origin check — ensure it cannot be bypassed or spoofed'],
+    [/\bcors\b|Access-Control/i, 'cors-config', 'CORS configuration — verify allowed origins are explicitly set'],
+    [/base64\.encode|atob\(|btoa\(/, 'base64-sensitive', 'Base64 encoding — not encryption; do not encode sensitive data'],
   ]
 
-  for (const [re, rule, msg] of sensitivePatterns) {
-    const match = code.match(re)
-    if (match) {
-      issues.push({
-        line: code.substring(0, match.index!).split('\n').length,
-        column: 1,
-        message: msg,
-        severity: 'error',
-        rule,
-        type: 'security',
-      })
-      score -= 15
+  for (const [re, rule, msg] of hotspotPatterns) {
+    let match: RegExpExecArray | null
+    const regex = new RegExp(re.source, re.flags.includes('i') ? re.flags : re.flags + 'i')
+    while ((match = regex.exec(code)) !== null) {
+      const lineNum = code.substring(0, match.index).split('\n').length
+      issues.push({ line: lineNum, column: 1, message: msg, severity: 'warning', rule, type: 'security_hotspot' })
+      if (!re.global) break
     }
   }
 
-  return { issues, score: Math.max(0, score) }
+  for (const [i, line] of lines.entries()) {
+    if (/crypto|cipher|sign|verify|auth|permission|role|access/i.test(line) && /[^a-z](or|and)[^a-z]/.test(line)) {
+      issues.push({ line: i + 1, column: 1, message: 'Complex auth/permission expression — simplify and extract to named function', severity: 'info', rule: 'complex-auth-expression', type: 'security_hotspot' })
+    }
+  }
+
+  return issues
+}
+
+function findDuplicates(code: string): { percentage: number; issues: RawAnalyzerIssue[] } {
+  const issues: RawAnalyzerIssue[] = []
+  const lines = code.split('\n').filter(l => l.trim().length > 20)
+  if (lines.length < 4) return { percentage: 0, issues }
+
+  const n = lines.length
+  let dup = 0
+  for (let i = 0; i < n; i++) {
+    for (let j = i + 1; j < n; j++) {
+      const a = lines[i].replace(/\s+/g, ' ').trim()
+      const b = lines[j].replace(/\s+/g, ' ').trim()
+      if (a === b && a.length > 30) {
+        dup++
+        break
+      }
+    }
+  }
+
+  const percentage = Math.round((dup / Math.max(n, 1)) * 100)
+  if (percentage > 5) {
+    issues.push({
+      line: 1, column: 1,
+      message: `${percentage}% of code lines appear duplicated — extract repeated logic into reusable functions`,
+      severity: 'info', rule: 'duplicates', type: 'duplicate',
+    })
+  }
+
+  return { percentage, issues }
+}
+
+function computeComplexity(code: string): { score: number; issues: RawAnalyzerIssue[] } {
+  const issues: RawAnalyzerIssue[] = []
+  const lines = code.split('\n')
+
+  let score = 0
+
+  const controlFlow = /\b(if|elif|else|for|while|switch|case|catch|&&|\|\||\?|:)\b/g
+  let m: RegExpExecArray | null
+  const cfRegex = new RegExp(controlFlow.source, 'g')
+  while ((m = cfRegex.exec(code)) !== null) score++
+
+  const nestingDepth = (line: string) => {
+    let d = 0, max = 0
+    for (const c of line) {
+      if (c === '{') { d++; max = Math.max(max, d) }
+      if (c === '}') d--
+    }
+    return max
+  }
+
+  let maxDepth = 0
+  const deepLines: number[] = []
+  lines.forEach((line, i) => {
+    const d = nestingDepth(line)
+    if (d > maxDepth) maxDepth = d
+    if (d >= 5) deepLines.push(i + 1)
+  })
+
+  score += maxDepth * 2
+
+  const funcCount = (code.match(/\b(function|def |fn |func |const \w+ =|let \w+ =|var \w+ =|=>)/g) || []).length
+  score += Math.max(0, funcCount - 1)
+
+  const paramsRe = /function\s*\w*\s*\([^)]*\)|def\s+\w+\s*\([^)]*\)|fn\s+\w+\s*\([^)]*\)/
+  const paramsMatches = code.match(paramsRe) || []
+  for (const pm of paramsMatches) {
+    const pCount = (pm.match(/,/g) || []).length + 1
+    if (pCount > 5) {
+      const lineNum = code.indexOf(pm) >= 0 ? code.substring(0, code.indexOf(pm)).split('\n').length : 1
+      issues.push({ line: lineNum, column: 1, message: `Function with ${pCount} parameters — consider grouping into an options object`, severity: 'info', rule: 'too-many-params', type: 'complexity' })
+    }
+    score += pCount > 3 ? 2 : 0
+  }
+
+  if (maxDepth >= 5) {
+    issues.push({ line: deepLines[0] || 1, column: 1, message: `Cyclomatic complexity is high (depth ${maxDepth}) — simplify control flow or extract functions`, severity: 'info', rule: 'cyclomatic-complexity', type: 'complexity' })
+  }
+
+  return { score: Math.min(100, score), issues }
+}
+
+function estimateTestCoverage(code: string): number {
+  const lines = code.split('\n').filter(l => l.trim().length > 0)
+  const total = lines.length
+  if (total === 0) return 0
+
+  const hasTests = /\b(describe|it\(|test\(|expect\(|assert\.|should\.|Given|When|Then|scenario|feature)/i.test(code)
+  const hasMocks = /\b(mock|stub|spy|fake|sandbox|double)/i.test(code)
+  const hasAsserts = /\b(return|throw|===|!==|equal|ok |isOk|isNotNull)/.test(code)
+
+  let score = 10
+  if (hasTests) score += 35
+  if (hasMocks) score += 15
+  if (hasAsserts) score += 20
+
+  const fnRe = /\b(function|def |fn |func )/g
+  const fnMatches = code.match(fnRe)
+  const fnCount = fnMatches ? fnMatches.length : 0
+  if (fnCount === 0 && total > 5) score = Math.max(5, score - 20)
+
+  const coverageLines = (code.match(/\b(return|throw|===|!==|assert)/g) || []).length
+  const coverageRatio = fnCount > 0 ? coverageLines / fnCount : 0
+  if (coverageRatio > 1.5) score += 15
+
+  return Math.min(95, Math.max(0, Math.round(score)))
 }
 
 export function analyzeCodeLocally(code: string, language: string): RawAnalysisResult {
   const startTime = Date.now()
-  const lang = detectLanguage(code, language)
+  const lang = detectLanguage(language)
   const issues: RawAnalyzerIssue[] = []
   const suggestions: RawAnalyzerSuggestion[] = []
 
-  const { issues: securityIssues, score: securityScore } = analyzeSecurity(code)
-  issues.push(...securityIssues)
+  const plausibility = isLikelyCode(code)
+  if (plausibility < 1.5 && code.trim().length > 0) {
+    issues.push({
+      line: 1, column: 1,
+      message: `Text does not appear to be source code (plausibility: ${plausibility.toFixed(1)}). This may be random text, a placeholder, or an unsupported language.`,
+      severity: 'error', rule: 'not-code', type: 'structure',
+    })
+  }
 
-  const lines = code.split('\n')
-  const codeLines = lines.filter(l => l.trim().length > 0)
-  const totalLines = codeLines.length
+  issues.push(...findSecurityIssues(code))
+  issues.push(...findCodeSmells(code, lang))
+  issues.push(...findSecurityHotspots(code))
 
-  lines.forEach((line, index) => {
-    const lineNum = index + 1
+  const { percentage: dupPct, issues: dupIssues } = findDuplicates(code)
+  issues.push(...dupIssues)
 
-    if (line.includes('console.log') || line.includes('console.debug') || line.includes('console.info')) {
-      issues.push({ line: lineNum, column: line.indexOf('console.') + 1, message: 'Remove debug console output before production', severity: 'warning', rule: 'no-console', type: 'debug-code' })
-    }
-
-    if (/^\s*var\s+/.test(line)) {
-      issues.push({ line: lineNum, column: line.indexOf('var') + 1, message: "Use 'const' or 'let' instead of 'var'", severity: 'warning', rule: 'no-var', type: 'best-practice' })
-      suggestions.push({ title: 'Replace var with const', description: 'Modern JavaScript recommends const or let', code: line.replace(/var\s+/, 'const '), explanation: 'Block-scoped variables prevent accidental hoisting', confidence: 0.95 })
-    }
-
-    if (line.includes('catch') && line.includes('{}')) {
-      issues.push({ line: lineNum, column: line.indexOf('catch') + 1, message: 'Empty catch block — handle errors properly', severity: 'error', rule: 'no-empty-catch', type: 'error-handling' })
-    }
-
-    if (line.includes('==') && !line.includes('===') && !line.includes('!==') && !/regex.*==/.test(line)) {
-      issues.push({ line: lineNum, column: line.indexOf('==') + 1, message: "Use '===' instead of '=='", severity: 'warning', rule: 'eqeqeq', type: 'best-practice' })
-      suggestions.push({ title: 'Use strict equality', description: 'Replace == with ===', code: line.replace(/([^=!])={2}([^=])/g, '$1===$2'), explanation: 'Strict equality prevents type coercion bugs', confidence: 0.9 })
-    }
-
-    if (line.length > 120) {
-      issues.push({ line: lineNum, column: 121, message: 'Line exceeds 120 characters', severity: 'info', rule: 'max-len', type: 'style' })
-    }
-
-    if (line.trim().startsWith('// TODO') || line.trim().startsWith('# TODO')) {
-      issues.push({ line: lineNum, column: line.indexOf('TODO') + 1, message: 'TODO needs a description or assignee', severity: 'info', rule: 'no-todo', type: 'documentation' })
-    }
-  })
-
-  const features = scoreStructural(code, lang)
-  const structuralPenalty = features.reduce((sum, f) => sum + f.penalty, 0)
+  const { score: complexity, issues: complexityIssues } = computeComplexity(code)
+  issues.push(...complexityIssues)
 
   const errorCount = issues.filter(i => i.severity === 'error').length
   const warningCount = issues.filter(i => i.severity === 'warning').length
   const infoCount = issues.filter(i => i.severity === 'info').length
+  const securityHotspotCount = issues.filter(i => i.type === 'security_hotspot').length
+  const bugCount = issues.filter(i => i.type === 'bug').length
+  const vulnerabilityCount = issues.filter(i => i.type === 'security' && i.severity === 'error').length
 
-  let qualityScore = Math.max(0, 100 - errorCount * 20 - warningCount * 8 - infoCount * 2)
+  let quality = Math.max(0, 100 - errorCount * 20 - warningCount * 8 - infoCount * 2)
 
-  qualityScore -= structuralPenalty
+  if (plausibility < 1.5) quality = Math.max(0, quality - 40)
+  if (lang === 'unknown') quality = Math.max(0, quality - 15)
 
-  const sizePenalty = Math.min(40, Math.floor(totalLines * 0.3))
-  qualityScore -= sizePenalty
+  quality = Math.max(0, Math.min(100, Math.round(quality)))
 
-  if (totalLines < 5 && !issues.length) {
-    qualityScore = Math.max(0, qualityScore - 20)
+  const testCoverage = estimateTestCoverage(code)
+
+  const maintainability = Math.max(0, Math.min(100, Math.round(
+    quality * 0.5 + (100 - complexity) * 0.3 + testCoverage * 0.2
+  )))
+
+  for (const issue of issues.filter(i => i.severity === 'warning' && i.rule !== 'no-var')) {
+    if (issue.rule === 'eqeqeq') {
+      suggestions.push({ title: 'Use strict equality', description: "Replace '==' with '==='", code: '', explanation: 'Strict equality prevents type coercion bugs', confidence: 0.9 })
+    }
   }
 
-  qualityScore = Math.max(0, Math.min(100, Math.round(qualityScore)))
-
-  const complexity = Math.min(100, Math.round(
-    code.split('{').length * 2 +
-    lines.filter(l => l.includes('if') || l.includes('for') || l.includes('while')).length +
-    features.filter(f => f.name === 'nesting_depth' && f.penalty > 0).length * 5
-  ))
-
-  const maintainability = Math.max(0, Math.min(100, Math.round(qualityScore - (complexity / 4))))
-
-  const issueDensity = totalLines > 0 ? issues.length / totalLines : 0
-  const testCoverage = Math.min(95, Math.max(0, Math.round((1 - issueDensity) * 100 - sizePenalty / 2)))
-
   return {
-    quality: qualityScore,
+    quality,
     issues,
     suggestions: suggestions.slice(0, 3),
-    bugs: errorCount,
-    vulnerabilities: Math.max(0, securityIssues.length),
-    codeSmells: warningCount,
+    bugs: bugCount,
+    vulnerabilities: vulnerabilityCount,
+    codeSmells: warningCount + infoCount,
     complexityScore: complexity,
     maintainabilityIndex: maintainability,
     testCoveragePercentage: testCoverage,
