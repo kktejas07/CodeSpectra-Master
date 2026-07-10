@@ -13,6 +13,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import re
 import time
 from collections import defaultdict
 from typing import Any, AsyncGenerator, Optional, Union
@@ -26,6 +27,12 @@ from ai_client import (
     UserMessage,
     TextDelta,
     StreamDone,
+)
+from rag import (
+    generate_embedding,
+    cosine_similarity,
+    chunk_text,
+    build_context,
 )
 
 # In-process rate limiter for AI endpoints (defense-in-depth).
@@ -61,6 +68,28 @@ router = APIRouter(prefix="/internal/ai", tags=["internal-ai"])
 ENV_ANTHROPIC = os.environ.get("ANTHROPIC_API_KEY", "")
 ENV_GEMINI = os.environ.get("GEMINI_API_KEY", "")
 ENV_OPENAI = os.environ.get("OPENAI_API_KEY", "")
+# Key used for embedding generation (reuses Gemini key)
+RAG_API_KEY = ENV_GEMINI
+
+
+# =============== RAG: embedding endpoint ===============
+
+class RagEmbedReq(BaseModel):
+    text: str
+
+
+@router.post("/rag/embed")
+async def rag_embed(req: RagEmbedReq) -> dict:
+    """Generate an embedding vector for the given text using Gemini."""
+    if not RAG_API_KEY:
+        raise HTTPException(status_code=503, detail="Gemini API key not configured for embeddings")
+    vec = await generate_embedding(req.text[:8192], RAG_API_KEY)
+    if vec is None:
+        raise HTTPException(status_code=502, detail="Embedding generation failed")
+    return {"embedding": vec, "dim": len(vec)}
+
+
+# ========================================================================
 
 # ---------- model registry ----------
 # Map logical "role" names to (provider, model). Two main models used:
@@ -160,6 +189,7 @@ class ChatStreamReq(BaseModel):
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
+    rag_enabled: bool = True
 
 
 DEFAULT_CHAT_SYSTEM = (
@@ -177,7 +207,39 @@ DEFAULT_CHAT_SYSTEM = (
 async def chat_stream(request: Request, req: ChatStreamReq) -> StreamingResponse:
     _check_rate_limit(f"chat:{_client_ip(request)}:{req.session_id or 'anon'}", 30, 60)
     """SSE stream that emits {"delta":"..."} JSON events ending with [DONE]."""
+    # RAG enrichment: search for relevant context if not explicitly disabled
+    rag_context: str | None = None
+    if req.rag_enabled and RAG_API_KEY:
+        try:
+            query_emb = await generate_embedding(req.user_message, RAG_API_KEY)
+            if query_emb:
+                import pymongo
+                uri = os.environ.get("MONGODB_URI") or os.environ.get("MONGO_URL") or ""
+                if uri:
+                    def _search() -> str | None:
+                        client = pymongo.MongoClient(uri)
+                        try:
+                            col = client["codespectra"]["embeddings"]
+                            cands: list[dict] = []
+                            for doc in col.find({}, projection={"text": 1, "source": 1, "embedding": 1}):
+                                vec = doc.get("embedding")
+                                if vec and len(vec) == 768:
+                                    sim = cosine_similarity(query_emb, vec)
+                                    if sim > 0.65:
+                                        cands.append({"text": doc.get("text", ""), "source": doc.get("source", ""), "score": sim})
+                            cands.sort(key=lambda x: x["score"], reverse=True)
+                            ctx = build_context(cands[:5])
+                            client.close()
+                            return ctx if ctx else None
+                        except Exception:
+                            client.close()
+                            return None
+                    rag_context = await asyncio.to_thread(_search)
+        except Exception:
+            pass
     system = req.system_message or DEFAULT_CHAT_SYSTEM
+    if rag_context:
+        system += f"\n\nRelevant context from code scans and docs:\n{rag_context}"
     chat = _build_chat(req.model_role, req.session_id, system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
 
     # Replay history so the model has context across turns.

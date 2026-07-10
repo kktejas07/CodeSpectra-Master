@@ -109,6 +109,8 @@ export interface Globe3DProps {
   /** Field of view scale vs width (CodePen uses 0.8). */
   fieldOfViewFactor?: number
   interactive?: boolean
+  /** Subtle mouse-follow parallax (0 = off, higher = more movement). */
+  parallaxIntensity?: number
   /** When true, canvas fills its parent (no max width/height — use for hero backgrounds). */
   fillContainer?: boolean
 }
@@ -121,13 +123,16 @@ export function Globe3D({
   radiusFactor = 0.7,
   fieldOfViewFactor = 0.8,
   interactive = false,
+  parallaxIntensity = 0,
   fillContainer = false,
 }: Globe3DProps) {
   const canvasRef = useRef<HTMLCanvasElement>(null)
-  const animationRef = useRef<number>()
+  const animationRef = useRef<number>(0)
   const dragRotationRef = useRef(0)
   const isDraggingRef = useRef(false)
   const lastPointerRef = useRef({ x: 0, y: 0 })
+  const parallaxOffsetRef = useRef({ x: 0, y: 0 })
+  const parallaxTargetRef = useRef({ x: 0, y: 0 })
 
   const getThemeColors = useCallback(() => {
     if (typeof window === 'undefined') {
@@ -268,17 +273,38 @@ export function Globe3D({
       canvas.style.cursor = 'grab'
     }
 
+    const handleParallaxMove = (e: MouseEvent | TouchEvent) => {
+      if (!parallaxIntensity || isDraggingRef.current) return
+      const te = e as TouchEvent
+      const me = e as MouseEvent
+      const cx = te.touches?.[0]?.clientX ?? me.clientX
+      const cy = te.touches?.[0]?.clientY ?? me.clientY
+      const rect = canvas.getBoundingClientRect()
+      if (!rect.width || !rect.height) return
+      parallaxTargetRef.current = {
+        x: ((cx - rect.left) / rect.width - 0.5) * 2,
+        y: ((cy - rect.top) / rect.height - 0.5) * 2,
+      }
+    }
+
     const render = (time: number) => {
       const colors = getThemeColors()
       const fgBase = hslStringToRgba(colors.foreground, 1)
       const prBase = hslStringToRgba(colors.primary, 1)
 
+      if (parallaxIntensity) {
+        parallaxOffsetRef.current.x += (parallaxTargetRef.current.x - parallaxOffsetRef.current.x) * 0.04
+        parallaxOffsetRef.current.y += (parallaxTargetRef.current.y - parallaxOffsetRef.current.y) * 0.04
+      }
+
       ctx.clearRect(0, 0, width, height)
 
-      const auto = time * rotationSpeed
+      const parX = parallaxOffsetRef.current.x * parallaxIntensity * 0.002
+      const parY = parallaxOffsetRef.current.y * parallaxIntensity * 0.001
+      const auto = time * rotationSpeed + parX
       const rotation = auto + dragRotationRef.current
-      const sineRotation = Math.sin(rotation)
-      const cosineRotation = Math.cos(rotation)
+      const sineRotation = Math.sin(rotation + parY)
+      const cosineRotation = Math.cos(rotation + parY)
 
       for (let i = 0; i < dots.length; i++) {
         dots[i].project(sineRotation, cosineRotation)
@@ -318,6 +344,11 @@ export function Globe3D({
       canvas.addEventListener('pointercancel', handlePointerUp)
     }
 
+    if (parallaxIntensity) {
+      window.addEventListener('mousemove', handleParallaxMove, { passive: true })
+      window.addEventListener('touchmove', handleParallaxMove, { passive: true })
+    }
+
     const observer = new MutationObserver(() => {
       /* next frame picks up new CSS vars */
     })
@@ -336,6 +367,10 @@ export function Globe3D({
         canvas.removeEventListener('pointerup', handlePointerUp)
         canvas.removeEventListener('pointercancel', handlePointerUp)
       }
+      if (parallaxIntensity) {
+        window.removeEventListener('mousemove', handleParallaxMove)
+        window.removeEventListener('touchmove', handleParallaxMove)
+      }
       if (animationRef.current) cancelAnimationFrame(animationRef.current)
     }
   }, [
@@ -345,6 +380,7 @@ export function Globe3D({
     radiusFactor,
     fieldOfViewFactor,
     interactive,
+    parallaxIntensity,
     getThemeColors,
   ])
 

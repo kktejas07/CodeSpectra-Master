@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { useRoleGate } from '@/lib/use-role-gate'
+import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -219,7 +219,7 @@ function EmailTemplatesSection() {
 }
 
 function SystemSettingsInner() {
-  const gate = useRoleGate({ require: 'superadmin' })
+  const gate = usePageGuard('/dashboard/admin/settings')
   const searchParams = useSearchParams()
   const section: PlatformSettingsSection = parsePlatformSettingsSection(
     searchParams.get('section')

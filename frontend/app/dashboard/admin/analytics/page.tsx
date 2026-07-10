@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { BarChart3, HelpCircle, TrendingUp, Users, Activity, Code2, ListOrdered, Loader2, UserCheck, ArrowUp, ArrowDown, Globe2, Zap, Shield } from 'lucide-react'
-import { useRoleGate } from '@/lib/use-role-gate'
+import { usePageGuard } from '@/lib/use-page-guard'
 import Link from 'next/link'
 
 interface MetricsData {
@@ -22,7 +22,7 @@ interface MetricsData {
 }
 
 export default function Analytics() {
-  const gate = useRoleGate({ require: 'superadmin' })
+  const gate = usePageGuard('/dashboard/admin/analytics')
   const [data, setData] = useState<MetricsData | null>(null)
   const [cfData, setCfData] = useState<{ configured: boolean; traffic?: { requests: number; cached: number; bytes: number; uniques: number; cacheRatio: number }; topCountries?: Array<{ country: string; requests: number }> } | null>(null)
   const [loading, setLoading] = useState(true)

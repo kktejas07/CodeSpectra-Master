@@ -14,13 +14,24 @@ import { CapabilityIllustration } from '@/components/landing/capability-illustra
 import { ProcessShowcase, type ProcessStep } from '@/components/landing/process-showcase'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
+import { LoadingScreen } from '@/components/loading-screen'
+import { FloatingCodeParticles } from '@/components/landing/floating-code-particles'
+import { TiltCard } from '@/components/ui/tilt-card'
+import { useScrollReveal } from '@/hooks/use-scroll-reveal'
 
 type Capability = { number: string; title: string; description: string }
 
 export default function Home() {
   const hasSession = useHasUserSession()
+  const [loadingDone, setLoadingDone] = useState(false)
   const [displayedText, setDisplayedText] = useState('')
   const [currentWord, setCurrentWord] = useState(0)
+
+  const capabilitiesRef = useScrollReveal<HTMLDivElement>({ staggerDelay: 180 })
+  const platformRef = useScrollReveal<HTMLDivElement>()
+  const integrationsRef = useScrollReveal<HTMLDivElement>({ staggerDelay: 120 })
+  const trustRef = useScrollReveal<HTMLDivElement>({ staggerDelay: 150 })
+  const ctaRef = useScrollReveal<HTMLDivElement>()
   
   const words = ['analyze', 'practice', 'learn', 'certify']
   const widestWord = words.reduce((a, b) => (a.length >= b.length ? a : b))
@@ -146,9 +157,14 @@ export async function bootstrap() {
   ]
 
   return (
+    <>
+      {!loadingDone && <LoadingScreen onDone={() => setLoadingDone(true)} />}
+
+      <div className={loadingDone ? '' : 'hidden'}>
+
     <PublicPageWrapper>
 
-      {/* Hero — 3D globe backdrop only (no code-letter canvas); copy on top */}
+      {/* Hero — 3D globe backdrop with code particles overlay */}
       <section className="relative isolate overflow-hidden pt-28 pb-20 lg:pt-36 lg:pb-28 min-h-[90vh] flex items-center">
         {/* Globe fills the hero frame responsively (square bounded by viewport) */}
         <div
@@ -163,10 +179,14 @@ export async function bootstrap() {
               radiusFactor={0.7}
               fieldOfViewFactor={0.8}
               interactive={false}
+              parallaxIntensity={6}
               fillContainer
             />
           </div>
         </div>
+
+        {/* Floating code particles */}
+        <FloatingCodeParticles count={22} />
 
         {/* Soft scrim — keeps text readable while letting the globe shine through */}
         <div
@@ -176,11 +196,16 @@ export async function bootstrap() {
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
           <div className="max-w-4xl mx-auto text-center">
-            <p className="text-sm text-muted-foreground mb-8 animate-fade-in drop-shadow-sm">
+            <p data-reveal data-revealed="true" className="text-sm text-muted-foreground mb-8 animate-fade-in drop-shadow-sm">
               Learn, scan, fix, and interview—with guidance and AI support in one workspace
             </p>
 
-            <h1 className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-[1.1] text-foreground [text-shadow:0_0_48px_var(--background),0_2px_16px_var(--background)]">
+            <h1
+              data-reveal
+              data-revealed="true"
+              className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-[1.1] text-foreground [text-shadow:0_0_48px_var(--background),0_2px_16px_var(--background)]"
+              style={{ transitionDelay: '120ms' }}
+            >
               The platform
               <br />
               to{' '}
@@ -198,13 +223,23 @@ export async function bootstrap() {
               </span>
             </h1>
 
-            <p className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed [text-shadow:0_0_36px_var(--background),0_1px_10px_var(--background)]">
+            <p
+              data-reveal
+              data-revealed="true"
+              className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed [text-shadow:0_0_36px_var(--background),0_1px_10px_var(--background)]"
+              style={{ transitionDelay: '240ms' }}
+            >
               CodeSpectra gives you access to tools that help you learn: scan the code you build, understand errors and
               issues, get AI-assisted fixes, practice in challenges and arenas, follow courses and exams, train for interviews,
               manage resumes, earn certificates, and explore roles—all from your account.
             </p>
 
-            <div className="flex flex-col sm:flex-row gap-4 justify-center">
+            <div
+              data-reveal
+              data-revealed="true"
+              className="flex flex-col sm:flex-row gap-4 justify-center"
+              style={{ transitionDelay: '360ms' }}
+            >
               <Button size="lg" asChild className="h-12 px-8 text-base gap-2 rounded-full shadow-lg shadow-background/20">
                 <Link href={hasSession ? DASHBOARD_HREF : '/auth/signup'}>
                   {hasSession ? 'Go to dashboard' : 'Get started free'}
@@ -220,6 +255,9 @@ export async function bootstrap() {
             </div>
           </div>
         </div>
+
+        {/* Subtle bottom fade */}
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-linear-to-t from-background to-transparent z-10 pointer-events-none" />
       </section>
 
       {/* Scrolling highlights — full-width animated dot canvas band */}
@@ -240,10 +278,10 @@ export async function bootstrap() {
         </div>
       </section>
 
-      {/* Capabilities — Optimus-style stacked rows (blue / gray / black on white) */}
+      {/* Capabilities — Optimus-style stacked rows with stagger reveal */}
       <section id="capabilities" className="scroll-mt-24 border-b border-border/40 py-24 lg:py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="mb-14 max-w-3xl lg:mb-20">
+        <div ref={capabilitiesRef as React.RefObject<HTMLDivElement>} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <div data-reveal className="mb-14 max-w-3xl lg:mb-20">
             <span className="mb-6 inline-flex items-center gap-3 font-mono text-sm text-muted-foreground">
               <span className="h-px w-8 bg-border" />
               Capabilities
@@ -259,6 +297,7 @@ export async function bootstrap() {
             {capabilities.map((cap) => (
               <div
                 key={cap.number}
+                data-reveal
                 className="grid gap-8 py-12 first:pt-0 md:grid-cols-[minmax(0,auto)_1fr_auto] md:items-start md:gap-10 md:py-14"
               >
                 <span className="pt-1 font-mono text-sm tabular-nums text-muted-foreground">{cap.number}</span>
@@ -284,11 +323,11 @@ export async function bootstrap() {
 
       {/* Platform — copy + SVG side by side from md; stats full width below */}
       <section className="overflow-hidden border-t border-border/40 py-24 lg:py-32">
-        <div className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p className="mb-6 text-sm text-muted-foreground md:mb-8">Platform</p>
+        <div ref={platformRef as React.RefObject<HTMLDivElement>} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
+          <p data-reveal className="mb-6 text-sm text-muted-foreground md:mb-8">Platform</p>
 
           <div className="grid grid-cols-1 items-start gap-8 min-[480px]:grid-cols-[minmax(0,1fr)_min(42%,200px)] min-[480px]:gap-6 md:grid-cols-[minmax(0,1fr)_min(40%,min(340px,38vw))] md:gap-10 lg:gap-14">
-            <div className="min-w-0">
+            <div data-reveal className="min-w-0">
               <h2 className="text-4xl font-bold sm:text-5xl">
                 Built for learners
                 <br />
@@ -301,10 +340,9 @@ export async function bootstrap() {
               </p>
             </div>
 
-            <div className="flex w-full min-w-0 justify-center min-[480px]:justify-end min-[480px]:pt-1 md:pt-0">
+            <div data-reveal className="flex w-full min-w-0 justify-center min-[480px]:justify-end min-[480px]:pt-1 md:pt-0">
               <div
-                className="pointer-events-none capability-reveal w-full max-w-[220px] opacity-95 min-[480px]:max-w-[240px] md:max-w-[min(360px,100%)] lg:max-w-md"
-                style={{ animationDelay: '100ms' }}
+                className="w-full max-w-[220px] opacity-95 min-[480px]:max-w-[240px] md:max-w-[min(360px,100%)] lg:max-w-md"
               >
                 <PlatformWorkspaceIllustration className="mx-auto min-[480px]:mx-0" />
               </div>
@@ -312,26 +350,28 @@ export async function bootstrap() {
           </div>
 
           <div className="mx-auto mt-10 grid w-full max-w-3xl grid-cols-1 gap-4 sm:max-w-4xl sm:grid-cols-3 md:mt-12 lg:max-w-5xl">
-            <div className="flex h-full flex-col items-center justify-center rounded-xl border border-border/40 bg-card/50 p-5 text-center">
-              <p className="text-2xl font-bold text-foreground">One login</p>
-              <p className="mt-1 text-xs text-muted-foreground">Scanner, learning, interviews & more</p>
-            </div>
-            <div className="flex h-full flex-col items-center justify-center rounded-xl border border-border/40 bg-card/50 p-5 text-center">
-              <p className="text-2xl font-bold text-foreground">Guided quality</p>
-              <p className="mt-1 text-xs text-muted-foreground">Issues, gates, and AI-assisted fixes</p>
-            </div>
-            <div className="flex h-full flex-col items-center justify-center rounded-xl border border-border/40 bg-card/50 p-5 text-center">
-              <p className="text-2xl font-bold text-primary">Career prep</p>
-              <p className="mt-1 text-xs text-muted-foreground">Certs, roles, and interview training</p>
-            </div>
+            {['One login', 'Guided quality', 'Career prep'].map((title, i) => (
+              <div
+                key={title}
+                data-reveal
+                className="flex h-full flex-col items-center justify-center rounded-xl border border-border/40 bg-card/50 p-5 text-center transition-all duration-300 hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-lg"
+              >
+                <p className={`text-2xl font-bold ${i === 2 ? 'text-primary' : 'text-foreground'}`}>{title}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {i === 0 && 'Scanner, learning, interviews & more'}
+                  {i === 1 && 'Issues, gates, and AI-assisted fixes'}
+                  {i === 2 && 'Certs, roles, and interview training'}
+                </p>
+              </div>
+            ))}
           </div>
         </div>
       </section>
 
       {/* Integrations Section */}
       <section id="integrations" className="py-24 lg:py-32 border-t border-border/40 scroll-mt-24">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="text-center mb-16">
+        <div ref={integrationsRef as React.RefObject<HTMLDivElement>} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div data-reveal className="text-center mb-16">
             <p className="text-sm text-muted-foreground mb-3">Integrations</p>
             <h2 className="text-4xl sm:text-5xl font-bold">
               Connect the services
@@ -346,16 +386,18 @@ export async function bootstrap() {
 
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-4xl mx-auto">
             {integrations.map((integration) => (
-              <div 
-                key={integration.name}
-                className="p-4 border border-border/40 rounded-xl text-center hover:border-primary/40 hover:bg-primary/5 transition-all duration-300"
-              >
-                <div className="w-10 h-10 bg-muted rounded-lg mx-auto mb-3 flex items-center justify-center">
-                  <Code2 className="w-5 h-5 text-muted-foreground" />
+              <TiltCard key={integration.name} maxTilt={6} glare={false}>
+                <div
+                  data-reveal
+                  className="integration-card group relative p-4 border border-border/40 rounded-xl text-center cursor-default transition-all duration-300 hover:border-primary/40 hover:bg-primary/5"
+                >
+                  <div className="w-10 h-10 bg-muted rounded-lg mx-auto mb-3 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/10">
+                    <Code2 className="w-5 h-5 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
+                  </div>
+                  <p className="text-sm font-medium transition-colors duration-300 group-hover:text-primary">{integration.name}</p>
+                  <p className="text-xs text-muted-foreground mt-1">{integration.category}</p>
                 </div>
-                <p className="text-sm font-medium">{integration.name}</p>
-                <p className="text-xs text-muted-foreground mt-1">{integration.category}</p>
-              </div>
+              </TiltCard>
             ))}
           </div>
         </div>
@@ -363,8 +405,8 @@ export async function bootstrap() {
 
       {/* Security Section */}
       <section id="trust" className="scroll-mt-24 border-t border-border/40 py-24 lg:py-32">
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div className="mb-16">
+        <div ref={trustRef as React.RefObject<HTMLDivElement>} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div data-reveal className="mb-16">
             <p className="text-sm text-muted-foreground mb-3">Security & access</p>
             <h2 className="text-4xl sm:text-5xl font-bold">
               Your work stays
@@ -378,9 +420,9 @@ export async function bootstrap() {
             </p>
           </div>
 
-          <div className="flex flex-wrap gap-3 mb-12">
+          <div data-reveal className="flex flex-wrap gap-3 mb-12">
             {['Secure sign-in', 'Session-aware dashboards', 'Role-based access', 'Controlled integrations'].map((badge) => (
-              <span key={badge} className="px-4 py-2 bg-muted rounded-full text-sm font-medium">
+              <span key={badge} className="px-4 py-2 bg-muted rounded-full text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary">
                 {badge}
               </span>
             ))}
@@ -405,8 +447,12 @@ export async function bootstrap() {
                 desc: 'Structured storage and access rules back the features you use, so scans and coursework stay organized and retrievable.',
               },
             ].map((item) => (
-              <div key={item.title} className="p-6 border border-border/40 rounded-xl">
-                <h3 className="font-semibold mb-2">{item.title}</h3>
+              <div
+                key={item.title}
+                data-reveal
+                className="group p-6 border border-border/40 rounded-xl transition-all duration-300 hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-lg hover:-translate-y-0.5"
+              >
+                <h3 className="font-semibold mb-2 transition-colors duration-300 group-hover:text-primary">{item.title}</h3>
                 <p className="text-sm text-muted-foreground leading-relaxed">{item.desc}</p>
               </div>
             ))}
@@ -415,20 +461,22 @@ export async function bootstrap() {
       </section>
 
       {/* CTA Section */}
-      <section className="py-24 lg:py-32 border-t border-border/40">
-        <div className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center">
-          <h2 className="text-4xl sm:text-5xl font-bold mb-6 tracking-tight">
+      <section className="py-24 lg:py-32 border-t border-border/40 relative overflow-hidden">
+        {/* Subtle radial glow */}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
+        <div ref={ctaRef as React.RefObject<HTMLDivElement>} className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          <h2 data-reveal className="text-4xl sm:text-5xl font-bold mb-6 tracking-tight">
             Start using
             <br />
             <span className="text-muted-foreground">the full toolkit.</span>
           </h2>
-          <p className="text-lg text-muted-foreground mb-10 leading-relaxed">
+          <p data-reveal className="text-lg text-muted-foreground mb-10 leading-relaxed">
             {hasSession
               ? "You're signed in—open your dashboard to pick up scanning, courses, interviews, and everything tied to your account."
               : 'Create your CodeSpectra account to access scanning, learning paths, AI-assisted guidance, interview practice, certificates, and career tools—built for people who want to learn, improve, and show what they can do.'}
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild className="h-12 px-8 text-base gap-2 rounded-full">
+          <div data-reveal className="flex flex-col sm:flex-row gap-4 justify-center">
+            <Button size="lg" asChild className="h-12 px-8 text-base gap-2 rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300">
               <Link href={hasSession ? DASHBOARD_HREF : '/auth/signup'}>
                 {hasSession ? 'Go to dashboard' : 'Get started free'}
                 <ArrowRight className="w-4 h-4" />
@@ -438,12 +486,15 @@ export async function bootstrap() {
               <Link href="/contact">Questions? Contact us</Link>
             </Button>
           </div>
-          <p className="text-sm text-muted-foreground mt-6">
+          <p data-reveal className="text-sm text-muted-foreground mt-6">
             Your account unlocks the scanners, lessons, interview trainers, and certificate flows described above.
           </p>
         </div>
       </section>
 
     </PublicPageWrapper>
+
+      </div>
+    </>
   )
 }
