@@ -37,11 +37,12 @@
     "android": {
       "package": "dev.codespectra.mobile",
       "versionCode": 1,
-    "adaptiveIcon": {
+      "adaptiveIcon": {
         "backgroundColor": "#09090b",
         "foregroundImage": "./assets/adaptive/foreground.png",
         "backgroundImage": "./assets/adaptive/background.png"
-      },
+      }
+    },
     "extra": {
       "eas": {
         "projectId": "6355ce0d-4fab-4c1c-b8ff-c0d06adcfd2b"
