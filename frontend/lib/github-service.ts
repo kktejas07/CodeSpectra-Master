@@ -76,9 +76,13 @@ export async function getGitHubIntegration(): Promise<{
 export async function getGitHubRepositories(page = 1): Promise<{ success: boolean; repositories: GitHubRepoListItem[]; error?: string }> {
   try {
     const res = await fetch(`/api/github/repos?page=${page}`, { cache: 'no-store' })
-    if (!res.ok) return { success: false, repositories: [], error: 'Failed to fetch' }
-    const json = await res.json() as { items?: GitHubRepoListItem[]; error?: string }
-    return { success: true, repositories: json.items ?? [], error: json.error }
+    if (res.status === 401 || res.status === 403) {
+      return { success: false, repositories: [], error: 'GitHub not connected. Use the GitHub tab to connect your account.' }
+    }
+    if (!res.ok) return { success: false, repositories: [], error: `Failed to fetch (${res.status})` }
+    const json = await res.json()
+    if (json.error) return { success: false, repositories: [], error: json.error }
+    return { success: true, repositories: Array.isArray(json) ? json : [], error: undefined }
   } catch (e) {
     return { success: false, repositories: [], error: String(e) }
   }
@@ -120,9 +124,9 @@ export async function analyzeCode(
   const res = await fetch('/api/analyze-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ code, language, filePath, ...meta }),
+    body: JSON.stringify({ code, language, github_file_path: filePath, ...meta }),
   })
-  if (!res.ok) return { error: 'Request failed' }
+  if (!res.ok) return { error: `Request failed (${res.status})` }
   return (await res.json()) as Record<string, unknown>
 }
 
@@ -130,13 +134,16 @@ export async function getFileContent(
   owner: string,
   repo: string,
   path: string,
-): Promise<FileContent | null> {
-  const res = await fetch(
-    `/api/github/file-content?owner=${encodeURIComponent(owner)}&repo=${encodeURIComponent(repo)}&path=${encodeURIComponent(path)}`,
-    { cache: 'no-store' },
-  )
-  if (!res.ok) return null
-  return (await res.json()) as FileContent
+): Promise<FileContent> {
+  const res = await fetch('/api/github/file-content', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    cache: 'no-store',
+    body: JSON.stringify({ owner, repo, path }),
+  })
+  const json = (await res.json()) as FileContent
+  if (!res.ok || json.error) return { ...json, error: json.error || `HTTP ${res.status}` }
+  return json
 }
 
 export async function generateAIFixes(args: {

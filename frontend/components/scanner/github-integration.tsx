@@ -39,14 +39,20 @@ export function GitHubIntegration() {
     setIsLoadingRepos(true)
     try {
       const list = await getGitHubRepositories()
-      setRepos(Array.isArray(list) ? list : [])
+      setRepos(list.repositories)
       setShowRepos(true)
-      if (!list.length) {
+      if (!list.success) {
+        addToast({
+          type: 'error',
+          title: 'GitHub connection issue',
+          message: list.error || 'Could not load repositories. Make sure GitHub is connected in Settings.',
+          duration: 6000,
+        })
+      } else if (list.repositories.length === 0) {
         addToast({
           type: 'info',
           title: 'No repositories loaded',
-          message:
-            'Connect GitHub first, or ensure your token is stored (github_integrations). If you just connected, refresh and try again.',
+          message: 'Connect GitHub first, or ensure your token is stored. If you just connected, refresh and try again.',
           duration: 6000,
         })
       }
@@ -141,7 +147,7 @@ export function GitHubIntegration() {
                       ) : null}
                       <div className="mt-2 flex items-center gap-3 text-xs text-muted-foreground">
                         {repo.language ? <span>{repo.language}</span> : null}
-                        {repo.stars > 0 ? <span>★ {repo.stars}</span> : null}
+                        {(repo.stars ?? 0) > 0 ? <span>★ {repo.stars}</span> : null}
                       </div>
                     </div>
                     <Button size="sm" variant="ghost" type="button" className="shrink-0">

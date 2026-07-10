@@ -67,9 +67,13 @@ export function RepositoryBrowser({
       try {
         const list = await getGitHubRepositories(1)
         if (!cancelled) {
-          setRepos(Array.isArray(list) ? list : [])
-          if (list.length === 0) {
-            setRepoError('No repositories returned — connect GitHub or ensure you have accessible repos.')
+          if (!list.success && list.error) {
+            setRepoError(list.error)
+          } else {
+            setRepos(list.repositories || [])
+            if (list.repositories?.length === 0) {
+              setRepoError('No repositories returned — connect GitHub or ensure you have accessible repos.')
+            }
           }
         }
       } catch {
