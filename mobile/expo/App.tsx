@@ -12,6 +12,10 @@ import ProfileScreen from './src/screens/ProfileScreen'
 import ProblemsScreen from './src/screens/ProblemsScreen'
 import ScannerScreen from './src/screens/ScannerScreen'
 import CertificationsScreen from './src/screens/CertificationsScreen'
+import LeaderboardScreen from './src/screens/LeaderboardScreen'
+import AchievementsScreen from './src/screens/AchievementsScreen'
+import LearningScreen from './src/screens/LearningScreen'
+import HackathonsScreen from './src/screens/HackathonsScreen'
 import { colors } from './src/theme'
 import type { User } from './src/api/client'
 
@@ -19,12 +23,9 @@ const Tab = createBottomTabNavigator()
 
 function TabIcon({ name, focused }: { name: string; focused: boolean }) {
   const icons: Record<string, string> = {
-    Arena: '[A]',
-    Agent: '[AI]',
-    Problems: '[P]',
-    Scanner: '[S]',
-    Certs: '[C]',
-    Profile: '[U]',
+    Arena: '[A]', Agent: '[AI]', Problems: '[P]', Scanner: '[S]',
+    Certs: '[C]', Leaderboard: '[L]', Achievements: '[B]',
+    Learning: '[T]', Hackathons: '[H]', Profile: '[U]',
   }
   return (
     <Text style={{ color: focused ? colors.primary : colors.muted, fontSize: 11, fontWeight: '700' }}>
@@ -48,8 +49,15 @@ function MainTabs({ user, onLogout }: { user: User; onLogout: () => void }) {
       <Tab.Screen name="Arena" component={ArenaScreen} options={{ headerTitle: 'Coding Arena' }} />
       <Tab.Screen name="Problems" component={ProblemsScreen} options={{ headerTitle: 'Problems' }} />
       <Tab.Screen name="Scanner" component={ScannerScreen} options={{ headerTitle: 'Code Scanner' }} />
+      <Tab.Screen name="Learning" component={LearningScreen} options={{ headerTitle: 'Learning' }} />
+      <Tab.Screen name="Hackathons" component={HackathonsScreen} options={{ headerTitle: 'Hackathons' }} />
+      <Tab.Screen name="Leaderboard" component={LeaderboardScreen} options={{ headerTitle: 'Leaderboard' }} />
+      <Tab.Screen name="Achievements" component={AchievementsScreen} options={{ headerTitle: 'Achievements' }} />
       <Tab.Screen name="Certs" component={CertificationsScreen} options={{ headerTitle: 'Certifications' }} />
       <Tab.Screen name="Agent" component={AgentScreen} options={{ headerShown: false }} />
+      <Tab.Screen name="Profile">
+        {() => <ProfileScreen user={user} onLogout={onLogout} />}
+      </Tab.Screen>
       <Tab.Screen name="Profile" options={{ headerTitle: 'Profile' }}>
         {() => <ProfileScreen user={user} onLogout={onLogout} />}
       </Tab.Screen>
