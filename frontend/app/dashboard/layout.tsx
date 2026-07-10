@@ -362,7 +362,7 @@ export default function DashboardLayout({
       {/* Sidebar */}
       <aside
         className={cn(
-          'fixed left-0 top-0 z-40 h-screen w-64 border-r border-border/40 bg-card/95 backdrop-blur-md transition-[width,transform] duration-200',
+          'fixed left-0 top-0 z-40 h-screen w-64 border-r border-border/40 bg-card/95 backdrop-blur-md overflow-hidden transition-[width,transform] duration-200',
           sidebarOpen ? 'translate-x-0' : '-translate-x-full',
           'lg:translate-x-0',
           sidebarCollapsed ? 'lg:w-16' : 'lg:w-64'
@@ -426,7 +426,7 @@ export default function DashboardLayout({
           </div>
 
           {/* Main nav or Scanner sub-nav (nested sidebar) */}
-          <nav className="flex-1 overflow-y-auto">
+          <nav className="flex-1 min-h-0 overflow-y-auto">
             {isScannerShell ? (
               <Suspense
                 fallback={

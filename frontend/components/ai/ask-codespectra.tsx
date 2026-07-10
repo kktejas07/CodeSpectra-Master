@@ -140,7 +140,7 @@ export function AskCodeSpectra() {
       {/* Slide-out sidebar */}
       <aside
         className={cn(
-          'fixed right-0 top-0 z-40 h-screen w-full max-w-md border-l border-border bg-card/95 backdrop-blur-md shadow-2xl',
+          'fixed right-0 top-0 z-40 h-dvh w-full max-w-md border-l border-border bg-card/95 backdrop-blur-md shadow-2xl',
           'transition-transform duration-200',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
@@ -215,8 +215,7 @@ export function AskCodeSpectra() {
         {/* Messages */}
         <div
           ref={scrollRef}
-          className="flex-1 overflow-y-auto px-4 py-4 space-y-4"
-          style={{ height: 'calc(100vh - 192px)' }}
+          className="flex-1 min-h-0 overflow-y-auto px-4 py-4 space-y-4"
           data-testid="chat-messages"
         >
           {messages.length === 0 && (

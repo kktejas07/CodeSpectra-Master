@@ -120,7 +120,7 @@ export function PublicPageWrapper({
 
           {/* Mobile Menu */}
           {mobileMenuOpen && (
-            <div className="md:hidden pt-2 pb-4 space-y-1">
+            <div className="md:hidden bg-background/95 backdrop-blur-sm border-t border-border/50 pt-2 pb-4 space-y-1">
               <Link href="#capabilities" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">Features</Link>
               <Link href="#how-it-works" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">How it works</Link>
               <Link href="#integrations" onClick={() => setMobileMenuOpen(false)} className="block px-3 py-2 text-sm text-muted-foreground hover:text-foreground hover:bg-muted rounded-lg transition-colors">Integrations</Link>
