@@ -2,7 +2,16 @@ import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
 
-const DOCS_ROOT = path.join(process.cwd(), '..', 'docs')
+const DOCS_ROOT = (() => {
+  const cwd = process.cwd()
+  // Dev: cwd = frontend/  →  ../docs
+  // Docker: cwd = /app    →  ./docs
+  const siblings = [path.join(cwd, '..', 'docs'), path.join(cwd, 'docs')]
+  for (const p of siblings) {
+    if (fs.existsSync(p)) return p
+  }
+  return siblings[0]
+})()
 
 const SERVE_SECTIONS = ['public', 'user'] as const
 type ServeSection = (typeof SERVE_SECTIONS)[number]

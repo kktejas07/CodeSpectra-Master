@@ -23,6 +23,7 @@ import { useScrollReveal } from '@/hooks/use-scroll-reveal'
 export default function Home() {
   const hasSession = useHasUserSession()
   const [loadingDone, setLoadingDone] = useState(false)
+  const handleLoadingDone = useCallback(() => setLoadingDone(true), [])
   const [displayedText, setDisplayedText] = useState('')
   const [currentWord, setCurrentWord] = useState(0)
 
@@ -129,7 +130,7 @@ export async function bootstrap() {
 
   return (
     <>
-      {!loadingDone && <LoadingScreen onDone={() => setLoadingDone(true)} />}
+      {!loadingDone && <LoadingScreen onDone={handleLoadingDone} />}
 
       <div className={loadingDone ? '' : 'hidden'}>
 
