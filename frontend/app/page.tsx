@@ -12,6 +12,7 @@ import { Globe3D } from '@/components/globe-3d'
 import { PlatformWorkspaceIllustration } from '@/components/landing/platform-workspace-illustration'
 import { CapabilityIllustration } from '@/components/landing/capability-illustration'
 import { ProcessShowcase, type ProcessStep } from '@/components/landing/process-showcase'
+import { PipelineFlow } from '@/components/landing/pipeline-flow'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
 import { LoadingScreen } from '@/components/loading-screen'
@@ -367,6 +368,8 @@ export async function bootstrap() {
           </div>
         </div>
       </section>
+
+      <PipelineFlow />
 
       {/* Integrations Section */}
       <section id="integrations" className="py-24 lg:py-32 border-t border-border/40 scroll-mt-24">
