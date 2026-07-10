@@ -25,7 +25,7 @@ export default function Home() {
   // Reset loading screen when page is restored from bfcache (browser back/forward cache)
   useEffect(() => {
     const onShow = (e: PageTransitionEvent) => {
-      if (e.persisted) setLoadingDone(false)
+      // bfcache reload — let loading wrapper re-mount
     }
     window.addEventListener('pageshow', onShow)
     return () => window.removeEventListener('pageshow', onShow)
