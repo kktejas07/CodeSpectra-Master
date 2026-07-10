@@ -33,6 +33,21 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${mono.variable}`}
     >
+      <head>
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `
+              (function(){
+                var t = localStorage.getItem('theme') || 'dark';
+                if (t === 'system') {
+                  t = window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
+                }
+                document.documentElement.classList.add(t);
+              })();
+            `,
+          }}
+        />
+      </head>
       <body
         className="antialiased bg-background text-foreground font-mono"
         suppressHydrationWarning
