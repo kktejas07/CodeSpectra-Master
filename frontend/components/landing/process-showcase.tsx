@@ -432,14 +432,6 @@ export function ProcessShowcase({ steps, className }: ProcessShowcaseProps) {
                       onComplete={advanceStep}
                     />
                   ) : (
-                          <StepProgressBar
-                            key={s.numeral}
-                            durationMs={stepDurationMs}
-                            paused={!sectionVisible}
-                      reducedMotion={prefersReducedMotion}
-                      onComplete={advanceStep}
-                    />
-                    ) : (
                         <div className="mt-3 h-px sm:mt-4 sm:h-0.5" aria-hidden />
                       )}
                     </div>

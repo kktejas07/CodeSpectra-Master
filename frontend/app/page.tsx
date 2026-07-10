@@ -127,7 +127,7 @@ export async function bootstrap() {
 
   const integrations = [
     { name: 'GitHub', category: 'Connect repositories & PRs', icon: Github },
-    { name: 'GitLab', category: 'Connect repositories & merge requests', icon: GitLab },
+    { name: 'GitLab', category: 'Connect repositories & merge requests', icon: GitBranch },
     { name: 'Google', category: 'Sign in with Google', icon: Chrome },
     { name: 'Slack', category: 'Notifications & alerts', icon: Slack },
     { name: 'VS Code', category: 'IDE extension for scans', icon: Braces },
