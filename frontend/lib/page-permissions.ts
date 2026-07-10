@@ -41,6 +41,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/permissions',
   '/dashboard/admin/plans',
   '/dashboard/admin/settings/llm',
+  '/dashboard/admin/settings/mobile',
 ]
 
 /**
@@ -131,6 +132,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/settings': 'Platform Settings',
   '/dashboard/admin/settings/cloudflare': 'Cloudflare',
   '/dashboard/admin/settings/llm': 'LLM Configuration',
+  '/dashboard/admin/settings/mobile': 'Mobile App',
   '/dashboard/admin/teams': 'Teams',
   '/dashboard/admin/jobs': 'Jobs Management',
   '/dashboard/admin/resumes': 'Resumes Management',
