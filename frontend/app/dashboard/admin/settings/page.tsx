@@ -43,6 +43,7 @@ import {
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloudflare-section'
 import { LlmSettingsSection } from '@/components/dashboard/settings/llm-section'
+import { MobileSettingsPage } from '@/app/dashboard/admin/settings/mobile/mobile-settings-page'
 import { useToast } from '@/lib/toast-context'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
@@ -1918,6 +1919,10 @@ function SystemSettingsInner() {
                 </Button>
               </div>
             </Card>
+          ) : null}
+
+          {section === 'mobile' ? (
+            <MobileSettingsPage />
           ) : null}
 
           {section === 'email-templates' ? (
