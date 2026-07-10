@@ -1,7 +1,7 @@
 'use client'
 
 import Link from 'next/link'
-import { useSearchParams } from 'next/navigation'
+import { useSearchParams, usePathname } from 'next/navigation'
 import {
   ArrowLeft,
   Building2,
@@ -45,7 +45,9 @@ export function PlatformSettingsSidebarNav({
   onNavigate: () => void
 }) {
   const searchParams = useSearchParams()
+  const pathname = usePathname()
   const current = parsePlatformSettingsSection(searchParams.get('section'))
+  const onSubRoute = pathname.startsWith('/dashboard/admin/settings/llm') || pathname.startsWith('/dashboard/admin/settings/cloudflare')
 
   return (
     <div className="flex flex-col">
@@ -79,7 +81,7 @@ export function PlatformSettingsSidebarNav({
       <div className="space-y-0.5 px-2 py-2">
         {ITEMS.map((item) => {
           const href = platformSettingsHref(item.id)
-          const active = current === item.id
+          const active = current === item.id && !onSubRoute
           const Icon = item.icon
           return (
             <Link

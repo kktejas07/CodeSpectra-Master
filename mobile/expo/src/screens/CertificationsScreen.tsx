@@ -1,59 +1,45 @@
 import React, { useEffect, useState } from 'react'
 import {
-  View,
-  Text,
-  FlatList,
-  ActivityIndicator,
-  StyleSheet,
+  View, Text, FlatList, ActivityIndicator, StyleSheet, Linking,
 } from 'react-native'
-import { api, Certification } from '../api/client'
+import { api } from '../api/client'
+import { colors, spacing, typography } from '../theme'
+
+interface Cert {
+  id: string; name: string; issuer: string; issued_at: string; verify_url: string
+}
 
 export default function CertificationsScreen() {
-  const [certs, setCerts] = useState<Certification[]>([])
+  const [certs, setCerts] = useState<Cert[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    api
-      .get<{ items: Certification[] }>('/api/certifications')
-      .then((d) => setCerts(d.items || []))
-      .catch(console.error)
+    api.get<{ items: Cert[] }>('/api/certifications')
+      .then(d => setCerts(d.items || [])).catch(console.error)
       .finally(() => setLoading(false))
   }, [])
 
-  if (loading) return <ActivityIndicator style={styles.centered} size="large" />
+  if (loading) return <ActivityIndicator style={{ flex: 1, backgroundColor: colors.background }} size="large" color={colors.primary} />
 
   return (
-    <View style={styles.container}>
+    <View style={{ flex: 1, backgroundColor: colors.background }}>
       <FlatList
         data={certs}
-        keyExtractor={(c) => c.id}
-        contentContainerStyle={{ padding: 16 }}
+        keyExtractor={c => c.id}
+        contentContainerStyle={{ padding: spacing.lg }}
+        ListEmptyComponent={<Text style={[typography.body, { textAlign: 'center', marginTop: spacing['4xl'] }]}>No certifications yet</Text>}
         renderItem={({ item }) => (
           <View style={styles.card}>
-            <Text style={styles.name}>{item.name}</Text>
-            <Text style={styles.issuer}>{item.issuer}</Text>
-            <Text style={styles.date}>{item.issued_at?.slice(0, 10)}</Text>
+            <Text style={typography.body}>{item.name}</Text>
+            <Text style={typography.bodySmall}>{item.issuer}</Text>
+            <Text style={typography.caption}>{item.issued_at?.slice(0, 10)}</Text>
           </View>
         )}
-        ListEmptyComponent={
-          <Text style={styles.empty}>No certifications yet</Text>
-        }
       />
     </View>
   )
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#09090b' },
-  centered: { flex: 1, justifyContent: 'center', backgroundColor: '#09090b' },
-  card: {
-    backgroundColor: '#18181b',
-    borderRadius: 10,
-    padding: 16,
-    marginBottom: 12,
-  },
-  name: { color: '#fafafa', fontSize: 16, fontWeight: '600' },
-  issuer: { color: '#a1a1aa', fontSize: 13, marginTop: 4 },
-  date: { color: '#71717a', fontSize: 12, marginTop: 2 },
-  empty: { color: '#71717a', textAlign: 'center', marginTop: 40 },
+  card: { backgroundColor: colors.card, borderRadius: 10, padding: spacing.lg, marginBottom: spacing.md, borderWidth: 1, borderColor: colors.cardBorder },
 })
