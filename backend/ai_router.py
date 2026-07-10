@@ -609,9 +609,6 @@ class IdentityVerifyReq(BaseModel):
     selfie_data_url: str  # data:image/png;base64,...
     id_photo_data_url: str
     candidate_name: Optional[str] = None
-    provider_override: Optional[str] = None
-    model_override: Optional[str] = None
-    endpoint_override: Optional[str] = None
 
 
 @router.post("/identity-verify")
@@ -635,7 +632,11 @@ async def identity_verify(request: Request, req: IdentityVerifyReq) -> dict[str,
         "match=true with confidence>=70."
     )
 
-    chat = _build_chat("vision", "identity-verify", system, request.headers, provider_override=req.provider_override, model_override=req.model_override, endpoint_override=req.endpoint_override)
+    # Identity verification must always use a vision-capable model from the
+    # MODEL_REGISTRY — never accept provider/model overrides, because the
+    # global LLM config may specify a non-vision model (ponytail: identity
+    # verification integrity must not depend on user/admin model preferences).
+    chat = _build_chat("vision", "identity-verify", system, request.headers)
 
     if has_image:
         try:

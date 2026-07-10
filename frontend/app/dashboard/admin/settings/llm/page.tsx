@@ -45,6 +45,7 @@ export default function LlmConfigPage() {
       if (defs) {
         next.model = defs.models[0] || next.model
         next.endpoint = defs.endpoint
+        next.api_key = ''
       }
     }
     setDraft(next)
