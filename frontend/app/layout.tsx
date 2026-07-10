@@ -1,7 +1,7 @@
 import type { Metadata } from 'next'
 import { JetBrains_Mono } from 'next/font/google'
 import { Providers } from '@/components/providers'
-import './globals.css'
+import { LoadingWrapper } from '@/components/loading-wrapper'
 
 export const dynamic = 'force-dynamic'
 
@@ -52,7 +52,9 @@ export default function RootLayout({
         className="antialiased bg-background text-foreground font-mono"
         suppressHydrationWarning
       >
-        <Providers>{children}</Providers>
+        <Providers>
+          <LoadingWrapper>{children}</LoadingWrapper>
+        </Providers>
       </body>
     </html>
   )

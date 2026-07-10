@@ -188,19 +188,32 @@ type ProcessShowcaseProps = {
 const StepProgressBar = memo(function StepProgressBar({
   durationMs,
   paused,
+  reducedMotion,
   onComplete,
 }: {
   durationMs: number
   paused: boolean
+  reducedMotion: boolean
   onComplete: () => void
 }) {
-  const fillRef = useRef<HTMLDivElement | null>(null)
+  const fillRef = useRef<HTMLDivElement>(null)
+
+  // Safety timer guarantees advance even if animation never fires
+  useEffect(() => {
+    if (paused) return
+    const timer = setTimeout(onComplete, durationMs + 100)
+    return () => clearTimeout(timer)
+  }, [paused, durationMs, onComplete])
 
   useEffect(() => {
-    if (paused) {
+    if (paused || reducedMotion) {
+      // Reduced motion: jump to full immediately — safety timer handles advance
+      if (!paused && reducedMotion) {
+        const el = fillRef.current
+        if (el) el.style.width = '100%'
+      }
       return
     }
-
     let raf = 0
     let elapsed = 0
     let last = Date.now()
@@ -209,35 +222,31 @@ const StepProgressBar = memo(function StepProgressBar({
       const now = Date.now()
       elapsed += now - last
       last = now
-
       const p = Math.min(1, elapsed / durationMs)
       const el = fillRef.current
       if (el) {
         el.style.width = `${(p * 100).toFixed(2)}%`
       }
-
       if (p >= 1) {
         onComplete()
         return
       }
-
       raf = requestAnimationFrame(tick)
     }
 
     raf = requestAnimationFrame(tick)
     return () => cancelAnimationFrame(raf)
-  }, [paused, durationMs, onComplete])
+  }, [paused, durationMs, reducedMotion, onComplete])
 
   return (
     <div
-      className="mt-3 h-px w-full overflow-hidden rounded-full bg-[hsl(var(--marketing-band-fg)/0.14)] sm:mt-4 sm:h-0.5"
+      className="mt-3 h-1 overflow-hidden rounded-full bg-muted sm:mt-4 sm:h-1.5"
       role="progressbar"
-      aria-valuemin={0}
-      aria-valuemax={100}
-      aria-valuetext="In progress"
-      aria-label="Step timer"
     >
-      <div ref={fillRef} className="h-full w-0 rounded-full bg-primary shadow-[0_0_4px_hsl(var(--primary)/0.28)]" />
+      <div
+        ref={fillRef}
+        className="h-full w-0 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+      />
     </div>
   )
 })
@@ -246,7 +255,7 @@ export function ProcessShowcase({ steps, className }: ProcessShowcaseProps) {
   const sectionRef = useRef<HTMLElement>(null)
 
   const [active, setActive] = useState(0)
-  const [sectionVisible, setSectionVisible] = useState(true)
+  const [sectionVisible, setSectionVisible] = useState(false)
   const [prefersReducedMotion, setPrefersReducedMotion] = useState(false)
   const [typedCode, setTypedCode] = useState('')
   const [typingDone, setTypingDone] = useState(true)
@@ -414,25 +423,23 @@ export function ProcessShowcase({ steps, className }: ProcessShowcaseProps) {
                       <p className="mt-2 text-sm leading-relaxed text-[hsl(var(--marketing-band-fg)/0.58)] sm:text-[15px]">
                         {s.description}
                       </p>
-                      {on ? (
-                        prefersReducedMotion ? (
-                          <div
-                            className="mt-3 h-px w-full overflow-hidden rounded-full bg-[hsl(var(--marketing-band-fg)/0.14)] sm:mt-4 sm:h-0.5"
-                            role="progressbar"
-                            aria-valuetext="Complete"
-                            aria-label={`Step ${s.numeral} progress`}
-                          >
-                            <div className="h-full w-full rounded-full bg-primary shadow-[0_0_4px_hsl(var(--primary)/0.28)]" />
-                          </div>
-                        ) : (
+                  {on ? (
+                    <StepProgressBar
+                      key={s.numeral}
+                      durationMs={stepDurationMs}
+                      paused={!sectionVisible}
+                      reducedMotion={prefersReducedMotion}
+                      onComplete={advanceStep}
+                    />
+                  ) : (
                           <StepProgressBar
                             key={s.numeral}
                             durationMs={stepDurationMs}
                             paused={!sectionVisible}
-                            onComplete={advanceStep}
-                          />
-                        )
-                      ) : (
+                      reducedMotion={prefersReducedMotion}
+                      onComplete={advanceStep}
+                    />
+                    ) : (
                         <div className="mt-3 h-px sm:mt-4 sm:h-0.5" aria-hidden />
                       )}
                     </div>

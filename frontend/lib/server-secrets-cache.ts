@@ -158,6 +158,15 @@ export function maskSecret(value: string | undefined | null): string | null {
 }
 
 /**
+ * True when a value looks like a UI-masked secret (contains the bullet char
+ * produced by `maskSecret`). Used to avoid persisting or sending the mask back
+ * to the server, which would corrupt the stored key or break HTTP headers.
+ */
+export function isMaskedSecret(value: string | undefined | null): boolean {
+  return typeof value === 'string' && value.includes('•')
+}
+
+/**
  * Returns the normalised list of additional trusted origins configured by the
  * admin in MongoDB. Strips whitespace + trailing slashes; lowercases scheme/host
  * for tolerant matching.

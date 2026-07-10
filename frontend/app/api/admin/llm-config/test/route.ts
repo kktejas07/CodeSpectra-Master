@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
+import { getMongoDb } from '@/lib/mongodb'
+import { isMaskedSecret } from '@/lib/server-secrets-cache'
 import { LLM_PROVIDERS, type LLMConfig } from '@/lib/llm-config'
 
 export async function POST(request: Request) {
@@ -15,6 +17,16 @@ export async function POST(request: Request) {
 
   if (!body.provider || !body.model) {
     return NextResponse.json({ ok: false, message: 'Provider and model are required' })
+  }
+
+  // The UI sends the masked key (contains bullet chars) when the admin hasn't
+  // retyped it. Fall back to the stored key so we never put bullets into an
+  // HTTP header (which throws "invalid character 8226").
+  if (!body.api_key || isMaskedSecret(body.api_key)) {
+    const db = await getMongoDb()
+    const doc = await db.collection('platform_settings').findOne({ key: 'llm' })
+    const stored = (doc?.value as LLMConfig | undefined)?.api_key
+    if (stored) body.api_key = stored
   }
 
   try {
