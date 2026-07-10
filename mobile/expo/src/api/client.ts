@@ -11,6 +11,20 @@ export async function getApiUrl(): Promise<string> {
     const stored = await AsyncStorage.getItem(STORAGE_KEY)
     if (stored) { _cachedUrl = stored; return stored }
   } catch { /* ignore */ }
+
+  // Auto-discover: try fetching /api/mobile-config from the default URL
+  try {
+    const res = await fetch(`${DEFAULT_URL}/api/mobile-config`, { signal: AbortSignal.timeout(5000) })
+    if (res.ok) {
+      const data = await res.json()
+      if (data.server_url) {
+        _cachedUrl = data.server_url
+        await AsyncStorage.setItem(STORAGE_KEY, data.server_url)
+        return data.server_url
+      }
+    }
+  } catch { /* fall back to default */ }
+
   return DEFAULT_URL
 }
 
