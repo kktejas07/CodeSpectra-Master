@@ -1,145 +1,148 @@
 'use client'
 
-import { useState, useEffect, useCallback } from 'react'
+import { useEffect, useRef } from 'react'
+import * as THREE from 'three'
 
-const bootLines = [
-  { text: 'Initializing CodeSpectra engine...', delay: 400 },
-  { text: 'Loading analysis modules...', delay: 600 },
-  { text: 'Connecting AI services...', delay: 500 },
-  { text: 'Calibrating code scanner...', delay: 450 },
-  { text: 'Preparing workspace...', delay: 350 },
-  { text: 'System ready.', delay: 300, isFinal: true },
-]
+const PROGRESS_DURATION = 2200
 
-function LoadingBar({ done }: { done: boolean }) {
+export function LoadingScreen({ onDone }: { onDone: () => void }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null)
+  const progressRef = useRef(0)
+  const rafRef = useRef(0)
+
+  useEffect(() => {
+    const canvas = canvasRef.current
+    if (!canvas) return
+
+    const scene = new THREE.Scene()
+    const camera = new THREE.PerspectiveCamera(45, canvas.clientWidth / canvas.clientHeight, 0.1, 100)
+    camera.position.z = 6
+
+    const renderer = new THREE.WebGLRenderer({
+      canvas,
+      alpha: true,
+      antialias: true,
+    })
+    renderer.setSize(canvas.clientWidth, canvas.clientHeight)
+    renderer.setPixelRatio(Math.min(devicePixelRatio, 2))
+
+    const geometry = new THREE.TorusKnotGeometry(1.2, 0.4, 128, 16)
+    const material = new THREE.MeshBasicMaterial({
+      color: new THREE.Color('#34d399'),
+      wireframe: true,
+      transparent: true,
+      opacity: 0.6,
+    })
+    const knot = new THREE.Mesh(geometry, material)
+    scene.add(knot)
+
+    const dotGeo = new THREE.BufferGeometry()
+    const dotCount = 600
+    const positions = new Float32Array(dotCount * 3)
+    for (let i = 0; i < dotCount * 3; i++) positions[i] = (Math.random() - 0.5) * 30
+    dotGeo.setAttribute('position', new THREE.BufferAttribute(positions, 3))
+    const dotMat = new THREE.PointsMaterial({
+      color: '#34d399',
+      size: 0.03,
+      transparent: true,
+      opacity: 0.3,
+    })
+    const dots = new THREE.Points(dotGeo, dotMat)
+    scene.add(dots)
+
+    const start = performance.now()
+
+    function animate(now: number) {
+      const elapsed = (now - start) / 1000
+
+      knot.rotation.x = elapsed * 0.3
+      knot.rotation.y = elapsed * 0.5
+      knot.rotation.z = elapsed * 0.15
+      dots.rotation.y = elapsed * 0.02
+
+      const prog = Math.min((now - start) / PROGRESS_DURATION, 1)
+      progressRef.current = prog
+      knot.material.opacity = 0.3 + 0.4 * (1 - prog)
+      knot.scale.setScalar(1 - 0.15 * prog)
+
+      renderer.render(scene, camera)
+      rafRef.current = requestAnimationFrame(animate)
+
+      if (prog >= 1) {
+        cancelAnimationFrame(rafRef.current)
+        renderer.dispose()
+        onDone()
+      }
+    }
+
+    rafRef.current = requestAnimationFrame(animate)
+
+    const handleResize = () => {
+      camera.aspect = canvas.clientWidth / canvas.clientHeight
+      camera.updateProjectionMatrix()
+      renderer.setSize(canvas.clientWidth, canvas.clientHeight)
+    }
+    window.addEventListener('resize', handleResize)
+
+    return () => {
+      cancelAnimationFrame(rafRef.current)
+      renderer.dispose()
+      window.removeEventListener('resize', handleResize)
+    }
+  }, [onDone])
+
   return (
-    <span className="inline-flex items-center gap-1">
-      <span className="font-mono text-[10px] text-emerald-400/80 sm:text-xs">
-        {done ? 'OK' : '..'}
-      </span>
-      {!done && (
-        <span className="relative inline-block h-2 w-8 overflow-hidden rounded-full bg-zinc-800 sm:w-10">
-          <span className="absolute inset-y-0 left-0 w-1/2 animate-loading-bar rounded-full bg-emerald-400" />
-        </span>
-      )}
-    </span>
+    <div className="fixed inset-0 z-[100] flex flex-col items-center justify-center bg-zinc-950">
+      <canvas
+        ref={canvasRef}
+        className="absolute inset-0 h-full w-full"
+      />
+
+      <div className="relative z-10 flex flex-col items-center gap-8">
+        <div className="flex items-center gap-3">
+          <span className="h-3 w-3 rounded-full bg-emerald-400 shadow-[0_0_12px_rgba(52,211,153,0.6)]" />
+          <h1 className="bg-linear-to-r from-emerald-400 via-emerald-300 to-emerald-500 bg-clip-text text-3xl font-extrabold tracking-tight text-transparent sm:text-4xl">
+            CodeSpectra
+          </h1>
+        </div>
+
+        <div className="w-48 sm:w-64">
+          <div className="h-1 overflow-hidden rounded-full bg-zinc-800">
+            <div
+              className="h-full rounded-full bg-gradient-to-r from-emerald-500 via-emerald-400 to-emerald-300 transition-all duration-150 ease-linear"
+              style={{ width: `${progressRef.current * 100}%` }}
+            />
+          </div>
+          <LoadingProgress />
+        </div>
+      </div>
+    </div>
   )
 }
 
-export function LoadingScreen({ onDone }: { onDone: () => void }) {
-  const [visibleLines, setVisibleLines] = useState<{ text: string; done: boolean }[]>([])
-  const [currentLineIndex, setCurrentLineIndex] = useState(0)
-  const [typedChars, setTypedChars] = useState(0)
-  const [fadingOut, setFadingOut] = useState(false)
-
-  const currentBootLine = bootLines[currentLineIndex]
-
-  const advanceLine = useCallback(() => {
-    const nextIndex = currentLineIndex + 1
-    if (nextIndex >= bootLines.length) {
-      setFadingOut(true)
-      setTimeout(onDone, 600)
-      return
-    }
-    setCurrentLineIndex(nextIndex)
-    setTypedChars(0)
-  }, [currentLineIndex, onDone])
+function LoadingProgress() {
+  const ref = useRef<HTMLSpanElement>(null)
 
   useEffect(() => {
-    if (!currentBootLine) return
-    const target = currentBootLine.text
+    const start = performance.now()
+    let raf = 0
 
-    if (typedChars < target.length) {
-      const t = setTimeout(() => setTypedChars((c) => c + 1), 18 + Math.random() * 20)
-      return () => clearTimeout(t)
+    function tick(now: number) {
+      const pct = Math.min(((now - start) / PROGRESS_DURATION) * 100, 100)
+      if (ref.current) ref.current.textContent = `${Math.round(pct)}%`
+      if (pct < 100) raf = requestAnimationFrame(tick)
     }
 
-    setVisibleLines((prev) => [
-      ...prev.filter((l) => l.text !== target),
-      { text: target, done: currentBootLine.isFinal ?? false },
-    ])
-
-    const t = setTimeout(advanceLine, currentBootLine.delay)
-    return () => clearTimeout(t)
-  }, [typedChars, currentBootLine, advanceLine])
-
-  const allLines = [...visibleLines]
-  if (currentBootLine && typedChars < currentBootLine.text.length) {
-    const partial = currentBootLine.text.slice(0, typedChars)
-    const existing = allLines.findIndex((l) => l.text === currentBootLine.text)
-    if (existing >= 0) {
-      allLines[existing] = { text: partial, done: false }
-    } else {
-      allLines.push({ text: partial, done: false })
-    }
-  }
-
-  const isReady = visibleLines.some((l) => l.text === 'System ready.')
+    raf = requestAnimationFrame(tick)
+    return () => cancelAnimationFrame(raf)
+  }, [])
 
   return (
-    <div
-      className={`fixed inset-0 z-[100] flex items-center justify-center bg-zinc-950 transition-opacity duration-700 ${
-        fadingOut ? 'opacity-0' : 'opacity-100'
-      }`}
+    <span
+      ref={ref}
+      className="mt-2 block text-center font-mono text-xs tracking-widest text-zinc-500"
     >
-      {/* Subtle grid background */}
-      <div
-        className="pointer-events-none absolute inset-0 opacity-[0.04]"
-        style={{
-          backgroundImage:
-            'linear-gradient(rgba(255,255,255,0.1) 1px, transparent 1px), linear-gradient(90deg, rgba(255,255,255,0.1) 1px, transparent 1px)',
-          backgroundSize: '40px 40px',
-        }}
-      />
-
-      <div className="relative w-full max-w-lg px-6">
-        <div className="mb-6 flex items-center gap-2">
-          <span className="h-2 w-2 rounded-full bg-emerald-400 shadow-[0_0_8px_rgba(52,211,153,0.5)]" />
-          <span className="font-mono text-[10px] tracking-widest text-zinc-500 uppercase sm:text-xs">
-            CodeSpectra Terminal v2.0
-          </span>
-        </div>
-
-        <div className="space-y-2 font-mono text-xs leading-relaxed sm:text-sm">
-          {allLines.map((line, i) => (
-            <div key={`${i}-${line.text}`} className="flex items-start gap-2">
-              <span className="shrink-0 text-zinc-600 select-none">{'>'}</span>
-              <span
-                className={`${
-                  line.text === 'System ready.' || line.text.startsWith('System ready')
-                    ? 'text-emerald-400'
-                    : 'text-zinc-300'
-                }`}
-              >
-                {line.text}
-                {i === allLines.length - 1 && !line.done && (
-                  <span className="ml-0.5 inline-block h-[1em] w-[2px] animate-cursor-blink bg-zinc-300 align-[-1px]" />
-                )}
-              </span>
-              {line.done && <LoadingBar done />}
-              {line.text.startsWith('System ready') && (
-                <span className="inline-flex items-center gap-1">
-                  <span className="font-mono text-[10px] text-emerald-400 sm:text-xs">OK</span>
-                </span>
-              )}
-            </div>
-          ))}
-
-          {isReady && (
-            <div className="mt-4 border-t border-zinc-800 pt-3 text-[10px] text-zinc-600 sm:text-xs">
-              {new Date().toLocaleTimeString()} — All systems operational
-            </div>
-          )}
-        </div>
-
-        {/* Bottom glow bar */}
-        <div
-          className="mt-8 h-px w-full bg-linear-to-r from-transparent via-emerald-400/30 to-transparent"
-          style={{
-            animation: 'pulse 2s ease-in-out infinite',
-          }}
-        />
-      </div>
-    </div>
+      0%
+    </span>
   )
 }
