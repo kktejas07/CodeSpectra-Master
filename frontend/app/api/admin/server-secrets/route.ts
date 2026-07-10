@@ -20,6 +20,8 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'anthropic_api_key',
   'gemini_api_key',
   'openai_api_key',
+  // Cloudflare
+  'cloudflare_api_token',
   // legacy
   'stripe_secret_key',
   'stripe_webhook_secret',
@@ -43,6 +45,8 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'stripe_price_pro_yearly',
   'stripe_price_enterprise_monthly',
   'stripe_price_enterprise_yearly',
+  // Cloudflare
+  'cloudflare_zone_id',
   // Firebase client config (plain — these are public API keys)
   'firebase_api_key',
   'firebase_auth_domain',
