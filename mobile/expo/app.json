@@ -20,7 +20,8 @@
             "compileSdkVersion": 35,
             "targetSdkVersion": 35,
             "buildToolsVersion": "35.0.0",
-            "kotlinVersion": "1.9.24"
+            "kotlinVersion": "1.9.24",
+            "jdkVersion": "17"
           },
           "ios": {
             "deploymentTarget": "15.1"
@@ -45,6 +46,9 @@
         "projectId": "6355ce0d-4fab-4c1c-b8ff-c0d06adcfd2b"
       }
     },
-    "owner": "devendervutukuru"
+    "owner": "devendervutukuru",
+    "cli": {
+      "appVersionSource": "local"
+    }
   }
 }

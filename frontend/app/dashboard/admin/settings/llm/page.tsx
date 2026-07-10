@@ -15,7 +15,7 @@ import {
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { LLM_PROVIDERS, getProviderDefaults, type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
-import { Save, Loader2, Sparkles, Eye, EyeOff, CheckCircle2, XCircle, Wand2 } from 'lucide-react'
+import { Save, Loader2, Sparkles, Eye, EyeOff, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 
 export default function LlmConfigPage() {
   const gate = usePageGuard('superadmin')
@@ -27,6 +27,8 @@ export default function LlmConfigPage() {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [showKey, setShowKey] = useState(false)
+  const [fetchedModels, setFetchedModels] = useState<string[] | null>(null)
+  const [fetchingModels, setFetchingModels] = useState(false)
 
   useEffect(() => {
     if (!gate.ready) return
@@ -47,6 +49,7 @@ export default function LlmConfigPage() {
         next.endpoint = defs.endpoint
         next.api_key = ''
       }
+      setFetchedModels(null)
     }
     setDraft(next)
     setTestResult(null)
@@ -90,6 +93,45 @@ export default function LlmConfigPage() {
       setTestResult({ ok: false, message: 'Request failed' })
     } finally {
       setTesting(false)
+    }
+  }
+
+  async function refreshModels() {
+    if (!draft?.api_key || !draft?.endpoint) {
+      toast({ type: 'error', title: 'API key and endpoint required to fetch models' })
+      return
+    }
+    setFetchingModels(true)
+    try {
+      const prov = draft.provider
+      const ep = draft.endpoint.replace(/\/+$/, '')
+      let models: string[] = []
+      if (prov === 'gemini') {
+        const res = await fetch(`${ep}/models?key=${draft.api_key}`)
+        if (!res.ok) throw new Error(`Gemini API ${res.status}`)
+        const json = await res.json()
+        models = (json.models || []).map((m: { name: string }) => m.name.replace(/^models\//, ''))
+      } else if (prov === 'anthropic') {
+        const res = await fetch(`${ep}/v1/models`, {
+          headers: { 'x-api-key': draft.api_key, 'anthropic-version': '2023-06-01' },
+        })
+        if (!res.ok) throw new Error(`Anthropic API ${res.status}`)
+        const json = await res.json()
+        models = (json.data || []).map((m: { id: string }) => m.id)
+      } else {
+        const res = await fetch(`${ep}/models`, {
+          headers: { Authorization: `Bearer ${draft.api_key}` },
+        })
+        if (!res.ok) throw new Error(`API ${res.status}`)
+        const json = await res.json()
+        models = (json.data || []).map((m: { id: string }) => m.id)
+      }
+      setFetchedModels(models)
+      toast({ type: 'success', title: `Loaded ${models.length} models` })
+    } catch (e) {
+      toast({ type: 'error', title: 'Failed to fetch models', message: (e as Error).message })
+    } finally {
+      setFetchingModels(false)
     }
   }
 
@@ -138,7 +180,8 @@ export default function LlmConfigPage() {
             <Label htmlFor="model">Model</Label>
             {draft && (() => {
               const defs = getProviderDefaults(draft.provider)
-              const models = defs?.models || []
+              const hardcoded = defs?.models || []
+              const allModels = fetchedModels || hardcoded
               return (
                 <div className="flex gap-2">
                   <Select value={draft.model} onValueChange={v => updateField('model', v)}>
@@ -146,19 +189,29 @@ export default function LlmConfigPage() {
                       <SelectValue placeholder="Select or type a model..." />
                     </SelectTrigger>
                     <SelectContent>
-                      {models.map(m => (
+                      {allModels.map(m => (
                         <SelectItem key={m} value={m}>
                           <span className="font-mono text-sm">{m}</span>
                         </SelectItem>
                       ))}
-                      {draft.model && !models.includes(draft.model) && (
+                      {draft.model && !allModels.includes(draft.model) && (
                         <SelectItem value={draft.model}>
                           <span className="font-mono text-sm text-primary">{draft.model} (custom)</span>
                         </SelectItem>
                       )}
                     </SelectContent>
                   </Select>
-                  {draft.model && !models.includes(draft.model) && (
+                  <Button
+                    variant="outline"
+                    size="icon"
+                    onClick={refreshModels}
+                    disabled={fetchingModels || !draft?.api_key}
+                    className="h-10 w-10 shrink-0 rounded-lg"
+                    title={draft?.api_key ? 'Fetch all models from provider' : 'Enter API key first'}
+                  >
+                    <RefreshCw className={`h-4 w-4 ${fetchingModels ? 'animate-spin' : ''}`} />
+                  </Button>
+                  {draft.model && !allModels.includes(draft.model) && (
                     <Input
                       value={draft.model}
                       onChange={e => updateField('model', e.target.value)}
@@ -169,7 +222,11 @@ export default function LlmConfigPage() {
                 </div>
               )
             })()}
-            <p className="text-xs text-muted-foreground">Available models auto-populated based on provider. Type a custom model if yours isn't listed.</p>
+            <p className="text-xs text-muted-foreground">
+              {fetchedModels
+                ? `Showing ${fetchedModels.length} models from the API.`
+                : 'Showing default models. Enter an API key and click the refresh button to load all available models.'}
+            </p>
           </div>
 
           <div className="space-y-2">

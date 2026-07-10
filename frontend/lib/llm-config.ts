@@ -64,14 +64,6 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     endpoint: 'https://integrate.api.nvidia.com/v1',
     authType: 'bearer',
   },
-  {
-    id: 'bigpickle',
-    label: 'BigPickle (OpenAI-compatible, free tier)',
-    free: true,
-    models: ['big-pickle-v1'],
-    endpoint: 'https://api.bigpickle.ai/v1',
-    authType: 'bearer',
-  },
 ] as const
 
 export type LLMProviderId = (typeof LLM_PROVIDERS)[number]['id']
