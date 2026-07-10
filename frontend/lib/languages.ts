@@ -85,7 +85,7 @@ export const PROGRAMMING_LANGUAGES: Language[] = [
     id: 'ruby',
     name: 'Ruby',
     displayName: 'Ruby 2.7',
-    icon: '💎',
+    icon: 'Diamond',
     extension: '.rb',
     templates: {
       boilerplate: `def solve(n)\n  # Your code here\nend\n\nif __FILE__ == $0\n  # Test your solution\nend`,

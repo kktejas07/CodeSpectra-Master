@@ -163,7 +163,7 @@ export const hackathonEmailTemplates = {
   }) => ({
     subject: `Results are out! ${params.eventName} — Your team ranked #${params.rank}`,
     html: `${baseStyles.wrapper}
-      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Results Released! 🏆</h1>
+      <h1 style="font-size:22px;margin:0 0 8px;font-weight:700">Results Released!</h1>
       <p style="margin:0 0 16px;color:#4b5563">The results for <strong style="color:#1f2937">${params.eventName}</strong> are now available.</p>
       <div style="background:#f3f4f6;border-radius:6px;padding:16px;margin:0 0 16px">
         <table cellpadding="0" cellspacing="0" style="font-size:14px;color:#4b5563;width:100%">

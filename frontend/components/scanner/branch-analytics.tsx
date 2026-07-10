@@ -2,7 +2,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { GitBranch, TrendingUp, Calendar, Users } from 'lucide-react'
+import { GitBranch, TrendingUp, Calendar, Users, MapPin, Leaf } from 'lucide-react'
 
 interface Branch {
   id: string
@@ -44,7 +44,7 @@ export function BranchAnalytics({ branches = [] }: BranchAnalyticsProps) {
   })
 
   const getBranchTypeIcon = (type: string) => {
-    return type === 'long-lived' ? '📍' : '🌿'
+    return type === 'long-lived' ? <MapPin className="w-6 h-6" /> : <Leaf className="w-6 h-6" />
   }
 
   const getBranchTypeLabel = (type: string) => {

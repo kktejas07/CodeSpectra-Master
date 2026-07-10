@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search } from 'lucide-react'
+import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search, LogOut, RotateCcw, Copy, ClipboardPaste, Bell } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ProctorEvent {
@@ -13,8 +13,8 @@ interface ProctorEvent {
   event_type: string; meta: Record<string, unknown>; created_at: string
 }
 
-const EVENT_ICONS: Record<string, string> = {
-  tab_blur: '🚪', tab_focus: '🔙', copy: '📋', paste: '📌',
+const EVENT_ICONS: Record<string, React.ReactNode> = {
+  tab_blur: <LogOut className="w-4 h-4" />, tab_focus: <RotateCcw className="w-4 h-4" />, copy: <Copy className="w-4 h-4" />, paste: <ClipboardPaste className="w-4 h-4" />,
   right_click: '🖱️', fullscreen_exit: '🖥️', idle_60s: '💤',
   camera_capture: '📷', camera_denied: '🚫',
   multi_face: '👥', no_face: '😶',
@@ -124,7 +124,7 @@ export default function AdminProctorPage() {
                 }`}
                 onClick={() => setExpanded(expanded === e.id ? null : e.id)}
               >
-                <span className="text-lg">{EVENT_ICONS[e.event_type] || '🔔'}</span>
+                <span className="text-lg">{EVENT_ICONS[e.event_type] || <Bell className="w-4 h-4" />}</span>
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{e.event_type}</p>
                   <p className="text-xs text-muted-foreground truncate">

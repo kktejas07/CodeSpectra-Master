@@ -4,7 +4,7 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Trash2, Edit2, ZoomIn, ZoomOut, Maximize2 } from 'lucide-react'
+import { Plus, Trash2, Edit2, ZoomIn, ZoomOut, Maximize2, Wrench, Database, Library, Package, Circle } from 'lucide-react'
 
 interface Component {
   id: string
@@ -53,13 +53,13 @@ export function ArchitectureVisualization({
   }
 
   const getComponentIcon = (type: string) => {
-    const icons: Record<string, string> = {
-      service: '🔧',
-      database: '💾',
-      library: '📚',
-      module: '📦',
+    const icons: Record<string, React.ReactNode> = {
+      service: <Wrench className="w-4 h-4" />,
+      database: <Database className="w-4 h-4" />,
+      library: <Library className="w-4 h-4" />,
+      module: <Package className="w-4 h-4" />,
     }
-    return icons[type] || '◯'
+    return icons[type] || <Circle className="w-4 h-4" />
   }
 
   // Pre-calculate circular node layout positions for interactive graph view
@@ -218,9 +218,11 @@ export function ArchitectureVisualization({
                     strokeWidth={isSelected ? 3 : 1.5}
                     className="transition-all duration-200 drop-shadow-md"
                   />
-                  <text dy="6" textAnchor="middle" className="text-lg select-none pointer-events-none">
-                    {getComponentIcon(comp.type)}
-                  </text>
+                  <foreignObject x="-12" y="-12" width="24" height="24">
+                    <div className="flex items-center justify-center w-full h-full select-none pointer-events-none">
+                      {getComponentIcon(comp.type)}
+                    </div>
+                  </foreignObject>
                   <text
                     dy="38"
                     textAnchor="middle"
