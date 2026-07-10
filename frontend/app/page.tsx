@@ -10,7 +10,7 @@ import { ArrowRight, Code2, Library } from 'lucide-react'
 import { AnimatedDotCanvas } from '@/components/animated-dot-canvas'
 import { Globe3D } from '@/components/globe-3d'
 import { PlatformWorkspaceIllustration } from '@/components/landing/platform-workspace-illustration'
-import { CapabilityIllustration } from '@/components/landing/capability-illustration'
+import { CapabilitiesFlow } from '@/components/landing/capabilities-flow'
 import { ProcessShowcase, type ProcessStep } from '@/components/landing/process-showcase'
 import { PipelineFlow } from '@/components/landing/pipeline-flow'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
@@ -279,46 +279,7 @@ export async function bootstrap() {
         </div>
       </section>
 
-      {/* Capabilities — Optimus-style stacked rows with stagger reveal */}
-      <section id="capabilities" className="scroll-mt-24 border-b border-border/40 py-24 lg:py-32">
-        <div ref={capabilitiesRef as React.RefObject<HTMLDivElement>} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div data-reveal className="mb-14 max-w-3xl lg:mb-20">
-            <span className="mb-6 inline-flex items-center gap-3 font-mono text-sm text-muted-foreground">
-              <span className="h-px w-8 bg-border" />
-              Capabilities
-            </span>
-            <h2 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
-              Everything you need.
-              <br />
-              <span className="text-muted-foreground">Nothing you don&apos;t.</span>
-            </h2>
-          </div>
-
-          <div className="mx-auto max-w-5xl divide-y divide-border/60">
-            {capabilities.map((cap) => (
-              <div
-                key={cap.number}
-                data-reveal
-                className="grid gap-8 py-12 first:pt-0 md:grid-cols-[minmax(0,auto)_1fr_auto] md:items-start md:gap-10 md:py-14"
-              >
-                <span className="pt-1 font-mono text-sm tabular-nums text-muted-foreground">{cap.number}</span>
-                <div className="min-w-0">
-                  <h3 className="text-2xl font-semibold tracking-tight text-foreground transition-colors hover:text-primary md:text-3xl">
-                    {cap.title}
-                  </h3>
-                  <p className="mt-3 max-w-2xl leading-relaxed text-muted-foreground md:mt-4">{cap.description}</p>
-                </div>
-                <div className="flex shrink-0 justify-start md:justify-end md:pt-1">
-                  <CapabilityIllustration
-                    variant={cap.number as '01' | '02' | '03' | '04'}
-                    className="h-16 w-24 opacity-90 md:h-18 md:w-28"
-                  />
-                </div>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
+      <CapabilitiesFlow />
 
       <ProcessShowcase steps={processSteps} />
 
@@ -342,9 +303,7 @@ export async function bootstrap() {
             </div>
 
             <div data-reveal className="flex w-full min-w-0 justify-center min-[480px]:justify-end min-[480px]:pt-1 md:pt-0">
-              <div
-                className="w-full max-w-[220px] opacity-95 min-[480px]:max-w-[240px] md:max-w-[min(360px,100%)] lg:max-w-md"
-              >
+              <div className="capability-reveal w-full max-w-[220px] opacity-95 min-[480px]:max-w-[240px] md:max-w-[min(360px,100%)] lg:max-w-md">
                 <PlatformWorkspaceIllustration className="mx-auto min-[480px]:mx-0" />
               </div>
             </div>
