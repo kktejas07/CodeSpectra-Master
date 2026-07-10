@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { useState, useEffect, useCallback, useRef } from 'react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
-import { ArrowRight, Code2, Library } from 'lucide-react'
+import { ArrowRight, Code2, Library, Github, GitBranch, Chrome, Slack, GraduationCap, Braces } from 'lucide-react'
 import { AnimatedDotCanvas } from '@/components/animated-dot-canvas'
 import { Globe3D } from '@/components/globe-3d'
 import { PlatformWorkspaceIllustration } from '@/components/landing/platform-workspace-illustration'
@@ -15,7 +15,6 @@ import { ProcessShowcase, type ProcessStep } from '@/components/landing/process-
 import { PipelineFlow } from '@/components/landing/pipeline-flow'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
-import { LoadingScreen } from '@/components/loading-screen'
 import { FloatingCodeParticles } from '@/components/landing/floating-code-particles'
 import { TiltCard } from '@/components/ui/tilt-card'
 import { useScrollReveal } from '@/hooks/use-scroll-reveal'
@@ -129,13 +128,22 @@ export async function bootstrap() {
   ]
 
   const integrations = [
-    { name: 'GitHub', category: 'Connect your repositories' },
-    { name: 'Google', category: 'Sign in with Google' },
-    { name: 'Razorpay', category: 'Plans & checkout' },
-    { name: 'Slack', category: 'Notifications' },
-    { name: 'OpenAI', category: 'AI explanations & fixes' },
-    { name: 'MongoDB', category: 'Secure data storage' },
+    { name: 'GitHub', category: 'Connect repositories & PRs', icon: Github },
+    { name: 'GitLab', category: 'Connect repositories & merge requests', icon: GitLab },
+    { name: 'Google', category: 'Sign in with Google', icon: Chrome },
+    { name: 'Slack', category: 'Notifications & alerts', icon: Slack },
+    { name: 'VS Code', category: 'IDE extension for scans', icon: Braces },
+    { name: 'JetBrains', category: 'IDE plugin for inspections', icon: GraduationCap },
   ]
+
+  const integrationIcons: Record<string, React.ElementType> = {
+    GitHub: Github,
+    GitLab: GitBranch,
+    Google: Chrome,
+    Slack: Slack,
+    'VS Code': Braces,
+    JetBrains: GraduationCap,
+  }
 
   return (
     <>
@@ -321,26 +329,31 @@ export async function bootstrap() {
               <span className="text-muted-foreground">you already rely on.</span>
             </h2>
             <p className="text-muted-foreground mt-6 max-w-2xl mx-auto">
-              When you link accounts, CodeSpectra can use GitHub for repos, Google for easier sign-in, Razorpay for plans,
-              Slack for notifications, and AI models for explanations and suggested fixes—so the tools feel familiar.
+              Connect your code repositories from GitHub or GitLab, sign in with Google, get notifications in Slack,
+              and use your favorite IDE with CodeSpectra.
             </p>
           </div>
 
-          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-4xl mx-auto">
-            {integrations.map((integration) => (
-              <TiltCard key={integration.name} maxTilt={6} glare={false}>
-                <div
-                  data-reveal
-                  className="integration-card group relative p-4 border border-border/40 rounded-xl text-center cursor-default transition-all duration-300 hover:border-primary/40 hover:bg-primary/5"
-                >
-                  <div className="w-10 h-10 bg-muted rounded-lg mx-auto mb-3 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/10">
-                    <Code2 className="w-5 h-5 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
+          <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
+            {integrations.map((integration) => {
+              const Icon = integrationIcons[integration.name] || Code2
+              return (
+                <TiltCard key={integration.name} maxTilt={6} glare={false}>
+                  <div
+                    data-reveal
+                    className="integration-card group relative h-full flex flex-col items-center justify-between p-5 border border-border/40 rounded-xl text-center cursor-default transition-all duration-300 hover:border-primary/40 hover:bg-primary/5"
+                  >
+                    <div className="w-12 h-12 bg-muted rounded-xl mx-auto mb-4 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/10 shrink-0">
+                      <Icon className="w-6 h-6 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
+                    </div>
+                    <div className="flex flex-col items-center gap-1 flex-1">
+                      <p className="text-sm font-medium transition-colors duration-300 group-hover:text-primary">{integration.name}</p>
+                      <p className="text-xs text-muted-foreground">{integration.category}</p>
+                    </div>
                   </div>
-                  <p className="text-sm font-medium transition-colors duration-300 group-hover:text-primary">{integration.name}</p>
-                  <p className="text-xs text-muted-foreground mt-1">{integration.category}</p>
-                </div>
-              </TiltCard>
-            ))}
+                </TiltCard>
+              )
+            })}
           </div>
         </div>
       </section>
