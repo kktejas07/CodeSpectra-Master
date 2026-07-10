@@ -3,22 +3,21 @@ import AsyncStorage from '@react-native-async-storage/async-storage'
 const STORAGE_KEY = 'codespectra_api_url'
 const DEFAULT_URL = 'https://codespectra.forgetechno.com'
 
-let _cachedUrl: string | null = null
-
 export async function getApiUrl(): Promise<string> {
-  if (_cachedUrl) return _cachedUrl
   try {
     const stored = await AsyncStorage.getItem(STORAGE_KEY)
-    if (stored) { _cachedUrl = stored; return stored }
+    if (stored) return stored
   } catch { /* ignore */ }
 
   // Auto-discover: try fetching /api/mobile-config from the default URL
   try {
-    const res = await fetch(`${DEFAULT_URL}/api/mobile-config`, { signal: AbortSignal.timeout(5000) })
+    const controller = new AbortController()
+    const timeout = setTimeout(() => controller.abort(), 5000)
+    const res = await fetch(`${DEFAULT_URL}/api/mobile-config`, { signal: controller.signal })
+    clearTimeout(timeout)
     if (res.ok) {
       const data = await res.json()
       if (data.server_url) {
-        _cachedUrl = data.server_url
         await AsyncStorage.setItem(STORAGE_KEY, data.server_url)
         return data.server_url
       }
@@ -29,9 +28,7 @@ export async function getApiUrl(): Promise<string> {
 }
 
 export async function setApiUrl(url: string): Promise<void> {
-  const clean = url.replace(/\/+$/, '')
-  _cachedUrl = clean
-  await AsyncStorage.setItem(STORAGE_KEY, clean)
+  await AsyncStorage.setItem(STORAGE_KEY, url.replace(/\/+$/, ''))
 }
 
 async function request<T>(
