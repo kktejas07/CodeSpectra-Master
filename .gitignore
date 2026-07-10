@@ -90,3 +90,14 @@ credentials.json
 codespectra/CodeSpectra-Master/node_modules/@next/swc-linux-arm64-musl/next-swc.linux-arm64-musl.node
 frontend/node_modules/@next/swc-linux-arm64-musl/next-swc.linux-arm64-musl.node
 frontend/node_modules/@next/swc-linux-arm64-gnu/next-swc.linux-arm64-gnu.node
+
+# Mobile expo build cache
+mobile/expo/.expo/
+mobile/expo/android/.gradle/
+mobile/expo/android/app/build/
+mobile/expo/android/gradle/
+mobile/expo/ios/Pods/
+mobile/expo/ios/*.xcworkspace/
+mobile/expo/ios/build/
+mobile/expo/ios/DerivedData/
+mobile/expo/ios/.xcode.env.local
