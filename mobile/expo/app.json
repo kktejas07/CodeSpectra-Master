@@ -4,14 +4,14 @@
     "slug": "codespectra-mobile",
     "version": "1.0.0",
     "orientation": "portrait",
-    "icon": "./assets/icon.png",
+    "icon": "./assets/AppIcon.appiconset/1024.png",
     "userInterfaceStyle": "dark",
     "splash": {
-      "backgroundColor": "#09090b"
+      "backgroundColor": "#09090b",
+      "resizeMode": "contain",
+      "image": "./assets/AppIcon.appiconset/1024.png"
     },
-    "assetBundlePatterns": [
-      "**/*"
-    ],
+    "assetBundlePatterns": ["**/*"],
     "plugins": [
       [
         "expo-build-properties",
@@ -38,9 +38,8 @@
       "package": "dev.codespectra.mobile",
       "versionCode": 1,
       "adaptiveIcon": {
-        "backgroundColor": "#09090b",
-        "foregroundImage": "./assets/adaptive/foreground.png",
-        "backgroundImage": "./assets/adaptive/background.png"
+        "foregroundImage": "./assets/AppIcon.appiconset/512.png",
+        "backgroundColor": "#09090b"
       }
     },
     "extra": {
@@ -49,8 +48,5 @@
       }
     },
     "owner": "devendervutukuru"
-  },
-  "cli": {
-    "appVersionSource": "local"
   }
 }

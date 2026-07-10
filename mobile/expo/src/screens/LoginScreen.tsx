@@ -5,7 +5,7 @@ import {
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import { colors, spacing, typography, commonStyles } from '../theme'
-import { api, User, getApiUrl, setApiUrl } from '../api/client'
+import { api, User } from '../api/client'
 
 interface Props {
   onLogin: (user: User) => void
@@ -14,17 +14,8 @@ interface Props {
 export default function LoginScreen({ onLogin }: Props) {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
-  const [serverUrl, setServerUrl] = useState('')
-  const [loading, setLoading] = useState(true)
-  const [showUrlInput, setShowUrlInput] = useState(false)
-
-  useEffect(() => {
-    getApiUrl().then(url => {
-      setServerUrl(url)
-      setLoading(false)
-    })
-  }, [])
   const [showPassword, setShowPassword] = useState(false)
+  const [loading, setLoading] = useState(false)
 
   const login = async () => {
     if (!email.trim() || !password) return
@@ -52,31 +43,7 @@ export default function LoginScreen({ onLogin }: Props) {
           </View>
 
           <View style={styles.form}>
-            {/* Server URL */}
-            <TouchableOpacity onPress={() => setShowUrlInput(!showUrlInput)} style={{ marginBottom: spacing.lg }}>
-              <Text style={[typography.caption, { color: colors.muted, textDecorationLine: 'underline' }]}>
-                {showUrlInput ? '← Hide' : 'Configure server...'}
-              </Text>
-            </TouchableOpacity>
-            {showUrlInput && (
-              <View style={{ marginBottom: spacing.lg }}>
-                <Text style={styles.label}>Server URL</Text>
-                <View style={styles.passwordRow}>
-                  <TextInput
-                    style={[commonStyles.input, { flex: 1 }]}
-                    value={serverUrl}
-                    onChangeText={setServerUrl}
-                    placeholder="https://your-server.com"
-                    placeholderTextColor={colors.muted}
-                    autoCapitalize="none"
-                    keyboardType="url"
-                  />
-                  <TouchableOpacity onPress={async () => { if (serverUrl.trim()) await setApiUrl(serverUrl.trim()); Alert.alert('Saved', 'Server URL updated') }} style={styles.eye}>
-                    <Text style={{ color: colors.primary, fontSize: 12, fontWeight: '600' }}>Save</Text>
-                  </TouchableOpacity>
-                </View>
-              </View>
-            )}
+            
 
             <Text style={styles.label}>Email</Text>
             <TextInput
