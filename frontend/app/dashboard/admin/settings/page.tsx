@@ -100,7 +100,6 @@ const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_l
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
-  supabase_invite: 'Supabase invite email (recommended)',
   resend_recovery: 'Resend — password reset link',
   resend_magiclink: 'Resend — magic sign-in link',
   sendgrid_recovery: 'SendGrid — password reset link',
@@ -189,8 +188,8 @@ function EmailTemplatesSection() {
   return (
     <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
       {TEMPLATES.map((tpl) => {
-        const tplFn = emailTemplates[tpl.id]
-        const preview = tplFn ? tplFn(...Object.values(tpl.sample) as [never]) : null
+        const tplFn = emailTemplates[tpl.id as keyof typeof emailTemplates]
+        const preview = tplFn ? (tplFn as any)(...Object.values(tpl.sample)) : null
         return (
           <div key={tpl.id} className="rounded-lg border border-border/60 bg-card/40 p-4 hover:border-primary/20 transition-colors">
             <div className="flex items-start justify-between">
@@ -352,6 +351,13 @@ function SystemSettingsInner() {
           (next as any)[k] = v.trim()
         }
       }
+      
+      // Also pre-populate masked secrets so they don't look empty in the UI
+      if (secretsMeta.resend_api_key_masked) next.resend_api_key = String(secretsMeta.resend_api_key_masked)
+      if (secretsMeta.sendgrid_api_key_masked) next.sendgrid_api_key = String(secretsMeta.sendgrid_api_key_masked)
+      if (secretsMeta.postal_api_key_masked) next.postal_api_key = String(secretsMeta.postal_api_key_masked)
+      if (secretsMeta.smtp_pass_masked) next.smtp_pass = String(secretsMeta.smtp_pass_masked)
+
       return next
     })
   }, [loading, secretsMeta])

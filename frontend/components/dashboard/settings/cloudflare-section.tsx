@@ -24,6 +24,7 @@ export function CloudflareSettingsSection() {
         setSavedZoneId(sec.cloudflare_zone_id || '')
         setHasSavedToken(!!sec.has_cloudflare_api_token)
         setZoneId(sec.cloudflare_zone_id || '')
+        setApiToken(sec.cloudflare_api_token_masked || '')
       })
       .catch(() => setMessage({ type: 'error', text: 'Failed to load current settings' }))
       .finally(() => setLoading(false))
