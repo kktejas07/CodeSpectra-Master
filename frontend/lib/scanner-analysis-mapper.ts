@@ -87,13 +87,17 @@ export function toClientAnalysisPayload(result: RawAnalysisResult): ClientAnalys
 
   const securityHotspots = issues.filter(i => i.type === 'security_hotspot').length
 
-  const duplicatePercentage = Math.min(100, Math.round(
+  const isNotCode = rawIssues.some(i => i.rule === 'not-code') || (result.quality === 0 && rawIssues.some(i => i.type === 'structure'))
+
+  const duplicatePercentage = isNotCode ? 0 : Math.min(100, Math.round(
     (rawIssues.filter(i => i.type === 'duplicate').length > 0 ? 10 : 0) +
     rawIssues.filter(i => i.type === 'duplicate').length * 5
   ))
 
   let bestPractices: string[] = []
-  if (result.quality >= 80 && issues.length === 0) {
+  if (isNotCode) {
+    bestPractices = ['Please provide valid source code to view best practices']
+  } else if (result.quality >= 80 && issues.length === 0) {
     bestPractices = ['No issues found — code is clean']
   } else if (result.quality >= 75) {
     bestPractices = ['Code quality is good — maintain current practices']

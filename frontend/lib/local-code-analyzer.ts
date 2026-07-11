@@ -39,17 +39,65 @@ function isLikelyCode(code: string): number {
   const lines = code.split('\n').filter(l => l.trim())
   if (lines.length === 0) return 0
 
-  const checks = [
-    { score: (code.match(/\b(function|const|let|var|if|else|for|while|return|switch|case|break|continue|try|catch|throw|async|await|import|export|class|def|fn|func|public|private|protected|void|static|struct|enum)\b/g) || []).length },
-    { score: (code.match(/[{}();]/g) || []).length * 0.5 },
-    { score: (code.match(/\b\w+\s*\(/g) || []).length * 0.8 },
-    { score: (code.match(/[=<>!&|+\-*/%]/g) || []).length * 0.3 },
-    { score: (code.match(/^\s*(#include|using|import |from |package)\b/gm) || []).length },
-    { score: (code.match(/\w+\s*[=!<>]=?\s*\w/g) || []).length * 0.6 },
-  ]
+  const words = code.match(/\b[a-zA-Z_]\w*\b/g) || []
+  const wordCount = words.length
+  if (wordCount === 0 && code.trim().length < 3) return 0
 
-  const raw = checks.reduce((sum, c) => sum + c.score, 0)
-  return Math.min(10, raw / Math.max(lines.length, 1))
+  const KEYWORDS = new Set([
+    'function', 'def', 'fn', 'func', 'class', 'struct', 'interface', 'type', 'enum', 'package',
+    'import', 'export', 'from', 'const', 'let', 'var', 'val', 'return', 'if', 'else', 'elif',
+    'for', 'while', 'do', 'switch', 'case', 'break', 'continue', 'try', 'catch', 'finally',
+    'throw', 'async', 'await', 'yield', 'public', 'private', 'protected', 'static', 'readonly',
+    'override', 'virtual', 'void', 'int', 'string', 'number', 'boolean', 'bool', 'float', 'double',
+    'char', 'select', 'where', 'insert', 'update', 'delete', 'create', 'drop', 'table', 'require',
+    'module', 'impl', 'pub', 'use', 'trait', 'match', 'goto', 'sizeof', 'new', 'this', 'self'
+  ])
+
+  const kwMatches = words.filter(w => KEYWORDS.has((w || '').toLowerCase()))
+  const kwRatio = wordCount > 0 ? kwMatches.length / wordCount : 0
+  const keywordScore = Math.min(3.5, kwMatches.length * 0.5 + kwRatio * 6.0)
+
+  const blockPairs = (code.match(/\{[\s\S]*?\}/g) || []).length
+  const parenCalls = (code.match(/\b\w+\s*\([^)]*\)/g) || []).length
+  const semicolons = (code.match(/;/g) || []).length
+  const arrows = (code.match(/=>|->/g) || []).length
+  const blockColons = (code.match(/:\s*(?:\n|$)/g) || []).length
+
+  const structureScore = Math.min(
+    3.5,
+    blockPairs * 1.0 + parenCalls * 0.6 + semicolons * 0.4 + arrows * 0.6 + blockColons * 0.6
+  )
+
+  const operators = (code.match(/[=<>!&|+\-*/%^~]/g) || []).length
+  const dotAccess = (code.match(/\.\w+/g) || []).length
+  const operatorScore = Math.min(2.0, operators * 0.2 + dotAccess * 0.3)
+
+  const indentedLines = lines.filter(l => /^\s{2,}|\t/.test(l)).length
+  const indentScore = Math.min(1.0, indentedLines * 0.25)
+
+  let totalScore = keywordScore + structureScore + operatorScore + indentScore
+
+  const cleanLines = lines.map(l => l.replace(/(["'`]).*?\1/g, '').trim())
+  let proseLines = 0
+  for (const line of cleanLines) {
+    if (line.startsWith('//') || line.startsWith('#') || line.startsWith('/*')) continue
+    if (/\b[a-zA-Z]{2,}\b(?:\s+\b[a-zA-Z]{2,}\b){3,}/.test(line) && !/[{}();=[\]<>!&|]/.test(line)) {
+      proseLines++
+    }
+  }
+  totalScore -= proseLines * 2.5
+
+  const symbolCount = (code.match(/[{}();=[\]<>!&|+\-*/%.,:_]/g) || []).length
+  const symbolRatio = wordCount > 0 ? symbolCount / wordCount : 0
+  if (wordCount > 3 && symbolRatio < 0.25) {
+    totalScore -= 3.0
+  }
+
+  if (structureScore + operatorScore < 0.8 && kwRatio < 0.15) {
+    totalScore -= 3.5
+  }
+
+  return Math.max(0, Math.min(10, Number(totalScore.toFixed(1))))
 }
 
 function findSecurityIssues(code: string): RawAnalyzerIssue[] {
@@ -314,12 +362,35 @@ export function analyzeCodeLocally(code: string, language: string): RawAnalysisR
   const suggestions: RawAnalyzerSuggestion[] = []
 
   const plausibility = isLikelyCode(code)
-  if (plausibility < 1.5 && code.trim().length > 0) {
-    issues.push({
-      line: 1, column: 1,
-      message: `Text does not appear to be source code (plausibility: ${plausibility.toFixed(1)}). This may be random text, a placeholder, or an unsupported language.`,
-      severity: 'error', rule: 'not-code', type: 'structure',
-    })
+  const isNotCode = plausibility < 3.0
+
+  if (isNotCode) {
+    return {
+      quality: 0,
+      issues: [
+        {
+          line: 1, column: 1,
+          message: `Text does not appear to be valid source code (plausibility: ${plausibility.toFixed(1)}/10). This may be random text, a placeholder, or plain English. Please enter valid code to scan.`,
+          severity: 'error', rule: 'not-code', type: 'structure',
+        }
+      ],
+      suggestions: [
+        {
+          title: 'Provide valid source code',
+          description: 'The input entered appears to be plain text, prose, or unsupported syntax rather than valid source code.',
+          code: '',
+          explanation: 'Code scanner requires syntactically valid source code (such as TypeScript, Python, Java, Go, etc.) to evaluate bugs, vulnerabilities, and quality metrics.',
+          confidence: 1.0,
+        }
+      ],
+      bugs: 0,
+      vulnerabilities: 0,
+      codeSmells: 1,
+      complexityScore: 0,
+      maintainabilityIndex: 0,
+      testCoveragePercentage: 0,
+      timeMs: Date.now() - startTime,
+    }
   }
 
   issues.push(...findSecurityIssues(code))
@@ -335,13 +406,11 @@ export function analyzeCodeLocally(code: string, language: string): RawAnalysisR
   const errorCount = issues.filter(i => i.severity === 'error').length
   const warningCount = issues.filter(i => i.severity === 'warning').length
   const infoCount = issues.filter(i => i.severity === 'info').length
-  const securityHotspotCount = issues.filter(i => i.type === 'security_hotspot').length
   const bugCount = issues.filter(i => i.type === 'bug').length
   const vulnerabilityCount = issues.filter(i => i.type === 'security' && i.severity === 'error').length
 
   let quality = Math.max(0, 100 - errorCount * 20 - warningCount * 8 - infoCount * 2)
 
-  if (plausibility < 1.5) quality = Math.max(0, quality - 40)
   if (lang === 'unknown') quality = Math.max(0, quality - 15)
 
   quality = Math.max(0, Math.min(100, Math.round(quality)))
