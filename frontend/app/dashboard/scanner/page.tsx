@@ -60,6 +60,8 @@ interface AnalysisResult {
   scanId?: string
   /** Language label for scan history (from server or current picker). */
   language?: string
+  /** Code snippet analyzed (for loading back into editor). */
+  codeSnippet?: string
 }
 
 function CodeScannerPageInner() {
@@ -148,7 +150,7 @@ function CodeScannerPageInner() {
         ? (result as { scanned_code: string }).scanned_code
         : ''
     setGithubScanCode(scanned)
-    const { scanId, scannerLanguage, scanned_code: _sc, ...rest } = result as AnalysisResult & {
+    const { scanId, scannerLanguage, scanned_code: _sc, ...rest } = result as unknown as AnalysisResult & {
       scanId?: string
       scannerLanguage?: string
       scanned_code?: string
@@ -182,7 +184,7 @@ function CodeScannerPageInner() {
         console.error('[CodeSpectra] Analysis error:', result)
         return
       }
-      const { scanId, scannerLanguage, ...rest } = result as AnalysisResult & {
+      const { scanId, scannerLanguage, ...rest } = result as unknown as AnalysisResult & {
         scanId?: string
         scannerLanguage?: string
       }
@@ -370,9 +372,18 @@ function CodeScannerPageInner() {
                   codeSmells: scan.codeSmells,
                   timestamp: scan.timestamp,
                   duration: scan.timeMs,
+                  codeSnippet: scan.codeSnippet,
                 }))}
                 onSelectScan={(scan) => {
                   const historyItem = scanHistory.find((h) => h.id === scan.id)
+                  if (historyItem) setAnalysis(historyItem)
+                }}
+                onEdit={(scan) => {
+                  const historyItem = scanHistory.find((h) => h.id === scan.id)
+                  if (historyItem?.codeSnippet) {
+                    setCode(historyItem.codeSnippet)
+                    if (historyItem.language) setLanguage(historyItem.language)
+                  }
                   if (historyItem) setAnalysis(historyItem)
                 }}
                 onDelete={async (scanId) => {

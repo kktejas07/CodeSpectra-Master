@@ -4,7 +4,7 @@ import { formatDistanceToNow } from 'date-fns'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, Trash2, RefreshCw, Eye } from 'lucide-react'
+import { Clock, Trash2, Pencil, Eye } from 'lucide-react'
 
 interface ScanResult {
   id: string
@@ -17,16 +17,17 @@ interface ScanResult {
   codeSmells: number
   timestamp: Date
   duration: number
+  codeSnippet?: string
 }
 
 interface ScanHistoryProps {
   scans: ScanResult[]
   onSelectScan?: (scan: ScanResult) => void
-  onRescan?: (scan: ScanResult) => void
+  onEdit?: (scan: ScanResult) => void
   onDelete?: (scanId: string) => void
 }
 
-export function ScanHistory({ scans, onSelectScan, onRescan, onDelete }: ScanHistoryProps) {
+export function ScanHistory({ scans, onSelectScan, onEdit, onDelete }: ScanHistoryProps) {
   const getQualityColor = (score: number) => {
     if (score >= 80) return 'bg-green-500/20 text-green-600 border-green-500/30'
     if (score >= 60) return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
@@ -100,17 +101,17 @@ export function ScanHistory({ scans, onSelectScan, onRescan, onDelete }: ScanHis
                   <button
                     onClick={() => onSelectScan?.(scan)}
                     className="p-2 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
-                    title="View details"
+                    title="View full report"
                   >
                     <Eye className="w-4 h-4" />
                   </button>
 
                   <button
-                    onClick={() => onRescan?.(scan)}
+                    onClick={() => onEdit?.(scan)}
                     className="p-2 hover:bg-background rounded text-foreground/60 hover:text-foreground transition"
-                    title="Re-scan"
+                    title="Edit previous scan"
                   >
-                    <RefreshCw className="w-4 h-4" />
+                    <Pencil className="w-4 h-4" />
                   </button>
 
                   <button

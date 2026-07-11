@@ -14,6 +14,7 @@ function rowToClientScan(row: ScanWithMetrics) {
     const j = fromJson as ClientAnalysisPayload & {
       storedScanId?: string
       scannerLanguage?: string
+      codeSnippet?: string
     }
     return {
       ...j,
@@ -21,6 +22,7 @@ function rowToClientScan(row: ScanWithMetrics) {
       timeMs: row.scan_duration_ms ?? j.timeMs ?? 0,
       timestamp: ts,
       language: j.scannerLanguage ?? row.language,
+      codeSnippet: row.code_snippet || j.codeSnippet || undefined,
     }
   }
 
@@ -42,6 +44,7 @@ function rowToClientScan(row: ScanWithMetrics) {
     timeMs: row.scan_duration_ms ?? 0,
     timestamp: ts,
     language: row.language,
+    codeSnippet: row.code_snippet || undefined,
   }
 }
 
