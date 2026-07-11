@@ -115,16 +115,16 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
 
               <Button
                 className="w-full"
-                variant={isPro ? 'default' : 'outline'}
-                onClick={() => plan.plan === 'free' ? null : handleUpgrade(plan.plan)}
-                asChild={plan.plan === 'free'}
+                variant={isPro || (plan.price && plan.price !== '$0' && plan.price !== 'Free') ? 'default' : 'outline'}
+                onClick={() => (!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free') ? null : handleUpgrade(plan.plan)}
+                asChild={!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free'}
               >
-                {plan.plan === 'free' ? (
+                {(!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free') ? (
                   <Link href="/dashboard">Get Started Free</Link>
-                ) : plan.plan === 'pro' ? (
-                  <><Crown className="h-4 w-4 mr-2" /> Upgrade to Pro</>
-                ) : (
+                ) : plan.plan === 'enterprise' || plan.price?.toLowerCase().includes('contact') ? (
                   <><Zap className="h-4 w-4 mr-2" /> Contact Sales</>
+                ) : (
+                  <><Crown className="h-4 w-4 mr-2" /> Upgrade to {plan.name}</>
                 )}
               </Button>
             </Card>

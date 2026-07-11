@@ -10,12 +10,14 @@
 const BACKEND = process.env.INTERNAL_BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'http://codespectra-backend-cd7lq6:8000' : 'http://localhost:8001')
 
 async function getBackendSecrets(): Promise<{
-  anthropic: string; gemini: string; openai: string
+  anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string
 }> {
   const fromEnv = {
     anthropic: process.env.ANTHROPIC_API_KEY?.trim() || '',
     gemini: process.env.GEMINI_API_KEY?.trim() || '',
     openai: process.env.OPENAI_API_KEY?.trim() || '',
+    openrouter: process.env.OPENROUTER_API_KEY?.trim() || '',
+    opencode: process.env.OPENCODE_API_KEY?.trim() || '',
   }
   try {
     const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
@@ -26,6 +28,8 @@ async function getBackendSecrets(): Promise<{
       anthropic: fromEnv.anthropic || (secrets.anthropic_api_key?.trim() || llmKey),
       gemini: fromEnv.gemini || (secrets.gemini_api_key?.trim() || llmKey),
       openai: fromEnv.openai || (secrets.openai_api_key?.trim() || llmKey),
+      openrouter: fromEnv.openrouter || (secrets.openrouter_api_key?.trim() || llmKey),
+      opencode: fromEnv.opencode || (secrets.opencode_api_key?.trim() || llmKey),
     }
   } catch {
     return fromEnv
@@ -44,6 +48,9 @@ async function backendHeaders(opts?: { apiKeyOverride?: string }): Promise<Recor
   if (keys.anthropic && !h['x-anthropic-api-key']) h['x-anthropic-api-key'] = keys.anthropic
   if (keys.gemini && !h['x-gemini-api-key']) h['x-gemini-api-key'] = keys.gemini
   if (keys.openai && !h['x-openai-api-key']) h['x-openai-api-key'] = keys.openai
+  const activeKey = keys.openai || keys.openrouter || keys.opencode || keys.anthropic || keys.gemini
+  if (activeKey && !h['x-api-key']) h['x-api-key'] = activeKey
+  if (activeKey && !h['x-openai-api-key']) h['x-openai-api-key'] = activeKey
   return h
 }
 

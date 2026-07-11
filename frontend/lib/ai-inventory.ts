@@ -561,7 +561,7 @@ async function discoverGenAiRuns(): Promise<InventoryItem[]> {
 // Public entry — fetch one category. Used by the chunked API.
 // ---------------------------------------------------------------------------
 
-export async function fetchCategory(cat: InventoryCategory): Promise<InventoryItem[]> {
+export async function fetchCategoryRaw(cat: InventoryCategory): Promise<InventoryItem[]> {
   switch (cat) {
     case 'automations':
       return discoverAutomations()
@@ -589,6 +589,49 @@ export async function fetchCategory(cat: InventoryCategory): Promise<InventoryIt
       return WEB_SCRAPING_CATALOG
     case 'os_agent_frameworks':
       return OS_AGENT_CATALOG
+  }
+}
+
+export async function fetchCategory(cat: InventoryCategory): Promise<InventoryItem[]> {
+  const baseItems = await fetchCategoryRaw(cat)
+  try {
+    const db = await getMongoDb()
+    const overridesCol = db.collection('ai_inventory_overrides')
+    const overrides = await overridesCol.find({ category: cat }).toArray()
+    const overrideMap = new Map<string, Record<string, unknown>>()
+    for (const ov of overrides) {
+      if (ov.id && typeof ov.id === 'string') {
+        overrideMap.set(ov.id, ov as Record<string, unknown>)
+      }
+    }
+
+    const modifiedItems = baseItems.map((item) => {
+      const ov = overrideMap.get(item.id)
+      if (!ov) return item
+      return {
+        ...item,
+        status: (ov.status as InventoryItem['status']) || item.status,
+        purpose: typeof ov.purpose === 'string' ? ov.purpose : item.purpose,
+        version: typeof ov.version === 'string' ? ov.version : item.version,
+      }
+    })
+
+    const customCol = db.collection('custom_ai_components')
+    const customDocs = await customCol.find({ category: cat }).toArray()
+    const customItems: InventoryItem[] = customDocs.map((doc) => ({
+      id: String(doc.id || doc._id),
+      category: cat,
+      name: String(doc.name || 'Custom Component'),
+      purpose: String(doc.purpose || 'Custom superadmin added AI tool'),
+      module: String(doc.module || 'custom'),
+      status: (doc.status as InventoryItem['status']) || 'active',
+      source: doc.source ? String(doc.source) : undefined,
+      version: doc.version ? String(doc.version) : undefined,
+    }))
+
+    return [...modifiedItems, ...customItems]
+  } catch {
+    return baseItems
   }
 }
 

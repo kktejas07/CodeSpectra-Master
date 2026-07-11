@@ -110,13 +110,15 @@ def _resolve_key(provider: str, request_headers=None) -> str:
         "gemini": "x-gemini-api-key",
         "openai": "x-openai-api-key",
         "opencode": "x-openai-api-key",
+        "openrouter": "x-openai-api-key",
         "omnirouter": "x-openai-api-key",
     }
     env_map = {
         "anthropic": "ANTHROPIC_API_KEY",
         "gemini": "GEMINI_API_KEY",
         "openai": "OPENAI_API_KEY",
-        "opencode": "OPENROUTER_API_KEY",
+        "opencode": "OPENCODE_API_KEY",
+        "openrouter": "OPENROUTER_API_KEY",
         "omnirouter": "OPENAI_API_KEY",
     }
     header = key_header_map.get(provider)
@@ -132,8 +134,10 @@ def _resolve_key(provider: str, request_headers=None) -> str:
             resolved = generic
     if not resolved and env_var:
         val = os.environ.get(env_var, "")
-        if not val and provider == "opencode":
+        if not val and provider == "openrouter":
             val = os.environ.get("OPENAI_API_KEY", "")
+        elif not val and provider == "opencode":
+            val = os.environ.get("OPENROUTER_API_KEY", "") or os.environ.get("OPENAI_API_KEY", "")
         if val:
             resolved = val
     if not resolved:
@@ -152,9 +156,10 @@ def _ensure_key(key: str, provider: str = "ai") -> None:
             detail=f"Invalid masked API key received for {provider.upper()}. Please enter your clean unmasked API key in Settings → AI & LLM Provider."
         )
     if not key:
+        hint = "for OpenRouter, enter your key starting with sk-or-v1-" if provider == "openrouter" else ("for OpenCode, enter your opencode.ai API key" if provider == "opencode" else "")
         raise HTTPException(
             status_code=500,
-            detail=f"API Key not configured for {provider.upper()}. Please add your valid API key in Settings → AI & LLM Provider (for OpenCode/OpenRouter, enter your OpenRouter API Key starting with sk-or-v1-)."
+            detail=f"API Key not configured for {provider.upper()}. Please add your valid API key in Settings → AI & LLM Provider {hint}."
         )
 
 
@@ -171,7 +176,9 @@ def _build_chat(model_role: str, session_id: str, system_message: str, api_key_o
         key = _resolve_key(provider, None)
     _ensure_key(key, provider)
     base_url = endpoint_override or ""
-    if "opencode.june07.com" in base_url:
+    if provider == "opencode" and (not base_url or "openrouter.ai" in base_url or "opencode.june07.com" in base_url):
+        base_url = "https://opencode.ai/zen/v1"
+    elif provider == "openrouter" and (not base_url or "opencode.june07.com" in base_url):
         base_url = "https://openrouter.ai/api/v1"
     return LlmChat(api_key=key, provider=provider, model=model, system_message=system_message, base_url=base_url)
 

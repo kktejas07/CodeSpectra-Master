@@ -644,13 +644,29 @@ function SystemSettingsInner() {
             </div>
             <div>
               <Label htmlFor="timezone">Default timezone</Label>
-              <Input
-                id="timezone"
-                value={form.timezone}
-                onChange={(e) => setForm((f) => ({ ...f, timezone: e.target.value }))}
-                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                placeholder="UTC"
-              />
+              <Select
+                value={form.timezone || 'UTC'}
+                onValueChange={(v) => setForm((f) => ({ ...f, timezone: v }))}
+              >
+                <SelectTrigger id="timezone" className="mt-1.5 h-10 w-full rounded-lg border-border/60 font-mono text-sm">
+                  <SelectValue placeholder="Select timezone" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="UTC">UTC (Coordinated Universal Time)</SelectItem>
+                  <SelectItem value="America/New_York">America/New_York (EST/EDT)</SelectItem>
+                  <SelectItem value="America/Chicago">America/Chicago (CST/CDT)</SelectItem>
+                  <SelectItem value="America/Denver">America/Denver (MST/MDT)</SelectItem>
+                  <SelectItem value="America/Los_Angeles">America/Los_Angeles (PST/PDT)</SelectItem>
+                  <SelectItem value="Europe/London">Europe/London (GMT/BST)</SelectItem>
+                  <SelectItem value="Europe/Paris">Europe/Paris (CET/CEST)</SelectItem>
+                  <SelectItem value="Europe/Berlin">Europe/Berlin (CET/CEST)</SelectItem>
+                  <SelectItem value="Asia/Dubai">Asia/Dubai (GST)</SelectItem>
+                  <SelectItem value="Asia/Kolkata">Asia/Kolkata (IST)</SelectItem>
+                  <SelectItem value="Asia/Singapore">Asia/Singapore (SGT)</SelectItem>
+                  <SelectItem value="Asia/Tokyo">Asia/Tokyo (JST)</SelectItem>
+                  <SelectItem value="Australia/Sydney">Australia/Sydney (AEST/AEDT)</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label htmlFor="default_locale">Default language</Label>
@@ -665,6 +681,24 @@ function SystemSettingsInner() {
                   {locales.map((l) => (
                     <SelectItem key={l.id} value={l.id}>
                       {l.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label htmlFor="platform_currency">Platform currency</Label>
+              <Select
+                value={form.platform_currency || 'USD'}
+                onValueChange={(v) => setForm((f) => ({ ...f, platform_currency: v }))}
+              >
+                <SelectTrigger id="platform_currency" className="mt-1.5 h-10 w-full rounded-lg border-border/60 font-mono text-sm">
+                  <SelectValue placeholder="Select currency" />
+                </SelectTrigger>
+                <SelectContent>
+                  {currencies.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.label}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -750,7 +784,14 @@ function SystemSettingsInner() {
 
             <div className="grid gap-6 md:grid-cols-2">
               <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
-                <p className="text-sm font-medium text-foreground">Resend</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">Resend</p>
+                  {secretsMeta.has_resend_api_key || secretsMeta.resend_from_email ? (
+                    <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                  ) : (
+                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   API key and default from address. Leave key blank to keep the current stored key.
                 </p>
@@ -799,7 +840,14 @@ function SystemSettingsInner() {
               </div>
 
               <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
-                <p className="text-sm font-medium text-foreground">SendGrid</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">SendGrid</p>
+                  {secretsMeta.has_sendgrid_api_key || secretsMeta.sendgrid_from_email ? (
+                    <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                  ) : (
+                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   API key and verified sender email. Leave key blank to keep the current stored key.
                 </p>
@@ -847,7 +895,14 @@ function SystemSettingsInner() {
               </div>
 
               <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
-                <p className="text-sm font-medium text-foreground">Postal</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">Postal</p>
+                  {secretsMeta.has_postal_api_key || secretsMeta.postal_server ? (
+                    <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                  ) : (
+                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Self-hosted Postal mail server. Server URL, API key, and from address.
                 </p>
@@ -876,6 +931,7 @@ function SystemSettingsInner() {
                       id="mail_postal_key"
                       type={visibleFields.postal_api_key ? 'text' : 'password'}
                       autoComplete="off"
+                      placeholder={secretsMeta.has_postal_api_key ? 'Key saved — enter new value to replace' : 'post_…'}
                       value={mailSecretsDraft.postal_api_key}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, postal_api_key: e.target.value }))
@@ -908,7 +964,14 @@ function SystemSettingsInner() {
               </div>
 
               <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
-                <p className="text-sm font-medium text-foreground">SMTP</p>
+                <div className="flex items-center justify-between">
+                  <p className="text-sm font-medium text-foreground">SMTP</p>
+                  {secretsMeta.smtp_host ? (
+                    <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                  ) : (
+                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                  )}
+                </div>
                 <p className="text-xs text-muted-foreground">
                   Generic SMTP server. Host, port, credentials, and from address.
                 </p>
@@ -991,90 +1054,11 @@ function SystemSettingsInner() {
                     }
                     className="mt-1.5 h-10 rounded-lg border-border/60 bg-background text-sm"
                   />
-                  </div>
                 </div>
-
-                {/* AI / LLM Keys */}
-                <div className="space-y-4 rounded-lg border border-border/60 bg-card/40 p-4">
-                  <div className="flex items-center justify-between">
-                    <p className="text-sm font-semibold text-foreground">AI / LLM Providers</p>
-                    <span className="rounded-full bg-green-500/15 text-green-500 px-2 py-0.5 text-[10px] uppercase tracking-wide">Multiple</span>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Configure at least one AI provider. The platform tries providers in order:
-                    <strong>Google Gemini has a free tier</strong> —
-                    you can use it with no cost.
-                  </p>
-
-                  {/* Gemini (free tier available) */}
-                  <div className="space-y-1.5 rounded-md border border-green-500/20 bg-green-500/5 p-3">
-                    <div className="flex items-center justify-between">
-                      <Label className="text-green-600 dark:text-green-400">Google Gemini — Free Tier Available</Label>
-                      <span className="text-[10px] font-medium px-1.5 py-0.5 rounded-full bg-green-500/10 text-green-600">Free</span>
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      Get a free API key from{' '}
-                      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google AI Studio</a>.
-                      Free tier: 60 requests/min on Gemini 2.0 Flash.
-                    </p>
-                    {secretsMeta.has_gemini_api_key ? (
-                      <p className="text-xs font-mono text-muted-foreground">Key saved: {String(secretsMeta.gemini_api_key_masked ?? '—')}</p>
-                    ) : null}
-                    <Input
-                      value={secretsDraft.gemini_api_key}
-                      onChange={(e) => setSecretsDraft((d) => ({ ...d, gemini_api_key: e.target.value }))}
-                      type={visibleFields.gemini_api_key ? 'text' : 'password'}
-                      placeholder={secretsMeta.has_gemini_api_key ? '' : 'AIzaSy...'}
-                      className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  {/* Anthropic (paid) */}
-                  <div className="space-y-1.5 p-3">
-                    <Label>Anthropic Claude (Paid)</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Used for reasoning tasks (chat, code review, grading, agent).
-                      Get a key from{' '}
-                      <a href="https://console.anthropic.com/" target="_blank" rel="noopener noreferrer" className="text-primary underline">console.anthropic.com</a>.
-                    </p>
-                    {secretsMeta.has_anthropic_api_key ? (
-                      <p className="text-xs font-mono text-muted-foreground">Key saved: {String(secretsMeta.anthropic_api_key_masked ?? '—')}</p>
-                    ) : null}
-                    <Input
-                      value={secretsDraft.anthropic_api_key}
-                      onChange={(e) => setSecretsDraft((d) => ({ ...d, anthropic_api_key: e.target.value }))}
-                      type={visibleFields.anthropic_api_key ? 'text' : 'password'}
-                      placeholder={secretsMeta.has_anthropic_api_key ? '' : 'sk-ant-...'}
-                      className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      autoComplete="off"
-                    />
-                  </div>
-
-                  {/* OpenAI (for interview service) */}
-                  <div className="space-y-1.5 p-3">
-                    <Label>OpenAI (Optional — for interviews)</Label>
-                    <p className="text-xs text-muted-foreground">
-                      Used by the live interview AI service (OpenAI GPT-4).
-                      Get a key from{' '}
-                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">platform.openai.com</a>.
-                    </p>
-                    {secretsMeta.has_openai_api_key ? (
-                      <p className="text-xs font-mono text-muted-foreground">Key saved: {String(secretsMeta.openai_api_key_masked ?? '—')}</p>
-                    ) : null}
-                    <Input
-                      value={secretsDraft.openai_api_key}
-                      onChange={(e) => setSecretsDraft((d) => ({ ...d, openai_api_key: e.target.value }))}
-                      type={visibleFields.openai_api_key ? 'text' : 'password'}
-                      placeholder={secretsMeta.has_openai_api_key ? '' : 'sk-...'}
-                      className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                      autoComplete="off"
-                    />
-                  </div>
-                </div>
-
               </div>
-              <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
+
+            </div>
+            <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
             <Button
               className="gap-2 rounded-lg"
               onClick={() => void saveInvitationsAndOptionalMailSecrets()}
@@ -1228,9 +1212,14 @@ function SystemSettingsInner() {
                 <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="origins-section">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">Trusted origins (CORS + CSRF)</p>
-                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                      Dynamic
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {secretsMeta.trusted_origins_extra ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                      )}
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Additional origins for <code className="rounded bg-muted px-1">/api/auth/*</code>. One per line or comma-separated.
@@ -1260,9 +1249,14 @@ function SystemSettingsInner() {
                 <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="piston-section">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">Code execution backend (Piston)</p>
-                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                      Dynamic
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {secretsMeta.piston_url ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">In-process</span>
+                      )}
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Piston-compatible code execution server URL. Leave empty for in-process executor (python, node, tsx, bash).
@@ -1339,9 +1333,14 @@ function SystemSettingsInner() {
                 <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="github-token-section">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">GitHub App / PAT token</p>
-                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                      Dynamic
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {secretsMeta.has_github_app_token ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                      )}
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Personal access token used by the AI code-review bot to{' '}
@@ -1382,9 +1381,14 @@ function SystemSettingsInner() {
                 <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="github-oauth-section">
                   <div className="flex items-center justify-between">
                     <p className="text-sm font-semibold text-foreground">GitHub OAuth App (per-user install)</p>
-                    <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">
-                      Dynamic
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {secretsMeta.github_client_id ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                      )}
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                    </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
                     Lets each user authorise CodeSpectra against their own GitHub
@@ -1524,23 +1528,7 @@ function SystemSettingsInner() {
                           >
                             {visibleFields[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
-            <div>
-              <Label htmlFor="platform_currency">Platform currency</Label>
-              <Select
-                value={form.platform_currency}
-                onValueChange={(v) => setForm((f) => ({ ...f, platform_currency: v }))}
-              >
-                <SelectTrigger id="platform_currency" className="mt-1.5 h-10 w-full rounded-lg border-border/60">
-                  <SelectValue placeholder="Select currency" />
-                </SelectTrigger>
-                <SelectContent>
-                  {currencies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+                        </div>
                       </div>
                     ))}
                   </div>

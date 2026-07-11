@@ -6,7 +6,10 @@ const DOCS_ROOT = (() => {
   const cwd = process.cwd()
   // Dev: cwd = frontend/  →  ../docs
   // Docker: cwd = /app    →  ./docs
-  const siblings = [path.join(cwd, '..', 'docs'), path.join(cwd, 'docs')]
+  const siblings = [
+    path.join(/*turbopackIgnore: true*/ cwd, '..', 'docs'),
+    path.join(/*turbopackIgnore: true*/ cwd, 'docs'),
+  ]
   for (const p of siblings) {
     if (fs.existsSync(p)) return p
   }

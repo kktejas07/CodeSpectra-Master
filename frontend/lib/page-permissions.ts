@@ -33,7 +33,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/pricing',
   '/dashboard/admin/security',
   '/dashboard/admin/proctor',
-  '/dashboard/admin/team',
   '/dashboard/admin/hackathons',
   '/dashboard/admin/rag',
   '/dashboard/admin/ai-inventory',
@@ -95,14 +94,14 @@ export const ALL_USER_ROUTES: string[] = [
 export function getRequiredRoleForRoute(pathname: string): UserRole {
   const base = pathname.split('?')[0]
 
+  // Tenant admin routes (check first so /dashboard/admin/team matches before /dashboard/admin catch-all)
+  for (const route of TENANT_ADMIN_ROUTES) {
+    if (base === route || base.startsWith(route + '/')) return 'tenant_admin'
+  }
+
   // Admin routes → superadmin
   for (const route of ADMIN_ONLY_ROUTES) {
     if (base === route || base.startsWith(route + '/')) return 'superadmin'
-  }
-
-  // Tenant admin routes
-  for (const route of TENANT_ADMIN_ROUTES) {
-    if (base === route || base.startsWith(route + '/')) return 'tenant_admin'
   }
 
   // All authenticated user routes

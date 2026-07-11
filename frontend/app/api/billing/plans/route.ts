@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
-import { getMergedBillingPlans, mergedPlanToClientJson } from '@/lib/pricing-catalog'
+import { mergedPlanToClientJson } from '@/lib/pricing-catalog'
+import { getMergedBillingPlans } from '@/lib/pricing-catalog-server'
 
 export async function GET() {
   const gate = await requireAuth()

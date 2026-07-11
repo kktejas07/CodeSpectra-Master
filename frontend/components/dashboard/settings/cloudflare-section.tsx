@@ -20,9 +20,10 @@ export function CloudflareSettingsSection() {
     fetch('/api/admin/server-secrets', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => {
-        setSavedZoneId(d.cloudflare_zone_id || '')
-        setHasSavedToken(!!d.has_cloudflare_api_token)
-        setZoneId(d.cloudflare_zone_id || '')
+        const sec = d.secrets || d
+        setSavedZoneId(sec.cloudflare_zone_id || '')
+        setHasSavedToken(!!sec.has_cloudflare_api_token)
+        setZoneId(sec.cloudflare_zone_id || '')
       })
       .catch(() => setMessage({ type: 'error', text: 'Failed to load current settings' }))
       .finally(() => setLoading(false))
@@ -60,14 +61,25 @@ export function CloudflareSettingsSection() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card">
-          <Globe2 className="h-5 w-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card">
+            <Globe2 className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h2 className="text-xl font-bold">Cloudflare</h2>
+            <p className="text-sm text-muted-foreground">CDN cache purge &amp; analytics integration</p>
+          </div>
         </div>
-        <div>
-          <h2 className="text-xl font-bold">Cloudflare</h2>
-          <p className="text-sm text-muted-foreground">CDN cache purge &amp; analytics integration</p>
-        </div>
+        {savedZoneId && hasSavedToken ? (
+          <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium">
+            ✓ Active
+          </span>
+        ) : (
+          <span className="rounded-full bg-amber-500/15 text-amber-300 px-2.5 py-0.5 text-[10px] uppercase tracking-wide font-medium">
+            Not configured
+          </span>
+        )}
       </div>
 
       {message && (

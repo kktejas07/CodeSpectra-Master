@@ -1,0 +1,87 @@
+diff --git a/node_modules/next/dist/client/components/layout-router.js b/node_modules/next/dist/client/components/layout-router.js
+index 06b68cc..ddbb3d5 100644
+--- a/node_modules/next/dist/client/components/layout-router.js
++++ b/node_modules/next/dist/client/components/layout-router.js
+@@ -439,14 +439,14 @@ function LoadingBoundaryProvider({ loading, children }) {
+     });
+ }
+ function OuterLayoutRouter({ parallelRouterKey, error, errorStyles, errorScripts, templateStyles, templateScripts, template, notFound, forbidden, unauthorized, segmentViewBoundaries }) {
+-    const context = (0, _react.useContext)(_approutercontextsharedruntime.LayoutRouterContext);
+-    if (!context) {
+-        throw Object.defineProperty(new Error('invariant expected layout router to be mounted'), "__NEXT_ERROR_CODE", {
+-            value: "E56",
+-            enumerable: false,
+-            configurable: true
+-        });
++    // ponytail: try-catch — React (_react) may be null during /_global-error prerender (Next.js 16.2.x bug E56)
++    let context;
++    try {
++        context = (0, _react.useContext)(_approutercontextsharedruntime.LayoutRouterContext);
++    } catch (_) {
++        return null;
+     }
++    if (!context) { return null; }
+     const { parentTree, parentCacheNode, parentSegmentPath, parentParams, parentLoadingData, url, isActive, debugNameContext } = context;
+     // Get the CacheNode for this segment by reading it from the parent segment's
+     // child map.
+diff --git a/node_modules/next/dist/esm/client/components/layout-router.js b/node_modules/next/dist/esm/client/components/layout-router.js
+index 25e44ba..765a485 100644
+--- a/node_modules/next/dist/esm/client/components/layout-router.js
++++ b/node_modules/next/dist/esm/client/components/layout-router.js
+@@ -415,13 +415,16 @@ export function LoadingBoundaryProvider({ loading, children }) {
+  * OuterLayoutRouter handles the current segment as well as <Offscreen> rendering of other segments.
+  * It can be rendered next to each other with a different `parallelRouterKey`, allowing for Parallel routes.
+  */ export default function OuterLayoutRouter({ parallelRouterKey, error, errorStyles, errorScripts, templateStyles, templateScripts, template, notFound, forbidden, unauthorized, segmentViewBoundaries }) {
+-    const context = useContext(LayoutRouterContext);
++    // ponytail: wrap in try-catch — React module (i) may be null during /_global-error
++    // prerender in Next.js 16.2.x when app-page runtime isn't loaded yet (bug E56).
++    let context;
++    try {
++        context = useContext(LayoutRouterContext);
++    } catch (_) {
++        return null;
++    }
+     if (!context) {
+-        throw Object.defineProperty(new Error('invariant expected layout router to be mounted'), "__NEXT_ERROR_CODE", {
+-            value: "E56",
+-            enumerable: false,
+-            configurable: true
+-        });
++        return null;
+     }
+     const { parentTree, parentCacheNode, parentSegmentPath, parentParams, parentLoadingData, url, isActive, debugNameContext } = context;
+     // Get the CacheNode for this segment by reading it from the parent segment's
+diff --git a/node_modules/next/dist/esm/server/route-modules/app-page/vendored/ssr/react.js b/node_modules/next/dist/esm/server/route-modules/app-page/vendored/ssr/react.js
+index 1181192..975def8 100644
+--- a/node_modules/next/dist/esm/server/route-modules/app-page/vendored/ssr/react.js
++++ b/node_modules/next/dist/esm/server/route-modules/app-page/vendored/ssr/react.js
+@@ -1,3 +1,11 @@
+-module.exports = require('../../module.compiled').vendored['react-ssr'].React;
++"use strict";
++// ponytail: vendored React fallback — module.compiled may not be initialized
++// during /_global-error prerender in Next.js 16.2.x (E56 bug). Fall back to
++// real React so the prerender doesn't crash. Runtime behavior is identical
++// since _global-error replaces RootLayout anyway.
++var _compiled;
++try { _compiled = require('../../module.compiled'); } catch(_) {}
++var _react = _compiled && _compiled.vendored && _compiled.vendored['react-ssr'] && _compiled.vendored['react-ssr'].React;
++module.exports = _react || require('react');
+ 
+ //# sourceMappingURL=react.js.map
+diff --git a/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js b/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js
+index c22246f..975def8 100644
+--- a/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js
++++ b/node_modules/next/dist/server/route-modules/app-page/vendored/ssr/react.js
+@@ -1,4 +1,11 @@
+ "use strict";
+-module.exports = require('../../module.compiled').vendored['react-ssr'].React;
++// ponytail: vendored React fallback — module.compiled may not be initialized
++// during /_global-error prerender in Next.js 16.2.x (E56 bug). Fall back to
++// real React so the prerender doesn't crash. Runtime behavior is identical
++// since _global-error replaces RootLayout anyway.
++var _compiled;
++try { _compiled = require('../../module.compiled'); } catch(_) {}
++var _react = _compiled && _compiled.vendored && _compiled.vendored['react-ssr'] && _compiled.vendored['react-ssr'].React;
++module.exports = _react || require('react');
+ 
+ //# sourceMappingURL=react.js.map

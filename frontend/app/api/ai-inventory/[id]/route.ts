@@ -1,0 +1,104 @@
+/**
+ * Single item CRUD for AI inventory (`/api/ai-inventory/[id]`).
+ *
+ *   GET    /api/ai-inventory/[id] -> fetch single item + overrides
+ *   PATCH  /api/ai-inventory/[id] -> update status/purpose/version override
+ *   DELETE /api/ai-inventory/[id] -> delete override or custom component
+ */
+import { NextRequest, NextResponse } from 'next/server'
+import { getAPIUser } from '@/lib/api-auth'
+import { getMongoDb } from '@/lib/mongodb'
+import { CATEGORY_ORDER, fetchCategory, type InventoryCategory } from '@/lib/ai-inventory'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+function isAdmin(role?: string | null): boolean {
+  return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
+}
+
+export async function GET(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  const id = params.id
+  for (const cat of CATEGORY_ORDER) {
+    const items = await fetchCategory(cat)
+    const found = items.find((it) => it.id === id)
+    if (found) {
+      return NextResponse.json({ ok: true, item: found })
+    }
+  }
+  return NextResponse.json({ error: 'Item not found' }, { status: 404 })
+}
+
+export async function PATCH(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  try {
+    const body = await req.json()
+    const { category, status, purpose, version } = body
+    if (!category) {
+      return NextResponse.json({ error: 'category is required' }, { status: 400 })
+    }
+
+    const db = await getMongoDb()
+    const overridesCol = db.collection('ai_inventory_overrides')
+    const now = new Date().toISOString()
+
+    const updateFields: Record<string, unknown> = { updated_at: now }
+    if (status !== undefined) updateFields.status = status
+    if (purpose !== undefined) updateFields.purpose = purpose
+    if (version !== undefined) updateFields.version = version
+
+    await overridesCol.updateOne(
+      { id: params.id, category },
+      {
+        $set: {
+          id: params.id,
+          category,
+          ...updateFields,
+        },
+      },
+      { upsert: true }
+    )
+
+    // Also check if it's in custom_ai_components
+    const customCol = db.collection('custom_ai_components')
+    await customCol.updateOne(
+      { id: params.id },
+      { $set: updateFields }
+    )
+
+    return NextResponse.json({ ok: true, id: params.id, category, ...updateFields })
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+  }
+}
+
+export async function DELETE(
+  req: NextRequest,
+  { params }: { params: { id: string } }
+) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+
+  try {
+    const db = await getMongoDb()
+    await db.collection('ai_inventory_overrides').deleteOne({ id: params.id })
+    await db.collection('custom_ai_components').deleteOne({ id: params.id })
+    return NextResponse.json({ ok: true, deleted_id: params.id })
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+  }
+}

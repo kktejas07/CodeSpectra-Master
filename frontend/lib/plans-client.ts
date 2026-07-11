@@ -28,9 +28,16 @@ export function isFeatureEnabled(plan: PlanDefinition | null, featureKey: string
  */
 export function isPageAllowed(plan: PlanDefinition | null, page: string): boolean {
   if (!plan) return false
-  if (plan.plan === 'enterprise') return true
-  if (plan.plan === 'pro') return true
-  if (plan.plan === 'free') {
+
+  // If the plan has explicit feature toggle for allowed_pages / accessible_pages that is disabled
+  const allowedPagesFeature = plan.features.find(f => f.key === 'allowed_pages' || f.key === 'accessible_pages')
+  if (allowedPagesFeature && !allowedPagesFeature.enabled) return false
+
+  // Enterprise and Pro or custom paid tiers have full access to non-admin user dashboard routes
+  if (plan.plan === 'enterprise' || plan.plan === 'pro') return true
+
+  // For free plan or zero-cost default tiers, apply standard feature exclusions
+  if (plan.plan === 'free' || plan.price === '$0' || plan.price === 'Free') {
     const excludedPatterns = [
       '/dashboard/admin', '/dashboard/agent', '/dashboard/skill-analytics',
       '/dashboard/certifications', '/dashboard/interviews/feedback',
@@ -38,6 +45,8 @@ export function isPageAllowed(plan: PlanDefinition | null, page: string): boolea
     ]
     return !excludedPatterns.some(p => page === p || page.startsWith(p + '/'))
   }
+
+  // Any other custom paid/configured plan defaults to allowed unless explicitly restricted
   return true
 }
 

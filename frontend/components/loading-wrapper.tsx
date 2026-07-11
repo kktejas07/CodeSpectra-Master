@@ -22,8 +22,10 @@ function LoadingWatcher({ onPathChange }: { onPathChange: () => void }) {
 
 export function LoadingWrapper({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true)
+  const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
+    setMounted(true)
     const timer = setTimeout(() => setLoading(false), 800)
     const observer = new MutationObserver(() => {
       if (document.querySelector('main')?.children.length) {
@@ -41,9 +43,11 @@ export function LoadingWrapper({ children }: { children: React.ReactNode }) {
   return (
     <>
       {loading && <LoadingScreen onDone={() => setLoading(false)} />}
-      <Suspense fallback={null}>
-        <LoadingWatcher onPathChange={onPathChange} />
-      </Suspense>
+      {mounted && (
+        <Suspense fallback={null}>
+          <LoadingWatcher onPathChange={onPathChange} />
+        </Suspense>
+      )}
       {children}
     </>
   )

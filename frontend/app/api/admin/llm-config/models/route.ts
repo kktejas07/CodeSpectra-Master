@@ -19,7 +19,9 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: 'Endpoint URL is required to fetch models' })
   }
 
-  if (body.endpoint.includes('opencode.june07.com')) {
+  if (body.provider === 'opencode' && (!body.endpoint || body.endpoint.includes('openrouter.ai') || body.endpoint.includes('opencode.june07.com'))) {
+    body.endpoint = 'https://opencode.ai/zen/v1'
+  } else if (body.provider === 'openrouter' && (!body.endpoint || body.endpoint.includes('opencode.june07.com'))) {
     body.endpoint = 'https://openrouter.ai/api/v1'
   }
 
@@ -32,9 +34,15 @@ export async function POST(request: Request) {
     } else {
       const { readServerSecrets } = await import('@/lib/server-secrets-cache')
       const secrets = await readServerSecrets()
-      if (body.provider === 'openai' || body.provider === 'opencode' || body.provider === 'omnirouter') {
+      if (body.provider === 'openrouter' || body.provider === 'omnirouter') {
         if ((secrets as any).openrouter_api_key && !isMaskedSecret((secrets as any).openrouter_api_key)) body.api_key = (secrets as any).openrouter_api_key
         else if (secrets.openai_api_key && !isMaskedSecret(secrets.openai_api_key)) body.api_key = secrets.openai_api_key
+      } else if (body.provider === 'opencode') {
+        if ((secrets as any).opencode_api_key && !isMaskedSecret((secrets as any).opencode_api_key)) body.api_key = (secrets as any).opencode_api_key
+        else if ((secrets as any).openrouter_api_key && !isMaskedSecret((secrets as any).openrouter_api_key)) body.api_key = (secrets as any).openrouter_api_key
+        else if (secrets.openai_api_key && !isMaskedSecret(secrets.openai_api_key)) body.api_key = secrets.openai_api_key
+      } else if (body.provider === 'openai') {
+        if (secrets.openai_api_key && !isMaskedSecret(secrets.openai_api_key)) body.api_key = secrets.openai_api_key
       } else if (body.provider === 'gemini') {
         if (secrets.gemini_api_key && !isMaskedSecret(secrets.gemini_api_key)) body.api_key = secrets.gemini_api_key
       } else if (body.provider === 'anthropic') {
@@ -66,8 +74,13 @@ export async function POST(request: Request) {
     if (!res.ok) {
       const text = await res.text().catch(() => '')
       let msg = `Failed to fetch models (${res.status}): ${text.slice(0, 150)}`
-      if (res.status === 401 && (text.includes('No cookie auth credentials found') || text.includes('Missing Authentication header') || text.includes('User not found') || text.includes('Invalid API key') || text.includes('Unauthorized') || body.provider === 'opencode' || body.provider === 'omnirouter')) {
-        msg = `Failed to fetch models (401): Missing or invalid API key for ${body.provider.toUpperCase()}. Note: OpenRouter API keys MUST start with "sk-or-v1-". Please create a free key at https://openrouter.ai/keys and enter it above.`
+      if (res.status === 401 && (text.includes('No cookie auth credentials found') || text.includes('Missing Authentication header') || text.includes('User not found') || text.includes('Invalid API key') || text.includes('Unauthorized') || body.provider === 'opencode' || body.provider === 'openrouter' || body.provider === 'omnirouter')) {
+        const note = body.provider === 'openrouter'
+          ? 'Note: OpenRouter API keys MUST start with "sk-or-v1-". Please create a free key at https://openrouter.ai/keys and enter it above.'
+          : body.provider === 'opencode'
+          ? 'Note: Check your API key at https://opencode.ai/workspace/keys.'
+          : ''
+        msg = `Failed to fetch models (401): Missing or invalid API key for ${body.provider.toUpperCase()}. ${note}`
       }
       return NextResponse.json({ ok: false, message: msg })
     }

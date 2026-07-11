@@ -18,24 +18,43 @@ export async function POST(request: Request) {
   if (!query) return NextResponse.json({ error: 'Query is required' }, { status: 400 })
 
   try {
-    // Get embedding from OpenAI
-    const apiKey = process.env.OPENAI_API_KEY
+    const db = await getMongoDb()
+    const sec = await db.collection('platform_settings').findOne({ key: 'secrets' })
+    const val = (sec?.value as Record<string, string>) || {}
+    let apiKey = process.env.OPENAI_API_KEY || val.openai_api_key || val.openrouter_api_key || val.opencode_api_key || ''
     if (!apiKey) {
-      const db = await getMongoDb()
-      const sec = await db.collection('platform_settings').findOne({ key: 'secrets' })
-      const secKey = (sec?.value as Record<string, string>)?.openai_api_key
-      if (!secKey) return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 503 })
-      process.env.OPENAI_API_KEY = secKey
+      const llm = await db.collection('platform_settings').findOne({ key: 'llm' })
+      const llmVal = (llm?.value as Record<string, string>) || {}
+      if (llmVal.api_key && !llmVal.api_key.includes('•')) {
+        apiKey = llmVal.api_key
+      }
+    }
+    if (!apiKey) {
+      return NextResponse.json({ error: 'AI API key not configured in Superadmin settings' }, { status: 503 })
     }
 
-    const embRes = await fetch('https://api.openai.com/v1/embeddings', {
+    const isOr = apiKey.startsWith('sk-or-') || val.openrouter_api_key === apiKey
+    const embedUrl = isOr ? 'https://openrouter.ai/api/v1/embeddings' : 'https://api.openai.com/v1/embeddings'
+    const embedModel = isOr ? 'openai/text-embedding-3-small' : 'text-embedding-ada-002'
+
+    let embRes = await fetch(embedUrl, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        Authorization: `Bearer ${process.env.OPENAI_API_KEY}`,
+        Authorization: `Bearer ${apiKey}`,
       },
-      body: JSON.stringify({ input: query.slice(0, 8000), model: 'text-embedding-ada-002' }),
+      body: JSON.stringify({ input: query.slice(0, 8000), model: embedModel }),
     })
+    if (!embRes.ok && isOr && embedModel !== 'text-embedding-ada-002') {
+      embRes = await fetch(embedUrl, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+        },
+        body: JSON.stringify({ input: query.slice(0, 8000), model: 'text-embedding-ada-002' }),
+      })
+    }
     if (!embRes.ok) {
       return NextResponse.json({ error: 'Embedding API failed' }, { status: 502 })
     }
@@ -44,7 +63,6 @@ export async function POST(request: Request) {
     if (!queryVec) return NextResponse.json({ error: 'No embedding returned' }, { status: 502 })
 
     // Search via cosine similarity
-    const db = await getMongoDb()
     const allDocs = await db.collection('embeddings').find({}, {
       projection: { text: 1, source: 1, embedding: 1 },
     }).toArray()

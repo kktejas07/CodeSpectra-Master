@@ -5,7 +5,7 @@
 import { BILLING_PLANS, type BillingInterval, type BillingPlanId } from '@/lib/billing-catalog'
 
 export type MergedBillingPlan = {
-  id: BillingPlanId
+  id: string | BillingPlanId
   name: string
   description: string
   monthlyUsd: number
@@ -33,7 +33,7 @@ function centsToUsd(cents: number | null | undefined): number {
   return Math.round(Number(cents)) / 100
 }
 
-export async function getMergedBillingPlans(): Promise<MergedBillingPlan[]> {
+export function getStaticMergedBillingPlans(): MergedBillingPlan[] {
   const staticById = new Map(BILLING_PLANS.map((p) => [p.id, p]))
   const ids: BillingPlanId[] = ['free', 'pro', 'enterprise']
 
@@ -53,8 +53,12 @@ export async function getMergedBillingPlans(): Promise<MergedBillingPlan[]> {
   return ids.map(toStatic)
 }
 
-export async function getMergedPlanById(planId: BillingPlanId): Promise<MergedBillingPlan> {
-  const all = await getMergedBillingPlans()
+export async function getMergedBillingPlans(): Promise<MergedBillingPlan[]> {
+  return getStaticMergedBillingPlans()
+}
+
+export async function getMergedPlanById(planId: string | BillingPlanId): Promise<MergedBillingPlan> {
+  const all = getStaticMergedBillingPlans()
   return all.find((p) => p.id === planId) ?? all[0]
 }
 

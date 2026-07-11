@@ -155,7 +155,7 @@ export function AskCodeSpectra() {
             <div className="leading-tight">
               <div className="text-sm font-semibold">Ask CodeSpectra</div>
               <div className="text-[10px] text-muted-foreground uppercase tracking-wide">
-                Claude Sonnet 4.5 · RAG over your scans
+                AI Code Assistant · RAG over your scans
               </div>
             </div>
           </div>

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
-import { getMergedBillingPlans, mergedPlanToClientJson } from '@/lib/pricing-catalog'
+import { mergedPlanToClientJson } from '@/lib/pricing-catalog'
+import { getMergedBillingPlans } from '@/lib/pricing-catalog-server'
 
 /** Public catalog for marketing pages (no auth). */
 export async function GET() {

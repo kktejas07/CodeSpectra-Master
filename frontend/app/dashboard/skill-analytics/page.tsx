@@ -15,17 +15,19 @@ import {
 import { cn } from '@/lib/utils'
 
 interface SkillData {
-  user: { email: string; id: string }
-  totals: {
-    submissions: number
-    accepted: number
-    accuracy_pct: number
-    avg_score: number
-    avg_time_ms: number
-  }
-  by_language: Record<string, number>
-  by_difficulty: Record<string, number>
-  recent: Array<{
+  user?: { email?: string; id?: string } | null
+  totals?: {
+    submissions?: number
+    accepted?: number
+    accuracy_pct?: number
+    avg_score?: number
+    avg_time_ms?: number
+    top_skill?: string
+    top_score?: number
+  } | null
+  by_language?: Record<string, number> | null
+  by_difficulty?: Record<string, number> | null
+  recent?: Array<{
     problem: string
     difficulty: string
     passed?: number | null
@@ -33,7 +35,7 @@ interface SkillData {
     time_ms?: number | null
     language?: string | null
     score?: number | null
-  }>
+  }> | null
   ai_insights?: {
     strengths?: string[]
     weak_topics?: string[]
@@ -75,74 +77,69 @@ export default function SkillAnalyticsPage() {
       </div>
     )
   }
-  if (!data) return null
+  if (!data || !data.totals) {
+    return (
+      <div className="rounded-lg border border-border/60 bg-card/40 p-4 text-sm text-muted-foreground">
+        No skill analytics data available yet. Start solving problems to build your fingerprint.
+      </div>
+    )
+  }
 
   const cards = [
     {
       icon: Activity,
       label: 'Submissions',
-      value: data.totals?.submissions ?? 0,
-      hint: `${data.totals?.accepted ?? 0} accepted`,
+      value: data.totals.submissions ?? 0,
+      hint: `${data.totals.accepted ?? 0} accepted`,
       testid: 'kpi-submissions',
     },
     {
       icon: CheckCircle2,
       label: 'Accuracy',
-      value: typeof data.totals?.accuracy_pct === 'number' ? `${data.totals.accuracy_pct}%` : '—',
+      value: typeof data.totals.accuracy_pct === 'number' ? `${data.totals.accuracy_pct}%` : '—',
       hint: 'Accepted / total',
       testid: 'kpi-accuracy',
     },
     {
       icon: TrendingUp,
       label: 'Avg Score',
-      value: typeof data.totals?.avg_score === 'number' ? data.totals.avg_score.toLocaleString() : '—',
+      value: typeof data.totals.avg_score === 'number' ? data.totals.avg_score.toLocaleString() : '—',
       hint: 'Across submissions',
       testid: 'kpi-avg-score',
     },
     {
       icon: Users,
       label: 'Top Skill',
-      value: data.totals?.top_skill || '—',
-      hint: data.totals?.top_skill ? `${data.totals?.top_score ?? 0} pts` : 'No data yet',
+      value: data.totals.top_skill || 'Problem Solving',
+      hint: data.totals.top_skill ? `${data.totals.top_score ?? 80}% proficiency` : 'No data yet',
       testid: 'kpi-top-skill',
     },
     {
-      icon: CheckCircle2,
-      label: 'Accuracy',
-      value: typeof data.totals?.accuracy_pct === 'number' ? `${data.totals.accuracy_pct}%` : '—',
-      hint: 'Accepted / total',
-      testid: 'kpi-accuracy',
-    },
-    {
-      icon: Target,
-      label: 'Avg score',
-      value: typeof data.totals?.avg_score === 'number' ? data.totals.avg_score.toLocaleString() : '—',
-      hint: 'Out of 100',
-      testid: 'kpi-score',
-    },
-    {
       icon: Clock,
-      label: 'Avg run time',
-      value: typeof data.totals?.avg_time_ms === 'number' ? `${data.totals.avg_time_ms}ms` : '—',
+      label: 'Avg Run Time',
+      value: typeof data.totals.avg_time_ms === 'number' ? `${data.totals.avg_time_ms}ms` : '—',
       hint: 'Across submissions',
       testid: 'kpi-time',
     },
   ]
+
+  const userEmail = (data && data.user && data.user.email) || 'Problem Solver'
+  const recentList = data.recent || []
 
   return (
     <div className="space-y-6" data-testid="skill-analytics-page">
       <div>
         <h1 className="text-2xl font-bold">Skill Analytics</h1>
         <p className="text-sm text-muted-foreground">
-          {data.user.email} — your problem-solving fingerprint.
+          {userEmail} — your problem-solving fingerprint.
         </p>
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
         {cards.map((c) => (
           <div
-            key={c.label}
+            key={c.testid}
             className="rounded-lg border border-border/60 bg-card/40 p-4"
             data-testid={c.testid}
           >
@@ -213,8 +210,8 @@ export default function SkillAnalyticsPage() {
 
       {/* Breakdowns */}
       <div className="grid lg:grid-cols-2 gap-4">
-        <KvCard title="By language" data={data.by_language} testid="by-lang" />
-        <KvCard title="By difficulty" data={data.by_difficulty} testid="by-diff" />
+        <KvCard title="By language" data={data.by_language || {}} testid="by-lang" />
+        <KvCard title="By difficulty" data={data.by_difficulty || {}} testid="by-diff" />
       </div>
 
       {/* Recent submissions */}
@@ -234,7 +231,7 @@ export default function SkillAnalyticsPage() {
             </tr>
           </thead>
           <tbody>
-            {data.recent.map((r, i) => (
+            {(data.recent || []).map((r, i) => (
               <tr key={i} className="border-t border-border/40">
                 <td className="px-3 py-2 font-mono">{r.problem}</td>
                 <td className="px-3 py-2 capitalize">{r.difficulty}</td>
@@ -246,7 +243,7 @@ export default function SkillAnalyticsPage() {
                 <td className="px-3 py-2 text-right">{r.time_ms ?? '—'}ms</td>
               </tr>
             ))}
-            {data.recent.length === 0 && (
+            {(data.recent || []).length === 0 && (
               <tr>
                 <td colSpan={6} className="px-3 py-6 text-center text-muted-foreground">
                   No submissions yet.
@@ -269,8 +266,9 @@ function KvCard({
   data: Record<string, number>
   testid: string
 }) {
-  const total = Object.values(data).reduce((a, b) => a + b, 0)
-  const items = Object.entries(data).sort((a, b) => b[1] - a[1])
+  const safeData = data || {}
+  const total = Object.values(safeData).reduce((a, b) => a + b, 0)
+  const items = Object.entries(safeData).sort((a, b) => b[1] - a[1])
   return (
     <div className="rounded-xl border border-border/60 bg-card/40 p-4" data-testid={testid}>
       <div className="text-sm font-semibold mb-3">{title}</div>

@@ -34,8 +34,12 @@ export default function RootLayout({
       suppressHydrationWarning
       className={`${mono.variable}`}
     >
-      <head>
+      <body
+        className="antialiased bg-background text-foreground font-mono"
+        suppressHydrationWarning
+      >
         <script
+          id="theme-init"
           dangerouslySetInnerHTML={{
             __html: `
               (function(){
@@ -48,11 +52,6 @@ export default function RootLayout({
             `,
           }}
         />
-      </head>
-      <body
-        className="antialiased bg-background text-foreground font-mono"
-        suppressHydrationWarning
-      >
         <Providers>
           <LoadingWrapper>{children}</LoadingWrapper>
         </Providers>

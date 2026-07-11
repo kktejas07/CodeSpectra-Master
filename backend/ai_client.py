@@ -213,15 +213,15 @@ class DirectAiClient:
         async with httpx.AsyncClient(timeout=60.0) as client:
             try:
                 async with client.stream("POST", url, headers=headers, json=payload) as response:
-                    if response.status_code != 200:
-                        err_body = await response.aread()
-                        err_text = err_body.decode('utf-8', errors='replace')
-                        if response.status_code == 401 and ("No cookie auth credentials found" in err_text or "Missing Authentication header" in err_text or "User not found" in err_text or "Invalid API key" in err_text or "Incorrect API key" in err_text or self.provider in ("opencode", "omnirouter")):
-                            yield TextDelta(content=f"API Error (401): Missing or invalid API key for {self.provider.upper()}. Note: OpenRouter API keys MUST start with 'sk-or-v1-'. Please go to Settings → AI & LLM Provider, get a free key from openrouter.ai/keys, and enter it.")
+                        if response.status_code == 401 and ("No cookie auth credentials found" in err_text or "Missing Authentication header" in err_text or "User not found" in err_text or "Invalid API key" in err_text or "Incorrect API key" in err_text or "Unauthorized" in err_text or self.provider in ("opencode", "openrouter", "omnirouter")):
+                            if self.provider == "openrouter" or self.provider == "omnirouter":
+                                yield TextDelta(content=f"API Error (401): Missing or invalid API key for {self.provider.upper()}. Note: OpenRouter API keys MUST start with 'sk-or-v1-'. Please go to Settings → AI & LLM Provider, get a free key at https://openrouter.ai/keys, and enter it.")
+                            elif self.provider == "opencode":
+                                yield TextDelta(content=f"API Error (401): Missing or invalid API key for OPENCODE. Please check your clean unmasked API key at https://opencode.ai/workspace/keys and enter it in Settings → AI & LLM Provider.")
+                            else:
+                                yield TextDelta(content=f"API Error (401): Missing or invalid API key for {self.provider.upper()}. Please verify your API key in Settings → AI & LLM Provider.")
                         else:
-                            yield TextDelta(content=f"OpenAI/OpenRouter API Error: {response.status_code} - {err_text}")
-                        yield StreamDone()
-                        return
+                            yield TextDelta(content=f"API Error ({response.status_code}): {err_text}")
 
                     async for line in response.aiter_lines():
                         if line.startswith("data: "):

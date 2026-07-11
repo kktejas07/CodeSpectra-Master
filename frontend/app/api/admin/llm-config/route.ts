@@ -17,7 +17,9 @@ export async function GET() {
   const db = await getMongoDb()
   const doc = await db.collection('platform_settings').findOne({ key: PLATFORM_KEY })
   const config = (doc?.value as LLMConfig) || LLM_CONFIG_DEFAULTS
-  if (config.endpoint && config.endpoint.includes('opencode.june07.com')) {
+  if (config.provider === 'opencode' && (!config.endpoint || config.endpoint.includes('openrouter.ai') || config.endpoint.includes('opencode.june07.com'))) {
+    config.endpoint = 'https://opencode.ai/zen/v1'
+  } else if (config.provider === 'openrouter' && (!config.endpoint || config.endpoint.includes('opencode.june07.com'))) {
     config.endpoint = 'https://openrouter.ai/api/v1'
   }
   return NextResponse.json({ config: maskConfig(config) })
@@ -38,8 +40,11 @@ export async function PATCH(request: Request) {
   const existing = await db.collection('platform_settings').findOne({ key: PLATFORM_KEY })
   const prev = (existing?.value as LLMConfig) || LLM_CONFIG_DEFAULTS
 
+  const nextProvider = (body.provider && LLM_PROVIDERS.some(p => p.id === body.provider) ? body.provider : prev.provider) as LLMProviderId
   let rawEndpoint = typeof body.endpoint === 'string' ? body.endpoint.trim() : prev.endpoint
-  if (rawEndpoint.includes('opencode.june07.com')) {
+  if (nextProvider === 'opencode' && (!rawEndpoint || rawEndpoint.includes('openrouter.ai') || rawEndpoint.includes('opencode.june07.com'))) {
+    rawEndpoint = 'https://opencode.ai/zen/v1'
+  } else if (nextProvider === 'openrouter' && (!rawEndpoint || rawEndpoint.includes('opencode.june07.com'))) {
     rawEndpoint = 'https://openrouter.ai/api/v1'
   }
 

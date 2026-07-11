@@ -13,6 +13,7 @@ const CACHE_TTL_MS = 60_000
 function normalizeProvider(provider: string): string {
   const lower = provider.toLowerCase()
   if (lower === 'opencode' || lower === 'omnirouter') return 'opencode'
+  if (lower === 'openrouter') return 'openrouter'
   if (lower === 'gemini') return 'gemini'
   if (lower === 'anthropic') return 'anthropic'
   if (lower === 'openai') return 'openai'

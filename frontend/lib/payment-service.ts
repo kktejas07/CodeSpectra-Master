@@ -109,7 +109,34 @@ export class PaymentService {
     planId: string,
     countryCode?: string | null,
   ): Promise<CheckoutResult> {
-    const plan = BILLING_PLANS[planId]
+    let plan = BILLING_PLANS[planId]
+    if (!plan) {
+      try {
+        const { getMongoDb } = await import('@/lib/mongodb')
+        const db = await getMongoDb()
+        const dbPlan = await db.collection('plans').findOne({ $or: [{ plan: planId }, { id: planId }] })
+        if (dbPlan) {
+          let usd = 29
+          if (typeof dbPlan.price === 'number') usd = dbPlan.price
+          else if (typeof dbPlan.price === 'string') {
+            const m = dbPlan.price.match(/[\d.]+/)
+            if (m) usd = parseFloat(m[0])
+          }
+          const amount_paise = dbPlan.amount_paise || Math.round(usd * 83 * 100)
+          plan = {
+            id: planId,
+            name: dbPlan.name || planId,
+            amount_paise,
+            currency: dbPlan.currency || 'INR',
+            kind: 'subscription' as const,
+            duration_days: 30,
+            perks: Array.isArray(dbPlan.features) ? dbPlan.features.map((f: any) => typeof f === 'string' ? f : f.label || '') : [],
+          }
+        }
+      } catch (e) {
+        console.warn('[CodeSpectra] Could not look up dynamic plan from DB:', e)
+      }
+    }
     if (!plan) throw new Error(`Unknown plan: ${planId}`)
     const adapter = await this.getAdapterForCountry(countryCode)
     return adapter.createCheckout(userId, email, planId, plan)

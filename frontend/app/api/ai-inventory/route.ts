@@ -82,3 +82,44 @@ export async function GET(req: NextRequest) {
     next_cursor: nextCursor,
   })
 }
+
+export async function POST(req: NextRequest) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  if (!isAdmin(user.role)) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  try {
+    const body = await req.json()
+    const { id, category, name, purpose, module, status, source, version } = body
+    if (!id || !category || !name) {
+      return NextResponse.json({ error: 'id, category, and name are required' }, { status: 400 })
+    }
+    if (!isValidCategory(category)) {
+      return NextResponse.json({ error: 'invalid category' }, { status: 400 })
+    }
+
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const db = await getMongoDb()
+    const col = db.collection('custom_ai_components')
+    const now = new Date().toISOString()
+    const doc = {
+      id: String(id),
+      category,
+      name: String(name),
+      purpose: purpose || '',
+      module: module || 'custom',
+      status: status || 'active',
+      source: source || '',
+      version: version || '1.0',
+      created_at: now,
+      updated_at: now,
+    }
+    await col.updateOne({ id: String(id) }, { $set: doc }, { upsert: true })
+
+    return NextResponse.json({ ok: true, item: doc })
+  } catch (err) {
+    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+  }
+}

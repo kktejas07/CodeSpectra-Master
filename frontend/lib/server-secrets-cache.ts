@@ -61,6 +61,8 @@ export type ServerSecretsRecord = {
   anthropic_api_key?: string    // Direct Anthropic key (Claude)
   gemini_api_key?: string       // Direct Google key (Gemini — has free tier)
   openai_api_key?: string       // Direct OpenAI key (GPT — used by interview service)
+  openrouter_api_key?: string   // OpenRouter API key
+  opencode_api_key?: string     // OpenCode API key
   // --- Cloudflare --------------------------------------------------------
   cloudflare_zone_id?: string
   cloudflare_api_token?: string
