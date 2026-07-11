@@ -34,10 +34,10 @@ export const LLM_PROVIDERS: ProviderDef[] = [
   },
   {
     id: 'opencode',
-    label: 'OpenCode (OpenAI-compatible, free models)',
+    label: 'OpenCode / OpenRouter (OpenAI-compatible, free models)',
     free: true,
-    models: ['opencode-7b', 'claude-sonnet-4-20250514', 'gpt-4o-mini', 'big-pickle', 'omnirouter', 'omnirouter-pro'],
-    endpoint: 'https://opencode.june07.com/v1',
+    models: ['openrouter/auto', 'google/gemini-2.0-flash-lite-001:free', 'deepseek/deepseek-r1:free', 'qwen/qwen-2.5-coder-32b-instruct:free', 'meta-llama/llama-3.3-70b-instruct:free', 'opencode-7b', 'big-pickle', 'omnirouter', 'omnirouter-pro'],
+    endpoint: 'https://openrouter.ai/api/v1',
     authType: 'bearer',
   },
   {

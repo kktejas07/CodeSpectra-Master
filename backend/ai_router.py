@@ -174,6 +174,8 @@ def _build_chat(model_role: str, session_id: str, system_message: str, api_key_o
         key = _resolve_key(provider, None)
     _ensure_key(key, provider)
     base_url = endpoint_override or ""
+    if "opencode.june07.com" in base_url:
+        base_url = "https://openrouter.ai/api/v1"
     return LlmChat(api_key=key, provider=provider, model=model, system_message=system_message, base_url=base_url)
 
 

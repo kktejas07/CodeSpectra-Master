@@ -17,6 +17,9 @@ export async function GET() {
   const db = await getMongoDb()
   const doc = await db.collection('platform_settings').findOne({ key: PLATFORM_KEY })
   const config = (doc?.value as LLMConfig) || LLM_CONFIG_DEFAULTS
+  if (config.endpoint && config.endpoint.includes('opencode.june07.com')) {
+    config.endpoint = 'https://openrouter.ai/api/v1'
+  }
   return NextResponse.json({ config: maskConfig(config) })
 }
 
@@ -35,10 +38,15 @@ export async function PATCH(request: Request) {
   const existing = await db.collection('platform_settings').findOne({ key: PLATFORM_KEY })
   const prev = (existing?.value as LLMConfig) || LLM_CONFIG_DEFAULTS
 
+  let rawEndpoint = typeof body.endpoint === 'string' ? body.endpoint.trim() : prev.endpoint
+  if (rawEndpoint.includes('opencode.june07.com')) {
+    rawEndpoint = 'https://openrouter.ai/api/v1'
+  }
+
   const next: LLMConfig = {
     provider: (body.provider && LLM_PROVIDERS.some(p => p.id === body.provider) ? body.provider : prev.provider) as LLMProviderId,
     model: typeof body.model === 'string' && body.model.trim() ? body.model.trim() : prev.model,
-    endpoint: typeof body.endpoint === 'string' ? body.endpoint.trim() : prev.endpoint,
+    endpoint: rawEndpoint,
     api_key: typeof body.api_key === 'string' && !isMaskedSecret(body.api_key) ? body.api_key.trim() : (isMaskedSecret(prev.api_key) ? '' : prev.api_key),
   }
 

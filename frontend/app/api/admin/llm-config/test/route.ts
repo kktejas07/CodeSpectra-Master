@@ -42,10 +42,14 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: 'No valid unmasked API key found. Please enter your clean API key above.' })
   }
 
+  if (body.endpoint && body.endpoint.includes('opencode.june07.com')) {
+    body.endpoint = 'https://openrouter.ai/api/v1'
+  }
+
   try {
     const headers: Record<string, string> = { 'Content-Type': 'application/json' }
     if (body.api_key) {
-      if (body.provider === 'opencode' || body.provider === 'omnirouter' || body.provider === 'openai') {
+      if (body.provider === 'opencode' || body.provider === 'omnirouter' || body.provider === 'openai' || body.provider === 'groq' || body.provider === 'deepseek' || body.provider === 'nvidia') {
         headers['Authorization'] = `Bearer ${body.api_key}`
       } else if (body.provider === 'anthropic') {
         headers['x-api-key'] = body.api_key
@@ -77,7 +81,11 @@ export async function POST(request: Request) {
     }
 
     return NextResponse.json({ ok: true, message: 'Connection successful' })
-  } catch (e) {
-    return NextResponse.json({ ok: false, message: (e as Error).message })
+  } catch (e: any) {
+    const reason = e?.cause?.message || e?.cause?.code || e?.message || 'Connection failed'
+    const detailed = reason.includes('ENOTFOUND') || reason.includes('EAI_AGAIN') || reason.includes('fetch failed')
+      ? `Cannot reach endpoint "${body.endpoint}". Check that the API Endpoint URL is valid and reachable (${reason}).`
+      : reason
+    return NextResponse.json({ ok: false, message: detailed })
   }
 }

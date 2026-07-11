@@ -94,39 +94,26 @@ export function LlmSettingsSection() {
   }
 
   async function refreshModels() {
-    if (!draft?.api_key || !draft?.endpoint) {
-      toast({ type: 'error', title: 'API key and endpoint required to fetch models' })
+    if (!draft?.endpoint) {
+      toast({ type: 'error', title: 'Endpoint required to fetch models' })
       return
     }
     setFetchingModels(true)
     try {
-      const prov = draft.provider
-      const ep = draft.endpoint.replace(/\/+$/, '')
-      let models: string[] = []
-      if (prov === 'gemini') {
-        const res = await fetch(`${ep}/models?key=${draft.api_key}`)
-        if (!res.ok) throw new Error(`Gemini API ${res.status}`)
-        const json = await res.json()
-        models = (json.models || []).map((m: { name: string }) => m.name.replace(/^models\//, ''))
-      } else if (prov === 'anthropic') {
-        const res = await fetch(`${ep}/v1/models`, {
-          headers: { 'x-api-key': draft.api_key, 'anthropic-version': '2023-06-01' },
-        })
-        if (!res.ok) throw new Error(`Anthropic API ${res.status}`)
-        const json = await res.json()
-        models = (json.data || []).map((m: { id: string }) => m.id)
-      } else {
-        const res = await fetch(`${ep}/models`, {
-          headers: { Authorization: `Bearer ${draft.api_key}` },
-        })
-        if (!res.ok) throw new Error(`API ${res.status}`)
-        const json = await res.json()
-        models = (json.data || []).map((m: { id: string }) => m.id)
+      const res = await fetch('/api/admin/llm-config/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(draft),
+      })
+      const json = await res.json()
+      if (!res.ok || !json.ok) {
+        throw new Error(json.message || `Error ${res.status}`)
       }
+      const models: string[] = json.models || []
       setFetchedModels(models)
       toast({ type: 'success', title: `Loaded ${models.length} models` })
-    } catch (e) {
-      toast({ type: 'error', title: 'Failed to fetch models', message: (e as Error).message })
+    } catch (e: any) {
+      toast({ type: 'error', title: 'Failed to fetch models', message: e?.message || 'Connection failed' })
     } finally {
       setFetchingModels(false)
     }
