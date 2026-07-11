@@ -33,7 +33,8 @@ export async function POST(request: Request) {
       const { readServerSecrets } = await import('@/lib/server-secrets-cache')
       const secrets = await readServerSecrets()
       if (body.provider === 'openai' || body.provider === 'opencode' || body.provider === 'omnirouter') {
-        if (secrets.openai_api_key && !isMaskedSecret(secrets.openai_api_key)) body.api_key = secrets.openai_api_key
+        if ((secrets as any).openrouter_api_key && !isMaskedSecret((secrets as any).openrouter_api_key)) body.api_key = (secrets as any).openrouter_api_key
+        else if (secrets.openai_api_key && !isMaskedSecret(secrets.openai_api_key)) body.api_key = secrets.openai_api_key
       } else if (body.provider === 'gemini') {
         if (secrets.gemini_api_key && !isMaskedSecret(secrets.gemini_api_key)) body.api_key = secrets.gemini_api_key
       } else if (body.provider === 'anthropic') {
@@ -64,7 +65,11 @@ export async function POST(request: Request) {
 
     if (!res.ok) {
       const text = await res.text().catch(() => '')
-      return NextResponse.json({ ok: false, message: `Failed to fetch models (${res.status}): ${text.slice(0, 150)}` })
+      let msg = `Failed to fetch models (${res.status}): ${text.slice(0, 150)}`
+      if (res.status === 401 && (text.includes('No cookie auth credentials found') || text.includes('User not found') || text.includes('Invalid API key') || text.includes('Unauthorized'))) {
+        msg = `Failed to fetch models (401): Missing or invalid API key for ${body.provider.toUpperCase()}. Please enter your valid API key in the API Key box.`
+      }
+      return NextResponse.json({ ok: false, message: msg })
     }
 
     const data = await res.json()

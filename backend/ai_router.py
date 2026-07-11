@@ -116,7 +116,7 @@ def _resolve_key(provider: str, request_headers=None) -> str:
         "anthropic": "ANTHROPIC_API_KEY",
         "gemini": "GEMINI_API_KEY",
         "openai": "OPENAI_API_KEY",
-        "opencode": "OPENAI_API_KEY",
+        "opencode": "OPENROUTER_API_KEY",
         "omnirouter": "OPENAI_API_KEY",
     }
     header = key_header_map.get(provider)
@@ -132,6 +132,8 @@ def _resolve_key(provider: str, request_headers=None) -> str:
             resolved = generic
     if not resolved and env_var:
         val = os.environ.get(env_var, "")
+        if not val and provider == "opencode":
+            val = os.environ.get("OPENAI_API_KEY", "")
         if val:
             resolved = val
     if not resolved:
@@ -150,14 +152,9 @@ def _ensure_key(key: str, provider: str = "ai") -> None:
             detail=f"Invalid masked API key received for {provider.upper()}. Please enter your clean unmasked API key in Settings → AI & LLM Provider."
         )
     if not key:
-        # Some opencode endpoints work without a key
-        if provider == "opencode":
-            return
         raise HTTPException(
             status_code=500,
-            detail=f"{provider.upper()}_API_KEY not configured. Add it in Settings → Integrations → AI Providers, "
-                   f"or set the {provider.upper()}_API_KEY environment variable. "
-                   f"Gemini has a free tier at aistudio.google.com/apikey"
+            detail=f"API Key not configured for {provider.upper()}. Please add your valid API key in Settings → AI & LLM Provider (for OpenCode/OpenRouter, enter your OpenRouter API Key starting with sk-or-v1-)."
         )
 
 
