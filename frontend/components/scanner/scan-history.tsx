@@ -35,6 +35,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete }: ScanHisto
   }
 
   const getQualityLabel = (score: number) => {
+    if (score === 0) return 'Invalid Code / Error'
     if (score >= 80) return 'Excellent'
     if (score >= 60) return 'Good'
     return 'Poor'

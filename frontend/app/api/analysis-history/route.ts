@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
-import { listScansWithMetrics } from '@/lib/db/scans'
+import { listScansWithMetrics, deleteScan } from '@/lib/db/scans'
 import type { ClientAnalysisPayload } from '@/lib/scanner-analysis-mapper'
 
 type ScanWithMetrics = Awaited<ReturnType<typeof listScansWithMetrics>>[number]
@@ -75,6 +75,35 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('[CodeSpectra] analysis-history:', msg)
+    return NextResponse.json({ success: false, error: msg }, { status: 500 })
+  }
+}
+
+/**
+ * DELETE /api/analysis-history?id=...
+ * Deletes a scan from MongoDB `code_scans`, `code_metrics`, `code_issues`, and `suggested_fixes`.
+ */
+export async function DELETE(request: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json(
+      { success: false, error: gate.error },
+      { status: gate.status },
+    )
+  }
+
+  const { searchParams } = new URL(request.url)
+  const id = searchParams.get('id')
+  if (!id) {
+    return NextResponse.json({ success: false, error: 'Missing scan ID' }, { status: 400 })
+  }
+
+  try {
+    const deleted = await deleteScan(id, gate.user.id)
+    return NextResponse.json({ success: true, deleted })
+  } catch (error) {
+    const msg = error instanceof Error ? error.message : String(error)
+    console.error('[CodeSpectra] delete scan:', msg)
     return NextResponse.json({ success: false, error: msg }, { status: 500 })
   }
 }

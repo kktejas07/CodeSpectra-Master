@@ -172,6 +172,7 @@ function CodeScannerPageInner() {
       id: typeof scanId === 'string' && scanId.length > 0 ? scanId : `scan-${Date.now()}`,
       timestamp: new Date(),
       language: typeof scannerLanguage === 'string' ? scannerLanguage : 'javascript',
+      codeSnippet: typeof _sc === 'string' && _sc ? _sc : typeof (rest as unknown as { codeSnippet?: string }).codeSnippet === 'string' ? (rest as unknown as { codeSnippet?: string }).codeSnippet : '',
     }
     setAnalysis(analysisWithMetadata)
     setScanHistory((prev) =>
@@ -205,6 +206,7 @@ function CodeScannerPageInner() {
         id: typeof scanId === 'string' && scanId.length > 0 ? scanId : `scan-${Date.now()}`,
         timestamp: new Date(),
         language: scannerLanguage ?? language,
+        codeSnippet: typeof (rest as unknown as { codeSnippet?: string }).codeSnippet === 'string' ? (rest as unknown as { codeSnippet?: string }).codeSnippet : code,
       }
       setAnalysis(analysisWithMetadata)
       setScanHistory((prev) =>
@@ -388,22 +390,37 @@ function CodeScannerPageInner() {
                 }))}
                 onSelectScan={(scan) => {
                   const historyItem = scanHistory.find((h) => h.id === scan.id)
-                  if (historyItem) setAnalysis(historyItem)
+                  if (historyItem) {
+                    setAnalysis(historyItem)
+                    if (historyItem.codeSnippet) {
+                      setCode(historyItem.codeSnippet)
+                      if (historyItem.language) setLanguage(historyItem.language)
+                    }
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
+                  }
                 }}
                 onEdit={(scan) => {
                   const historyItem = scanHistory.find((h) => h.id === scan.id)
-                  if (historyItem?.codeSnippet) {
-                    setCode(historyItem.codeSnippet)
-                    if (historyItem.language) setLanguage(historyItem.language)
+                  if (historyItem) {
+                    if (historyItem.codeSnippet) {
+                      setCode(historyItem.codeSnippet)
+                    }
+                    if (historyItem.language) {
+                      setLanguage(historyItem.language)
+                    }
+                    setAnalysis(historyItem)
+                    window.scrollTo({ top: 0, behavior: 'smooth' })
                   }
-                  if (historyItem) setAnalysis(historyItem)
                 }}
                 onDelete={async (scanId) => {
                   try {
-                    await fetch(`/api/scanner/issues?id=${scanId}`, { method: 'DELETE' })
-                    setScanHistory((prev) => prev.filter((s) => s.id !== scanId))
+                    await fetch(`/api/analysis-history?id=${scanId}`, { method: 'DELETE', credentials: 'include' })
                   } catch {
-                    console.error('Failed to delete scan')
+                    /* offline or unauthenticated */
+                  }
+                  setScanHistory((prev) => prev.filter((s) => s.id !== scanId))
+                  if (analysis?.id === scanId) {
+                    setAnalysis(null)
                   }
                 }}
               />
@@ -422,6 +439,36 @@ function CodeScannerPageInner() {
                   <p className="text-xs text-foreground/50 mt-2">
                     Supports: {runtimesLoading ? 'Loading...' : runtimes.length > 0 ? runtimes.map(rt => rt.language).join(', ') : 'Popular languages (auto-detected from engine)'}
                   </p>
+                </div>
+              </Card>
+            ) : analysis.issues.some((i) => i.rule === 'not-code') ? (
+              <Card className="border-red-500/50 bg-red-950/20 p-6 space-y-4 shadow-lg shadow-red-950/10">
+                <div className="flex items-start gap-4">
+                  <div className="p-3 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 shrink-0">
+                    <AlertTriangle className="w-6 h-6" />
+                  </div>
+                  <div className="space-y-2.5 flex-1">
+                    <div className="flex items-center justify-between flex-wrap gap-2">
+                      <span className="px-3 py-1 text-xs font-semibold uppercase tracking-wider rounded-full bg-red-500/20 text-red-400 border border-red-500/30">
+                        AST Verification Failed
+                      </span>
+                      <span className="text-xs text-muted-foreground font-mono">Status: Non-Code Input / Plain Text</span>
+                    </div>
+                    <h3 className="text-xl font-bold text-red-200">
+                      Invalid Source Code Detected
+                    </h3>
+                    <p className="text-sm text-red-200/80 leading-relaxed">
+                      The input you provided (<code>{code.slice(0, 50)}{code.length > 50 ? '...' : ''}</code>) does not match the syntax, keywords, or structure of any supported programming language (e.g., JavaScript, TypeScript, Python, Java, C++, Go, Rust).
+                    </p>
+                    <div className="rounded-lg bg-background/60 border border-red-500/20 p-4 text-xs text-foreground/80 space-y-2">
+                      <p className="font-semibold text-foreground flex items-center gap-1.5">
+                        <Info className="w-4 h-4 text-primary shrink-0" /> Why is valid code required?
+                      </p>
+                      <p className="leading-relaxed">
+                        CodeSpectra performs Abstract Syntax Tree (AST) parsing, static control flow analysis, and cyclomatic complexity scoring to compute bug risks, security hotspots, code smells, and maintainability indexes accurately. Random text or non-code strings cannot be analyzed.
+                      </p>
+                    </div>
+                  </div>
                 </div>
               </Card>
             ) : (

@@ -212,6 +212,24 @@ export async function listScansWithMetrics(
   return rows
 }
 
+export async function deleteScan(id: string, userId: string): Promise<boolean> {
+  const scansCol = await codeScans()
+  const metricsCol = await codeMetrics()
+  const issuesCol = await codeIssues()
+  const fixesCol = await suggestedFixes()
+
+  const scan = await scansCol.findOne({ id, user_id: userId })
+  if (!scan) return false
+
+  await Promise.all([
+    scansCol.deleteOne({ id, user_id: userId }),
+    metricsCol.deleteMany({ scan_id: id }),
+    issuesCol.deleteMany({ scan_id: id }),
+    fixesCol.deleteMany({ scan_id: id }),
+  ])
+  return true
+}
+
 // ---------- Issue repository ----------
 
 export interface ListIssuesParams {

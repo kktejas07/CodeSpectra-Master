@@ -91,6 +91,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             scanSource: isGithubFile ? 'github_file' : 'manual',
             githubFilePath: isGithubFile ? fp : undefined,
             githubRepoUrl: github_repo_url ?? undefined,
+            codeSnippet: snippet,
           },
         })
       } catch (e) {
@@ -99,7 +100,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     return NextResponse.json(
-      { ...payload, scanId, scannerLanguage: language || 'typescript' },
+      { ...payload, scanId, scannerLanguage: language || 'typescript', codeSnippet: code },
       { headers: { 'Cache-Control': 'no-cache' } },
     )
   } catch (error) {
