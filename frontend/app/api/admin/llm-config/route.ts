@@ -39,7 +39,7 @@ export async function PATCH(request: Request) {
     provider: (body.provider && LLM_PROVIDERS.some(p => p.id === body.provider) ? body.provider : prev.provider) as LLMProviderId,
     model: typeof body.model === 'string' && body.model.trim() ? body.model.trim() : prev.model,
     endpoint: typeof body.endpoint === 'string' ? body.endpoint.trim() : prev.endpoint,
-    api_key: typeof body.api_key === 'string' && !isMaskedSecret(body.api_key) ? body.api_key.trim() : prev.api_key,
+    api_key: typeof body.api_key === 'string' && !isMaskedSecret(body.api_key) ? body.api_key.trim() : (isMaskedSecret(prev.api_key) ? '' : prev.api_key),
   }
 
   await db.collection('platform_settings').updateOne(

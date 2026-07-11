@@ -89,7 +89,7 @@ export default function SetupPage() {
 
           {success && createdUsers && createdUsers.length > 0 && (
             <div className="bg-muted/50 border border-border/50 rounded-lg p-4 space-y-3">
-              <p className="text-xs font-semibold text-foreground">Created Demo Accounts:</p>
+              <p className="text-xs font-semibold text-foreground">Created System Accounts:</p>
               <div className="space-y-2">
                 {createdUsers.map((user, index) => (
                   <div key={index} className="bg-background border border-border/30 rounded-lg p-3 space-y-2">
@@ -103,10 +103,6 @@ export default function SetupPage() {
                       <div className="flex justify-between items-center">
                         <span className="text-muted-foreground">Email:</span>
                         <span className="text-primary font-semibold">{user.email}</span>
-                      </div>
-                      <div className="flex justify-between items-center">
-                        <span className="text-muted-foreground">Password:</span>
-                        <span className="text-primary font-semibold">{user.password}</span>
                       </div>
                     </div>
                   </div>
@@ -144,48 +140,10 @@ export default function SetupPage() {
               </div>
 
               <div className="bg-muted/50 rounded-lg p-4 space-y-3 border border-border/50">
-                <p className="text-xs font-semibold text-foreground">Demo Account Details:</p>
-                <div className="space-y-2">
-                  <div className="bg-background border border-border/30 rounded p-2.5">
-                    <div className="text-xs font-semibold text-primary mb-1">SUPERADMIN</div>
-                    <div className="text-xs space-y-1 font-mono">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Email:</span>
-                        <span className="text-foreground">superadmin@codespectra.com</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Password:</span>
-                        <span className="text-foreground">SuperAdmin123!</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-background border border-border/30 rounded p-2.5">
-                    <div className="text-xs font-semibold text-primary mb-1">TENANT ADMIN</div>
-                    <div className="text-xs space-y-1 font-mono">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Email:</span>
-                        <span className="text-foreground">admin@codespectra.com</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Password:</span>
-                        <span className="text-foreground">TenantAdmin123!</span>
-                      </div>
-                    </div>
-                  </div>
-                  <div className="bg-background border border-border/30 rounded p-2.5">
-                    <div className="text-xs font-semibold text-primary mb-1">SETUP ADMIN</div>
-                    <div className="text-xs space-y-1 font-mono">
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Email:</span>
-                        <span className="text-foreground">demo@codespectra.com</span>
-                      </div>
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Password:</span>
-                        <span className="text-foreground">DemoPass123!</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
+                <p className="text-xs font-semibold text-foreground">Note:</p>
+                <p className="text-xs text-muted-foreground">
+                  Initial setup creates default administrative roles for system configuration.
+                </p>
               </div>
 
               <button

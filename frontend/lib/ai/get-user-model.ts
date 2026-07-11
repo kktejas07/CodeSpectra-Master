@@ -3,7 +3,7 @@ import { MODEL_OPTIONS, type UserAISettings } from '@/lib/ai/model-options'
 import { type LLMConfig, LLM_PROVIDERS } from '@/lib/llm-config'
 
 type ModelPrefKey = keyof UserAISettings
-type ModelResult = { providerOverride: string; modelOverride: string; modelRole: 'reasoning' | 'fast'; endpointOverride?: string }
+type ModelResult = { providerOverride: string; modelOverride: string; modelRole: 'reasoning' | 'fast'; endpointOverride?: string; apiKeyOverride?: string }
 
 // In-memory TTL cache — user model preferences change rarely.
 const _cache = new Map<string, { value: ModelResult; expires: number }>()
@@ -20,7 +20,7 @@ function normalizeProvider(provider: string): string {
 }
 
 /** Read the global LLM config from platform_settings. Returns null if not configured. */
-async function readPlatformLlmConfig(): Promise<LLMConfig | null> {
+export async function readPlatformLlmConfig(): Promise<LLMConfig | null> {
   try {
     const db = await getMongoDb()
     const doc = await db.collection('platform_settings').findOne({ key: 'llm' })
@@ -48,6 +48,12 @@ async function resolveModelInner(userId: string, feature: ModelPrefKey): ReturnT
       result.modelRole = 'reasoning'
       if (platformCfg.endpoint) {
         result.endpointOverride = platformCfg.endpoint
+      }
+      if (platformCfg.api_key && typeof platformCfg.api_key === 'string') {
+        const { isMaskedSecret } = await import('@/lib/server-secrets-cache')
+        if (!isMaskedSecret(platformCfg.api_key)) {
+          result.apiKeyOverride = platformCfg.api_key
+        }
       }
       return result
     }

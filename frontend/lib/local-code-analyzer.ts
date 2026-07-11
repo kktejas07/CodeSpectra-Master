@@ -22,12 +22,13 @@ const LANG_SIGNATURES: [string, RegExp][] = [
 ]
 
 export function detectLanguage(code: string, hint?: string): string {
+  if (!code || !code.trim()) return hint || 'javascript'
   if (hint && hint !== 'plaintext') {
     const normalised = hint.toLowerCase().replace(/[^a-z]/g, '')
     const match = LANG_SIGNATURES.find(([k]) => k.toLowerCase().replace(/[^a-z]/g, '').startsWith(normalised.slice(0, 4)))
     if (match) return hint.toLowerCase().split(/[^a-z]/)[0]
   }
-  let best = { lang: 'javascript', score: 0 }
+  let best = { lang: isLikelyCode(code) === 0 ? 'plaintext' : 'javascript', score: 0 }
   for (const [lang, re] of LANG_SIGNATURES) {
     const m = code.match(re)
     if (m && m.length > best.score) best = { lang, score: m.length }

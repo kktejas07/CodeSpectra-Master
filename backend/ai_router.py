@@ -79,11 +79,12 @@ class RagEmbedReq(BaseModel):
 
 
 @router.post("/rag/embed")
-async def rag_embed(req: RagEmbedReq) -> dict:
+async def rag_embed(req: RagEmbedReq, request: Request) -> dict:
     """Generate an embedding vector for the given text using Gemini."""
-    if not RAG_API_KEY:
+    key = RAG_API_KEY or _resolve_key("gemini", request.headers) or _resolve_key("openai", request.headers)
+    if not key or "•" in key or "\u2022" in key:
         raise HTTPException(status_code=503, detail="Gemini API key not configured for embeddings")
-    vec = await generate_embedding(req.text[:8192], RAG_API_KEY)
+    vec = await generate_embedding(req.text[:8192], key)
     if vec is None:
         raise HTTPException(status_code=502, detail="Embedding generation failed")
     return {"embedding": vec, "dim": len(vec)}
@@ -120,27 +121,34 @@ def _resolve_key(provider: str, request_headers=None) -> str:
     }
     header = key_header_map.get(provider)
     env_var = env_map.get(provider)
+    resolved = ""
     if request_headers and header:
         hdr = request_headers.get(header, "")
         if hdr:
-            return hdr
-    # Fall back to generic header for any custom provider
-    if request_headers:
+            resolved = hdr
+    if not resolved and request_headers:
         generic = request_headers.get("x-api-key", "")
         if generic:
-            return generic
-    if env_var:
+            resolved = generic
+    if not resolved and env_var:
         val = os.environ.get(env_var, "")
         if val:
-            return val
-    # Generic fallback
-    generic_env = os.environ.get("LLM_API_KEY", "")
-    if generic_env:
-        return generic_env
-    return ""
+            resolved = val
+    if not resolved:
+        generic_env = os.environ.get("LLM_API_KEY", "")
+        if generic_env:
+            resolved = generic_env
+    if "•" in resolved or "\u2022" in resolved:
+        return ""
+    return resolved
 
 
 def _ensure_key(key: str, provider: str = "ai") -> None:
+    if "•" in key or "\u2022" in key:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Invalid masked API key received for {provider.upper()}. Please enter your clean unmasked API key in Settings → AI & LLM Provider."
+        )
     if not key:
         # Some opencode endpoints work without a key
         if provider == "opencode":
@@ -160,6 +168,8 @@ def _build_chat(model_role: str, session_id: str, system_message: str, api_key_o
     else:
         provider, model = MODEL_REGISTRY.get(model_role, MODEL_REGISTRY["fast"])
     key = _resolve_key(provider, api_key_or_headers) if not isinstance(api_key_or_headers, str) else api_key_or_headers
+    if isinstance(key, str) and ("•" in key or "\u2022" in key):
+        key = ""
     if not key:
         key = _resolve_key(provider, None)
     _ensure_key(key, provider)

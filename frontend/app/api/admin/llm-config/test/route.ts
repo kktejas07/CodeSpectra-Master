@@ -19,14 +19,27 @@ export async function POST(request: Request) {
     return NextResponse.json({ ok: false, message: 'Provider and model are required' })
   }
 
-  // The UI sends the masked key (contains bullet chars) when the admin hasn't
-  // retyped it. Fall back to the stored key so we never put bullets into an
-  // HTTP header (which throws "invalid character 8226").
   if (!body.api_key || isMaskedSecret(body.api_key)) {
     const db = await getMongoDb()
     const doc = await db.collection('platform_settings').findOne({ key: 'llm' })
     const stored = (doc?.value as LLMConfig | undefined)?.api_key
-    if (stored) body.api_key = stored
+    if (stored && !isMaskedSecret(stored)) {
+      body.api_key = stored
+    } else {
+      const { readServerSecrets } = await import('@/lib/server-secrets-cache')
+      const secrets = await readServerSecrets()
+      if (body.provider === 'openai' || body.provider === 'opencode' || body.provider === 'omnirouter') {
+        if (secrets.openai_api_key && !isMaskedSecret(secrets.openai_api_key)) body.api_key = secrets.openai_api_key
+      } else if (body.provider === 'gemini') {
+        if (secrets.gemini_api_key && !isMaskedSecret(secrets.gemini_api_key)) body.api_key = secrets.gemini_api_key
+      } else if (body.provider === 'anthropic') {
+        if (secrets.anthropic_api_key && !isMaskedSecret(secrets.anthropic_api_key)) body.api_key = secrets.anthropic_api_key
+      }
+    }
+  }
+
+  if (body.api_key && isMaskedSecret(body.api_key)) {
+    return NextResponse.json({ ok: false, message: 'No valid unmasked API key found. Please enter your clean API key above.' })
   }
 
   try {

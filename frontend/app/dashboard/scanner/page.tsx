@@ -2,7 +2,7 @@
 
 import { useMemo, useState, Suspense, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle } from 'lucide-react'
+import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle, AlertTriangle, Info } from 'lucide-react'
 import { parseScannerMode } from '@/lib/scanner-modes'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -76,9 +76,9 @@ function CodeScannerPageInner() {
 
   const handleCodeChange = useCallback((newCode: string) => {
     setCode(newCode)
-    if (newCode.trim().length > 20) {
+    if (newCode.trim().length > 10) {
       const detected = detectLanguage(newCode)
-      if (detected && detected !== language && detected !== 'javascript') {
+      if (detected && detected !== language && detected !== 'plaintext') {
         setLanguage(detected)
       }
     }
