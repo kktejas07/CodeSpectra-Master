@@ -7,8 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context'
 import { View, Text, StyleSheet, TouchableOpacity, ScrollView, useWindowDimensions } from 'react-native'
 import {
   Home, Code2, Scan, MoreHorizontal, Bot, Trophy, BarChart3,
-  Star, BookOpen, Award, Flag, Settings, LogOut, ChevronRight,
-  ArrowLeft, User, Zap,
+  Star, BookOpen, Award, Flag, ArrowLeft, User,
 } from 'lucide-react-native'
 
 import LoginScreen from './src/screens/LoginScreen'
@@ -28,7 +27,6 @@ import type { User as AppUser } from './src/api/client'
 
 const Tab = createBottomTabNavigator()
 const MoreStackNav = createNativeStackNavigator()
-const ProfileStackNav = createNativeStackNavigator()
 
 const DarkNavTheme = {
   ...DefaultTheme,
@@ -44,79 +42,34 @@ const DarkNavTheme = {
   },
 }
 
-// Screen with standard header - for sub-screens in More tab
-function ScreenHeader({ title, onBack }: { title: string; onBack?: () => void }) {
+function AppHeader() {
+  return (
+    <View style={styles.header}>
+      <View style={styles.headerInner}>
+        <View style={styles.logoMark}>
+          <Text style={styles.logoText}>{'</>'}</Text>
+        </View>
+        <Text style={styles.headerTitle}>CodeSpectra</Text>
+      </View>
+    </View>
+  )
+}
+
+function ScreenHeader({ title }: { title: string }) {
   const navigation = useNavigation()
   return (
     <View style={styles.header}>
       <View style={styles.headerInner}>
-        {onBack ? (
-          <TouchableOpacity onPress={onBack || (() => navigation.goBack())} style={styles.backBtn}>
-            <ArrowLeft size={20} color={colors.muted} />
-          </TouchableOpacity>
-        ) : (
-          <View style={styles.logoMark}>
-            <Text style={styles.logoText}>{'</>'}</Text>
-          </View>
-        )}
+        <TouchableOpacity onPress={() => navigation.goBack()} style={styles.backBtn}>
+          <ArrowLeft size={20} color={colors.muted} />
+        </TouchableOpacity>
         <Text style={styles.headerTitle}>{title}</Text>
       </View>
     </View>
   )
 }
 
-// More tab - stack navigator with header
-function MoreStack() {
-  return (
-    <MoreStackNav.Navigator
-      screenOptions={{
-        headerShown: false,
-        contentStyle: { backgroundColor: colors.background },
-        animation: 'slide_from_right',
-      }}
-    >
-      <MoreStackNav.Screen name="MoreHome" component={MoreHome} />
-      <MoreStackNav.Screen
-        name="Arena"
-        options={{ headerShown: true, header: () => <ScreenHeader title="Arena" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
-        component={ArenaScreen}
-      />
-      <MoreStackNav.Screen
-        name="Leaderboard"
-        options={{ headerShown: true, header: () => <ScreenHeader title="Leaderboard" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
-        component={LeaderboardScreen}
-      />
-      <MoreStackNav.Screen
-        name="Achievements"
-        options={{ headerShown: true, header: () => <ScreenHeader title="Achievements" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
-        component={AchievementsScreen}
-      />
-      <MoreStackNav.Screen
-        name="Learning"
-        options={{ headerShown: true, header: () => <ScreenHeader title="Learning Tracks" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
-        component={LearningScreen}
-      />
-      <MoreStackNav.Screen
-        name="Certifications"
-        options={{ headerShown: true, header: () => <ScreenHeader title="Certifications" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
-        component={CertificationsScreen}
-      />
-      <MoreStackNav.Screen
-        name="Hackathons"
-        options={{ headerShown: true, header: () => <ScreenHeader title="Hackathons" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
-        component={HackathonsScreen}
-      />
-      <MoreStackNav.Screen
-        name="Profile"
-        options={{ headerShown: true, header: () => <ScreenHeader title="Profile" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
-        component={ProfileScreen}
-      />
-    </MoreStackNav.Navigator>
-  )
-}
-
-// More home - grid of secondary features
-function MoreHome() {
+function MoreHomeInner({ user }: { user: AppUser }) {
   const navigation = useNavigation<any>()
   const { width } = useWindowDimensions()
   const numColumns = width > 600 ? 3 : 2
@@ -167,21 +120,121 @@ function MoreHome() {
   )
 }
 
-// Main header for primary tabs
-function AppHeader() {
+function MoreStack({ user }: { user: AppUser }) {
   return (
-    <View style={styles.header}>
-      <View style={styles.headerInner}>
-        <View style={styles.logoMark}>
-          <Text style={styles.logoText}>{'</>'}</Text>
-        </View>
-        <Text style={styles.headerTitle}>CodeSpectra</Text>
-      </View>
-    </View>
+    <MoreStackNav.Navigator
+      screenOptions={{
+        headerShown: false,
+        contentStyle: { backgroundColor: colors.background },
+        animation: 'slide_from_right',
+      }}
+    >
+      <MoreStackNav.Screen name="MoreHome">
+        {() => <MoreHomeInner user={user} />}
+      </MoreStackNav.Screen>
+      <MoreStackNav.Screen
+        name="Arena"
+        options={{ headerShown: true, header: () => <ScreenHeader title="Arena" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
+        component={ArenaScreen}
+      />
+      <MoreStackNav.Screen
+        name="Leaderboard"
+        options={{ headerShown: true, header: () => <ScreenHeader title="Leaderboard" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
+        component={LeaderboardScreen}
+      />
+      <MoreStackNav.Screen
+        name="Achievements"
+        options={{ headerShown: true, header: () => <ScreenHeader title="Achievements" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
+        component={AchievementsScreen}
+      />
+      <MoreStackNav.Screen
+        name="Learning"
+        options={{ headerShown: true, header: () => <ScreenHeader title="Learning Tracks" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
+        component={LearningScreen}
+      />
+      <MoreStackNav.Screen
+        name="Certifications"
+        options={{ headerShown: true, header: () => <ScreenHeader title="Certifications" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
+        component={CertificationsScreen}
+      />
+      <MoreStackNav.Screen
+        name="Hackathons"
+        options={{ headerShown: true, header: () => <ScreenHeader title="Hackathons" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}
+        component={HackathonsScreen}
+      />
+      <MoreStackNav.Screen name="Profile" options={{ headerShown: true, header: () => <ScreenHeader title="Profile" />, headerStyle: { backgroundColor: colors.card }, headerTintColor: colors.foreground }}>
+        {() => <ProfileScreen user={user} />}
+      </MoreStackNav.Screen>
+    </MoreStackNav.Navigator>
   )
 }
 
-function MainTabs() {
+function TabBarIcon({ route, focused }: { route: string; focused: boolean }) {
+  const iconColor = focused ? colors.primary : colors.muted
+  const icons: Record<string, React.ReactNode> = {
+    Home: <Home size={22} color={iconColor} strokeWidth={2} />,
+    Problems: <Code2 size={22} color={iconColor} strokeWidth={2} />,
+    Scanner: <Scan size={22} color={iconColor} strokeWidth={2} />,
+    More: <MoreHorizontal size={22} color={iconColor} strokeWidth={2} />,
+    Agent: <Bot size={22} color={iconColor} strokeWidth={2} />,
+  }
+  return icons[route] || null
+}
+
+function MainTabsContent({ user }: { user: AppUser }) {
+  const navigation = useNavigation<any>()
+
+  return (
+    <>
+      <AppHeader />
+      <Tab.Navigator
+        screenOptions={({ route }) => ({
+          headerShown: false,
+          tabBarIcon: () => <TabBarIcon route={route.name} focused={false} />,
+          tabBarActiveTintColor: colors.primary,
+          tabBarInactiveTintColor: colors.muted,
+          tabBarStyle: {
+            backgroundColor: colors.card,
+            borderTopColor: colors.cardBorder,
+            borderTopWidth: 1,
+            paddingTop: spacing.xs,
+            paddingBottom: spacing.sm,
+            height: 60,
+          },
+          tabBarLabelStyle: {
+            fontSize: 10,
+            fontFamily: 'monospace',
+            fontWeight: '600',
+            marginTop: 2,
+          },
+        })}
+      >
+        <Tab.Screen name="Home" options={{ tabBarLabel: 'Home' }}>
+          {() => <HomeScreen user={user} onNavigate={(screen) => navigation.navigate(screen)} />}
+        </Tab.Screen>
+        <Tab.Screen name="Problems" component={ProblemsScreen} />
+        <Tab.Screen name="Scanner" component={ScannerScreen} />
+        <Tab.Screen name="More">
+          {() => <MoreStack user={user} />}
+        </Tab.Screen>
+        <Tab.Screen name="Agent" component={AgentScreen} options={{ tabBarLabel: 'AI Agent' }} />
+      </Tab.Navigator>
+    </>
+  )
+}
+
+function AuthenticatedApp({ user, onLogout }: { user: AppUser; onLogout: () => void }) {
+  return (
+    <NavigationContainer theme={DarkNavTheme}>
+      <SafeAreaProvider>
+        <MainTabsContent user={user} />
+      </SafeAreaProvider>
+      <StatusBar style="light" />
+    </NavigationContainer>
+  )
+}
+
+export default function App() {
   const [user, setUser] = useState<AppUser | null>(null)
 
   if (!user) {
@@ -196,71 +249,7 @@ function MainTabs() {
     )
   }
 
-  return (
-    <SafeAreaProvider>
-      <NavigationContainer theme={DarkNavTheme}>
-        <AppHeader />
-        <Tab.Navigator
-          screenOptions={({ route }) => {
-            const icons: Record<string, React.ReactNode> = {
-              Home: <Home size={22} color={colors.primary} strokeWidth={2} />,
-              Problems: <Code2 size={22} color={colors.primary} strokeWidth={2} />,
-              Scanner: <Scan size={22} color={colors.primary} strokeWidth={2} />,
-              More: <MoreHorizontal size={22} color={colors.primary} strokeWidth={2} />,
-              Agent: <Bot size={22} color={colors.primary} strokeWidth={2} />,
-            }
-            return {
-              headerShown: false,
-              tabBarIcon: ({ focused }) => {
-                const iconColor = focused ? colors.primary : colors.muted
-                const activeIcons: Record<string, React.ReactNode> = {
-                  Home: <Home size={22} color={iconColor} strokeWidth={2} />,
-                  Problems: <Code2 size={22} color={iconColor} strokeWidth={2} />,
-                  Scanner: <Scan size={22} color={iconColor} strokeWidth={2} />,
-                  More: <MoreHorizontal size={22} color={iconColor} strokeWidth={2} />,
-                  Agent: <Bot size={22} color={iconColor} strokeWidth={2} />,
-                }
-                return activeIcons[route.name] || null
-              },
-              tabBarActiveTintColor: colors.primary,
-              tabBarInactiveTintColor: colors.muted,
-              tabBarStyle: {
-                backgroundColor: colors.card,
-                borderTopColor: colors.cardBorder,
-                borderTopWidth: 1,
-                paddingTop: spacing.xs,
-                paddingBottom: spacing.sm,
-                height: 60,
-              },
-              tabBarLabelStyle: {
-                fontSize: 10,
-                fontFamily: 'monospace',
-                fontWeight: '600',
-                marginTop: 2,
-              },
-            }
-          }}
-        >
-          <Tab.Screen name="Home" options={{ tabBarLabel: 'Home' }}>
-            {() => <HomeScreen user={user} />}
-          </Tab.Screen>
-          <Tab.Screen name="Problems" component={ProblemsScreen} />
-          <Tab.Screen name="Scanner" component={ScannerScreen} />
-          <Tab.Screen
-            name="More"
-            component={MoreStack}
-            options={{ tabBarLabel: 'More' }}
-          />
-          <Tab.Screen name="Agent" component={AgentScreen} options={{ tabBarLabel: 'AI Agent' }} />
-        </Tab.Navigator>
-      </NavigationContainer>
-      <StatusBar style="light" />
-    </SafeAreaProvider>
-  )
-}
-
-export default function App() {
-  return <MainTabs />
+  return <AuthenticatedApp user={user} onLogout={() => setUser(null)} />
 }
 
 const styles = StyleSheet.create({

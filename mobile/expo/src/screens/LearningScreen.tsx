@@ -1,20 +1,35 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, FlatList, ActivityIndicator, StyleSheet, TouchableOpacity } from 'react-native'
+import {
+  View, Text, FlatList, ActivityIndicator, StyleSheet,
+  RefreshControl, TouchableOpacity, useWindowDimensions,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { api, unwrapData, Track } from '../api/client'
+import { BookOpen, ChevronRight, Users, Star } from 'lucide-react-native'
 import { colors, spacing, commonStyles, shadows } from '../theme'
+import { api, unwrapData, Track } from '../api/client'
+
+const diffDot: Record<string, string> = {
+  Beginner: colors.success,
+  Intermediate: colors.warning,
+  Advanced: colors.destructive,
+}
 
 export default function LearningScreen() {
   const [tracks, setTracks] = useState<Track[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const insets = useSafeAreaInsets()
 
-  useEffect(() => {
-    api.get<unknown>('/api/tracks')
-      .then(res => setTracks(unwrapData<Track>(res)))
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+  const fetchData = async () => {
+    try {
+      const res = await api.get<unknown>('/api/tracks')
+      setTracks(unwrapData<Track>(res))
+    } catch { /* silent */ }
+    setLoading(false)
+    setRefreshing(false)
+  }
+
+  useEffect(() => { fetchData() }, [])
 
   return (
     <View style={commonStyles.container}>
@@ -22,49 +37,63 @@ export default function LearningScreen() {
         data={tracks}
         keyExtractor={t => t.id}
         contentContainerStyle={{ padding: spacing['2xl'], paddingBottom: insets.bottom + 80 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor={colors.primary} />
+        }
         ListHeaderComponent={
           <View style={commonStyles.sectionHeader}>
-            <Text style={commonStyles.sectionTitle}>Learning Tracks</Text>
+            <BookOpen size={20} color={colors.primary} strokeWidth={2} />
+            <Text style={commonStyles.sectionTitle}>Learning Paths</Text>
           </View>
         }
         ListEmptyComponent={
           loading ? null : (
             <View style={commonStyles.emptyState}>
+              <BookOpen size={40} color={colors.muted} strokeWidth={1.5} />
               <Text style={commonStyles.emptyText}>No tracks available</Text>
             </View>
           )
         }
-        renderItem={({ item, index }) => (
-          <View style={[styles.card, index === 0 && styles.cardFirst]}>
-            <View style={styles.cardHeader}>
-              <View style={styles.trackIcon}>
-                <Text style={styles.trackIconText}>{'</>'}</Text>
+        renderItem={({ item }) => {
+          const dot = item.difficulty ? diffDot[item.difficulty] || colors.muted : colors.muted
+
+          return (
+            <TouchableOpacity style={styles.card} activeOpacity={0.7}>
+              <View style={[styles.trackIcon, { backgroundColor: colors.primary + '18' }]}>
+                <BookOpen size={22} color={colors.primary} strokeWidth={2} />
               </View>
-              <View style={styles.cardInfo}>
+
+              <View style={styles.trackInfo}>
                 <Text style={styles.trackTitle} numberOfLines={1}>{item.name}</Text>
-                {item.badge && (
-                  <View style={styles.badge}>
-                    <Text style={styles.badgeText}>{item.badge}</Text>
-                  </View>
+                {item.description && (
+                  <Text style={styles.trackDesc} numberOfLines={2}>{item.description}</Text>
                 )}
-              </View>
-            </View>
-            <Text style={styles.trackDesc}>{item.description}</Text>
-            <View style={styles.topics}>
-              {item.topics?.slice(0, 4).map((t, i) => (
-                <View key={i} style={styles.topicTag}>
-                  <Text style={styles.topicText}>{t}</Text>
+                <View style={styles.trackMeta}>
+                  {item.difficulty && (
+                    <View style={styles.metaChip}>
+                      <View style={[styles.dot, { backgroundColor: dot }]} />
+                      <Text style={styles.metaText}>{item.difficulty}</Text>
+                    </View>
+                  )}
+                  {item.totalCourses !== undefined && (
+                    <View style={styles.metaChip}>
+                      <BookOpen size={12} color={colors.muted} strokeWidth={2} />
+                      <Text style={styles.metaText}>{item.totalCourses} courses</Text>
+                    </View>
+                  )}
+                  {item.enrolledCount !== undefined && (
+                    <View style={styles.metaChip}>
+                      <Users size={12} color={colors.muted} strokeWidth={2} />
+                      <Text style={styles.metaText}>{item.enrolledCount.toLocaleString()}</Text>
+                    </View>
+                  )}
                 </View>
-              ))}
-              {(item.topics?.length || 0) > 4 && (
-                <Text style={styles.topicMore}>+{(item.topics?.length || 0) - 4}</Text>
-              )}
-            </View>
-            <TouchableOpacity style={styles.startBtn} activeOpacity={0.7}>
-              <Text style={styles.startBtnText}>Start Track →</Text>
+              </View>
+
+              <ChevronRight size={18} color={colors.muted} strokeWidth={2} />
             </TouchableOpacity>
-          </View>
-        )}
+          )
+        }}
       />
       {loading && (
         <View style={styles.loadingOverlay}>
@@ -76,21 +105,18 @@ export default function LearningScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.cardBorder, padding: spacing['2xl'], marginBottom: spacing.md, ...shadows.sm },
-  cardFirst: { marginTop: spacing.sm },
-  cardHeader: { flexDirection: 'row', alignItems: 'center', gap: spacing.md, marginBottom: spacing.md },
-  trackIcon: { width: 44, height: 44, borderRadius: 10, backgroundColor: colors.primary + '18', alignItems: 'center', justifyContent: 'center' },
-  trackIconText: { fontSize: 18, fontWeight: '700', color: colors.primary, fontFamily: 'monospace' },
-  cardInfo: { flex: 1, gap: spacing.xs },
-  trackTitle: { fontSize: 15, fontWeight: '600', color: colors.foreground, fontFamily: 'monospace' },
-  badge: { backgroundColor: colors.primary + '18', borderRadius: 4, paddingHorizontal: spacing.sm, paddingVertical: 1, alignSelf: 'flex-start' },
-  badgeText: { fontSize: 10, fontWeight: '600', color: colors.primary, fontFamily: 'monospace' },
-  trackDesc: { fontSize: 13, color: colors.mutedForeground, fontFamily: 'monospace', lineHeight: 18, marginBottom: spacing.md },
-  topics: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.xs, marginBottom: spacing.lg },
-  topicTag: { backgroundColor: colors.accent, borderRadius: 4, paddingHorizontal: spacing.sm, paddingVertical: 2 },
-  topicText: { fontSize: 11, color: colors.mutedForeground, fontFamily: 'monospace' },
-  topicMore: { fontSize: 11, color: colors.muted, fontFamily: 'monospace' },
-  startBtn: { backgroundColor: colors.primary + '12', borderRadius: 8, paddingVertical: spacing.md, alignItems: 'center', borderWidth: 1, borderColor: colors.primary + '30' },
-  startBtnText: { fontSize: 13, fontWeight: '600', color: colors.primary, fontFamily: 'monospace' },
+  card: {
+    flexDirection: 'row', alignItems: 'center', gap: spacing.md,
+    backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.cardBorder,
+    padding: spacing.md, marginBottom: spacing.sm, ...shadows.xs,
+  },
+  trackIcon: { width: 48, height: 48, borderRadius: 12, alignItems: 'center', justifyContent: 'center', flexShrink: 0 },
+  trackInfo: { flex: 1 },
+  trackTitle: { fontSize: 15, fontWeight: '600', color: colors.foreground, fontFamily: 'monospace', marginBottom: 3 },
+  trackDesc: { fontSize: 12, color: colors.muted, fontFamily: 'monospace', lineHeight: 16, marginBottom: spacing.sm },
+  trackMeta: { flexDirection: 'row', flexWrap: 'wrap', gap: spacing.md },
+  metaChip: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  dot: { width: 6, height: 6, borderRadius: 3 },
+  metaText: { fontSize: 11, color: colors.muted, fontFamily: 'monospace' },
   loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.background + 'EE', alignItems: 'center', justifyContent: 'center' },
 })

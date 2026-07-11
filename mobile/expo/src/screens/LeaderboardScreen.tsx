@@ -1,68 +1,91 @@
 import React, { useEffect, useState } from 'react'
-import { View, Text, FlatList, ActivityIndicator, StyleSheet } from 'react-native'
+import {
+  View, Text, FlatList, ActivityIndicator, StyleSheet,
+  RefreshControl,
+} from 'react-native'
 import { useSafeAreaInsets } from 'react-native-safe-area-context'
-import { api, unwrapData, LeaderboardEntry } from '../api/client'
+import { Trophy, Medal, Crown } from 'lucide-react-native'
 import { colors, spacing, commonStyles, shadows } from '../theme'
+import { api, unwrapData, LeaderboardEntry } from '../api/client'
 
-const rankColors = ['#EAB308', '#94A3B8', '#CD7F32']
+const rankIcon = (rank: number) => {
+  if (rank === 1) return <Crown size={16} color="#FFD700" strokeWidth={2.5} />
+  if (rank === 2) return <Medal size={16} color="#C0C0C0" strokeWidth={2.5} />
+  if (rank === 3) return <Medal size={16} color="#CD7F32" strokeWidth={2.5} />
+  return null
+}
+
+const rankBg = (rank: number) => {
+  if (rank === 1) return '#FFD70018'
+  if (rank === 2) return '#C0C0C018'
+  if (rank === 3) return '#CD7F3218'
+  return 'transparent'
+}
 
 export default function LeaderboardScreen() {
   const [entries, setEntries] = useState<LeaderboardEntry[]>([])
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
   const insets = useSafeAreaInsets()
 
-  useEffect(() => {
-    api.get<unknown>('/api/leaderboard')
-      .then(res => setEntries(unwrapData<LeaderboardEntry>(res)))
-      .catch(console.error)
-      .finally(() => setLoading(false))
-  }, [])
+  const fetchData = async () => {
+    try {
+      const res = await api.get<unknown>('/api/leaderboard')
+      setEntries(unwrapData<LeaderboardEntry>(res))
+    } catch { /* silent */ }
+    setLoading(false)
+    setRefreshing(false)
+  }
+
+  useEffect(() => { fetchData() }, [])
 
   return (
     <View style={commonStyles.container}>
       <FlatList
         data={entries}
-        keyExtractor={e => e.userId || String(e.rank)}
+        keyExtractor={(e) => e.userId}
         contentContainerStyle={{ padding: spacing['2xl'], paddingBottom: insets.bottom + 80 }}
+        refreshControl={
+          <RefreshControl refreshing={refreshing} onRefresh={() => { setRefreshing(true); fetchData() }} tintColor={colors.primary} />
+        }
         ListHeaderComponent={
           <View style={commonStyles.sectionHeader}>
+            <Trophy size={20} color={colors.primary} strokeWidth={2} />
             <Text style={commonStyles.sectionTitle}>Leaderboard</Text>
           </View>
         }
         ListEmptyComponent={
           loading ? null : (
             <View style={commonStyles.emptyState}>
-              <Text style={commonStyles.emptyText}>No rankings yet</Text>
+              <Trophy size={40} color={colors.muted} strokeWidth={1.5} />
+              <Text style={commonStyles.emptyText}>No entries yet</Text>
             </View>
           )
         }
         renderItem={({ item, index }) => {
-          const isTop = item.rank <= 3
-          const rankColor = rankColors[item.rank - 1] || colors.muted
+          const rank = item.rank ?? index + 1
+          const bg = rankBg(rank)
+          const isTop3 = rank <= 3
 
           return (
-            <View style={[styles.card, index === 0 && styles.cardFirst, isTop && { borderColor: rankColor + '40' }]}>
-              <View style={styles.cardMain}>
-                <View style={[styles.rankBadge, isTop && { backgroundColor: rankColor + '18' }]}>
-                  <Text style={[styles.rankText, isTop && { color: rankColor }]}>
-                    #{item.rank}
-                  </Text>
+            <View style={[styles.row, isTop3 && { backgroundColor: bg }]}>
+              <View style={styles.rankCell}>
+                {rankIcon(rank) || (
+                  <Text style={styles.rankText}>{rank}</Text>
+                )}
+              </View>
+              <View style={styles.infoCell}>
+                <View style={styles.nameRow}>
+                  <Text style={styles.name} numberOfLines={1}>{item.name}</Text>
                 </View>
-                <View style={styles.userInfo}>
-                  <View style={[styles.userAvatar, { backgroundColor: rankColor + '15' }]}>
-                    <Text style={[styles.userInitials, { color: rankColor }]}>
-                      {item.name ? item.name.slice(0, 2).toUpperCase() : '??'}
-                    </Text>
-                  </View>
-                  <View>
-                    <Text style={styles.userName}>{item.name || 'Anonymous'}</Text>
-                    <Text style={styles.userMeta}>{item.challengesSolved} solved · Lv {item.level}</Text>
-                  </View>
-                </View>
-                <View style={styles.xpBadge}>
-                  <Text style={styles.xpValue}>{item.xp.toLocaleString()}</Text>
-                  <Text style={styles.xpLabel}>XP</Text>
-                </View>
+                <Text style={styles.title}>{item.title}</Text>
+                {item.language && (
+                  <Text style={styles.language}>{item.language}</Text>
+                )}
+              </View>
+              <View style={styles.statsCell}>
+                <Text style={styles.xp}>{item.xp.toLocaleString()} XP</Text>
+                <Text style={styles.sub}>{item.challengesSolved} solved</Text>
               </View>
             </View>
           )
@@ -78,18 +101,20 @@ export default function LeaderboardScreen() {
 }
 
 const styles = StyleSheet.create({
-  card: { backgroundColor: colors.card, borderRadius: 12, borderWidth: 1, borderColor: colors.cardBorder, marginBottom: spacing.sm, ...shadows.sm },
-  cardFirst: { marginTop: spacing.sm },
-  cardMain: { flexDirection: 'row', alignItems: 'center', padding: spacing.lg, gap: spacing.md },
-  rankBadge: { width: 44, height: 44, borderRadius: 22, backgroundColor: colors.accent, alignItems: 'center', justifyContent: 'center' },
-  rankText: { fontSize: 13, fontWeight: '700', color: colors.muted, fontFamily: 'monospace' },
-  userInfo: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: spacing.md },
-  userAvatar: { width: 40, height: 40, borderRadius: 20, alignItems: 'center', justifyContent: 'center' },
-  userInitials: { fontSize: 13, fontWeight: '700', fontFamily: 'monospace' },
-  userName: { fontSize: 14, fontWeight: '600', color: colors.foreground, fontFamily: 'monospace' },
-  userMeta: { fontSize: 12, color: colors.muted, fontFamily: 'monospace' },
-  xpBadge: { alignItems: 'flex-end' },
-  xpValue: { fontSize: 16, fontWeight: '700', color: colors.primary, fontFamily: 'monospace' },
-  xpLabel: { fontSize: 10, color: colors.muted, fontFamily: 'monospace', textTransform: 'uppercase', letterSpacing: 0.5 },
+  row: {
+    flexDirection: 'row', alignItems: 'center', backgroundColor: colors.card,
+    borderRadius: 12, borderWidth: 1, borderColor: colors.cardBorder, padding: spacing.md,
+    marginBottom: spacing.sm, ...shadows.xs,
+  },
+  rankCell: { width: 36, height: 36, alignItems: 'center', justifyContent: 'center' },
+  rankText: { fontSize: 14, fontWeight: '700', color: colors.muted, fontFamily: 'monospace' },
+  infoCell: { flex: 1, paddingHorizontal: spacing.sm },
+  nameRow: { flexDirection: 'row', alignItems: 'center', gap: spacing.xs },
+  name: { fontSize: 14, fontWeight: '600', color: colors.foreground, fontFamily: 'monospace' },
+  title: { fontSize: 11, color: colors.primary, fontFamily: 'monospace', marginTop: 1 },
+  language: { fontSize: 10, color: colors.muted, fontFamily: 'monospace', marginTop: 1 },
+  statsCell: { alignItems: 'flex-end' },
+  xp: { fontSize: 14, fontWeight: '700', color: colors.primary, fontFamily: 'monospace' },
+  sub: { fontSize: 10, color: colors.muted, fontFamily: 'monospace' },
   loadingOverlay: { ...StyleSheet.absoluteFillObject, backgroundColor: colors.background + 'EE', alignItems: 'center', justifyContent: 'center' },
 })

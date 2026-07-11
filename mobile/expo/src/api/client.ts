@@ -87,12 +87,12 @@ export interface Challenge {
   id: string
   title: string
   description: string
-  difficulty: 'Easy' | 'Medium' | 'Hard'
-  type: string
+  difficulty: string
+  type?: string
   duration?: number
   successRate?: number
-  completed: boolean
-  locked: boolean
+  completed?: boolean
+  locked?: boolean
 }
 
 export interface Track {
@@ -102,7 +102,10 @@ export interface Track {
   topics: string[]
   tone?: string
   badge?: string
-  created_at: string
+  difficulty?: string
+  totalCourses?: number
+  enrolledCount?: number
+  created_at?: string
 }
 
 export interface LeaderboardEntry {
@@ -113,9 +116,11 @@ export interface LeaderboardEntry {
   level: number
   xp: number
   language: string
+  languageClass: string
+  avatar: string
+  lastSubmission: string | null
   streak: number
   challengesSolved: number
-  avatar?: string
 }
 
 export interface Achievement {
@@ -123,9 +128,11 @@ export interface Achievement {
   name: string
   description: string
   icon: string
-  earned: boolean
+  type?: string
+  unlocked: boolean
+  unlockedAt?: string
   progress: number
-  total: number
+  maxProgress: number
 }
 
 export interface Certification {

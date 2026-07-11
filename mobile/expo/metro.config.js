@@ -4,10 +4,7 @@ const config = getDefaultConfig(__dirname)
 
 config.server = {
   ...config.server,
-  urlOpts: {
-    ...config.server?.urlOpts,
-    platform: 'android',
-  },
+  host: '0.0.0.0',
 }
 
 module.exports = config
