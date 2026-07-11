@@ -110,12 +110,6 @@ export default function LoginScreen({ onLogin }: Props) {
             </View>
           </View>
 
-          <View style={styles.demoHint}>
-            <Text style={styles.demoTitle}>Demo accounts:</Text>
-            <Text style={styles.demoText}>superadmin@codespectra.com / SuperAdmin123!</Text>
-            <Text style={styles.demoText}>admin@codespectra.com / TenantAdmin123!</Text>
-            <Text style={styles.demoText}>demo@codespectra.com / DemoPass123!</Text>
-          </View>
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
@@ -149,7 +143,4 @@ const styles = StyleSheet.create({
   button: { backgroundColor: colors.primary, borderRadius: 8, paddingVertical: spacing.md + 2, alignItems: 'center', marginTop: spacing.sm },
   buttonDisabled: { opacity: 0.7 },
   buttonText: { color: colors.primaryForeground, fontWeight: '700', fontSize: 14, fontFamily: 'monospace', letterSpacing: 0.3 },
-  demoHint: { marginTop: spacing['2xl'], alignItems: 'center' },
-  demoTitle: { fontSize: 11, color: colors.muted, fontFamily: 'monospace', fontWeight: '600', marginBottom: spacing.xs },
-  demoText: { fontSize: 10, color: colors.muted, fontFamily: 'monospace' },
 })

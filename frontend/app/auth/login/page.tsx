@@ -35,26 +35,6 @@ function LoginInner() {
   const [error, setError] = useState<string | null>(null);
   const { signInWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
 
-  const devAccounts = [
-    { role: "Superadmin", email: "superadmin@codespectra.com", password: "SuperAdmin123!" },
-    { role: "Tenant admin", email: "admin@codespectra.com", password: "TenantAdmin123!" },
-    { role: "User", email: "demo@codespectra.com", password: "DemoPass123!" },
-  ];
-
-  async function handleDevLogin(accEmail: string, accPassword: string) {
-    setError(null);
-    setLoading(true);
-    try {
-      await signInWithEmail(accEmail, accPassword);
-      router.push("/dashboard");
-      router.refresh();
-    } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Dev login failed";
-      setError(msg);
-    } finally {
-      setLoading(false);
-    }
-  }
 
   async function onSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -314,24 +294,6 @@ function LoginInner() {
             </Button>
           </form>
 
-          {/* Dev quick login — always visible */}
-          <div className="rounded-lg border border-border/60 bg-muted/30 p-3 text-xs">
-            <p className="mb-2 font-semibold uppercase tracking-wider text-muted-foreground">Dev quick login</p>
-            <div className="flex flex-wrap gap-2">
-              {devAccounts.map((acc) => (
-                <button
-                  key={acc.role}
-                  type="button"
-                  onClick={() => handleDevLogin(acc.email, acc.password)}
-                  disabled={loading}
-                  className="rounded border border-border/80 bg-background px-2 py-1 transition-colors hover:border-primary hover:text-primary disabled:opacity-50"
-                >
-                  {acc.role}
-                </button>
-              ))}
-            </div>
-            <p className="mt-2 text-[10px] text-muted-foreground">Click a role to fill credentials, then press <em>Sign in</em>.</p>
-          </div>
 
           <p className="text-xs text-muted-foreground text-center">
             By signing in you agree to our{" "}

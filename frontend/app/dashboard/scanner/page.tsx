@@ -32,6 +32,7 @@ import { CodeEditor } from '@/components/code-scanner/code-editor'
 import { CodebaseChatSidebar } from '@/components/scanner/codebase-chat-sidebar'
 import { DependencyScannerPanel } from '@/components/scanner/dependency-scanner-panel'
 import { SecretScannerPanel } from '@/components/scanner/secret-scanner-panel'
+import { detectLanguage } from '@/lib/local-code-analyzer'
 
 interface AnalysisResult {
   id: string
@@ -72,6 +73,17 @@ function CodeScannerPageInner() {
   )
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
+
+  const handleCodeChange = useCallback((newCode: string) => {
+    setCode(newCode)
+    if (newCode.trim().length > 20) {
+      const detected = detectLanguage(newCode)
+      if (detected && detected !== language && detected !== 'javascript') {
+        setLanguage(detected)
+      }
+    }
+  }, [language])
+
   const [loading, setLoading] = useState(false)
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
   const [scanHistory, setScanHistory] = useState<AnalysisResult[]>([])
@@ -305,7 +317,7 @@ function CodeScannerPageInner() {
                 {useMonacoEditor ? (
                   <CodeEditor
                     value={code}
-                    onChange={setCode}
+                    onChange={handleCodeChange}
                     language={language}
                     height={360}
                     liveAnalysis={false}
@@ -315,7 +327,7 @@ function CodeScannerPageInner() {
                 ) : (
                   <textarea
                     value={code}
-                    onChange={(e) => setCode(e.target.value)}
+                    onChange={(e) => handleCodeChange(e.target.value)}
                     placeholder="Paste your code here for analysis..."
                     className="h-96 w-full resize-none rounded-lg border border-border bg-background p-4 font-mono text-sm text-foreground placeholder:text-foreground/50 focus:outline-none focus:ring-2 focus:ring-primary"
                   />
