@@ -66,8 +66,8 @@ export async function POST(request: Request) {
     if (!res.ok) {
       const text = await res.text().catch(() => '')
       let msg = `Failed to fetch models (${res.status}): ${text.slice(0, 150)}`
-      if (res.status === 401 && (text.includes('No cookie auth credentials found') || text.includes('User not found') || text.includes('Invalid API key') || text.includes('Unauthorized'))) {
-        msg = `Failed to fetch models (401): Missing or invalid API key for ${body.provider.toUpperCase()}. Please enter your valid API key in the API Key box.`
+      if (res.status === 401 && (text.includes('No cookie auth credentials found') || text.includes('Missing Authentication header') || text.includes('User not found') || text.includes('Invalid API key') || text.includes('Unauthorized') || body.provider === 'opencode' || body.provider === 'omnirouter')) {
+        msg = `Failed to fetch models (401): Missing or invalid API key for ${body.provider.toUpperCase()}. Note: OpenRouter API keys MUST start with "sk-or-v1-". Please create a free key at https://openrouter.ai/keys and enter it above.`
       }
       return NextResponse.json({ ok: false, message: msg })
     }

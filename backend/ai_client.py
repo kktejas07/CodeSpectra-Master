@@ -216,8 +216,8 @@ class DirectAiClient:
                     if response.status_code != 200:
                         err_body = await response.aread()
                         err_text = err_body.decode('utf-8', errors='replace')
-                        if response.status_code == 401 and ("No cookie auth credentials found" in err_text or "User not found" in err_text or "Invalid API key" in err_text or "Incorrect API key" in err_text):
-                            yield TextDelta(content=f"API Error (401): Missing or invalid API key for {self.provider.upper()}. Please go to Settings → AI & LLM Provider and enter a valid API Key (for OpenCode/OpenRouter, enter your key starting with sk-or-v1-).")
+                        if response.status_code == 401 and ("No cookie auth credentials found" in err_text or "Missing Authentication header" in err_text or "User not found" in err_text or "Invalid API key" in err_text or "Incorrect API key" in err_text or self.provider in ("opencode", "omnirouter")):
+                            yield TextDelta(content=f"API Error (401): Missing or invalid API key for {self.provider.upper()}. Note: OpenRouter API keys MUST start with 'sk-or-v1-'. Please go to Settings → AI & LLM Provider, get a free key from openrouter.ai/keys, and enter it.")
                         else:
                             yield TextDelta(content=f"OpenAI/OpenRouter API Error: {response.status_code} - {err_text}")
                         yield StreamDone()
