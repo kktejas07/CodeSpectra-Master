@@ -19,7 +19,7 @@ const nextConfig = {
   ],
   serverExternalPackages: ['mongodb', 'nodemailer', 'bcryptjs'],
   typescript: {
-    ignoreBuildErrors: true,
+    ignoreBuildErrors: false, // SECURITY: TypeScript errors must be fixed, not silently ignored
   },
   images: {
     unoptimized: true,
