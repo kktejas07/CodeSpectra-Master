@@ -13,7 +13,7 @@
  *   – same‑site scripting (XSS on an allowed script‑src origin)
  *   – mis‑configured SameSite / legacy clients
  */
-import crypto from 'node:crypto'
+import crypto from 'crypto'
 
 const COOKIE_NAME = 'csrf_token'
 const HEADER_NAME = 'x-csrf-token'
