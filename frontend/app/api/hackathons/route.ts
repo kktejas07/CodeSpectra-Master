@@ -46,9 +46,9 @@ export async function GET() {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const col = await hackathons()
-  const filter = isAdmin(user.role) ? {} : { status: { $ne: 'draft' } }
+  const filter = isAdmin(user.role) ? {} : { status: { $ne: 'draft' as const } }
   const items = await col
-    .find(filter, { projection: { _id: 0 } })
+    .find(filter as any, { projection: { _id: 0 } })
     .sort({ created_at: -1 })
     .toArray()
   return NextResponse.json({ items })
@@ -87,7 +87,7 @@ export async function POST(req: NextRequest) {
     slug = `${slugify(body.name)}-${suffix}`
   }
 
-  const tasks: HackathonTask[] = (body.tasks || []).map((t: Record<string, unknown>, i: number) => ({
+  const tasks: HackathonTask[] = (body.tasks || []).map((t: any, i: number) => ({
     problem_slug: String(t.problem_slug || ''),
     problem_title: String(t.problem_title || ''),
     points: Number(t.points) || 100,
@@ -96,7 +96,7 @@ export async function POST(req: NextRequest) {
     order: i,
   }))
 
-  const rulesHackathon: HackathonRule[] = (body.rules || []).map((r: Record<string, unknown>) => ({
+  const rulesHackathon: HackathonRule[] = (body.rules || []).map((r: any) => ({
     type: (r.type as HackathonRule['type']) || 'general',
     title: String(r.title || ''),
     description: String(r.description || ''),

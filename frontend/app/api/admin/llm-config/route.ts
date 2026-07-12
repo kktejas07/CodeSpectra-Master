@@ -57,7 +57,7 @@ export async function PATCH(request: Request) {
 
   await db.collection('platform_settings').updateOne(
     { key: PLATFORM_KEY },
-    { $set: { value: next as Record<string, unknown>, updated_at: new Date().toISOString() } },
+    { $set: { value: (next as any) as Record<string, unknown>, updated_at: new Date().toISOString() } },
     { upsert: true },
   )
 

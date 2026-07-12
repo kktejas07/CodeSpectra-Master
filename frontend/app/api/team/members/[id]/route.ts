@@ -8,7 +8,7 @@ async function getMyOrgId(userId: string): Promise<string | null> {
   const userCol = await users()
   const me = await userCol.findOne({
     $or: [{ _id: userId }, { id: userId }],
-  } as Filter<Record<string, unknown>>)
+  } as any)
   return (me?.organizationId as string | undefined) ?? null
 }
 

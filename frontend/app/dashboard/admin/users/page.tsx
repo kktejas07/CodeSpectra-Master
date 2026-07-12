@@ -43,8 +43,8 @@ function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
   void tick
   return {
     id: row.id,
-    name: row.name,
-    email: row.email,
+    name: row.name ?? "",
+    email: row.email ?? "",
     role: row.role,
     status: row.status,
     joinedAt: row.joinedAt,
@@ -292,9 +292,9 @@ export default function UsersManagement() {
       ) : (
         <UserManagementTable
           users={displayUsers}
-          onEdit={handleEdit}
-          onDelete={handleDeleteRequest}
-          onRoleChange={handleChangeRole}
+          onEdit={handleEdit as any}
+          onDelete={handleDeleteRequest as any}
+          onRoleChange={handleChangeRole as any}
         />
       )}
 

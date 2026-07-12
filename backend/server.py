@@ -2,32 +2,61 @@
 Thin proxy server: forwards every `/api/*` request to the Next.js dev
 server running on localhost:3000.
 
+NOW — also mounts all modular internal routers (AI, challenges, interviews,
+analytics, hackathons, dashboard, certifications, achievements, scanner,
+integrations).  Each router lives in its own module under `routers/`.
+
 The CodeSpectra migration moved the entire app to Next.js, which serves
 both pages and API routes from port 3000. The Kubernetes ingress in this
 preview environment forwards `/api/*` to port 8001, so we proxy through
 to keep that contract working transparently.
 """
-from fastapi import FastAPI, Request
-from fastapi.responses import Response
-from dotenv import load_dotenv
-import os
-import httpx
+from __future__ import annotations
+
 import logging
+import os
 from pathlib import Path
 
+import httpx
+from dotenv import load_dotenv
+from fastapi import FastAPI, Request
+from fastapi.responses import Response
 
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 NEXT_ORIGIN = os.environ.get("NEXTJS_INTERNAL_URL", "http://localhost:3000")
 
-app = FastAPI(title="CodeSpectra API proxy")
+app = FastAPI(title="CodeSpectra API")
 
-# Internal AI router — used by Next.js server-side API routes via
-# `http://localhost:8001/internal/ai/*`. NOT exposed through the Kubernetes
-# ingress (which only forwards `/api/*`).
-from ai_router import router as ai_router  # noqa: E402
-app.include_router(ai_router)
+# ── Mount internal routers (modular backend) ───────────────────
+# Each router is self-contained in its own module.
+# Former monolithic `ai_router.py` has been replaced by `routers/ai.py`.
+from routers.ai import router as ai_rtr
+from routers.challenges import router as challenges_rtr
+from routers.interviews import router as interviews_rtr
+from routers.analytics import router as analytics_rtr
+from routers.hackathons import router as hackathons_rtr
+from routers.dashboard import router as dashboard_rtr
+from routers.certifications import router as certifications_rtr
+from routers.features import (
+    achievement_router,
+    integration_router,
+    scanner_router,
+)
+
+app.include_router(ai_rtr)
+app.include_router(challenges_rtr)
+app.include_router(interviews_rtr)
+app.include_router(analytics_rtr)
+app.include_router(hackathons_rtr)
+app.include_router(dashboard_rtr)
+app.include_router(certifications_rtr)
+app.include_router(achievement_router)
+app.include_router(scanner_router)
+app.include_router(integration_router)
+
+# ── Proxy to Next.js (for all /api/* requests NOT handled above) ──
 
 # Shared async HTTP client (keep-alive pool)
 _client = httpx.AsyncClient(timeout=30.0, follow_redirects=False)

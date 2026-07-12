@@ -217,6 +217,7 @@ async function seed() {
         score: Math.random() > 0.3 ? Math.floor(Math.random() * task.points) : null,
         max_score: task.points, status: 'under_review', feedback: s > 0 ? 'Good attempt!' : undefined,
         created_at: NOW.toISOString(),
+        submitted_at: NOW.toISOString(),
       }
       subsCol.insertOne(sub).catch(() => null)
         subCount++

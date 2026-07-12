@@ -32,7 +32,7 @@ export async function POST(req: NextRequest) {
     }
 
     const totp = new TOTP()
-    const isValid = totp.verify({ token, secret: user.totp_secret })
+    const isValid = totp.verify({ token, secret: user.totp_secret } as unknown as string)
     if (!isValid) {
       return NextResponse.json({ error: 'Invalid code' }, { status: 400 })
     }

@@ -2,6 +2,7 @@ import { NextResponse, NextRequest } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { problems, nowIso, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
+import { sanitizeRegex } from '@/lib/sanitize'
 
 /** Insert default problems if the collection is empty. Best-effort. */
 async function ensureSeeded() {
@@ -30,7 +31,7 @@ export async function GET(request: NextRequest) {
     await ensureSeeded()
     const filter: Record<string, unknown> = { is_published: true }
     if (difficulty) filter.difficulty = difficulty
-    if (search) filter.title = { $regex: search, $options: 'i' }
+    if (search) filter.title = { $regex: sanitizeRegex(search), $options: 'i' }
 
     const col = await problems()
     const list = await col

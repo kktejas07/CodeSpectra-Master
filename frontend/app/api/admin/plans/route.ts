@@ -26,7 +26,7 @@ export async function GET() {
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
       }))
-      await col.insertMany(docs)
+      await col.insertMany(docs as any)
       invalidatePlanCache()
       plans = await col.find({}).toArray()
     }

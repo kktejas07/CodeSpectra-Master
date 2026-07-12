@@ -106,7 +106,7 @@ export default function AchievementsPage() {
             </TabsContent>
             <TabsContent value="badges">
               {userBadges.length > 0 ? (
-                <BadgesShowcase badges={userBadges} />
+                <div>Badges: {userBadges.join(', ')}</div>
               ) : (
                 <p className="py-10 text-center text-sm text-muted-foreground">No badges earned yet.</p>
               )}

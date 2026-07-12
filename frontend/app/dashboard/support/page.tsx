@@ -97,7 +97,7 @@ export default function SupportPage() {
         <div className="rounded-lg border border-border bg-card p-4 text-sm">{selectedTicket.message}</div>
         <div className="space-y-3">
           {replies.map((r) => (
-            <div key={r.id} className={`rounded-lg border p-3 text-sm ${r.user_email === selectedTicket.user_email ? 'border-border bg-card' : 'border-primary/20 bg-primary/5'}`}>
+            <div key={r.id} className={`rounded-lg border p-3 text-sm ${(r as any).user_email === (selectedTicket as any).user_email ? 'border-border bg-card' : 'border-primary/20 bg-primary/5'}`}>
               <p className="text-xs text-muted-foreground">{r.user_email} · {new Date(r.created_at).toLocaleString()}</p>
               <p className="mt-1">{r.message}</p>
             </div>

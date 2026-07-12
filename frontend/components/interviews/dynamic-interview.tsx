@@ -116,7 +116,7 @@ export function DynamicInterview({
       // Generate first question as FollowUpQuestion-like object
       setCurrentQuestion({
         question: openingQuestion,
-        category: 'Introduction',
+        category: 'Introduction' as any,
         difficulty: 'Easy',
         reasoning: 'Opening question to establish context',
         timeLimit: 60,

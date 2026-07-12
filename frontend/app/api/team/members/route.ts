@@ -13,11 +13,10 @@ export async function GET() {
     const userCol = await users()
     const me = await userCol.findOne({
       $or: [{ _id: gate.user.id }, { id: gate.user.id }],
-    } as Filter<Record<string, unknown>>)
+    } as any)
 
     const orgId = (me?.organizationId as string | undefined) ?? null
     if (!orgId) {
-      // No org yet — return an empty roster (was previously a hard 500 on user_metadata access).
       return NextResponse.json([])
     }
 
@@ -29,7 +28,7 @@ export async function GET() {
     const profiles = await userCol
       .find({
         $or: [{ _id: { $in: memberIds } }, { id: { $in: memberIds } }],
-      } as Filter<Record<string, unknown>>)
+      } as any)
       .toArray()
 
     const byId = new Map<string, (typeof profiles)[number]>()
@@ -69,7 +68,7 @@ export async function POST(request: NextRequest) {
     const userCol = await users()
     const me = await userCol.findOne({
       $or: [{ _id: gate.user.id }, { id: gate.user.id }],
-    } as Filter<Record<string, unknown>>)
+    } as any)
     const orgId = (me?.organizationId as string | undefined) ?? null
     if (!orgId) {
       return NextResponse.json(

@@ -1,0 +1,1 @@
+"""Core infrastructure — database, config, auth, and shared dependencies."""

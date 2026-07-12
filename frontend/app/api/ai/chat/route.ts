@@ -198,10 +198,10 @@ export async function POST(req: NextRequest): Promise<Response> {
               feature: 'chat',
               provider: '',  // will be enriched from model lookup
               model: '',
-              input_chars: usage.input_chars || 0,
-              output_chars: usage.output_chars || 0,
-              estimated_input_tokens: Math.ceil((usage.input_chars || 0) / 4),
-              estimated_output_tokens: Math.ceil((usage.output_chars || 0) / 4),
+              input_chars: usage?.input_chars ?? 0,
+              output_chars: usage?.output_chars ?? 0,
+              estimated_input_tokens: Math.ceil((usage?.input_chars ?? 0) / 4),
+              estimated_output_tokens: Math.ceil((usage?.output_chars ?? 0) / 4),
               created_at: nowIso(),
             }).catch((err: unknown) => console.error('[ai/chat] usage persist err:', err))
           )

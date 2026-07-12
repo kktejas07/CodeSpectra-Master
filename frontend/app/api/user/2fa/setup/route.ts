@@ -12,11 +12,10 @@ export async function POST() {
   try {
     const secret = generateSecret()
     const otpauth = generateURI({
-      type: 'totp',
       issuer: 'CodeSpectra',
       label: gate.user.email,
       secret,
-    })
+    } as any)
 
     const db = await getMongoDb()
     await db.collection('user').updateOne(

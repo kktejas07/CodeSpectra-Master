@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
+import { checkCsrf, CSRF_COOKIE, CSRF_HEADER } from '@/lib/csrf'
 
 const CSP = [
   "default-src 'self'",
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com",
+  "script-src 'self' 'unsafe-inline' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com",
   "script-src-elem 'self' 'unsafe-inline' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://apis.google.com https://www.gstatic.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://static.cloudflareinsights.com",
   "style-src 'self' 'unsafe-inline' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.googleapis.com",
   "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com data:",
@@ -26,6 +27,17 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next()
 
+  // CSRF protection for API routes
+  if (pathname.startsWith('/api/')) {
+    const csrf = checkCsrf(request)
+    if (!csrf.pass) {
+      return NextResponse.json({ error: 'CSRF validation failed' }, { status: 403 })
+    }
+    if (csrf.token) {
+      response.headers.set('Set-Cookie', `${CSRF_COOKIE}=${csrf.token}; Path=/; HttpOnly; SameSite=Lax; Secure`)
+    }
+  }
+
   // Security headers for ALL responses
   response.headers.set('Strict-Transport-Security', HSTS)
   response.headers.set('X-Content-Type-Options', 'nosniff')
@@ -34,6 +46,12 @@ export function middleware(request: NextRequest) {
     'Permissions-Policy',
     'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   )
+
+  // CORS headers
+  response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || '*')
+  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  response.headers.set('Access-Control-Max-Age', '86400')
 
   // CSP only for HTML pages (not API/static responses)
   if (

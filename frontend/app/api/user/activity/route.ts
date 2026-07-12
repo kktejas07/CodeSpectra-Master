@@ -73,11 +73,11 @@ export async function GET(req: NextRequest) {
     for (const f of fixes) events.push(f)
     for (const sub of submissions) {
       events.push({
-        ts: sub.submittedAt as string,
+        ts: (sub as any).submittedAt as string,
         type: 'challenge',
         title: 'Solved challenge',
-        meta: `Challenge · ${timeAgo(sub.submittedAt as string)}`,
-        detail: (sub.problemId as string) || 'Problem',
+        meta: `Challenge · ${timeAgo((sub as any).submittedAt as string)}`,
+        detail: ((sub as any).problemId as string) || 'Problem',
         icon: 'challenge',
       })
     }

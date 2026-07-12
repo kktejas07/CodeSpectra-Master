@@ -242,7 +242,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
                         type="button"
                         size="sm"
                         variant="outline"
-                        disabled={applied}
+                        disabled={!!applied}
                         onClick={() => void handleApplyDbFix(dbFixId)}
                       >
                         {applied ? 'Marked applied' : 'Mark applied in DB'}

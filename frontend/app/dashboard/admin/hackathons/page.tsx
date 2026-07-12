@@ -290,7 +290,7 @@ export default function HackathonsAdminPage() {
                     </div>
                   </div>
                 ))}
-                <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
+                <Button variant="outline" size="sm" onClick={() => setForm((f: any) => ({
                   ...f, rules: [...f.rules, { type: 'general' as const, title: '', description: '' }]
                 }))}>+ Add Rule</Button>
               </div>

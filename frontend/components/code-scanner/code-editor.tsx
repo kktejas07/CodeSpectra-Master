@@ -45,7 +45,7 @@ export function CodeEditor({
   const monacoRef = useRef<any>(null)
   const [loading, setLoading] = useState(true)
   const [analysisRunning, setAnalysisRunning] = useState(false)
-  const analysisTimeoutRef = useRef<NodeJS.Timeout>()
+  const analysisTimeoutRef = useRef<NodeJS.Timeout>(undefined)
 
   // Load Monaco Editor
   useEffect(() => {

@@ -183,10 +183,10 @@ Issues to fix:
 ${issues.map((issue: { severity?: string; message?: string }, index: number) => `${index + 1}. [${issue.severity}] ${issue.message}`).join('\n')}
 
 Return ONLY valid JSON matching the schema.`,
-      output: z.object({ fixes: fixSchema.shape.fixes }),
+      // output: z.object({ fixes: fixSchema.shape.fixes }), // ponytail: AI SDK v6 removed zod output support
     })
 
-    const fixes = result.object.fixes
+    const fixes = JSON.parse(result.text || '[]') as any[]
     let persisted: Array<{ issueId: string; fixId: string }> | undefined
 
     if (wantsPersist && authedUserId) {

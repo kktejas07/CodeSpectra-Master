@@ -6,14 +6,14 @@ import { normalizeUserRole } from '@/lib/rbac'
 
 export async function PATCH(
   request: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
-  const userId = params.userId
+  const { userId } = await params
 
   let body: { role?: string; full_name?: string; status?: string; plan?: string }
   try {
@@ -43,8 +43,9 @@ export async function PATCH(
 
 export async function DELETE(
   _request: Request,
-  { params }: { params: { userId: string } }
+  { params }: { params: Promise<{ userId: string }> }
 ) {
+  const { userId } = await params
   const gate = await requireSuperAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
@@ -54,7 +55,7 @@ export async function DELETE(
     const adminAuth = await getAdminAuthInstance()
     if (adminAuth) {
       try {
-        await adminAuth.deleteUser(params.userId)
+        await adminAuth.deleteUser(userId)
       } catch (e: any) {
         if (e?.code !== 'auth/user-not-found') throw e
       }
@@ -64,7 +65,7 @@ export async function DELETE(
   }
 
   try {
-    await deleteUserById(params.userId)
+    await deleteUserById(userId)
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Delete failed'

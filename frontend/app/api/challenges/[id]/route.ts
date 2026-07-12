@@ -5,14 +5,14 @@ import { ObjectId } from 'mongodb'
 
 export async function GET(
   _request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   try {
     const db = await getMongoDb()
-    const id = params.id
+    const { id } = await params
 
     let doc = null
     try {
