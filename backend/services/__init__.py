@@ -1,0 +1,1 @@
+"""Business-logic service layer — one module per feature domain."""
