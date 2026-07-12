@@ -62,12 +62,12 @@ export default function PermissionsPage() {
   const currentRole = useMemo(() => roles.find(r => r.role === selectedRole), [roles, selectedRole])
 
   const togglePerm = (resource: string, action: string) => {
-    setEditing(prev => {
+    setEditing((prev: Record<string, any>) => {
       const stored = currentRole?.permissions.find(p => p.resource === resource)?.actions || []
       const current = prev[resource] !== undefined ? prev[resource] : stored
       const next = current.includes(action as PermissionAction)
-        ? current.filter(a => a !== action)
-        : action === 'manage' ? ['manage'] : [...current.filter(a => a !== 'manage'), action]
+        ? current.filter((a: string) => a !== action)
+        : action === 'manage' ? ['manage'] : [...current.filter((a: string) => a !== 'manage'), action]
       return { ...prev, [resource]: next }
     })
   }

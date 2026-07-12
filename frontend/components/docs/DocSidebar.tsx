@@ -127,7 +127,7 @@ export function DocSidebar({ sections }: DocSidebarProps) {
         {/* Navigation */}
         <nav className="flex-1 overflow-y-auto p-3 space-y-1">
           {filtered.map((section) => {
-            const Icon = ICON_MAP[section.icon] || BookOpen
+            const Icon = (ICON_MAP[section.icon] || BookOpen) as React.ComponentType<{ className?: string }>
             const isExpanded = expandedSections.has(section.id)
 
             return (
@@ -139,7 +139,7 @@ export function DocSidebar({ sections }: DocSidebarProps) {
                     'hover:bg-muted',
                   )}
                 >
-                  <Icon className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <Icon className={"h-4 w-4 text-muted-foreground shrink-0" as any} />
                   <span className="flex-1 text-left">{section.label}</span>
                   {isExpanded ? (
                     <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />

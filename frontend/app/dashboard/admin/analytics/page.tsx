@@ -205,8 +205,8 @@ export default function Analytics() {
           </Card>
         )}
 
-        {cfData?.configured && cfData?.error && (
-          <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{cfData.error}</Card>
+        {(cfData as any)?.configured && (cfData as any)?.error && (
+          <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{(cfData as any).error}</Card>
         )}
 
         {cfData?.traffic && (

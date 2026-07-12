@@ -13,7 +13,7 @@ export async function POST(request: NextRequest) {
     const userCol = await users()
     const me = await userCol.findOne({
       $or: [{ _id: gate.user.id }, { id: gate.user.id }],
-    } as Filter<Record<string, unknown>>)
+    } as any)
     const orgId = (me?.organizationId as string | undefined) ?? null
     if (!orgId) {
       return NextResponse.json(

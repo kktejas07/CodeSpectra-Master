@@ -25,8 +25,6 @@ async function getOpenAiKey(): Promise<string> {
   throw new Error('OPENAI_API_KEY not configured. Set it in Settings → Integrations.')
 }
 
-const EMBEDDING_MODEL = 'text-embedding-ada-002'
-
 async function getEmbedding(text: string, apiKey: string): Promise<number[] | null> {
   const body = { input: text.slice(0, 8000), model: EMBEDDING_MODEL }
   try {

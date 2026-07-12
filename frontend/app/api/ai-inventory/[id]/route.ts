@@ -19,13 +19,13 @@ function isAdmin(role?: string | null): boolean {
 
 export async function GET(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   if (!isAdmin(user.role)) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
 
-  const id = params.id
+  const { id } = await params
   for (const cat of CATEGORY_ORDER) {
     const items = await fetchCategory(cat)
     const found = items.find((it) => it.id === id)
@@ -38,7 +38,7 @@ export async function GET(
 
 export async function PATCH(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -54,6 +54,7 @@ export async function PATCH(
     const db = await getMongoDb()
     const overridesCol = db.collection('ai_inventory_overrides')
     const now = new Date().toISOString()
+    const { id: itemId } = await params
 
     const updateFields: Record<string, unknown> = { updated_at: now }
     if (status !== undefined) updateFields.status = status
@@ -61,10 +62,10 @@ export async function PATCH(
     if (version !== undefined) updateFields.version = version
 
     await overridesCol.updateOne(
-      { id: params.id, category },
+      { id: itemId, category },
       {
         $set: {
-          id: params.id,
+          id: itemId,
           category,
           ...updateFields,
         },
@@ -75,19 +76,19 @@ export async function PATCH(
     // Also check if it's in custom_ai_components
     const customCol = db.collection('custom_ai_components')
     await customCol.updateOne(
-      { id: params.id },
+      { id: itemId },
       { $set: updateFields }
     )
 
-    return NextResponse.json({ ok: true, id: params.id, category, ...updateFields })
+    return NextResponse.json({ ok: true, id: itemId, category, ...updateFields })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }
 
 export async function DELETE(
   req: NextRequest,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
@@ -95,10 +96,11 @@ export async function DELETE(
 
   try {
     const db = await getMongoDb()
-    await db.collection('ai_inventory_overrides').deleteOne({ id: params.id })
-    await db.collection('custom_ai_components').deleteOne({ id: params.id })
-    return NextResponse.json({ ok: true, deleted_id: params.id })
+    const { id: itemId } = await params
+    await db.collection('ai_inventory_overrides').deleteOne({ id: itemId })
+    await db.collection('custom_ai_components').deleteOne({ id: itemId })
+    return NextResponse.json({ ok: true })
   } catch (err) {
-    return NextResponse.json({ error: err instanceof Error ? err.message : String(err) }, { status: 500 })
+    return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
   }
 }

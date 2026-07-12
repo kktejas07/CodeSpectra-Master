@@ -16,7 +16,7 @@ export async function PATCH(req: NextRequest, { params }: IdRouteContext) {
 
     const db = await getMongoDb()
     const result = await db.collection('notification_preferences').updateOne(
-      { _id: ObjectId.isValid(id) ? new ObjectId(id) : id, user_id: user.id },
+      { _id: (ObjectId.isValid(id) ? new ObjectId(id) : id) as any, user_id: user.id },
       { $set: body }
     )
 

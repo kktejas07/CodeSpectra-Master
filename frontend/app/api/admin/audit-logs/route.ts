@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { adminAuditLogs } from '@/lib/db/misc'
+import { sanitizeRegex } from '@/lib/sanitize'
 
 export async function GET(req: NextRequest) {
   const gate = await requireSuperAdmin()
@@ -24,7 +25,7 @@ export async function GET(req: NextRequest) {
     let cursor = col.find(filter).sort({ ts: -1 }).limit(limit)
 
     if (q) {
-      const regex = { $regex: q, $options: 'i' } as unknown
+      const regex = { $regex: sanitizeRegex(q), $options: 'i' } as unknown
       cursor = col.find({
         $and: [
           filter,
@@ -45,7 +46,7 @@ export async function GET(req: NextRequest) {
       total: data.length,
       critical: data.filter(r => r.severity === 'critical').length,
       warning: data.filter(r => r.severity === 'warning').length,
-      denied: data.filter(r => r.outcome === 'denied' || r.outcome === 'failure').length,
+      denied: data.filter((r: any) => r.outcome === 'denied' || r.outcome === 'failure').length,
     }
 
     return NextResponse.json({ data, stats })

@@ -117,7 +117,7 @@ export default function NotificationsPage() {
       ) : (
         <div className="space-y-2">
           {filtered.map((n) => {
-            const Icon = IconComponent(n.icon || 'bell')
+            const Icon = IconComponent(n.icon || 'bell') as React.ComponentType<{ className?: string }>
             return (
               <div key={n.id} className={`rounded-lg border transition-colors ${
                 n.is_read ? 'border-border/40 bg-card/40' : 'border-primary/20 bg-primary/5'

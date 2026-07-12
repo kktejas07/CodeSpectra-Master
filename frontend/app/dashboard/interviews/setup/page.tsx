@@ -65,7 +65,6 @@ export default function InterviewSetupPage() {
           <ResumeUpload
             onContinue={handleResumeUpload}
             isOptional={true}
-            onBack={handleBackToRole}
           />
         </div>
       )}

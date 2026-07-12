@@ -62,8 +62,8 @@ export function MetricsTrendChart({ data, metric = 'quality' }: MetricsTrendChar
   const config = getMetricConfig(metric)
   const latestValue = data[data.length - 1]?.[metric as keyof MetricsTrendData]
   const previousValue = data[data.length - 2]?.[metric as keyof MetricsTrendData]
-  const trend = latestValue && previousValue ? latestValue - previousValue : 0
-  const trendPercentage = previousValue ? Math.round(((latestValue - previousValue) / previousValue) * 100) : 0
+  const trend = latestValue && previousValue ? Number(latestValue) - Number(previousValue) : 0
+  const trendPercentage = previousValue ? Math.round(((Number(latestValue) - Number(previousValue)) / Number(previousValue)) * 100) : 0
 
   const CustomTooltip = ({ active, payload }: any) => {
     if (active && payload && payload.length) {

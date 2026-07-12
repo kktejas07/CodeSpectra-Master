@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { getAPIUser } from '@/lib/route-auth'
+import { isSafeUrl } from '@/lib/url-safety'
 
 export const runtime = 'nodejs'
 
@@ -36,7 +37,14 @@ Here are the contents of the relevant files in the codebase:\n\n${codebaseContex
 Provide concrete, developer-friendly recommendations.`
 
     const fastApiUrl = process.env.INTERNAL_FASTAPI_URL || 'http://localhost:8001'
-    const aiRes = await fetch(`${fastApiUrl}/internal/ai/complete`, {
+
+    // SECURITY: SSRF protection
+    const ssrfCheck = await isSafeUrl(fastApiUrl);
+    if (!ssrfCheck.safe) {
+      return NextResponse.json({ error: ssrfCheck.error }, { status: 400 });
+    }
+
+    const aiRes = await fetch(`${ssrfCheck.url.toString()}/internal/ai/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',

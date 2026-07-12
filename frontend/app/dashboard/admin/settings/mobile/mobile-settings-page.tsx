@@ -10,7 +10,7 @@ import { useToast } from '@/lib/toast-context'
 
 export function MobileSettingsPage() {
   const gate = usePageGuard('superadmin')
-  const { toast } = useToast()
+  const { toast } = useToast() as any
   const [serverUrl, setServerUrl] = useState('')
   const [saving, setSaving] = useState(false)
   const [copied, setCopied] = useState(false)

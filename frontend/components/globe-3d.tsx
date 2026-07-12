@@ -223,14 +223,14 @@ export function Globe3D({
     }
 
     function layoutMetrics() {
-      const rect = canvas.getBoundingClientRect()
+      const rect = canvas!.getBoundingClientRect()
       width = rect.width
       height = rect.height
       if (width < 1 || height < 1) return
 
-      canvas.width = Math.floor(width * dpr)
-      canvas.height = Math.floor(height * dpr)
-      ctx.setTransform(dpr, 0, 0, dpr, 0, 0)
+      canvas!.width = Math.floor(width * dpr)
+      canvas!.height = Math.floor(height * dpr)
+      ctx!.setTransform(dpr, 0, 0, dpr, 0, 0)
 
       GLOBE_RADIUS = width * radiusFactor
       GLOBE_CENTER_Z = -GLOBE_RADIUS

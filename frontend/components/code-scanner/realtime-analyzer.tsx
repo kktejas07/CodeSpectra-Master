@@ -191,7 +191,7 @@ export function RealtimeAnalyzer({
               ) : (
                 <QuickFixMenu
                   fixes={fixes}
-                  onApplyFix={handleApplyFix}
+                  onApplyFix={handleApplyFix as any}
                   onDismissFix={handleDismissFix}
                   isOpen={true}
                 />

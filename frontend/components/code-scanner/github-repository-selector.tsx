@@ -50,8 +50,8 @@ export function GitHubRepositorySelector({ onRepoSelect }: GitHubRepositorySelec
     try {
       const result = await getGitHubRepositories()
       if (result.success) {
-        setRepositories(result.repositories || [])
-        setFilteredRepos(result.repositories || [])
+        setRepositories(result.repositories as any || [])
+        setFilteredRepos(result.repositories as any || [])
       } else {
         setError(result.error || 'Failed to fetch repositories')
       }

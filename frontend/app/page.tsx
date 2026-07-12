@@ -330,6 +330,7 @@ export async function bootstrap() {
           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-3 lg:grid-cols-6 gap-4 max-w-5xl mx-auto">
             {integrations.map((integration) => {
               const Icon = integrationIcons[integration.name] || Code2
+              const IconEl = Icon as React.ComponentType<{ className?: string }>
               return (
                 <TiltCard key={integration.name} maxTilt={6} glare={false}>
                   <div
@@ -337,7 +338,7 @@ export async function bootstrap() {
                     className="integration-card group relative h-full flex flex-col items-center justify-between p-5 border border-border/40 rounded-xl text-center cursor-default transition-all duration-300 hover:border-primary/40 hover:bg-primary/5"
                   >
                     <div className="w-12 h-12 bg-muted rounded-xl mx-auto mb-4 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/10 shrink-0">
-                      <Icon className="w-6 h-6 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
+                      <IconEl className="w-6 h-6 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
                     </div>
                     <div className="flex flex-col items-center gap-1 flex-1">
                       <p className="text-sm font-medium transition-colors duration-300 group-hover:text-primary">{integration.name}</p>

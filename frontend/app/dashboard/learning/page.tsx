@@ -44,7 +44,7 @@ function LearningPageInner() {
     const viewMatch =
       view === 'all' ||
       (view === 'my-courses' && course.progress !== undefined) ||
-      (view === 'all-courses')
+      (view === 'all-courses' as string)
     return levelMatch && typeMatch && viewMatch
   })
 

@@ -44,7 +44,7 @@ export async function GET() {
       }
     }
 
-    const createdAt = userDoc?.createdAt || userDoc?.created_at
+    const createdAt = (userDoc as any)?.createdAt || (userDoc as any)?.created_at
 
     return NextResponse.json({
       scans: scanCount,

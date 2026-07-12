@@ -145,9 +145,9 @@ export function RepositoryBrowser({
       const files = await getRepositoryFiles(repo.owner.login, repo.name)
       if (Array.isArray(files)) {
         setFileTree(files as FileNode[])
-      } else if (files?.success === false) {
+      } else if ((files as any)?.success === false) {
         setFileTree([])
-        console.error(files.error)
+        console.error((files as any).error)
       } else {
         setFileTree([])
       }

@@ -30,6 +30,7 @@ import { xpEvents } from '@/lib/db/leaderboard'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireAuth } from '@/lib/route-auth'
 import { xpToLevel } from '@/lib/leaderboard-utils'
+import { sanitizeRegex } from '@/lib/sanitize'
 
 export const runtime = 'nodejs'
 
@@ -122,7 +123,7 @@ async function toolCall(name: string, args: Record<string, unknown>) {
       const limit = Math.min(50, Number(args.limit) || 20)
       const filter: Record<string, unknown> = { is_published: true }
       if (args.difficulty) filter.difficulty = args.difficulty
-      if (args.query) filter.title = { $regex: String(args.query), $options: 'i' }
+      if (args.query) filter.title = { $regex: sanitizeRegex(String(args.query)), $options: 'i' }
       const col = await problems()
       const rows = await col
         .find(filter, {
@@ -164,7 +165,7 @@ async function toolCall(name: string, args: Record<string, unknown>) {
       const slug = String(args.slug || '').trim()
       const db = await getMongoDb()
       const orClauses: Record<string, unknown>[] = [
-        { email: { $regex: `^${slug}@`, $options: 'i' } },
+        { email: { $regex: `^${sanitizeRegex(slug)}@`, $options: 'i' } },
       ]
       if (ObjectId.isValid(slug)) orClauses.unshift({ _id: new ObjectId(slug) })
       const u = (await db.collection('user').findOne({ $or: orClauses })) as
