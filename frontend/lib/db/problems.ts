@@ -18,6 +18,7 @@ export function nowIso(): string {
 }
 
 export type Difficulty = 'easy' | 'medium' | 'hard'
+export type ProblemVisibility = 'public' | 'hackathon_only'
 
 export interface TestCase {
   id: string
@@ -39,10 +40,12 @@ export interface ProblemDoc {
   constraints?: string | null
   example_explanation?: string | null
   test_cases: TestCase[]
-  starter_code: Record<string, string> // { python: "def solve():...", javascript: "..." }
+  starter_code: Record<string, string>
   time_limit_ms: number
   memory_limit_kb: number
   is_published: boolean
+  visibility?: ProblemVisibility
+  hackathon_id?: string | null
   created_by?: string | null
   created_at: string
   updated_at: string

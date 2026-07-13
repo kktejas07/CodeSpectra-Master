@@ -23,6 +23,9 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'openai_api_key',
   // Cloudflare
   'cloudflare_api_token',
+  // PhonePe
+  'phonepe_salt_key',
+  'phonepe_webhook_secret',
   // legacy
   'stripe_secret_key',
   'stripe_webhook_secret',
@@ -55,6 +58,9 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'firebase_storage_bucket',
   'firebase_messaging_sender_id',
   'firebase_app_id',
+  // PhonePe
+  'phonepe_merchant_id',
+  'phonepe_salt_index',
 ]
 
 const ALL_FIELDS: (keyof ServerSecretsRecord)[] = [...SECRET_FIELDS, ...PLAIN_FIELDS]

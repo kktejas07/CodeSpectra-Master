@@ -66,6 +66,11 @@ export type ServerSecretsRecord = {
   // --- Cloudflare --------------------------------------------------------
   cloudflare_zone_id?: string
   cloudflare_api_token?: string
+  // --- PhonePe -----------------------------------------------------------
+  phonepe_merchant_id?: string
+  phonepe_salt_key?: string
+  phonepe_salt_index?: string
+  phonepe_webhook_secret?: string
 }
 
 interface PlatformSettingDoc {

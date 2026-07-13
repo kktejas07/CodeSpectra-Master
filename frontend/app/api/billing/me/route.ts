@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { billingSubscriptions, BILLING_PLANS } from '@/lib/db/billing'
 import { isRazorpayConfigured } from '@/lib/razorpay-server'
+import { isPhonePeConfiguredAsync } from '@/lib/phonepe-server'
 
 export const runtime = 'nodejs'
 
@@ -18,6 +19,7 @@ export async function GET(): Promise<NextResponse> {
 
   return NextResponse.json({
     razorpay_configured: await isRazorpayConfigured(),
+    phonepe_configured: await isPhonePeConfiguredAsync(),
     subscription:
       active && new Date(active.ends_at) > new Date()
         ? {

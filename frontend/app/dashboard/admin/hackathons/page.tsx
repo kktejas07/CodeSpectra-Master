@@ -433,7 +433,14 @@ export default function HackathonsAdminPage() {
                 <Link href={`/dashboard/admin/hackathons/${hk.id}`}>
                   <Button variant="outline" size="sm">Manage</Button>
                 </Link>
-                <Button variant="ghost" size="sm" onClick={() => openEdit(hk)}><Pencil className="h-3 w-3" /></Button>
+                <TooltipProvider>
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <Button variant="outline" size="sm" onClick={() => openEdit(hk)}><Pencil className="h-3 w-3 mr-1" /> Edit</Button>
+                    </TooltipTrigger>
+                    <TooltipContent>Edit event settings</TooltipContent>
+                  </Tooltip>
+                </TooltipProvider>
                 <Button variant="ghost" size="sm" onClick={async () => {
                   if (!confirm(`Delete "${hk.name}"? Only allowed if 0 teams have registered.`)) return
                   const res = await fetch(`/api/hackathons/${hk.id}`, { method: 'DELETE' })

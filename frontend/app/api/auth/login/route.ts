@@ -6,6 +6,8 @@ import { normalizeUserRole } from '@/lib/rbac'
 import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { notify } from '@/lib/notifications'
+import { sendEmail } from '@/lib/send-email'
+import { emailTemplates } from '@/lib/email-templates'
 
 export const runtime = 'nodejs'
 
@@ -62,6 +64,16 @@ export async function POST(request: Request) {
 
     await writeAuditLog({ action: 'auth.login', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
     notify({ user_id: uid, type: 'auth.login', title: 'New sign-in', message: `Signed in as ${user.email}`, icon: 'log-in' }).catch(() => {})
+
+    // Send login notification email
+    const userAgent = request.headers.get('user-agent') || 'Unknown device'
+    const deviceInfo = userAgent.includes('Mobile') ? 'Mobile device' : 'Desktop browser'
+    const location = actorIp || 'Unknown location'
+    const time = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+    const displayName = (user.name || normalizedEmail.split('@')[0])
+    const template = emailTemplates.loginNotification(displayName, deviceInfo, location, time)
+    await sendEmail(normalizedEmail, template).catch((e) => console.error('[Login] Notification email failed:', e))
+
     return NextResponse.json({ user: { id: uid, email: user.email, role, name: user.name || null } })
   } catch (error) {
     console.error('[Login] Error:', error)

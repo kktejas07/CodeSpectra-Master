@@ -18,7 +18,8 @@ export const nowIso = (): string => new Date().toISOString()
 export interface BillingOrderDoc {
   id: string
   user_id: string
-  razorpay_order_id: string
+  razorpay_order_id?: string
+  phonepe_transaction_id?: string
   amount_paise: number
   currency: string
   plan_id: string
@@ -33,6 +34,7 @@ export interface BillingPaymentDoc {
   user_id: string
   order_id: string
   razorpay_payment_id: string
+  phonepe_payment_id?: string
   signature?: string
   status: 'captured' | 'failed' | 'refunded' | 'authorized'
   amount_paise: number
