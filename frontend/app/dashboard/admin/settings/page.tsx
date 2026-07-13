@@ -138,6 +138,10 @@ type SecretsDraft = {
   openai_api_key: string
   cloudflare_zone_id: string
   cloudflare_api_token: string
+  phonepe_merchant_id: string
+  phonepe_salt_key: string
+  phonepe_salt_index: string
+  phonepe_webhook_secret: string
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
@@ -168,6 +172,10 @@ const emptySecretsDraft = (): SecretsDraft => ({
   openai_api_key: '',
   cloudflare_zone_id: '',
   cloudflare_api_token: '',
+  phonepe_merchant_id: '',
+  phonepe_salt_key: '',
+  phonepe_salt_index: '1',
+  phonepe_webhook_secret: '',
 })
 
 function EmailTemplatesSection() {
@@ -328,6 +336,7 @@ function SystemSettingsInner() {
         'trusted_origins_extra', 'github_client_id',
         'firebase_api_key', 'firebase_auth_domain', 'firebase_project_id',
         'firebase_storage_bucket', 'firebase_messaging_sender_id', 'firebase_app_id',
+        'phonepe_salt_index',
       ] as const
       for (const k of plainFields) {
         const v = secretsMeta[k]
@@ -1693,6 +1702,149 @@ function SystemSettingsInner() {
                       {typeof window !== 'undefined'
                         ? `${window.location.origin}/api/billing/webhook`
                         : '<your-domain>/api/billing/webhook'}
+                    </code>
+                  </p>
+                </div>
+
+                {/* PhonePe */}
+                <div className="space-y-3 rounded-lg border border-primary/30 bg-primary/5 p-4" data-testid="phonepe-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">PhonePe (UPI & Cards)</p>
+                    {secretsMeta.phonepe_merchant_id ? (
+                      <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        ✓ Active
+                      </span>
+                    ) : (
+                      <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase tracking-wide">
+                        Not configured
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Get credentials from{' '}
+                    <Link
+                      href="https://developer.phonepe.com/"
+                      target="_blank"
+                      className="text-primary underline-offset-4 hover:underline"
+                    >
+                      PhonePe Developer Portal
+                    </Link>
+                    . Use merchant ID from your PhonePe account dashboard.
+                  </p>
+                  <div>
+                    <Label htmlFor="pay_phonepe_mid">Merchant ID</Label>
+                    {secretsMeta.phonepe_merchant_id ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.phonepe_merchant_id ?? '—')}
+                      </p>
+                    ) : null}
+                    <div className="relative">
+                      <Input
+                        id="pay_phonepe_mid"
+                        type={visibleFields.phonepe_merchant_id ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.phonepe_merchant_id}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, phonepe_merchant_id: e.target.value }))
+                        }
+                        className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="Mxxxxxx"
+                        data-testid="phonepe-merchant-id-input"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => toggleVisible('phonepe_merchant_id')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.phonepe_merchant_id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="pay_phonepe_sk">Salt Key</Label>
+                    {secretsMeta.has_phonepe_salt_key ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.phonepe_salt_key_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <div className="relative">
+                      <Input
+                        id="pay_phonepe_sk"
+                        type={visibleFields.phonepe_salt_key ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.phonepe_salt_key}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, phonepe_salt_key: e.target.value }))
+                        }
+                        className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="••••••••••••••••"
+                        data-testid="phonepe-salt-key-input"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => toggleVisible('phonepe_salt_key')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.phonepe_salt_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <div>
+                    <Label htmlFor="pay_phonepe_si">Salt Index</Label>
+                    <p className="mt-1 font-mono text-xs text-muted-foreground">
+                      Current: {String(secretsMeta.phonepe_salt_index ?? '1')}
+                    </p>
+                    <Input
+                      id="pay_phonepe_si"
+                      type="text"
+                      autoComplete="off"
+                      value={secretsDraft.phonepe_salt_index}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, phonepe_salt_index: e.target.value }))
+                      }
+                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                      placeholder="1"
+                      data-testid="phonepe-salt-index-input"
+                    />
+                  </div>
+                  <div>
+                    <Label htmlFor="pay_phonepe_wh">Webhook Secret (optional)</Label>
+                    {secretsMeta.has_phonepe_webhook_secret ? (
+                      <p className="mt-1 font-mono text-xs text-muted-foreground">
+                        Current: {String(secretsMeta.phonepe_webhook_secret_masked ?? '—')}
+                      </p>
+                    ) : null}
+                    <div className="relative">
+                      <Input
+                        id="pay_phonepe_wh"
+                        type={visibleFields.phonepe_webhook_secret ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.phonepe_webhook_secret}
+                        onChange={(e) =>
+                          setSecretsDraft((d) => ({ ...d, phonepe_webhook_secret: e.target.value }))
+                        }
+                        className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="••••••••••••••••"
+                        data-testid="phonepe-webhook-secret-input"
+                      />
+                      <button
+                        type="button"
+                        tabIndex={-1}
+                        onClick={() => toggleVisible('phonepe_webhook_secret')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.phonepe_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground">
+                    Webhook URL to register in PhonePe:{' '}
+                    <code className="rounded bg-muted px-1">
+                      {typeof window !== 'undefined'
+                        ? `${window.location.origin}/api/billing/phonepe-webhook`
+                        : '<your-domain>/api/billing/phonepe-webhook'}
                     </code>
                   </p>
                 </div>

@@ -6,6 +6,8 @@ import { setSessionCookie } from '@/lib/session'
 import { normalizeUserRole } from '@/lib/rbac'
 import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
+import { sendEmail } from '@/lib/send-email'
+import { emailTemplates } from '@/lib/email-templates'
 
 export const runtime = 'nodejs'
 
@@ -56,6 +58,12 @@ export async function POST(request: Request) {
     await setSessionCookie({ uid, email: normalizedEmail, role })
 
     await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
+
+    // Send welcome email
+    const displayName = name || normalizedEmail.split('@')[0]
+    const template = emailTemplates.welcomeEmail(displayName)
+    await sendEmail(normalizedEmail, template).catch((e) => console.error('[Signup] Welcome email failed:', e))
+
     return NextResponse.json({ user: { id: uid, email: normalizedEmail, role, name: name || null } })
   } catch (error) {
     console.error('[Signup] Error:', error)

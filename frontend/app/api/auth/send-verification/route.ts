@@ -3,6 +3,7 @@ import crypto from 'node:crypto'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { sendEmail } from '@/lib/send-email'
+import { emailTemplates } from '@/lib/email-templates'
 
 export const runtime = 'nodejs'
 
@@ -53,15 +54,8 @@ export async function POST(request: Request) {
   const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const verifyLink = `${origin}/api/auth/verify-email?token=${token}`
 
-  await sendEmail(email, {
-    subject: 'Verify your CodeSpectra email',
-    html: `<div style="max-width:480px;margin:40px auto;font-family:system-ui,sans-serif">
-      <h1 style="font-size:22px;font-weight:700">Verify your email</h1>
-      <p style="color:#4b5563">Click the button below to confirm your email address.</p>
-      <a href="${verifyLink}" style="display:inline-block;background:#2563eb;color:#fff;padding:12px 24px;border-radius:6px;text-decoration:none;font-weight:600;margin:16px 0">Verify Email</a>
-      <p style="color:#9ca3af;font-size:13px">If you didn't create an account, ignore this email.</p>
-    </div>`,
-  })
+  const template = emailTemplates.emailVerification(verifyLink)
+  await sendEmail(email, template)
 
   return NextResponse.json({ success: true })
 }

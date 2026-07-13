@@ -1,5 +1,5 @@
 import { NextResponse, NextRequest } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAuth, requireAdmin } from '@/lib/route-auth'
 import { problems, nowIso, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { sanitizeRegex } from '@/lib/sanitize'
@@ -26,10 +26,28 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const difficulty = searchParams.get('difficulty') as ProblemDoc['difficulty'] | null
   const search = searchParams.get('q')?.trim()
+  const includeHidden = searchParams.get('include_hidden') === 'true'
+  const forHackathon = searchParams.get('for_hackathon') === 'true'
+
+  const isAdmin = await (async () => {
+    const gate = await requireAdmin()
+    return !('error' in gate)
+  })()
 
   try {
     await ensureSeeded()
     const filter: Record<string, unknown> = { is_published: true }
+
+    // SECURITY: hide hackathon_only problems from non-admins
+    if (!isAdmin) {
+      filter.$or = [
+        { visibility: { $exists: false } },
+        { visibility: 'public' },
+        { hackathon_id: null },
+      ]
+    }
+    // For admins, no $or filter needed - they see all problems
+
     if (difficulty) filter.difficulty = difficulty
     if (search) filter.title = { $regex: sanitizeRegex(search), $options: 'i' }
 
@@ -45,7 +63,7 @@ export async function GET(request: NextRequest) {
     console.warn('[CodeSpectra] problems GET (mongo unavailable, using seed):', error)
   }
 
-  // Fallback to in-memory seed
+  // Fallback to in-memory seed (only public problems)
   const seedList = SEED_PROBLEMS.filter((p) => {
     if (!p.is_published) return false
     if (difficulty && p.difficulty !== difficulty) return false
@@ -86,6 +104,8 @@ export async function POST(request: NextRequest) {
       time_limit_ms: body.time_limit_ms || 2000,
       memory_limit_kb: body.memory_limit_kb || 65536,
       is_published: body.is_published !== false,
+      visibility: body.visibility || 'public',
+      hackathon_id: body.hackathon_id || null,
       created_by: gate.user.id,
       created_at: now,
       updated_at: now,

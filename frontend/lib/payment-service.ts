@@ -16,13 +16,16 @@
  */
 
 import { isRazorpayConfigured, getRazorpay } from '@/lib/razorpay-server'
+import { isPhonePeConfiguredAsync, createPhonePeOrder, getPhonePeMerchantId } from '@/lib/phonepe-server'
 import { BILLING_PLANS, billingOrders, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
 
+export type PaymentProvider = 'razorpay' | 'stripe' | 'phonepe'
+
 export interface CheckoutResult {
-  provider: 'razorpay' | 'stripe'
-  /** Razorpay order ID or Stripe session ID */
+  provider: PaymentProvider
+  /** Provider order/checkout ID */
   gateway_id: string
-  /** For redirect-based checkouts (Stripe) */
+  /** For redirect-based checkouts (Stripe, PhonePe) */
   redirect_url?: string
   /** For embedded checkout (Razorpay) */
   key_id?: string
@@ -48,7 +51,7 @@ export interface PaymentMethod {
 }
 
 export interface PaymentGatewayAdapter {
-  name: string
+  name: PaymentProvider
   createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string]): Promise<CheckoutResult>
   getSubscription(userId: string): Promise<SubscriptionResult | null>
   cancelSubscription(userId: string): Promise<void>
@@ -58,10 +61,12 @@ export interface PaymentGatewayAdapter {
 
 // ─── Country → Gateway mapping ──────────────────────────────────────────────
 
-const COUNTRY_GATEWAY: Record<string, 'razorpay' | 'stripe'> = {
-  IN: 'razorpay',
+const COUNTRY_GATEWAY: Record<string, PaymentProvider> = {
+  IN: 'phonepe',  // PhonePe first for India
   US: 'stripe',
 }
+
+const PROVIDER_ORDER: PaymentProvider[] = ['phonepe', 'razorpay', 'stripe']
 
 // ─── Service ─────────────────────────────────────────────────────────────────
 
@@ -72,25 +77,35 @@ export class PaymentService {
   private async getAdapter(): Promise<PaymentGatewayAdapter> {
     if (this.gateway) return this.gateway
 
-    const razorpayConfigured = await isRazorpayConfigured()
-    if (razorpayConfigured) {
-      this.gateway = new RazorpayAdapter()
-      return this.gateway
+    // Try in order of preference
+    for (const provider of PROVIDER_ORDER) {
+      if (provider === 'phonepe' && await isPhonePeConfiguredAsync()) {
+        this.gateway = new PhonePeAdapter()
+        return this.gateway
+      }
+      if (provider === 'razorpay' && await isRazorpayConfigured()) {
+        this.gateway = new RazorpayAdapter()
+        return this.gateway
+      }
     }
 
-    if (process.env.STRIPE_SECRET_KEY) {
+    const stripeKey = process.env.STRIPE_SECRET_KEY
+    if (stripeKey) {
       const { StripeAdapter } = await import('./stripe-adapter')
       this.gateway = new StripeAdapter()
       return this.gateway
     }
 
-    throw new Error('No payment provider configured. Set RAZORPAY_KEY_ID or STRIPE_SECRET_KEY.')
+    throw new Error('No payment provider configured. Set PHONEPE, RAZORPAY, or STRIPE credentials.')
   }
 
   /** Select gateway based on user's country (2-letter code, e.g. 'IN', 'US') */
   async getAdapterForCountry(countryCode?: string | null): Promise<PaymentGatewayAdapter> {
     const preferred = countryCode ? COUNTRY_GATEWAY[countryCode.toUpperCase()] : null
 
+    if (preferred === 'phonepe' && await isPhonePeConfiguredAsync()) {
+      return new PhonePeAdapter()
+    }
     if (preferred === 'razorpay') {
       const configured = await isRazorpayConfigured()
       if (configured) return new RazorpayAdapter()
@@ -160,6 +175,79 @@ export class PaymentService {
   async detachPaymentMethod(methodId: string): Promise<void> {
     const adapter = await this.getAdapter()
     return adapter.detachPaymentMethod(methodId)
+  }
+}
+
+// ─── PhonePe Adapter ────────────────────────────────────────────────────────
+
+class PhonePeAdapter implements PaymentGatewayAdapter {
+  name = 'phonepe' as const
+
+  async createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string]): Promise<CheckoutResult> {
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.com'
+    const callbackUrl = `${baseUrl}/api/billing/phonepe-callback`
+    const redirectUrl = `${baseUrl}/dashboard/billing?payment=phonepe&status=success`
+
+    const receipt = `${userId}_${planId}_${Date.now()}`
+
+    // Use a simple transaction ID format for PhonePe
+    const merchantTransactionId = `TXN_${Date.now()}_${Math.random().toString(36).slice(2, 8)}`
+
+    const orderResponse = await createPhonePeOrder({
+      merchantTransactionId,
+      amount: plan.amount_paise,
+      userId,
+      email,
+      callbackUrl,
+      redirectUrl,
+    })
+
+    if (!orderResponse.success || !orderResponse.data?.instrumentResponse?.intentUrl) {
+      throw new Error(orderResponse.message || 'PhonePe order creation failed')
+    }
+
+    const orders = await billingOrders()
+    await orders.insertOne({
+      id: newId(),
+      user_id: userId,
+      phonepe_transaction_id: merchantTransactionId,
+      amount_paise: plan.amount_paise,
+      currency: plan.currency,
+      plan_id: planId,
+      receipt,
+      status: 'created',
+      created_at: nowIso(),
+      updated_at: nowIso(),
+    })
+
+    return {
+      provider: 'phonepe',
+      gateway_id: merchantTransactionId,
+      redirect_url: orderResponse.data.instrumentResponse.intentUrl,
+      amount_paise: plan.amount_paise,
+      currency: plan.currency,
+      plan,
+    }
+  }
+
+  async getSubscription(userId: string): Promise<SubscriptionResult | null> {
+    const subs = await billingSubscriptions()
+    const active = await subs.findOne({ user_id: userId, status: 'active' })
+    if (!active || new Date(active.ends_at) <= new Date()) return null
+    return { id: active.id, plan_id: active.plan_id, status: active.status, starts_at: active.started_at, ends_at: active.ends_at }
+  }
+
+  async cancelSubscription(userId: string): Promise<void> {
+    const subs = await billingSubscriptions()
+    await subs.updateOne({ user_id: userId, status: 'active' }, { $set: { status: 'cancelled' } })
+  }
+
+  async listPaymentMethods(_userId: string, _email: string): Promise<PaymentMethod[]> {
+    return [{ id: 'phonepe', type: 'gateway', is_default: true }]
+  }
+
+  async detachPaymentMethod(_methodId: string): Promise<void> {
+    // PhonePe doesn't have saved payment methods in the same way
   }
 }
 
