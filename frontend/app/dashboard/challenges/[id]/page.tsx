@@ -3,6 +3,8 @@
 import { useEffect, useState, use } from 'react'
 import { ChallengeEditor } from '@/components/challenges/challenge-editor'
 import { Loader2 } from 'lucide-react'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface ProblemData {
   id: string
@@ -65,7 +67,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   }
 
   const title = problem?.title || challenge?.title || challengeId
-  const description = (problem?.statement_md || challenge?.description || '').replace(/[#*`_]/g, '')
+  const description = problem?.statement_md || challenge?.description || ''
   const initialCode = problem?.starter_code?.javascript || challenge?.initialCode || ''
 
   const examples = problem?.test_cases
@@ -75,15 +77,38 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
       output: t.expected_stdout || '',
     })) || challenge?.examples || []
 
+  const constraints = problem?.constraints || ''
+  const inputFormat = problem?.input_format || ''
+  const outputFormat = problem?.output_format || ''
+
   return (
     <div className="h-screen w-screen overflow-hidden">
       <ChallengeEditor
         challengeId={challenge?.id || challengeId}
         title={title}
         description={description}
+        descriptionComponent={
+          problem?.statement_md ? (
+            <div
+              className="prose prose-sm max-w-none text-foreground leading-relaxed
+                prose-headings:text-foreground prose-p:text-muted-foreground
+                prose-code:text-primary prose-code:bg-muted prose-code:px-1 prose-code:py-0.5 prose-code:rounded
+                prose-strong:text-foreground prose-li:text-muted-foreground
+                prose-pre:bg-muted prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg
+                prose-ul:text-muted-foreground prose-ol:text-muted-foreground
+                prose-li:marker:text-muted-foreground"
+            >
+              <ReactMarkdown remarkPlugins={[remarkGfm]}>{description}</ReactMarkdown>
+            </div>
+          ) : null
+        }
         examples={examples}
         initialCode={initialCode}
         problemSlug={problem?.slug || challenge?.problem_slug || challengeId}
+        hackathonId={challenge?.hackathonId}
+        constraints={constraints}
+        inputFormat={inputFormat}
+        outputFormat={outputFormat}
       />
     </div>
   )
