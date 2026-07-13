@@ -121,7 +121,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
       )}
       <header className="border-b border-border bg-card/40 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-sm text-muted-foreground hover:text-foreground">← CodeSpectra</Link>
+          <button onClick={() => window.history.back()} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
           <div className="flex items-center gap-3">
             {myTeam && (
               <Link href={`/hackathons/${slug}/workspace`}>

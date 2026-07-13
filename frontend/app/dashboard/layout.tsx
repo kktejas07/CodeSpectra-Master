@@ -50,6 +50,8 @@ import {
   Shield,
   MessageSquare,
   Database,
+  Search,
+  Briefcase,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -257,6 +259,20 @@ export default function DashboardLayout({
       { href: '/dashboard/settings/ai', icon: SparklesIcon, label: 'AI Models' },
       { href: '/dashboard/status', icon: Activity, label: 'Status' },
       { href: '/dashboard/support', icon: MessageSquare, label: 'Support' },
+      // Missing user routes from page-permissions.ts
+      { href: '/dashboard/codeathons', icon: Trophy, label: 'Codeathons' },
+      { href: '/dashboard/challenges', icon: CodeIcon, label: 'Challenges' },
+      { href: '/dashboard/interviews', icon: Users, label: 'Interviews' },
+      { href: '/dashboard/prepare', icon: BookOpen, label: 'Prepare' },
+      { href: '/dashboard/profile', icon: User, label: 'Profile' },
+      { href: '/dashboard/search', icon: Search, label: 'Search' },
+      { href: '/dashboard/id-card', icon: CreditCard, label: 'ID Card' },
+      { href: '/dashboard/jobs', icon: Briefcase, label: 'Jobs' },
+      { href: '/dashboard/exams', icon: FileText, label: 'Exams' },
+      { href: '/dashboard/resumes', icon: FileText, label: 'Resumes' },
+      { href: '/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
+      { href: '/dashboard/billing', icon: CreditCardIcon, label: 'Billing' },
+      { href: '/dashboard/notifications', icon: Bell, label: 'Notifications' },
     ]
 
     // If DB permissions are loaded, use them as the sole filter.
