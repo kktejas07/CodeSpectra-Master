@@ -66,9 +66,9 @@ interface TeamResp {
 type ScanResp = UserResp | TeamResp
 
 const VARIANT_GRADIENT: Record<string, string> = {
-  user: 'from-emerald-500/30 via-emerald-500/5 to-transparent',
-  admin: 'from-fuchsia-500/30 via-fuchsia-500/5 to-transparent',
-  tenant: 'from-sky-500/30 via-sky-500/5 to-transparent',
+  user: 'from-emerald-500/20 via-emerald-500/10 to-transparent',
+  admin: 'from-fuchsia-500/20 via-fuchsia-500/10 to-transparent',
+  tenant: 'from-sky-500/20 via-sky-500/10 to-transparent',
 }
 
 const VARIANT_RING: Record<string, string> = {
@@ -140,9 +140,6 @@ export default function QrScanPage({
 
   return (
     <div className="min-h-screen bg-background" data-testid="qr-scan-page">
-      <div
-        className={`pointer-events-none absolute inset-x-0 top-0 -z-10 h-96 bg-gradient-to-br ${accentClass}`}
-      />
       <main className="mx-auto max-w-2xl px-6 py-12">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
