@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
   ExternalLink, Trash2, HelpCircle, CheckSquare, ListChecks,
-  Shield, GripVertical,
+  Shield, GripVertical, Pencil,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -55,6 +55,8 @@ export default function HackathonsAdminPage() {
     banner_url: '',
     color_theme: '',
   })
+  const [editing, setEditing] = useState<Hackathon | null>(null)
+
   const [problemSearch, setProblemSearch] = useState('')
   const [problemResults, setProblemResults] = useState<ProblemOption[]>([])
   const [searchingProblems, setSearchingProblems] = useState(false)
@@ -113,6 +115,63 @@ export default function HackathonsAdminPage() {
     finally { setBusy(false) }
   }
 
+  async function update() {
+    if (!editing || !form.name.trim()) return
+    setBusy(true); setError(null)
+    try {
+      const res = await fetch(`/api/hackathons/${editing.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: form.name, description: form.description,
+          num_teams: form.num_teams, max_per_team: form.max_per_team,
+          timeout_minutes: form.timeout_minutes,
+          starts_at: new Date(form.starts_at).toISOString(),
+          tasks: form.tasks.map((t) => ({
+            problem_slug: t.slug, problem_title: t.title,
+            points: t.points, difficulty: t.difficulty, required: t.required,
+          })),
+          rules: form.rules,
+          scoring: form.scoring,
+          banner_url: form.banner_url, color_theme: form.color_theme,
+        }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error || 'failed')
+      setEditing(null); setStep(1)
+      setForm((f) => ({ ...f, name: '', description: '' }))
+      await load()
+    } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
+    finally { setBusy(false) }
+  }
+
+  function openEdit(hk: Hackathon) {
+    setEditing(hk)
+    setStep(1)
+    setForm({
+      name: hk.name,
+      description: hk.description || '',
+      num_teams: hk.num_teams,
+      max_per_team: hk.max_per_team,
+      timeout_minutes: hk.timeout_minutes,
+      starts_at: hk.starts_at ? new Date(hk.starts_at).toISOString().slice(0, 16) : '',
+      tasks: (hk.tasks || []).map((t) => ({
+        slug: t.problem_slug, title: t.problem_title,
+        points: t.points, difficulty: t.difficulty, required: t.required,
+      })),
+      rules: (hk.rules || [
+        { type: 'scoring' as const, title: 'Scoring', description: 'Points are awarded based on test cases passed and code quality.' },
+        { type: 'submission' as const, title: 'Submissions', description: 'Unlimited submissions during the event window. Last submission counts.' },
+        { type: 'conduct' as const, title: 'Code of Conduct', description: 'Plagiarism or collusion with other teams will result in disqualification.' },
+      ]) as typeof form.rules,
+      scoring: hk.scoring || { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
+      banner_url: (hk as any).banner_url || '',
+      color_theme: (hk as any).color_theme || '',
+    })
+  }
+
+  const isEditing = !!editing
+
   if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
   return (
@@ -133,8 +192,12 @@ export default function HackathonsAdminPage() {
 
       {error && <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</Card>}
 
-      {creating && (
+      {(creating || isEditing) && (
         <Card className="space-y-6 p-6">
+          <div className="flex items-center justify-between">
+            <h2 className="text-lg font-semibold">{isEditing ? `Edit: ${editing?.name}` : 'New Hackathon Event'}</h2>
+            <Button variant="ghost" size="sm" onClick={() => { setEditing(null); setCreating(false); setStep(1) }}>Cancel</Button>
+          </div>
           {/* Step indicator */}
           <div className="flex gap-3 text-sm">
             {[
@@ -323,9 +386,9 @@ export default function HackathonsAdminPage() {
 
               <div className="flex gap-2 pt-2">
                 <Button variant="outline" onClick={() => setStep(2)}>← Back</Button>
-                <Button onClick={create} disabled={busy}>
+                <Button onClick={isEditing ? update : create} disabled={busy}>
                   {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                  Create Event
+                  {isEditing ? 'Update Event' : 'Create Event'}
                 </Button>
               </div>
             </div>
@@ -370,6 +433,7 @@ export default function HackathonsAdminPage() {
                 <Link href={`/dashboard/admin/hackathons/${hk.id}`}>
                   <Button variant="outline" size="sm">Manage</Button>
                 </Link>
+                <Button variant="ghost" size="sm" onClick={() => openEdit(hk)}><Pencil className="h-3 w-3" /></Button>
                 <Button variant="ghost" size="sm" onClick={async () => {
                   if (!confirm(`Delete "${hk.name}"? Only allowed if 0 teams have registered.`)) return
                   const res = await fetch(`/api/hackathons/${hk.id}`, { method: 'DELETE' })
