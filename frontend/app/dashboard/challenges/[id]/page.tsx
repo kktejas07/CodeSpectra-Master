@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, use } from 'react'
 import { ChallengeEditor } from '@/components/challenges/challenge-editor'
 import { Loader2 } from 'lucide-react'
 
@@ -27,8 +27,8 @@ interface ChallengeData {
   hackathonId?: string
 }
 
-export default function ChallengePage({ params }: { params: { id: string } }) {
-  const challengeId = params.id
+export default function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
+  const { id: challengeId } = use(params)
   const [challenge, setChallenge] = useState<ChallengeData | null>(null)
   const [problem, setProblem] = useState<ProblemData | null>(null)
   const [loading, setLoading] = useState(true)
