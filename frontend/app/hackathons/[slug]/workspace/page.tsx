@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import {
   Loader2, Trophy, Users, Clock, CalendarDays, Timer,
   CheckCircle, AlertCircle, ArrowRight, Copy, Sparkles, Shield, ListChecks,
+  Hand,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { Countdown } from '@/components/hackathons/countdown'
@@ -36,6 +37,10 @@ interface Submission {
   max_score: number; submitted_at: string
 }
 
+interface Claim {
+  hackathon_id: string; problem_slug: string; user_id: string; user_name: string; claimed_at: string
+}
+
 export default function HackathonWorkspacePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const { user: authUser } = useAuth()
@@ -45,6 +50,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [hackathon, setHackathon] = useState<Hackathon | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [claims, setClaims] = useState<Record<string, Claim>>({})
+  const [claiming, setClaiming] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
@@ -69,6 +76,28 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
   useEffect(() => { void load() }, [load])
 
+  const fetchClaims = useCallback(async () => {
+    if (!hackathon) return
+    try {
+      const res = await fetch(`/api/hackathons/${hackathon.id}/claims`, { cache: 'no-store' })
+      if (res.ok) {
+        const j = await res.json() as { items: Claim[] }
+        const map: Record<string, Claim> = {}
+        for (const c of j.items || []) {
+          map[c.problem_slug] = c
+        }
+        setClaims(map)
+      }
+    } catch { /* ignore */ }
+  }, [hackathon])
+
+  useEffect(() => { void fetchClaims() }, [fetchClaims])
+  useEffect(() => {
+    if (!hackathon) return
+    const t = setInterval(() => { void fetchClaims() }, 10000)
+    return () => clearInterval(t)
+  }, [hackathon, fetchClaims])
+
   useEffect(() => {
     if (!hackathon || !hasSession) return
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
@@ -90,6 +119,35 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       setTimeout(() => setCopied(false), 2000)
     }
   }
+
+  async function claimProblem(slug: string) {
+    if (!hackathon) return
+    setClaiming(slug)
+    try {
+      await fetch(`/api/hackathons/${hackathon.id}/claims`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problem_slug: slug }),
+      })
+      await fetchClaims()
+    } finally {
+      setClaiming(null)
+    }
+  }
+
+  async function releaseProblem(slug: string) {
+    if (!hackathon) return
+    setClaiming(slug)
+    try {
+      await fetch(`/api/hackathons/${hackathon.id}/claims/${slug}`, { method: 'DELETE' })
+      await fetchClaims()
+    } finally {
+      setClaiming(null)
+    }
+  }
+
+  const myClaim = (slug: string) => claims[slug]?.user_id === hasSession
+  const claimerName = (slug: string) => claims[slug]?.user_name || null
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading workspace…</div>
   if (error || !hackathon) return <div className="p-10 text-center"><p className="text-sm text-destructive">{error || 'Event not found'}</p><Link href="/" className="mt-3 inline-block text-sm text-primary hover:underline">← Home</Link></div>
@@ -177,6 +235,12 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             <div className="space-y-2">
               {hackathon.tasks.map((task, i) => {
                 const status = getProblemStatus(task.problem_slug)
+                const claim = claims[task.problem_slug]
+                const isClaimed = !!claim
+                const isMyClaim = myClaim(task.problem_slug)
+                const canClaim = status === 'pending' && !isClaimed
+                const canRelease = isMyClaim
+                const claimer = claimerName(task.problem_slug)
                 return (
                   <Card key={task.problem_slug} className="p-4">
                     <div className="flex items-center justify-between">
@@ -186,6 +250,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : status === 'attempted' ? (
                           <AlertCircle className="h-4 w-4 text-yellow-500" />
+                        ) : isMyClaim ? (
+                          <Hand className="h-4 w-4 text-blue-400" />
                         ) : (
                           <div className="h-4 w-4 rounded-full border-2 border-muted" />
                         )}
@@ -195,6 +261,16 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             <Badge variant="outline" className="text-[10px]">{task.difficulty}</Badge>
                             <span className="text-xs text-muted-foreground">{task.points} pts</span>
                             {task.required && <span className="text-[10px] text-muted-foreground">Required</span>}
+                            {isClaimed && !isMyClaim && (
+                              <Badge variant="secondary" className="text-[10px] gap-1">
+                                <Hand className="h-3 w-3" /> {claimer} is solving
+                              </Badge>
+                            )}
+                            {isMyClaim && (
+                              <Badge className="text-[10px] gap-1 bg-blue-500/20 text-blue-400 border-blue-500/30">
+                                <Hand className="h-3 w-3" /> You are solving
+                              </Badge>
+                            )}
                           </div>
                         </div>
                       </div>
@@ -203,6 +279,30 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                           <span className="text-xs text-muted-foreground">
                             Score: {submissions.find(s => s.problem_slug === task.problem_slug)?.score ?? '—'}/{task.points}
                           </span>
+                        )}
+                        {canClaim && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-blue-400 border-blue-400/40 hover:bg-blue-400/10"
+                            onClick={() => void claimProblem(task.problem_slug)}
+                            disabled={claiming === task.problem_slug}
+                          >
+                            {claiming === task.problem_slug ? <Loader2 className="h-3 w-3 animate-spin" /> : <Hand className="h-3 w-3" />}
+                            Claim
+                          </Button>
+                        )}
+                        {canRelease && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-muted-foreground"
+                            onClick={() => void releaseProblem(task.problem_slug)}
+                            disabled={claiming === task.problem_slug}
+                          >
+                            {claiming === task.problem_slug ? <Loader2 className="h-3 w-3 animate-spin" /> : null}
+                            Release
+                          </Button>
                         )}
                         <Link href={`/dashboard/challenges/${task.problem_slug}`}>
                           <Button size="sm" variant={status === 'accepted' ? 'outline' : 'default'} className="gap-2">
