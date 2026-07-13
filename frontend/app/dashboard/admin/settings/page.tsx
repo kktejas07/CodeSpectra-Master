@@ -42,7 +42,6 @@ import {
 } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloudflare-section'
-import { LlmSettingsSection } from '@/components/dashboard/settings/llm-section'
 import { MobileSettingsPage } from '@/app/dashboard/admin/settings/mobile/mobile-settings-page'
 import { useToast } from '@/lib/toast-context'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
@@ -133,9 +132,6 @@ type SecretsDraft = {
   firebase_storage_bucket: string
   firebase_messaging_sender_id: string
   firebase_app_id: string
-  anthropic_api_key: string
-  gemini_api_key: string
-  openai_api_key: string
   cloudflare_zone_id: string
   cloudflare_api_token: string
   phonepe_merchant_id: string
@@ -167,9 +163,6 @@ const emptySecretsDraft = (): SecretsDraft => ({
   firebase_storage_bucket: '',
   firebase_messaging_sender_id: '',
   firebase_app_id: '',
-  anthropic_api_key: '',
-  gemini_api_key: '',
-  openai_api_key: '',
   cloudflare_zone_id: '',
   cloudflare_api_token: '',
   phonepe_merchant_id: '',
@@ -735,10 +728,6 @@ function SystemSettingsInner() {
 
            {section === 'cloudflare' ? (
              <CloudflareSettingsSection />
-           ) : null}
-
-           {section === 'llm' ? (
-             <LlmSettingsSection />
            ) : null}
 
            {section === 'mail' ? (
@@ -1574,9 +1563,8 @@ function SystemSettingsInner() {
                   <h3 className="font-semibold text-foreground">Payments &amp; billing</h3>
                 </div>
                 <p className="mt-1 text-sm text-muted-foreground">
-                  Configure <strong>Razorpay</strong> credentials below. Keys are stored encrypted at
+                  Configure <strong>PhonePe</strong> (India, primary), <strong>Razorpay</strong>, and legacy <strong>Stripe</strong> credentials below. Keys are stored encrypted at
                   rest in MongoDB and read by every payment endpoint — no redeploy required.
-                  Stripe fields below are kept for historical webhooks only.
                 </p>
               </div>
               <div className="space-y-6 px-6 py-5">
@@ -1858,7 +1846,7 @@ function SystemSettingsInner() {
                     </span>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Kept for historical webhooks only. Razorpay is the active gateway.
+                    Kept for historical webhooks only. PhonePe (India) and Razorpay are the active gateways.
                   </p>
                   {secretsMeta.has_stripe_secret_key ? (
                     <p className="font-mono text-xs text-muted-foreground">

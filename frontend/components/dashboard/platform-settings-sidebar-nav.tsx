@@ -13,7 +13,6 @@ import {
   FileText,
   Globe2,
   Smartphone,
-  Sparkles,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
@@ -29,7 +28,6 @@ const ITEMS: {
 }[] = [
   { id: 'branding', label: 'Branding & support', icon: Building2 },
   { id: 'cloudflare', label: 'Cloudflare', icon: Globe2 },
-  { id: 'llm', label: 'LLM Configuration', icon: Sparkles },
   { id: 'mobile', label: 'Mobile App', icon: Smartphone },
   { id: 'mail', label: 'Mail & email APIs', icon: Mail },
   { id: 'ops', label: 'Operations', icon: Sliders },
