@@ -8,13 +8,54 @@ import {
   Code2,
   Sparkles,
   ArrowRight,
+  LogIn,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useAssessmentViewModel } from './use-assessment-viewmodel'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { useAuth } from '@/lib/auth-context'
 
 export default function AssessmentPage() {
+  const gate = usePageGuard('user')
+  const { user: authUser } = useAuth()
   const { openFaq, toggleFaq, ecosystem, steps, faq } = useAssessmentViewModel()
+
+  if (!gate.ready) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="flex items-center gap-2 text-muted-foreground">
+          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          Loading…
+        </div>
+      </div>
+    )
+  }
+
+  if (!gate.allowed) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
+            <Code2 className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Please sign in to access the assessment platform.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Link href={`/auth/login?redirect=${encodeURIComponent('/assessment')}`}>
+              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
+            </Link>
+            <Link href="/auth/signup">
+              <Button variant="outline" className="w-full">Create account</Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-background text-foreground" data-testid="assessment-page">
@@ -34,12 +75,20 @@ export default function AssessmentPage() {
             <Link href="/dashboard" className="hover:text-foreground">Dashboard</Link>
           </nav>
           <div className="flex items-center gap-2">
-            <Link href="/auth/login">
-              <Button variant="ghost" size="sm">Log in</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button size="sm" data-testid="cta-signup">Get started</Button>
-            </Link>
+            {authUser?.uid ? (
+              <Link href="/dashboard">
+                <Button variant="ghost" size="sm">Dashboard</Button>
+              </Link>
+            ) : (
+              <>
+                <Link href="/auth/login">
+                  <Button variant="ghost" size="sm">Log in</Button>
+                </Link>
+                <Link href="/auth/signup">
+                  <Button size="sm" data-testid="cta-signup">Get started</Button>
+                </Link>
+              </>
+            )}
           </div>
         </div>
       </header>
