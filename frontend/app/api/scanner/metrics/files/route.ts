@@ -98,7 +98,7 @@ export async function GET(req: NextRequest) {
  * GET /api/scanner/metrics/files/[id]
  * Fetch detailed metrics for a specific file
  */
-export async function getFileMetricsDetail(fileId: string) {
+async function getFileMetricsDetail(fileId: string) {
   try {
     // This would query Supabase with the fileId
     const fileMetrics = {

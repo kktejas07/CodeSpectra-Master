@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, use } from 'react'
 import { BookOpen, CheckCircle, Play, Download, MessageCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/lib/toast-context'
@@ -38,7 +38,8 @@ const lessons = [
   },
 ]
 
-export default function CoursePage({ params }: { params: { id: string } }) {
+export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const courseId = use(params).id
   const addToast = useToast()
   const [activeLesson, setActiveLesson] = useState(1)
   const completed = lessons.filter((l) => l.completed).length
