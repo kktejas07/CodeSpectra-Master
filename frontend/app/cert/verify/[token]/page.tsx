@@ -2,17 +2,19 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useParams, useSearchParams, useRouter } from 'next/navigation'
+import Link from 'next/link'
 import QRCode from 'qrcode'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Award, XCircle, Printer, Download, Sparkles } from 'lucide-react'
+import { Award, XCircle, Printer, Download, Sparkles, LogIn, Code2 } from 'lucide-react'
 import {
   CertificateRenderer,
   TEMPLATES,
   type CertificateData,
   type TemplateKey,
 } from '@/components/cert/CertificateTemplates'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface VerifyResponse {
   valid: boolean
@@ -36,9 +38,45 @@ interface VerifyResponse {
  */
 export default function CertVerifyPage() {
   const { token } = useParams() as { token: string }
+  const gate = usePageGuard('user')
   const search = useSearchParams()
   const router = useRouter()
   const initialTemplate = (search.get('template') as TemplateKey) || 'classic'
+
+  if (!gate.ready) {
+    return (
+      <main className="min-h-screen flex items-center justify-center p-6 text-muted-foreground">
+        <div className="flex items-center gap-2">
+          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+          Verifying…
+        </div>
+      </main>
+    )
+  }
+
+  if (!gate.allowed) {
+    return (
+      <main className="min-h-screen flex items-center justify-center bg-background">
+        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
+            <Award className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Please sign in to verify certificates.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Link href={`/auth/login?redirect=${encodeURIComponent(`/cert/verify/${token}`)}`}>
+              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
+            </Link>
+            <Link href="/auth/signup">
+              <Button variant="outline" className="w-full">Create account</Button>
+            </Link>
+          </div>
+        </Card>
+      </main>
+    )
+  }
 
   const [data, setData] = useState<VerifyResponse | null>(null)
   const [loading, setLoading] = useState(true)

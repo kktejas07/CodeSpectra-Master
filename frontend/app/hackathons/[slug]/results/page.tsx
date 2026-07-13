@@ -7,9 +7,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Trophy, ArrowLeft, Users, Medal, Download,
-  Share2, Linkedin, FileText, Award, Sparkles, CheckCircle,
+  Share2, Linkedin, FileText, Award, Sparkles, CheckCircle, LogIn,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -32,6 +33,7 @@ interface Submission {
 
 export default function HackathonResultsPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
+  const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
   const certRef = useRef<HTMLDivElement>(null)
@@ -151,6 +153,29 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
   }
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading results…</div>
+  if (!gate.allowed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
+            <Trophy className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Please sign in to view hackathon results.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}/results`)}`}>
+              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
+            </Link>
+            <Link href="/auth/signup">
+              <Button variant="outline" className="w-full">Create account</Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    )
+  }
   if (!hackathon) return <div className="p-10 text-center"><p className="text-sm text-destructive">{error || 'Event not found'}</p></div>
 
   return (

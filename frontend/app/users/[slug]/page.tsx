@@ -3,9 +3,12 @@
 import { useEffect, useState } from 'react'
 import { use } from 'react'
 import Link from 'next/link'
-import { Loader2, ArrowLeft, Trophy, Code2, CheckCircle2, XCircle } from 'lucide-react'
+import { Loader2, ArrowLeft, Trophy, Code2, CheckCircle2, XCircle, LogIn } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { useAuth } from '@/lib/auth-context'
 
 type Difficulty = 'easy' | 'medium' | 'hard'
 
@@ -47,9 +50,43 @@ export default function UserProfilePage({
   params: Promise<{ slug: string }>
 }) {
   const { slug } = use(params)
+  const gate = usePageGuard('user')
+  const { user: authUser } = useAuth()
   const [data, setData] = useState<ProfileResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+
+  if (!gate.ready) {
+    return (
+      <div className="flex min-h-screen items-center justify-center text-muted-foreground" data-testid="user-profile-loading">
+        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
+      </div>
+    )
+  }
+
+  if (!gate.allowed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
+            <Code2 className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Please sign in to view user profiles.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Link href={`/auth/login?redirect=${encodeURIComponent(`/users/${slug}`)}`}>
+              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
+            </Link>
+            <Link href="/auth/signup">
+              <Button variant="outline" className="w-full">Create account</Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   useEffect(() => {
     let cancelled = false

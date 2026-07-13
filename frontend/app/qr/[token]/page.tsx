@@ -26,6 +26,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 type Variant = 'user' | 'admin' | 'tenant'
 
@@ -85,6 +86,7 @@ export default function QrScanPage({
   params: Promise<{ token: string }>
 }) {
   const { token } = use(params)
+  const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const [data, setData] = useState<ScanResp | null>(null)
   const [error, setError] = useState<string | null>(null)
@@ -120,6 +122,31 @@ export default function QrScanPage({
     return (
       <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
         <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Resolving QR…
+      </div>
+    )
+  }
+
+  if (!gate.allowed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background p-8">
+        <div className="max-w-md space-y-3 rounded-2xl border border-border bg-card p-8 text-center">
+          <AlertTriangle className="mx-auto h-10 w-10 text-primary" />
+          <h1 className="text-xl font-bold">Sign in required</h1>
+          <p className="text-sm text-muted-foreground">
+            Please sign in to scan this QR code and view the content.
+          </p>
+          <div className="flex flex-col gap-2 pt-2">
+            <Link href={`/auth/login?redirect=${encodeURIComponent(`/qr/${token}`)}`}>
+              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
+            </Link>
+            <Link href="/auth/signup">
+              <Button variant="outline" className="w-full">Create account</Button>
+            </Link>
+          </div>
+          <Link href="/" className="text-sm text-primary hover:underline pt-2 block">
+            ← Back to CodeSpectra
+          </Link>
+        </div>
       </div>
     )
   }

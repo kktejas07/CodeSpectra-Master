@@ -12,6 +12,7 @@ import {
   Copy, ExternalLink, Share2, Timer, LogIn,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { usePageGuard } from '@/lib/use-page-guard'
 import { Countdown } from '@/components/hackathons/countdown'
 
 interface Hackathon {
@@ -35,6 +36,7 @@ interface Team {
 
 export default function HackathonPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
+  const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
   const [hackathon, setHackathon] = useState<Hackathon | null>(null)
@@ -101,6 +103,32 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
+  }
+
+  if (!gate.ready) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>
+
+  if (!gate.allowed) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-background">
+        <Card className="max-w-sm w-full p-8 text-center border-primary/20">
+          <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-primary/10 mx-auto mb-4">
+            <Trophy className="h-6 w-6 text-primary" />
+          </div>
+          <h1 className="text-xl font-bold mb-2">Sign in required</h1>
+          <p className="text-sm text-muted-foreground mb-6">
+            Please sign in to view and join hackathon events.
+          </p>
+          <div className="flex flex-col gap-2">
+            <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`}>
+              <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign in</Button>
+            </Link>
+            <Link href="/auth/signup">
+              <Button variant="outline" className="w-full">Create account</Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    )
   }
 
   if (loading && !hackathon) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading event…</div>
