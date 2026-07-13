@@ -5,7 +5,7 @@
  * We verify the webhook signature and update the order status.
  */
 import { NextRequest, NextResponse } from 'next/server'
-import { verifyPhonePeWebhook, getPhonePeTransactionStatus } from '@/lib/phonepe-server'
+import { verifyPhonePeWebhook } from '@/lib/phonepe-server'
 import { billingOrders, billingPayments, billingSubscriptions, BILLING_PLANS, nowIso, newId } from '@/lib/db/billing'
 import { notify } from '@/lib/notifications'
 import { sendEmail } from '@/lib/send-email'
@@ -91,7 +91,7 @@ export async function POST(req: NextRequest) {
       const plan = BILLING_PLANS[order.plan_id]
       const { getMongoDb } = await import('@/lib/mongodb')
       const db = await getMongoDb()
-      const user = await db.collection('user').findOne({ _id: order.user_id })
+      const user = await db.collection('user').findOne({ _id: order.user_id as any })
       if (user?.email && plan) {
         const template = plan.kind === 'subscription'
           ? emailTemplates.subscriptionConfirmation(plan.name, amount, plan.currency)

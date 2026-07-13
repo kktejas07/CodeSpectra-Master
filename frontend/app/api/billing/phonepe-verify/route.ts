@@ -75,7 +75,7 @@ export async function GET(req: NextRequest) {
       const plan = BILLING_PLANS[order.plan_id]
       const { getMongoDb } = await import('@/lib/mongodb')
       const db = await getMongoDb()
-      const dbUser = await db.collection('user').findOne({ _id: user.id })
+      const dbUser = await db.collection('user').findOne({ _id: user.id as any })
       if (dbUser?.email && plan) {
         const template = plan.kind === 'subscription'
           ? emailTemplates.subscriptionConfirmation(plan.name, amount, plan.currency)

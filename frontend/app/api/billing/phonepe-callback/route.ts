@@ -113,7 +113,7 @@ async function processSuccessfulPayment(merchantTransactionId: string, amount: n
   const plan = BILLING_PLANS[order.plan_id]
   if (plan) {
     const db = await getMongoDb()
-    const user = await db.collection('user').findOne({ _id: order.user_id })
+    const user = await db.collection('user').findOne({ _id: order.user_id as any })
     if (user?.email) {
       const template = plan.kind === 'subscription'
         ? emailTemplates.subscriptionConfirmation(plan.name, finalAmount, plan.currency)
