@@ -151,6 +151,30 @@ export async function hackathonSubmissions(): Promise<Collection<HackathonSubmis
   return (await db()).collection<HackathonSubmissionDoc>('hackathon_submissions')
 }
 
+export interface HackathonClaimDoc {
+  hackathon_id: string
+  problem_slug: string
+  user_id: string
+  user_name: string
+  claimed_at: string
+  expires_at: string
+}
+
+export async function hackathonClaims(): Promise<Collection<HackathonClaimDoc>> {
+  const col = (await db()).collection<HackathonClaimDoc>('hackathon_claims')
+  try {
+    await col.createIndex(
+      { hackathon_id: 1, problem_slug: 1 },
+      { unique: true, name: 'hackathon_claims_unique' },
+    )
+    await col.createIndex(
+      { expires_at: 1 },
+      { expireAfterSeconds: 0, name: 'hackathon_claims_ttl' },
+    )
+  } catch { /* index may already exist */ }
+  return col
+}
+
 /**
  * Map a Better Auth role to the dashboard variant used on the public scan
  * page. Unknown roles default to `user`.

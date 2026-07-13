@@ -11,10 +11,12 @@ import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
   ExternalLink, Trash2, HelpCircle, CheckSquare, ListChecks,
-  Shield, GripVertical, Pencil,
+  Shield, GripVertical, Pencil, Wand2, BookOpen, Search,
+  Sparkles, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useAuth } from '@/lib/auth-context'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -61,6 +63,35 @@ export default function HackathonsAdminPage() {
   const [problemResults, setProblemResults] = useState<ProblemOption[]>([])
   const [searchingProblems, setSearchingProblems] = useState(false)
 
+  type ProblemSource = 'pick' | 'own' | 'ai'
+  const [problemSource, setProblemSource] = useState<ProblemSource>('pick')
+
+  const [aiConfig, setAiConfig] = useState({
+    role: 'Software Engineer',
+    difficulty: 'medium' as 'easy' | 'medium' | 'hard',
+    topics: '',
+    language_hint: 'python',
+    count: 1,
+  })
+  const [generating, setGenerating] = useState(false)
+  const [generatingError, setGeneratingError] = useState<string | null>(null)
+
+  const [ownForm, setOwnForm] = useState({
+    title: '',
+    difficulty: 'medium' as 'easy' | 'medium' | 'hard',
+    topics: '',
+    statement_md: '',
+    input_format: '',
+    output_format: '',
+    constraints: '',
+    points: 100,
+  })
+  const [ownTestCases, setOwnTestCases] = useState<{ stdin: string; expected: string; is_sample: boolean }[]>([
+    { stdin: '', expected: '', is_sample: true },
+  ])
+  const [creatingOwn, setCreatingOwn] = useState(false)
+  const [creatingOwnError, setCreatingOwnError] = useState<string | null>(null)
+
   const load = useCallback(async () => {
     setLoading(true); setError(null)
     try {
@@ -84,6 +115,100 @@ export default function HackathonsAdminPage() {
     } catch { setProblemResults([]) }
     finally { setSearchingProblems(false) }
   }, [])
+
+  async function generateAiProblems() {
+    setGenerating(true); setGeneratingError(null)
+    try {
+      const topics = aiConfig.topics.split(',').map((t) => t.trim()).filter(Boolean)
+      const res = await fetch('/api/ai/generate-problem', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          role: aiConfig.role,
+          difficulty: aiConfig.difficulty,
+          topics,
+          language_hint: aiConfig.language_hint,
+          publish: true,
+        }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error || 'Generation failed')
+      const prob = j.problem as Record<string, unknown>
+      const slug = typeof prob.slug === 'string' ? prob.slug
+        : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
+        ? prob.difficulty : 'medium') as string
+      const title = String(prob.title || slug)
+      const points = prob.points || aiConfig.count > 1 ? 100 : (prob.points || 100)
+      setForm((f) => ({
+        ...f,
+        tasks: [...f.tasks, {
+          slug,
+          title,
+          points: typeof points === 'number' ? points : 100,
+          difficulty,
+          required: true,
+        }],
+      }))
+      setAiConfig((c) => ({ ...c, count: Math.max(1, c.count - 1) }))
+    } catch (e) {
+      setGeneratingError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setGenerating(false)
+    }
+  }
+
+  async function createOwnProblem() {
+    setCreatingOwn(true); setCreatingOwnError(null)
+    try {
+      const topics = ownForm.topics.split(',').map((t) => t.trim()).filter(Boolean)
+      const slug = ownForm.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const test_cases = ownTestCases
+        .filter((tc) => tc.stdin.trim() || tc.expected.trim())
+        .map((tc, i) => ({
+          id: `tc_${Date.now()}_${i}`,
+          stdin: tc.stdin,
+          expected_stdout: tc.expected,
+          is_sample: tc.is_sample,
+        }))
+      const res = await fetch('/api/problems', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          slug,
+          title: ownForm.title,
+          difficulty: ownForm.difficulty,
+          topics,
+          statement_md: ownForm.statement_md,
+          input_format: ownForm.input_format || null,
+          output_format: ownForm.output_format || null,
+          constraints: ownForm.constraints || null,
+          test_cases,
+          starter_code: {},
+          visibility: 'hackathon_only',
+          is_published: true,
+        }),
+      })
+      const j = await res.json()
+      if (!res.ok) throw new Error(j.error || 'Failed to create problem')
+      setForm((f) => ({
+        ...f,
+        tasks: [...f.tasks, {
+          slug,
+          title: ownForm.title,
+          points: ownForm.points,
+          difficulty: ownForm.difficulty,
+          required: true,
+        }],
+      }))
+      setOwnForm({ title: '', difficulty: 'medium', topics: '', statement_md: '', input_format: '', output_format: '', constraints: '', points: 100 })
+      setOwnTestCases([{ stdin: '', expected: '', is_sample: true }])
+    } catch (e) {
+      setCreatingOwnError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setCreatingOwn(false)
+    }
+  }
 
   async function create() {
     if (!form.name.trim()) return
@@ -263,38 +388,256 @@ export default function HackathonsAdminPage() {
           {step === 2 && (
             <div className="space-y-6">
               <h3 className="font-semibold text-lg">Assign Problems</h3>
-              <p className="text-sm text-muted-foreground">Search and select problems to include in this event.</p>
+              <p className="text-sm text-muted-foreground">
+                Choose how to add problems — pick from your library, write your own, or generate with AI.
+              </p>
 
+              {/* Source mode selector */}
               <div className="flex gap-2">
-                <Input placeholder="Search problems..." value={problemSearch}
-                  onChange={(e) => { setProblemSearch(e.target.value); searchProblems(e.target.value) }} />
+                <button
+                  onClick={() => setProblemSource('pick')}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
+                    problemSource === 'pick'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-card hover:bg-muted/50'
+                  }`}
+                >
+                  <Search className="h-4 w-4" /> Pick from library
+                </button>
+                <button
+                  onClick={() => setProblemSource('own')}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
+                    problemSource === 'own'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-card hover:bg-muted/50'
+                  }`}
+                >
+                  <BookOpen className="h-4 w-4" /> Own questions
+                </button>
+                <button
+                  onClick={() => setProblemSource('ai')}
+                  className={`flex items-center gap-2 rounded-lg border px-4 py-2.5 text-sm font-medium transition-all ${
+                    problemSource === 'ai'
+                      ? 'border-primary bg-primary/10 text-primary'
+                      : 'border-border bg-card hover:bg-muted/50'
+                  }`}
+                >
+                  <Sparkles className="h-4 w-4" /> AI generate
+                </button>
               </div>
 
-              {searchingProblems && <p className="text-xs text-muted-foreground">Searching...</p>}
+              {/* ── Mode: Pick from existing ── */}
+              {problemSource === 'pick' && (
+                <>
+                  <div className="flex gap-2">
+                    <Input placeholder="Search problems..." value={problemSearch}
+                      onChange={(e) => { setProblemSearch(e.target.value); searchProblems(e.target.value) }} />
+                  </div>
 
-              {problemResults.length > 0 && (
-                <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
-                  {problemResults.map((p) => {
-                    const added = form.tasks.find((t) => t.slug === p.slug)
-                    return (
-                      <div key={p.slug} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50">
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm truncate">{p.title}</p>
-                          <p className="text-xs text-muted-foreground">{p.slug} · {p.difficulty}</p>
-                        </div>
-                        {added ? (
-                          <Badge variant="outline" className="shrink-0">Added</Badge>
-                        ) : (
-                          <Button size="sm" variant="ghost" onClick={() => setForm((f) => ({
-                            ...f, tasks: [...f.tasks, { slug: p.slug, title: p.title, points: 100, difficulty: p.difficulty, required: true }]
-                          }))}>Add</Button>
-                        )}
+                  {searchingProblems && <p className="text-xs text-muted-foreground">Searching...</p>}
+
+                  {problemResults.length > 0 && (
+                    <div className="space-y-2 max-h-48 overflow-y-auto border rounded-lg p-3">
+                      {problemResults.map((p) => {
+                        const added = form.tasks.find((t) => t.slug === p.slug)
+                        return (
+                          <div key={p.slug} className="flex items-center justify-between p-3 rounded-lg hover:bg-muted/50">
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm truncate">{p.title}</p>
+                              <p className="text-xs text-muted-foreground">{p.slug} · {p.difficulty}</p>
+                            </div>
+                            {added ? (
+                              <Badge variant="outline" className="shrink-0">Added</Badge>
+                            ) : (
+                              <Button size="sm" variant="ghost" onClick={() => setForm((f) => ({
+                                ...f, tasks: [...f.tasks, { slug: p.slug, title: p.title, points: 100, difficulty: p.difficulty, required: true }]
+                              }))}>Add</Button>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </>
+              )}
+
+              {/* ── Mode: Own questions ── */}
+              {problemSource === 'own' && (
+                <div className="space-y-4 rounded-lg border border-border/60 bg-card/40 p-5">
+                  <div className="space-y-3">
+                    <p className="text-sm font-semibold">Write your own problem</p>
+                    <div className="grid gap-3 md:grid-cols-2">
+                      <div className="md:col-span-2 space-y-1.5">
+                        <Label>Problem title *</Label>
+                        <Input value={ownForm.title}
+                          onChange={(e) => setOwnForm((f) => ({ ...f, title: e.target.value }))}
+                          placeholder="Two Sum" />
                       </div>
-                    )
-                  })}
+                      <div className="space-y-1.5">
+                        <Label>Difficulty</Label>
+                        <select className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
+                          value={ownForm.difficulty}
+                          onChange={(e) => setOwnForm((f) => ({ ...f, difficulty: e.target.value as 'easy' | 'medium' | 'hard' }))}>
+                          <option value="easy">Easy</option>
+                          <option value="medium">Medium</option>
+                          <option value="hard">Hard</option>
+                        </select>
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Points</Label>
+                        <Input type="number" value={ownForm.points} min={10}
+                          onChange={(e) => setOwnForm((f) => ({ ...f, points: Number(e.target.value) }))} />
+                      </div>
+                      <div className="md:col-span-2 space-y-1.5">
+                        <Label>Topics (comma-separated)</Label>
+                        <Input value={ownForm.topics}
+                          onChange={(e) => setOwnForm((f) => ({ ...f, topics: e.target.value }))}
+                          placeholder="arrays, dynamic programming, strings" />
+                      </div>
+                      <div className="md:col-span-2 space-y-1.5">
+                        <Label>Problem statement (Markdown)</Label>
+                        <Textarea rows={5} value={ownForm.statement_md}
+                          onChange={(e) => setOwnForm((f) => ({ ...f, statement_md: e.target.value }))}
+                          placeholder="## Problem Description&#10;Given an array of integers, return indices of the two numbers that add up to a specific target..." />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Input format</Label>
+                        <Input value={ownForm.input_format}
+                          onChange={(e) => setOwnForm((f) => ({ ...f, input_format: e.target.value }))}
+                          placeholder="First line contains n..." />
+                      </div>
+                      <div className="space-y-1.5">
+                        <Label>Output format</Label>
+                        <Input value={ownForm.output_format}
+                          onChange={(e) => setOwnForm((f) => ({ ...f, output_format: e.target.value }))}
+                          placeholder="Print the two indices..." />
+                      </div>
+                      <div className="md:col-span-2 space-y-1.5">
+                        <Label>Constraints</Label>
+                        <Input value={ownForm.constraints}
+                          onChange={(e) => setOwnForm((f) => ({ ...f, constraints: e.target.value }))}
+                          placeholder="2 ≤ n ≤ 10⁵, -10⁹ ≤ nums[i] ≤ 10⁹" />
+                      </div>
+                    </div>
+
+                    {/* Test cases */}
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <Label>Test cases</Label>
+                        <Button size="sm" variant="outline" onClick={() => setOwnTestCases((t) => [...t, { stdin: '', expected: '', is_sample: true }])}>
+                          <Plus className="h-3 w-3 mr-1" /> Add test case
+                        </Button>
+                      </div>
+                      {ownTestCases.map((tc, i) => (
+                        <div key={i} className="rounded-lg border bg-muted/20 p-3 space-y-2">
+                          <div className="flex items-center justify-between">
+                            <span className="text-xs font-medium">Test case {i + 1}</span>
+                            <div className="flex items-center gap-2">
+                              <label className="flex items-center gap-1 text-xs text-muted-foreground">
+                                <input type="checkbox" checked={tc.is_sample}
+                                  onChange={(e) => {
+                                    const next = [...ownTestCases]
+                                    next[i] = { ...next[i], is_sample: e.target.checked }
+                                    setOwnTestCases(next)
+                                  }} />
+                                Sample
+                              </label>
+                              {ownTestCases.length > 1 && (
+                                <Button size="sm" variant="ghost" className="h-6 text-destructive"
+                                  onClick={() => setOwnTestCases((t) => t.filter((_, idx) => idx !== i))}>
+                                  <Trash2 className="h-3 w-3" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                          <div className="grid gap-2 sm:grid-cols-2">
+                            <div>
+                              <Label className="text-[10px] uppercase tracking-wider">Input</Label>
+                              <Textarea rows={2} value={tc.stdin}
+                                onChange={(e) => {
+                                  const next = [...ownTestCases]
+                                  next[i] = { ...next[i], stdin: e.target.value }
+                                  setOwnTestCases(next)
+                                }}
+                                placeholder="[2,7,11,15]&#10;9" className="font-mono text-xs" />
+                            </div>
+                            <div>
+                              <Label className="text-[10px] uppercase tracking-wider">Expected output</Label>
+                              <Textarea rows={2} value={tc.expected}
+                                onChange={(e) => {
+                                  const next = [...ownTestCases]
+                                  next[i] = { ...next[i], expected: e.target.value }
+                                  setOwnTestCases(next)
+                                }}
+                                placeholder="[0,1]" className="font-mono text-xs" />
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {creatingOwnError && <p className="text-xs text-destructive">{creatingOwnError}</p>}
+                    <Button onClick={createOwnProblem} disabled={creatingOwn || !ownForm.title.trim()}>
+                      {creatingOwn ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Plus className="mr-1 h-3 w-3" />}
+                      Add to problems
+                    </Button>
+                  </div>
                 </div>
               )}
 
+              {/* ── Mode: AI generate ── */}
+              {problemSource === 'ai' && (
+                <div className="space-y-4 rounded-lg border border-primary/20 bg-primary/5 p-5">
+                  <div className="flex items-start gap-3">
+                    <Sparkles className="h-5 w-5 text-primary mt-0.5" />
+                    <div className="flex-1 space-y-3">
+                      <p className="text-sm font-semibold">AI generates problems for you</p>
+                      <p className="text-xs text-muted-foreground">
+                        Configure the role, difficulty, and topics. The AI will create a polished problem with test cases and add it to the event.
+                      </p>
+                      <div className="grid gap-3 md:grid-cols-2">
+                        <div className="space-y-1.5">
+                          <Label>Role / Persona</Label>
+                          <Input value={aiConfig.role}
+                            onChange={(e) => setAiConfig((c) => ({ ...c, role: e.target.value }))}
+                            placeholder="Software Engineer" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Difficulty</Label>
+                          <select className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
+                            value={aiConfig.difficulty}
+                            onChange={(e) => setAiConfig((c) => ({ ...c, difficulty: e.target.value as 'easy' | 'medium' | 'hard' }))}>
+                            <option value="easy">Easy</option>
+                            <option value="medium">Medium</option>
+                            <option value="hard">Hard</option>
+                          </select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Language hint</Label>
+                          <Input value={aiConfig.language_hint}
+                            onChange={(e) => setAiConfig((c) => ({ ...c, language_hint: e.target.value }))}
+                            placeholder="python" />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label>Topics (comma-separated)</Label>
+                          <Input value={aiConfig.topics}
+                            onChange={(e) => setAiConfig((c) => ({ ...c, topics: e.target.value }))}
+                            placeholder="arrays, strings, sorting" />
+                        </div>
+                      </div>
+                      {generatingError && <p className="text-xs text-destructive">{generatingError}</p>}
+                      <div className="flex gap-2">
+                        <Button onClick={generateAiProblems} disabled={generating}>
+                          {generating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1 h-3 w-3" />}
+                          {generating ? 'Generating…' : `Generate problem${aiConfig.count > 1 ? ` (${aiConfig.count} left)` : ''}`}
+                        </Button>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Selected problems (all modes) */}
               {form.tasks.length > 0 && (
                 <div className="space-y-2">
                   <p className="text-sm font-medium">Selected Problems ({form.tasks.length})</p>

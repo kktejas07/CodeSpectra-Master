@@ -9,7 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Trophy, Users, Clock, CalendarDays, ScanLine,
   Sparkles, ArrowRight, CheckCircle, ListChecks, Shield,
-  Copy, ExternalLink, Share2, Timer,
+  Copy, ExternalLink, Share2, Timer, LogIn,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { Countdown } from '@/components/hackathons/countdown'
@@ -227,16 +227,35 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
               </div>
             ) : (
               <div>
-                <h2 className="text-sm font-semibold mb-3">Register your team</h2>
-                <div className="flex gap-2">
-                  <Input placeholder="Team name (auto-named if blank)" value={newTeamName}
-                    onChange={(e) => setNewTeamName(e.target.value)} />
-                  <Button onClick={createTeam} disabled={creating || teams.length >= hackathon.num_teams}>
-                    {creating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                    Register
-                  </Button>
-                </div>
-                {teams.length >= hackathon.num_teams && <p className="text-xs text-destructive mt-1">Event is at capacity ({hackathon.num_teams} teams).</p>}
+                {authUser?.uid ? (
+                  <>
+                    <h2 className="text-sm font-semibold mb-3">Register your team</h2>
+                    <div className="flex gap-2">
+                      <Input placeholder="Team name (auto-named if blank)" value={newTeamName}
+                        onChange={(e) => setNewTeamName(e.target.value)} />
+                      <Button onClick={createTeam} disabled={creating || teams.length >= hackathon.num_teams}>
+                        {creating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
+                        Register
+                      </Button>
+                    </div>
+                    {teams.length >= hackathon.num_teams && <p className="text-xs text-destructive mt-1">Event is at capacity ({hackathon.num_teams} teams).</p>}
+                  </>
+                ) : (
+                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
+                    <p className="text-sm font-medium">Sign in to register your team</p>
+                    <p className="mt-1 text-xs text-muted-foreground">
+                      Create an account or sign in to participate in this hackathon.
+                    </p>
+                    <div className="mt-3 flex gap-2">
+                      <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`}>
+                        <Button size="sm" className="gap-1.5"><LogIn className="h-3.5 w-3.5" /> Sign in</Button>
+                      </Link>
+                      <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`}>
+                        <Button size="sm" variant="outline" className="gap-1.5">Create account</Button>
+                      </Link>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
             {error && <p className="text-xs text-destructive">{error}</p>}

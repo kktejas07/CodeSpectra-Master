@@ -21,7 +21,9 @@ import {
   Users,
   Clock,
   AlertTriangle,
+  LogIn,
 } from 'lucide-react'
+import { useAuth } from '@/lib/auth-context'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 
@@ -83,9 +85,14 @@ export default function QrScanPage({
   params: Promise<{ token: string }>
 }) {
   const { token } = use(params)
+  const { user: authUser } = useAuth()
   const [data, setData] = useState<ScanResp | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<number>(0)
+
+  const joinHref = data?.kind === 'team'
+    ? `/hackathons/${(data as TeamResp).hackathon?.slug}/join/${token}`
+    : null
 
   useEffect(() => {
     let cancelled = false
@@ -155,7 +162,33 @@ export default function QrScanPage({
           </Link>
         </div>
 
-        {data.kind === 'user' ? (
+        {data.kind === 'team' && !authUser?.uid ? (
+          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-primary/40 shadow-xl">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              {(data as TeamResp).hackathon?.name || 'Hackathon team'}
+            </p>
+            <h1 className="mt-1 text-2xl font-bold" data-testid="qr-team-name">
+              {(data as TeamResp).team.name}
+            </h1>
+            <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+              <p className="text-sm font-medium">Join this team to start competing</p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Sign in or create an account to register and access the hackathon problems.
+              </p>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(joinHref!)}`}>
+                <Button className="mt-3 w-full gap-2">
+                  <LogIn className="h-4 w-4" />
+                  Sign in to join team
+                </Button>
+              </Link>
+              <Link href={`/auth/signup?redirect=${encodeURIComponent(joinHref!)}`}>
+                <Button variant="outline" className="mt-2 w-full gap-2">
+                  Create account
+                </Button>
+              </Link>
+            </div>
+          </article>
+        ) : data.kind === 'user' ? (
           <UserCard data={data} ringClass={ringClass} />
         ) : (
           <TeamCard data={data} ringClass={ringClass} />

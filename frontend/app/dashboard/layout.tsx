@@ -245,6 +245,7 @@ export default function DashboardLayout({
       { href: DASHBOARD_ROUTES.organization.team, icon: Users, label: 'Organization' },
       // User pages
       { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
+      { href: '/dashboard/hackathons', icon: Trophy, label: 'Hackathons' },
       { href: '/dashboard/problems', icon: CodeIcon, label: 'Problems' },
       { href: '/dashboard/tracks', icon: LayersIcon, label: 'Tracks' },
       { href: '/dashboard/scanner?mode=manual', icon: CodeIcon, label: 'Scanner' },
