@@ -13,10 +13,11 @@
  *   – same‑site scripting (XSS on an allowed script‑src origin)
  *   – mis‑configured SameSite / legacy clients
  */
-import crypto from 'crypto'
-
-const COOKIE_NAME = 'csrf_token'
-const HEADER_NAME = 'x-csrf-token'
+function randomHex(bytes: number): string {
+  const buf = new Uint8Array(bytes)
+  crypto.getRandomValues(buf)
+  return Array.from(buf).map((b) => b.toString(16).padStart(2, '0')).join('')
+}
 
 const CSRF_TOKEN_LENGTH = 32 // hex → 16 bytes of entropy
 
@@ -33,22 +34,35 @@ export function checkCsrf(request: Request): { pass: boolean; token?: string } {
   // so the client can read it for subsequent mutating requests.
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
     // Generate a fresh token for each idempotent response
-    return { pass: true, token: crypto.randomBytes(CSRF_TOKEN_LENGTH).toString('hex') }
+    return { pass: true, token: randomHex(CSRF_TOKEN_LENGTH) }
   }
 
   // Mutating methods: require the header to match the cookie
-  const cookie = parseCookie(request.headers.get('cookie') || '', COOKIE_NAME)
-  const header = (request.headers.get(HEADER_NAME) || '').trim()
+  const cookie = parseCookie(request.headers.get('cookie') || '', CSRF_COOKIE)
+  const header = (request.headers.get(CSRF_HEADER) || '').trim()
 
-  if (!cookie || !header || !crypto.timingSafeEqual(Buffer.from(cookie), Buffer.from(header))) {
+  if (!cookie || !header || header.length !== cookie.length) {
     return { pass: false }
   }
 
+  // Constant-time comparison to avoid timing attacks
+  const cookieBytes = new TextEncoder().encode(cookie)
+  const headerBytes = new TextEncoder().encode(header)
+  let diff = 0
+  for (let i = 0; i < cookieBytes.length; i++) {
+    diff |= cookieBytes[i] ^ headerBytes[i]
+  }
+
+  if (diff !== 0) return { pass: false }
+
   // Token consumed — rotate for next request
-  return { pass: true, token: crypto.randomBytes(CSRF_TOKEN_LENGTH).toString('hex') }
+  return { pass: true, token: randomHex(CSRF_TOKEN_LENGTH) }
 }
 
-export { COOKIE_NAME as CSRF_COOKIE, HEADER_NAME as CSRF_HEADER }
+export { CSRF_COOKIE, CSRF_HEADER }
+
+const CSRF_COOKIE = 'csrf_token'
+const CSRF_HEADER = 'x-csrf-token'
 
 function parseCookie(raw: string, name: string): string | null {
   for (const part of raw.split(';')) {
