@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { AlertTriangle, CheckCircle2, Info, Loader2, ShieldAlert, Sparkles } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface ReviewConcern {
   severity: 'critical' | 'major' | 'minor'
@@ -41,7 +42,7 @@ export function AiCodeReviewWidget({ code, language = 'javascript', scanId, butt
     setErr(null)
     setResult(null)
     try {
-      const res = await fetch('/api/ai/code-review', {
+      const res = await csrfFetch('/api/ai/code-review', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, language, scan_id: scanId }),

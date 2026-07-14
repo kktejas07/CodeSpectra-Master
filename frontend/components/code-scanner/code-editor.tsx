@@ -2,6 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { Loader } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface CodeEditorProps {
   value: string
@@ -121,7 +122,7 @@ export function CodeEditor({
         setAnalysisRunning(true)
         analysisTimeoutRef.current = setTimeout(async () => {
           try {
-            const response = await fetch('/api/analyze-code', {
+            const response = await csrfFetch('/api/analyze-code', {
               method: 'POST',
               credentials: 'include',
               headers: { 'Content-Type': 'application/json' },

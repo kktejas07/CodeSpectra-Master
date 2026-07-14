@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Loader2, Save, Globe2, Eye, EyeOff } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 export function CloudflareSettingsSection() {
   const [zoneId, setZoneId] = useState('')
@@ -37,7 +38,7 @@ export function CloudflareSettingsSection() {
       const body: Record<string, string> = {}
       if (zoneId.trim()) body.cloudflare_zone_id = zoneId.trim()
       if (apiToken.trim()) body.cloudflare_api_token = apiToken.trim()
-      const res = await fetch('/api/admin/server-secrets', {
+      const res = await csrfFetch('/api/admin/server-secrets', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

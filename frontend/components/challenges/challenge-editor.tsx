@@ -31,6 +31,7 @@ import {
 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface ChallengeEditorProps {
   challengeId: string
@@ -237,7 +238,7 @@ export function ChallengeEditor({
     setSubmitting(true)
     setTestResults(null)
     try {
-      const res = await fetch('/api/submissions', {
+      const res = await csrfFetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -252,7 +253,7 @@ export function ChallengeEditor({
       if (!res.ok) throw new Error(data.error || 'Submit failed')
 
       if (hackathonId) {
-        await fetch(`/api/hackathons/${hackathonId}/submissions`, {
+        await csrfFetch(`/api/hackathons/${hackathonId}/submissions`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
@@ -305,7 +306,7 @@ export function ChallengeEditor({
     setSubmittingGithub(true)
     try {
       if (hackathonId) {
-        await fetch(`/api/hackathons/${hackathonId}/submissions`, {
+        await csrfFetch(`/api/hackathons/${hackathonId}/submissions`, {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',

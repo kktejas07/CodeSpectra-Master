@@ -186,7 +186,7 @@ function CodeScannerPageInner() {
 
     setLoading(true)
     try {
-      const response = await fetch('/api/analyze-code', {
+      const response = await csrfFetch('/api/analyze-code', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

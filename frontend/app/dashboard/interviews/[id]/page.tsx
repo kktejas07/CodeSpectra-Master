@@ -11,6 +11,7 @@ import {
   CheckCircle, Send, SkipForward, BarChart3, Code2,
 } from 'lucide-react'
 import { CollabEditor } from '@/components/interviews/collab-editor'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 
 interface Interview {
@@ -48,7 +49,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => { void load() }, [load])
 
   const updateStatus = async (status: string) => {
-    await fetch(`/api/interviews/${id}`, {
+    await csrfFetch(`/api/interviews/${id}`, {
       method: 'PATCH',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ status }),
@@ -60,7 +61,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
     if (!currentAnswer.trim()) return
     setSubmitting(true)
     try {
-      await fetch(`/api/interviews/${id}/questions`, {
+      await csrfFetch(`/api/interviews/${id}/questions`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ question_id: questionId, answer: currentAnswer, time_spent_seconds: 30 }),
@@ -145,7 +146,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
               Submit Answer
             </Button>
             <Button variant="ghost" onClick={async () => {
-              await fetch(`/api/interviews/${id}/questions`, {
+              await csrfFetch(`/api/interviews/${id}/questions`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ question_id: currentQ.id, skipped: true }),

@@ -3,6 +3,7 @@
 import { useEffect, useRef, useState, useCallback } from 'react'
 import { AlertTriangle, Camera, Fullscreen, Ban } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface ProctorMonitorProps {
   sessionKind: 'problem' | 'exam' | 'interview'
@@ -32,7 +33,7 @@ export function ProctorMonitor({
 
   const send = useCallback((event_type: string, meta?: Record<string, unknown>) => {
     onEvent?.(event_type)
-    fetch('/api/proctor/events', {
+    csrfFetch('/api/proctor/events', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ session_kind: sessionKind, session_id: sessionId, event_type, meta }),

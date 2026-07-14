@@ -9,6 +9,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 export default function ScheduleInterviewPage() {
   const router = useRouter()
@@ -39,7 +40,7 @@ export default function ScheduleInterviewPage() {
       const candidate = users.find((u) => u.email.toLowerCase() === form.candidate_email.toLowerCase())
       if (!candidate) throw new Error(`User with email "${form.candidate_email}" not found`)
 
-      const res = await fetch('/api/interviews', {
+      const res = await csrfFetch('/api/interviews', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

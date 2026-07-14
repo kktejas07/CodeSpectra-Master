@@ -15,6 +15,7 @@ import {
 import { useToast } from '@/lib/toast-context'
 import { LLM_PROVIDERS, getProviderDefaults, type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
 import { Save, Loader2, Sparkles, Eye, EyeOff, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 export function LlmSettingsSection() {
   const toast = useToast()
@@ -56,7 +57,7 @@ export function LlmSettingsSection() {
     if (!draft) return
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/llm-config', {
+      const res = await csrfFetch('/api/admin/llm-config', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -78,7 +79,7 @@ export function LlmSettingsSection() {
     setTesting(true)
     setTestResult(null)
     try {
-      const res = await fetch('/api/admin/llm-config/test', {
+      const res = await csrfFetch('/api/admin/llm-config/test', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -100,7 +101,7 @@ export function LlmSettingsSection() {
     }
     setFetchingModels(true)
     try {
-      const res = await fetch('/api/admin/llm-config/models', {
+      const res = await csrfFetch('/api/admin/llm-config/models', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(draft),

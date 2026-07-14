@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Checkbox } from '@/components/ui/checkbox'
 import { Badge } from '@/components/ui/badge'
 import { MessageSquare, Send, Sparkles, Loader2, FileCode, Bot, User } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface FileMetric {
   path: string
@@ -58,7 +59,7 @@ export function CodebaseChatSidebar({ files = [], scanId }: CodebaseChatSidebarP
     setLoading(true)
 
     try {
-      const res = await fetch('/api/ai/codebase-chat', {
+      const res = await csrfFetch('/api/ai/codebase-chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

@@ -86,7 +86,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(toAuthUser(fbUser))
             try {
               const idToken = await fbUser.getIdToken()
-              await fetch('/api/auth/session', {
+              await csrfFetch('/api/auth/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ idToken }),

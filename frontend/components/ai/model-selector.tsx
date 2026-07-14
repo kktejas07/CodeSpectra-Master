@@ -11,6 +11,7 @@ import {
 } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
 import type { UserAISettings } from '@/lib/ai/model-options'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface ModelOption {
   id: string
@@ -46,7 +47,7 @@ export function ModelSelector({ feature, label, onChange }: ModelSelectorProps) 
   const handleChange = async (val: string) => {
     setCurrent(val)
     onChange?.(val)
-    await fetch('/api/user/ai-settings', {
+    await csrfFetch('/api/user/ai-settings', {
       method: 'PUT',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ [feature]: val }),

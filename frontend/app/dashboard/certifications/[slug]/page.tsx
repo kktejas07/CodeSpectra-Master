@@ -6,6 +6,7 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { CheckCircle, XCircle, Clock, ArrowLeft } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Question {
   id: string
@@ -55,7 +56,7 @@ export default function CertificationAttemptPage() {
     let active = true
     async function start() {
       try {
-        const res = await fetch(`/api/certifications/${params.slug}/start`, {
+        const res = await csrfFetch(`/api/certifications/${params.slug}/start`, {
           method: 'POST',
           credentials: 'include',
         })
@@ -82,7 +83,7 @@ export default function CertificationAttemptPage() {
     if (!data) return
     setSubmitting(true)
     try {
-      const res = await fetch(`/api/certifications/${params.slug}/submit`, {
+      const res = await csrfFetch(`/api/certifications/${params.slug}/submit`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
