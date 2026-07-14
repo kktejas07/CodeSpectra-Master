@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Plus, Shield, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface SSOProvider {
   id: string; name: string; provider_type: string; issuer: string
@@ -42,7 +43,7 @@ export default function AdminSSOPage() {
   const create = async () => {
     setBusy(true)
     try {
-      const res = await fetch('/api/admin/sso', {
+      const res = await csrfFetch('/api/admin/sso', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(form),

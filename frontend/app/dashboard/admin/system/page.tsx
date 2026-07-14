@@ -15,6 +15,7 @@ import { AnalyticsDashboard, type AnalyticsDashboardProps } from '@/components/a
 import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 const emptyCharts: AnalyticsDashboardProps = {
   userGrowth: [],
@@ -106,7 +107,7 @@ export default function SystemAdminDashboard() {
   const clearCache = useCallback(async (type: string) => {
     setClearing(type)
     try {
-      const res = await fetch('/api/admin/system/cache', {
+      const res = await csrfFetch('/api/admin/system/cache', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

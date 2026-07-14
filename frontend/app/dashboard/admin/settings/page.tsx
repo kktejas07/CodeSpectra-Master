@@ -59,6 +59,7 @@ import {
 import { isStripePriceId } from '@/lib/pricing-catalog'
 import { PricingCatalogStripeHint } from '@/components/dashboard/pricing-catalog-stripe-hint'
 import { emailTemplates } from '@/lib/email-templates'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 type General = GeneralPlatformSettings
 type GeneralKey = keyof General
@@ -372,7 +373,7 @@ function SystemSettingsInner() {
         for (const k of keys) {
           body[k] = form[k]
         }
-        const res = await fetch('/api/admin/platform-settings', {
+        const res = await csrfFetch('/api/admin/platform-settings', {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },
@@ -432,7 +433,7 @@ function SystemSettingsInner() {
         setSavingKey(null)
         return
       }
-      const res = await fetch('/api/admin/server-secrets', {
+      const res = await csrfFetch('/api/admin/server-secrets', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -457,7 +458,7 @@ function SystemSettingsInner() {
     setSavingKey('mail')
     try {
       const body: Record<string, unknown> = { admin_new_user_email_delivery: form.admin_new_user_email_delivery }
-      const res = await fetch('/api/admin/platform-settings', {
+      const res = await csrfFetch('/api/admin/platform-settings', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -492,7 +493,7 @@ function SystemSettingsInner() {
       if (mailSecretsDraft.smtp_from_email.trim())
         secBody.smtp_from_email = mailSecretsDraft.smtp_from_email.trim()
       if (Object.keys(secBody).length > 0) {
-        const sres = await fetch('/api/admin/server-secrets', {
+        const sres = await csrfFetch('/api/admin/server-secrets', {
           method: 'PATCH',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

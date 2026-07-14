@@ -17,6 +17,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -120,7 +121,7 @@ export default function HackathonsAdminPage() {
     setGenerating(true); setGeneratingError(null)
     try {
       const topics = aiConfig.topics.split(',').map((t) => t.trim()).filter(Boolean)
-      const res = await fetch('/api/ai/generate-problem', {
+      const res = await csrfFetch('/api/ai/generate-problem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -171,7 +172,7 @@ export default function HackathonsAdminPage() {
           expected_stdout: tc.expected,
           is_sample: tc.is_sample,
         }))
-      const res = await fetch('/api/problems', {
+      const res = await csrfFetch('/api/problems', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -214,7 +215,7 @@ export default function HackathonsAdminPage() {
     if (!form.name.trim()) return
     setBusy(true); setError(null)
     try {
-      const res = await fetch('/api/hackathons', {
+      const res = await csrfFetch('/api/hackathons', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -244,7 +245,7 @@ export default function HackathonsAdminPage() {
     if (!editing || !form.name.trim()) return
     setBusy(true); setError(null)
     try {
-      const res = await fetch(`/api/hackathons/${editing.id}`, {
+      const res = await csrfFetch(`/api/hackathons/${editing.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -786,7 +787,7 @@ export default function HackathonsAdminPage() {
                 </TooltipProvider>
                 <Button variant="ghost" size="sm" onClick={async () => {
                   if (!confirm(`Delete "${hk.name}"? Only allowed if 0 teams have registered.`)) return
-                  const res = await fetch(`/api/hackathons/${hk.id}`, { method: 'DELETE' })
+                  const res = await csrfFetch(`/api/hackathons/${hk.id}`, { method: 'DELETE' })
                   if (res.ok) await load()
                 }} className="text-destructive"><Trash2 className="h-3 w-3" /></Button>
               </div>

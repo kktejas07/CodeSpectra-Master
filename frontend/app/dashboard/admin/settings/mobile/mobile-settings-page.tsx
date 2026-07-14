@@ -7,6 +7,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { Smartphone, Copy, Check, Save, Loader2 } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 export function MobileSettingsPage() {
   const gate = usePageGuard('superadmin')
@@ -31,7 +32,7 @@ export function MobileSettingsPage() {
   const save = async () => {
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/platform-settings', {
+      const res = await csrfFetch('/api/admin/platform-settings', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

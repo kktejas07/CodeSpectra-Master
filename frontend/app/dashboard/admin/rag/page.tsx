@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   Database, Search, RefreshCw, Loader2, FileText, Zap,
   CheckCircle2, AlertTriangle, Info, Play,
@@ -43,7 +44,7 @@ export default function RagAdminPage() {
   const reindex = async () => {
     setIndexing(true)
     try {
-      const r = await fetch('/api/admin/rag/reindex', { method: 'POST', credentials: 'include' })
+      const r = await csrfFetch('/api/admin/rag/reindex', { method: 'POST', credentials: 'include' })
       const d = await r.json()
       toast({ type: d.ok ? 'success' : 'error', title: d.ok ? `Re-indexed: ${d.count} items` : 'Re-index failed' })
       loadStats()
@@ -59,7 +60,7 @@ export default function RagAdminPage() {
     setSearching(true)
     setSearchResults(null)
     try {
-      const r = await fetch('/api/admin/rag/search', {
+      const r = await csrfFetch('/api/admin/rag/search', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

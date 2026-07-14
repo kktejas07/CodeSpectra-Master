@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Switch } from '@/components/ui/switch'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { Loader2, Crown, CheckCircle2, XCircle, Save, RefreshCw, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -70,7 +71,7 @@ export default function PlansPage() {
     if (!currentPlan) return
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/plans', {
+      const res = await csrfFetch('/api/admin/plans', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(currentPlan),

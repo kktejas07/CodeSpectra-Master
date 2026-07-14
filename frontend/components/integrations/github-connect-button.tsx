@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Loader2, Github, CheckCircle2, Link as LinkIcon, Unlink } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Status {
   connected: boolean
@@ -40,7 +41,7 @@ export default function GitHubConnectButton() {
     if (!confirm('Disconnect your GitHub account?')) return
     setBusy(true)
     try {
-      await fetch('/api/github/integrations/me', { method: 'DELETE' })
+      await csrfFetch('/api/github/integrations/me', { method: 'DELETE' })
       await load()
     } finally {
       setBusy(false)

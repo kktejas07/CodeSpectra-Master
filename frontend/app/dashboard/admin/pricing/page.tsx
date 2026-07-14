@@ -10,6 +10,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { Crown, CheckCircle2, XCircle, Save, RefreshCw, Loader2, HelpCircle } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 
 interface PlanDef {
@@ -61,7 +62,7 @@ export default function PricingAdminPage() {
     if (!currentPlan) return
     setSaving(true)
     try {
-      const res = await fetch('/api/admin/plans', {
+      const res = await csrfFetch('/api/admin/plans', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(currentPlan),

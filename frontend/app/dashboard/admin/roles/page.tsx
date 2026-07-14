@@ -10,6 +10,7 @@ import { Users, Loader2, Search, Trash2, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { normalizeUserRole } from '@/lib/rbac'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 
 interface UserData {
@@ -38,7 +39,7 @@ export default function UserRoleAssignments() {
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, {
+      const res = await csrfFetch(`/api/admin/users/${userId}`, {
         method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ role: newRole }),
@@ -56,7 +57,7 @@ export default function UserRoleAssignments() {
   const deleteUser = async (userId: string) => {
     if (!confirm('Delete this user?')) return
     try {
-      const res = await fetch(`/api/admin/users/${userId}`, { method: 'DELETE', credentials: 'include' })
+      const res = await csrfFetch(`/api/admin/users/${userId}`, { method: 'DELETE', credentials: 'include' })
       if (res.ok) { addToast({ type: 'success', title: 'Deleted', message: 'User removed' }); await fetchUsers() }
       else { const d = await res.json(); addToast({ type: 'error', title: 'Failed', message: d.error }) }
     } catch { addToast({ type: 'error', title: 'Error', message: 'Network error' }) }
