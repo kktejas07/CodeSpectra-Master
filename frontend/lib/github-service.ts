@@ -10,6 +10,8 @@
  * removed because it no longer compiles against the new backend.
  */
 
+import { csrfFetch } from './csrf-fetch'
+
 export interface GitHubIntegration {
   id: string
   github_username: string
@@ -48,7 +50,7 @@ export function initiateGitHubAuth(): boolean {
  * Disconnect the current user's GitHub integration.
  */
 export async function disconnectGitHub(): Promise<{ ok: boolean }> {
-  const res = await fetch('/api/github/integrations/me', { method: 'DELETE' })
+  const res = await csrfFetch('/api/github/integrations/me', { method: 'DELETE' })
   if (!res.ok) throw new Error(`disconnect failed: ${res.status}`)
   return (await res.json()) as { ok: boolean }
 }
@@ -121,7 +123,7 @@ export async function analyzeCode(
   _unused?: unknown,
   meta?: Record<string, string>,
 ): Promise<Record<string, unknown>> {
-  const res = await fetch('/api/analyze-code', {
+  const res = await csrfFetch('/api/analyze-code', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ code, language, github_file_path: filePath, ...meta }),
@@ -135,7 +137,7 @@ export async function getFileContent(
   repo: string,
   path: string,
 ): Promise<FileContent> {
-  const res = await fetch('/api/github/file-content', {
+  const res = await csrfFetch('/api/github/file-content', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     cache: 'no-store',
@@ -167,7 +169,7 @@ export async function generateAIFixes(args: {
   degraded?: boolean
   retry_after?: number
 }> {
-  const res = await fetch('/api/ai/code-review', {
+  const res = await csrfFetch('/api/ai/code-review', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify(args),
@@ -178,7 +180,7 @@ export async function generateAIFixes(args: {
 }
 
 export async function applySuggestedFix(fixId: string): Promise<{ success: boolean; error?: string }> {
-  const res = await fetch(`/api/ai/fixes/${encodeURIComponent(fixId)}/apply`, {
+  const res = await csrfFetch(`/api/ai/fixes/${encodeURIComponent(fixId)}/apply`, {
     method: 'POST',
   })
   const json = (await res.json()) as { success?: boolean; error?: string }
@@ -191,7 +193,7 @@ export async function applySuggestedFix(fixId: string): Promise<{ success: boole
 export async function applySuggestedFixBatch(
   fixIds: string[],
 ): Promise<{ success: boolean; applied_ids?: string[]; error?: string }> {
-  const res = await fetch('/api/ai/fixes/apply-batch', {
+  const res = await csrfFetch('/api/ai/fixes/apply-batch', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ ids: fixIds }),
@@ -203,7 +205,7 @@ export async function applySuggestedFixBatch(
 }
 
 export async function unapplySuggestedFix(fixId: string): Promise<{ success: boolean; error?: string }> {
-  const res = await fetch('/api/ai/unapply-fix', {
+  const res = await csrfFetch('/api/ai/unapply-fix', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ fix_id: fixId }),
@@ -213,7 +215,7 @@ export async function unapplySuggestedFix(fixId: string): Promise<{ success: boo
 }
 
 export async function linkGitHubRepository(repoId: number, repoName: string, repoUrl: string): Promise<{ success: boolean; error?: string }> {
-  const res = await fetch('/api/github/link', {
+  const res = await csrfFetch('/api/github/link', {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ repo_id: repoId, name: repoName, url: repoUrl }),

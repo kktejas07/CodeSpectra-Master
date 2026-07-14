@@ -4,6 +4,7 @@ import { useState, useRef, useEffect, useCallback } from 'react'
 import { Sparkles, Send, X, Loader2, MessageSquarePlus, Database } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface ChatMessage {
   id: string
@@ -57,7 +58,7 @@ export function AskCodeSpectra() {
     abortRef.current = controller
 
     try {
-      const res = await fetch('/api/ai/chat', {
+      const res = await csrfFetch('/api/ai/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ session_id: sessionId, message: text, context_mode: contextMode }),

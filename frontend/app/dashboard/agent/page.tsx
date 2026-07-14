@@ -20,6 +20,7 @@ import {
 import { ModelSelector } from '@/components/ai/model-selector'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
@@ -80,7 +81,7 @@ export default function AgentPage() {
     setTurns((t) => [...t, userTurn])
     setBusy(true)
     try {
-      const res = await fetch('/api/ai/agent', {
+      const res = await csrfFetch('/api/ai/agent', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ goal, code, language, max_steps: maxSteps }),

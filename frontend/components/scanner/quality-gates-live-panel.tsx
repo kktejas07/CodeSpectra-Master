@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Copy, Loader, Plus, Shield, Pencil, Trash2 } from 'lucide-react'
 import { COMPLIANCE_GATE_PRESETS, type ComplianceGatePreset } from '@/lib/compliance-templates'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 type GateDTO = {
   id: string
@@ -151,7 +152,7 @@ export function QualityGatesLivePanel() {
       if (editingId) {
         body.id = editingId
       }
-      const res = await fetch('/api/quality-gates', {
+      const res = await csrfFetch('/api/quality-gates', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -207,7 +208,7 @@ export function QualityGatesLivePanel() {
         setError('Invalid file: expected { gates: [...] }')
         return
       }
-      const res = await fetch('/api/quality-gates/import', {
+      const res = await csrfFetch('/api/quality-gates/import', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -230,7 +231,7 @@ export function QualityGatesLivePanel() {
     setDuplicatingId(id)
     setError(null)
     try {
-      const res = await fetch('/api/quality-gates', {
+      const res = await csrfFetch('/api/quality-gates', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -254,7 +255,7 @@ export function QualityGatesLivePanel() {
     setDeletingId(id)
     setError(null)
     try {
-      const res = await fetch(`/api/quality-gates?id=${encodeURIComponent(id)}`, {
+      const res = await csrfFetch(`/api/quality-gates?id=${encodeURIComponent(id)}`, {
         method: 'DELETE',
         credentials: 'include',
       })

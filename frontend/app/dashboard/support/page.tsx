@@ -3,6 +3,7 @@
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2 } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 type Ticket = { id: string; subject: string; message: string; category: string; status: string; created_at: string; updated_at: string }
 
@@ -45,7 +46,7 @@ export default function SupportPage() {
     if (!newMessage.trim() || !selectedTicket) return
     setSending(true)
     try {
-      const res = await fetch(`/api/support/tickets/${selectedTicket.id}`, {
+      const res = await csrfFetch(`/api/support/tickets/${selectedTicket.id}`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: newMessage }),
@@ -63,7 +64,7 @@ export default function SupportPage() {
     e.preventDefault()
     if (!subject.trim() || !message.trim()) return
     try {
-      const res = await fetch('/api/support/tickets', {
+      const res = await csrfFetch('/api/support/tickets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject, message, category }),

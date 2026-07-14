@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { Bell, Mail, Slack, ChevronRight, Loader2, SlidersHorizontal } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface NotificationPreference {
   id: string
@@ -61,7 +62,7 @@ export default function NotificationPreferencesPage() {
 
   const handleToggle = async (prefId: string, field: string, value: boolean) => {
     try {
-      const res = await fetch(`/api/notifications/preferences/${prefId}`, {
+      const res = await csrfFetch(`/api/notifications/preferences/${prefId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

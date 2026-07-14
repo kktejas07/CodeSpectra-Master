@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { DepIssue } from '@/lib/dependency-scanner'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 const SEV_COLORS: Record<string, string> = {
   critical: 'bg-red-500/10 text-red-500 border-red-500/20',
@@ -37,7 +38,7 @@ export function DependencyScannerPanel() {
     if (files.length === 0) return
     setLoading(true)
     try {
-      const res = await fetch('/api/scanner/dependencies', {
+      const res = await csrfFetch('/api/scanner/dependencies', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ files }),
