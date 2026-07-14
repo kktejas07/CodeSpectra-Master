@@ -48,6 +48,17 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  // Also set CSRF cookie on page loads so document.cookie can always read it
+  // (Cloudflare Bot Fight Mode may intercept API calls before the cookie is set)
+  if (!pathname.startsWith('/api/') && !pathname.startsWith('/_next/') && !request.cookies.get(CSRF_COOKIE)) {
+    const token = crypto.getRandomValues(new Uint8Array(32))
+    const hex = Array.from(token).map(b => b.toString(16).padStart(2, '0')).join('')
+    response.headers.append(
+      'Set-Cookie',
+      `${CSRF_COOKIE}=${hex}; Path=/; Max-Age=86400; SameSite=Lax; Secure`,
+    )
+  }
+
   // Security headers for ALL responses
   response.headers.set('Strict-Transport-Security', HSTS)
   response.headers.set('X-Content-Type-Options', 'nosniff')
@@ -60,7 +71,8 @@ export function middleware(request: NextRequest) {
   // CORS headers
   response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || '*')
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization')
+  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token')
+  response.headers.set('Access-Control-Allow-Credentials', 'true')
   response.headers.set('Access-Control-Max-Age', '86400')
 
   // CSP only for HTML pages (not API/static responses)
