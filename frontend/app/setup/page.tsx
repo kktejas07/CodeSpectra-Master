@@ -5,6 +5,7 @@ import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Code2, CheckCircle, AlertCircle, Loader } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 export default function SetupPage() {
   const router = useRouter()
@@ -19,9 +20,7 @@ export default function SetupPage() {
     setSuccess(false)
 
     try {
-      const response = await fetch('/api/setup-demo', {
-        method: 'POST',
-      })
+      const response = await csrfFetch('/api/setup-demo', { method: 'POST' })
 
       const data = await response.json()
 

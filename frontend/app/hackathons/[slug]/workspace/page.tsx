@@ -14,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { Countdown } from '@/components/hackathons/countdown'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -124,7 +125,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     if (!hackathon) return
     setClaiming(slug)
     try {
-      await fetch(`/api/hackathons/${hackathon.id}/claims`, {
+await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ problem_slug: slug }),
@@ -139,7 +140,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     if (!hackathon) return
     setClaiming(slug)
     try {
-      await fetch(`/api/hackathons/${hackathon.id}/claims/${slug}`, { method: 'DELETE' })
+      await csrfFetch(`/api/hackathons/${hackathon.id}/claims/${slug}`, { method: 'DELETE' })
       await fetchClaims()
     } finally {
       setClaiming(null)

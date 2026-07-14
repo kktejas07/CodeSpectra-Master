@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 
 interface PlanDef {
@@ -37,7 +38,7 @@ export default function PricingPage() {
 
   const handleUpgrade = async (planId: string) => {
     try {
-      const res = await fetch('/api/billing/create-order', {
+      const res = await csrfFetch('/api/billing/create-order', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ plan_id: planId }),
@@ -51,7 +52,7 @@ export default function PricingPage() {
           currency: data.currency || 'USD',
           order_id: data.razorpay_order_id,
           handler: async (response: any) => {
-            const verify = await fetch('/api/billing/verify', {
+            const verify = await csrfFetch('/api/billing/verify', {
               method: 'POST', credentials: 'include',
               headers: { 'Content-Type': 'application/json' },
               body: JSON.stringify(response),

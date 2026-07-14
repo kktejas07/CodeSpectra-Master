@@ -25,6 +25,7 @@ import {
   XCircle,
   Smartphone,
 } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface ActivityItem {
   ts: string
@@ -57,7 +58,7 @@ function TwoFactorAuth() {
   const handleSetup = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/user/2fa/setup', { method: 'POST' })
+      const res = await csrfFetch('/api/user/2fa/setup', { method: 'POST' })
       const json = await res.json()
       if (json.otpauth) {
         setSetupData({ secret: json.secret, otpauth: json.otpauth })
@@ -73,7 +74,7 @@ function TwoFactorAuth() {
     setVerifying(true)
     setVerifyError('')
     try {
-      const res = await fetch('/api/user/2fa/verify', {
+      const res = await csrfFetch('/api/user/2fa/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ token: verifyToken }),
@@ -94,7 +95,7 @@ function TwoFactorAuth() {
   const handleDisable = async () => {
     if (!confirm('Disable two-factor authentication? This reduces account security.')) return
     try {
-      await fetch('/api/user/2fa/disable', { method: 'POST' })
+      await csrfFetch('/api/user/2fa/disable', { method: 'POST' })
       setStatus(null)
       setQrCode('')
       setSetupData(null)

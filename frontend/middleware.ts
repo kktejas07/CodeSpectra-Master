@@ -27,14 +27,17 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next()
 
-  // CSRF protection for API routes
-  if (pathname.startsWith('/api/')) {
+  // CSRF protection for API routes (web-vitals is exempt — 3rd-party lib sends without custom headers)
+  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/analytics/web-vitals')) {
     const csrf = checkCsrf(request)
     if (!csrf.pass) {
       return NextResponse.json({ error: 'CSRF validation failed' }, { status: 403 })
     }
     if (csrf.token) {
-      response.headers.set('Set-Cookie', `${CSRF_COOKIE}=${csrf.token}; Path=/; HttpOnly; SameSite=Lax; Secure`)
+      response.headers.append(
+        'Set-Cookie',
+        `${CSRF_COOKIE}=${csrf.token}; Path=/; Max-Age=86400; SameSite=Lax; Secure`,
+      )
     }
   }
 

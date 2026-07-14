@@ -10,6 +10,7 @@ import {
   Video, Search, Users, Award, LogIn, AlertTriangle, FileText,
   MessageSquare, Clock, Building, Key, Play, XCircle, Star,
 } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   trophy: Trophy, shield: Shield, 'credit-card': CreditCard, video: Video,
@@ -58,13 +59,13 @@ export default function NotificationsPage() {
   useEffect(() => { void load() }, [load])
 
   const markAllRead = async () => {
-    await fetch('/api/notifications/mark-all-read', { method: 'POST' })
+    await csrfFetch('/api/notifications/mark-all-read', { method: 'POST' })
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))
     setUnreadCount(0)
   }
 
   const markRead = async (id: string) => {
-    await fetch(`/api/notifications/${id}`, { method: 'PATCH', body: JSON.stringify({ is_read: true }) })
+    await csrfFetch(`/api/notifications/${id}`, { method: 'PATCH', body: JSON.stringify({ is_read: true }) })
     setItems((prev) => prev.map((n) => n.id === id ? { ...n, is_read: true } : n))
     setUnreadCount((c) => Math.max(0, c - 1))
   }

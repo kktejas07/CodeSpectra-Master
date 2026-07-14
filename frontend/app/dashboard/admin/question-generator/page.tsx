@@ -5,6 +5,7 @@ import { Loader2, Sparkles, FileCheck2, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 type Diff = 'easy' | 'medium' | 'hard'
 
@@ -32,7 +33,7 @@ export default function QuestionGeneratorPage() {
     setErr(null)
     setResult(null)
     try {
-      const res = await fetch('/api/ai/generate-problem', {
+      const res = await csrfFetch('/api/ai/generate-problem', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

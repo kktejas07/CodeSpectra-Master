@@ -10,6 +10,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import { Code2, Play, CheckCircle, ArrowRight, Sparkles, Database } from 'lucide-react'
 import { getArenaChallenge, getNextArenaChallengeId, type ArenaChallenge } from '@/lib/arena-challenges'
 import { PROGRAMMING_LANGUAGES } from '@/lib/languages'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 function ArenaChallengeInner() {
   const params = useParams()
@@ -41,7 +42,7 @@ function ArenaChallengeInner() {
         } catch {
           stack = []
         }
-        const res = await fetch('/api/arena/adapt', {
+        const res = await csrfFetch('/api/arena/adapt', {
           method: 'POST',
           credentials: 'include',
           headers: { 'Content-Type': 'application/json' },

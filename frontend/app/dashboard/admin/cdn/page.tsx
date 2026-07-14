@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { 
   Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle, 
   MapPin, CheckCircle2, Activity, Loader2,
@@ -53,7 +54,7 @@ export default function CdnAdminPage() {
   const handlePurge = async (all: boolean) => {
     setPurging(true)
     try {
-      const res = await fetch('/api/admin/cdn/purge', {
+      const res = await csrfFetch('/api/admin/cdn/purge', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

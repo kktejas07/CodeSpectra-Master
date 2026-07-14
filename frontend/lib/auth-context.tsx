@@ -15,6 +15,7 @@ import {
   signOut as firebaseSignOut,
 } from 'firebase/auth'
 import { getFirebaseAuth, prefetchFirebaseConfig, setFirebaseConfig } from './firebase'
+import { csrfFetch } from './csrf-fetch'
 
 export interface AuthUser {
   uid: string
@@ -132,7 +133,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const a = getFirebaseAuth()
         if (!a?.currentUser) return
         const idToken = await a.currentUser.getIdToken(true)
-        await fetch('/api/auth/session', {
+        await csrfFetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ idToken }),
@@ -144,7 +145,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signInWithEmailFn = async (email: string, password: string) => {
     setSessionExpired(false)
-    const res = await fetch('/api/auth/login', {
+    const res = await csrfFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password }),
@@ -155,7 +156,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const signUpWithEmailFn = async (email: string, password: string, name: string) => {
-    const res = await fetch('/api/auth/signup', {
+    const res = await csrfFetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email, password, name }),
@@ -183,13 +184,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOutFn = async () => {
     try { await firebaseSignOut(getAuth()) } catch {}
-    await fetch('/api/auth/session', { method: 'DELETE' })
+    await csrfFetch('/api/auth/session', { method: 'DELETE' })
     setUser(null)
     setSessionExpired(false)
   }
 
   const sendPasswordResetFn = async (email: string) => {
-    const res = await fetch('/api/auth/forgot-password', {
+    const res = await csrfFetch('/api/auth/forgot-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ email }),
@@ -199,7 +200,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }
 
   const confirmPasswordResetFn = async (code: string, newPassword: string) => {
-    const res = await fetch('/api/auth/reset-password', {
+    const res = await csrfFetch('/api/auth/reset-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ code, newPassword }),

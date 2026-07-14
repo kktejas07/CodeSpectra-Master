@@ -2,9 +2,12 @@
 
 import { usePathname } from 'next/navigation'
 import { useReportWebVitals } from 'next/web-vitals'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 /**
- * Sends Core Web Vitals to `POST /api/analytics/web-vitals` (Supabase `web_vitals_events`).
+ * Sends Core Web Vitals to `POST /api/analytics/web-vitals`.
+ * Note: /api/analytics/web-vitals is exempt from CSRF in middleware
+ * (next/web-vitals lib cannot add custom headers).
  * Mounted only under `/dashboard` so anonymous traffic is not recorded.
  */
 export function WebVitalsReporter() {
@@ -24,10 +27,9 @@ export function WebVitalsReporter() {
       clientTs: new Date().toISOString(),
     }
 
-    void fetch('/api/analytics/web-vitals', {
+    void csrfFetch('/api/analytics/web-vitals', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify(payload),
     }).catch(() => {})
   })

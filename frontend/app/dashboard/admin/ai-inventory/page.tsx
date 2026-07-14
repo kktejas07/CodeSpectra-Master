@@ -35,6 +35,7 @@ import {
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface CategorySummary {
   id: string
@@ -179,7 +180,7 @@ export default function AiInventoryPage() {
     setActionMessage(null)
     const newStatus = item.status === 'active' ? 'inactive' : 'active'
     try {
-      const res = await fetch(`/api/ai-inventory/${encodeURIComponent(item.id)}`, {
+      const res = await csrfFetch(`/api/ai-inventory/${encodeURIComponent(item.id)}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ category: item.category, status: newStatus }),
@@ -208,7 +209,7 @@ export default function AiInventoryPage() {
     if (!confirm(`Remove override / custom component "${item.name}"?`)) return
     setTogglingId(item.id)
     try {
-      const res = await fetch(`/api/ai-inventory/${encodeURIComponent(item.id)}`, {
+      const res = await csrfFetch(`/api/ai-inventory/${encodeURIComponent(item.id)}`, {
         method: 'DELETE',
       })
       if (res.ok) {
@@ -227,7 +228,7 @@ export default function AiInventoryPage() {
     setError(null)
     try {
       const toolId = newTool.id || `custom-${newTool.name.toLowerCase().replace(/[^a-z0-9]+/g, '-')}`
-      const res = await fetch('/api/ai-inventory', {
+      const res = await csrfFetch('/api/ai-inventory', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

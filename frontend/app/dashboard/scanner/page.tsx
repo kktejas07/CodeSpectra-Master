@@ -18,6 +18,7 @@ import { QualityGatesLivePanel } from '@/components/scanner/quality-gates-live-p
 import { CodeReviewPanel } from '@/components/scanner/code-review-panel'
 import { ScannerConfigPanel } from '@/components/scanner/scanner-config-panel'
 import { ReportGenerator } from '@/components/scanner/report-generator'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { InsightsDashboard } from '@/components/scanner/insights-dashboard'
 import { TeamLeaderboard } from '@/components/scanner/team-leaderboard'
 import { MetricsFileBrowser } from '@/components/scanner/metrics-file-browser'
@@ -414,7 +415,7 @@ function CodeScannerPageInner() {
                 }}
                 onDelete={async (scanId) => {
                   try {
-                    await fetch(`/api/analysis-history?id=${scanId}`, { method: 'DELETE', credentials: 'include' })
+                    await csrfFetch(`/api/analysis-history?id=${scanId}`, { method: 'DELETE', credentials: 'include' })
                   } catch {
                     /* offline or unauthenticated */
                   }

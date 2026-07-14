@@ -30,6 +30,7 @@ import {
 } from 'lucide-react'
 import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Hackathon {
   id: string
@@ -132,7 +133,7 @@ export default function HackathonDetailPage({
       if (op === 'xp' && state.xp) body.xp_delta = Number(state.xp)
       if (op === 'ach' && state.achievement) body.achievement = state.achievement
       if (op === 'sub') body.submission = true
-      const res = await fetch(`/api/hackathons/${id}/teams/${team.id}`, {
+      const res = await csrfFetch(`/api/hackathons/${id}/teams/${team.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
@@ -150,7 +151,7 @@ export default function HackathonDetailPage({
   async function removeTeam(team: Team) {
     if (!confirm(`Disqualify "${team.name}"?`)) return
     try {
-      await fetch(`/api/hackathons/${id}/teams/${team.id}`, { method: 'DELETE' })
+      await csrfFetch(`/api/hackathons/${id}/teams/${team.id}`, { method: 'DELETE' })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -389,7 +390,7 @@ export default function HackathonDetailPage({
             if (!confirm('Release all results to participants? This action cannot be undone.')) return
             setBusy(true)
             try {
-              const res = await fetch(`/api/hackathons/${id}/release-results`, { method: 'POST' })
+              const res = await csrfFetch(`/api/hackathons/${id}/release-results`, { method: 'POST' })
               const data = await res.json()
               if (!res.ok) throw new Error(data.error)
               await load()

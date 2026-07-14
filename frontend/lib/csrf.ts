@@ -71,3 +71,12 @@ function parseCookie(raw: string, name: string): string | null {
   }
   return null
 }
+
+/**
+ * Read the CSRF token from document cookies (client-side only).
+ * Returns null if not set or not yet readable.
+ */
+export function getCsrfToken(): string | null {
+  if (typeof document === 'undefined') return null
+  return parseCookie(document.cookie, CSRF_COOKIE)
+}

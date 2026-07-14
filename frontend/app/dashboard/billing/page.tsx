@@ -27,6 +27,7 @@ import {
 } from '@/components/ui/alert-dialog'
 import { CreditCard, Check, Download, Eye, Loader2, RefreshCw } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { cn } from '@/lib/utils'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { findPlan } from '@/lib/billing-catalog'
@@ -221,7 +222,7 @@ function BillingContent() {
   const runCheckout = async () => {
     setBusy('checkout')
     try {
-      const res = await fetch('/api/billing/checkout', {
+      const res = await csrfFetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -245,7 +246,7 @@ function BillingContent() {
   const changeCycle = async (interval: 'month' | 'year') => {
     setBusy('cycle')
     try {
-      const res = await fetch('/api/billing/subscription', {
+      const res = await csrfFetch('/api/billing/subscription', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -271,7 +272,7 @@ function BillingContent() {
   const cancelSub = async () => {
     setBusy('cancel')
     try {
-      const res = await fetch('/api/billing/cancel', { method: 'POST', credentials: 'include' })
+      const res = await csrfFetch('/api/billing/cancel', { method: 'POST', credentials: 'include' })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Cancel failed')
       setCancelOpen(false)
@@ -292,7 +293,7 @@ function BillingContent() {
     if (!defaultPm) return
     setBusy('card')
     try {
-      const res = await fetch(`/api/billing/payment-methods/${defaultPm.id}`, {
+      const res = await csrfFetch(`/api/billing/payment-methods/${defaultPm.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

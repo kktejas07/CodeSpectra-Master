@@ -14,6 +14,7 @@ import {
   Save, Plus, Trash2, Users, Lock, Key
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { type ResourcePermission, type PermissionAction } from '@/lib/permissions-db'
 
 interface RoleData {
@@ -83,7 +84,7 @@ export default function PermissionsPage() {
         ? { reseed: true }
         : { ...currentRole, permissions }
 
-      const res = await fetch('/api/admin/permissions/roles', {
+      const res = await csrfFetch('/api/admin/permissions/roles', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),

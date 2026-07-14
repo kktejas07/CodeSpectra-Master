@@ -16,6 +16,7 @@ import {
   XCircle,
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { AnalysisPanel } from '@/components/ai/analysis-panel'
@@ -164,7 +165,7 @@ export default function ProblemDetailPage() {
     setResult(null)
     setTab(mode === 'run' ? 'results' : 'results')
     try {
-      const res = await fetch('/api/submissions', {
+      const res = await csrfFetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -182,7 +183,7 @@ export default function ProblemDetailPage() {
       // Auto-run AI Code Analysis on submit
       if (mode === 'submit') {
         setAnalysisLoading(true)
-        fetch('/api/ai/code-analysis', {
+        csrfFetch('/api/ai/code-analysis', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({

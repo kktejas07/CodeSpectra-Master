@@ -27,6 +27,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import CronPicker from '@/components/workflows/cron-picker'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 const WorkflowBuilder = dynamic(
   () => import('@/components/workflows/workflow-builder'),
@@ -133,7 +134,7 @@ export default function WorkflowsPage() {
     setBusy(true)
     setError(null)
     try {
-      const res = await fetch('/api/workflows', {
+      const res = await csrfFetch('/api/workflows', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newName.trim() }),
@@ -156,7 +157,7 @@ export default function WorkflowsPage() {
     setError(null)
     try {
       const parsed = JSON.parse(draft)
-      const res = await fetch(`/api/workflows/${current.id}`, {
+      const res = await csrfFetch(`/api/workflows/${current.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(parsed),
@@ -177,7 +178,7 @@ export default function WorkflowsPage() {
     setError(null)
     setRun(null)
     try {
-      const res = await fetch(`/api/workflows/${current.id}/run`, { method: 'POST' })
+      const res = await csrfFetch(`/api/workflows/${current.id}/run`, { method: 'POST' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Run failed')
       setRun(json as RunResult)
@@ -193,7 +194,7 @@ export default function WorkflowsPage() {
     if (!confirm(`Delete workflow "${current.name}"?`)) return
     setBusy(true)
     try {
-      await fetch(`/api/workflows/${current.id}`, { method: 'DELETE' })
+      await csrfFetch(`/api/workflows/${current.id}`, { method: 'DELETE' })
       setSelected(null)
       setDraft('')
       await load()

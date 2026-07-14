@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { GitHubIntegrationSetup } from '@/components/integrations/github-setup-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { toast } from 'sonner'
 
 type SecretsMap = Record<string, string | null | boolean>
@@ -71,7 +72,7 @@ export default function IntegrationsPage() {
 
   const handleConfirmGitHub = async (token: string) => {
     try {
-      const res = await fetch('/api/admin/server-secrets', {
+      const res = await csrfFetch('/api/admin/server-secrets', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
@@ -90,7 +91,7 @@ export default function IntegrationsPage() {
   const handleDisconnectGitHub = async () => {
     setDisconnecting(true)
     try {
-      const res = await fetch('/api/admin/server-secrets', {
+      const res = await csrfFetch('/api/admin/server-secrets', {
         method: 'PATCH',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

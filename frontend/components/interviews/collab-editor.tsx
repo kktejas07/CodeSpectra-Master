@@ -4,6 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Loader2, Users, RotateCcw } from 'lucide-react'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface CollabEditorProps {
   sessionId: string
@@ -49,7 +50,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
   // Push local changes (debounced)
   const pushChanges = useCallback(async (content: string) => {
     try {
-      const res = await fetch(`/api/collab/${sessionId}`, {
+      const res = await csrfFetch(`/api/collab/${sessionId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, language, version }),
@@ -92,7 +93,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
   // Presence heartbeat
   useEffect(() => {
     const heartbeat = () => {
-      fetch(`/api/collab/${sessionId}/presence`, {
+      csrfFetch(`/api/collab/${sessionId}/presence`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ cursor_line: 0, cursor_column: 0 }),
@@ -161,7 +162,7 @@ export function CollabEditor({ sessionId, initialLanguage = 'javascript', readOn
           )}
           <Button size="sm" variant="ghost" className="h-6 text-xs"
             onClick={async () => {
-              const res = await fetch(`/api/collab/${sessionId}`, { method: 'DELETE' })
+              const res = await csrfFetch(`/api/collab/${sessionId}`, { method: 'DELETE' })
               if (res.ok) {
                 const data = await res.json()
                 if (data.document) {

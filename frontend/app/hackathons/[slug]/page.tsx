@@ -14,6 +14,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { Countdown } from '@/components/hackathons/countdown'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -82,7 +83,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   async function createTeam() {
     setCreating(true); setError(null); setNewQrSvg(null); setInviteUrl(null)
     try {
-      const res = await fetch(`/api/hackathons/${slug}/teams`, {
+      const res = await csrfFetch(`/api/hackathons/${slug}/teams`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ name: newTeamName || undefined }),

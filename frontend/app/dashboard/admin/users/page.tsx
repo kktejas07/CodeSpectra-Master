@@ -27,6 +27,7 @@ import type { AdminUserListRow } from '@/lib/admin-users'
 // The page now polls /api/admin/users instead of using realtime.
 import { normalizeUserRole, type UserRole } from '@/lib/rbac'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 type TableUser = {
   id: string
@@ -150,7 +151,7 @@ export default function UsersManagement() {
   const confirmDelete = async () => {
     if (!deleteId) return
     try {
-      const res = await fetch(`/api/admin/users/${deleteId}`, {
+      const res = await csrfFetch(`/api/admin/users/${deleteId}`, {
         method: 'DELETE',
         credentials: 'include',
       })
@@ -179,7 +180,7 @@ export default function UsersManagement() {
     if (payload.plan !== undefined) body.plan = payload.plan
     if (Object.keys(body).length === 0) return
     try {
-      const res = await fetch(`/api/admin/users/${selectedUser.id}`, {
+      const res = await csrfFetch(`/api/admin/users/${selectedUser.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -217,7 +218,7 @@ export default function UsersManagement() {
     password: string
     role: UserRole
   }) => {
-    const res = await fetch('/api/admin/users', {
+    const res = await csrfFetch('/api/admin/users', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       credentials: 'include',
