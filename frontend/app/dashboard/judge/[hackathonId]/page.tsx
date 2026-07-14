@@ -6,7 +6,6 @@ import { useParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import {
@@ -43,6 +42,23 @@ import {
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { csrfFetch } from '@/lib/csrf-fetch'
+
+interface RubricScores {
+  correctness: string
+  quality: string
+  efficiency: string
+  documentation: string
+  edgeCases: string
+}
+
+const RUBRIC = [
+  { key: 'correctness' as const, label: 'Correctness', max: 40, desc: 'Solves the problem correctly, handles edge cases' },
+  { key: 'quality' as const, label: 'Code Quality', max: 20, desc: 'Readability, structure, naming conventions' },
+  { key: 'efficiency' as const, label: 'Efficiency', max: 20, desc: 'Time & space complexity, optimal approach' },
+  { key: 'documentation' as const, label: 'Documentation', max: 10, desc: 'Comments, variable names, README quality' },
+  { key: 'edgeCases' as const, label: 'Edge Cases', max: 10, desc: 'Handles boundary conditions, errors gracefully' },
+]
+const RUBRIC_TOTAL = 100
 
 interface ScoreRecord {
   judge_id: string
@@ -163,12 +179,23 @@ export default function JudgeReviewPage() {
   const [loading, setLoading] = useState(true)
   const [statusFilter, setStatusFilter] = useState<string>('all')
   const [selected, setSelected] = useState<Submission | null>(null)
-  const [score, setScore] = useState('')
   const [feedback, setFeedback] = useState('')
   const [submitting, setSubmitting] = useState(false)
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [rejecting, setRejecting] = useState(false)
+  const [rubricScores, setRubricScores] = useState<RubricScores>({
+    correctness: '',
+    quality: '',
+    efficiency: '',
+    documentation: '',
+    edgeCases: '',
+  })
+
+  const totalScore = RUBRIC.reduce((sum, dim) => {
+    const v = Number(rubricScores[dim.key])
+    return sum + (isNaN(v) ? 0 : Math.min(dim.max, Math.max(0, v)))
+  }, 0)
 
   const load = useCallback(async () => {
     try {
@@ -191,10 +218,17 @@ export default function JudgeReviewPage() {
 
   function selectRow(sub: Submission) {
     setSelected(sub)
-    setScore(sub.score != null ? String(sub.score) : '')
-    setFeedback(sub.feedback || '')
+    setRubricScores({ correctness: '', quality: '', efficiency: '', documentation: '', edgeCases: '' })
+    setFeedback('')
     setSubmitSuccess(false)
     setRejectReason('')
+  }
+
+  function buildFeedbackWithRubric(feedbackText: string): string {
+    const breakdown = RUBRIC.map(
+      (d) => `${d.label} (${rubricScores[d.key] || 0}/${d.max})`
+    ).join(' | ')
+    return `[SCORE: ${totalScore}/${RUBRIC_TOTAL}] ${breakdown}\n\n${feedbackText}`
   }
 
   function closeSidebar() {
@@ -205,16 +239,17 @@ export default function JudgeReviewPage() {
 
   async function submitScore() {
     if (!selected) return
-    const clampedScore = Math.min(selected.max_score, Math.max(0, Number(score)))
+    const finalScore = Math.min(selected.max_score, Math.max(0, totalScore))
     setSubmitting(true)
     try {
+      const enrichedFeedback = buildFeedbackWithRubric(feedback)
       const res = await csrfFetch(
         `/api/hackathons/${hackathonId}/submissions/${selected.id}`,
         {
           method: 'PATCH',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
-          body: JSON.stringify({ score: clampedScore, feedback }),
+          body: JSON.stringify({ score: finalScore, feedback: enrichedFeedback }),
         },
       )
       if (res.ok) {
@@ -222,7 +257,7 @@ export default function JudgeReviewPage() {
         setSubmissions((prev) =>
           prev.map((s) =>
             s.id === selected.id
-              ? { ...s, score: clampedScore, status: 'under_review', feedback }
+              ? { ...s, score: finalScore, status: 'under_review', feedback: enrichedFeedback }
               : s
           )
         )
@@ -448,36 +483,97 @@ export default function JudgeReviewPage() {
               </div>
             ) : (
               <>
-                <div className="space-y-2 border-t pt-4">
-                  <Label className="text-xs font-semibold">Score</Label>
-                  <p className="text-xs text-muted-foreground">Max score: {selected.max_score}</p>
-                  <Input
-                    type="number"
-                    min={0}
-                    max={selected.max_score}
-                    value={score}
-                    onChange={(e) => {
-                      const val = Math.min(selected.max_score, Math.max(0, Number(e.target.value)))
-                      setScore(isNaN(val) ? '' : String(val))
-                    }}
-                    placeholder={`0–${selected.max_score}`}
-                  />
-                  {score && Number(score) > selected.max_score && (
-                    <p className="text-xs text-amber-600">Score exceeds max. Will be clamped to {selected.max_score}.</p>
-                  )}
-                  {score && Number(score) >= 0 && (
-                    <p className="text-xs text-muted-foreground">
-                      = {((Number(score) / selected.max_score) * 100).toFixed(1)}%
-                    </p>
-                  )}
+                {/* Rubric Scoring */}
+                <div className="border-t pt-4 space-y-3">
+                  <div className="flex items-center justify-between">
+                    <Label className="text-xs font-semibold uppercase tracking-wider">Scoring Rubric</Label>
+                    <div className={`text-lg font-bold ${totalScore > 0 ? 'text-green-600' : 'text-muted-foreground'}`}>
+                      {totalScore}<span className="text-xs font-normal text-muted-foreground">/{RUBRIC_TOTAL}</span>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-muted-foreground">
+                    Judge each dimension. Total is auto-calculated and sent as the final score.
+                  </p>
+
+                  {RUBRIC.map((dim) => {
+                    const val = rubricScores[dim.key]
+                    const num = Number(val)
+                    const pct = dim.max > 0 ? Math.round((isNaN(num) ? 0 : Math.min(dim.max, Math.max(0, num))) / dim.max * 100) : 0
+                    return (
+                      <div key={dim.key} className="space-y-1">
+                        <div className="flex items-center justify-between">
+                          <span className="text-xs font-medium">{dim.label} <span className="text-muted-foreground">({dim.max}pts)</span></span>
+                          <span className="text-xs font-mono text-muted-foreground">
+                            {val ? `${Math.min(dim.max, Math.max(0, num))}/${dim.max}` : `0/${dim.max}`}
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-2">
+                          <input
+                            type="range"
+                            min={0}
+                            max={dim.max}
+                            step={1}
+                            value={val ? Math.min(dim.max, Math.max(0, num)) : 0}
+                            onChange={(e) =>
+                              setRubricScores((prev) => ({ ...prev, [dim.key]: e.target.value }))
+                            }
+                            className="flex-1 h-1.5 cursor-pointer accent-primary"
+                          />
+                          <input
+                            type="number"
+                            min={0}
+                            max={dim.max}
+                            value={val}
+                            onChange={(e) => {
+                              const v = Math.min(dim.max, Math.max(0, Number(e.target.value)))
+                              setRubricScores((prev) => ({ ...prev, [dim.key]: isNaN(v) ? '' : String(v) }))
+                            }}
+                            className="w-14 h-7 text-xs rounded border bg-background px-1.5 text-center"
+                            placeholder="0"
+                          />
+                        </div>
+                        <p className="text-[10px] text-muted-foreground">{dim.desc}</p>
+                      </div>
+                    )
+                  })}
+
+                  {/* Quick presets */}
+                  <div className="flex flex-wrap gap-1.5">
+                    {[100, 80, 60, 40].map((target) => (
+                      <button
+                        key={target}
+                        type="button"
+                        onClick={() => {
+                          const factor = target / RUBRIC_TOTAL
+                          setRubricScores({
+                            correctness: String(Math.round(40 * factor)),
+                            quality: String(Math.round(20 * factor)),
+                            efficiency: String(Math.round(20 * factor)),
+                            documentation: String(Math.round(10 * factor)),
+                            edgeCases: String(Math.round(10 * factor)),
+                          })
+                        }}
+                        className="text-[10px] rounded border px-2 py-0.5 text-muted-foreground hover:bg-muted/50 transition-colors"
+                      >
+                        {target}%
+                      </button>
+                    ))}
+                    <button
+                      type="button"
+                      onClick={() => setRubricScores({ correctness: '', quality: '', efficiency: '', documentation: '', edgeCases: '' })}
+                      className="text-[10px] rounded border px-2 py-0.5 text-muted-foreground hover:bg-muted/50 transition-colors"
+                    >
+                      Reset
+                    </button>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
-                  <Label className="text-xs font-semibold">Feedback</Label>
+                  <Label className="text-xs font-semibold">General Feedback</Label>
                   <Textarea
                     value={feedback}
                     onChange={(e) => setFeedback(e.target.value)}
-                    placeholder="Provide feedback for the team…"
+                    placeholder="Summarize your evaluation for the team…"
                     rows={3}
                   />
                 </div>
@@ -485,11 +581,11 @@ export default function JudgeReviewPage() {
                 <div className="flex gap-2">
                   <Button
                     onClick={submitScore}
-                    disabled={submitting || !score}
+                    disabled={submitting || totalScore === 0}
                     className="flex-1 gap-1.5"
                   >
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                    Submit Score
+                    Submit {totalScore > 0 ? `(${totalScore}pts)` : 'Score'}
                   </Button>
 
                   <AlertDialog>
@@ -502,7 +598,7 @@ export default function JudgeReviewPage() {
                       <AlertDialogHeader>
                         <AlertDialogTitle>Reject Submission</AlertDialogTitle>
                         <AlertDialogDescription>
-                          Are you sure you want to reject this submission? This will set the score to 0 and mark it as rejected. Provide a reason below.
+                          This will set the score to 0 and mark it as rejected.
                         </AlertDialogDescription>
                       </AlertDialogHeader>
                       <Textarea
