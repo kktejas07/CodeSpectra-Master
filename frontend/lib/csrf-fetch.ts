@@ -3,8 +3,11 @@
 import { CSRF_COOKIE } from './csrf'
 
 function getCookie(name: string): string | null {
-  const match = document.cookie.match(new RegExp('(?:^|; )' + name.replace(/(.)/g, '\\$1') + '=([^;]*)'))
-  return match ? decodeURIComponent(match[1]) : null
+  for (const part of document.cookie.split(';')) {
+    const [k, ...rest] = part.split('=')
+    if (k?.trim() === name) return decodeURIComponent(rest.join('=').trim())
+  }
+  return null
 }
 
 /**
