@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Lightbulb, Loader2, Lock } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface HintsPanelProps {
   problemSlug: string
@@ -36,7 +37,7 @@ export function SmartHintsPanel({ problemSlug, language, currentCode }: HintsPan
     setErr(null)
     setLoading(level)
     try {
-      const res = await fetch('/api/ai/hints', {
+      const res = await csrfFetch('/api/ai/hints', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

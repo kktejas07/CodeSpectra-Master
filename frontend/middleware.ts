@@ -27,8 +27,15 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next()
 
-  // CSRF protection for API routes (web-vitals is exempt — 3rd-party lib sends without custom headers)
-  if (pathname.startsWith('/api/') && !pathname.startsWith('/api/analytics/web-vitals')) {
+  // CSRF protection for API routes (webhooks & web-vitals exempt — external callers use HMAC signatures, not CSRF tokens)
+  const CSRF_EXEMPT = [
+    '/api/analytics/web-vitals',
+    '/api/github/webhook',
+    '/api/billing/webhook',
+    '/api/billing/stripe-webhook',
+    '/api/billing/phonepe-webhook',
+  ]
+  if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const csrf = checkCsrf(request)
     if (!csrf.pass) {
       return NextResponse.json({ error: 'CSRF validation failed' }, { status: 403 })

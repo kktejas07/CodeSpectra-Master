@@ -22,6 +22,7 @@ import {
   CheckCircle2,
   RotateCcw,
 } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 type Variant = 'user' | 'admin' | 'tenant'
 
@@ -108,7 +109,7 @@ export default function IdCardPage() {
       return
     setLoading(true)
     try {
-      const res = await fetch(`/api/id-card?action=revoke&variant=${variant}`, {
+      const res = await csrfFetch(`/api/id-card?action=revoke&variant=${variant}`, {
         method: 'POST',
       })
       if (!res.ok) throw new Error('revoke failed')

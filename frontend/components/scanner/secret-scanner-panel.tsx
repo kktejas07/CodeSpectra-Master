@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import type { SecretFinding } from '@/lib/secret-scanner'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 const SEV_COLORS: Record<string, string> = {
   critical: 'bg-red-500/10 text-red-500 border-red-500/20',
@@ -42,7 +43,7 @@ export function SecretScannerPanel() {
     if (!code.trim()) return
     setLoading(true)
     try {
-      const res = await fetch('/api/scanner/secrets', {
+      const res = await csrfFetch('/api/scanner/secrets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ code, filename }),

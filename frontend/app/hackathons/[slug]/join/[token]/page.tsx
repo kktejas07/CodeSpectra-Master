@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Loader2, CheckCircle, XCircle, Users, ArrowRight } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 export default function JoinHackathonPage({ params }: { params: Promise<{ slug: string; token: string }> }) {
   const { slug, token } = use(params)
@@ -19,7 +20,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
     if (!authUser?.uid) return
     setStatus('loading')
     try {
-      const res = await fetch(`/api/hackathons/${slug}/teams/${token}/join`, {
+      const res = await csrfFetch(`/api/hackathons/${slug}/teams/${token}/join`, {
         method: 'POST',
         credentials: 'include',
       })

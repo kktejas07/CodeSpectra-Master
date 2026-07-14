@@ -4,6 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import { Camera, CheckCircle2, Loader2, Upload, XCircle, Eye, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface VerifyResult {
   match?: boolean
@@ -72,7 +73,7 @@ export default function IdentityVerificationPage() {
     setErr(null)
     setResult(null)
     try {
-      const res = await fetch('/api/identity/verify', {
+      const res = await csrfFetch('/api/identity/verify', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ selfie_data_url: selfie, id_data_url: idPhoto }),

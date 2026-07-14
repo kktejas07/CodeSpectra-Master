@@ -1,5 +1,6 @@
 import useSWR from 'swr'
 import { useCallback } from 'react'
+import { csrfFetch } from './csrf-fetch'
 
 const fetcher = (url: string) => fetch(url).then(res => res.json())
 
@@ -102,7 +103,7 @@ export function useActivityTimeline(projectId?: string) {
 export function useCreateQualityGate() {
   const mutate = useCallback(async (gate: any) => {
     try {
-      const response = await fetch('/api/scanner/quality-gates', {
+      const response = await csrfFetch('/api/scanner/quality-gates', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(gate),
@@ -121,7 +122,7 @@ export function useCreateQualityGate() {
 export function useUpdateIssueStatus() {
   const mutate = useCallback(async (issueId: string, status: string) => {
     try {
-      const response = await fetch('/api/scanner/issues/bulk', {
+      const response = await csrfFetch('/api/scanner/issues/bulk', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ids: [issueId], status }),
@@ -140,7 +141,7 @@ export function useUpdateIssueStatus() {
 export function useBulkUpdateIssues() {
   const mutate = useCallback(async (payload: any) => {
     try {
-      const response = await fetch('/api/scanner/issues/bulk', {
+      const response = await csrfFetch('/api/scanner/issues/bulk', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(payload),
