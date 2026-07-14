@@ -158,7 +158,7 @@ export default function InterviewPrepPage() {
       <DashboardPageHeader
         title="Interview Prep"
         description="Master frontend interviews with 300+ questions and AI-powered quizzes"
-        icon={<Brain className="h-6 w-6" />}
+        icon={Brain}
       />
 
       {/* Tab switcher */}
