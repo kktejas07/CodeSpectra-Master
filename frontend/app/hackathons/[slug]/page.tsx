@@ -99,11 +99,21 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   }
 
   const copyInvite = async () => {
-    if (inviteUrl) {
-      await navigator.clipboard.writeText(inviteUrl)
+    const url = inviteUrl || (myTeam ? getInviteUrl(myTeam) : null)
+    if (url) {
+      await navigator.clipboard.writeText(url)
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
+  }
+
+  const getInviteUrl = (team: Team) => {
+    const base = typeof window !== 'undefined' ? window.location.origin : ''
+    return `${base}/hackathons/${slug}/join/${team.qr_token}`
+  }
+
+  const getQrSvg = (team: Team) => {
+    return null
   }
 
   if (!gate.ready) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>
@@ -152,10 +162,18 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
           <button onClick={() => window.history.back()} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
           <div className="flex items-center gap-3">
-            {myTeam && (
+            {myTeam && isLive && (
               <Link href={`/hackathons/${slug}/workspace`}>
                 <Button size="sm" variant="default"><ListChecks className="h-3.5 w-3.5 mr-1" /> Enter Workspace</Button>
               </Link>
+            )}
+            {isClosed && hackathon.results_released && (
+              <Link href={`/hackathons/${slug}/results`}>
+                <Button size="sm" variant="outline"><Trophy className="h-3.5 w-3.5 mr-1" /> View Results</Button>
+              </Link>
+            )}
+            {isClosed && !hackathon.results_released && (
+              <Badge variant="outline" className="text-muted-foreground">Event Ended</Badge>
             )}
             <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase">
               {isLive ? 'Live' : isClosed ? 'Closed' : 'Open'}
@@ -219,7 +237,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                   <div className="mb-3 space-y-1">
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned Problems</p>
                     {hackathon.tasks.map((task) => (
-                      <Link key={task.problem_slug} href={`/dashboard/challenges/${task.problem_slug}`}
+                      <div key={task.problem_slug}
                         className="flex items-center justify-between p-2 rounded hover:bg-muted/50 text-sm">
                         <span>{task.problem_title}</span>
                         <div className="flex items-center gap-2">
@@ -227,17 +245,17 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                           <span className="text-xs text-muted-foreground">{task.points} pts</span>
                           <ArrowRight className="h-3 w-3" />
                         </div>
-                      </Link>
+                      </div>
                     ))}
                   </div>
                 )}
 
                 {/* Invite link */}
-                {inviteUrl && (
+                {myTeam && (
                   <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
                     <p className="text-xs font-semibold text-primary mb-2">Share this invite link with your team:</p>
                     <div className="flex gap-2">
-                      <code className="flex-1 text-xs truncate rounded bg-background px-2 py-1.5 border">{inviteUrl}</code>
+                      <code className="flex-1 text-xs truncate rounded bg-background px-2 py-1.5 border">{getInviteUrl(myTeam)}</code>
                       <Button size="sm" variant="outline" onClick={copyInvite}>
                         {copied ? 'Copied!' : <Copy className="h-3 w-3" />}
                       </Button>

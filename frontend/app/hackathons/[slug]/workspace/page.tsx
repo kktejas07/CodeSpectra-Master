@@ -7,12 +7,28 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+} from '@/components/ui/sheet'
 import {
   Loader2, Trophy, Users, Clock, CalendarDays, Timer,
   CheckCircle, AlertCircle, ArrowRight, Copy, Sparkles, Shield, ListChecks,
-  Hand,
+  Hand, Eye, Send, X,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { useToast } from '@/lib/toast-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -34,17 +50,22 @@ interface Team {
 }
 
 interface Submission {
-  id: string; problem_slug: string; status: string; score: number | null
-  max_score: number; submitted_at: string
+  id: string; problem_slug: string; status: 'pending' | 'under_review' | 'released'; score: number | null
+  max_score: number; submitted_at: string; repo_url?: string; code?: string; commit_sha?: string
 }
 
 interface Claim {
   hackathon_id: string; problem_slug: string; user_id: string; user_name: string; claimed_at: string
 }
 
+interface ProblemDetail {
+  problem_slug: string; title: string; difficulty: string; statement?: string; tags?: string[]
+}
+
 export default function HackathonWorkspacePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
   const { user: authUser } = useAuth()
+  const addToast = useToast()
   const router = useRouter()
   const hasSession = authUser?.uid
 
@@ -57,6 +78,21 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  const [now, setNow] = useState(() => Date.now())
+
+  const [submittingFor, setSubmittingFor] = useState<{ problem_slug: string; problem_title: string; points: number } | null>(null)
+  const [viewingSubmission, setViewingSubmission] = useState<Submission | null>(null)
+  const [selectedProblem, setSelectedProblem] = useState<HackathonTask | null>(null)
+  const [problemDetail, setProblemDetail] = useState<ProblemDetail | null>(null)
+  const [problemDetailLoading, setProblemDetailLoading] = useState(false)
+
+  const [submitForm, setSubmitForm] = useState({ repo_url: '', commit_sha: '', code: '' })
+  const [submitting, setSubmitting] = useState(false)
+  const [submitError, setSubmitError] = useState<string | null>(null)
+
+  interface HackathonTask {
+    problem_slug: string; problem_title: string; points: number; difficulty: string; required: boolean
+  }
 
   const load = useCallback(async () => {
     try {
@@ -100,6 +136,11 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   }, [hackathon, fetchClaims])
 
   useEffect(() => {
+    const interval = setInterval(() => setNow(Date.now()), 1000)
+    return () => clearInterval(interval)
+  }, [])
+
+  useEffect(() => {
     if (!hackathon || !hasSession) return
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
     if (!team) { router.replace(`/hackathons/${slug}`); return }
@@ -113,6 +154,17 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     setInviteUrl(`${base}/hackathons/${slug}/join/${team.qr_token}`)
   }, [hackathon, hasSession, teams, slug, router])
 
+  const refreshSubmissions = useCallback(async () => {
+    if (!hackathon || !hasSession) return
+    const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+    if (!team) return
+    try {
+      const res = await fetch(`/api/hackathons/${team.id}/submissions?team_id=${team.id}`, { cache: 'no-store' })
+      const data = await res.json()
+      setSubmissions(data.items || [])
+    } catch { /* ignore */ }
+  }, [hackathon, hasSession, teams])
+
   const copyInvite = async () => {
     if (inviteUrl) {
       await navigator.clipboard.writeText(inviteUrl)
@@ -125,7 +177,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     if (!hackathon) return
     setClaiming(slug)
     try {
-await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
+      await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ problem_slug: slug }),
@@ -147,8 +199,99 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
     }
   }
 
-  const myClaim = (slug: string) => claims[slug]?.user_id === hasSession
-  const claimerName = (slug: string) => claims[slug]?.user_name || null
+  const openSubmitModal = (task: HackathonTask) => {
+    const sub = submissions.find(s => s.problem_slug === task.problem_slug)
+    if (sub && sub.status === 'released') return
+    setSubmittingFor({ problem_slug: task.problem_slug, problem_title: task.problem_title, points: task.points })
+    setSubmitForm({ repo_url: '', commit_sha: '', code: '' })
+    setSubmitError(null)
+  }
+
+  const openViewSubmission = (sub: Submission) => {
+    setViewingSubmission(sub)
+  }
+
+  const closeSubmitModal = () => {
+    setSubmittingFor(null)
+    setSubmitForm({ repo_url: '', commit_sha: '', code: '' })
+    setSubmitError(null)
+  }
+
+  const handleSubmit = async () => {
+    if (!submittingFor || !hackathon) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+      if (!team) return
+      const res = await csrfFetch(`/api/hackathons/${hackathon.id}/submissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          problem_slug: submittingFor.problem_slug,
+          repo_url: submitForm.repo_url || undefined,
+          commit_sha: submitForm.commit_sha || undefined,
+          code: submitForm.code || undefined,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setSubmitError(data.error || 'Submission failed')
+        return
+      }
+      addToast({ type: 'success', title: 'Solution submitted!', message: 'Your submission is being reviewed.' })
+      closeSubmitModal()
+      await refreshSubmissions()
+    } catch {
+      setSubmitError('Network error — please try again')
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  const openProblemPanel = async (task: HackathonTask) => {
+    setSelectedProblem(task)
+    setProblemDetail(null)
+    setProblemDetailLoading(true)
+    try {
+      const res = await fetch(`/api/problems/${task.problem_slug}`, { cache: 'no-store' })
+      if (res.ok) {
+        const data = await res.json() as ProblemDetail
+        setProblemDetail(data)
+      }
+    } catch { /* ignore */ }
+    finally {
+      setProblemDetailLoading(false)
+    }
+  }
+
+  const myClaim = (problemSlug: string) => claims[problemSlug]?.user_id === hasSession
+  const claimerName = (problemSlug: string) => claims[problemSlug]?.user_name || null
+
+  const getClaimCountdown = (claim: Claim) => {
+    const claimedAt = new Date(claim.claimed_at).getTime()
+    const expiresAt = claimedAt + 5 * 60 * 1000
+    const remaining = expiresAt - now
+    if (remaining <= 0) return '0:00'
+    const mins = Math.floor(remaining / 60000)
+    const secs = Math.floor((remaining % 60000) / 1000)
+    return `${mins}:${secs.toString().padStart(2, '0')}`
+  }
+
+  const getClaimUrgency = (claim: Claim) => {
+    const claimedAt = new Date(claim.claimed_at).getTime()
+    const remaining = (claimedAt + 5 * 60 * 1000) - now
+    if (remaining < 60000) return 'text-red-400'
+    if (remaining < 120000) return 'text-yellow-400'
+    return 'text-blue-400'
+  }
+
+  const getProblemStatus = (problemSlug: string) => {
+    const sub = submissions.find((s) => s.problem_slug === problemSlug)
+    if (!sub) return 'pending'
+    if (sub.status === 'released') return 'accepted'
+    return sub.status
+  }
 
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading workspace…</div>
   if (error || !hackathon) return <div className="p-10 text-center"><p className="text-sm text-destructive">{error || 'Event not found'}</p><Link href="/" className="mt-3 inline-block text-sm text-primary hover:underline">← Home</Link></div>
@@ -156,17 +299,11 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
   const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
   const ends = new Date(hackathon.ends_at)
   const starts = new Date(hackathon.starts_at)
-  const now = Date.now()
-  const isLive = now >= starts.getTime() && now <= ends.getTime()
-  const isClosed = now > ends.getTime() || hackathon.status === 'closed'
+  const nowDate = Date.now()
+  const isLive = nowDate >= starts.getTime() && nowDate <= ends.getTime()
+  const isClosed = nowDate > ends.getTime() || hackathon.status === 'closed'
 
-  const getProblemStatus = (problemSlug: string) => {
-    const sub = submissions.find((s) => s.problem_slug === problemSlug)
-    if (!sub) return 'pending'
-    if (sub.status === 'accepted' || sub.status === 'released') return 'accepted'
-    if (sub.status === 'pending') return 'pending'
-    return 'attempted'
-  }
+  const solvedCount = submissions.filter(s => s.status === 'released').length
 
   return (
     <div className="min-h-screen bg-background">
@@ -190,7 +327,6 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
       </header>
 
       <main className="mx-auto max-w-5xl space-y-6 px-6 py-8">
-        {/* Team Header */}
         {team && (
           <Card className="p-5">
             <div className="flex items-center gap-3 mb-4">
@@ -200,7 +336,6 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
               <Badge><Sparkles className="h-3 w-3 mr-1" /> {team.xp} XP</Badge>
               <span className="text-xs text-muted-foreground ml-auto">{team.submissions} submissions</span>
             </div>
-
             <div className="flex flex-wrap gap-2">
               {team.members.map((m) => (
                 <Badge key={m.user_id} variant={m.role === 'captain' ? 'default' : 'secondary'}>
@@ -211,7 +346,6 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
           </Card>
         )}
 
-        {/* Timer Banner for live events */}
         {isLive && (
           <Card className="p-5 border-red-500/20 bg-red-500/5">
             <div className="flex items-center justify-between">
@@ -226,12 +360,11 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
           </Card>
         )}
 
-        {/* Problems */}
         {hackathon.tasks && hackathon.tasks.length > 0 && (
           <div>
             <div className="flex items-center gap-2 mb-3">
               <ListChecks className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Problems ({submissions.filter(s => s.status === 'accepted' || s.status === 'released').length}/{hackathon.tasks.length} solved)</h3>
+              <h3 className="text-sm font-semibold">Problems ({solvedCount}/{hackathon.tasks.length} solved)</h3>
             </div>
             <div className="space-y-2">
               {hackathon.tasks.map((task, i) => {
@@ -239,9 +372,11 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
                 const claim = claims[task.problem_slug]
                 const isClaimed = !!claim
                 const isMyClaim = myClaim(task.problem_slug)
+                const sub = submissions.find(s => s.problem_slug === task.problem_slug)
                 const canClaim = status === 'pending' && !isClaimed
                 const canRelease = isMyClaim
                 const claimer = claimerName(task.problem_slug)
+
                 return (
                   <Card key={task.problem_slug} className="p-4">
                     <div className="flex items-center justify-between">
@@ -249,8 +384,10 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
                         <span className="text-xs font-mono text-muted-foreground w-5">#{i + 1}</span>
                         {status === 'accepted' ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
-                        ) : status === 'attempted' ? (
+                        ) : status === 'under_review' ? (
                           <AlertCircle className="h-4 w-4 text-yellow-500" />
+                        ) : status === 'pending' && sub ? (
+                          <Clock className="h-4 w-4 text-yellow-500" />
                         ) : isMyClaim ? (
                           <Hand className="h-4 w-4 text-blue-400" />
                         ) : (
@@ -262,25 +399,37 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
                             <Badge variant="outline" className="text-[10px]">{task.difficulty}</Badge>
                             <span className="text-xs text-muted-foreground">{task.points} pts</span>
                             {task.required && <span className="text-[10px] text-muted-foreground">Required</span>}
+                            {sub && status !== 'accepted' && (
+                              <Badge variant="secondary" className="text-[10px]">
+                                {status === 'pending' ? 'Submitted' : status}
+                              </Badge>
+                            )}
+                            {sub && sub.score !== null && (
+                              <span className="text-[10px] text-green-400">{sub.score}/{task.points}</span>
+                            )}
                             {isClaimed && !isMyClaim && (
                               <Badge variant="secondary" className="text-[10px] gap-1">
                                 <Hand className="h-3 w-3" /> {claimer} is solving
                               </Badge>
                             )}
-                            {isMyClaim && (
-                              <Badge className="text-[10px] gap-1 bg-blue-500/20 text-blue-400 border-blue-500/30">
-                                <Hand className="h-3 w-3" /> You are solving
+                            {isMyClaim && claim && (
+                              <Badge className={`text-[10px] gap-1 border-0 ${getClaimUrgency(claim)}`}>
+                                <Timer className="h-3 w-3" /> {getClaimCountdown(claim)}
                               </Badge>
                             )}
                           </div>
                         </div>
                       </div>
-                      <div className="flex items-center gap-3">
-                        {status !== 'pending' && submissions.find(s => s.problem_slug === task.problem_slug) && (
-                          <span className="text-xs text-muted-foreground">
-                            Score: {submissions.find(s => s.problem_slug === task.problem_slug)?.score ?? '—'}/{task.points}
-                          </span>
-                        )}
+                      <div className="flex items-center gap-2">
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          className="gap-1.5 text-muted-foreground"
+                          onClick={() => openProblemPanel(task)}
+                        >
+                          <Eye className="h-3 w-3" />
+                          View Problem
+                        </Button>
                         {canClaim && (
                           <Button
                             size="sm"
@@ -305,12 +454,27 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
                             Release
                           </Button>
                         )}
-                        <Link href={`/dashboard/challenges/${task.problem_slug}`}>
-                          <Button size="sm" variant={status === 'accepted' ? 'outline' : 'default'} className="gap-2">
-                            {status === 'accepted' ? 'View' : status === 'attempted' ? 'Retry' : 'Solve'}
-                            <ArrowRight className="h-3 w-3" />
+                        {sub && status !== 'accepted' && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-muted-foreground"
+                            onClick={() => openViewSubmission(sub)}
+                          >
+                            View Submission
                           </Button>
-                        </Link>
+                        )}
+                        {status !== 'accepted' && (
+                          <Button
+                            size="sm"
+                            variant="default"
+                            className="gap-2"
+                            onClick={() => openSubmitModal(task)}
+                          >
+                            <Send className="h-3 w-3" />
+                            Submit Solution
+                          </Button>
+                        )}
                       </div>
                     </div>
                   </Card>
@@ -320,7 +484,6 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
           </div>
         )}
 
-        {/* Invite */}
         {inviteUrl && (
           <Card className="p-5">
             <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Invite Teammates</p>
@@ -334,7 +497,6 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
           </Card>
         )}
 
-        {/* Leaderboard preview */}
         <Card className="p-5">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
             <Trophy className="h-4 w-4 text-primary" /> Leaderboard
@@ -355,6 +517,146 @@ await csrfFetch(`/api/hackathons/${hackathon.id}/claims`, {
           )}
         </Card>
       </main>
+
+      <Dialog open={!!submittingFor} onOpenChange={(o) => { if (!o) closeSubmitModal() }}>
+        <DialogContent>
+          {submittingFor && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Submit: {submittingFor.problem_title}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-4">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{getProblemStatus(submittingFor.problem_slug) === 'pending' ? 'pending' : 'submitted'}</Badge>
+                  <span className="text-xs text-muted-foreground">{submittingFor.points} points</span>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="repo_url">Repo URL (optional)</Label>
+                  <Input
+                    id="repo_url"
+                    type="url"
+                    placeholder="https://github.com/..."
+                    value={submitForm.repo_url}
+                    onChange={(e) => setSubmitForm(f => ({ ...f, repo_url: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="commit_sha">Commit SHA (optional)</Label>
+                  <Input
+                    id="commit_sha"
+                    placeholder="abc1234 or full URL"
+                    value={submitForm.commit_sha}
+                    onChange={(e) => setSubmitForm(f => ({ ...f, commit_sha: e.target.value }))}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="code">Code (optional)</Label>
+                  <Textarea
+                    id="code"
+                    placeholder="Paste your solution code here..."
+                    rows={8}
+                    value={submitForm.code}
+                    onChange={(e) => setSubmitForm(f => ({ ...f, code: e.target.value }))}
+                  />
+                </div>
+                {submitError && (
+                  <p className="text-sm text-destructive">{submitError}</p>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={closeSubmitModal}>Cancel</Button>
+                <Button onClick={() => void handleSubmit()} disabled={submitting}>
+                  {submitting && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
+                  Submit
+                </Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={!!viewingSubmission} onOpenChange={(o) => { if (!o) setViewingSubmission(null) }}>
+        <DialogContent>
+          {viewingSubmission && (
+            <>
+              <DialogHeader>
+                <DialogTitle>Submission: {viewingSubmission.problem_slug}</DialogTitle>
+              </DialogHeader>
+              <div className="space-y-3 text-sm">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{viewingSubmission.status}</Badge>
+                  {viewingSubmission.score !== null && (
+                    <span className="text-muted-foreground">
+                      Score: <span className="text-green-400 font-medium">{viewingSubmission.score}</span> / {viewingSubmission.max_score}
+                    </span>
+                  )}
+                </div>
+                {viewingSubmission.repo_url && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Repo URL</p>
+                    <a href={viewingSubmission.repo_url} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">
+                      {viewingSubmission.repo_url}
+                    </a>
+                  </div>
+                )}
+                {viewingSubmission.commit_sha && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Commit SHA</p>
+                    <p className="font-mono text-xs">{viewingSubmission.commit_sha}</p>
+                  </div>
+                )}
+                {viewingSubmission.code && (
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1">Code</p>
+                    <Textarea readOnly rows={10} value={viewingSubmission.code} className="font-mono text-xs" />
+                  </div>
+                )}
+              </div>
+              <DialogFooter>
+                <Button variant="outline" onClick={() => setViewingSubmission(null)}>Close</Button>
+              </DialogFooter>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+
+      <Sheet open={!!selectedProblem} onOpenChange={(o) => { if (!o) setSelectedProblem(null) }}>
+        <SheetContent side="right">
+          {selectedProblem && (
+            <>
+              <SheetHeader>
+                <SheetTitle>{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
+              </SheetHeader>
+              <div className="mt-4 space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge variant="outline">{selectedProblem.difficulty}</Badge>
+                  <span className="text-sm text-muted-foreground">{selectedProblem.points} pts</span>
+                  {selectedProblem.required && <Badge variant="destructive" className="text-[10px]">Required</Badge>}
+                </div>
+                {problemDetailLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
+                  </div>
+                ) : problemDetail?.statement ? (
+                  <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                    {problemDetail.statement}
+                  </div>
+                ) : (
+                  <p className="text-sm text-muted-foreground">No problem description available.</p>
+                )}
+                <a
+                  href={`/dashboard/challenges/${selectedProblem.problem_slug}`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"
+                >
+                  View Full Problem <ArrowRight className="h-3 w-3" />
+                </a>
+              </div>
+            </>
+          )}
+        </SheetContent>
+      </Sheet>
     </div>
   )
 }
