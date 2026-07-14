@@ -71,6 +71,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/pricing',
   '/dashboard/challenges',
   '/dashboard/interviews',
+  '/dashboard/interview-prep',
   '/dashboard/prepare',
   '/dashboard/profile',
   '/dashboard/settings',
@@ -87,6 +88,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/jobs',
   '/dashboard/exams',
   '/dashboard/resumes',
+  '/dashboard/judge',
 ]
 
 /**
@@ -163,6 +165,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/pricing': 'Pricing',
   '/dashboard/challenges': 'Challenges',
   '/dashboard/interviews': 'Interviews',
+  '/dashboard/interview-prep': 'Interview Prep',
   '/dashboard/interviews/feedback': 'Interview Feedback',
   '/dashboard/interviews/results': 'Interview Results',
   '/dashboard/prepare': 'Prepare',
@@ -180,6 +183,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/exams': 'Exams',
   '/dashboard/resumes': 'Resumes',
   '/dashboard/analytics': 'Analytics',
+  '/dashboard/judge': 'Hackathon Judge',
 }
 
 /**

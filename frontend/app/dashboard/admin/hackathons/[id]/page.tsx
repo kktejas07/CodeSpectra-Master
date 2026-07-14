@@ -45,6 +45,7 @@ interface Hackathon {
   status: 'draft' | 'open' | 'live' | 'closed'
   results_released?: boolean
   released_at?: string
+  judges?: string[]
 }
 
 interface Team {
@@ -78,6 +79,8 @@ export default function HackathonDetailPage({
   const [qrCache, setQrCache] = useState<Record<string, string>>({})
   const [grant, setGrant] = useState<Record<string, GrantState>>({})
   const [busy, setBusy] = useState(false)
+  const [judgeIds, setJudgeIds] = useState<string[]>([])
+  const [judgeInput, setJudgeInput] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -86,7 +89,9 @@ export default function HackathonDetailPage({
         fetch(`/api/hackathons/${id}/teams`, { cache: 'no-store' }),
       ])
       if (!eRes.ok) throw new Error('event not found')
-      setEvent((await eRes.json()) as Hackathon)
+      const evData = (await eRes.json()) as Hackathon
+      setEvent(evData)
+      setJudgeIds(evData.judges || [])
       setError(null)
       if (tRes.ok) {
         const j = (await tRes.json()) as { items: Team[] }
@@ -170,6 +175,32 @@ export default function HackathonDetailPage({
     URL.revokeObjectURL(url)
   }
 
+  async function saveJudges() {
+    try {
+      const res = await csrfFetch(`/api/hackathons/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ judges: judgeIds }),
+      })
+      if (!res.ok) throw new Error('failed to save judges')
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  function addJudge() {
+    const val = judgeInput.trim()
+    if (val && !judgeIds.includes(val)) {
+      setJudgeIds((prev) => [...prev, val])
+      setJudgeInput('')
+    }
+  }
+
+  function removeJudge(uid: string) {
+    setJudgeIds((prev) => prev.filter((j) => j !== uid))
+  }
+
   if (loading && !event) {
     return (
       <div className="flex h-64 items-center justify-center text-muted-foreground">
@@ -236,6 +267,32 @@ export default function HackathonDetailPage({
           {error}
         </Card>
       )}
+
+      <Card className="p-5 space-y-3">
+        <h2 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">Judges</h2>
+        <div className="flex flex-wrap gap-2">
+          {judgeIds.length === 0 && (
+            <p className="text-xs text-muted-foreground">No judges assigned.</p>
+          )}
+          {judgeIds.map((uid) => (
+            <Badge key={uid} variant="secondary" className="gap-1">
+              {uid}
+              <button onClick={() => removeJudge(uid)} className="ml-1 text-muted-foreground hover:text-foreground">×</button>
+            </Badge>
+          ))}
+        </div>
+        <div className="flex gap-2">
+          <Input
+            placeholder="User ID"
+            value={judgeInput}
+            onChange={(e) => setJudgeInput(e.target.value)}
+            className="h-8 text-xs flex-1"
+            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addJudge() } }}
+          />
+          <Button size="sm" variant="outline" onClick={addJudge} disabled={!judgeInput.trim()}>Add</Button>
+          <Button size="sm" onClick={saveJudges}>Save Judges</Button>
+        </div>
+      </Card>
 
       <h2 className="pt-4 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
         Teams ({teams.length} / {event.num_teams})

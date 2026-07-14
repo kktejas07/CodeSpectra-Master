@@ -22,9 +22,15 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
   // Release all submissions under review
   const subsCol = await hackathonSubmissions()
+  const now = nowIso()
+  // Score 0 for pending submissions that were never reviewed
+  await subsCol.updateMany(
+    { hackathon_id: hk.id, status: 'pending' },
+    { $set: { status: 'released', score: 0, reviewed_at: now } },
+  )
   const updateResult = await subsCol.updateMany(
     { hackathon_id: hk.id, status: 'under_review' },
-    { $set: { status: 'released', reviewed_at: nowIso() } },
+    { $set: { status: 'released', reviewed_at: now } },
   )
 
   // Mark hackathon as released

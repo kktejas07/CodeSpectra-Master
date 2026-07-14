@@ -64,6 +64,9 @@ export async function PATCH(
   for (const k of ['name', 'description', 'num_teams', 'max_per_team', 'status'] as const) {
     if (k in body) $set[k] = body[k]
   }
+  if (Array.isArray(body.judges)) {
+    $set.judges = body.judges
+  }
   // Recompute ends_at if timeout or starts_at changed.
   const col = await hackathons()
   const cur = await col.findOne({ id })

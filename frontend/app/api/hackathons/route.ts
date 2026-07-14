@@ -42,11 +42,15 @@ function isAdmin(role?: string | null): boolean {
   return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
 }
 
-export async function GET() {
+export async function GET(req: NextRequest) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const col = await hackathons()
-  const filter = isAdmin(user.role) ? {} : { status: { $ne: 'draft' as const } }
+  const isJudgeFilter = req.nextUrl.searchParams.get('judge') === '1'
+  const filter: Record<string, unknown> = isAdmin(user.role) ? {} : { status: { $ne: 'draft' as const } }
+  if (isJudgeFilter) {
+    filter.judges = user.id
+  }
   const items = await col
     .find(filter as any, { projection: { _id: 0 } })
     .sort({ created_at: -1 })

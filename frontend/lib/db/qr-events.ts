@@ -87,6 +87,8 @@ export interface HackathonDoc {
   /** Results visibility */
   results_released: boolean
   released_at?: string
+  /** User IDs of assigned judges */
+  judges?: string[]
   /** Branding */
   banner_url?: string
   color_theme?: string
@@ -142,6 +144,8 @@ export interface HackathonSubmissionDoc {
   max_score: number
   status: 'pending' | 'under_review' | 'released'
   feedback?: string
+  /** Per-judge scoring records */
+  scores?: Array<{ judge_id: string; score: number; feedback: string; created_at: string }>
   submitted_at: string
   reviewed_at?: string
   created_at: string

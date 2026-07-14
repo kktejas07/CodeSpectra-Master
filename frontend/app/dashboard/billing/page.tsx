@@ -222,16 +222,22 @@ function BillingContent() {
   const runCheckout = async () => {
     setBusy('checkout')
     try {
+      const serverPlanId = pickPlan === 'free'
+        ? 'free'
+        : pickPlan === 'enterprise'
+          ? 'problem_pack_50'
+          : pickInterval === 'year' ? 'pro_yearly' : 'pro_monthly'
+
       const res = await csrfFetch('/api/billing/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ plan: pickPlan, interval: pickInterval }),
+        body: JSON.stringify({ plan_id: serverPlanId }),
       })
       const j = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(typeof j.error === 'string' ? j.error : 'Checkout failed')
       setUpgradeOpen(false)
-      window.location.href = typeof j.url === 'string' ? j.url : '/dashboard/billing?paid=1'
+      window.location.href = typeof j.redirect_url === 'string' ? j.redirect_url : '/dashboard/billing?paid=1'
     } catch (e) {
       addToast({
         type: 'error',
