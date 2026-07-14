@@ -85,8 +85,8 @@ export default function HackathonDetailPage({
   const load = useCallback(async () => {
     try {
       const [eRes, tRes] = await Promise.all([
-        fetch(`/api/hackathons/${id}`, { cache: 'no-store' }),
-        fetch(`/api/hackathons/${id}/teams`, { cache: 'no-store' }),
+        fetch(`/api/hackathons/${id}`, { cache: 'no-store', credentials: 'include' }),
+        fetch(`/api/hackathons/${id}/teams`, { cache: 'no-store', credentials: 'include' }),
       ])
       if (!eRes.ok) throw new Error('event not found')
       const evData = (await eRes.json()) as Hackathon
@@ -111,7 +111,7 @@ export default function HackathonDetailPage({
   async function fetchQr(team: Team) {
     if (qrCache[team.id]) return qrCache[team.id]
     try {
-      const res = await fetch(`/api/hackathons/${id}/teams/${team.id}`, { cache: 'no-store' })
+      const res = await fetch(`/api/hackathons/${id}/teams/${team.id}`, { cache: 'no-store', credentials: 'include' })
       const j = await res.json()
       if (res.ok && j.qr_svg) {
         setQrCache((c) => ({ ...c, [team.id]: j.qr_svg as string }))

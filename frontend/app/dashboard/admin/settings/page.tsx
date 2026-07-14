@@ -330,7 +330,7 @@ function SystemSettingsInner() {
         'trusted_origins_extra', 'github_client_id',
         'firebase_api_key', 'firebase_auth_domain', 'firebase_project_id',
         'firebase_storage_bucket', 'firebase_messaging_sender_id', 'firebase_app_id',
-        'phonepe_salt_index',
+        'phonepe_salt_index', 'phonepe_merchant_id',
       ] as const
       for (const k of plainFields) {
         const v = secretsMeta[k]

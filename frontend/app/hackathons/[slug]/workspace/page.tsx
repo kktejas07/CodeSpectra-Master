@@ -145,7 +145,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
     if (!team) { router.replace(`/hackathons/${slug}`); return }
 
-    fetch(`/api/hackathons/${team.id}/submissions?team_id=${team.id}`, { cache: 'no-store' })
+    fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store' })
       .then(r => r.json())
       .then(d => setSubmissions(d.items || []))
       .catch(() => {})
@@ -159,7 +159,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
     if (!team) return
     try {
-      const res = await fetch(`/api/hackathons/${team.id}/submissions?team_id=${team.id}`, { cache: 'no-store' })
+      const res = await fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store' })
       const data = await res.json()
       setSubmissions(data.items || [])
     } catch { /* ignore */ }
