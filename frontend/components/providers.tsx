@@ -9,14 +9,10 @@ export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false)
   React.useEffect(() => setMounted(true), [])
 
-  if (!mounted) {
-    return <>{children}</>
-  }
-
   return (
     <ThemeProvider attribute="class" defaultTheme="dark" enableSystem disableTransitionOnChange>
       <AuthProvider>
-        <ToastProvider>{children}</ToastProvider>
+        <ToastProvider>{mounted ? children : <div className="min-h-screen" />}</ToastProvider>
       </AuthProvider>
     </ThemeProvider>
   )
