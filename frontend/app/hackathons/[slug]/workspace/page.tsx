@@ -97,8 +97,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const load = useCallback(async () => {
     try {
       const [hRes, tRes] = await Promise.all([
-        fetch(`/api/hackathons/${slug}?by=slug`, { cache: 'no-store' }),
-        fetch(`/api/hackathons/${slug}/teams`, { cache: 'no-store' }),
+        fetch(`/api/hackathons/${slug}?by=slug`, { cache: 'no-store', credentials: 'include' }),
+        fetch(`/api/hackathons/${slug}/teams`, { cache: 'no-store', credentials: 'include' }),
       ])
       if (!hRes.ok) throw new Error('Event not found')
       const hk = await hRes.json() as Hackathon
@@ -116,7 +116,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const fetchClaims = useCallback(async () => {
     if (!hackathon) return
     try {
-      const res = await fetch(`/api/hackathons/${hackathon.id}/claims`, { cache: 'no-store' })
+      const res = await fetch(`/api/hackathons/${hackathon.id}/claims`, { cache: 'no-store', credentials: 'include' })
       if (res.ok) {
         const j = await res.json() as { items: Claim[] }
         const map: Record<string, Claim> = {}
@@ -145,7 +145,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
     if (!team) { router.replace(`/hackathons/${slug}`); return }
 
-    fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store' })
+    fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store', credentials: 'include' })
       .then(r => r.json())
       .then(d => setSubmissions(d.items || []))
       .catch(() => {})
@@ -159,7 +159,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
     if (!team) return
     try {
-      const res = await fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store' })
+      const res = await fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store', credentials: 'include' })
       const data = await res.json()
       setSubmissions(data.items || [])
     } catch { /* ignore */ }
@@ -254,7 +254,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     setProblemDetail(null)
     setProblemDetailLoading(true)
     try {
-      const res = await fetch(`/api/problems/${task.problem_slug}`, { cache: 'no-store' })
+      const res = await fetch(`/api/problems/${task.problem_slug}`, { cache: 'no-store', credentials: 'include' })
       if (res.ok) {
         const data = await res.json() as ProblemDetail
         setProblemDetail(data)
