@@ -15,12 +15,10 @@ export async function GET(
   ctx: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await ctx.params
-  const isNumeric = /^\d+$/.test(slug)
 
   try {
     const col = await problems()
-    const query = isNumeric ? { id: parseInt(slug, 10) } : { slug }
-    const doc = await col.findOne(query)
+    const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
     if (doc) {
       return NextResponse.json({
         ...doc,
