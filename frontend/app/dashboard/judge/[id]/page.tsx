@@ -170,8 +170,8 @@ function CodeBlock({ code, repoUrl }: { code: string; repoUrl?: string }) {
 }
 
 export default function JudgeReviewPage() {
-  const params = useParams<{ hackathonId: string }>()
-  const hackathonId = params.hackathonId
+  const params = useParams<{ id: string }>()
+  const hackathonId = params.id
 
   const gate = usePageGuard('user')
   const [hackathon, setHackathon] = useState<Hackathon | null>(null)
