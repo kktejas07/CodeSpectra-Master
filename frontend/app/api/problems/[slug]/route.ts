@@ -15,11 +15,12 @@ export async function GET(
   ctx: { params: Promise<{ slug: string }> },
 ) {
   const { slug } = await ctx.params
+  const isNumeric = /^\d+$/.test(slug)
 
-  // Try Mongo first
   try {
     const col = await problems()
-    const doc = await col.findOne({ slug })
+    const query = isNumeric ? { id: parseInt(slug, 10) } : { slug }
+    const doc = await col.findOne(query)
     if (doc) {
       return NextResponse.json({
         ...doc,
@@ -33,8 +34,8 @@ export async function GET(
     console.warn('[CodeSpectra] problem GET (mongo unavailable, using seed):', error)
   }
 
-  // Fallback: in-memory seed
-  const seed = SEED_PROBLEMS.find((p) => p.slug === slug)
+  // Fallback: in-memory seed (check both slug and id fields)
+  const seed = SEED_PROBLEMS.find((p) => p.slug === slug || p.id === slug)
   if (!seed) {
     return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
   }
