@@ -7,14 +7,14 @@ export const dynamic = 'force-dynamic'
 
 export async function PATCH(
   req: NextRequest,
-  ctx: { params: Promise<{ hackathonId: string; submissionId: string }> },
+  ctx: { params: Promise<{ id: string; submissionId: string }> },
 ) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const { hackathonId, submissionId } = await ctx.params
+  const { id, submissionId } = await ctx.params
   const col = await hackathons()
-  const hk = await col.findOne({ $or: [{ id: hackathonId }, { slug: hackathonId }] })
+  const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
   const isSuperadmin = (user.role || '').toLowerCase() === 'superadmin'
