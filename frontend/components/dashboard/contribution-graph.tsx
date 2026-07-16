@@ -1,11 +1,9 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useMemo, useState, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Button } from '@/components/ui/button'
-import { Tooltip, TooltipTrigger, TooltipContent } from '@/components/ui/tooltip'
-import { Flame, Calendar, TrendingUp } from 'lucide-react'
+import { TrendingUp } from 'lucide-react'
 
 interface DayData {
   date: string
@@ -29,24 +27,16 @@ interface ContributionGraphProps {
 }
 
 const LEVEL_COLORS = [
-  'bg-muted/40',
-  'bg-primary/15',
-  'bg-primary/35',
-  'bg-primary/60',
-  'bg-primary',
-]
-
-const LEVEL_HOVER = [
-  'hover:bg-muted/60',
-  'hover:bg-primary/25',
-  'hover:bg-primary/45',
-  'hover:bg-primary/70',
-  'hover:bg-primary/90',
+  'bg-[#161b22]',
+  'bg-[#0e4429]',
+  'bg-[#006d32]',
+  'bg-[#26a641]',
+  'bg-[#39d353]',
 ]
 
 function formatDate(dateStr: string): string {
   const d = new Date(dateStr + 'T00:00:00')
-  return d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric', year: 'numeric' })
+  return d.toLocaleDateString('en-US', { weekday: 'long', month: 'long', day: 'numeric', year: 'numeric' })
 }
 
 function pluralize(n: number, word: string): string {
@@ -56,13 +46,14 @@ function pluralize(n: number, word: string): string {
 export function ContributionGraph({
   cells: rawCells,
   dayLabels = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-  monthLabels = [],
+  monthLabels: rawMonthLabels = [],
   tooltipData = {},
   totalContributions = 0,
   totalActiveDays = 0,
-  weeks: inputWeeks = 14,
+  weeks: inputWeeks = 52,
 }: ContributionGraphProps) {
-  const [hoveredCell, setHoveredCell] = useState<{ date: string; level: number } | null>(null)
+  const [tooltip, setTooltip] = useState<{ date: string; level: number; x: number; y: number } | null>(null)
+  const containerRef = useRef<HTMLDivElement>(null)
 
   const cells = useMemo(() => {
     if (rawCells && rawCells.length > 0) return rawCells
@@ -70,18 +61,47 @@ export function ContributionGraph({
   }, [rawCells, inputWeeks])
 
   const hasData = rawCells && rawCells.some(w => w.some(c => c > 0))
+  const weeks = cells.length
 
   const today = new Date()
   today.setDate(today.getDate() + (6 - today.getDay()))
   const todayStr = today.toISOString().slice(0, 10)
 
-  const getDateStr = (wi: number, di: number): string => {
+  const getDateStr = useCallback((wi: number, di: number): string => {
     const date = new Date(today)
     date.setDate(date.getDate() - ((weeks - 1 - wi) * 7 + (6 - di)))
     return date.toISOString().slice(0, 10)
-  }
+  }, [weeks])
 
-  const weeks = cells.length
+  const monthLabels = useMemo(() => {
+    if (rawMonthLabels.length > 0) {
+      const sorted = [...rawMonthLabels].sort((a, b) => a.colIndex - b.colIndex)
+      return sorted.map((m, i) => ({
+        ...m,
+        colSpan: i < sorted.length - 1 ? sorted[i + 1].colIndex - m.colIndex : weeks - m.colIndex,
+      }))
+    }
+    return []
+  }, [rawMonthLabels, weeks])
+
+  const handleMouseEnter = useCallback((wi: number, di: number, e: React.MouseEvent) => {
+    const dateStr = getDateStr(wi, di)
+    if (dateStr > todayStr) return
+    const rect = (e.currentTarget as HTMLElement).getBoundingClientRect()
+    const containerRect = containerRef.current?.getBoundingClientRect()
+    if (containerRect) {
+      setTooltip({
+        date: dateStr,
+        level: cells[wi][di],
+        x: rect.left - containerRect.left + rect.width / 2,
+        y: rect.top - containerRect.top,
+      })
+    }
+  }, [cells, getDateStr, todayStr])
+
+  const handleMouseLeave = useCallback(() => {
+    setTooltip(null)
+  }, [])
 
   return (
     <Card className="border-border/60 p-6">
@@ -100,14 +120,6 @@ export function ContributionGraph({
             Scans, reviews, fixes & challenges — last {weeks} weeks
           </p>
         </div>
-        <div className="flex items-center gap-3 text-xs text-muted-foreground">
-          {totalActiveDays > 0 && (
-            <span className="flex items-center gap-1">
-              <Calendar className="h-3.5 w-3.5" />
-              {totalActiveDays} active {totalActiveDays === 1 ? 'day' : 'days'}
-            </span>
-          )}
-        </div>
       </div>
 
       {!hasData ? (
@@ -118,117 +130,100 @@ export function ContributionGraph({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto w-full">
-          <div className="w-full">
-            <div className="flex gap-0.5">
-              <div className="flex flex-col gap-0.5 pr-2 pt-5">
-                {dayLabels.map((label, di) => (
-                  <div
-                    key={di}
-                    className="h-[13px] text-[10px] leading-[13px] text-muted-foreground/70"
-                    style={{ visibility: di % 2 === 1 ? 'visible' : 'hidden' }}
-                  >
-                    {label}
-                  </div>
-                ))}
-              </div>
-
-              <div>
-                <div className="flex gap-0.5 mb-1">
-                  {monthLabels.map(({ label, colIndex }) => (
-                    <div
-                      key={`${label}-${colIndex}`}
-                      className="text-[10px] text-muted-foreground/70 leading-[13px]"
-                      style={{
-                        marginLeft: colIndex === 0 ? 0 : undefined,
-                        minWidth: colIndex === 0 ? undefined : '20px',
-                        width: colIndex === 0 ? 'fit-content' : undefined,
-                      }}
+        <div className="overflow-x-auto w-full pb-2">
+          <div ref={containerRef} className="relative inline-block min-w-max">
+            <table style={{ borderSpacing: '3px', borderCollapse: 'separate' }}>
+              <thead>
+                <tr>
+                  <td style={{ width: '28px' }} />
+                  {monthLabels.map(({ label, colSpan }) => (
+                    <th
+                      key={label}
+                      colSpan={colSpan}
+                      className="text-[10px] text-muted-foreground/70 font-normal text-left"
+                      style={{ padding: 0, height: '14px', lineHeight: '14px' }}
                     >
                       {label}
-                    </div>
+                    </th>
                   ))}
-                </div>
-
-                <div className="flex gap-0.5">
-                  {cells.map((week, wi) => (
-                    <div key={wi} className="flex flex-col gap-0.5">
-                      {week.map((level, di) => {
-                        const dateStr = getDateStr(wi, di)
-                        const data = tooltipData[dateStr]
-                        const isToday = dateStr === todayStr
-                        const isFuture = dateStr > todayStr
-                        const isHovered = hoveredCell?.date === dateStr
-
-                        return (
-                          <Tooltip key={di}>
-                            <TooltipTrigger asChild>
-                              <div
-                                onMouseEnter={() => !isFuture && setHoveredCell({ date: dateStr, level })}
-                                onMouseLeave={() => setHoveredCell(null)}
-                                className={`
-                                  h-[13px] w-[13px] rounded-[3px] cursor-default transition-all duration-100
-                                  ${isFuture ? 'bg-muted/20 opacity-30' : LEVEL_COLORS[level]}
-                                  ${!isFuture && LEVEL_HOVER[level]}
-                                  ${isToday ? 'ring-1.5 ring-primary ring-offset-1 ring-offset-background' : ''}
-                                  ${isHovered && !isFuture ? 'ring-1.5 ring-foreground/30 ring-offset-0' : ''}
-                                `}
-                              />
-                            </TooltipTrigger>
-                            {data && !isFuture && (
-                              <TooltipContent side="top" className="flex flex-col gap-1 p-3">
-                                <span className="font-medium text-foreground">{formatDate(dateStr)}</span>
-                                {data.count === 0 ? (
-                                  <span className="text-xs text-muted-foreground">No contributions</span>
-                                ) : (
-                                  <>
-                                    <span className="text-xs text-muted-foreground">
-                                      {pluralize(data.count, 'contribution')}
-                                    </span>
-                                    <div className="flex flex-col gap-0.5 mt-1">
-                                      {data.types.scan > 0 && (
-                                        <span className="text-xs text-muted-foreground">
-                                          · {pluralize(data.types.scan, 'scan')}
-                                        </span>
-                                      )}
-                                      {data.types.review > 0 && (
-                                        <span className="text-xs text-muted-foreground">
-                                          · {pluralize(data.types.review, 'review')}
-                                        </span>
-                                      )}
-                                      {data.types.fix > 0 && (
-                                        <span className="text-xs text-muted-foreground">
-                                          · {pluralize(data.types.fix, 'fix')}
-                                        </span>
-                                      )}
-                                      {data.types.challenge > 0 && (
-                                        <span className="text-xs text-muted-foreground">
-                                          · {pluralize(data.types.challenge, 'challenge')}
-                                        </span>
-                                      )}
-                                    </div>
-                                  </>
-                                )}
-                              </TooltipContent>
-                            )}
-                          </Tooltip>
-                        )
-                      })}
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-
-            <div className="mt-3 flex items-center justify-end gap-2 text-xs text-muted-foreground">
-              <span>Less</span>
-              <div className="flex gap-0.5">
-                {LEVEL_COLORS.map((color, i) => (
-                  <div key={i} className={`h-[13px] w-[13px] rounded-[3px] ${color}`} />
+                </tr>
+              </thead>
+              <tbody>
+                {dayLabels.map((label, di) => (
+                  <tr key={label}>
+                    <td
+                      className="text-[10px] text-muted-foreground/70"
+                      style={{
+                        width: '28px',
+                        height: '10px',
+                        padding: 0,
+                        lineHeight: '10px',
+                        verticalAlign: 'middle',
+                      }}
+                    >
+                      {di % 2 === 1 ? label : ''}
+                    </td>
+                    {cells.map((week, wi) => {
+                      const level = week[di]
+                      const dateStr = getDateStr(wi, di)
+                      const isToday = dateStr === todayStr
+                      const isFuture = dateStr > todayStr
+                      return (
+                        <td
+                          key={`${wi}-${di}`}
+                          onMouseEnter={(e) => handleMouseEnter(wi, di, e)}
+                          onMouseLeave={handleMouseLeave}
+                          style={{
+                            width: '10px',
+                            height: '10px',
+                            padding: 0,
+                            borderRadius: '2px',
+                          }}
+                          className={[
+                            isFuture ? 'bg-muted/20 opacity-30' : LEVEL_COLORS[level],
+                            isToday ? 'ring-[1.5px] ring-primary ring-offset-[0.5px] ring-offset-background' : '',
+                            !isFuture ? 'cursor-pointer' : '',
+                          ].filter(Boolean).join(' ')}
+                        />
+                      )
+                    })}
+                  </tr>
                 ))}
-              </div>
+              </tbody>
+            </table>
+
+            <div className="mt-2 flex items-center justify-end gap-[3px] text-[10px] text-muted-foreground">
+              <span>Less</span>
+              {LEVEL_COLORS.map((color, i) => (
+                <div
+                  key={i}
+                  className={`${color} rounded-[2px]`}
+                  style={{ width: '10px', height: '10px' }}
+                />
+              ))}
               <span>More</span>
             </div>
+
+            {tooltip && (
+              <div
+                className="absolute z-50 bg-popover border border-border/60 rounded-md shadow-lg px-3 py-2 text-xs pointer-events-none"
+                style={{
+                  left: tooltip.x,
+                  top: tooltip.y - 4,
+                  transform: 'translate(-50%, -100%)',
+                }}
+              >
+                <div className="font-medium text-foreground">{formatDate(tooltip.date)}</div>
+                <div className="text-muted-foreground">
+                  {(() => {
+                    const data = tooltipData[tooltip.date]
+                    return data
+                      ? pluralize(data.count, 'contribution')
+                      : 'No contributions'
+                  })()}
+                </div>
+              </div>
+            )}
           </div>
         </div>
       )}
