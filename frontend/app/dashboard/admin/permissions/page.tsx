@@ -40,6 +40,7 @@ export default function PermissionsPage() {
   const [filter, setFilter] = useState('')
   const [lockedPages, setLockedPages] = useState<string[]>([])
   const [locksLoading, setLocksLoading] = useState(false)
+  const [lockFilter, setLockFilter] = useState('')
 
   const fetchRoles = useCallback(async () => {
     setLoading(true)
@@ -310,6 +311,8 @@ export default function PermissionsPage() {
               <Loader2 className="h-4 w-4 animate-spin mr-2" />Loading page locks...
             </div>
           ) : (
+            <>
+              <div className="relative max-w-sm"><Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" /><Input placeholder="Filter pages..." value={lockFilter} onChange={e => setLockFilter(e.target.value)} className="pl-7 h-8 text-xs" /></div>
             <Card className="overflow-hidden border-border/60">
               <div className="max-h-[60vh] overflow-y-auto">
                 <table className="w-full text-xs">
@@ -322,7 +325,11 @@ export default function PermissionsPage() {
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/20">
-                    {pageLockRoutes.map(p => {
+                    {pageLockRoutes.filter(p => {
+                      if (!lockFilter) return true
+                      const q = lockFilter.toLowerCase()
+                      return (p.label || '').toLowerCase().includes(q) || p.route.toLowerCase().includes(q)
+                    }).map(p => {
                       const isLocked = lockedPages.some(r => r === p.route)
                       return (
                         <tr key={p.route} className={`hover:bg-muted/20 transition-colors ${isLocked ? 'bg-orange-500/5' : ''}`}>
@@ -357,6 +364,7 @@ export default function PermissionsPage() {
                 </table>
               </div>
             </Card>
+            </>
           )}
         </TabsContent>
       </Tabs>
