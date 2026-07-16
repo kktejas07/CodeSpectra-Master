@@ -120,9 +120,16 @@ export default function PermissionsPage() {
     if (!currentRole && !reseed) return
     setSaving(true)
     try {
-      const permissions = reseed ? undefined : (currentRole!.permissions.map(p => ({
-        ...p, actions: editing[p.resource] !== undefined ? editing[p.resource] : p.actions
-      })))
+      const permissions = reseed ? undefined : allResources.map(r => {
+        const stored = currentRole!.permissions.find(p => p.resource === r.resource)
+        const edited = editing[r.resource] !== undefined ? editing[r.resource] : null
+        return {
+          resource: r.resource,
+          resourceType: r.resourceType,
+          label: r.label,
+          actions: edited !== null ? edited : (stored?.actions || []),
+        }
+      })
       const body = reseed
         ? { reseed: true }
         : { ...currentRole, permissions }
