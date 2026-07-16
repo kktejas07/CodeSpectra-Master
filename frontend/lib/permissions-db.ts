@@ -150,6 +150,18 @@ export function getDefaultRolePermissions(role: UserRole): ResourcePermission[] 
         })),
       ]
 
+    case 'judge':
+      return [
+        // Same user pages (ALL_USER_ROUTES includes /dashboard/judge)
+        ...pageResources.filter(r => ALL_USER_ROUTES.includes(r.resource))
+          .map(r => ({ ...r, actions: ['read'] as PermissionAction[] })),
+        // Basic entity access (same as user)
+        ...entityResources.filter(r =>
+          ['problems', 'challenges', 'tracks', 'certifications', 'scanner', 'ai', 'notifications', 'billing']
+            .some(e => r.resource === `entity:${e}`)
+        ).map(r => ({ ...r, actions: ['read'] as PermissionAction[] })),
+      ]
+
     case 'user':
     default:
       return [

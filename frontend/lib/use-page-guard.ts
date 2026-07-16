@@ -4,7 +4,7 @@ import { useEffect, useState, useCallback, useRef } from 'react'
 import { usePathname } from 'next/navigation'
 import { useRoleGate } from '@/lib/use-role-gate'
 import { getRequiredRoleForRoute } from '@/lib/page-permissions'
-import { isSuperAdmin, isAdmin, type UserRole } from '@/lib/rbac'
+import { isSuperAdmin, isAdmin, isJudge, type UserRole } from '@/lib/rbac'
 
 /** Shared cache for locked pages — avoids per-hook fetches */
 let cachedLockedPages: string[] | null = null
@@ -44,12 +44,13 @@ export function usePageGuard(
 
   const requiredRole = typeof routeOrRole === 'string' && routeOrRole.startsWith('/')
     ? getRequiredRoleForRoute(routeOrRole)
-    : routeOrRole as 'superadmin' | 'tenant_admin' | 'user'
+    : routeOrRole as 'superadmin' | 'tenant_admin' | 'judge' | 'user'
 
   const staticAllowed = gate.user && (() => {
     if (requiredRole === 'user') return true
     if (requiredRole === 'superadmin') return isSuperAdmin(gate.user.role)
     if (requiredRole === 'tenant_admin') return isAdmin(gate.user.role)
+    if (requiredRole === 'judge') return isJudge(gate.user.role)
     return false
   })()
 

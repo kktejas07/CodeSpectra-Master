@@ -19,14 +19,15 @@ export async function POST() {
     const col = db.collection('roles')
     const now = new Date().toISOString()
 
-    const roles: UserRole[] = ['superadmin', 'tenant_admin', 'user']
+    const roles: UserRole[] = ['superadmin', 'tenant_admin', 'judge', 'user']
     const results: string[] = []
 
     for (const role of roles) {
       const permissions = getDefaultRolePermissions(role)
       const roleName =
         role === 'superadmin' ? 'Platform Admin' :
-        role === 'tenant_admin' ? 'Organization Admin' : 'User'
+        role === 'tenant_admin' ? 'Organization Admin' :
+        role === 'judge' ? 'Judge' : 'User'
 
       const existing = await col.findOne({ role })
       if (existing) {

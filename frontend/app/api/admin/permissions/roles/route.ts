@@ -18,10 +18,10 @@ export async function GET() {
 
     if (roles.length === 0) {
       const now = new Date().toISOString()
-      const systemRoles: UserRole[] = ['superadmin', 'tenant_admin', 'user']
+      const systemRoles: UserRole[] = ['superadmin', 'tenant_admin', 'judge', 'user']
       const docs = systemRoles.map(role => ({
         role,
-        name: role === 'superadmin' ? 'Platform Admin' : role === 'tenant_admin' ? 'Organization Admin' : 'User',
+        name: role === 'superadmin' ? 'Platform Admin' : role === 'tenant_admin' ? 'Organization Admin' : role === 'judge' ? 'Judge' : 'User',
         description: `Default ${role} role`,
         permissions: getDefaultRolePermissions(role),
         isSystem: true, createdAt: now, updatedAt: now,
@@ -62,10 +62,10 @@ export async function POST(request: Request) {
 
     // Reseed: regenerate all system roles from defaults
     if (body.reseed) {
-      const systemRoles: UserRole[] = ['superadmin', 'tenant_admin', 'user']
+      const systemRoles: UserRole[] = ['superadmin', 'tenant_admin', 'judge', 'user']
       for (const role of systemRoles) {
         const defaults = getDefaultRolePermissions(role)
-        const name = role === 'superadmin' ? 'Platform Admin' : role === 'tenant_admin' ? 'Organization Admin' : 'User'
+        const name = role === 'superadmin' ? 'Platform Admin' : role === 'tenant_admin' ? 'Organization Admin' : role === 'judge' ? 'Judge' : 'User'
         await col.updateOne({ role }, { $set: { permissions: defaults, name, description: `Default ${role} role`, updatedAt: now } })
       }
       invalidatePermissionCache()
@@ -77,17 +77,16 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'role and name are required' }, { status: 400 })
     }
 
-    const allResources = discoverAllResources()
     const existingPerms = body.permissions || []
-    const mergedPermissions = allResources.map(r => {
-      const existing = existingPerms.find((p: any) => p.resource === r.resource)
-      return existing || { resource: r.resource, resourceType: r.resourceType, label: r.label, actions: [] }
-    })
+    // Only save submitted permissions that have at least one action.
+    // Resources not in the submission won't appear — the admin UI shows them as "new" on next load.
+    // This prevents the old bug where every save wrote ALL resources (with [] for unchecked).
+    const mergedPermissions = existingPerms.filter((p: any) => p.actions.length > 0)
 
     const doc = {
       role: body.role, name: body.name, description: body.description || '',
       permissions: mergedPermissions,
-      isSystem: ['superadmin', 'tenant_admin', 'user'].includes(body.role),
+      isSystem: ['superadmin', 'tenant_admin', 'judge', 'user'].includes(body.role),
       updatedAt: now,
     }
 
