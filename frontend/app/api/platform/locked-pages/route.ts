@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { getAPIUser } from '@/lib/route-auth'
 import { mergeGeneralPlatformSettings } from '@/lib/platform-general-settings'
 import { getMongoDb } from '@/lib/mongodb'
 import type { Collection } from 'mongodb'
@@ -17,8 +18,21 @@ export async function GET() {
     const col = db.collection<PlatformSettingDoc>('platform_settings')
     const doc = await col.findOne({ key: 'general' })
     const settings = mergeGeneralPlatformSettings(doc?.value)
-    return NextResponse.json({ locked_pages: settings.locked_pages })
+
+    let routes: string[] = []
+    try {
+      const user = await getAPIUser()
+      if (user) {
+        const roleDoc = await db.collection('roles').findOne({ role: user.role })
+        const perms = (roleDoc?.permissions || []) as Array<{ resource: string; actions: string[] }>
+        routes = perms
+          .filter(p => p.resource.startsWith('/dashboard/') && (p.actions.includes('read') || p.actions.includes('manage')))
+          .map(p => p.resource)
+      }
+    } catch {}
+
+    return NextResponse.json({ locked_pages: settings.locked_pages, routes })
   } catch {
-    return NextResponse.json({ locked_pages: [] })
+    return NextResponse.json({ locked_pages: [], routes: [] })
   }
 }
