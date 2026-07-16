@@ -17,6 +17,7 @@ import {
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useLockedFeatures } from '@/lib/use-page-guard'
 import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { AnalysisPanel } from '@/components/ai/analysis-panel'
@@ -112,6 +113,10 @@ export default function ProblemDetailPage() {
   const [language, setLanguage] = useState<string>('python')
   const [source, setSource] = useState<string>('')
   const [tab, setTab] = useState<'samples' | 'results' | 'console' | 'analysis'>('samples')
+  const { lockedFeatures } = useLockedFeatures()
+  const resultsLocked = lockedFeatures.includes('problems:results')
+  const consoleLocked = lockedFeatures.includes('problems:console')
+  const analysisLocked = lockedFeatures.includes('problems:analysis')
   const [running, setRunning] = useState<'run' | 'submit' | null>(null)
   const [result, setResult] = useState<RunResponse | null>(null)
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null)
@@ -450,30 +455,36 @@ export default function ProblemDetailPage() {
               <TabBtn current={tab} value="samples" onClick={setTab}>
                 Sample Tests
               </TabBtn>
+              {!resultsLocked && (
               <TabBtn current={tab} value="results" onClick={setTab}>
                 {result ? <ResultPill r={result} /> : 'Results'}
               </TabBtn>
+              )}
+              {!consoleLocked && (
               <TabBtn current={tab} value="console" onClick={setTab}>
                 Console
               </TabBtn>
+              )}
+              {!analysisLocked && (
               <TabBtn current={tab} value="analysis" onClick={setTab}>
                 <span className="inline-flex items-center gap-1">
                   <Sparkles className="h-3 w-3 text-primary" /> AI Analysis
                 </span>
               </TabBtn>
+              )}
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {tab === 'samples' && (
                 <SampleTests cases={problem.test_cases} />
               )}
-              {tab === 'results' && <ResultsPanel result={result} running={running !== null} />}
-              {tab === 'console' && (
+              {tab === 'results' && !resultsLocked && <ResultsPanel result={result} running={running !== null} />}
+              {tab === 'console' && !consoleLocked && (
                 <pre className={isDark ? "text-xs font-mono text-green-400 bg-black/50 p-2 rounded whitespace-pre-wrap" : "text-xs font-mono text-green-800 bg-gray-100 p-2 rounded whitespace-pre-wrap"}>
                   {result?.stderr_excerpt ||
                     '// stdout/stderr from your last run will appear here'}
                 </pre>
               )}
-              {tab === 'analysis' && (
+              {tab === 'analysis' && !analysisLocked && (
                 <AnalysisPanel analysis={analysis} loading={analysisLoading} hasSubmitted={!!result && result.mode === 'submit'} />
               )}
             </div>

@@ -6,30 +6,42 @@ import { useRoleGate } from '@/lib/use-role-gate'
 import { getRequiredRoleForRoute } from '@/lib/page-permissions'
 import { isSuperAdmin, isAdmin, isJudge, type UserRole } from '@/lib/rbac'
 
-/** Shared cache for locked pages — avoids per-hook fetches */
-let cachedLockedPages: string[] | null = null
-let fetchPromise: Promise<string[]> | null = null
+/** Shared cache for locked pages & features — avoids per-hook fetches */
+interface LockedData { locked_pages: string[]; locked_features: string[] }
+let cachedLockedData: LockedData | null = null
+let fetchPromise: Promise<LockedData> | null = null
 
-function fetchLockedPages(): Promise<string[]> {
-  if (cachedLockedPages) return Promise.resolve(cachedLockedPages)
+function fetchLockedData(): Promise<LockedData> {
+  if (cachedLockedData) return Promise.resolve(cachedLockedData)
   if (fetchPromise) return fetchPromise
   fetchPromise = fetch('/api/platform/locked-pages')
-    .then(r => r.ok ? r.json() : { locked_pages: [] })
+    .then(r => r.ok ? r.json() : { locked_pages: [], locked_features: [] })
     .then(data => {
-      const pages = Array.isArray(data?.locked_pages) ? data.locked_pages : []
-      cachedLockedPages = pages
-      return pages
+      const locked: LockedData = {
+        locked_pages: Array.isArray(data?.locked_pages) ? data.locked_pages : [],
+        locked_features: Array.isArray(data?.locked_features) ? data.locked_features : [],
+      }
+      cachedLockedData = locked
+      return locked
     })
     .catch(() => {
-      cachedLockedPages = []
-      return []
+      cachedLockedData = { locked_pages: [], locked_features: [] }
+      return cachedLockedData
     })
   return fetchPromise
 }
 
+function fetchLockedPages(): Promise<string[]> {
+  return fetchLockedData().then(d => d.locked_pages)
+}
+
+function fetchLockedFeatures(): Promise<string[]> {
+  return fetchLockedData().then(d => d.locked_features)
+}
+
 /** Invalidate cache when settings are updated */
 export function invalidateLockedPagesCache() {
-  cachedLockedPages = null
+  cachedLockedData = null
   fetchPromise = null
 }
 
@@ -115,5 +127,60 @@ export function usePageGuard(
     locked: !!locked,
     user: gate.user,
     loading,
+  }
+}
+
+/**
+ * Check whether a specific sub-page feature is locked (e.g. "scanner:github").
+ * Superadmins bypass all feature locks.
+ */
+export function useFeatureLock(featureId: string) {
+  const gate = useRoleGate({ require: 'auth' })
+  const [lockedFeatures, setLockedFeatures] = useState<string[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchLockedFeatures().then(features => {
+      if (!cancelled) {
+        setLockedFeatures(features)
+        setLoaded(true)
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const locked = loaded && gate.ready
+    && !isSuperAdmin(gate.user?.role ?? 'user')
+    && lockedFeatures.includes(featureId)
+
+  return { locked, loaded }
+}
+
+/**
+ * Returns the full list of locked feature IDs (for multi-check in a single page).
+ * Superadmins get an empty list (bypass).
+ */
+export function useLockedFeatures(): { lockedFeatures: string[]; loaded: boolean } {
+  const gate = useRoleGate({ require: 'auth' })
+  const [features, setFeatures] = useState<string[]>([])
+  const [loaded, setLoaded] = useState(false)
+
+  useEffect(() => {
+    let cancelled = false
+    fetchLockedFeatures().then(f => {
+      if (!cancelled) {
+        setFeatures(f)
+        setLoaded(true)
+      }
+    })
+    return () => { cancelled = true }
+  }, [])
+
+  const isSuper = gate.ready && isSuperAdmin(gate.user?.role ?? 'user')
+
+  return {
+    lockedFeatures: loaded && !isSuper ? features : [],
+    loaded,
   }
 }

@@ -6,18 +6,18 @@ import type {
 
 const LANG_SIGNATURES: [string, RegExp][] = [
   ['typescript', /\b(interface|type |enum |namespace|declare |as |readonly|keyof|import .* from|export |&\b)/],
-  ['python', /\b(def |import |from |elif |self\.|__init__|lambda |yield |async def|@.*\))/],
-  ['javascript', /\b(const |let |var |function |=>|require\(|module\.exports|import .* from)/],
+  ['python', /\b(def |import |from |elif |self\.|__init__|lambda |yield |async def|class |with |as |raise |assert |pass |print\(|input\(|range\(|len\(|True|False|None)/],
+  ['javascript', /\b(const |let |var |function |=>|require\(|module\.exports|import .* from|console\.|Math\.|async |await |class |new |null|undefined|true|false|typeof|instanceof)/],
   ['java', /\b(public |private |protected |void |static |class |extends |implements |new )/],
-  ['go', /\b(func |package |import \(|defer |chan |:=\b|go (func|select))/],
-  ['rust', /\b(fn |let mut|impl |struct |enum |match |-> |::|pub fn|unwrap\(\)|&'|!\b)/],
+  ['go', /\b(func |package |import \(|defer |chan |:=\b|go (func|select)|fmt\.|err |nil |range |select )/],
+  ['rust', /\b(fn |let mut|impl |struct |enum |match |-> |::|pub fn|unwrap\(\)|&'|!\b|println!|let |use |Some\(|None|Ok\(|Err\()/],
   ['cpp', /\b(#include |std::|cout|cin|template |<.*>|virtual |override |nullptr)/],
   ['c', /\b(#include |printf|scanf|main\(|malloc|struct |typedef|#define)/],
   ['ruby', /\b(def |end$|puts |require |attr_|#.*|\@@|@@)/],
   ['php', /<\?php|\$\w+\s*=|->|::/],
-  ['swift', /\b(func |guard |let |var |struct |enum |import Foundation|@.*\b)/],
-  ['kotlin', /\b(fun |val |var |data class|object |companion |sealed |::)/],
-  ['csharp', /\b(public class|private |protected |void |async Task|namespace |using |=>|\?.|\?\:)/],
+  ['swift', /\b(func |guard |let |var |struct |enum |import Foundation|print\(|import |nil |self\.|init\(|extension |protocol )/],
+  ['kotlin', /\b(fun |val |var |data class|object |companion |sealed |::|println|print\(|import |package |override |when |is |as )/],
+  ['csharp', /\b(public class|private |protected |void |async Task|namespace |using |=>|\?.|\?\:|Console\.|WriteLine|var |class |interface |record |get;|set;)/],
   ['sql', /\b(SELECT |FROM |WHERE |INSERT |UPDATE |DELETE |CREATE TABLE|DROP |JOIN |GROUP BY)/i],
 ]
 
@@ -63,10 +63,11 @@ function isLikelyCode(code: string): number {
   const semicolons = (code.match(/;/g) || []).length
   const arrows = (code.match(/=>|->/g) || []).length
   const blockColons = (code.match(/:\s*(?:\n|$)/g) || []).length
+  const quotePairs = (code.match(/['"`]/g) || []).length / 2
 
   const structureScore = Math.min(
-    3.5,
-    blockPairs * 1.0 + parenCalls * 0.6 + semicolons * 0.4 + arrows * 0.6 + blockColons * 0.6
+    5.0,
+    blockPairs * 1.0 + parenCalls * 1.5 + semicolons * 0.4 + arrows * 0.6 + blockColons * 0.6 + quotePairs * 0.3
   )
 
   const operators = (code.match(/[=<>!&|+\-*/%^~]/g) || []).length
@@ -358,12 +359,12 @@ function estimateTestCoverage(code: string): number {
 
 export function analyzeCodeLocally(code: string, language: string): RawAnalysisResult {
   const startTime = Date.now()
-  const lang = detectLanguage(language)
+  const lang = detectLanguage(code, language)
   const issues: RawAnalyzerIssue[] = []
   const suggestions: RawAnalyzerSuggestion[] = []
 
   const plausibility = isLikelyCode(code)
-  const isNotCode = plausibility < 3.0
+  const isNotCode = plausibility < 1.2
 
   if (isNotCode) {
     return {

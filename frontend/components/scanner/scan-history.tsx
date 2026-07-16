@@ -68,9 +68,9 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete }: ScanHisto
             key={scan.id}
             className="bg-card/30 border border-border p-4 hover:border-primary/50 transition"
           >
-            <div className="flex items-center justify-between gap-4">
+            <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
               {/* Scan Info */}
-              <div className="flex-1 space-y-1">
+              <div className="flex-1 space-y-1 w-full sm:w-auto">
                 <div className="flex items-center gap-2">
                   <p className="font-medium text-foreground">{scan.target}</p>
                   <Badge variant="outline" className="text-xs">
@@ -88,7 +88,7 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete }: ScanHisto
               </div>
 
               {/* Metrics */}
-              <div className="flex items-center gap-4">
+              <div className="flex items-center gap-4 flex-wrap">
                 <div className="text-right space-y-1">
                   <Badge
                     className={`${getQualityColor(scan.quality)} border text-xs font-semibold`}

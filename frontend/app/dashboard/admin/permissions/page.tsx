@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useMemo, useCallback } from 'react'
+import { useEffect, useState, useMemo, useCallback, Fragment } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -11,12 +11,13 @@ import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/lib/toast-context'
 import {
   Shield, Search, Loader2, CheckCircle2, Database, RefreshCw,
-  Save, Plus, Trash2, Users, Lock, Key, Unlock
+  Save, Plus, Trash2, Users, Lock, Key, Unlock, ChevronRight, ChevronDown
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { type ResourcePermission, type PermissionAction } from '@/lib/permissions-db'
 import { buildPermissionMatrix, ROUTE_LABELS } from '@/lib/page-permissions'
+import { getAllFeatureLocks } from '@/lib/feature-locks'
 
 interface RoleData {
   _id?: string; role: string; name: string; description?: string
@@ -39,8 +40,10 @@ export default function PermissionsPage() {
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('')
   const [lockedPages, setLockedPages] = useState<string[]>([])
+  const [lockedFeatures, setLockedFeatures] = useState<string[]>([])
   const [locksLoading, setLocksLoading] = useState(false)
   const [lockFilter, setLockFilter] = useState('')
+  const [expandedRoutes, setExpandedRoutes] = useState<Set<string>>(new Set())
 
   const fetchRoles = useCallback(async () => {
     setLoading(true)
@@ -71,6 +74,7 @@ export default function PermissionsPage() {
       if (res.ok) {
         const data = await res.json()
         setLockedPages(Array.isArray(data?.locked_pages) ? data.locked_pages : [])
+        setLockedFeatures(Array.isArray(data?.locked_features) ? data.locked_features : [])
       }
     } catch { /* ignore */ }
     finally { setLocksLoading(false) }
@@ -102,7 +106,37 @@ export default function PermissionsPage() {
     }
   }, [lockedPages, addToast])
 
+  const toggleFeatureLock = useCallback(async (featureId: string) => {
+    const isLocked = lockedFeatures.includes(featureId)
+    const next = isLocked
+      ? lockedFeatures.filter(f => f !== featureId)
+      : [...lockedFeatures, featureId]
+    setLockedFeatures(next)
+    try {
+      const res = await csrfFetch('/api/admin/platform-settings', {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked_features: next }),
+      })
+      if (!res.ok) {
+        setLockedFeatures(lockedFeatures)
+      }
+    } catch {
+      setLockedFeatures(lockedFeatures)
+    }
+  }, [lockedFeatures])
+
+  const allFeatures = useMemo(() => getAllFeatureLocks(), [])
+
   const pageLockRoutes = useMemo(() => buildPermissionMatrix(), [])
+
+  const treeData = useMemo(() => {
+    const featuresByRoute: Record<string, typeof allFeatures> = {}
+    for (const f of allFeatures) {
+      (featuresByRoute[f.parentRoute] ??= []).push(f)
+    }
+    return pageLockRoutes.map(p => ({ ...p, subFeatures: featuresByRoute[p.route] || [] }))
+  }, [pageLockRoutes, allFeatures])
 
   const currentRole = useMemo(() => roles.find(r => r.role === selectedRole), [roles, selectedRole])
 
@@ -302,7 +336,8 @@ export default function PermissionsPage() {
           <Card className="p-4 border-amber-500/20 bg-amber-500/5 flex items-center gap-2">
             <Lock className="h-4 w-4 text-amber-600" />
             <span className="text-sm text-amber-700">
-              Lock a page to show a &quot;Coming Soon&quot; screen to all non-superadmin users. Locked pages remain visible in the sidebar with a lock icon.
+              Lock a page to show a &quot;Coming Soon&quot; screen to all non-superadmin users.
+              Pages with sub-features (like scanner modes, tabs) can be expanded to lock individual features.
             </span>
           </Card>
 
@@ -318,46 +353,99 @@ export default function PermissionsPage() {
                 <table className="w-full text-xs">
                   <thead className="sticky top-0 bg-muted/60 z-10">
                     <tr className="border-b border-border/60">
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[45%]">Page</th>
-                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[20%]">Route</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[45%]">Page / Feature</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[20%]">Route / ID</th>
                       <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[15%]">Required Role</th>
                       <th className="px-3 py-2 text-center font-medium text-muted-foreground w-[20%]">Status</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-border/20">
-                    {pageLockRoutes.filter(p => {
+                    {treeData.filter(p => {
                       if (!lockFilter) return true
                       const q = lockFilter.toLowerCase()
-                      return (p.label || '').toLowerCase().includes(q) || p.route.toLowerCase().includes(q)
+                      const matchRoute = (p.label || '').toLowerCase().includes(q) || p.route.toLowerCase().includes(q)
+                      const matchFeature = p.subFeatures.some(f => f.label.toLowerCase().includes(q) || f.id.toLowerCase().includes(q))
+                      return matchRoute || matchFeature
                     }).map(p => {
-                      const isLocked = lockedPages.some(r => r === p.route)
+                      const isRouteLocked = lockedPages.some(r => r === p.route)
+                      const hasSubs = p.subFeatures.length > 0
+                      const expanded = expandedRoutes.has(p.route)
                       return (
-                        <tr key={p.route} className={`hover:bg-muted/20 transition-colors ${isLocked ? 'bg-orange-500/5' : ''}`}>
-                          <td className="px-3 py-2">
-                            <span className="font-medium text-foreground text-[11px]">{p.label}</span>
-                          </td>
-                          <td className="px-3 py-2">
-                            <code className="text-[10px] text-muted-foreground bg-muted px-1 rounded">{p.route}</code>
-                          </td>
-                          <td className="px-3 py-2">
-                            <Badge variant="outline" className={`text-[9px] ${ROLE_COLORS[p.requiredRole] || ''}`}>
-                              {p.requiredRole}
-                            </Badge>
-                          </td>
-                          <td className="px-3 py-2 text-center">
-                            <button
-                              onClick={() => togglePageLock(p.route)}
-                              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-medium transition-all ${
-                                isLocked
-                                  ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400'
-                                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
-                              }`}
-                            >
-                              {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
-                              {isLocked ? 'Locked' : 'Unlocked'}
-                            </button>
-                          </td>
-                        </tr>
+                        <Fragment key={p.route}>
+                          <tr className={`hover:bg-muted/20 transition-colors ${isRouteLocked ? 'bg-orange-500/5' : ''}`}>
+                            <td className="px-3 py-2">
+                              {hasSubs ? (
+                                <button
+                                  onClick={() => {
+                                    const next = new Set(expandedRoutes)
+                                    if (expanded) next.delete(p.route)
+                                    else next.add(p.route)
+                                    setExpandedRoutes(next)
+                                  }}
+                                  className="inline-flex items-center gap-1.5 text-foreground"
+                                >
+                                  {expanded ? <ChevronDown className="h-3 w-3 shrink-0" /> : <ChevronRight className="h-3 w-3 shrink-0" />}
+                                  <span className="font-medium text-[11px]">{p.label}</span>
+                                </button>
+                              ) : (
+                                <span className="font-medium text-foreground text-[11px] ml-5">{p.label}</span>
+                              )}
+                            </td>
+                            <td className="px-3 py-2">
+                              <code className="text-[10px] text-muted-foreground bg-muted px-1 rounded">{p.route}</code>
+                            </td>
+                            <td className="px-3 py-2">
+                              <Badge variant="outline" className={`text-[9px] ${ROLE_COLORS[p.requiredRole] || ''}`}>
+                                {p.requiredRole}
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2 text-center">
+                              <button
+                                onClick={() => togglePageLock(p.route)}
+                                className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-medium transition-all ${
+                                  isRouteLocked
+                                    ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400'
+                                    : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                                }`}
+                              >
+                                {isRouteLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                                {isRouteLocked ? 'Locked' : 'Unlocked'}
+                              </button>
+                            </td>
+                          </tr>
+                          {expanded && hasSubs && p.subFeatures.map(f => {
+                            const isFeatureLocked = lockedFeatures.includes(f.id)
+                            return (
+                              <tr key={f.id} className={`${isFeatureLocked ? 'bg-orange-500/5' : ''}`}>
+                                <td className="px-3 py-2 pl-8">
+                                  <div className="flex items-center gap-2">
+                                    <span className="text-muted-foreground/40 text-[10px]">└─</span>
+                                    <span className="text-[11px] text-foreground/80">{f.label}</span>
+                                  </div>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <code className="text-[10px] text-muted-foreground/60 bg-muted px-1 rounded">{f.id}</code>
+                                </td>
+                                <td className="px-3 py-2">
+                                  <span className="text-[9px] text-muted-foreground/50">—</span>
+                                </td>
+                                <td className="px-3 py-2 text-center">
+                                  <button
+                                    onClick={() => toggleFeatureLock(f.id)}
+                                    className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-medium transition-all ${
+                                      isFeatureLocked
+                                        ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400'
+                                        : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                                    }`}
+                                  >
+                                    {isFeatureLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                                    {isFeatureLocked ? 'Locked' : 'Unlocked'}
+                                  </button>
+                                </td>
+                              </tr>
+                            )
+                          })}
+                        </Fragment>
                       )
                     })}
                   </tbody>
@@ -367,6 +455,8 @@ export default function PermissionsPage() {
             </>
           )}
         </TabsContent>
+
+
       </Tabs>
     </div>
   )

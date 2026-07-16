@@ -21,6 +21,7 @@ import { ModelSelector } from '@/components/ai/model-selector'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useLockedFeatures } from '@/lib/use-page-guard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
@@ -67,6 +68,8 @@ export default function AgentPage() {
   const [busy, setBusy] = useState(false)
   const [maxSteps, setMaxSteps] = useState(3)
   const [activeTab, setActiveTab] = useState<'code' | 'log'>('code')
+  const { lockedFeatures } = useLockedFeatures()
+  const logLocked = lockedFeatures.includes('agent:log')
   const logRef = useRef<HTMLDivElement>(null)
 
   useEffect(() => {
@@ -235,6 +238,7 @@ export default function AgentPage() {
               label="Code"
               testid="tab-code"
             />
+            {!logLocked && (
             <TabButton
               active={activeTab === 'log'}
               onClick={() => setActiveTab('log')}
@@ -242,13 +246,14 @@ export default function AgentPage() {
               label="Steps"
               testid="tab-log"
             />
+            )}
             <span className="ml-auto text-[10px] text-muted-foreground py-2">
               <FileText className="inline h-3 w-3 mr-1" />
               workspace.{language}
             </span>
           </div>
 
-          {activeTab === 'code' ? (
+          {activeTab === 'code' || logLocked ? (
             <div className="flex-1 min-h-0">
               <Editor
                 height="100%"

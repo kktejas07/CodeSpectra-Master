@@ -31,8 +31,8 @@ export async function GET() {
       }
     } catch {}
 
-    return NextResponse.json({ locked_pages: settings.locked_pages, routes })
+    return NextResponse.json({ locked_pages: settings.locked_pages, locked_features: settings.locked_features ?? [], routes })
   } catch {
-    return NextResponse.json({ locked_pages: [], routes: [] })
+    return NextResponse.json({ locked_pages: [], locked_features: [], routes: [] })
   }
 }

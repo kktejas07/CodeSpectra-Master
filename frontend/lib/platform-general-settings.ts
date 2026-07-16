@@ -44,6 +44,8 @@ export type GeneralPlatformSettings = {
   admin_new_user_email_delivery: AdminNewUserEmailDelivery
   /** Routes that show a "Coming Soon" lock screen. Superadmin can toggle from /dashboard/admin/permissions. */
   locked_pages: string[]
+  /** Sub-page features that are locked (e.g. "scanner:github"). Superadmin can toggle from /dashboard/admin/permissions. */
+  locked_features: string[]
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -63,6 +65,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   platform_currency: 'USD',
   admin_new_user_email_delivery: 'resend_recovery',
   locked_pages: [],
+  locked_features: [],
 }
 
 export function mergeGeneralPlatformSettings(
@@ -75,6 +78,9 @@ export function mergeGeneralPlatformSettings(
   // Ensure locked_pages is always an array of strings
   if (!Array.isArray(merged.locked_pages)) {
     merged.locked_pages = []
+  }
+  if (!Array.isArray(merged.locked_features)) {
+    merged.locked_features = []
   }
   return merged as GeneralPlatformSettings
 }

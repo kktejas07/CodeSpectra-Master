@@ -61,6 +61,7 @@ export async function PATCH(request: Request) {
     'admin_new_user_email_delivery',
     'platform_currency',
     'locked_pages',
+    'locked_features',
   ] as const
 
   try {
@@ -86,7 +87,7 @@ export async function PATCH(request: Request) {
         next[k] = normalizeAdminNewUserEmailDelivery(v)
         continue
       }
-      if (k === 'locked_pages') {
+      if (k === 'locked_pages' || k === 'locked_features') {
         next[k] = Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === 'string') : []
         continue
       }

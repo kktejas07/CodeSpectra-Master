@@ -21,6 +21,7 @@ import {
 } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useLockedFeatures } from '@/lib/use-page-guard'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { INTERVIEW_PREP_QUESTIONS, type InterviewPrepQuestion } from '@/lib/interview-prep-data'
 
@@ -49,6 +50,8 @@ interface QuizQuestion {
 
 export default function InterviewPrepPage() {
   const addToast = useToast()
+  const { lockedFeatures } = useLockedFeatures()
+  const quizLocked = lockedFeatures.includes('interview-prep:quiz')
 
   const [tab, setTab] = useState<Tab>('browse')
   const [category, setCategory] = useState<typeof CATEGORIES[number]>('All')
@@ -171,14 +174,16 @@ export default function InterviewPrepPage() {
           <Lightbulb className="mr-1 h-4 w-4" />
           Browse Questions
         </Button>
-        <Button
-          variant={tab === 'quiz' ? 'default' : 'outline'}
-          size="sm"
-          onClick={() => setTab('quiz')}
-        >
-          <Zap className="mr-1 h-4 w-4" />
-          AI Quiz
-        </Button>
+        {!quizLocked && (
+          <Button
+            variant={tab === 'quiz' ? 'default' : 'outline'}
+            size="sm"
+            onClick={() => setTab('quiz')}
+          >
+            <Zap className="mr-1 h-4 w-4" />
+            AI Quiz
+          </Button>
+        )}
       </div>
 
       {/* ═══════════════════════ BROWSE TAB ═══════════════════════════════════════ */}
@@ -328,7 +333,7 @@ export default function InterviewPrepPage() {
       )}
 
       {/* ═══════════════════════ QUIZ TAB ════════════════════════════════════════ */}
-      {tab === 'quiz' && (
+      {tab === 'quiz' && !quizLocked && (
         <div className="space-y-4">
           {quizQuestions.length === 0 && !quizLoading && (
             <Card className="p-6 space-y-4">

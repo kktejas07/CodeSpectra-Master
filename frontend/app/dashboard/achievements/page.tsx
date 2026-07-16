@@ -3,6 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Trophy, Zap, BookOpen, Target, Flame, Code2, Loader, HelpCircle } from 'lucide-react'
 import { BadgesShowcase } from '@/components/achievements/badges-showcase'
+import { useLockedFeatures } from '@/lib/use-page-guard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -24,6 +25,8 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 export default function AchievementsPage() {
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
+  const { lockedFeatures } = useLockedFeatures()
+  const badgesLocked = lockedFeatures.includes('achievements:badges')
 
   useEffect(() => {
     fetch('/api/achievements')
@@ -78,7 +81,7 @@ export default function AchievementsPage() {
           <Tabs defaultValue="achievements">
             <TabsList>
               <TabsTrigger value="achievements">Achievements</TabsTrigger>
-              <TabsTrigger value="badges">Badges</TabsTrigger>
+              {!badgesLocked && <TabsTrigger value="badges">Badges</TabsTrigger>}
             </TabsList>
             <TabsContent value="achievements">
               <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
@@ -104,13 +107,13 @@ export default function AchievementsPage() {
                 })}
               </div>
             </TabsContent>
-            <TabsContent value="badges">
+            {!badgesLocked && <TabsContent value="badges">
               {userBadges.length > 0 ? (
                 <div>Badges: {userBadges.join(', ')}</div>
               ) : (
                 <p className="py-10 text-center text-sm text-muted-foreground">No badges earned yet.</p>
               )}
-            </TabsContent>
+            </TabsContent>}
           </Tabs>
         </>
       )}

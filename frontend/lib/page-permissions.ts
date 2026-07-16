@@ -135,7 +135,9 @@ export function getRequiredRoleForRoute(pathname: string): UserRole {
  */
 export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard': 'Overview',
+  '/dashboard/admin': 'Admin Overview',
   '/dashboard/admin/system': 'Operations Overview',
+  '/dashboard/admin/proctor': 'Proctor Management',
   '/dashboard/admin/users': 'Users Management',
   '/dashboard/admin/roles': 'User Assignments',
   '/dashboard/admin/analytics': 'Insights',
@@ -185,6 +187,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/prepare': 'Prepare',
   '/dashboard/profile': 'Profile',
   '/dashboard/settings': 'Settings',
+  '/dashboard/settings/ai': 'AI Settings',
   '/dashboard/billing': 'Billing',
   '/dashboard/notifications': 'Notifications',
   '/dashboard/notifications/preferences': 'Notification Preferences',

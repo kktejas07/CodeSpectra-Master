@@ -6,8 +6,12 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Play, Download, Volume2, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { useLockedFeatures } from '@/lib/use-page-guard'
 
 export default function InterviewFeedbackPage() {
+  const { lockedFeatures } = useLockedFeatures()
+  const chatLocked = lockedFeatures.includes('interviews/feedback:chat')
+  const analysisLocked = lockedFeatures.includes('interviews/feedback:analysis')
   const [audioTime, setAudioTime] = useState('00:00')
   const [playSpeed, setPlaySpeed] = useState('1x')
 
@@ -87,10 +91,10 @@ export default function InterviewFeedbackPage() {
 
       {/* Tabs for different content */}
       <Tabs defaultValue="audio" className="w-full">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full" style={{ gridTemplateColumns: `${1 + (chatLocked ? 0 : 1) + (analysisLocked ? 0 : 1)}fr` }}>
           <TabsTrigger value="audio">Audio Transcript</TabsTrigger>
-          <TabsTrigger value="chat">Chat Transcript</TabsTrigger>
-          <TabsTrigger value="analysis">Analysis</TabsTrigger>
+          {!chatLocked && <TabsTrigger value="chat">Chat Transcript</TabsTrigger>}
+          {!analysisLocked && <TabsTrigger value="analysis">Analysis</TabsTrigger>}
         </TabsList>
 
         {/* Audio Transcripts Tab */}
@@ -149,7 +153,7 @@ export default function InterviewFeedbackPage() {
         </TabsContent>
 
         {/* Chat Transcripts Tab */}
-        <TabsContent value="chat" className="space-y-6">
+        {!chatLocked && <TabsContent value="chat" className="space-y-6">
           <Card className="p-6">
             <h3 className="text-xl font-bold text-foreground mb-6 flex items-center gap-2">
               <span className="inline-block w-3 h-3 bg-primary rounded-full"></span>
@@ -185,10 +189,10 @@ export default function InterviewFeedbackPage() {
               ))}
             </div>
           </Card>
-        </TabsContent>
+        </TabsContent>}
 
         {/* Analysis Tab */}
-        <TabsContent value="analysis" className="space-y-6">
+        {!analysisLocked && <TabsContent value="analysis" className="space-y-6">
           {feedbackSections.map((section) => (
             <Card key={section.id} className="p-6">
               <div className="space-y-4">
@@ -227,7 +231,7 @@ export default function InterviewFeedbackPage() {
               </li>
             </ul>
           </Card>
-        </TabsContent>
+        </TabsContent>}
       </Tabs>
     </div>
   )

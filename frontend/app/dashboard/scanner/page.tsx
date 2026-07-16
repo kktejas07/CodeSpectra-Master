@@ -2,7 +2,8 @@
 
 import { useMemo, useState, Suspense, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle, AlertTriangle, Info } from 'lucide-react'
+import { useLockedFeatures } from '@/lib/use-page-guard'
+import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle, AlertTriangle, Info, Lock } from 'lucide-react'
 import { parseScannerMode } from '@/lib/scanner-modes'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -98,6 +99,8 @@ function CodeScannerPageInner() {
   const [appliedDbFixIds, setAppliedDbFixIds] = useState<Set<string>>(() => new Set())
   const [runtimes, setRuntimes] = useState<Array<{language:string, version:string, aliases:string[]}>>([])
   const [runtimesLoading, setRuntimesLoading] = useState(true)
+  const { lockedFeatures } = useLockedFeatures()
+  const isModeLocked = (m: string) => lockedFeatures.includes(`scanner:${m}`)
 
   useEffect(() => {
     if (mode !== 'manual') return
@@ -231,54 +234,65 @@ function CodeScannerPageInner() {
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold text-foreground">
-            {mode === 'manual' && 'Code Scanner'}
-            {mode === 'github' && 'GitHub Repository Scan'}
-            {mode === 'trends' && 'Quality Trends'}
-            {mode === 'quality-gates' && 'Quality Gates'}
-            {mode === 'review' && 'Code Review'}
-            {mode === 'config' && 'Scanner Configuration'}
-            {mode === 'reports' && 'Reports'}
-            {mode === 'insights' && 'Insights'}
-            {mode === 'metrics' && 'File Metrics'}
-            {mode === 'hotspots' && 'Security Hotspots'}
-            {mode === 'ratings' && 'Quality Ratings'}
-            {mode === 'activity' && 'Activity Timeline'}
-            {mode === 'architecture' && 'Architecture'}
-            {mode === 'pr' && 'Pull Requests'}
-            {mode === 'branches' && 'Branch Analytics'}
-            {mode === 'team' && 'Team Leaderboard'}
-            {mode === 'dependencies' && 'Dependency Vulnerability Scan'}
-            {mode === 'secrets' && 'Secret Detection'}
-            {mode === 'chat' && 'Codebase Assistant'}
-            {(!mode || mode === 'manual') && 'Code Scanner'}
+            {mode === 'manual' && !isModeLocked('manual') && 'Code Scanner'}
+            {mode === 'github' && !isModeLocked('github') && 'GitHub Repository Scan'}
+            {mode === 'trends' && !isModeLocked('trends') && 'Quality Trends'}
+            {mode === 'quality-gates' && !isModeLocked('quality-gates') && 'Quality Gates'}
+            {mode === 'review' && !isModeLocked('review') && 'Code Review'}
+            {mode === 'config' && !isModeLocked('config') && 'Scanner Configuration'}
+            {mode === 'reports' && !isModeLocked('reports') && 'Reports'}
+            {mode === 'insights' && !isModeLocked('insights') && 'Insights'}
+            {mode === 'metrics' && !isModeLocked('metrics') && 'File Metrics'}
+            {mode === 'hotspots' && !isModeLocked('hotspots') && 'Security Hotspots'}
+            {mode === 'ratings' && !isModeLocked('ratings') && 'Quality Ratings'}
+            {mode === 'activity' && !isModeLocked('activity') && 'Activity Timeline'}
+            {mode === 'architecture' && !isModeLocked('architecture') && 'Architecture'}
+            {mode === 'pr' && !isModeLocked('pr') && 'Pull Requests'}
+            {mode === 'branches' && !isModeLocked('branches') && 'Branch Analytics'}
+            {mode === 'team' && !isModeLocked('team') && 'Team Leaderboard'}
+            {mode === 'dependencies' && !isModeLocked('dependencies') && 'Dependency Vulnerability Scan'}
+            {mode === 'secrets' && !isModeLocked('secrets') && 'Secret Detection'}
+            {mode === 'chat' && !isModeLocked('chat') && 'Codebase Assistant'}
+            {(!mode || mode === 'manual') && !isModeLocked('manual') && 'Code Scanner'}
+            {isModeLocked(mode) && <span className="text-muted-foreground">Locked Feature</span>}
           </h1>
           <p className="text-muted-foreground mt-1">
-            {mode === 'manual' && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
-            {mode === 'github' && 'Connect your GitHub repositories and run automated quality scans on your codebase.'}
-            {mode === 'trends' && 'Track code quality metrics over time across your projects and team.'}
-            {mode === 'quality-gates' && 'Set quality standards and thresholds for your code to pass before merge.'}
-            {mode === 'review' && 'Review code collaboratively with comments, suggestions, and approval workflows.'}
-            {mode === 'config' && 'Configure scan rules, thresholds, file filters, and notification preferences.'}
-            {mode === 'reports' && 'Generate and export detailed code quality reports in PDF, JSON, or CSV format.'}
-            {mode === 'insights' && 'View aggregate analytics on code quality, issue trends, and team performance.'}
-            {mode === 'metrics' && 'Browse per-file code metrics including complexity, coverage, duplication, and LOC.'}
-            {mode === 'hotspots' && 'Review security-sensitive code locations that may need extra attention.'}
-            {mode === 'ratings' && 'View letter-grade quality ratings for security, reliability, and maintainability.'}
-            {mode === 'activity' && 'View all code analysis events including scans, reviews, and quality gates.'}
-            {mode === 'architecture' && 'Explore your codebase architecture — components, dependencies, and health.'}
-            {mode === 'pr' && 'View pull request quality analysis and gate status across your repositories.'}
-            {mode === 'branches' && 'Compare quality metrics across Git branches and track improvements.'}
-            {mode === 'team' && 'See how your team ranks in code quality contributions and issue resolution.'}
-            {mode === 'dependencies' && 'Check project dependencies against the OSV vulnerability database and embedded security advisories.'}
-            {mode === 'secrets' && 'Scan source code for hardcoded API keys, tokens, passwords, private keys, and other secrets.'}
-            {mode === 'chat' && 'Interact with your codebase files using our advanced Gemini AI Assistant.'}
-            {(!mode || mode === 'manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
+            {mode === 'manual' && !isModeLocked('manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
+            {mode === 'github' && !isModeLocked('github') && 'Connect your GitHub repositories and run automated quality scans on your codebase.'}
+            {mode === 'trends' && !isModeLocked('trends') && 'Track code quality metrics over time across your projects and team.'}
+            {mode === 'quality-gates' && !isModeLocked('quality-gates') && 'Set quality standards and thresholds for your code to pass before merge.'}
+            {mode === 'review' && !isModeLocked('review') && 'Review code collaboratively with comments, suggestions, and approval workflows.'}
+            {mode === 'config' && !isModeLocked('config') && 'Configure scan rules, thresholds, file filters, and notification preferences.'}
+            {mode === 'reports' && !isModeLocked('reports') && 'Generate and export detailed code quality reports in PDF, JSON, or CSV format.'}
+            {mode === 'insights' && !isModeLocked('insights') && 'View aggregate analytics on code quality, issue trends, and team performance.'}
+            {mode === 'metrics' && !isModeLocked('metrics') && 'Browse per-file code metrics including complexity, coverage, duplication, and LOC.'}
+            {mode === 'hotspots' && !isModeLocked('hotspots') && 'Review security-sensitive code locations that may need extra attention.'}
+            {mode === 'ratings' && !isModeLocked('ratings') && 'View letter-grade quality ratings for security, reliability, and maintainability.'}
+            {mode === 'activity' && !isModeLocked('activity') && 'View all code analysis events including scans, reviews, and quality gates.'}
+            {mode === 'architecture' && !isModeLocked('architecture') && 'Explore your codebase architecture — components, dependencies, and health.'}
+            {mode === 'pr' && !isModeLocked('pr') && 'View pull request quality analysis and gate status across your repositories.'}
+            {mode === 'branches' && !isModeLocked('branches') && 'Compare quality metrics across Git branches and track improvements.'}
+            {mode === 'team' && !isModeLocked('team') && 'See how your team ranks in code quality contributions and issue resolution.'}
+            {mode === 'dependencies' && !isModeLocked('dependencies') && 'Check project dependencies against the OSV vulnerability database and embedded security advisories.'}
+            {mode === 'secrets' && !isModeLocked('secrets') && 'Scan source code for hardcoded API keys, tokens, passwords, private keys, and other secrets.'}
+            {mode === 'chat' && !isModeLocked('chat') && 'Interact with your codebase files using our advanced Gemini AI Assistant.'}
+            {(!mode || mode === 'manual') && !isModeLocked('manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
           </p>
         </div>
       </div>
 
+      {isModeLocked(mode) && (
+        <Card className="flex items-center justify-center p-12 border-border bg-card/30">
+          <div className="text-center">
+            <Lock className="w-10 h-10 text-muted-foreground/40 mx-auto mb-3" />
+            <p className="font-semibold text-foreground">Feature Locked</p>
+            <p className="text-sm text-muted-foreground mt-1">This scanner mode is currently disabled by admin.</p>
+          </div>
+        </Card>
+      )}
+
       {/* Manual Analysis Mode */}
-      {mode === 'manual' && (
+      {mode === 'manual' && !isModeLocked('manual') && (
         <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
           {/* Input Section */}
           <div className="space-y-4">
@@ -539,7 +553,7 @@ function CodeScannerPageInner() {
       )}
 
       {/* GitHub Integration Mode */}
-      {mode === 'github' && (
+      {mode === 'github' && !isModeLocked('github') && (
         <div className="grid grid-cols-1 gap-6 lg:grid-cols-2">
           <div className="space-y-6">
             <GitHubIntegration />
@@ -615,7 +629,7 @@ function CodeScannerPageInner() {
       )}
 
       {/* Metrics Trend Mode */}
-      {mode === 'trends' && (
+      {mode === 'trends' && !isModeLocked('trends') && (
         <div className="space-y-6">
           <Card className="bg-card/30 border border-border p-6">
             <h3 className="font-semibold text-foreground mb-4">Code Quality Trends</h3>
@@ -637,10 +651,10 @@ function CodeScannerPageInner() {
       )}
 
       {/* Quality Gates Mode */}
-      {mode === 'quality-gates' && <QualityGatesLivePanel />}
+      {mode === 'quality-gates' && !isModeLocked('quality-gates') && <QualityGatesLivePanel />}
 
       {/* Code Review Mode */}
-      {mode === 'review' && (
+      {mode === 'review' && !isModeLocked('review') && (
         <CodeReviewPanel
           issueId="issue-1"
           comments={[]}
@@ -651,14 +665,14 @@ function CodeScannerPageInner() {
       )}
 
       {/* Configuration Mode */}
-      {mode === 'config' && (
+      {mode === 'config' && !isModeLocked('config') && (
         <ScannerConfigPanel
           onSave={(config) => console.log('Config saved:', config)}
         />
       )}
 
       {/* Reports Mode */}
-      {mode === 'reports' && (
+      {mode === 'reports' && !isModeLocked('reports') && (
         <ReportGenerator
           onExport={(format) => console.log('Exporting as:', format)}
           onEmail={(recipients) => console.log('Emailing to:', recipients)}
@@ -667,66 +681,66 @@ function CodeScannerPageInner() {
       )}
 
       {/* Insights Mode */}
-      {mode === 'insights' && (
+      {mode === 'insights' && !isModeLocked('insights') && (
         <InsightsDashboard />
       )}
 
       {/* Metrics Browser Mode */}
-      {mode === 'metrics' && (
+      {mode === 'metrics' && !isModeLocked('metrics') && (
         <MetricsFileBrowser />
       )}
 
       {/* Security Hotspots Mode */}
-      {mode === 'hotspots' && (
+      {mode === 'hotspots' && !isModeLocked('hotspots') && (
         <SecurityHotspots />
       )}
 
       {/* Quality Ratings Mode */}
-      {mode === 'ratings' && (
+      {mode === 'ratings' && !isModeLocked('ratings') && (
         <QualityRatings />
       )}
 
       {/* Activity Timeline Mode */}
-      {mode === 'activity' && (
+      {mode === 'activity' && !isModeLocked('activity') && (
         <ActivityTimeline />
       )}
 
       {/* Architecture Visualization Mode */}
-      {mode === 'architecture' && (
+      {mode === 'architecture' && !isModeLocked('architecture') && (
         <ArchitectureVisualization />
       )}
 
       {/* PR Integration Mode */}
-      {mode === 'pr' && (
+      {mode === 'pr' && !isModeLocked('pr') && (
         <PRIntegration />
       )}
 
       {/* Branch Analytics Mode */}
-      {mode === 'branches' && (
+      {mode === 'branches' && !isModeLocked('branches') && (
         <BranchAnalytics />
       )}
 
       {/* Team Mode */}
-      {mode === 'team' && (
+      {mode === 'team' && !isModeLocked('team') && (
         <TeamLeaderboard />
       )}
 
       {/* Dependency Scan Mode */}
-      {mode === 'dependencies' && (
+      {mode === 'dependencies' && !isModeLocked('dependencies') && (
         <div className="max-w-4xl mx-auto">
           <DependencyScannerPanel />
         </div>
       )}
 
       {/* Secret Detection Mode */}
-      {mode === 'secrets' && (
+      {mode === 'secrets' && !isModeLocked('secrets') && (
         <div className="max-w-4xl mx-auto">
           <SecretScannerPanel />
         </div>
       )}
 
       {/* Codebase Chat Mode */}
-      {mode === 'chat' && (
+      {mode === 'chat' && !isModeLocked('chat') && (
         <div className="max-w-4xl mx-auto">
           <CodebaseChatSidebar 
             scanId={analysis?.scanId}
