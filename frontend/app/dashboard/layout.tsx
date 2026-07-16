@@ -147,24 +147,15 @@ export default function DashboardLayout({
     return null
   })()
 
-  // Fetch DB-driven permissions for sidebar filtering — works for all roles
+  // Fetch DB-driven page permissions for sidebar filtering — works for all roles
   useEffect(() => {
     if (!userRole) return
     let cancelled = false
-    fetch('/api/admin/permissions/roles', { credentials: 'include' })
+    fetch('/api/user/my-permissions', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (cancelled || !data?.roles) return
-        const roleData = data.roles.find((r: any) => r.role === userRole)
-        if (!roleData) return
-        const perms = (roleData.permissions || []) as any[]
-        const routes = new Set<string>()
-        perms.forEach((p: any) => {
-          if (p.resourceType === 'page' && (p.actions?.includes('read') || p.actions?.includes('manage'))) {
-            routes.add(p.resource)
-          }
-        })
-        if (routes.size > 0) setAllowedDbRoutes(routes)
+        if (cancelled || !data?.routes) return
+        setAllowedDbRoutes(new Set(data.routes))
       })
       .catch(() => {})
     return () => { cancelled = true }
