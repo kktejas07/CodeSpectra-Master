@@ -3,7 +3,7 @@
 import { useMemo, useState, Suspense, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useLockedFeatures } from '@/lib/use-page-guard'
-import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle, AlertTriangle, Info, Lock } from 'lucide-react'
+import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle, AlertTriangle, Info, Lock, Play } from 'lucide-react'
 import { parseScannerMode } from '@/lib/scanner-modes'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -75,13 +75,18 @@ function CodeScannerPageInner() {
   )
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
+  const [detectedLang, setDetectedLang] = useState<string | null>(null)
 
   const handleCodeChange = useCallback((newCode: string) => {
     setCode(newCode)
     if (newCode.trim().length > 10) {
       const detected = detectLanguage(newCode)
-      if (detected && detected !== language && detected !== 'plaintext') {
-        setLanguage(detected)
+      if (detected && detected !== 'plaintext') {
+        const norm = runtimeMap[detected] || detected
+        setDetectedLang(detected)
+        if (norm !== language) {
+          setLanguage(norm)
+        }
       }
     }
   }, [language])
@@ -99,6 +104,14 @@ function CodeScannerPageInner() {
   const [appliedDbFixIds, setAppliedDbFixIds] = useState<Set<string>>(() => new Set())
   const [runtimes, setRuntimes] = useState<Array<{language:string, version:string, aliases:string[]}>>([])
   const [runtimesLoading, setRuntimesLoading] = useState(true)
+  const [runtimeMap, setRuntimeMap] = useState<Record<string,string>>({})
+  const [executing, setExecuting] = useState(false)
+  const [execResult, setExecResult] = useState<{
+    stdout: string
+    stderr: string
+    code: number | null
+    compileOutput?: string
+  } | null>(null)
   const { lockedFeatures } = useLockedFeatures()
   const isModeLocked = (m: string) => lockedFeatures.includes(`scanner:${m}`)
 
@@ -120,7 +133,14 @@ function CodeScannerPageInner() {
             'prolog','pure','raku','smalltalk','vlang',
           ])
           const filtered = data.runtimes.filter((r: any) => popularIds.has(r.language))
-          setRuntimes(filtered.length > 0 ? filtered : data.runtimes)
+          const list = filtered.length > 0 ? filtered : data.runtimes
+          setRuntimes(list)
+          const map: Record<string,string> = {}
+          for (const r of list) {
+            map[r.language.toLowerCase()] = r.language
+            for (const a of r.aliases || []) map[a.toLowerCase()] = r.language
+          }
+          setRuntimeMap(map)
           setRuntimesLoading(false)
         }
       } catch {
@@ -223,9 +243,48 @@ function CodeScannerPageInner() {
     }
   }, [code, language])
 
+  const handleRunCode = useCallback(async () => {
+    if (!code.trim()) return
+    setExecuting(true)
+    setExecResult(null)
+    try {
+      const res = await csrfFetch('/api/execute-code', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ language, source: code }),
+      })
+      const data = await res.json()
+      if (data.success && data.result) {
+        setExecResult({
+          stdout: data.result.run?.stdout ?? '',
+          stderr: data.result.run?.stderr ?? '',
+          code: data.result.run?.code ?? null,
+          compileOutput: data.result.compile?.output,
+        })
+      } else {
+        setExecResult({
+          stdout: '',
+          stderr: data.error || 'Execution failed',
+          code: 1,
+        })
+      }
+    } catch (err: any) {
+      setExecResult({
+        stdout: '',
+        stderr: err?.message || 'Execution request failed',
+        code: 1,
+      })
+    } finally {
+      setExecuting(false)
+    }
+  }, [code, language])
+
   const clearAnalysis = () => {
     setCode('')
     setAnalysis(null)
+    setExecResult(null)
+    setDetectedLang(null)
   }
 
   return (
@@ -299,23 +358,30 @@ function CodeScannerPageInner() {
             <Card className="bg-card border border-border p-6 space-y-4">
               <div>
                 <label className="text-sm font-medium text-foreground block mb-2">Programming Language</label>
-                <select
-                  value={language}
-                  onChange={(e) => setLanguage(e.target.value)}
-                  className="w-full px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
-                >
-                  {runtimesLoading ? (
-                    <option value="">Loading languages...</option>
-                  ) : runtimes.length > 0 ? (
-                    runtimes.map((rt) => (
-                      <option key={rt.language || rt.version} value={rt.language}>
-                        {(rt.language || '').charAt(0).toUpperCase() + (rt.language || '').slice(1)}
-                      </option>
-                    ))
-                  ) : (
-                    <option value="">No runtimes loaded</option>
+                <div className="flex items-center gap-2">
+                  <select
+                    value={language}
+                    onChange={(e) => setLanguage(e.target.value)}
+                    className="flex-1 px-4 py-2 rounded-lg bg-background border border-border text-foreground focus:outline-none focus:ring-2 focus:ring-primary text-sm"
+                  >
+                    {runtimesLoading ? (
+                      <option value="">Loading languages...</option>
+                    ) : runtimes.length > 0 ? (
+                      runtimes.map((rt) => (
+                        <option key={rt.language || rt.version} value={rt.language}>
+                          {(rt.language || '').charAt(0).toUpperCase() + (rt.language || '').slice(1)}
+                        </option>
+                      ))
+                    ) : (
+                      <option value="">No runtimes loaded</option>
+                    )}
+                  </select>
+                  {detectedLang && detectedLang !== language && (
+                    <span className="shrink-0 px-2 py-1 rounded text-xs font-medium bg-primary/10 text-primary border border-primary/20">
+                      Detected: {detectedLang.charAt(0).toUpperCase() + detectedLang.slice(1)}
+                    </span>
                   )}
-                </select>
+                </div>
               </div>
 
               <div className="space-y-2">
@@ -357,6 +423,24 @@ function CodeScannerPageInner() {
 
               <div className="flex gap-3">
                 <Button
+                  onClick={handleRunCode}
+                  disabled={executing || !code.trim()}
+                  variant="secondary"
+                  className="flex-1"
+                >
+                  {executing ? (
+                    <>
+                      <Loader className="w-4 h-4 mr-2 animate-spin" />
+                      Running...
+                    </>
+                  ) : (
+                    <>
+                      <Play className="w-4 h-4 mr-2" />
+                      Run Code
+                    </>
+                  )}
+                </Button>
+                <Button
                   onClick={handleAnalyze}
                   disabled={loading || !code.trim()}
                   className="flex-1"
@@ -373,7 +457,7 @@ function CodeScannerPageInner() {
                     </>
                   )}
                 </Button>
-                {analysis && (
+                {(analysis || execResult) && (
                   <Button variant="outline" onClick={clearAnalysis}>
                     Clear
                   </Button>
@@ -444,6 +528,55 @@ function CodeScannerPageInner() {
 
           {/* Results Section */}
           <div className="space-y-4">
+            {/* Execution Output */}
+            {execResult && (
+              <Card className="border border-border bg-card/30 overflow-hidden">
+                <div className="flex items-center justify-between px-4 py-2 border-b border-border bg-muted/20">
+                  <h4 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                    <Play className="w-3.5 h-3.5 text-green-400" />
+                    Execution Output
+                  </h4>
+                  {execResult.code !== null && (
+                    <span className={`text-xs font-mono px-2 py-0.5 rounded ${
+                      execResult.code === 0
+                        ? 'bg-green-500/10 text-green-400 border border-green-500/20'
+                        : 'bg-red-500/10 text-red-400 border border-red-500/20'
+                    }`}>
+                      Exit code: {execResult.code}
+                    </span>
+                  )}
+                </div>
+                <div className="p-4 space-y-3 text-sm font-mono">
+                  {execResult.compileOutput && (
+                    <div>
+                      <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">Compile Output</p>
+                      <pre className="whitespace-pre-wrap text-foreground/80 bg-background/50 rounded p-2 max-h-32 overflow-y-auto text-xs">
+                        {execResult.compileOutput}
+                      </pre>
+                    </div>
+                  )}
+                  <div>
+                    <p className="text-xs text-muted-foreground mb-1 uppercase tracking-wider">stdout</p>
+                    <pre className={`whitespace-pre-wrap rounded p-2 max-h-48 overflow-y-auto text-xs ${
+                      execResult.stdout
+                        ? 'bg-background/50 text-foreground/80'
+                        : 'text-muted-foreground/40 italic'
+                    }`}>
+                      {execResult.stdout || '(no output)'}
+                    </pre>
+                  </div>
+                  {execResult.stderr && (
+                    <div>
+                      <p className="text-xs text-red-400 mb-1 uppercase tracking-wider">stderr</p>
+                      <pre className="whitespace-pre-wrap rounded p-2 max-h-32 overflow-y-auto text-xs bg-red-950/20 text-red-300 border border-red-500/10">
+                        {execResult.stderr}
+                      </pre>
+                    </div>
+                  )}
+                </div>
+              </Card>
+            )}
+
             {!analysis ? (
               <Card className="h-full flex items-center justify-center bg-card/30 border border-border">
                 <div className="text-center p-6">
