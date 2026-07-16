@@ -112,6 +112,9 @@ function CodeScannerPageInner() {
     code: number | null
     compileOutput?: string
   } | null>(null)
+  const [scanPage, setScanPage] = useState(1)
+  const [scansTotalCount, setScansTotalCount] = useState(0)
+  const SCANS_PER_PAGE = 5
   const { lockedFeatures } = useLockedFeatures()
   const isModeLocked = (m: string) => lockedFeatures.includes(`scanner:${m}`)
 
@@ -150,30 +153,29 @@ function CodeScannerPageInner() {
     return () => { cancelled = true }
   }, [mode])
 
+  const fetchScanHistory = useCallback(async (page: number) => {
+    const offset = (page - 1) * SCANS_PER_PAGE
+    try {
+      const response = await fetch(`/api/analysis-history?limit=${SCANS_PER_PAGE}&offset=${offset}`, { credentials: 'include' })
+      const json = await response.json()
+      if (!response.ok || !json.success || !Array.isArray(json.scans)) return
+      const mapped: AnalysisResult[] = json.scans.map((row: Record<string, unknown>) => ({
+        ...(row as Omit<AnalysisResult, 'timestamp' | 'scanId'>),
+        timestamp: new Date(row.timestamp as string),
+        language: typeof row.language === 'string' ? row.language : undefined,
+      }))
+      setScanHistory(mapped)
+      if (typeof json.count === 'number') setScansTotalCount(json.count)
+    } catch {
+      /* offline or unauthenticated */
+    }
+  }, [])
+
   useEffect(() => {
     if (mode !== 'manual' && mode !== 'github') return
-    let cancelled = false
-    void (async () => {
-      try {
-        const response = await fetch('/api/analysis-history?limit=20', { credentials: 'include' })
-        const json = await response.json()
-        if (cancelled || !response.ok || !json.success || !Array.isArray(json.scans)) return
-        const mapped: AnalysisResult[] = json.scans.map((row: Record<string, unknown>) => ({
-          ...(row as Omit<AnalysisResult, 'timestamp' | 'scanId'>),
-          timestamp: new Date(row.timestamp as string),
-          language: typeof row.language === 'string' ? row.language : undefined,
-        }))
-        if (mapped.length > 0) {
-          setScanHistory(mapped)
-        }
-      } catch {
-        /* offline or unauthenticated */
-      }
-    })()
-    return () => {
-      cancelled = true
-    }
-  }, [mode])
+    setScanPage(1)
+    fetchScanHistory(1)
+  }, [mode, fetchScanHistory])
 
   useEffect(() => {
     if (mode !== 'github') setGithubScanCode('')
@@ -199,10 +201,9 @@ function CodeScannerPageInner() {
       codeSnippet: typeof _sc === 'string' && _sc ? _sc : typeof (rest as unknown as { codeSnippet?: string }).codeSnippet === 'string' ? (rest as unknown as { codeSnippet?: string }).codeSnippet : '',
     }
     setAnalysis(analysisWithMetadata)
-    setScanHistory((prev) =>
-      [analysisWithMetadata, ...prev.filter((h) => h.id !== analysisWithMetadata.id)].slice(0, 25)
-    )
-  }, [])
+    setScanPage(1)
+    fetchScanHistory(1)
+  }, [fetchScanHistory])
 
   const handleAnalyze = useCallback(async () => {
     if (!code.trim()) return
@@ -233,9 +234,8 @@ function CodeScannerPageInner() {
         codeSnippet: typeof (rest as unknown as { codeSnippet?: string }).codeSnippet === 'string' ? (rest as unknown as { codeSnippet?: string }).codeSnippet : code,
       }
       setAnalysis(analysisWithMetadata)
-      setScanHistory((prev) =>
-        [analysisWithMetadata, ...prev.filter((h) => h.id !== analysisWithMetadata.id)].slice(0, 25)
-      )
+      setScanPage(1)
+      fetchScanHistory(1)
     } catch (error) {
       console.error('[CodeSpectra] Analysis failed:', error)
     } finally {
@@ -487,6 +487,9 @@ function CodeScannerPageInner() {
                   duration: scan.timeMs,
                   codeSnippet: scan.codeSnippet,
                 }))}
+                page={scanPage}
+                totalPages={Math.max(1, Math.ceil(scansTotalCount / SCANS_PER_PAGE))}
+                onPageChange={(p) => { setScanPage(p); fetchScanHistory(p) }}
                 onSelectScan={(scan) => {
                   const historyItem = scanHistory.find((h) => h.id === scan.id)
                   if (historyItem) {
@@ -517,7 +520,7 @@ function CodeScannerPageInner() {
                   } catch {
                     /* offline or unauthenticated */
                   }
-                  setScanHistory((prev) => prev.filter((s) => s.id !== scanId))
+                  fetchScanHistory(scanPage)
                   if (analysis?.id === scanId) {
                     setAnalysis(null)
                   }

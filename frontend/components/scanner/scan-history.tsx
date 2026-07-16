@@ -25,9 +25,12 @@ interface ScanHistoryProps {
   onSelectScan?: (scan: ScanResult) => void
   onEdit?: (scan: ScanResult) => void
   onDelete?: (scanId: string) => void
+  page?: number
+  totalPages?: number
+  onPageChange?: (page: number) => void
 }
 
-export function ScanHistory({ scans, onSelectScan, onEdit, onDelete }: ScanHistoryProps) {
+export function ScanHistory({ scans, onSelectScan, onEdit, onDelete, page = 1, totalPages = 1, onPageChange }: ScanHistoryProps) {
   const getQualityColor = (score: number) => {
     if (score >= 80) return 'bg-green-500/20 text-green-600 border-green-500/30'
     if (score >= 60) return 'bg-yellow-500/20 text-yellow-600 border-yellow-500/30'
@@ -147,6 +150,33 @@ export function ScanHistory({ scans, onSelectScan, onEdit, onDelete }: ScanHisto
           </Card>
         ))}
       </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between pt-2">
+          <p className="text-xs text-foreground/50">
+            Page {page} of {totalPages}
+          </p>
+          <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page <= 1}
+              onClick={() => onPageChange?.(page - 1)}
+            >
+              Previous
+            </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange?.(page + 1)}
+            >
+              Next
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }
