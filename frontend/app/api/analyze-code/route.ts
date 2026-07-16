@@ -1,8 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { toClientAnalysisPayload } from '@/lib/scanner-analysis-mapper'
+import { toClientAnalysisPayload, type ClientAnalysisPayload } from '@/lib/scanner-analysis-mapper'
 import { analyzeCodeLocally } from '@/lib/local-code-analyzer'
 import { insertScan, insertMetrics } from '@/lib/db/scans'
+import { executeOnce } from '@/lib/piston'
 
 interface AnalysisRequest {
   code: string
@@ -14,6 +15,41 @@ interface AnalysisRequest {
   github_branch?: string
   github_commit_hash?: string
   github_repo_url?: string
+}
+
+const COMPILE_TIMEOUT = 4000
+
+function injectCompileErrors(payload: ClientAnalysisPayload, stderr: string): ClientAnalysisPayload {
+  const lines = stderr.split('\n').filter(l => l.includes(': error:') || l.includes(': fatal error:'))
+  if (lines.length === 0) return payload
+
+  const newIssues = lines.map((line) => {
+    const lineMatch = line.match(/:(\d+):/)
+    const msg = line.replace(/^.*?:\d+:\d+:\s*(error|fatal error):\s*/i, '').trim()
+    return {
+      type: 'bug' as const,
+      severity: 'critical' as const,
+      rule: 'compile-error',
+      message: msg || line.trim(),
+      line: lineMatch ? parseInt(lineMatch[1], 10) : 1,
+      effortMinutes: 5,
+    }
+  })
+
+  const merged = [...newIssues, ...payload.issues]
+  const errorCount = newIssues.length
+  let quality = Math.max(0, 100 - errorCount * 20)
+  const existingErrorIssues = payload.issues.filter(i => i.severity === 'critical' || i.severity === 'major').length
+  quality = Math.max(0, quality - existingErrorIssues * 8)
+  quality = Math.min(100, Math.round(quality))
+
+  return {
+    ...payload,
+    quality,
+    bugs: payload.bugs + errorCount,
+    codeSmells: payload.codeSmells,
+    issues: merged,
+  }
 }
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
@@ -34,7 +70,24 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     }
 
     const raw = analyzeCodeLocally(code, language || 'typescript')
-    const payload = toClientAnalysisPayload(raw)
+    let payload = toClientAnalysisPayload(raw)
+
+    // Attempt compilation — silently degrades if Piston is unreachable
+    if (code.trim().length > 0) {
+      try {
+        const execResult = await executeOnce({
+          language: (language || 'typescript').toLowerCase(),
+          source: code,
+          timeoutMs: COMPILE_TIMEOUT,
+        })
+        const compileStderr = execResult.compile?.stderr || execResult.run?.stderr || ''
+        if (compileStderr.trim()) {
+          payload = injectCompileErrors(payload, compileStderr)
+        }
+      } catch {
+        /* Piston unavailable — skip compile check */
+      }
+    }
 
     const fp = githubMeta.github_file_path?.trim() || ''
     const fullName = githubMeta.github_repo_full_name?.trim() || ''
