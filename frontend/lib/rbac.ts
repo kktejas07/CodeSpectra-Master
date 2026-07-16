@@ -25,7 +25,7 @@ import {
   type PagePermission,
 } from '@/lib/page-permissions'
 
-export type UserRole = 'superadmin' | 'tenant_admin' | 'user'
+export type UserRole = 'superadmin' | 'tenant_admin' | 'judge' | 'user'
 
 /** Canonical dashboard URLs (filesystem still uses `/dashboard/admin/...`; names here describe intent). */
 export const DASHBOARD_ROUTES = {
@@ -99,6 +99,7 @@ export const USER_PAGES: string[] = [
 export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
   superadmin: SUPERADMIN_PAGES,
   tenant_admin: TENANT_ADMIN_PAGES,
+  judge: USER_PAGES,
   user: USER_PAGES,
 }
 
@@ -117,6 +118,7 @@ export function getAccessiblePages(role: UserRole): string[] { return ACCESSIBLE
 export function isSuperAdmin(role: UserRole): boolean { return role === 'superadmin' }
 export function isTenantAdmin(role: UserRole): boolean { return role === 'tenant_admin' }
 export function isAdmin(role: UserRole): boolean { return role === 'tenant_admin' || role === 'superadmin' }
+export function isJudge(role: UserRole): boolean { return role === 'judge' }
 
 export function hasRole(userRole: UserRole, requiredRole: UserRole): boolean {
   if (requiredRole === 'superadmin') return userRole === 'superadmin'
@@ -136,6 +138,7 @@ export function getRoleLabel(role: UserRole): string {
   const labels: Record<UserRole, string> = {
     superadmin: 'Platform admin',
     tenant_admin: 'Organization admin',
+    judge: 'Judge',
     user: 'User',
   }
   return labels[role] || role

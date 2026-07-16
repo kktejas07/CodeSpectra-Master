@@ -118,8 +118,8 @@ export function ContributionGraph({
           </p>
         </div>
       ) : (
-        <div className="overflow-x-auto">
-          <div className="inline-block min-w-0">
+        <div className="overflow-x-auto w-full">
+          <div className="w-full">
             <div className="flex gap-0.5">
               <div className="flex flex-col gap-0.5 pr-2 pt-5">
                 {dayLabels.map((label, di) => (
@@ -141,7 +141,8 @@ export function ContributionGraph({
                       className="text-[10px] text-muted-foreground/70 leading-[13px]"
                       style={{
                         marginLeft: colIndex === 0 ? 0 : undefined,
-                        width: colIndex === 0 ? 'fit-content' : 'calc(15px * 1)',
+                        minWidth: colIndex === 0 ? undefined : '20px',
+                        width: colIndex === 0 ? 'fit-content' : undefined,
                       }}
                     >
                       {label}

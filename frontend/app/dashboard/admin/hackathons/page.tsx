@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -12,7 +13,7 @@ import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
   ExternalLink, Trash2, HelpCircle, CheckSquare, ListChecks,
   Shield, GripVertical, Pencil, Wand2, BookOpen, Search,
-  Sparkles, ChevronDown, ChevronUp,
+  Sparkles, ChevronDown, ChevronUp, X,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -56,7 +57,6 @@ export default function HackathonsAdminPage() {
     ],
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
     banner_url: '',
-    color_theme: '',
   })
   const [editing, setEditing] = useState<Hackathon | null>(null)
 
@@ -229,7 +229,7 @@ export default function HackathonsAdminPage() {
           })),
           rules: form.rules,
           scoring: form.scoring,
-          banner_url: form.banner_url, color_theme: form.color_theme,
+          banner_url: form.banner_url,
         }),
       })
       const j = await res.json()
@@ -259,7 +259,7 @@ export default function HackathonsAdminPage() {
           })),
           rules: form.rules,
           scoring: form.scoring,
-          banner_url: form.banner_url, color_theme: form.color_theme,
+          banner_url: form.banner_url,
         }),
       })
       const j = await res.json()
@@ -292,7 +292,6 @@ export default function HackathonsAdminPage() {
       ]) as typeof form.rules,
       scoring: hk.scoring || { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
       banner_url: (hk as any).banner_url || '',
-      color_theme: (hk as any).color_theme || '',
     })
   }
 
@@ -311,9 +310,9 @@ export default function HackathonsAdminPage() {
             Create coding competitions, assign problems, manage teams, and release results.
           </p>
         </div>
-        <Button onClick={() => { setCreating(true); setStep(1) }} data-testid="hackathon-new-btn">
-          <Plus className="mr-1 h-4 w-4" /> New event
-        </Button>
+        <Link href="/dashboard/admin/hackathons/create" data-testid="hackathon-new-btn">
+          <Button><Plus className="mr-1 h-4 w-4" /> New event</Button>
+        </Link>
       </div>
 
       {error && <Card className="border-destructive/40 bg-destructive/5 p-3 text-sm text-destructive">{error}</Card>}
@@ -371,16 +370,41 @@ export default function HackathonsAdminPage() {
                   Ends at {new Date(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000).toLocaleString()}
                 </p>
               </div>
-              <div className="grid gap-3 md:grid-cols-2">
-                <div>
-                  <Label>Banner image URL (optional)</Label>
-                  <Input value={form.banner_url} onChange={(e) => setForm((f) => ({ ...f, banner_url: e.target.value }))} placeholder="https://..." />
+              <div className="space-y-2">
+                  <Label>Banner image</Label>
+                  {form.banner_url && (
+                    <div className="relative w-full h-32 rounded-lg overflow-hidden border bg-muted mb-2">
+                      <img src={form.banner_url} alt="Banner preview" className="w-full h-full object-cover" />
+                      <button
+                        type="button"
+                        onClick={() => setForm((f) => ({ ...f, banner_url: '' }))}
+                        className="absolute top-1 right-1 rounded-full bg-black/60 text-white p-1 hover:bg-black/80"
+                      >
+                        <X className="h-3 w-3" />
+                      </button>
+                    </div>
+                  )}
+                  <Input
+                    type="file"
+                    accept="image/*"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      const reader = new FileReader()
+                      reader.onload = (ev) => {
+                        const dataUrl = ev.target?.result as string
+                        setForm((f) => ({ ...f, banner_url: dataUrl }))
+                      }
+                      reader.readAsDataURL(file)
+                    }}
+                  />
+                  <p className="text-xs text-muted-foreground">Upload an image or paste a URL below. leave empty for default.</p>
+                  <Input
+                    value={form.banner_url.startsWith('data:') ? '' : form.banner_url}
+                    onChange={(e) => setForm((f) => ({ ...f, banner_url: e.target.value }))}
+                    placeholder="Or paste image URL..."
+                  />
                 </div>
-                <div>
-                  <Label>Color theme (optional)</Label>
-                  <Input value={form.color_theme} onChange={(e) => setForm((f) => ({ ...f, color_theme: e.target.value }))} placeholder="blue, purple, #ff6600" />
-                </div>
-              </div>
               <Button onClick={() => setStep(2)}>Next: Problems →</Button>
             </div>
           )}
@@ -780,7 +804,9 @@ export default function HackathonsAdminPage() {
                 <TooltipProvider>
                   <Tooltip>
                     <TooltipTrigger asChild>
-                      <Button variant="outline" size="sm" onClick={() => openEdit(hk)}><Pencil className="h-3 w-3 mr-1" /> Edit</Button>
+                      <Button variant="outline" size="sm" asChild>
+                        <Link href={`/dashboard/admin/hackathons/edit/${hk.id}`}><Pencil className="h-3 w-3 mr-1" /> Edit</Link>
+                      </Button>
                     </TooltipTrigger>
                     <TooltipContent>Edit event settings</TooltipContent>
                   </Tooltip>

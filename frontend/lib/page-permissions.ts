@@ -33,7 +33,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/pricing',
   '/dashboard/admin/security',
   '/dashboard/admin/proctor',
-  '/dashboard/admin/hackathons',
   '/dashboard/admin/rag',
   '/dashboard/admin/ai-inventory',
   '/dashboard/admin/system',
@@ -41,6 +40,16 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/plans',
   '/dashboard/admin/settings/llm',
   '/dashboard/admin/settings/mobile',
+  '/dashboard/admin/teams',
+  '/dashboard/admin/jobs',
+  '/dashboard/admin/resumes',
+  '/dashboard/admin/codeathons',
+  '/dashboard/admin/exams',
+  '/dashboard/admin/speed-insights',
+  '/dashboard/admin/cdn',
+  '/dashboard/admin/settings',
+  '/dashboard/admin/workflows',
+  '/dashboard/admin/question-generator',
 ]
 
 /**
@@ -49,6 +58,8 @@ export const ADMIN_ONLY_ROUTES: string[] = [
 export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
   '/dashboard/interviews/feedback',
+  '/dashboard/admin/hackathons/create',
+  '/dashboard/admin/hackathons/edit',
 ]
 
 /**
@@ -84,6 +95,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/id-card',
   '/dashboard/analytics',
   '/dashboard/hackathons',
+  '/dashboard/admin/hackathons',
   '/dashboard/codeathons',
   '/dashboard/jobs',
   '/dashboard/exams',
@@ -144,7 +156,9 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/cdn': 'CDN & Edge',
   '/dashboard/admin/workflows': 'Workflows',
   '/dashboard/admin/question-generator': 'Question Generator',
-  '/dashboard/admin/hackathons': 'Hackathons',
+  '/dashboard/admin/hackathons/create': 'Create Hackathon',
+  '/dashboard/admin/hackathons/edit': 'Edit Hackathon',
+  '/dashboard/admin/hackathons': 'Manage Hackathons',
   '/dashboard/admin/rag': 'RAG & Embeddings',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
   '/dashboard/admin/permissions': 'Role & Permissions',
@@ -177,13 +191,13 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/support': 'Support',
   '/dashboard/search': 'Search',
   '/dashboard/id-card': 'ID Card',
-  '/dashboard/hackathons': 'Hackathons',
+  '/dashboard/hackathons': 'Events & Hackathons',
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/jobs': 'Jobs',
   '/dashboard/exams': 'Exams',
   '/dashboard/resumes': 'Resumes',
   '/dashboard/analytics': 'Analytics',
-  '/dashboard/judge': 'Hackathon Judge',
+  '/dashboard/judge': 'Judge Dashboard',
 }
 
 /**

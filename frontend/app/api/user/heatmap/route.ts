@@ -19,12 +19,12 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
-  let weeks = 14
+  let weeks = 52
   try {
     const db = await getMongoDb()
     const userId = gate.user.id
     const { searchParams } = new URL(req.url)
-    weeks = Math.min(parseInt(searchParams.get('weeks') || '14'), 26)
+    weeks = Math.min(parseInt(searchParams.get('weeks') || '52'), 52)
     const now = new Date()
 
     const startDate = new Date(now)

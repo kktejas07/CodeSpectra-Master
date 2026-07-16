@@ -67,6 +67,35 @@ export async function PATCH(
   if (Array.isArray(body.judges)) {
     $set.judges = body.judges
   }
+  if (Array.isArray(body.tasks)) {
+    $set.tasks = body.tasks.map((t: any, i: number) => ({
+      problem_slug: String(t.problem_slug || ''),
+      problem_title: String(t.problem_title || ''),
+      points: Number(t.points) || 100,
+      difficulty: String(t.difficulty || 'medium'),
+      required: t.required !== false,
+      order: i,
+    }))
+  }
+  if (Array.isArray(body.rules)) {
+    $set.rules = body.rules.map((r: any) => ({
+      type: (r.type || 'general') as 'scoring' | 'submission' | 'conduct' | 'general',
+      title: String(r.title || ''),
+      description: String(r.description || ''),
+    }))
+  }
+  if (body.scoring && typeof body.scoring === 'object') {
+    const s = body.scoring as any
+    $set.scoring = {
+      auto_grade: s.auto_grade !== false,
+      points_per_problem: Number(s.points_per_problem) || 100,
+      bonus_time: Number(s.bonus_time) || 0,
+      penalty_per_attempt: Number(s.penalty_per_attempt) || 0,
+    }
+  }
+  if ('banner_url' in body) {
+    $set.banner_url = typeof body.banner_url === 'string' ? body.banner_url : ''
+  }
   // Recompute ends_at if timeout or starts_at changed.
   const col = await hackathons()
   const cur = await col.findOne({ id })

@@ -29,16 +29,23 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const result = (await backendPost<Record<string, unknown>>(
-    '/internal/ai/generate-problem',
-    {
-      role: body.role || 'Software Engineer',
-      difficulty: body.difficulty || 'medium',
-      topics: body.topics || [],
-      language_hint: body.language_hint || 'python',
-    },
-    { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
-  )) as Record<string, unknown>
+  let result: Record<string, unknown>
+  try {
+    result = (await backendPost<Record<string, unknown>>(
+      '/internal/ai/generate-problem',
+      {
+        role: body.role || 'Software Engineer',
+        difficulty: body.difficulty || 'medium',
+        topics: body.topics || [],
+        language_hint: body.language_hint || 'python',
+      },
+      { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
+    )) as Record<string, unknown>
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e)
+    console.error('[generate-problem] backend error:', msg)
+    return NextResponse.json({ error: `AI generation failed: ${msg}` }, { status: 502 })
+  }
 
   const gens = await aiGeneratedProblems()
   let publishedProblemId: string | null = null

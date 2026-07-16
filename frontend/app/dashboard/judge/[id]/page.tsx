@@ -216,6 +216,13 @@ export default function JudgeReviewPage() {
     if (gate.ready) void load()
   }, [gate.ready, load])
 
+  // Poll every 15s for new submissions to review
+  useEffect(() => {
+    if (!gate.ready) return
+    const t = setInterval(() => { void load() }, 15000)
+    return () => clearInterval(t)
+  }, [gate.ready, load])
+
   function selectRow(sub: Submission) {
     setSelected(sub)
     setRubricScores({ correctness: '', quality: '', efficiency: '', documentation: '', edgeCases: '' })

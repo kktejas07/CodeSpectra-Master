@@ -68,17 +68,23 @@ export default function UserHackathonsPage() {
     </div>
   }
 
+  const now = Date.now()
+
   const liveHackathons = hackathons.filter((h) => {
-    const now = Date.now()
+    if (h.status === 'closed') return false
     const starts = new Date(h.starts_at).getTime()
     const ends = new Date(h.ends_at).getTime()
-    return h.status !== 'closed' && (now >= starts || h.status === 'live')
+    return now >= starts && now <= ends
   })
 
   const upcomingHackathons = hackathons.filter((h) => {
-    const now = Date.now()
+    if (h.status === 'closed') return false
     const starts = new Date(h.starts_at).getTime()
-    return h.status !== 'closed' && now < starts
+    return now < starts
+  })
+
+  const closedHackathons = hackathons.filter((h) => {
+    return h.status === 'closed' || new Date(h.ends_at).getTime() < now
   })
 
   return (
@@ -126,6 +132,19 @@ export default function UserHackathonsPage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             {upcomingHackathons.map((hk) => (
+              <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} />
+            ))}
+          </div>
+        </section>
+      )}
+
+      {closedHackathons.length > 0 && (
+        <section>
+          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+            Closed Events
+          </h2>
+          <div className="grid gap-4 md:grid-cols-2">
+            {closedHackathons.slice(0, 6).map((hk) => (
               <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} />
             ))}
           </div>

@@ -59,7 +59,10 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
 
   const isAdmin = ['superadmin', 'admin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
-  const teamId = team?.id || req.nextUrl.searchParams.get('team_id') || ''
+
+  // SECURITY: Only allow filtering by the user's own team. Admins can bypass.
+  const queryTeamId = req.nextUrl.searchParams.get('team_id')
+  const teamId = isAdmin ? (queryTeamId || team?.id) : (team?.id || '')
 
   const filter: Record<string, unknown> = { hackathon_id: hk.id }
   if (teamId) filter.team_id = teamId
@@ -69,8 +72,11 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     .sort({ submitted_at: -1 })
     .toArray()
 
-  // Non-admins can only see released scores
-  const result = isAdmin || hk.results_released
+  // Admins always see everything. During an active event, teams can see their
+  // own submissions (status, timestamps) but NOT scores until results are released.
+  const userIsOnTeam = Boolean(team)
+  const showFullDetails = (isAdmin || hk.results_released || userIsOnTeam)
+  const result = showFullDetails
     ? items
     : items.map((s) => ({ ...s, score: s.status === 'released' ? s.score : null }))
 

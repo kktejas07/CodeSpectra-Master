@@ -60,6 +60,7 @@ export async function PATCH(request: Request) {
     'show_public_leaderboard',
     'admin_new_user_email_delivery',
     'platform_currency',
+    'locked_pages',
   ] as const
 
   try {
@@ -83,6 +84,10 @@ export async function PATCH(request: Request) {
       }
       if (k === 'admin_new_user_email_delivery') {
         next[k] = normalizeAdminNewUserEmailDelivery(v)
+        continue
+      }
+      if (k === 'locked_pages') {
+        next[k] = Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === 'string') : []
         continue
       }
       if (typeof v === 'string') next[k] = v

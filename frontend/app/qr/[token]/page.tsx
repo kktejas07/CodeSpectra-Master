@@ -11,6 +11,7 @@
  */
 import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import {
   Loader2,
   ShieldCheck,
@@ -86,6 +87,7 @@ export default function QrScanPage({
   params: Promise<{ token: string }>
 }) {
   const { token } = use(params)
+  const router = useRouter()
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const [data, setData] = useState<ScanResp | null>(null)
@@ -177,7 +179,7 @@ export default function QrScanPage({
       <main className="mx-auto max-w-2xl px-6 py-12">
         <div className="mb-6 flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <button onClick={() => { if (document.referrer) { window.history.back() } else { window.location.href = '/' } }} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
+            <button onClick={() => router.push('/')} className="text-xs text-muted-foreground hover:text-foreground transition-colors flex items-center gap-1">
               ← Back
             </button>
             <span className="inline-flex items-center gap-2 rounded-full border border-border/60 bg-card/60 px-3 py-1 text-xs uppercase tracking-wider text-muted-foreground">

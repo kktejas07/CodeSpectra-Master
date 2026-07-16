@@ -30,6 +30,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { Countdown } from '@/components/hackathons/countdown'
+import { ClaimCountdown } from '@/components/hackathons/claim-countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Hackathon {
@@ -78,7 +79,6 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
-  const [now, setNow] = useState(() => Date.now())
 
   const [submittingFor, setSubmittingFor] = useState<{ problem_slug: string; problem_title: string; points: number } | null>(null)
   const [viewingSubmission, setViewingSubmission] = useState<Submission | null>(null)
@@ -135,24 +135,41 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     return () => clearInterval(t)
   }, [hackathon, fetchClaims])
 
-  useEffect(() => {
-    const interval = setInterval(() => setNow(Date.now()), 1000)
-    return () => clearInterval(interval)
-  }, [])
-
-  useEffect(() => {
+  const refreshAll = useCallback(async () => {
     if (!hackathon || !hasSession) return
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
     if (!team) { router.replace(`/hackathons/${slug}`); return }
 
-    fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store', credentials: 'include' })
-      .then(r => r.json())
-      .then(d => setSubmissions(d.items || []))
-      .catch(() => {})
+    // Poll submissions every 10s
+    const [subRes] = await Promise.all([
+      fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store', credentials: 'include' }),
+    ])
+    if (subRes.ok) {
+      const d = await subRes.json()
+      setSubmissions(d.items || [])
+    }
+
+    // Also re-fetch hackathon state to detect if event just ended
+    const hRes = await fetch(`/api/hackathons/${slug}?by=slug`, { cache: 'no-store', credentials: 'include' })
+    if (hRes.ok) {
+      const hk = await hRes.json() as Hackathon
+      setHackathon(hk)
+      if (hk.status === 'closed') {
+        addToast({ type: 'info', title: 'Event ended', message: 'The hackathon has concluded. Check the results.' })
+      }
+    }
 
     const base = typeof window !== 'undefined' ? window.location.origin : ''
     setInviteUrl(`${base}/hackathons/${slug}/join/${team.qr_token}`)
-  }, [hackathon, hasSession, teams, slug, router])
+  }, [hackathon, hasSession, teams, slug, router, addToast])
+
+  // Initial load + 10s polling for submissions + hackathon state
+  useEffect(() => {
+    if (!hackathon || !hasSession) return
+    void refreshAll()
+    const t = setInterval(() => { void refreshAll() }, 10000)
+    return () => clearInterval(t)
+  }, [hackathon, hasSession, refreshAll])
 
   const refreshSubmissions = useCallback(async () => {
     if (!hackathon || !hasSession) return
@@ -268,23 +285,23 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const myClaim = (problemSlug: string) => claims[problemSlug]?.user_id === hasSession
   const claimerName = (problemSlug: string) => claims[problemSlug]?.user_name || null
 
+  const getClaimUrgency = (claim: Claim) => {
+    const remaining = (new Date(claim.claimed_at).getTime() + 5 * 60 * 1000) - Date.now()
+    if (remaining < 60000) return 'text-red-400'
+    if (remaining < 120000) return 'text-yellow-400'
+    return 'text-blue-400'
+  }
+
   const getClaimCountdown = (claim: Claim) => {
-    const claimedAt = new Date(claim.claimed_at).getTime()
-    const expiresAt = claimedAt + 5 * 60 * 1000
-    const remaining = expiresAt - now
+    const remaining = (new Date(claim.claimed_at).getTime() + 5 * 60 * 1000) - Date.now()
     if (remaining <= 0) return '0:00'
     const mins = Math.floor(remaining / 60000)
     const secs = Math.floor((remaining % 60000) / 1000)
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const getClaimUrgency = (claim: Claim) => {
-    const claimedAt = new Date(claim.claimed_at).getTime()
-    const remaining = (claimedAt + 5 * 60 * 1000) - now
-    if (remaining < 60000) return 'text-red-400'
-    if (remaining < 120000) return 'text-yellow-400'
-    return 'text-blue-400'
-  }
+  // Refresh claims when a claim expires (auto-release)
+  const handleClaimExpire = () => { void fetchClaims() }
 
   const getProblemStatus = (problemSlug: string) => {
     const sub = submissions.find((s) => s.problem_slug === problemSlug)

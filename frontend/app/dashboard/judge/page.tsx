@@ -59,6 +59,13 @@ export default function JudgeDashboardPage() {
     if (gate.ready) void load()
   }, [gate.ready, load])
 
+  // Poll every 15s for new submissions
+  useEffect(() => {
+    if (!gate.ready) return
+    const t = setInterval(() => { void load() }, 15000)
+    return () => clearInterval(t)
+  }, [gate.ready, load])
+
   if (!gate.ready || loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">

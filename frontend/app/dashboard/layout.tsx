@@ -66,6 +66,8 @@ import { LearningSidebarNav } from '@/components/dashboard/learning-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
 import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
+import { PageLocked } from '@/components/page-locked'
+import { ROUTE_LABELS } from '@/lib/page-permissions'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -98,6 +100,7 @@ export default function DashboardLayout({
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [userPlan, setUserPlan] = useState<string>('free')
   const [allowedDbRoutes, setAllowedDbRoutes] = useState<Set<string>>(new Set())
+  const [lockedPages, setLockedPages] = useState<string[]>([])
 
   const { user: fbUser, signOut } = useAuth()
 
@@ -114,6 +117,35 @@ export default function DashboardLayout({
       .catch(() => { if (!cancelled) setUserRole('user') })
     return () => { cancelled = true }
   }, [fbUser])
+
+  // Fetch locked pages from platform settings
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/platform/locked-pages')
+      .then(r => r.ok ? r.json() : { locked_pages: [] })
+      .then(data => {
+        if (!cancelled && Array.isArray(data?.locked_pages)) {
+          setLockedPages(data.locked_pages)
+        }
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [])
+
+  const currentPageLocked = (() => {
+    if (userRole && isSuperAdmin(userRole)) return false
+    const base = pathname.split('?')[0]
+    return lockedPages.some(route => base === route || base.startsWith(route + '/'))
+  })()
+
+  const lockedPageLabel = (() => {
+    const base = pathname.split('?')[0]
+    if (ROUTE_LABELS[base]) return ROUTE_LABELS[base]
+    for (const [route, label] of Object.entries(ROUTE_LABELS)) {
+      if (base.startsWith(route + '/')) return label
+    }
+    return null
+  })()
 
   // Fetch DB-driven permissions for sidebar filtering — works for all roles
   useEffect(() => {
@@ -136,7 +168,7 @@ export default function DashboardLayout({
       })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [userRole])
+  }, [userRole, pathname])
 
   const userProfile = useMemo(() => {
     if (!fbUser || !userRole) return null
@@ -211,6 +243,8 @@ export default function DashboardLayout({
   type NavLeaf = { href: string; label: string; icon: LucideIcon }
   type NavEntry = { type: 'link'; item: NavLeaf }
 
+  const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? [] : lockedPages
+
   const navEntries = useMemo((): NavEntry[] => {
     if (!userProfile?.role) return []
 
@@ -237,7 +271,7 @@ export default function DashboardLayout({
       { href: p.permissions, icon: Shield, label: 'Permissions' },
       { href: p.plans, icon: FileText, label: 'Plans' },
       { href: p.pricing, icon: FileText, label: 'Pricing' },
-        { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Hackathons' },
+        { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Manage Hackathons' },
         { href: '/dashboard/admin/rag', icon: Database, label: 'RAG & Embeddings' },
       { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
       { href: '/dashboard/admin/settings?section=llm', icon: Sparkles, label: 'LLM Config' },
@@ -245,7 +279,7 @@ export default function DashboardLayout({
       { href: DASHBOARD_ROUTES.organization.team, icon: Users, label: 'Organization' },
       // User pages
       { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
-      { href: '/dashboard/hackathons', icon: Trophy, label: 'Hackathons' },
+      { href: '/dashboard/hackathons', icon: Trophy, label: 'Events & Hackathons' },
       { href: '/dashboard/problems', icon: CodeIcon, label: 'Problems' },
       { href: '/dashboard/tracks', icon: LayersIcon, label: 'Tracks' },
       { href: '/dashboard/scanner?mode=manual', icon: CodeIcon, label: 'Scanner' },
@@ -282,6 +316,10 @@ export default function DashboardLayout({
       return allLeaves
         .filter(leaf => {
           const basePath = leaf.href.split('?')[0]
+          if (effectiveLockedPages.some(r => basePath === r || basePath.startsWith(r + '/'))) {
+            // Still include locked pages but mark them - the renderer will add lock icon
+            return true
+          }
           return allowedDbRoutes.has(basePath) ||
             Array.from(allowedDbRoutes).some(r => basePath.startsWith(r + '/'))
         })
@@ -309,7 +347,7 @@ export default function DashboardLayout({
         !leaf.href.startsWith(DASHBOARD_ROUTES.organization.team)
       )
       .map(leaf => ({ type: 'link' as const, item: leaf }))
-  }, [userProfile?.role, userPlan, allowedDbRoutes])
+  }, [userProfile?.role, userPlan, allowedDbRoutes, effectiveLockedPages])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
@@ -492,6 +530,19 @@ export default function DashboardLayout({
                     const active = isActive(href)
                     const nestedShell = mainNavHasNestedShell(href)
                     const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+                    const basePath = href.split('?')[0]
+                    const isLocked = effectiveLockedPages.some(r => basePath === r || basePath.startsWith(r + '/'))
+                    const showLock = isLocked && (userProfile?.role ? !isSuperAdmin(userProfile.role) : true)
+                    const chevron = nestedShell ? (
+                      <ChevronRight
+                        className={cn(
+                          'h-4 w-4 shrink-0 text-muted-foreground/70',
+                          active && 'text-primary/80',
+                          sidebarCollapsed && 'lg:sr-only'
+                        )}
+                        aria-hidden
+                      />
+                    ) : null
                     return (
                       <Link
                         key={href}
@@ -519,16 +570,10 @@ export default function DashboardLayout({
                           >
                             {label}
                           </span>
-                          {nestedShell ? (
-                            <ChevronRight
-                              className={cn(
-                                'h-4 w-4 shrink-0 text-muted-foreground/70',
-                                active && 'text-primary/80',
-                                sidebarCollapsed && 'lg:sr-only'
-                              )}
-                              aria-hidden
-                            />
-                          ) : null}
+                          {showLock && (
+                            <Lock className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                          )}
+                          {chevron}
                         </div>
                       </Link>
                     )
@@ -702,7 +747,13 @@ export default function DashboardLayout({
 
         {/* Page Content — one max width for every dashboard route */}
         <main className="px-4 py-5 lg:px-6 lg:py-8">
-          <div className="mx-auto w-full max-w-7xl">{children}</div>
+          <div className="mx-auto w-full max-w-7xl">
+            {currentPageLocked ? (
+              <PageLocked routeName={lockedPageLabel || undefined} />
+            ) : (
+              children
+            )}
+          </div>
         </main>
       </div>
       {/* Floating Ask CodeSpectra AI assistant — available across the dashboard */}

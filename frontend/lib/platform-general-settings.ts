@@ -42,6 +42,8 @@ export type GeneralPlatformSettings = {
   platform_currency: string
   /** How to notify users when an admin creates an account without setting a password. */
   admin_new_user_email_delivery: AdminNewUserEmailDelivery
+  /** Routes that show a "Coming Soon" lock screen. Superadmin can toggle from /dashboard/admin/permissions. */
+  locked_pages: string[]
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -60,6 +62,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   show_public_leaderboard: true,
   platform_currency: 'USD',
   admin_new_user_email_delivery: 'resend_recovery',
+  locked_pages: [],
 }
 
 export function mergeGeneralPlatformSettings(
@@ -69,5 +72,9 @@ export function mergeGeneralPlatformSettings(
   merged.admin_new_user_email_delivery = normalizeAdminNewUserEmailDelivery(
     merged.admin_new_user_email_delivery
   )
+  // Ensure locked_pages is always an array of strings
+  if (!Array.isArray(merged.locked_pages)) {
+    merged.locked_pages = []
+  }
   return merged as GeneralPlatformSettings
 }

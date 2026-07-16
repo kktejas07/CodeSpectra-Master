@@ -11,11 +11,12 @@ import { Switch } from '@/components/ui/switch'
 import { useToast } from '@/lib/toast-context'
 import {
   Shield, Search, Loader2, CheckCircle2, Database, RefreshCw,
-  Save, Plus, Trash2, Users, Lock, Key
+  Save, Plus, Trash2, Users, Lock, Key, Unlock
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { type ResourcePermission, type PermissionAction } from '@/lib/permissions-db'
+import { buildPermissionMatrix, ROUTE_LABELS } from '@/lib/page-permissions'
 
 interface RoleData {
   _id?: string; role: string; name: string; description?: string
@@ -37,6 +38,8 @@ export default function PermissionsPage() {
   const [editing, setEditing] = useState<Record<string, PermissionAction[]>>({})
   const [saving, setSaving] = useState(false)
   const [filter, setFilter] = useState('')
+  const [lockedPages, setLockedPages] = useState<string[]>([])
+  const [locksLoading, setLocksLoading] = useState(false)
 
   const fetchRoles = useCallback(async () => {
     setLoading(true)
@@ -59,6 +62,46 @@ export default function PermissionsPage() {
   }, [addToast])
 
   useEffect(() => { fetchRoles() }, [fetchRoles])
+
+  const fetchLockedPages = useCallback(async () => {
+    setLocksLoading(true)
+    try {
+      const res = await fetch('/api/platform/locked-pages')
+      if (res.ok) {
+        const data = await res.json()
+        setLockedPages(Array.isArray(data?.locked_pages) ? data.locked_pages : [])
+      }
+    } catch { /* ignore */ }
+    finally { setLocksLoading(false) }
+  }, [])
+
+  useEffect(() => { fetchLockedPages() }, [fetchLockedPages])
+
+  const togglePageLock = useCallback(async (route: string) => {
+    const isLocked = lockedPages.some(r => r === route)
+    const next = isLocked
+      ? lockedPages.filter(r => r !== route)
+      : [...lockedPages, route]
+    setLockedPages(next)
+    try {
+      const res = await csrfFetch('/api/admin/platform-settings', {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ locked_pages: next }),
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: isLocked ? 'Unlocked' : 'Locked', message: `${ROUTE_LABELS[route] || route} is now ${isLocked ? 'unlocked' : 'locked'}` })
+      } else {
+        addToast({ type: 'error', title: 'Failed', message: 'Could not update page lock' })
+        setLockedPages(lockedPages)
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Network error' })
+      setLockedPages(lockedPages)
+    }
+  }, [lockedPages, addToast])
+
+  const pageLockRoutes = useMemo(() => buildPermissionMatrix(), [])
 
   const currentRole = useMemo(() => roles.find(r => r.role === selectedRole), [roles, selectedRole])
 
@@ -147,6 +190,14 @@ export default function PermissionsPage() {
         </Card>
       )}
 
+      {/* Tabs */}
+      <Tabs defaultValue="permissions" className="space-y-6">
+        <TabsList>
+          <TabsTrigger value="permissions" className="gap-1.5"><Key className="h-3.5 w-3.5" />Permissions</TabsTrigger>
+          <TabsTrigger value="locks" className="gap-1.5"><Lock className="h-3.5 w-3.5" />Page Locks</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="permissions" className="space-y-6">
       {/* Role selector */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={selectedRole} onValueChange={v => { setSelectedRole(v); setEditing({}) }}>
@@ -237,6 +288,71 @@ export default function PermissionsPage() {
         <p><strong className="text-foreground">Adding a new page:</strong> Create page.tsx → add route to <code className="bg-muted px-1 rounded">page-permissions.ts</code> → deploy → open this page → new resource appears with "new" badge → assign permissions → done. No RBAC editing needed.</p>
         <p className="flex items-center gap-2"><span className="inline-flex h-3 w-3 rounded-full bg-primary" /><code className="bg-muted px-1 rounded">manage</code> grants all CRUD actions. Toggle per role to override.</p>
       </Card>
+        </TabsContent>
+
+        <TabsContent value="locks" className="space-y-6">
+          <Card className="p-4 border-amber-500/20 bg-amber-500/5 flex items-center gap-2">
+            <Lock className="h-4 w-4 text-amber-600" />
+            <span className="text-sm text-amber-700">
+              Lock a page to show a &quot;Coming Soon&quot; screen to all non-superadmin users. Locked pages remain visible in the sidebar with a lock icon.
+            </span>
+          </Card>
+
+          {locksLoading ? (
+            <div className="flex items-center justify-center py-8 text-muted-foreground">
+              <Loader2 className="h-4 w-4 animate-spin mr-2" />Loading page locks...
+            </div>
+          ) : (
+            <Card className="overflow-hidden border-border/60">
+              <div className="max-h-[60vh] overflow-y-auto">
+                <table className="w-full text-xs">
+                  <thead className="sticky top-0 bg-muted/60 z-10">
+                    <tr className="border-b border-border/60">
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[45%]">Page</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[20%]">Route</th>
+                      <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[15%]">Required Role</th>
+                      <th className="px-3 py-2 text-center font-medium text-muted-foreground w-[20%]">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-border/20">
+                    {pageLockRoutes.map(p => {
+                      const isLocked = lockedPages.some(r => r === p.route)
+                      return (
+                        <tr key={p.route} className={`hover:bg-muted/20 transition-colors ${isLocked ? 'bg-orange-500/5' : ''}`}>
+                          <td className="px-3 py-2">
+                            <span className="font-medium text-foreground text-[11px]">{p.label}</span>
+                          </td>
+                          <td className="px-3 py-2">
+                            <code className="text-[10px] text-muted-foreground bg-muted px-1 rounded">{p.route}</code>
+                          </td>
+                          <td className="px-3 py-2">
+                            <Badge variant="outline" className={`text-[9px] ${ROLE_COLORS[p.requiredRole] || ''}`}>
+                              {p.requiredRole}
+                            </Badge>
+                          </td>
+                          <td className="px-3 py-2 text-center">
+                            <button
+                              onClick={() => togglePageLock(p.route)}
+                              className={`inline-flex items-center gap-1.5 rounded-md px-2.5 py-1 text-[10px] font-medium transition-all ${
+                                isLocked
+                                  ? 'bg-orange-100 text-orange-700 hover:bg-orange-200 dark:bg-orange-900/30 dark:text-orange-400'
+                                  : 'bg-green-100 text-green-700 hover:bg-green-200 dark:bg-green-900/30 dark:text-green-400'
+                              }`}
+                            >
+                              {isLocked ? <Lock className="h-3 w-3" /> : <Unlock className="h-3 w-3" />}
+                              {isLocked ? 'Locked' : 'Unlocked'}
+                            </button>
+                          </td>
+                        </tr>
+                      )
+                    })}
+                  </tbody>
+                </table>
+              </div>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   )
 }

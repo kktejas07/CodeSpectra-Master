@@ -55,6 +55,24 @@ export async function GET(req: NextRequest) {
     .find(filter as any, { projection: { _id: 0 } })
     .sort({ created_at: -1 })
     .toArray()
+
+  // Auto-close hackathons whose ends_at has passed
+  const now = Date.now()
+  const updates: Promise<void>[] = []
+  for (const h of items) {
+    if (
+      h.status !== 'closed' &&
+      h.status !== 'draft' &&
+      new Date(h.ends_at).getTime() < now
+    ) {
+      updates.push(
+        col.updateOne({ id: h.id }, { $set: { status: 'closed', updated_at: nowIso() } }).then(() => {})
+      )
+      h.status = 'closed'
+    }
+  }
+  void updates
+
   return NextResponse.json({ items })
 }
 
@@ -127,7 +145,6 @@ export async function POST(req: NextRequest) {
     },
     results_released: false,
     banner_url: body.banner_url || '',
-    color_theme: body.color_theme || '',
     created_by: user.id,
     created_at: nowIso(),
     updated_at: nowIso(),

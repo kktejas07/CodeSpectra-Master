@@ -108,6 +108,12 @@ export default function HackathonDetailPage({
     void load()
   }, [load])
 
+  // Poll every 15s to detect new team registrations during live event
+  useEffect(() => {
+    const t = setInterval(() => { void load() }, 15000)
+    return () => clearInterval(t)
+  }, [load])
+
   async function fetchQr(team: Team) {
     if (qrCache[team.id]) return qrCache[team.id]
     try {

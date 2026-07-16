@@ -2,6 +2,7 @@
 
 import { use, useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
+import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -13,6 +14,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -37,6 +39,7 @@ interface Team {
 
 export default function HackathonPage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = use(params)
+  const router = useRouter()
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
@@ -160,7 +163,11 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
       )}
       <header className="border-b border-border bg-card/40 backdrop-blur">
         <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <button onClick={() => window.history.back()} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
+          <button onClick={() => {
+            const role = gate.user?.role
+            if (role && isSuperAdmin(role)) { router.push('/dashboard/admin/hackathons'); return }
+            router.push('/dashboard/hackathons')
+          }} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
           <div className="flex items-center gap-3">
             {myTeam && isLive && (
               <Link href={`/hackathons/${slug}/workspace`}>
@@ -348,10 +355,10 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                     <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" /> {t.achievements.length}</Badge>
                   )}
                   <Badge className="gap-1"><Trophy className="h-3 w-3" /> {t.xp} XP · Lv {t.level}</Badge>
-                  <Link href={`/qr/${t.qr_token}`} target="_blank" className="text-muted-foreground hover:text-foreground" title="Open team QR">
+                  <Link href={`/qr/${t.qr_token}`} className="text-muted-foreground hover:text-foreground" title="Open team QR">
                     <ScanLine className="h-4 w-4" />
                   </Link>
-                  <Link href={`/qr/${t.qr_token}`} target="_blank" className="text-muted-foreground hover:text-foreground">
+                  <Link href={`/qr/${t.qr_token}`} className="text-muted-foreground hover:text-foreground">
                     <ArrowRight className="h-4 w-4" />
                   </Link>
                 </div>
