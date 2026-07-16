@@ -60,7 +60,7 @@ export default function DashboardPage() {
     Promise.all([
       fetch('/api/user/stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/user/activity?limit=10', { credentials: 'include' }).then(r => r.json()).catch(() => null),
-      fetch('/api/user/heatmap?weeks=14', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      fetch('/api/user/heatmap?weeks=52', { credentials: 'include' }).then(r => r.json()).catch(() => null),
     ]).then(([statsData, activityData, heatmapData]) => {
       if (statsData && !statsData.error) {
         setStats({

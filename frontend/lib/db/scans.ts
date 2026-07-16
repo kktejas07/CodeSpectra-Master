@@ -186,30 +186,33 @@ export async function insertMetrics(
 export async function listScansWithMetrics(
   userId: string,
   opts: { limit?: number; offset?: number } = {},
-): Promise<Array<CodeScanDoc & { code_metrics: CodeMetricsDoc | null }>> {
+): Promise<{ rows: Array<CodeScanDoc & { code_metrics: CodeMetricsDoc | null }>; total: number }> {
   const limit = Math.min(Math.max(opts.limit ?? 20, 1), 100)
   const offset = Math.max(opts.offset ?? 0, 0)
   const col = await codeScans()
 
-  const rows = await col
-    .aggregate<CodeScanDoc & { code_metrics: CodeMetricsDoc | null }>([
-      { $match: { user_id: userId } },
-      { $sort: { created_at: -1 } },
-      { $skip: offset },
-      { $limit: limit },
-      {
-        $lookup: {
-          from: 'code_metrics',
-          localField: 'id',
-          foreignField: 'scan_id',
-          as: 'code_metrics',
+  const [total, rows] = await Promise.all([
+    col.countDocuments({ user_id: userId }),
+    col
+      .aggregate<CodeScanDoc & { code_metrics: CodeMetricsDoc | null }>([
+        { $match: { user_id: userId } },
+        { $sort: { created_at: -1 } },
+        { $skip: offset },
+        { $limit: limit },
+        {
+          $lookup: {
+            from: 'code_metrics',
+            localField: 'id',
+            foreignField: 'scan_id',
+            as: 'code_metrics',
+          },
         },
-      },
-      { $addFields: { code_metrics: { $arrayElemAt: ['$code_metrics', 0] } } },
-    ])
-    .toArray()
+        { $addFields: { code_metrics: { $arrayElemAt: ['$code_metrics', 0] } } },
+      ])
+      .toArray(),
+  ])
 
-  return rows
+  return { rows, total }
 }
 
 export async function deleteScan(id: string, userId: string): Promise<boolean> {

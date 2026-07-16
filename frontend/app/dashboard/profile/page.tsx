@@ -184,7 +184,7 @@ export default function ProfilePage() {
           fetch('/api/auth/me').then(r => r.json()).catch(() => null),
           fetch('/api/user/stats').then(r => r.json()).catch(() => null),
           fetch('/api/user/activity?limit=10').then(r => r.json()).catch(() => null),
-          fetch('/api/user/heatmap?weeks=14').then(r => r.json()).catch(() => null),
+          fetch('/api/user/heatmap?weeks=52').then(r => r.json()).catch(() => null),
         ])
 
         if (userRes?.user) setUser(userRes.user)

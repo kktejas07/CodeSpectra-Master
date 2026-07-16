@@ -3,7 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { listScansWithMetrics, deleteScan } from '@/lib/db/scans'
 import type { ClientAnalysisPayload } from '@/lib/scanner-analysis-mapper'
 
-type ScanWithMetrics = Awaited<ReturnType<typeof listScansWithMetrics>>[number]
+type ScanWithMetrics = Awaited<ReturnType<typeof listScansWithMetrics>>['rows'][number]
 
 function rowToClientScan(row: ScanWithMetrics) {
   const m = row.code_metrics
@@ -69,9 +69,9 @@ export async function GET(request: NextRequest) {
   const offset = Math.max(parseInt(searchParams.get('offset') || '0', 10) || 0, 0)
 
   try {
-    const rows = await listScansWithMetrics(gate.user.id, { limit, offset })
+    const { rows, total } = await listScansWithMetrics(gate.user.id, { limit, offset })
     const scans = rows.map(rowToClientScan)
-    return NextResponse.json({ success: true, scans, count: scans.length })
+    return NextResponse.json({ success: true, scans, count: total })
   } catch (error) {
     const msg = error instanceof Error ? error.message : String(error)
     console.error('[CodeSpectra] analysis-history:', msg)
