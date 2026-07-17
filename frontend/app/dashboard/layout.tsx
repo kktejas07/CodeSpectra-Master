@@ -52,6 +52,7 @@ import {
   Database,
   Search,
   Briefcase,
+  Flame,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -270,6 +271,7 @@ export default function DashboardLayout({
       { href: DASHBOARD_ROUTES.organization.team, icon: Users, label: 'Organization' },
       // User pages
       { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
+      { href: '/dashboard/100-days', icon: Flame, label: '100 Days of Code' },
       { href: '/dashboard/hackathons', icon: Trophy, label: 'Events & Hackathons' },
       { href: '/dashboard/problems', icon: CodeIcon, label: 'Problems' },
       { href: '/dashboard/tracks', icon: LayersIcon, label: 'Tracks' },

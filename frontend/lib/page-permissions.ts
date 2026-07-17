@@ -94,6 +94,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/search',
   '/dashboard/id-card',
   '/dashboard/analytics',
+  '/dashboard/100-days',
   '/dashboard/hackathons',
   '/dashboard/admin/hackathons',
   '/dashboard/codeathons',
@@ -199,6 +200,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/jobs': 'Jobs',
   '/dashboard/exams': 'Exams',
   '/dashboard/resumes': 'Resumes',
+  '/dashboard/100-days': '100 Days of Code',
   '/dashboard/analytics': 'Analytics',
   '/dashboard/judge': 'Judge Dashboard',
 }
