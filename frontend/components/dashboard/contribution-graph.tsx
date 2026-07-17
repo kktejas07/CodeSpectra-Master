@@ -131,7 +131,7 @@ export function ContributionGraph({
         </div>
       ) : (
         <div className="overflow-x-auto w-full pb-2">
-          <div ref={containerRef} className="relative inline-block min-w-max">
+          <div ref={containerRef} className="relative w-full">
             <table style={{ borderSpacing: '3px', borderCollapse: 'separate' }}>
               <thead>
                 <tr>
