@@ -83,7 +83,7 @@ export default function DayPage() {
   const [running, setRunning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [result, setResult] = useState<RunResponse | null>(null)
-  const [showResults, setShowResults] = useState(false)
+  const [bottomTab, setBottomTab] = useState<'testcases' | 'results'>('testcases')
   const [completedProblems, setCompletedProblems] = useState<Set<string>>(() => getCompletedProblems(day))
   const codeRef = useRef(code)
   codeRef.current = code
@@ -107,7 +107,7 @@ export default function DayPage() {
     if (!problem) return
     setCode(problem.starterCode[language] || problem.starterCode.python || '')
     setResult(null)
-    setShowResults(false)
+    setBottomTab('testcases')
   }, [problem, language])
 
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function DayPage() {
     if (!problem || !codeRef.current.trim()) return
     setRunning(true)
     setResult(null)
-    setShowResults(true)
+    setBottomTab('results')
     try {
       const res = await csrfFetch('/api/arena/run', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -151,7 +151,7 @@ export default function DayPage() {
     if (!problem || !codeRef.current.trim()) return
     setSubmitting(true)
     setResult(null)
-    setShowResults(true)
+    setBottomTab('results')
     try {
       const res = await csrfFetch('/api/arena/run', {
         method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
@@ -255,7 +255,7 @@ export default function DayPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <select
                 value={language}
-                onChange={(e) => { const v = e.target.value; setLanguage(v); setResult(null); setShowResults(false); try { localStorage.setItem('100-days-language', v) } catch {} }}
+                onChange={(e) => { const v = e.target.value; setLanguage(v); setResult(null); setBottomTab('testcases'); try { localStorage.setItem('100-days-language', v) } catch {} }}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {ALL_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
@@ -281,48 +281,36 @@ export default function DayPage() {
               />
             </div>
 
-            {showResults && (
-              <Card className="border-border/60">
-                {!result ? (
-                  <div className="flex items-center justify-center py-8 text-sm text-muted-foreground"><Loader2 className="h-4 w-4 animate-spin mr-2" /> Running on Piston&hellip;</div>
-                ) : (
-                  <div className="p-4 space-y-3">
-                    <div className={`flex items-center gap-2 text-sm font-medium ${
-                      result.status === 'accepted' ? 'text-green-600 dark:text-green-400' : result.status === 'error' ? 'text-red-600 dark:text-red-400' : 'text-amber-600 dark:text-amber-400'
-                    }`}>
-                      {result.status === 'accepted' ? <><CheckCircle className="h-4 w-4" /> All tests passed{completedProblems.has(problem.id) ? ' — Solved!' : ''}</> :
-                       result.status === 'error' ? <><AlertCircle className="h-4 w-4" /> Error</> :
-                       <><AlertCircle className="h-4 w-4" /> {result.passed_tests}/{result.total_tests} passed</>}
-                      <span className="text-xs text-muted-foreground font-normal ml-auto">{result.total_time_ms}ms</span>
-                    </div>
-                    {result.results.length > 0 && (
-                      <div className="space-y-2">
-                        {result.results.map((r, i) => (
-                          <div key={i} className={`rounded-md border p-3 text-xs ${r.passed ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'}`}>
-                            <div className="flex items-center gap-1.5 font-medium mb-1">
-                              {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <AlertCircle className="h-3.5 w-3.5 text-red-500" />}
-                              <span className="text-foreground">Test case {i + 1}</span>
-                              <span className="text-muted-foreground ml-auto">{r.time_ms}ms</span>
-                            </div>
-                            {!r.passed && (
-                              <div className="mt-1 font-mono text-[11px] space-y-0.5">
-                                <p className="text-muted-foreground">Input: <span className="text-foreground">{r.input || '(empty)'}</span></p>
-                                <p className="text-muted-foreground">Expected: <span className="text-foreground">{r.expected || '(empty)'}</span></p>
-                                <p className="text-muted-foreground">Got: <span className="text-red-400">{r.stdout || '(empty)'}</span></p>
-                                {r.stderr && <pre className="mt-1 text-red-400 bg-red-500/5 rounded p-1.5 overflow-auto max-h-20">{r.stderr}</pre>}
-                              </div>
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    )}
-                    {result.stderr_excerpt && !result.results.some(r => r.stderr) && (
-                      <pre className="text-xs text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">{result.stderr_excerpt}</pre>
-                    )}
-                  </div>
+            {/* Bottom panel: Test Cases | Results */}
+            <div className="border-t border-border bg-card/20 shrink-0 h-[260px] flex flex-col rounded-lg overflow-hidden">
+              <div className="flex items-center gap-1 px-3 pt-2 text-sm">
+                <TabBtn current={bottomTab} value="testcases" onClick={setBottomTab}>
+                  Test Cases ({problem.examples.length})
+                </TabBtn>
+                <TabBtn current={bottomTab} value="results" onClick={setBottomTab}>
+                  {result && !running && !submitting ? (
+                    <span className="inline-flex items-center gap-1.5">
+                      {result.status === 'accepted' ? (
+                        <CheckCircle className="h-3.5 w-3.5 text-green-500" />
+                      ) : (
+                        <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                      )}
+                      Results · {result.passed_tests}/{result.total_tests}
+                    </span>
+                  ) : (
+                    'Results'
+                  )}
+                </TabBtn>
+              </div>
+              <div className="flex-1 overflow-y-auto p-3">
+                {bottomTab === 'testcases' && (
+                  <TestCasesPanel examples={problem.examples} />
                 )}
-              </Card>
-            )}
+                {bottomTab === 'results' && (
+                  <ResultsPanel result={result} running={running || submitting} />
+                )}
+              </div>
+            </div>
           </div>
         </div>
       )}
@@ -336,6 +324,128 @@ export default function DayPage() {
           <Button asChild variant="outline" size="sm"><Link href={`/dashboard/100-days/${nextDay.day}`}>Day {nextDay.day}: {nextDay.theme} <ChevronRight className="h-4 w-4 ml-1" /></Link></Button>
         ) : <div />}
       </div>
+    </div>
+  )
+}
+
+function TabBtn({
+  current,
+  value,
+  onClick,
+  children,
+}: {
+  current: string
+  value: 'testcases' | 'results'
+  onClick: (v: 'testcases' | 'results') => void
+  children: React.ReactNode
+}) {
+  const active = current === value
+  return (
+    <button
+      onClick={() => onClick(value)}
+      className={`px-3 py-1.5 rounded-t border-b-2 transition text-xs ${
+        active
+          ? 'border-primary text-foreground'
+          : 'border-transparent text-muted-foreground hover:text-foreground'
+      }`}
+    >
+      {children}
+    </button>
+  )
+}
+
+function TestCasesPanel({ examples }: { examples: HundredDayProblem['examples'] }) {
+  if (examples.length === 0) {
+    return <p className="text-xs text-muted-foreground py-4 text-center">No sample test cases available.</p>
+  }
+  return (
+    <div className="space-y-2">
+      {examples.map((ex, i) => (
+        <div key={i} className="rounded-md border border-border/60 bg-card/40 p-3 text-xs">
+          <div className="flex items-center justify-between mb-2">
+            <span className="text-muted-foreground font-medium">Test case {i + 1} of {examples.length}</span>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <div className="text-muted-foreground mb-0.5 font-medium">Input</div>
+              <pre className="font-mono whitespace-pre-wrap text-foreground bg-muted/30 rounded p-1.5 text-[11px]">{ex.input || '(empty)'}</pre>
+            </div>
+            <div>
+              <div className="text-muted-foreground mb-0.5 font-medium">Expected Output</div>
+              <pre className="font-mono whitespace-pre-wrap text-foreground bg-muted/30 rounded p-1.5 text-[11px]">{ex.output || '(empty)'}</pre>
+            </div>
+          </div>
+          {ex.explanation && (
+            <p className="mt-2 text-muted-foreground text-[11px]">{ex.explanation}</p>
+          )}
+        </div>
+      ))}
+    </div>
+  )
+}
+
+function ResultsPanel({ result, running }: { result: RunResponse | null; running: boolean }) {
+  if (running) {
+    return (
+      <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+        <Loader2 className="h-4 w-4 animate-spin" /> Executing on Piston…
+      </div>
+    )
+  }
+  if (!result) {
+    return (
+      <p className="text-sm text-muted-foreground py-4 text-center">
+        Click <strong>Run</strong> to test your code against sample cases.
+      </p>
+    )
+  }
+
+  const ok = result.status === 'accepted'
+
+  return (
+    <div className="space-y-3">
+      <div className="flex items-center gap-3 text-sm">
+        <span className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded border text-xs ${
+          ok ? 'border-green-500/30 bg-green-500/5 text-green-600 dark:text-green-400' : 'border-destructive/30 bg-destructive/5 text-destructive'
+        }`}>
+          {ok ? <CheckCircle className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+          {ok ? 'All passed' : result.status.replace(/_/g, ' ')}
+        </span>
+        <span className="text-xs text-muted-foreground">
+          {result.passed_tests}/{result.total_tests} passed · {result.total_time_ms}ms
+        </span>
+      </div>
+
+      {result.results.length > 0 && (
+        <div className="space-y-2">
+          {result.results.map((r, i) => (
+            <div key={i} className={`rounded-md border p-3 text-xs ${
+              r.passed ? 'border-green-500/20 bg-green-500/5' : 'border-red-500/20 bg-red-500/5'
+            }`}>
+              <div className="flex items-center gap-1.5 font-medium mb-1.5">
+                {r.passed ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> : <AlertCircle className="h-3.5 w-3.5 text-red-500" />}
+                <span className="text-foreground">Test case {i + 1} of {result.total_tests}</span>
+                <span className="text-muted-foreground ml-auto">{r.time_ms}ms</span>
+              </div>
+              <div className="mt-1.5 font-mono text-[11px] space-y-0.5">
+                <p className="text-muted-foreground">Input: <span className="text-foreground">{r.input || '(empty)'}</span></p>
+                <p className="text-muted-foreground">Expected: <span className="text-foreground">{r.expected || '(empty)'}</span></p>
+                {!r.passed && (
+                  <p className="text-muted-foreground">Got: <span className="text-red-400">{r.stdout || '(empty)'}</span></p>
+                )}
+                {r.passed && (
+                  <p className="text-muted-foreground">Got: <span className="text-green-500">{r.stdout || '(empty)'}</span></p>
+                )}
+                {r.stderr && <pre className="mt-1 text-red-400 bg-red-500/5 rounded p-1.5 overflow-auto max-h-20">{r.stderr}</pre>}
+              </div>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {result.stderr_excerpt && !result.results.some(r => r.stderr) && (
+        <pre className="text-xs text-red-400 bg-red-500/5 rounded-md p-3 overflow-auto max-h-24 font-mono">{result.stderr_excerpt}</pre>
+      )}
     </div>
   )
 }
