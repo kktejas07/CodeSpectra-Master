@@ -14,6 +14,7 @@ import {
   Globe2,
   Smartphone,
 } from 'lucide-react'
+import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   parsePlatformSettingsSection,
@@ -35,6 +36,7 @@ const ITEMS: {
   { id: 'integrations', label: 'Integrations', icon: KeyRound },
   { id: 'payments', label: 'Payments & billing', icon: CreditCard },
   { id: 'email-templates', label: 'Email templates', icon: FileText },
+  { id: 'llm', label: 'AI & LLM Keys', icon: Sparkles },
 ]
 
 export function PlatformSettingsSidebarNav({

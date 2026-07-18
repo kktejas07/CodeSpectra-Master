@@ -8,6 +8,7 @@ export const PLATFORM_SETTINGS_SECTIONS = [
   'integrations',
   'payments',
   'email-templates',
+  'llm',
 ] as const
 
 export type PlatformSettingsSection = (typeof PLATFORM_SETTINGS_SECTIONS)[number]

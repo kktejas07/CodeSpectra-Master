@@ -2060,7 +2060,136 @@ function SystemSettingsInner() {
             <MobileSettingsPage />
           ) : null}
 
-          {section === 'email-templates' ? (
+          {section === 'llm' ? (
+            <div className="space-y-0" data-testid="llm-section">
+              <Card className="rounded-xl border-border/60 p-6" data-testid="ai-keys-section">
+                <div className="flex items-center gap-2 mb-1">
+                  <Sparkles className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">AI & LLM API Keys</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mb-6">
+                  Configure API keys for AI providers. Keys are stored encrypted. At minimum, add a Gemini API key for free usage.
+                </p>
+
+                <div className="space-y-5">
+                  {/* Gemini */}
+                  <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">Google Gemini</p>
+                      {secretsMeta.gemini_api_key ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Free tier available at{' '}
+                      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google AI Studio</a>.
+                      Used for code analysis, hints, and fast completions.
+                    </p>
+                    <div className="relative">
+                      <Input
+                        id="gemini_key"
+                        type={visibleFields.gemini_api_key ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.gemini_api_key}
+                        onChange={(e) => setSecretsDraft((d) => ({ ...d, gemini_api_key: e.target.value }))}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="AIza..."
+                      />
+                      <button
+                        type="button" tabIndex={-1}
+                        onClick={() => toggleVisible('gemini_api_key')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.gemini_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Anthropic */}
+                  <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">Anthropic Claude</p>
+                      {secretsMeta.anthropic_api_key ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Get keys from{' '}
+                      <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">Anthropic Console</a>.
+                      Used for deep code review, agentic fixes, and chat.
+                    </p>
+                    <div className="relative">
+                      <Input
+                        id="anthropic_key"
+                        type={visibleFields.anthropic_api_key ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.anthropic_api_key}
+                        onChange={(e) => setSecretsDraft((d) => ({ ...d, anthropic_api_key: e.target.value }))}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="sk-ant-..."
+                      />
+                      <button
+                        type="button" tabIndex={-1}
+                        onClick={() => toggleVisible('anthropic_api_key')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.anthropic_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* OpenAI */}
+                  <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">OpenAI</p>
+                      {secretsMeta.openai_api_key ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Get keys from{' '}
+                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">OpenAI Platform</a>.
+                    </p>
+                    <div className="relative">
+                      <Input
+                        id="openai_key"
+                        type={visibleFields.openai_api_key ? 'text' : 'password'}
+                        autoComplete="off"
+                        value={secretsDraft.openai_api_key}
+                        onChange={(e) => setSecretsDraft((d) => ({ ...d, openai_api_key: e.target.value }))}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
+                        placeholder="sk-..."
+                      />
+                      <button
+                        type="button" tabIndex={-1}
+                        onClick={() => toggleVisible('openai_api_key')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      >
+                        {visibleFields.openai_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="flex justify-end mt-6 pt-4 border-t border-border/40">
+                  <Button
+                    onClick={() => saveSecrets()}
+                    disabled={savingKey === "integrations"}
+                    className="gap-2"
+                  >
+                    {savingKey === "integrations" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                    Save Keys
+                  </Button>
+                </div>
+              </Card>
+            </div>
+          ) : section === 'email-templates' ? (
             <Card className="rounded-xl border-border/60 shadow-sm">
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
