@@ -22,7 +22,7 @@ interface Hackathon {
 }
 
 interface Team {
-  id: string; name: string; slug: string
+  id: string; name: string; slug: string; qr_token?: string
   xp: number; level: number; submissions: number
   members: Array<{ user_id: string; name: string; role: string }>
   achievements: Array<{ id: string; name: string }>
