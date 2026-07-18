@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { hackathons, hackathonTeams, hackathonSubmissions, newId, nowIso } from '@/lib/db/qr-events'
+import { hackathons, hackathonTeams, hackathonSubmissions, newId, nowIso, xpToLevel } from '@/lib/db/qr-events'
 import { problems } from '@/lib/db/problems'
 import { executeOnce } from '@/lib/piston'
 
@@ -108,6 +108,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     score,
     max_score: task.points,
     test_results: testResults,
+    auto_graded: shouldAutoGrade && testResults ? true : false,
+    grading_error: shouldAutoGrade && !testResults ? 'No sample test cases available for auto-grading' : null,
   }, { status: 201 })
 }
 

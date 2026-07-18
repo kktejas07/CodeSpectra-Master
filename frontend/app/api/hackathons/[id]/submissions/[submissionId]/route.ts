@@ -1,22 +1,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
-import { hackathonSubmissions, hackathons, hackathonTeams, nowIso } from '@/lib/db/qr-events'
+import { hackathonSubmissions, hackathons, hackathonTeams, nowIso, xpToLevel } from '@/lib/db/qr-events'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-// XP per 1% score — e.g. 80% score = 80 XP
 const SCORE_TO_XP_RATIO = 1
-
-function xpLevel(xp: number): number {
-  if (xp < 50) return 1
-  if (xp < 150) return 2
-  if (xp < 300) return 3
-  if (xp < 500) return 4
-  if (xp < 750) return 5
-  if (xp < 1000) return 6
-  return 7
-}
 
 export async function GET(
   _req: NextRequest,
@@ -94,17 +83,20 @@ export async function PATCH(
     { $set, $push: { scores: scoreEntry } },
   )
 
-  // Grant XP to the team based on judge's score
+  // Grant XP to the team based on judge's score (first-time scoring only)
   try {
-    const xpEarned = Math.round(score * SCORE_TO_XP_RATIO)
-    const teamsCol = await hackathonTeams()
-    const team = await teamsCol.findOne({ id: sub.team_id })
-    if (team) {
-      const newXp = team.xp + xpEarned
-      await teamsCol.updateOne(
-        { id: team.id },
-        { $set: { xp: newXp, level: xpLevel(newXp), updated_at: now } },
-      )
+    const prevScore = sub.score
+    if (prevScore == null) {
+      const xpEarned = Math.round(score * SCORE_TO_XP_RATIO)
+      const teamsCol = await hackathonTeams()
+      const team = await teamsCol.findOne({ id: sub.team_id })
+      if (team) {
+        const newXp = team.xp + xpEarned
+        await teamsCol.updateOne(
+          { id: team.id },
+          { $set: { xp: newXp, level: xpToLevel(newXp), updated_at: now } },
+        )
+      }
     }
   } catch { /* XP grant is best-effort — don't fail scoring if XP update fails */ }
 

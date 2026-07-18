@@ -82,7 +82,7 @@ interface Claim {
 }
 
 interface ProblemDetail {
-  problem_slug: string; title: string; difficulty: string; statement?: string; tags?: string[]
+  problem_slug: string; title: string; difficulty: string; statement_md?: string; tags?: string[]
   test_cases?: Array<{ id: string; stdin: string; expected_stdout: string; is_sample: boolean }>
   input_format?: string; output_format?: string; constraints?: string
 }
@@ -489,7 +489,11 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                               </Badge>
                             )}
                             {sub && sub.score !== null && (
-                              <span className="text-[10px] text-green-400">{sub.score}/{task.points}</span>
+                              <span className={`text-[10px] ${
+                                sub.score >= task.points * 0.8 ? 'text-green-400' :
+                                sub.score >= task.points * 0.5 ? 'text-yellow-400' :
+                                'text-red-400'
+                              }`}>{sub.score}/{task.points}</span>
                             )}
                             {isClaimed && !isMyClaim && (
                               <Badge variant="secondary" className="text-[10px] gap-1">
@@ -734,9 +738,9 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
                   </div>
-                ) : problemDetail?.statement ? (
+                ) : problemDetail?.statement_md ? (
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                    {problemDetail.statement}
+                    {problemDetail.statement_md}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No problem description available.</p>
