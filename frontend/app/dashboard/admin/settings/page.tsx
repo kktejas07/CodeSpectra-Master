@@ -2076,7 +2076,7 @@ function SystemSettingsInner() {
                   <h3 className="font-semibold text-foreground">AI & LLM API Keys</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-6">
-                  Configure API keys for AI providers. You can add <strong>multiple keys separated by commas</strong> — the system auto-rotates on rate limits. Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
+                  Configure API keys for AI providers. Add multiple keys per provider — the system auto-rotates on rate limits. Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
                 </p>
 
                 <div className="space-y-5">
@@ -2100,18 +2100,49 @@ function SystemSettingsInner() {
                         id="gemini_key"
                         type={visibleFields.gemini_api_key ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.gemini_api_key}
-                        onChange={(e) => setSecretsDraft((d) => ({ ...d, gemini_api_key: e.target.value }))}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="AIza... or AIza1,AIza2,AIza3 for multi-key"
-                      />
-                      <button
-                        type="button" tabIndex={-1}
-                        onClick={() => toggleVisible('gemini_api_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {visibleFields.gemini_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
+                        {(() => {
+                      const keys = secretsDraft.gemini_api_key ? secretsDraft.gemini_api_key.split(',').filter(k => k.trim()) : ['']
+                      return keys.map((key, idx) => (
+                        <div key={idx} className="relative mb-2">
+                          <Input
+                            type={visibleFields.gemini_api_key ? 'text' : 'password'}
+                            autoComplete="off"
+                            value={key}
+                            onChange={(e) => {
+                              const next = [...keys]
+                              next[idx] = e.target.value
+                              setSecretsDraft((d) => ({ ...d, gemini_api_key: next.filter(k => k.trim()).join(',') }))
+                            }}
+                            className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-16"
+                            placeholder={idx === 0 ? "Key " + (idx + 1) + " (AIza...)" : "Key " + (idx + 1)}
+                          />
+                          <button type="button" tabIndex={-1}
+                            onClick={() => toggleVisible('gemini_api_key')}
+                            className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            {visibleFields.gemini_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                          {keys.length > 1 && (
+                            <button type="button" tabIndex={-1}
+                              onClick={() => {
+                                const next = keys.filter((_, i) => i !== idx)
+                                setSecretsDraft((d) => ({ ...d, gemini_api_key: next.filter(k => k.trim()).join(',') }))
+                              }}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-destructive hover:text-red-400">
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      )).concat(
+                        <button type="button" key="add-gemini"
+                          onClick={() => {
+                            const next = [...keys.filter(k => k.trim()), '']
+                            setSecretsDraft((d) => ({ ...d, gemini_api_key: next.join(',') }))
+                          }}
+                          className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1">
+                          <Plus className="h-3 w-3" /> Add another key
+                        </button>
+                      )
+                    })()}
                     </div>
                   </div>
 
@@ -2135,19 +2166,51 @@ function SystemSettingsInner() {
                         id="anthropic_key"
                         type={visibleFields.anthropic_api_key ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.anthropic_api_key}
-                        onChange={(e) => setSecretsDraft((d) => ({ ...d, anthropic_api_key: e.target.value }))}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="sk-ant-... or key1,key2 for multi-key"
+                        {(() => {
+                      const keys = secretsDraft.anthropic_api_key ? secretsDraft.anthropic_api_key.split(',').filter(k => k.trim()) : ['']
+                      return keys.map((key, idx) => (
+                        <div key={idx} className="relative mb-2">
+                          <Input
+                            type={visibleFields.anthropic_api_key ? 'text' : 'password'}
+                            autoComplete="off"
+                            value={key}
+                            onChange={(e) => {
+                              const next = [...keys]
+                              next[idx] = e.target.value
+                              setSecretsDraft((d) => ({ ...d, anthropic_api_key: next.filter(k => k.trim()).join(',') }))
+                            }}
+                            className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-16"
+                            placeholder={idx === 0 ? "Key " + (idx + 1) + " (sk-ant-...)" : "Key " + (idx + 1)}"
                       />
                       <button
                         type="button" tabIndex={-1}
-                        onClick={() => toggleVisible('anthropic_api_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {visibleFields.anthropic_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
+                        button type="button" tabIndex={-1}
+                            onClick={() => toggleVisible('anthropic_api_key')}
+                            className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            {visibleFields.anthropic_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                          {keys.length > 1 && (
+                            <button type="button" tabIndex={-1}
+                              onClick={() => {
+                                const next = keys.filter((_, i) => i !== idx)
+                                setSecretsDraft((d) => ({ ...d, anthropic_api_key: next.filter(k => k.trim()).join(',') }))
+                              }}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-destructive hover:text-red-400">
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      )).concat(
+                        <button type="button" key="add-anthropic"
+                          onClick={() => {
+                            const next = [...keys.filter(k => k.trim()), '']
+                            setSecretsDraft((d) => ({ ...d, anthropic_api_key: next.join(',') }))
+                          }}
+                          className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1">
+                          <Plus className="h-3 w-3" /> Add another key
+                        </button>
+                      )
+                    })()}
                   </div>
 
                   {/* OpenAI */}
@@ -2169,20 +2232,51 @@ function SystemSettingsInner() {
                         id="openai_key"
                         type={visibleFields.openai_api_key ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.openai_api_key}
-                        onChange={(e) => setSecretsDraft((d) => ({ ...d, openai_api_key: e.target.value }))}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="sk-... or key1,key2 for multi-key"
+                        {(() => {
+                      const keys = secretsDraft.openai_api_key ? secretsDraft.openai_api_key.split(',').filter(k => k.trim()) : ['']
+                      return keys.map((key, idx) => (
+                        <div key={idx} className="relative mb-2">
+                          <Input
+                            type={visibleFields.openai_api_key ? 'text' : 'password'}
+                            autoComplete="off"
+                            value={key}
+                            onChange={(e) => {
+                              const next = [...keys]
+                              next[idx] = e.target.value
+                              setSecretsDraft((d) => ({ ...d, openai_api_key: next.filter(k => k.trim()).join(',') }))
+                            }}
+                            className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-16"
+                            placeholder={idx === 0 ? "Key " + (idx + 1) + " (sk-...)" : "Key " + (idx + 1)}"
                       />
                       <button
                         type="button" tabIndex={-1}
-                        onClick={() => toggleVisible('openai_api_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
-                        {visibleFields.openai_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                      </button>
-                    </div>
-                  </div>
+                        button type="button" tabIndex={-1}
+                            onClick={() => toggleVisible('openai_api_key')}
+                            className="absolute right-8 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            {visibleFields.openai_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                          {keys.length > 1 && (
+                            <button type="button" tabIndex={-1}
+                              onClick={() => {
+                                const next = keys.filter((_, i) => i !== idx)
+                                setSecretsDraft((d) => ({ ...d, openai_api_key: next.filter(k => k.trim()).join(',') }))
+                              }}
+                              className="absolute right-1 top-1/2 -translate-y-1/2 text-destructive hover:text-red-400">
+                              <X className="h-4 w-4" />
+                            </button>
+                          )}
+                        </div>
+                      )).concat(
+                        <button type="button" key="add-openai"
+                          onClick={() => {
+                            const next = [...keys.filter(k => k.trim()), '']
+                            setSecretsDraft((d) => ({ ...d, openai_api_key: next.join(',') }))
+                          }}
+                          className="text-xs text-primary hover:underline mt-1 inline-flex items-center gap-1">
+                          <Plus className="h-3 w-3" /> Add another key
+                        </button>
+                      )
+                    })()}
 
                   {/* Groq */}
                   <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
