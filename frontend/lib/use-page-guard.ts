@@ -31,7 +31,7 @@ function fetchLockedData(): Promise<LockedData> {
   return fetchPromise
 }
 
-function fetchLockedPages(): Promise<string[]> {
+export function fetchLockedPages(): Promise<string[]> {
   return fetchLockedData().then(d => d.locked_pages)
 }
 

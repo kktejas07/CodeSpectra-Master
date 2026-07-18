@@ -10,7 +10,7 @@
  * an entry to ADMIN_ONLY_ROUTES or TENANT_ADMIN_ROUTES below.
  */
 
-import type { UserRole } from '@/lib/rbac'
+import type { UserRole } from '@/lib/types/rbac-types'
 
 export interface PagePermission {
   route: string

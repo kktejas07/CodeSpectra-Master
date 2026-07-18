@@ -69,6 +69,7 @@ import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
 import { PageLocked } from '@/components/page-locked'
 import { ROUTE_LABELS } from '@/lib/page-permissions'
+import { fetchLockedPages } from '@/lib/use-page-guard'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -119,17 +120,12 @@ export default function DashboardLayout({
     return () => { cancelled = true }
   }, [fbUser])
 
-  // Fetch locked pages from platform settings
+  // Fetch locked pages from platform settings (shared cached fetch — deduplicated across hooks & layout)
   useEffect(() => {
     let cancelled = false
-    fetch('/api/platform/locked-pages')
-      .then(r => r.ok ? r.json() : { locked_pages: [] })
-      .then(data => {
-        if (!cancelled && Array.isArray(data?.locked_pages)) {
-          setLockedPages(data.locked_pages)
-        }
-      })
-      .catch(() => {})
+    fetchLockedPages().then(pages => {
+      if (!cancelled) setLockedPages(pages)
+    })
     return () => { cancelled = true }
   }, [])
 

@@ -15,6 +15,9 @@
  *   3. Run `yarn build` — it validates correctness at build time.
  *   4. Check /dashboard/admin/permissions to verify.
  */
+import type { UserRole } from '@/lib/types/rbac-types'
+export type { UserRole }
+
 import {
   ADMIN_ONLY_ROUTES,
   TENANT_ADMIN_ROUTES,
@@ -24,8 +27,6 @@ import {
   getRequiredRoleForRoute,
   type PagePermission,
 } from '@/lib/page-permissions'
-
-export type UserRole = 'superadmin' | 'tenant_admin' | 'judge' | 'user'
 
 /** Canonical dashboard URLs (filesystem still uses `/dashboard/admin/...`; names here describe intent). */
 export const DASHBOARD_ROUTES = {
