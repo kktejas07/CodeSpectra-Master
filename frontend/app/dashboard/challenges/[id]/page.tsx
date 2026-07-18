@@ -82,7 +82,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   const outputFormat = problem?.output_format || ''
 
   return (
-    <div className="h-screen w-screen overflow-hidden">
+    <div className="h-[calc(100vh-4rem)] w-full overflow-hidden">
       <ChallengeEditor
         challengeId={challenge?.id || challengeId}
         title={title}

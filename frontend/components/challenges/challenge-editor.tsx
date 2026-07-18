@@ -341,7 +341,7 @@ export function ChallengeEditor({
   }
 
   return (
-    <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-0 h-screen max-h-screen overflow-hidden bg-background">
+    <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-0 h-full overflow-hidden bg-background">
       {/* ─── Left Panel: Problem Statement ─── */}
       <div className="flex flex-col overflow-hidden border-r border-border/40 bg-card/30">
         {/* Header */}
