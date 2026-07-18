@@ -82,6 +82,14 @@ interface SubmissionRow {
   created_at: string
 }
 
+interface DiscussionRow {
+  id: string
+  user_name: string
+  content: string
+  parent_id: string | null
+  created_at: string
+}
+
 const TOP_LANGUAGES = [
   { id: 'python', label: 'Python 3', monaco: 'python' },
   { id: 'javascript', label: 'JavaScript', monaco: 'javascript' },
@@ -123,10 +131,15 @@ export default function ProblemDetailPage() {
 
   const [language, setLanguage] = useState<string>('python')
   const [source, setSource] = useState<string>('')
-  const [tab, setTab] = useState<'samples' | 'results' | 'console' | 'analysis' | 'submissions'>('samples')
+  const [tab, setTab] = useState<'samples' | 'results' | 'console' | 'analysis' | 'submissions' | 'discussions'>('samples')
   const [submissionsList, setSubmissionsList] = useState<SubmissionRow[]>([])
   const [submissionsLoading, setSubmissionsLoading] = useState(false)
   const [problemStats, setProblemStats] = useState<{ acceptance_rate: number | null; total_submissions: number } | null>(null)
+  const [discussions, setDiscussions] = useState<DiscussionRow[]>([])
+  const [discussionsLoading, setDiscussionsLoading] = useState(false)
+  const [replyTo, setReplyTo] = useState<string | null>(null)
+  const [commentText, setCommentText] = useState('')
+  const [postingComment, setPostingComment] = useState(false)
   const { lockedFeatures } = useLockedFeatures()
   const resultsLocked = lockedFeatures.includes('problems:results')
   const consoleLocked = lockedFeatures.includes('problems:console')
@@ -185,6 +198,35 @@ export default function ProblemDetailPage() {
       .catch(() => setSubmissionsList([]))
       .finally(() => setSubmissionsLoading(false))
   }, [tab, slug])
+
+  useEffect(() => {
+    if (tab !== 'discussions' || !slug) return
+    setDiscussionsLoading(true)
+    fetch(`/api/problems/${encodeURIComponent(slug)}/discussions`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => setDiscussions(j.discussions ?? []))
+      .catch(() => setDiscussions([]))
+      .finally(() => setDiscussionsLoading(false))
+  }, [tab, slug])
+
+  async function postComment(parentId: string | null) {
+    if (!commentText.trim()) return
+    setPostingComment(true)
+    try {
+      const res = await csrfFetch(`/api/problems/${slug}/discussions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: commentText, parent_id: parentId }),
+      })
+      if (res.ok) {
+        const newComment = await res.json()
+        setDiscussions((prev) => [newComment as DiscussionRow, ...prev])
+        setCommentText('')
+        setReplyTo(null)
+      }
+    } catch {}
+    finally { setPostingComment(false) }
+  }
 
   function onChangeLanguage(next: string) {
     setLanguage(next)
@@ -317,8 +359,69 @@ export default function ProblemDetailPage() {
             <span className="text-xs px-2 py-0.5 rounded bg-primary/10 border border-primary/30 text-primary hidden md:inline">
               {problemStats.acceptance_rate}% acceptance · {problemStats.total_submissions} subs
             </span>
-          )}
-        </div>
+)}
+              {tab === 'discussions' && (
+                <div className="space-y-3">
+                  <div className="flex gap-2">
+                    <textarea
+                      value={commentText}
+                      onChange={(e) => setCommentText(e.target.value)}
+                      placeholder={replyTo ? 'Write a reply...' : 'Start a discussion...'}
+                      className="flex-1 min-h-[60px] rounded-md border border-border bg-background px-3 py-2 text-xs resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                      rows={2}
+                    />
+                    <div className="flex flex-col gap-1">
+                      <Button size="sm" onClick={() => postComment(replyTo)} disabled={postingComment || !commentText.trim()}>
+                        {postingComment ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Post'}
+                      </Button>
+                      {replyTo && (
+                        <Button size="sm" variant="ghost" className="text-xs text-muted-foreground" onClick={() => { setReplyTo(null); setCommentText('') }}>
+                          Cancel
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                  {discussionsLoading ? (
+                    <div className="flex items-center gap-2 text-sm text-muted-foreground py-4">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Loading discussions…
+                    </div>
+                  ) : discussions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-4 text-center">No discussions yet. Be the first to share your thoughts!</p>
+                  ) : (
+                    <div className="space-y-2">
+                      {discussions.filter(d => !d.parent_id).map((topLevel) => {
+                        const replies = discussions.filter(d => d.parent_id === topLevel.id)
+                        return (
+                          <div key={topLevel.id} className="rounded border border-border bg-card/40 p-3 text-xs">
+                            <div className="flex items-center gap-2 mb-1.5">
+                              <span className="font-medium text-foreground">{topLevel.user_name || 'Anonymous'}</span>
+                              <span className="text-muted-foreground">{new Date(topLevel.created_at).toLocaleDateString()}</span>
+                            </div>
+                            <p className="text-foreground/85 whitespace-pre-wrap mb-2">{topLevel.content}</p>
+                            <button onClick={() => { setReplyTo(topLevel.id); setCommentText('') }} className="text-xs text-muted-foreground hover:text-foreground transition">
+                              Reply
+                            </button>
+                            {replies.length > 0 && (
+                              <div className="ml-4 mt-2 pl-3 border-l-2 border-border space-y-2">
+                                {replies.map((r) => (
+                                  <div key={r.id} className="text-xs">
+                                    <div className="flex items-center gap-2 mb-1">
+                                      <span className="font-medium text-foreground text-[11px]">{r.user_name || 'Anonymous'}</span>
+                                      <span className="text-muted-foreground text-[11px]">{new Date(r.created_at).toLocaleDateString()}</span>
+                                    </div>
+                                    <p className="text-foreground/80 whitespace-pre-wrap">{r.content}</p>
+                                  </div>
+                                ))}
+                              </div>
+                            )}
+                          </div>
+                        )
+                      })}
+                    </div>
+                  )}
+                </div>
+              )}
+            </div>
         <div className="flex items-center gap-2">
           <Link
             href="/"
@@ -514,6 +617,9 @@ export default function ProblemDetailPage() {
               <TabBtn current={tab} value="submissions" onClick={setTab}>
                 Submissions
               </TabBtn>
+              <TabBtn current={tab} value="discussions" onClick={setTab}>
+                Discussions
+              </TabBtn>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {tab === 'samples' && (
@@ -600,8 +706,8 @@ function TabBtn({
   children,
 }: {
   current: string
-  value: 'samples' | 'results' | 'console' | 'analysis' | 'submissions'
-  onClick: (v: 'samples' | 'results' | 'console' | 'analysis' | 'submissions') => void
+  value: 'samples' | 'results' | 'console' | 'analysis' | 'submissions' | 'discussions'
+  onClick: (v: 'samples' | 'results' | 'console' | 'analysis' | 'submissions' | 'discussions') => void
   children: React.ReactNode
 }) {
   const active = current === value
