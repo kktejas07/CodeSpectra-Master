@@ -82,14 +82,10 @@ function CodeScannerPageInner() {
     if (newCode.trim().length > 10) {
       const detected = detectLanguage(newCode)
       if (detected && detected !== 'plaintext') {
-        const norm = runtimeMap[detected] || detected
         setDetectedLang(detected)
-        if (norm !== language) {
-          setLanguage(norm)
-        }
       }
     }
-  }, [language])
+  }, [])
 
   const [loading, setLoading] = useState(false)
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)
