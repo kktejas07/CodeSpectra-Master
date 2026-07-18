@@ -22,6 +22,8 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
 
   // Release results — from under_review to released
   // WARNING: pending (never-reviewed) submissions are auto-scored as 0
+  const subsCol = await hackathonSubmissions()
+  const now = nowIso()
   const pendingCount = await subsCol.countDocuments({ hackathon_id: hk.id, status: 'pending' })
   if (pendingCount > 0) {
     await subsCol.updateMany(
