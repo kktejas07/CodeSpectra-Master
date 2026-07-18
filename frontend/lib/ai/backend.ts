@@ -18,6 +18,7 @@ async function getBackendSecrets(): Promise<{
     openai: process.env.OPENAI_API_KEY?.trim() || '',
     openrouter: process.env.OPENROUTER_API_KEY?.trim() || '',
     opencode: process.env.OPENCODE_API_KEY?.trim() || '',
+    groq: process.env.GROQ_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '',
   }
   try {
     const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
