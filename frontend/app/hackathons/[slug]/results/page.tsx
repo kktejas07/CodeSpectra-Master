@@ -35,8 +35,8 @@ interface Submission {
   feedback?: string; submitted_at: string
 }
 
-function getVerifyToken(teamQrToken: string): string {
-  return teamQrToken
+function getVerifyToken(teamQrToken?: string): string {
+  return teamQrToken || ''
 }
 
 async function generateQRDataURL(text: string, size: number = 100): Promise<string> {
