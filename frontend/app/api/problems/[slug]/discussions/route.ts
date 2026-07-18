@@ -53,7 +53,7 @@ export async function POST(
       id: crypto.randomUUID(),
       problem_slug: slug,
       user_id: gate.user.id,
-      user_name: gate.user.full_name || gate.user.email?.split('@')[0] || 'User',
+      user_name: gate.user.fullName || gate.user.name || gate.user.email?.split('@')[0] || 'User',
       content: content.trim(),
       parent_id: parent_id || null,
       created_at: new Date().toISOString(),
