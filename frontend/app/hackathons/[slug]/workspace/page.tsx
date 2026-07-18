@@ -522,7 +522,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             <p className="text-xs text-muted-foreground text-center py-4">No teams yet</p>
           ) : (
             <div className="space-y-2">
-              {teams.slice(0, 5).map((t, i) => (
+              {teams.sort((a, b) => b.xp - a.xp).map((t, i) => (
                 <div key={t.id} className="flex items-center gap-3 text-sm">
                   <span className="w-5 font-bold text-muted-foreground text-right">#{i + 1}</span>
                   <span className="flex-1 font-medium">{t.name}</span>

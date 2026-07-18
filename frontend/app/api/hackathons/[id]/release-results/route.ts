@@ -20,14 +20,15 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  // Release all submissions under review
-  const subsCol = await hackathonSubmissions()
-  const now = nowIso()
-  // Score 0 for pending submissions that were never reviewed
-  await subsCol.updateMany(
-    { hackathon_id: hk.id, status: 'pending' },
-    { $set: { status: 'released', score: 0, reviewed_at: now } },
-  )
+  // Release results — from under_review to released
+  // WARNING: pending (never-reviewed) submissions are auto-scored as 0
+  const pendingCount = await subsCol.countDocuments({ hackathon_id: hk.id, status: 'pending' })
+  if (pendingCount > 0) {
+    await subsCol.updateMany(
+      { hackathon_id: hk.id, status: 'pending' },
+      { $set: { status: 'released', score: 0, reviewed_at: now } },
+    )
+  }
   const updateResult = await subsCol.updateMany(
     { hackathon_id: hk.id, status: 'under_review' },
     { $set: { status: 'released', reviewed_at: now } },
@@ -63,6 +64,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     ok: true,
     released_at: releasedAt,
     submissions_updated: updateResult.modifiedCount,
+    pending_auto_scored: pendingCount,
     teams_affected: affectedTeams.length,
     emails_sent: emailsSent,
   })

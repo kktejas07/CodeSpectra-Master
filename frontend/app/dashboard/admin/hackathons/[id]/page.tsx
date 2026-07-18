@@ -31,6 +31,7 @@ import {
 import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Hackathon {
   id: string
@@ -72,6 +73,7 @@ export default function HackathonDetailPage({
   params: Promise<{ id: string }>
 }) {
   const { id } = use(params)
+  const gate = usePageGuard('superadmin')
   const [event, setEvent] = useState<Hackathon | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
@@ -205,6 +207,14 @@ export default function HackathonDetailPage({
 
   function removeJudge(uid: string) {
     setJudgeIds((prev) => prev.filter((j) => j !== uid))
+  }
+
+  if (!gate.ready) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    )
   }
 
   if (loading && !event) {

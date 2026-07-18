@@ -49,9 +49,18 @@ export async function POST(
   if (!problem_slug) return NextResponse.json({ error: 'problem_slug required' }, { status: 400 })
 
   const now = nowIso()
-  const expires_at = new Date(Date.now() + CLAIM_TTL_MS).toISOString()
-
   const claims = await hackathonClaims()
+
+  // Check if claim already exists and is still active (not expired)
+  const existing = await claims.findOne({ hackathon_id: hk.id, problem_slug })
+  if (existing && new Date(existing.expires_at).getTime() > Date.now()) {
+    if (existing.user_id !== user.id) {
+      return NextResponse.json({ error: 'Problem already claimed by another team' }, { status: 409 })
+    }
+    // Same user re-claiming — extend the TTL
+  }
+
+  const expires_at = new Date(Date.now() + CLAIM_TTL_MS).toISOString()
   await claims.updateOne(
     { hackathon_id: hk.id, problem_slug },
     {

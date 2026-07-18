@@ -50,6 +50,9 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/settings',
   '/dashboard/admin/workflows',
   '/dashboard/admin/question-generator',
+  '/dashboard/admin/hackathons',
+  '/dashboard/admin/hackathons/create',
+  '/dashboard/admin/hackathons/edit',
 ]
 
 /**
@@ -58,8 +61,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
 export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
   '/dashboard/interviews/feedback',
-  '/dashboard/admin/hackathons/create',
-  '/dashboard/admin/hackathons/edit',
 ]
 
 /**
@@ -96,7 +97,6 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/analytics',
   '/dashboard/100-days',
   '/dashboard/hackathons',
-  '/dashboard/admin/hackathons',
   '/dashboard/codeathons',
   '/dashboard/jobs',
   '/dashboard/exams',
