@@ -18,16 +18,6 @@ function xpLevel(xp: number): number {
   return 7
 }
 
-function xpLevel(xp: number): number {
-  if (xp < 50) return 1
-  if (xp < 150) return 2
-  if (xp < 300) return 3
-  if (xp < 500) return 4
-  if (xp < 750) return 5
-  if (xp < 1000) return 6
-  return 7
-}
-
 export async function GET(
   _req: NextRequest,
   ctx: { params: Promise<{ id: string; submissionId: string }> },
