@@ -30,6 +30,7 @@ async function getBackendSecrets(): Promise<{
       openai: fromEnv.openai || (secrets.openai_api_key?.trim() || llmKey),
       openrouter: fromEnv.openrouter || (secrets.openrouter_api_key?.trim() || llmKey),
       opencode: fromEnv.opencode || (secrets.opencode_api_key?.trim() || llmKey),
+      groq: fromEnv.openai || (secrets.groq_api_key?.trim() || llmKey),
     }
   } catch {
     return fromEnv
@@ -47,6 +48,7 @@ async function backendHeaders(opts?: { apiKeyOverride?: string }): Promise<Recor
   const keys = await getBackendSecrets()
   if (keys.anthropic && !h['x-anthropic-api-key']) h['x-anthropic-api-key'] = keys.anthropic
   if (keys.gemini && !h['x-gemini-api-key']) h['x-gemini-api-key'] = keys.gemini
+  if (keys.groq && !h['x-openai-api-key']) h['x-openai-api-key'] = keys.groq
   if (keys.openai && !h['x-openai-api-key']) h['x-openai-api-key'] = keys.openai
   const activeKey = keys.openai || keys.openrouter || keys.opencode || keys.anthropic || keys.gemini
   if (activeKey && !h['x-api-key']) h['x-api-key'] = activeKey
