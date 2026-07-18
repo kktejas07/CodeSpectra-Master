@@ -2091,8 +2091,7 @@ groq,gsk_..."
                   <Button size="sm" variant="outline" className="text-xs"
                     onClick={() => {
                       const text = (document.getElementById('bulk_keys') as HTMLTextAreaElement)?.value || ''
-                      const lines = text.split('
-').filter(l => l.trim())
+                      const lines = text.replace(/\r/g, '').split('\n'.filter(l => l.trim())
                       const collected: Record<string, string[]> = {}
                       for (const line of lines) {
                         const parts = line.split(',').map(s => s.trim())
