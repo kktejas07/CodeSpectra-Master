@@ -72,6 +72,7 @@ _KEY_HEADER_MAP: dict[str, str] = {
     "opencode": "x-openai-api-key",
     "openrouter": "x-openai-api-key",
     "omnirouter": "x-openai-api-key",
+    "groq": "x-openai-api-key",
 }
 
 _ENV_MAP: dict[str, str] = {
@@ -80,6 +81,7 @@ _ENV_MAP: dict[str, str] = {
     "openai": "OPENAI_API_KEY",
     "opencode": "OPENCODE_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
+    "groq": "GROQ_API_KEY",
     "omnirouter": "OPENAI_API_KEY",
 }
 
@@ -203,6 +205,8 @@ def build_chat(
         not base_url or "opencode.june07.com" in base_url
     ):
         base_url = "https://openrouter.ai/api/v1"
+    elif provider == "groq" and not base_url:
+        base_url = "https://api.groq.com/openai/v1"
     return LlmChat(
         api_key=key,
         provider=provider,

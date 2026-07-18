@@ -30,6 +30,7 @@ class Settings:
     OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
     OPENCODE_API_KEY: str = os.environ.get("OPENCODE_API_KEY", "")
     OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
+    GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
     LLM_API_KEY: str = os.environ.get("LLM_API_KEY", "")
 
     # ─── Piston (code execution) ───────────────────────────────

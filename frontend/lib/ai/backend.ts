@@ -10,7 +10,7 @@
 const BACKEND = process.env.INTERNAL_BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'http://codespectra-backend-cd7lq6:8000' : 'http://localhost:8001')
 
 async function getBackendSecrets(): Promise<{
-  anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string
+  anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string; groq: string
 }> {
   const fromEnv = {
     anthropic: process.env.ANTHROPIC_API_KEY?.trim() || '',

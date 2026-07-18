@@ -142,6 +142,7 @@ type SecretsDraft = {
   gemini_api_key: string
   anthropic_api_key: string
   openai_api_key: string
+  groq_api_key: string
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
@@ -176,6 +177,7 @@ const emptySecretsDraft = (): SecretsDraft => ({
   gemini_api_key: '',
   anthropic_api_key: '',
   openai_api_key: '',
+  groq_api_key: '',
 })
 
 function EmailTemplatesSection() {
@@ -2178,6 +2180,32 @@ function SystemSettingsInner() {
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.openai_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                </div>
+
+                  {/* Groq */}
+                  <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
+                    <div className="flex items-center justify-between">
+                      <p className="text-sm font-semibold">Groq (Fast Inference)</p>
+                      {secretsMeta.groq_api_key ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      Get keys from <a href="https://console.groq.com/keys" target="_blank" className="text-primary underline">Groq Console</a>.
+                    </p>
+                    <div className="relative">
+                      <Input id="groq_key" type={visibleFields.groq_api_key ? 'text' : 'password'} autoComplete="off"
+                        value={secretsDraft.groq_api_key}
+                        onChange={(e) => setSecretsDraft((d) => ({ ...d, groq_api_key: e.target.value }))}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10" placeholder="gsk_..." />
+                      <button type="button" tabIndex={-1} onClick={() => toggleVisible('groq_api_key')}
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        {visibleFields.groq_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
                   </div>
