@@ -31,7 +31,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const task = (hk.tasks || []).find((t) => t.problem_slug === body.problem_slug)
   if (!task) return NextResponse.json({ error: 'problem not assigned to this event' }, { status: 400 })
 
-  const shouldAutoGrade = (hk.scoring as any)?.auto_grade === true && body.code?.trim()
+  const shouldAutoGrade = (hk.scoring as any)?.auto_grade !== false && body.code?.trim()
   let score: number | null = null
   let status = 'pending'
   let testResults: any[] | undefined = undefined

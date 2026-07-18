@@ -52,7 +52,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     const resultsUrl = `${appUrl}/hackathons/${hk.slug}/results`
 
     const memberIds = team.members.map((m) => m.user_id).filter(Boolean)
-    await notifyMany(memberIds, {
+    const notified = await notifyMany(memberIds, {
       type: 'hackathon.results',
       title: `Results released: ${hk.name}`,
       message: `Your team "${team.name}" ranked #${rank} of ${affectedTeams.length} with ${team.xp} XP.`,
@@ -60,6 +60,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
       icon: 'trophy',
       send_email: true,
     })
+    emailsSent += notified
   }
 
   return NextResponse.json({

@@ -11,6 +11,7 @@ import {
   Lock, Clock, Copy, Twitter, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import QRCode from 'qrcode'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Hackathon {
@@ -34,48 +35,19 @@ interface Submission {
   feedback?: string; submitted_at: string
 }
 
-function generateToken(hackathonSlug: string, teamId: string, releasedAt?: string): string {
-  const data = `${hackathonSlug}-${teamId}-${releasedAt || Date.now()}`
-  let hash = 0
-  for (let i = 0; i < data.length; i++) {
-    const char = data.charCodeAt(i)
-    hash = ((hash << 5) - hash) + char
-    hash = hash & hash
-  }
-  return Math.abs(hash).toString(36) + Date.now().toString(36)
+function getVerifyToken(teamQrToken: string): string {
+  return teamQrToken
 }
 
-function generateQRDataURL(text: string, size: number = 100): string {
-  const canvas = document.createElement('canvas')
-  canvas.width = size
-  canvas.height = size
-  const ctx = canvas.getContext('2d')
-  if (!ctx) return ''
-
-  ctx.fillStyle = '#ffffff'
-  ctx.fillRect(0, 0, size, size)
-
-  ctx.fillStyle = '#000000'
-  const cellSize = 4
-  const modules = Math.floor(size / cellSize)
-  let hash = 0
-  for (let i = 0; i < text.length; i++) {
-    hash = ((hash << 5) - hash) + text.charCodeAt(i)
-    hash = hash & hash
-  }
-
-  for (let row = 0; row < modules; row++) {
-    for (let col = 0; col < modules; col++) {
-      const idx = (row * modules + col + hash) % 37
-      if (idx < 18) {
-        const x = col * cellSize + 1
-        const y = row * cellSize + 1
-        ctx.fillRect(x, y, cellSize - 2, cellSize - 2)
-      }
-    }
-  }
-
-  return canvas.toDataURL('image/png')
+async function generateQRDataURL(text: string, size: number = 100): Promise<string> {
+  try {
+    return await QRCode.toDataURL(text, {
+      errorCorrectionLevel: 'M',
+      width: size,
+      margin: 1,
+      color: { dark: '#000000', light: '#ffffff' },
+    })
+  } catch { return '' }
 }
 
 function CountdownTimer({ targetDate, eventEnded }: { targetDate: string; eventEnded: boolean }) {
@@ -421,7 +393,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
     ? `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(typeof window !== 'undefined' ? window.location.href : '')}&text=${encodeURIComponent(`I ranked #${myRank} in ${hackathon?.name || 'a hackathon'} on CodeSpectra!`)}`
     : ''
 
-  const downloadCert = () => {
+  const downloadCert = async () => {
     if (!certRef.current || !myTeam || !myRank || !hackathon) return
     setCertGenerated(true)
 
@@ -434,8 +406,8 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const token = generateToken(hackathon.slug, myTeam.id, hackathon.released_at)
-    const qrDataUrl = generateQRDataURL(`${typeof window !== 'undefined' ? window.location.origin : ''}/cert/verify/${token}`, 80)
+    const token = getVerifyToken(hackathon.slug, myTeam.id, hackathon.released_at)
+    const qrDataUrl = await generateQRDataURL(`${typeof window !== 'undefined' ? window.location.origin : ''}/hackathons/verify/${token}`, 80)
 
     const teamSubs = submissions.filter((s) => s.team_id === myTeam.id && s.status === 'released')
     const solvedCount = new Set(teamSubs.filter((s) => s.score !== null && s.score > 0).map((s) => s.problem_slug)).size
