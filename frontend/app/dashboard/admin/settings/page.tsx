@@ -2183,7 +2183,6 @@ function SystemSettingsInner() {
                       </button>
                     </div>
                   </div>
-                </div>
 
                   {/* Groq */}
                   <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
