@@ -13,6 +13,41 @@ import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS } from '@/lib/db/leaderboard'
 import { executeOnce } from '@/lib/piston'
 import type { PistonExecuteResult } from '@/lib/piston'
 
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const problemSlug = searchParams.get('problem_slug')
+  const language = searchParams.get('language')
+  const limit = Math.min(Number(searchParams.get('limit') ?? '50'), 100)
+  const offset = Number(searchParams.get('offset') ?? '0')
+
+  const filter: Record<string, unknown> = { user_id: gate.user.id }
+
+  if (problemSlug) {
+    const pCol = await problems()
+    const p = await pCol.findOne({ slug: problemSlug })
+    if (p) filter.problem_id = p.id
+  }
+  if (language) filter.language = language.toLowerCase()
+
+  try {
+    const sCol = await submissions()
+    const [rows, total] = await Promise.all([
+      sCol
+        .find(filter, { projection: { source_code: 0 }, sort: { created_at: -1 }, limit, skip: offset })
+        .toArray(),
+      sCol.countDocuments(filter),
+    ])
+    return NextResponse.json({ submissions: rows, total, limit, offset })
+  } catch {
+    return NextResponse.json({ error: 'Failed to load submissions' }, { status: 500 })
+  }
+}
+
 interface SubmitBody {
   problem_slug?: string
   language?: string

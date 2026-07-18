@@ -71,6 +71,17 @@ interface RunResponse {
   submissionId: string | null
 }
 
+interface SubmissionRow {
+  id: string
+  language: string
+  status: string
+  score: number
+  passed_tests: number
+  total_tests: number
+  total_time_ms?: number
+  created_at: string
+}
+
 const TOP_LANGUAGES = [
   { id: 'python', label: 'Python 3', monaco: 'python' },
   { id: 'javascript', label: 'JavaScript', monaco: 'javascript' },
@@ -112,7 +123,10 @@ export default function ProblemDetailPage() {
 
   const [language, setLanguage] = useState<string>('python')
   const [source, setSource] = useState<string>('')
-  const [tab, setTab] = useState<'samples' | 'results' | 'console' | 'analysis'>('samples')
+  const [tab, setTab] = useState<'samples' | 'results' | 'console' | 'analysis' | 'submissions'>('samples')
+  const [submissionsList, setSubmissionsList] = useState<SubmissionRow[]>([])
+  const [submissionsLoading, setSubmissionsLoading] = useState(false)
+  const [problemStats, setProblemStats] = useState<{ acceptance_rate: number | null; total_submissions: number } | null>(null)
   const { lockedFeatures } = useLockedFeatures()
   const resultsLocked = lockedFeatures.includes('problems:results')
   const consoleLocked = lockedFeatures.includes('problems:console')
@@ -151,6 +165,26 @@ export default function ProblemDetailPage() {
       }
     })()
   }, [slug])
+
+  useEffect(() => {
+    if (!slug) return
+    void (async () => {
+      try {
+        const res = await fetch(`/api/problems/${slug}/stats`)
+        if (res.ok) setProblemStats(await res.json())
+      } catch {}
+    })()
+  }, [slug])
+
+  useEffect(() => {
+    if (tab !== 'submissions' || !slug) return
+    setSubmissionsLoading(true)
+    fetch(`/api/submissions?problem_slug=${encodeURIComponent(slug)}&limit=30`)
+      .then((r) => r.json())
+      .then((j) => setSubmissionsList(j.submissions ?? []))
+      .catch(() => setSubmissionsList([]))
+      .finally(() => setSubmissionsLoading(false))
+  }, [tab, slug])
 
   function onChangeLanguage(next: string) {
     setLanguage(next)
@@ -279,6 +313,11 @@ export default function ProblemDetailPage() {
           >
             {problem.difficulty}
           </span>
+          {problemStats && problemStats.acceptance_rate != null && (
+            <span className="text-xs px-2 py-0.5 rounded bg-primary/10 border border-primary/30 text-primary hidden md:inline">
+              {problemStats.acceptance_rate}% acceptance · {problemStats.total_submissions} subs
+            </span>
+          )}
         </div>
         <div className="flex items-center gap-2">
           <Link
@@ -472,6 +511,9 @@ export default function ProblemDetailPage() {
                 </span>
               </TabBtn>
               )}
+              <TabBtn current={tab} value="submissions" onClick={setTab}>
+                Submissions
+              </TabBtn>
             </div>
             <div className="flex-1 overflow-y-auto p-3">
               {tab === 'samples' && (
@@ -486,6 +528,35 @@ export default function ProblemDetailPage() {
               )}
               {tab === 'analysis' && !analysisLocked && (
                 <AnalysisPanel analysis={analysis} loading={analysisLoading} hasSubmitted={!!result && result.mode === 'submit'} />
+              )}
+              {tab === 'submissions' && (
+                submissionsLoading ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" /> Loading submissions…
+                  </div>
+                ) : submissionsList.length === 0 ? (
+                  <p className="text-sm text-muted-foreground">No submissions yet. Run or submit your code to see history here.</p>
+                ) : (
+                  <div className="space-y-2">
+                    {submissionsList.map((s) => {
+                      const ok = s.status === 'accepted'
+                      return (
+                        <div key={s.id} className={`rounded border p-3 text-xs ${ok ? 'border-primary/30 bg-primary/5' : 'border-border bg-card/40'}`}>
+                          <div className="flex items-center justify-between gap-3">
+                            <span className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded text-xs ${ok ? 'text-primary' : 'text-destructive'}`}>
+                              {ok ? <CheckCircle2 className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+                              {s.status.replace(/_/g, ' ')}
+                            </span>
+                            <span className="text-muted-foreground">{TOP_LANGUAGES.find(l => l.id === s.language)?.label ?? s.language}</span>
+                            <span className="text-muted-foreground">{s.passed_tests}/{s.total_tests} passed</span>
+                            {s.total_time_ms != null && <span className="text-muted-foreground">{s.total_time_ms}ms</span>}
+                            <span className="text-muted-foreground ml-auto">{new Date(s.created_at).toLocaleString()}</span>
+                          </div>
+                        </div>
+                      )
+                    })}
+                  </div>
+                )
               )}
             </div>
           </div>
@@ -529,8 +600,8 @@ function TabBtn({
   children,
 }: {
   current: string
-  value: 'samples' | 'results' | 'console' | 'analysis'
-  onClick: (v: 'samples' | 'results' | 'console' | 'analysis') => void
+  value: 'samples' | 'results' | 'console' | 'analysis' | 'submissions'
+  onClick: (v: 'samples' | 'results' | 'console' | 'analysis' | 'submissions') => void
   children: React.ReactNode
 }) {
   const active = current === value

@@ -1,7 +1,7 @@
 # Version History — CodeSpectra
 
 > **Auto-Generated**: This document is maintained by the CodeSpectra Documentation Agent.  
-> **Last Updated**: 2026-07-08  
+> **Last Updated**: 2026-07-17  
 > **Update Trigger**: Any code change that modifies API endpoints, database schemas, architecture, or features.
 
 ---
@@ -10,6 +10,7 @@
 
 | Date | Version | Description | Author |
 |------|---------|-------------|--------|
+| 2026-07-17 | v0.16.0 | Added `GET /api/submissions` (list user submissions, filterable by `problem_slug` + `language`) and `GET /api/problems/[slug]/stats` (acceptance rate + total submission count). Problems page now shows acceptance-rate badge in header and per-user submission history in a new "Submissions" tab. Unified Learning page as curriculum hub: "100 Days of Code" hero with live progress, 9 skill tracks from `tracks` collection linking to filtered problems, and original courses below. Added `topics` filter to `GET /api/problems` for track-based filtering. Made `GET /api/tracks` public (no auth). Extended `useProblemsViewModel` to read `topics` URL param. | Platform |
 | 2026-07-11 | v0.15.0 | AI Inventory Control Plane (`/dashboard/admin/ai-inventory`): upgraded with search, status filtering (`Active`, `Inactive`, `Recommended`), custom component registration (`POST /api/ai-inventory`), per-item status toggling & overrides (`PATCH/DELETE /api/ai-inventory/[id]`), and direct configuration navigation links. RAG index (`POST /api/admin/rag/reindex`) and search (`POST /api/admin/rag/search`) now dynamically resolve AI provider keys across OpenAI, OpenRouter, OpenCode, and platform settings. Middleware (`middleware.ts`) updated with CSP whitelist for Monaco Editor CDNs (`cdn.jsdelivr.net`, `cdnjs.cloudflare.com`). | AI Engine |
 | 2026-07-08 | v0.2.0 | Comprehensive security audit & hardening: 10 CVEs fixed (JWT, credentials, API keys, rate limiting, 2FA, webhooks, CRON, regex injection). Added CSP/HSTS middleware, auth audit logging, AI endpoint rate limiting, consolidated auth libs. | AI Audit Agent |
 | 2026-07-08 | v0.2.0 | Restructured documentation by audience classification: public/ (13 files), user/ (15 files), developer/ (6 files), architecture/ (6), api/ (7), database/ (5), security/ (5), ai/ (5), devops/ (5), testing/ (2), compliance/ (4), decisions/ (2), diagrams/ (6), flowcharts/ (2), uml/ (6), roadmap/ (7), reports/ (5). Total: 102 files, 17,032 lines. | AI Doc Agent |

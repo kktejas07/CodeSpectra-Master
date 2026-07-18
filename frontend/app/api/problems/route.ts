@@ -26,6 +26,7 @@ export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const difficulty = searchParams.get('difficulty') as ProblemDoc['difficulty'] | null
   const search = searchParams.get('q')?.trim()
+  const topicsParam = searchParams.get('topics')?.trim()
   const includeHidden = searchParams.get('include_hidden') === 'true'
   const forHackathon = searchParams.get('for_hackathon') === 'true'
 
@@ -38,7 +39,6 @@ export async function GET(request: NextRequest) {
     await ensureSeeded()
     const filter: Record<string, unknown> = { is_published: true }
 
-    // SECURITY: hide hackathon_only problems from non-admins
     if (!isAdmin) {
       filter.$or = [
         { visibility: { $exists: false } },
@@ -46,10 +46,13 @@ export async function GET(request: NextRequest) {
         { hackathon_id: null },
       ]
     }
-    // For admins, no $or filter needed - they see all problems
 
     if (difficulty) filter.difficulty = difficulty
     if (search) filter.title = { $regex: sanitizeRegex(search), $options: 'i' }
+    if (topicsParam) {
+      const topics = topicsParam.split(',').map((t) => t.trim().toLowerCase()).filter(Boolean)
+      if (topics.length > 0) filter.topics = { $in: topics }
+    }
 
     const col = await problems()
     const list = await col
@@ -68,6 +71,10 @@ export async function GET(request: NextRequest) {
     if (!p.is_published) return false
     if (difficulty && p.difficulty !== difficulty) return false
     if (search && !(p.title || '').toLowerCase().includes(search.toLowerCase())) return false
+    if (topicsParam) {
+      const topics = topicsParam.split(',').map(t => t.trim().toLowerCase()).filter(Boolean)
+      if (topics.length > 0 && !topics.some(t => (p.topics || []).map(pt => pt.toLowerCase()).includes(t))) return false
+    }
     return true
   }).map(({ test_cases: _t, starter_code: _s, statement_md: _m, ...rest }) => ({
     ...rest,
