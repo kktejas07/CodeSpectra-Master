@@ -402,6 +402,47 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             </div>
           </Card>
         )}
+        {!isLive && !isClosed && (
+          <Card className="p-5 border-blue-500/20 bg-blue-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-400">Event Not Started</p>
+                <p className="text-xs text-muted-foreground">Starts in:</p>
+              </div>
+              <p className="text-3xl font-mono font-bold text-blue-400">
+                <Countdown targetIso={hackathon.starts_at} />
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">Submissions will open when the event begins. Review the problems below to prepare.</p>
+          </Card>
+        )}
+        {isClosed && !hackathon.results_released && (
+          <Card className="p-5 border-amber-500/20 bg-amber-500/5">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-amber-400" />
+              <div>
+                <p className="text-sm font-semibold text-amber-400">Event Ended</p>
+                <p className="text-xs text-muted-foreground">Waiting for results to be released by the organizers.</p>
+              </div>
+            </div>
+          </Card>
+        )}
+        {isClosed && hackathon.results_released && (
+          <Card className="p-5 border-green-500/20 bg-green-500/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="h-5 w-5 text-green-400" />
+                <div>
+                  <p className="text-sm font-semibold text-green-400">Results Released!</p>
+                  <p className="text-xs text-muted-foreground">View your team&apos;s rank and download certificates.</p>
+                </div>
+              </div>
+              <Button asChild variant="outline" size="sm" className="text-green-400 border-green-400/40">
+                <Link href={`/hackathons/${slug}/results`}>View Results</Link>
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {hackathon.tasks && hackathon.tasks.length > 0 && (
           <div>
@@ -473,7 +514,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                           <Eye className="h-3 w-3" />
                           View Problem
                         </Button>
-                        {canClaim && (
+                        {canClaim && isLive && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -485,7 +526,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             Claim
                           </Button>
                         )}
-                        {canRelease && (
+                        {canRelease && isLive && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -497,7 +538,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             Release
                           </Button>
                         )}
-                        {sub && status !== 'accepted' && (
+                        {sub && status !== 'accepted' && isLive && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -507,7 +548,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             View Submission
                           </Button>
                         )}
-                        {status !== 'accepted' && (
+                        {status !== 'accepted' && isLive && (
                           <Button
                             size="sm"
                             variant="default"
