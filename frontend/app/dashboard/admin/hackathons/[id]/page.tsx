@@ -83,6 +83,9 @@ export default function HackathonDetailPage({
   const [busy, setBusy] = useState(false)
   const [judgeIds, setJudgeIds] = useState<string[]>([])
   const [judgeInput, setJudgeInput] = useState('')
+  const [judgeSearchResults, setJudgeSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([])
+  const [judgeSearching, setJudgeSearching] = useState(false)
+  const [judgeNames, setJudgeNames] = useState<Record<string, string>>({})
 
   const load = useCallback(async () => {
     try {
@@ -109,6 +112,27 @@ export default function HackathonDetailPage({
   useEffect(() => {
     void load()
   }, [load])
+
+  // Resolve judge UUIDs to names
+  useEffect(() => {
+    if (judgeIds.length === 0) return
+    let cancelled = false
+    fetch('/api/admin/users?limit=200', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (cancelled) return
+        const map: Record<string, string> = {}
+        const users = data?.users || data?.data || []
+        for (const u of users) {
+          if (judgeIds.includes(u.id)) {
+            map[u.id] = u.full_name || u.name || u.email?.split('@')[0] || u.id.slice(0, 8)
+          }
+        }
+        setJudgeNames(map)
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [judgeIds])
 
   // Poll every 15s to detect new team registrations during live event
   useEffect(() => {
@@ -197,11 +221,23 @@ export default function HackathonDetailPage({
     }
   }
 
-  function addJudge() {
-    const val = judgeInput.trim()
-    if (val && !judgeIds.includes(val)) {
-      setJudgeIds((prev) => [...prev, val])
+  async function searchJudges() {
+    const q = judgeInput.trim()
+    if (!q || q.length < 2) { setJudgeSearchResults([]); return }
+    setJudgeSearching(true)
+    try {
+      const res = await fetch(`/api/admin/users?search=${encodeURIComponent(q)}&limit=10`, { credentials: 'include' })
+      const data = await res.json()
+      setJudgeSearchResults(Array.isArray(data?.users) ? data.users : [])
+    } catch { setJudgeSearchResults([]) }
+    finally { setJudgeSearching(false) }
+  }
+
+  function addJudge(user: { id: string; name: string }) {
+    if (user.id && !judgeIds.includes(user.id)) {
+      setJudgeIds((prev) => [...prev, user.id])
       setJudgeInput('')
+      setJudgeSearchResults([])
     }
   }
 
@@ -262,9 +298,31 @@ export default function HackathonDetailPage({
               </Tooltip>
             </TooltipProvider>
           </h1>
-          <Badge variant={event.status === 'live' ? 'default' : 'secondary'} className="uppercase">
+          <Badge variant={event.status === 'live' ? 'default' : event.status === 'closed' ? 'destructive' : 'secondary'} className="uppercase">
             {event.status}
           </Badge>
+          <select
+            value={event.status}
+            onChange={async (e) => {
+              const newStatus = e.target.value
+              if (!confirm(`Change status from "${event.status}" to "${newStatus}"?`)) return
+              try {
+                const res = await csrfFetch(`/api/hackathons/${id}`, {
+                  method: 'PATCH',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({ status: newStatus }),
+                })
+                if (!res.ok) throw new Error('Failed')
+                await load()
+              } catch (err) { setError(err instanceof Error ? err.message : String(err)) }
+            }}
+            className="text-xs rounded-md border border-border bg-card px-3 py-1.5 h-8"
+          >
+            <option value="draft">Draft</option>
+            <option value="open">Open (Registration)</option>
+            <option value="live">Live (Running)</option>
+            <option value="closed">Closed (Ended)</option>
+          </select>
           {event.status === 'open' && (
             <span className="flex items-center gap-1 text-xs text-yellow-500">
               <Timer className="h-3 w-3" /> Starts <Countdown targetIso={event.starts_at} />
@@ -292,21 +350,36 @@ export default function HackathonDetailPage({
           )}
           {judgeIds.map((uid) => (
             <Badge key={uid} variant="secondary" className="gap-1">
-              {uid}
+              {judgeNames[uid] || uid.slice(0, 8)}
               <button onClick={() => removeJudge(uid)} className="ml-1 text-muted-foreground hover:text-foreground">×</button>
             </Badge>
           ))}
         </div>
         <div className="flex gap-2">
           <Input
-            placeholder="User ID"
+            placeholder="Search by name or email..."
             value={judgeInput}
-            onChange={(e) => setJudgeInput(e.target.value)}
+            onChange={(e) => { setJudgeInput(e.target.value); if (e.target.value.length >= 2) setTimeout(() => searchJudges(), 300) }}
             className="h-8 text-xs flex-1"
-            onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); addJudge() } }}
           />
-          <Button size="sm" variant="outline" onClick={addJudge} disabled={!judgeInput.trim()}>Add</Button>
+          <Button size="sm" variant="outline" onClick={() => searchJudges()} disabled={judgeInput.trim().length < 2}>Search</Button>
           <Button size="sm" onClick={saveJudges}>Save Judges</Button>
+          {judgeSearchResults.length > 0 && (
+            <div className="border rounded-md mt-1 max-h-36 overflow-y-auto bg-card">
+              {judgeSearchResults.map((u) => (
+                <button
+                  key={u.id}
+                  type="button"
+                  onClick={() => addJudge(u)}
+                  className="w-full text-left px-3 py-1.5 text-xs hover:bg-muted flex items-center justify-between"
+                >
+                  <span className="font-medium">{u.name}</span>
+                  <span className="text-muted-foreground">{u.email}</span>
+                </button>
+              ))}
+            </div>
+          )}
+          {judgeSearching && <p className="text-xs text-muted-foreground py-1">Searching...</p>}
         </div>
       </Card>
 

@@ -5,13 +5,9 @@ import { listAllUsers, getUserById } from '@/lib/db/admin'
 import { buildAdminUserRow, type ProfileRow } from '@/lib/admin-users'
 import { normalizeUserRole } from '@/lib/rbac'
 
-/**
- * GET /api/admin/users — list all users (superadmin only).
- * Phase 4 migration: reads directly from Better Auth's MongoDB `user`
- * collection. The `buildAdminUserRow` shape is preserved by shimming a
- * `User`-like object from the Better Auth user document.
- */
-export async function GET() {
+import { NextRequest } from 'next/server'
+
+export async function GET(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
@@ -20,7 +16,16 @@ export async function GET() {
   try {
     const usersList = await listAllUsers()
 
-    const rows = usersList.map((u) => {
+    const search = req.nextUrl.searchParams.get('search')?.trim().toLowerCase()
+  const filtered = search
+    ? usersList.filter((u) => {
+        const name = ((u.fullName ?? u.name ?? '') as string).toLowerCase()
+        const email = (u.email || '').toLowerCase()
+        return name.includes(search) || email.includes(search)
+      })
+    : usersList
+
+  const rows = filtered.map((u) => {
       const profile: ProfileRow = {
         id: (u._id as unknown as string) || u.id || '',
         email: u.email,
