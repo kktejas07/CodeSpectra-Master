@@ -2075,41 +2075,68 @@ function SystemSettingsInner() {
                   <Sparkles className="h-5 w-5 text-primary" />
                   <h3 className="font-semibold text-foreground">AI & LLM API Keys</h3>
                 </div>
-                <p className="text-xs text-muted-foreground mb-6">
-                  Configure API keys for AI providers. Add multiple keys per provider — the system auto-rotates on rate limits. Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
+                <p className="text-xs text-muted-foreground mb-4">
+                  Configure API keys for AI providers. Add multiple keys for rotation — the system auto-rotates on rate limits. Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
                 </p>
+
+                {/* Bulk Import */}
+                <details className="mb-6 rounded-lg border border-border/60 bg-card/40 p-4">
+                  <summary className="cursor-pointer text-sm font-semibold select-none">Bulk Import Keys</summary>
+                  <p className="text-xs text-muted-foreground mt-2 mb-2">
+                    Paste keys in format: <code className="bg-muted px-1 rounded">provider,key</code> — one per line. Merges with existing keys.
+                  </p>
+                  <textarea id="bulk_keys" rows={4} placeholder="gemini,AIzaSy...
+groq,gsk_..."
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs font-mono resize-none focus:outline-none focus:ring-1 focus:ring-primary mb-2" />
+                  <Button size="sm" variant="outline" className="text-xs"
+                    onClick={() => {
+                      const text = (document.getElementById('bulk_keys') as HTMLTextAreaElement)?.value || ''
+                      const lines = text.split('
+').filter(l => l.trim())
+                      const collected: Record<string, string[]> = {}
+                      for (const line of lines) {
+                        const parts = line.split(',').map(s => s.trim())
+                        const provider = parts[0]?.toLowerCase()
+                        const key = parts.slice(1).join(',')
+                        if (provider && key && ['gemini','anthropic','openai','groq'].includes(provider)) {
+                          if (!collected[provider]) collected[provider] = []
+                          collected[provider].push(key)
+                        }
+                      }
+                      if (Object.keys(collected).length === 0) { alert('No valid keys found'); return }
+                      setSecretsDraft((d) => {
+                        const merge = (exist: string, incoming: string[] | undefined) => {
+                          if (!incoming || incoming.length === 0) return exist
+                          const existing = exist ? exist.split(',').filter(k => k.trim()) : []
+                          const next = incoming.filter(k => !existing.includes(k))
+                          return [...existing, ...next].join(',')
+                        }
+                        return { ...d,
+                          gemini_api_key: merge(d.gemini_api_key, collected.gemini),
+                          anthropic_api_key: merge(d.anthropic_api_key, collected.anthropic),
+                          openai_api_key: merge(d.openai_api_key, collected.openai),
+                          groq_api_key: merge(d.groq_api_key, collected.groq),
+                        }
+                      });
+                      (document.getElementById('bulk_keys') as HTMLTextAreaElement).value = ''
+                      alert('Imported ' + Object.values(collected).reduce((s,a) => s + a.length, 0) + ' keys. Click Save Keys to persist.')
+                    }}
+                  >Import Keys</Button>
+                </details>
 
                 <div className="space-y-5">
                   {/* Gemini */}
                   <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold">Google Gemini</p>
-                      {secretsMeta.gemini_api_key ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span>
-                      ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>
-                      )}
+                      {secretsMeta.gemini_api_key ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Free tier available at{' '}
-                      <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google AI Studio</a>.
-                      Used for code analysis, hints, and fast completions.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Free tier at <a href="https://aistudio.google.com/apikey" target="_blank" rel="noopener noreferrer" className="text-primary underline">Google AI Studio</a>.</p>
                     <div className="relative">
-                      <Input
-                        id="gemini_key"
-                        type={visibleFields.gemini_api_key ? 'text' : 'password'}
-                        autoComplete="off"
-                        value={secretsDraft.gemini_api_key}
-                        onChange={(e) => setSecretsDraft((d) => ({ ...d, gemini_api_key: e.target.value }))}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="AIza... (comma-separate multiple keys: key1,key2,key3)"
-                      />
-                      <button
-                        type="button" tabIndex={-1}
-                        onClick={() => toggleVisible('gemini_api_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
+                      <Input id="gemini_key" type={visibleFields.gemini_api_key ? 'text' : 'password'} autoComplete="off"
+                        value={secretsDraft.gemini_api_key} onChange={(e) => setSecretsDraft((d) => ({ ...d, gemini_api_key: e.target.value }))}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10" placeholder="AIza... (key1,key2,key3 for rotation)" />
+                      <button type="button" tabIndex={-1} onClick={() => toggleVisible('gemini_api_key')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {visibleFields.gemini_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
@@ -2119,92 +2146,48 @@ function SystemSettingsInner() {
                   <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold">Anthropic Claude</p>
-                      {secretsMeta.anthropic_api_key ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span>
-                      ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>
-                      )}
+                      {secretsMeta.anthropic_api_key ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Get keys from{' '}
-                      <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">Anthropic Console</a>.
-                      Used for deep code review, agentic fixes, and chat.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Get keys from <a href="https://console.anthropic.com" target="_blank" rel="noopener noreferrer" className="text-primary underline">Anthropic Console</a>.</p>
                     <div className="relative">
-                      <Input
-                        id="anthropic_key"
-                        type={visibleFields.anthropic_api_key ? 'text' : 'password'}
-                        autoComplete="off"
-                        value={secretsDraft.anthropic_api_key}
-                        onChange={(e) => setSecretsDraft((d) => ({ ...d, anthropic_api_key: e.target.value }))}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="sk-ant-... (comma-separate multiple keys: key1,key2,key3)"
-                      />
-                      <button
-                        type="button" tabIndex={-1}
-                        button
-                        type="button" tabIndex={-1}
-                        onClick={() => toggleVisible('anthropic_api_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
+                      <Input id="anthropic_key" type={visibleFields.anthropic_api_key ? 'text' : 'password'} autoComplete="off"
+                        value={secretsDraft.anthropic_api_key} onChange={(e) => setSecretsDraft((d) => ({ ...d, anthropic_api_key: e.target.value }))}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10" placeholder="sk-ant-... (key1,key2 for rotation)" />
+                      <button type="button" tabIndex={-1} onClick={() => toggleVisible('anthropic_api_key')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {visibleFields.anthropic_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
+                    </div>
                   </div>
 
                   {/* OpenAI */}
                   <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold">OpenAI</p>
-                      {secretsMeta.openai_api_key ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span>
-                      ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>
-                      )}
+                      {secretsMeta.openai_api_key ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Get keys from{' '}
-                      <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">OpenAI Platform</a>.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Get keys from <a href="https://platform.openai.com/api-keys" target="_blank" rel="noopener noreferrer" className="text-primary underline">OpenAI Platform</a>.</p>
                     <div className="relative">
-                      <Input
-                        id="openai_key"
-                        type={visibleFields.openai_api_key ? 'text' : 'password'}
-                        autoComplete="off"
-                        value={secretsDraft.openai_api_key}
-                        onChange={(e) => setSecretsDraft((d) => ({ ...d, openai_api_key: e.target.value }))}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="sk-... (comma-separate multiple keys: key1,key2,key3)"
-                      />
-                      <button
-                        type="button" tabIndex={-1}
-                        button
-                        type="button" tabIndex={-1}
-                        onClick={() => toggleVisible('openai_api_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                      >
+                      <Input id="openai_key" type={visibleFields.openai_api_key ? 'text' : 'password'} autoComplete="off"
+                        value={secretsDraft.openai_api_key} onChange={(e) => setSecretsDraft((d) => ({ ...d, openai_api_key: e.target.value }))}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10" placeholder="sk-... (key1,key2 for rotation)" />
+                      <button type="button" tabIndex={-1} onClick={() => toggleVisible('openai_api_key')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {visibleFields.openai_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
+                    </div>
+                  </div>
 
                   {/* Groq */}
                   <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
                     <div className="flex items-center justify-between">
                       <p className="text-sm font-semibold">Groq (Fast Inference)</p>
-                      {secretsMeta.groq_api_key ? (
-                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span>
-                      ) : (
-                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>
-                      )}
+                      {secretsMeta.groq_api_key ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase">Not Set</span>}
                     </div>
-                    <p className="text-xs text-muted-foreground">
-                      Get keys from <a href="https://console.groq.com/keys" target="_blank" className="text-primary underline">Groq Console</a>.
-                    </p>
+                    <p className="text-xs text-muted-foreground">Get keys from <a href="https://console.groq.com/keys" target="_blank" className="text-primary underline">Groq Console</a>.</p>
                     <div className="relative">
                       <Input id="groq_key" type={visibleFields.groq_api_key ? 'text' : 'password'} autoComplete="off"
-                        value={secretsDraft.groq_api_key}
-                        onChange={(e) => setSecretsDraft((d) => ({ ...d, groq_api_key: e.target.value }))}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10" placeholder="gsk_... or key1,key2 for multi-key" />
-                      <button type="button" tabIndex={-1} onClick={() => toggleVisible('groq_api_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                        value={secretsDraft.groq_api_key} onChange={(e) => setSecretsDraft((d) => ({ ...d, groq_api_key: e.target.value }))}
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10" placeholder="gsk_... (key1,key2 for rotation)" />
+                      <button type="button" tabIndex={-1} onClick={() => toggleVisible('groq_api_key')} className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {visibleFields.groq_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
                     </div>
@@ -2212,18 +2195,14 @@ function SystemSettingsInner() {
                 </div>
 
                 <div className="flex justify-end mt-6 pt-4 border-t border-border/40">
-                  <Button
-                    onClick={() => saveSecrets()}
-                    disabled={savingKey === "integrations"}
-                    className="gap-2"
-                  >
+                  <Button onClick={() => saveSecrets()} disabled={savingKey === "integrations"} className="gap-2">
                     {savingKey === "integrations" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     Save Keys
                   </Button>
                 </div>
               </Card>
             </div>
-          ) : section === 'email-templates' ? (
+          ) ) : section === 'email-templates' ? (
             <Card className="rounded-xl border-border/60 shadow-sm">
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
