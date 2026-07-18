@@ -406,7 +406,7 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const token = getVerifyToken(hackathon.slug, myTeam.id, hackathon.released_at)
+    const token = getVerifyToken(myTeam.qr_token)
     const qrDataUrl = await generateQRDataURL(`${typeof window !== 'undefined' ? window.location.origin : ''}/hackathons/verify/${token}`, 80)
 
     const teamSubs = submissions.filter((s) => s.team_id === myTeam.id && s.status === 'released')
