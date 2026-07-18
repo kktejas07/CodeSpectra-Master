@@ -10,7 +10,8 @@ import json
 from typing import Any
 
 from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Request
+from fastapi.responses import JSONResponse, StreamingResponse
 
 from models.ai import (
     AgentReq,
@@ -39,6 +40,22 @@ from services.ai import (
     handle_rag_embed,
     handle_skill_insights,
 )
+
+import functools
+import traceback
+
+def safe_ai_endpoint(fn):
+    @functools.wraps(fn)
+    async def wrapper(request_or_req, *args, **kwargs):
+        try:
+            return await fn(request_or_req, *args, **kwargs)
+        except Exception as e:
+            traceback.print_exc()
+            return JSONResponse(
+                content={"error": str(e), "detail": type(e).__name__},
+                status_code=500,
+            )
+    return wrapper
 
 router = APIRouter(prefix="/internal/ai", tags=["internal-ai"])
 

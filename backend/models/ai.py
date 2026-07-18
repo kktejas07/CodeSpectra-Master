@@ -55,6 +55,7 @@ class HintsReq(BaseModel):
     language: str = "python"
     current_code: Optional[str] = None
     hint_level: int = 1
+    model_role: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
@@ -66,6 +67,7 @@ class CodeReviewReq(BaseModel):
     code: str
     language: str = "javascript"
     context: Optional[str] = None
+    model_role: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
@@ -79,6 +81,7 @@ class CodeAnalysisReq(BaseModel):
     problem_title: Optional[str] = None
     passed_tests: Optional[int] = None
     total_tests: Optional[int] = None
+    model_role: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
@@ -93,6 +96,7 @@ class GradeReq(BaseModel):
     rubric: Dict[str, int]
     passed_tests: Optional[int] = None
     total_tests: Optional[int] = None
+    model_role: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
@@ -105,6 +109,7 @@ class GenerateProblemReq(BaseModel):
     difficulty: str = "medium"
     topics: List[str] = Field(default_factory=list)
     language_hint: str = "python"
+    model_role: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
@@ -132,6 +137,7 @@ class AgentReq(BaseModel):
     code: str
     language: str = "python"
     max_steps: int = 3
+    model_role: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
