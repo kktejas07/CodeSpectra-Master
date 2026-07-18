@@ -4,6 +4,10 @@ import { jobs } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   const { id } = await params
   try {
     const col = await jobs()

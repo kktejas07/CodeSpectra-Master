@@ -17,7 +17,7 @@ export async function GET() {
     return NextResponse.json(list)
   } catch (error) {
     console.error('[CodeSpectra] resumes GET:', error)
-    return NextResponse.json([])
+    return NextResponse.json({ error: 'Failed to load resumes' }, { status: 500 })
   }
 }
 

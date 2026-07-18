@@ -3,6 +3,10 @@ import { requireAuth } from '@/lib/route-auth'
 import { qualityRatings, newId, nowIso } from '@/lib/db/misc'
 
 export async function GET(request: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   try {
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')

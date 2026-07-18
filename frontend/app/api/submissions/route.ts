@@ -196,16 +196,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Only persist `submit` runs — `run` is just a sample check.
   if (mode === 'submit') {
+    const sCol = await submissions()
     try {
-      const sCol = await submissions()
       await sCol.insertOne(doc)
+    } catch (e) {
+      console.error('[CodeSpectra] submission insert failed:', e)
+      return NextResponse.json({ error: 'Submission failed to save. Please retry.' }, { status: 500 })
+    }
 
-      // XP economy: award on first accepted solve + first-blood bonus.
-      if (aggregateStatus === 'accepted') {
+    // XP award is best-effort — failures are logged but don't fail the response.
+    if (aggregateStatus === 'accepted') {
+      try {
         const difficulty = (problem.difficulty || 'easy') as 'easy' | 'medium' | 'hard'
         const baseXp = DIFFICULTY_XP[difficulty] ?? 10
 
-        // Has this user already solved this problem before?
         const prior = await sCol.findOne({
           problem_id: problem.id,
           user_id: gate.user.id,
@@ -222,7 +226,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             metadata: { difficulty },
           })
 
-          // First-blood: is there any earlier accepted submission *from anyone*?
           const earlier = await sCol.findOne(
             { problem_id: problem.id, status: 'accepted', id: { $ne: doc.id } },
             { sort: { created_at: 1 } },
@@ -238,9 +241,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             })
           }
         }
+      } catch (e) {
+        console.warn('[CodeSpectra] XP award skipped:', e)
       }
-    } catch (e) {
-      console.warn('[CodeSpectra] submission insert/XP skipped:', e)
     }
   }
 

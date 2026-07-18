@@ -7,7 +7,7 @@ export async function GET() {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()
-    const data = await db.collection('teams').find({}).toArray()
+    const data = await db.collection('teams').find({}, { projection: { _id: 0 } }).toArray()
     return NextResponse.json({ data })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }

@@ -1,15 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAdmin } from '@/lib/api-auth'
 import { proctorEvents } from '@/lib/db/ai'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
-  const gate = await requireAuth()
-  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
-  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const gate = await requireAdmin()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
   const searchParams = req.nextUrl.searchParams

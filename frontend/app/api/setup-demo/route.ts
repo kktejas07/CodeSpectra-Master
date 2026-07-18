@@ -40,8 +40,8 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       users: createdUsers.length > 0
-        ? createdUsers.map(u => ({ ...u, password: DEMO_USERS.find(d => d.email === u.email)!.password }))
-        : DEMO_USERS.map(u => ({ email: u.email, name: u.name, role: u.role, password: u.password })),
+        ? createdUsers
+        : DEMO_USERS.map(u => ({ email: u.email, name: u.name, role: u.role })),
     })
   } catch (error) {
     console.error('[CodeSpectra] Setup demo error:', error)
