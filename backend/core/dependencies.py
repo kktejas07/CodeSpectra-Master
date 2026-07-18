@@ -16,6 +16,15 @@ from collections import defaultdict
 from typing import Any, AsyncGenerator, Optional, Union
 
 from fastapi import HTTPException, Request
+
+# Provider fallback chain: (provider, model, key, base_url)
+# Keys are resolved dynamically, models are defaults
+_FALLBACK_CHAIN = [
+    ("gemini", "gemini-3-flash-preview", None, ""),    # None = resolve from key
+    ("groq", "llama-3.3-70b-versatile", None, "https://api.groq.com/openai/v1"),
+    ("openai", "gpt-4o-mini", None, "https://api.openai.com/v1"),
+    ("anthropic", "claude-sonnet-4-5-20250929", None, ""),
+]
 from fastapi.responses import StreamingResponse
 from motor.motor_asyncio import AsyncIOMotorCollection
 
@@ -207,12 +216,26 @@ def build_chat(
         base_url = "https://openrouter.ai/api/v1"
     elif provider == "groq" and not base_url:
         base_url = "https://api.groq.com/openai/v1"
+    # Split comma-separated keys for multi-key rotation
+    keys = [k.strip() for k in key.split(",") if k.strip()] if key else [""]
+    
+    # Build fallback chain (exclude current provider)
+    fallbacks = []
+    current_provider = (provider_override or provider).lower()
+    for fb_prov, fb_model, _, fb_url in _FALLBACK_CHAIN:
+        if fb_prov.lower() != current_provider:
+            fb_key = resolve_key(fb_prov, api_key_or_headers if isinstance(api_key_or_headers, dict) else None)
+            fb_keys = [k.strip() for k in fb_key.split(",") if k.strip()] if fb_key else [""]
+            if fb_keys and fb_keys[0]:
+                fallbacks.append((fb_prov, fb_model, fb_keys, fb_url))
+    
     return LlmChat(
-        api_key=key,
+        api_key=keys,
         provider=provider,
         model=model,
         system_message=system_message,
         base_url=base_url,
+        fallback_providers=fallbacks,
     )
 
 

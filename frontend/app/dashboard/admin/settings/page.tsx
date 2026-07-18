@@ -2076,7 +2076,7 @@ function SystemSettingsInner() {
                   <h3 className="font-semibold text-foreground">AI & LLM API Keys</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-6">
-                  Configure API keys for AI providers. Keys are stored encrypted. At minimum, add a Gemini API key for free usage.
+                  Configure API keys for AI providers. You can add <strong>multiple keys separated by commas</strong> — the system auto-rotates on rate limits. Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
                 </p>
 
                 <div className="space-y-5">
@@ -2103,7 +2103,7 @@ function SystemSettingsInner() {
                         value={secretsDraft.gemini_api_key}
                         onChange={(e) => setSecretsDraft((d) => ({ ...d, gemini_api_key: e.target.value }))}
                         className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="AIza..."
+                        placeholder="AIza... or AIza1,AIza2,AIza3 for multi-key"
                       />
                       <button
                         type="button" tabIndex={-1}
@@ -2138,7 +2138,7 @@ function SystemSettingsInner() {
                         value={secretsDraft.anthropic_api_key}
                         onChange={(e) => setSecretsDraft((d) => ({ ...d, anthropic_api_key: e.target.value }))}
                         className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="sk-ant-..."
+                        placeholder="sk-ant-... or key1,key2 for multi-key"
                       />
                       <button
                         type="button" tabIndex={-1}
@@ -2172,7 +2172,7 @@ function SystemSettingsInner() {
                         value={secretsDraft.openai_api_key}
                         onChange={(e) => setSecretsDraft((d) => ({ ...d, openai_api_key: e.target.value }))}
                         className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                        placeholder="sk-..."
+                        placeholder="sk-... or key1,key2 for multi-key"
                       />
                       <button
                         type="button" tabIndex={-1}
@@ -2202,7 +2202,7 @@ function SystemSettingsInner() {
                       <Input id="groq_key" type={visibleFields.groq_api_key ? 'text' : 'password'} autoComplete="off"
                         value={secretsDraft.groq_api_key}
                         onChange={(e) => setSecretsDraft((d) => ({ ...d, groq_api_key: e.target.value }))}
-                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10" placeholder="gsk_..." />
+                        className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10" placeholder="gsk_... or key1,key2 for multi-key" />
                       <button type="button" tabIndex={-1} onClick={() => toggleVisible('groq_api_key')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                         {visibleFields.groq_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
