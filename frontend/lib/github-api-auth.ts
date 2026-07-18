@@ -31,7 +31,17 @@ export async function getGitHubAccessTokenFromSession(): Promise<GitHubTokenResu
       providerId: 'github',
     })
 
-    const accessToken = (acct?.accessToken as string | undefined) ?? ''
+    let accessToken = (acct?.accessToken as string | undefined) ?? ''
+
+    // Fallback: also check integrations collection (OAuth callback writes here)
+    if (!accessToken) {
+      const integration = await db.collection('integrations').findOne({
+        provider: 'github',
+        user_id: gate.user.id,
+      })
+      accessToken = (integration?.access_token as string) ?? ''
+    }
+
     if (!accessToken) {
       return {
         ok: false,
