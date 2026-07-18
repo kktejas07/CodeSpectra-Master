@@ -139,6 +139,9 @@ type SecretsDraft = {
   phonepe_salt_key: string
   phonepe_salt_index: string
   phonepe_webhook_secret: string
+  gemini_api_key: string
+  anthropic_api_key: string
+  openai_api_key: string
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
@@ -170,6 +173,9 @@ const emptySecretsDraft = (): SecretsDraft => ({
   phonepe_salt_key: '',
   phonepe_salt_index: '1',
   phonepe_webhook_secret: '',
+  gemini_api_key: '',
+  anthropic_api_key: '',
+  openai_api_key: '',
 })
 
 function EmailTemplatesSection() {
@@ -322,7 +328,7 @@ function SystemSettingsInner() {
     if (loading) return
     // Pre-populate ALL plain-text fields from saved server secrets
     setSecretsDraft((d) => {
-      const next = { ...d }
+      const next: any = { ...d }
       const plainFields = [
         'piston_url', 'piston_run_timeout_ms', 'piston_max_concurrent',
         'stripe_price_pro_monthly', 'stripe_price_pro_yearly',
