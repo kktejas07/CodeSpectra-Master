@@ -75,7 +75,10 @@ export default function DayPage() {
   const [activeProblem, setActiveProblem] = useState<string>('')
   const problem = useMemo(() => dayData?.problems.find(p => p.id === activeProblem) ?? null, [dayData, activeProblem])
 
-  const [language, setLanguage] = useState('python')
+  const [language, setLanguage] = useState(() => {
+    if (typeof window === 'undefined') return 'python'
+    try { return localStorage.getItem('100-days-language') || 'python' } catch { return 'python' }
+  })
   const [code, setCode] = useState('')
   const [running, setRunning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -216,7 +219,7 @@ export default function DayPage() {
           <Card className="p-6 border-border/60 space-y-4 overflow-y-auto max-h-[calc(100vh-14rem)]">
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-foreground">{problem.title}</h2>
-              <Badge className={problem.difficulty === 'easy' ? 'text-green-600 dark:text-green-400' : problem.difficulty === 'medium' ? 'text-amber-600 dark:text-amber-400' : 'text-red-600 dark:text-red-400'}>{problem.difficulty}</Badge>
+              <Badge variant={problem.difficulty === 'easy' ? 'success' : problem.difficulty === 'medium' ? 'warning' : 'danger'}>{problem.difficulty}</Badge>
               {completedProblems.has(problem.id) && <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 gap-1"><CheckCircle className="h-3 w-3" /> Solved</Badge>}
             </div>
             <div>
@@ -252,7 +255,7 @@ export default function DayPage() {
             <div className="flex items-center gap-2 flex-wrap">
               <select
                 value={language}
-                onChange={(e) => { setLanguage(e.target.value); setResult(null); setShowResults(false) }}
+                onChange={(e) => { const v = e.target.value; setLanguage(v); setResult(null); setShowResults(false); try { localStorage.setItem('100-days-language', v) } catch {} }}
                 className="rounded-lg border border-border bg-card px-3 py-2 text-sm text-foreground focus:outline-none focus:ring-2 focus:ring-primary"
               >
                 {ALL_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
