@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonSubmissions, newId, nowIso } from '@/lib/db/qr-events'
+import { problems } from '@/lib/db/problems'
+import { executeOnce } from '@/lib/piston'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,14 +24,51 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     repo_url?: string
     commit_sha?: string
     code?: string
+    language?: string
   }
 
   if (!body.problem_slug) return NextResponse.json({ error: 'problem_slug required' }, { status: 400 })
   const task = (hk.tasks || []).find((t) => t.problem_slug === body.problem_slug)
   if (!task) return NextResponse.json({ error: 'problem not assigned to this event' }, { status: 400 })
 
-  const col = await hackathonSubmissions()
-  await col.insertOne({
+  const shouldAutoGrade = (hk.scoring as any)?.auto_grade === true && body.code?.trim()
+  let score: number | null = null
+  let status = 'pending'
+  let testResults: any[] | undefined = undefined
+
+  if (shouldAutoGrade) {
+    const lang = (body.language || 'python').toLowerCase()
+    try {
+      const pCol = await problems()
+      const problem = await pCol.findOne({ slug: body.problem_slug })
+      const tests = (problem?.test_cases || []).filter((t: any) => t.is_sample)
+
+      if (tests.length > 0) {
+        let passed = 0
+        const results: any[] = []
+        for (const tc of tests) {
+          try {
+            const piston = await executeOnce({
+              language: lang,
+              source: body.code!,
+              stdin: tc.stdin,
+              timeoutMs: 10000,
+            })
+            const actual = (piston.run.stdout || '').trim()
+            const expected = (tc.expected_stdout || '').trim()
+            const ok = actual === expected
+            if (ok) passed++
+            results.push({ passed: ok, input: tc.stdin, expected: tc.expected_stdout, stdout: piston.run.stdout || '' })
+          } catch { results.push({ passed: false, input: tc.stdin, expected: tc.expected_stdout, error: 'execution failed' }) }
+        }
+        score = tests.length > 0 ? Math.round((passed / tests.length) * task.points) : null
+        status = score !== null && score >= task.points * 0.5 ? 'released' : 'under_review'
+        testResults = results
+      }
+    } catch { /* auto-grading failed, fall back to manual review */ }
+  }
+
+  const subDoc: any = {
     id: newId(),
     hackathon_id: hk.id,
     team_id: team.id,
@@ -37,16 +76,39 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     repo_url: body.repo_url?.trim(),
     commit_sha: body.commit_sha?.trim(),
     code: body.code?.trim(),
-    score: null,
+    score,
     max_score: task.points,
-    status: 'pending',
+    status,
     submitted_at: nowIso(),
     created_at: nowIso(),
-  })
+  }
 
-  await (await hackathonTeams()).updateOne({ id: team.id }, { $inc: { submissions: 1 } })
+  await (await hackathonSubmissions()).insertOne(subDoc)
+  const teamsCol = await hackathonTeams()
+  await teamsCol.updateOne({ id: team.id }, { $inc: { submissions: 1 } })
 
-  return NextResponse.json({ ok: true, status: 'pending' }, { status: 201 })
+  // If auto-graded and scored, grant XP
+  if (score && score > 0) {
+    try {
+      const xpEarned = score
+      const teamDoc = await teamsCol.findOne({ id: team.id })
+      if (teamDoc) {
+        const newXp = teamDoc.xp + xpEarned
+        await teamsCol.updateOne(
+          { id: team.id },
+          { $set: { xp: newXp, updated_at: nowIso() } },
+        )
+      }
+    } catch { /* XP best-effort */ }
+  }
+
+  return NextResponse.json({
+    ok: true,
+    status,
+    score,
+    max_score: task.points,
+    test_results: testResults,
+  }, { status: 201 })
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
