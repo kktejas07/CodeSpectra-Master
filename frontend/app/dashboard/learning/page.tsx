@@ -98,7 +98,7 @@ function HundredDaysHero() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <Stat label="Days done" value={`${daysCompleted}/${HUNDRED_DAYS_TOTAL_DAYS}`} />
-          <Stat label="Problems" value={`${completed.length * (totalProblems / Math.max(daysCompleted, 1)).toFixed(0)}/`} suffix={`${totalProblems}`} />
+          <Stat label="Problems" value={`${Math.round(completed.length * (totalProblems / Math.max(daysCompleted, 1)))}/`} suffix={`${totalProblems}`} />
           <Stat label="Progress" value={`${pct}%`} />
           <Stat label="Topics" value={`${HUNDRED_DAYS.length}+`} />
         </div>
