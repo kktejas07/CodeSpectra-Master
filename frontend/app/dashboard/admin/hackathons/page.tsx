@@ -820,6 +820,7 @@ export default function HackathonsAdminPage() {
       )}
     </div>
 
+      {deleteTarget && (
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -848,6 +849,7 @@ export default function HackathonsAdminPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+      )}
     </div>
   )
 }
