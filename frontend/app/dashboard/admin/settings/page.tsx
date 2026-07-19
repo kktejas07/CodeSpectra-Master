@@ -2080,12 +2080,12 @@ function SystemSettingsInner() {
                   Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
                 </p>
                 <div className="space-y-5">
-                  {[""gemini"",""anthropic"",""openai"",""groq""].map((provider) => {
+                  {['gemini','anthropic','openai','groq'].map((provider) => {
                     const meta: Record<string,any> = {
-                      gemini: { label: ""Google Gemini"", placeholder: ""AIza..."", url: ""https://aistudio.google.com/apikey"", urlLabel: ""Google AI Studio"", desc: ""Free tier available. Used for code analysis, hints, and fast completions."", key: ""gemini_api_key"" },
-                      anthropic: { label: ""Anthropic Claude"", placeholder: ""sk-ant-..."", url: ""https://console.anthropic.com"", urlLabel: ""Anthropic Console"", desc: ""Used for deep code review, agentic fixes, and chat."", key: ""anthropic_api_key"" },
-                      openai: { label: ""OpenAI"", placeholder: ""sk-..."", url: ""https://platform.openai.com/api-keys"", urlLabel: ""OpenAI Platform"", desc: ""GPT models for completions and analysis."", key: ""openai_api_key"" },
-                      groq: { label: ""Groq (Fast)"", placeholder: ""gsk_..."", url: ""https://console.groq.com/keys"", urlLabel: ""Groq Console"", desc: ""Ultra-fast inference for chat and completions."", key: ""groq_api_key"" },
+                      gemini: { label: 'Google Gemini', placeholder: 'AIza...', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier available. Used for code analysis, hints, and fast completions.', key: 'gemini_api_key' },
+                      anthropic: { label: 'Anthropic Claude', placeholder: 'sk-ant-...', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Used for deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
+                      openai: { label: 'OpenAI', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'GPT models for completions and analysis.', key: 'openai_api_key' },
+                      groq: { label: 'Groq (Fast)', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Ultra-fast inference for chat and completions.', key: 'groq_api_key' },
                     }
                     const info = meta[provider]
                     const keyValue = (secretsDraft as any)[info.key] || ""
