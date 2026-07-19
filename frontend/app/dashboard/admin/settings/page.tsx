@@ -2201,7 +2201,7 @@ groq,gsk_..."
                 </div>
               </Card>
             </div>
-          ) ) : section === 'email-templates' ? (
+          ) : section === 'email-templates' ? (
             <Card className="rounded-xl border-border/60 shadow-sm">
               <div className="border-b border-border/60 px-6 py-4">
                 <div className="flex items-center gap-2">
