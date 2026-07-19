@@ -113,16 +113,16 @@ def resolve_key(
     if request_headers and header_name:
         hdr = (
             request_headers.get(header_name, "")
-            if isinstance(request_headers, dict)
+            if hasattr(request_headers, 'get')
             else ""
         )
         if hdr:
             resolved = hdr
 
-    if not resolved and request_headers:
+    if not resolved and hasattr(request_headers, 'get'):
         generic = (
             request_headers.get("x-api-key", "")
-            if isinstance(request_headers, dict)
+            if hasattr(request_headers, 'get')
             else ""
         )
         if generic:
