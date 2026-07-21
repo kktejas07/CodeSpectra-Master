@@ -333,7 +333,15 @@ export default function ProblemDetailPage() {
   return (
     <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
       {/* AI Proctoring — silent monitor pinned top-right */}
-      <ProctorMonitor sessionKind="problem" sessionId={problem.slug} />
+      <ProctorMonitor
+        sessionKind="problem"
+        sessionId={problem.slug}
+        enforceFullscreen
+        captureInterval={30000}
+        blockKeyboardShortcuts
+        lockdownBrowser
+        detectFace
+      />
 
       {/* Top bar */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0">

@@ -103,6 +103,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/exams',
   '/dashboard/resumes',
   '/dashboard/judge',
+  '/dashboard/cad',
 ]
 
 /**
@@ -205,6 +206,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/100-days': '100 Days of Code',
   '/dashboard/analytics': 'Analytics',
   '/dashboard/judge': 'Judge Dashboard',
+  '/dashboard/cad': 'CAD Editor',
 }
 
 /**

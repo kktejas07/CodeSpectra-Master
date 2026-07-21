@@ -271,7 +271,12 @@ export function MockInterview({ roleId, interviewType }: MockInterviewProps) {
           sessionKind="exam"
           sessionId={sessionId}
           enabled
+          enforceFullscreen
+          captureInterval={30000}
           kickoutThreshold={5}
+          blockKeyboardShortcuts
+          lockdownBrowser
+          detectFace
         />
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-3 gap-6">

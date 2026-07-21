@@ -291,6 +291,7 @@ export default function DashboardLayout({
       { href: '/dashboard/profile', icon: User, label: 'Profile' },
       { href: '/dashboard/search', icon: Search, label: 'Search' },
       { href: '/dashboard/id-card', icon: CreditCard, label: 'ID Card' },
+      { href: '/dashboard/cad', icon: LayersIcon, label: 'CAD Editor' },
       { href: '/dashboard/jobs', icon: Briefcase, label: 'Jobs' },
       { href: '/dashboard/exams', icon: FileText, label: 'Exams' },
       { href: '/dashboard/resumes', icon: FileText, label: 'Resumes' },
