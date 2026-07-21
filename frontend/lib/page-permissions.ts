@@ -61,6 +61,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
 export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
   '/dashboard/interviews/feedback',
+  '/dashboard/recruiter-analytics',
 ]
 
 /**
@@ -185,6 +186,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/interview-prep': 'Interview Prep',
   '/dashboard/interviews/feedback': 'Interview Feedback',
   '/dashboard/interviews/results': 'Interview Results',
+  '/dashboard/recruiter-analytics': 'Recruiter Analytics',
   '/dashboard/prepare': 'Prepare',
   '/dashboard/profile': 'Profile',
   '/dashboard/settings': 'Settings',

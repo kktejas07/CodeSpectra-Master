@@ -295,6 +295,7 @@ export default function DashboardLayout({
       { href: '/dashboard/exams', icon: FileText, label: 'Exams' },
       { href: '/dashboard/resumes', icon: FileText, label: 'Resumes' },
       { href: '/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
+      { href: '/dashboard/recruiter-analytics', icon: BarChart3, label: 'Recruiter Analytics' },
       { href: '/dashboard/billing', icon: CreditCardIcon, label: 'Billing' },
       { href: '/dashboard/notifications', icon: Bell, label: 'Notifications' },
     ]

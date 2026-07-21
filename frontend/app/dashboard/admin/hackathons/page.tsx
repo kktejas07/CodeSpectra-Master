@@ -16,6 +16,7 @@ import {
   Sparkles, ChevronDown, ChevronUp, X,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -818,7 +819,6 @@ export default function HackathonsAdminPage() {
           ))}
         </div>
       )}
-    </div>
 
       {deleteTarget && (
       <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>

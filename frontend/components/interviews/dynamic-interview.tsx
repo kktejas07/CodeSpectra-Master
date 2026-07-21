@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,8 +16,12 @@ import {
   Loader2,
   ArrowRight,
   MessageCircle,
+  AlertTriangle,
+  Download,
 } from 'lucide-react'
 import { useSpeechToText } from '@/lib/speech-recognition'
+import { ProctorMonitor } from '@/components/ai/proctor-monitor'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   generateFollowUpQuestion,
   generateInterviewFeedback,
@@ -31,6 +35,7 @@ interface DynamicInterviewProps {
   roleId: string
   interviewType: 'technical' | 'behavioral' | 'system-design'
   resumeInfo?: string
+  interviewId?: string
   onComplete?: (feedback: InterviewFeedback[]) => void
 }
 
@@ -45,6 +50,7 @@ export function DynamicInterview({
   roleId,
   interviewType,
   resumeInfo,
+  interviewId,
   onComplete,
 }: DynamicInterviewProps) {
   const [stage, setStage] = useState<'intro' | 'interview' | 'feedback'>('intro')
@@ -57,6 +63,16 @@ export function DynamicInterview({
   const [timeRemaining, setTimeRemaining] = useState(30 * 60) // 30 minutes
   const [answerStartTime, setAnswerStartTime] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+
+  const handleKickout = useCallback(async (reason: string) => {
+    if (interviewId) {
+      csrfFetch('/api/proctor/terminate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_kind: 'interview', session_id: interviewId, reason }),
+      }).catch(() => null)
+    }
+  }, [interviewId])
 
   // Speech Recognition
   const {
@@ -78,14 +94,27 @@ export function DynamicInterview({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Timer
+  // Timer with auto-submit on expiry
   useEffect(() => {
     if (stage !== 'interview') return
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => (prev > 0 ? prev - 1 : 0))
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          // Auto-submit current answer and finish interview
+          if (userAnswer.trim()) {
+            handleSubmitAnswer()
+          } else {
+            setStage('feedback')
+            onComplete?.(feedback)
+          }
+          return 0
+        }
+        return prev - 1
+      })
     }, 1000)
     return () => clearInterval(timer)
-  }, [stage])
+  }, [stage, userAnswer, feedback, onComplete])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -296,6 +325,56 @@ export function DynamicInterview({
   }
 
   if (stage === 'feedback') {
+    const overallScore = feedback.length
+      ? Math.round(feedback.reduce((s, f) => s + f.score, 0) / feedback.length)
+      : 0
+
+    const downloadReport = () => {
+      const html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Interview Report - ${interviewType}</title>
+<style>
+  body { font-family: -apple-system, system-ui, sans-serif; max-width: 800px; margin: 0 auto; padding: 40px 20px; color: #1a1a1a; }
+  h1 { border-bottom: 2px solid #3b82f6; padding-bottom: 8px; }
+  .score-badge { display: inline-block; padding: 4px 12px; border-radius: 9999px; font-weight: 700; font-size: 14px; }
+  .high { background: #dcfce7; color: #166534; }
+  .mid { background: #fef9c3; color: #854d0e; }
+  .low { background: #fecaca; color: #991b1b; }
+  .dimension { margin: 16px 0; padding: 16px; border: 1px solid #e5e7eb; border-radius: 8px; }
+  .bar { height: 8px; background: #e5e7eb; border-radius: 4px; margin-top: 8px; }
+  .bar-fill { height: 100%; border-radius: 4px; background: #3b82f6; }
+  .suggestions { margin-top: 8px; padding-left: 16px; }
+  .suggestions li { margin: 4px 0; font-size: 14px; }
+  .meta { color: #6b7280; font-size: 13px; margin-top: 24px; }
+</style></head>
+<body>
+  <h1>Technical Interview Report</h1>
+  <p><strong>Type:</strong> ${interviewType} | <strong>Role:</strong> ${roleId}</p>
+  <p><strong>Overall Score:</strong> <span class="score-badge ${overallScore >= 70 ? 'high' : overallScore >= 40 ? 'mid' : 'low'}">${overallScore}%</span></p>
+  <p><strong>Date:</strong> ${new Date().toLocaleDateString()}</p>
+  <p><strong>Questions Answered:</strong> ${messages.filter(m => m.role === 'candidate').length}</p>
+  <hr />
+  ${feedback.map(f => `
+    <div class="dimension">
+      <h3>${f.dimension} <span class="score-badge ${f.score >= 70 ? 'high' : f.score >= 40 ? 'mid' : 'low'}">${f.score}%</span></h3>
+      <div class="bar"><div class="bar-fill" style="width:${f.score}%"></div></div>
+      <p>${f.feedback}</p>
+      <ul class="suggestions">${f.suggestions.map(s => `<li>${s}</li>`).join('')}</ul>
+    </div>
+  `).join('')}
+  <hr />
+  <h3>Conversation Transcript</h3>
+  ${messages.map(m => `<p><strong>${m.role === 'interviewer' ? 'Interviewer' : 'Candidate'}:</strong> ${m.content}${m.duration ? ` (${m.duration}s)` : ''}</p>`).join('')}
+  <p class="meta">Generated by CodeSpectra AI Interview System</p>
+</body></html>`
+      const blob = new Blob([html], { type: 'text/html' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = `interview-report-${interviewType}-${Date.now()}.html`
+      a.click()
+      URL.revokeObjectURL(url)
+    }
+
     return (
       <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 p-6">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -304,6 +383,10 @@ export function DynamicInterview({
             <p className="text-foreground/60">
               Your feedback has been generated. Review your performance below.
             </p>
+            <Button variant="outline" onClick={downloadReport} className="gap-2">
+              <Download className="w-4 h-4" />
+              Download Report
+            </Button>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -356,8 +439,21 @@ export function DynamicInterview({
   }
 
   // Main interview stage
+  const isLowTime = timeRemaining <= 60 && timeRemaining > 0
+  const isTimeUp = timeRemaining === 0
+
   return (
     <div className="min-h-screen bg-black text-white p-6">
+      {interviewId && (
+        <ProctorMonitor
+          sessionKind="interview"
+          sessionId={interviewId}
+          enabled
+          kickoutThreshold={5}
+          onKickout={handleKickout}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
@@ -365,9 +461,14 @@ export function DynamicInterview({
           <h1 className="text-xl font-bold">{interviewType} Interview</h1>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg">
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+            isTimeUp ? 'bg-red-500/20 text-red-400 animate-pulse' :
+            isLowTime ? 'bg-red-500/10 text-red-400' :
+            'bg-white/10'
+          }`}>
             <Clock className="w-4 h-4" />
             <span className="text-sm font-medium">{formatTime(timeRemaining)}</span>
+            {isLowTime && <AlertTriangle className="w-4 h-4 text-red-400" />}
           </div>
         </div>
       </div>

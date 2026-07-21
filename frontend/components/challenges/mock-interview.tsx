@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -17,7 +17,9 @@ import {
   TrendingUp,
   Award,
   ArrowRight,
+  AlertTriangle,
 } from 'lucide-react'
+import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 
 interface MockInterviewProps {
   roleId: string
@@ -53,6 +55,7 @@ export function MockInterview({ roleId, interviewType }: MockInterviewProps) {
   const [timeSpent, setTimeSpent] = useState(0)
   const [loading, setLoading] = useState(false)
   const [feedback, setFeedback] = useState<FeedbackItem[]>([])
+  const [sessionId] = useState(() => `mock-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`)
 
   const questions: InterviewQuestion[] = [
     {
@@ -77,6 +80,23 @@ export function MockInterview({ roleId, interviewType }: MockInterviewProps) {
       timeLimit: 300,
     },
   ]
+
+  // Auto-submit on per-question timer expiry
+  useEffect(() => {
+    if (stage !== 'interview') return
+    const question = questions[currentQuestion]
+    const timer = setInterval(() => {
+      setTimeSpent((prev) => {
+        if (prev >= question.timeLimit) {
+          clearInterval(timer)
+          handleNextQuestion()
+          return 0
+        }
+        return prev + 1
+      })
+    }, 1000)
+    return () => clearInterval(timer)
+  }, [stage, currentQuestion])
 
   const handleStartInterview = () => {
     setStage('interview')
@@ -247,6 +267,12 @@ export function MockInterview({ roleId, interviewType }: MockInterviewProps) {
 
     return (
       <div className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 p-4 md:p-8">
+        <ProctorMonitor
+          sessionKind="exam"
+          sessionId={sessionId}
+          enabled
+          kickoutThreshold={5}
+        />
         <div className="max-w-4xl mx-auto">
           <div className="grid md:grid-cols-3 gap-6">
             {/* Main Interview Area */}
@@ -332,13 +358,22 @@ export function MockInterview({ roleId, interviewType }: MockInterviewProps) {
               </Card>
 
               {/* Timer */}
-              <Card className="p-4 bg-muted/30 border-border/40">
+              <Card className={`p-4 border-border/40 ${
+                timeSpent >= question.timeLimit - 60 ? 'bg-red-500/10 border-red-500/30' : 'bg-muted/30'
+              }`}>
                 <div className="flex items-center justify-between mb-2">
                   <p className="text-sm font-medium">Time Spent</p>
-                  <p className="text-2xl font-bold text-primary">{Math.floor(timeSpent / 60)}:{String(timeSpent % 60).padStart(2, '0')}</p>
+                  <p className={`text-2xl font-bold ${
+                    timeSpent >= question.timeLimit - 60 ? 'text-red-500' : 'text-primary'
+                  }`}>{Math.floor(timeSpent / 60)}:{String(timeSpent % 60).padStart(2, '0')}</p>
                 </div>
                 <div className="text-xs text-muted-foreground">
                   Limit: {question.timeLimit / 60} minutes
+                  {timeSpent >= question.timeLimit - 60 && timeSpent < question.timeLimit && (
+                    <span className="text-red-500 ml-2 flex items-center gap-1 mt-1">
+                      <AlertTriangle className="h-3 w-3" /> Time almost up — auto-submit on expiry
+                    </span>
+                  )}
                 </div>
               </Card>
 

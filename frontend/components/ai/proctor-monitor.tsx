@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { AlertTriangle, Camera, Fullscreen, Ban } from 'lucide-react'
+import { AlertTriangle, Camera, Fullscreen, ShieldOff, X } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -11,7 +11,13 @@ interface ProctorMonitorProps {
   enabled?: boolean
   enforceFullscreen?: boolean
   captureInterval?: number
+  /** Number of tab switches before forced kickout. 0 = disabled */
+  kickoutThreshold?: number
+  /** Called when user is kicked out (auto-submit, redirect, etc.) */
+  onKickout?: (reason: string) => void
+  /** Called on any proctor event */
   onEvent?: (eventType: string) => void
+  /** Called when violation threshold is reached */
   onViolation?: (type: string, count: number) => void
 }
 
@@ -21,15 +27,20 @@ export function ProctorMonitor({
   enabled = true,
   enforceFullscreen = false,
   captureInterval = 0,
+  kickoutThreshold = 5,
+  onKickout,
   onEvent,
   onViolation,
 }: ProctorMonitorProps) {
   const [counts, setCounts] = useState({ blur: 0, copy: 0, paste: 0, rclick: 0, idle: 0, fsExit: 0 })
   const [showWarning, setShowWarning] = useState<string | null>(null)
   const [cameraSnapshot, setCameraSnapshot] = useState<string | null>(null)
+  const [kickedOut, setKickedOut] = useState(false)
+  const [awaySeconds, setAwaySeconds] = useState(0)
   const lastInput = useRef<number>(Date.now())
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const kickedRef = useRef(false)
 
   const send = useCallback((event_type: string, meta?: Record<string, unknown>) => {
     onEvent?.(event_type)
@@ -39,6 +50,26 @@ export function ProctorMonitor({
       body: JSON.stringify({ session_kind: sessionKind, session_id: sessionId, event_type, meta }),
     }).catch(() => null)
   }, [sessionKind, sessionId, onEvent])
+
+  const doKickout = useCallback((reason: string) => {
+    if (kickedRef.current) return
+    kickedRef.current = true
+    setKickedOut(true)
+    send('session_kickout', { reason })
+    onKickout?.(reason)
+  }, [send, onKickout])
+
+  // beforeunload — warn when navigating away during a proctored session
+  useEffect(() => {
+    if (!enabled || !sessionId) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+      send('navigate_away_attempt')
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [enabled, sessionId, send])
 
   // Fullscreen enforcement
   useEffect(() => {
@@ -72,19 +103,37 @@ export function ProctorMonitor({
     }
   }, [enabled, enforceFullscreen, send, onViolation])
 
-  // Tab blur, copy, paste, right-click detection
+  // Tab blur, copy, paste, right-click detection + kickout
   useEffect(() => {
     if (!enabled || !sessionId) return
 
     const onBlur = () => {
-      setCounts((c) => ({ ...c, blur: c.blur + 1 }))
+      if (kickedRef.current) return
       send('tab_blur')
-      if (counts.blur >= 5) {
-        onViolation?.('tab_blur', counts.blur + 1)
-        setShowWarning('Multiple tab switches detected.')
-      }
+      setCounts((c) => {
+        const newCount = c.blur + 1
+        if (kickoutThreshold > 0 && newCount >= kickoutThreshold) {
+          doKickout('Tab switched too many times')
+          return { ...c, blur: newCount }
+        }
+        if (newCount >= Math.max(1, kickoutThreshold - 2)) {
+          const remaining = kickoutThreshold - newCount
+          setShowWarning(
+            remaining > 0
+              ? `Tab switch detected. ${remaining} more switch${remaining > 1 ? 'es' : ''} and you will be removed.`
+              : 'Final warning: one more tab switch will remove you from this session.'
+          )
+        } else if (newCount >= 1) {
+          setShowWarning('Tab switch detected. Do not navigate away during the session.')
+        }
+        onViolation?.('tab_blur', newCount)
+        return { ...c, blur: newCount }
+      })
     }
-    const onFocus = () => send('tab_focus')
+    const onFocus = () => {
+      send('tab_focus')
+      setAwaySeconds(0)
+    }
     const onCopy = (e: ClipboardEvent) => {
       e.preventDefault()
       setCounts((c) => ({ ...c, copy: c.copy + 1 }))
@@ -111,6 +160,21 @@ export function ProctorMonitor({
       }
     }, 30_000)
 
+    // Track time away from tab — kickout after 60s continuous away
+    const awayTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        setAwaySeconds(0)
+        return
+      }
+      setAwaySeconds((prev) => {
+        const next = prev + 5
+        if (next >= 60 && !kickedRef.current) {
+          doKickout('Navigated away from tab for too long')
+        }
+        return next
+      })
+    }, 5000)
+
     window.addEventListener('blur', onBlur)
     window.addEventListener('focus', onFocus)
     window.addEventListener('copy', onCopy)
@@ -128,8 +192,9 @@ export function ProctorMonitor({
       window.removeEventListener('keydown', onInput)
       window.removeEventListener('mousemove', onInput)
       window.clearInterval(idleTimer)
+      window.clearInterval(awayTimer)
     }
-  }, [enabled, sessionId, sessionKind, send, onViolation, counts.blur])
+  }, [enabled, sessionId, sessionKind, send, onViolation, kickoutThreshold, doKickout])
 
   // Camera capture
   useEffect(() => {
@@ -168,14 +233,35 @@ export function ProctorMonitor({
 
   if (!enabled) return null
 
+  // Kickout overlay
+  if (kickedOut) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90">
+        <div className="text-center space-y-4 p-8">
+          <ShieldOff className="h-16 w-16 mx-auto text-red-500" />
+          <h2 className="text-2xl font-bold text-white">Session Terminated</h2>
+          <p className="text-white/70 max-w-md">
+            You have been removed from this session due to repeated tab switches or navigating away.
+            Your progress has been saved and reported to the administrator.
+          </p>
+          <Button variant="destructive" onClick={() => window.location.href = '/dashboard'}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    )
+  }
+
   return (
     <>
       {showWarning && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top">
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur shadow-lg">
-            <AlertTriangle className="h-4 w-4" />
-            {showWarning}
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setShowWarning(null)}>Dismiss</Button>
+          <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur shadow-lg max-w-lg">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span className="flex-1">{showWarning}</span>
+            <Button size="sm" variant="ghost" className="h-6 text-xs shrink-0" onClick={() => setShowWarning(null)}>
+              <X className="h-3 w-3" />
+            </Button>
           </div>
         </div>
       )}
