@@ -209,7 +209,7 @@ export default function SupportPortalPage() {
 
           <div className="grid md:grid-cols-3 gap-6 max-w-4xl mx-auto">
             {[
-              { icon: Mail, title: 'Email', value: 'support@codespectra.dev' },
+              { icon: Mail, title: 'Email', value: 'support@codespectra.ai' },
               { icon: Phone, title: 'Phone', value: '+1 (555) 123-4567' },
               { icon: Building, title: 'Office', value: 'San Francisco, CA' },
             ].map((item) => {

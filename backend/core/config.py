@@ -81,7 +81,7 @@ class Settings:
 
     # ─── Public ────────────────────────────────────────────────
     NEXT_PUBLIC_APP_URL: str = os.environ.get(
-        "NEXT_PUBLIC_APP_URL", "http://localhost:3000"
+        "NEXT_PUBLIC_APP_URL", "https://codespectra.ai"
     )
 
     # ─── LLM Model Registry ────────────────────────────────────

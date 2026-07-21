@@ -6,14 +6,14 @@
 
 CodeSpectra provides a REST API for programmatic access to platform features. This document covers authentication, base URL, rate limits, and a quick example.
 
-For the complete API reference, including all endpoints, request schemas, and response types, visit the full API documentation at [docs.codespectra.io/api](https://docs.codespectra.io/api).
+For the complete API reference, including all endpoints, request schemas, and response types, visit the full API documentation at [docs.codespectra.ai/api](https://docs.codespectra.ai/api).
 
 ---
 
 ## Base URL
 
 ```
-https://api.codespectra.io/v1
+https://api.codespectra.ai/v1
 ```
 
 ---
@@ -95,7 +95,7 @@ Here's a simple example using cURL to list available coding problems:
 ```bash
 curl -H "Authorization: Bearer cs_api_live_YOUR_TOKEN" \
      -H "Accept: application/json" \
-     "https://api.codespectra.io/v1/problems?difficulty=easy&limit=5"
+     "https://api.codespectra.ai/v1/problems?difficulty=easy&limit=5"
 ```
 
 **Response**
@@ -185,4 +185,4 @@ CodeSpectra exposes a Model Context Protocol (MCP) server at `/api/mcp` for AI t
 
 ---
 
-> **Full API Reference**: Visit [docs.codespectra.io/api](https://docs.codespectra.io/api) for complete endpoint documentation, request/response schemas, and interactive examples.
+> **Full API Reference**: Visit [docs.codespectra.ai/api](https://docs.codespectra.ai/api) for complete endpoint documentation, request/response schemas, and interactive examples.

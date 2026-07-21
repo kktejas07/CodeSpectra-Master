@@ -65,7 +65,7 @@ export default function ContactPage() {
             <Card className="p-6">
               <Mail className="w-6 h-6 text-primary mb-3" />
               <h3 className="text-lg font-semibold text-foreground mb-2">Email</h3>
-              <p className="text-sm text-muted-foreground">support@codespectra.dev</p>
+              <p className="text-sm text-muted-foreground">support@codespectra.ai</p>
             </Card>
             <Card className="p-6">
               <MapPin className="w-6 h-6 text-primary mb-3" />

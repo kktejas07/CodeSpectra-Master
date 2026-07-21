@@ -10,7 +10,7 @@
 ```mermaid
 graph TB
     subgraph "Host Network"
-        INGRESS[("DNS: codespectra.io")]
+        INGRESS[("DNS: codespectra.ai")]
     end
 
     subgraph "Docker Network (codespectra_default)"

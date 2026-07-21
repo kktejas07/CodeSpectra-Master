@@ -12,7 +12,7 @@ Get up and running with CodeSpectra in under five minutes. This guide walks you 
 
 ### Step 1: Create Your Account
 
-1. Navigate to [app.codespectra.io/signup](https://app.codespectra.io/signup)
+1. Navigate to [app.codespectra.ai/signup](https://app.codespectra.ai/signup)
 2. Choose one of three signup methods:
    - **Email & Password** — enter your email address and create a secure password
    - **Google** — click the Google OAuth button to authenticate with your Google account
