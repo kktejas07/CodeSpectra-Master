@@ -73,13 +73,13 @@ export async function POST(request: Request) {
         headers['x-api-key'] = body.api_key
         headers['anthropic-version'] = '2023-06-01'
       } else if (body.provider === 'gemini') {
-        // Gemini doesn't need auth header; key is in URL
+        headers['x-goog-api-key'] = body.api_key
       }
     }
 
     const isGemini = body.provider === 'gemini'
     const url = isGemini
-      ? `${body.endpoint.replace(/\/+$/, '')}/models/${body.model}:streamGenerateContent?key=${body.api_key}`
+      ? `${body.endpoint.replace(/\/+$/, '')}/models/${body.model}:streamGenerateContent`
       : `${body.endpoint.replace(/\/+$/, '')}/chat/completions`
 
     const payload = isGemini
