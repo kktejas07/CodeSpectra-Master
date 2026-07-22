@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/api-auth'
+import { requireAdmin, requireSuperAdmin } from '@/lib/api-auth'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { listAllUsers, getUserById } from '@/lib/db/admin'
 import { buildAdminUserRow, type ProfileRow } from '@/lib/admin-users'
@@ -8,7 +8,7 @@ import { normalizeUserRole } from '@/lib/rbac'
 import { NextRequest } from 'next/server'
 
 export async function GET(req: NextRequest) {
-  const gate = await requireSuperAdmin()
+  const gate = await requireAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
@@ -80,7 +80,7 @@ export async function GET(req: NextRequest) {
  * `provisionAdminUser`) is deferred to a later phase.
  */
 export async function POST(request: Request) {
-  const gate = await requireSuperAdmin()
+  const gate = await requireAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
@@ -90,7 +90,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Firebase not configured' }, { status: 500 })
   }
 
-  let body: { email?: string; password?: string; full_name?: string; role?: string }
+  let body: { email?: string; password?: string; full_name?: string; role?: string; target_url?: string }
   try {
     body = await request.json()
   } catch {
@@ -100,6 +100,7 @@ export async function POST(request: Request) {
   const email = (body.email || '').trim().toLowerCase()
   const full_name = (body.full_name || '').trim() || email.split('@')[0] || 'User'
   const role = normalizeUserRole(body.role)
+  const targetUrl = (body.target_url || '/assessment').trim()
   const password =
     (body.password && body.password.length >= 8 ? body.password : undefined) ||
     `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
@@ -116,14 +117,33 @@ export async function POST(request: Request) {
     })
     const newUserId = userRecord.uid
 
-    const { updateUserById } = await import('@/lib/db/admin')
+    const { updateUserById, candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
     await updateUserById(newUserId, { role, fullName: full_name })
 
     const created = await getUserById(newUserId)
 
+    // Generate single-use secure candidate invite link
+    const inviteToken = crypto.randomUUID()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const inviteUrl = `${appUrl}/assessment/invite/${inviteToken}`
+
+    const invitesCol = await candidateInvites()
+    await invitesCol.insertOne({
+      id: newId(),
+      token: inviteToken,
+      user_id: newUserId,
+      email,
+      full_name,
+      target_url: targetUrl,
+      invited_by: gate.user.id,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: nowIso(),
+    })
+
     // Send welcome email if Postal or other provider is configured
     let welcomeEmailSent = false
-    let delivery = 'none'
+    let delivery = 'candidate_invite_link'
     try {
       const { sendEmailViaPostal } = await import('@/lib/transactional-mail')
       const { emailTemplates } = await import('@/lib/email-templates')
@@ -131,12 +151,12 @@ export async function POST(request: Request) {
       await sendEmailViaPostal({
         to: email,
         subject: template.subject,
-        html: template.html,
+        html: `${template.html}<p><a href="${inviteUrl}">Click here to start your candidate assessment</a></p>`,
       })
       welcomeEmailSent = true
       delivery = 'postal'
     } catch {
-      // Postal not configured or send failed — that's OK
+      // Postal not configured or send failed — link still returned for manual copy
     }
 
     return NextResponse.json({
@@ -150,6 +170,9 @@ export async function POST(request: Request) {
             ? created.createdAt.toISOString()
             : (created?.createdAt as unknown as string) ?? new Date().toISOString(),
       },
+      invite_url: inviteUrl,
+      invite_token: inviteToken,
+      target_url: targetUrl,
       welcomeEmailSent,
       delivery,
     })

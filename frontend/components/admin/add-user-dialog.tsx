@@ -22,6 +22,7 @@ export interface AddUserDialogProps {
     full_name: string
     password: string
     role: UserRole
+    target_url?: string
   }) => Promise<void>
 }
 
@@ -30,6 +31,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
   const [fullName, setFullName] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('user')
+  const [targetUrl, setTargetUrl] = useState('/assessment')
   const [loading, setLoading] = useState(false)
 
   const reset = () => {
@@ -37,6 +39,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
     setFullName('')
     setPassword('')
     setRole('user')
+    setTargetUrl('/assessment')
     setLoading(false)
   }
 
@@ -54,6 +57,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
         full_name: fullName.trim() || email.trim().split('@')[0] || 'User',
         password: password.trim(),
         role,
+        target_url: targetUrl,
       })
       reset()
       onOpenChange(false)
@@ -69,12 +73,9 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
       <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Add user</DialogTitle>
+            <DialogTitle>Provision Candidate / User</DialogTitle>
             <DialogDescription>
-              Creates a Supabase Auth account and a matching row in <code className="text-xs">profiles</code>. Leave
-              the password empty to use the platform&apos;s <strong>Admin user invitations</strong> setting (Supabase
-              invite or a secure link via Resend/SendGrid — no plaintext password by email). If you set a password
-              here, that exact value is used and no invitation email is sent.
+              Creates a user account and generates a <strong>single-use secure candidate assessment link</strong> bound to their profile and assigned assessment pipeline.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4">
@@ -100,6 +101,20 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
               />
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="add-user-target">Assigned Assessment Pipeline</Label>
+              <select
+                id="add-user-target"
+                value={targetUrl}
+                onChange={(e) => setTargetUrl(e.target.value)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="/assessment">General AI Assessment (/assessment)</option>
+                <option value="/dashboard/identity-verify">Identity & Proctoring Check (/dashboard/identity-verify)</option>
+                <option value="/assessment/demo/cad">CAD Technical Assessment (/assessment/demo/cad)</option>
+                <option value="/dashboard/problems">Coding Challenge IDE (/dashboard/problems)</option>
+              </select>
+            </div>
+            <div className="grid gap-2">
               <Label htmlFor="add-user-password">Password (optional)</Label>
               <Input
                 id="add-user-password"
@@ -118,7 +133,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
                 onChange={(e) => setRole(e.target.value as UserRole)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="user">User</option>
+                <option value="user">Candidate / User</option>
                 <option value="tenant_admin">Organization admin</option>
                 <option value="superadmin">Platform admin</option>
               </select>
@@ -129,7 +144,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
               Cancel
             </Button>
             <Button type="submit" disabled={loading}>
-              {loading ? 'Creating…' : 'Create user'}
+              {loading ? 'Generating Link…' : 'Generate Candidate Link & Create'}
             </Button>
           </DialogFooter>
         </form>

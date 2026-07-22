@@ -54,7 +54,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/hackathons/create',
   '/dashboard/admin/hackathons/edit',
   '/dashboard/admin/question-bank',
-  '/dashboard/admin/requisitions',
   '/dashboard/admin/predictive-validity',
 ]
 
@@ -67,6 +66,7 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/recruiter-analytics',
   '/dashboard/admin/hiring-manager-report',
   '/dashboard/admin/sme-review',
+  '/dashboard/admin/requisitions',
 ]
 
 /**
