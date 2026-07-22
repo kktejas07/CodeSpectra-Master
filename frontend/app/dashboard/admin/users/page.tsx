@@ -212,11 +212,14 @@ export default function UsersManagement() {
     }
   }
 
+  const [createdInviteUrl, setCreatedInviteUrl] = useState<string | null>(null)
+
   const handleAddUser = async (payload: {
     email: string
     full_name: string
     password: string
     role: UserRole
+    target_url?: string
   }) => {
     const res = await csrfFetch('/api/admin/users', {
       method: 'POST',
@@ -227,32 +230,22 @@ export default function UsersManagement() {
         full_name: payload.full_name,
         password: payload.password || undefined,
         role: payload.role,
+        target_url: payload.target_url,
       }),
     })
     const json = await res.json().catch(() => ({}))
     if (!res.ok) {
       throw new Error(json.error || 'Could not create user')
     }
-    if (json.welcomeEmailSent) {
-      addToast({
-        type: 'success',
-        title: 'User created',
-        message:
-          json.delivery === 'supabase_invite'
-            ? `Supabase sent an invite to ${payload.email.trim()}. Ensure Auth email / SMTP is configured in the Supabase dashboard.`
-            : `A secure sign-in link was sent to ${payload.email.trim()} (${String(json.delivery).replace(/_/g, ' ')}).`,
-        duration: 10_000,
-      })
-    } else {
-      addToast({
-        type: 'success',
-        title: 'User created',
-        message:
-          json.delivery === 'admin_password'
-            ? 'Password was set from this form; share credentials through your own secure channel if needed.'
-            : 'User is ready.',
-      })
+    if (json.invite_url) {
+      setCreatedInviteUrl(json.invite_url)
     }
+    addToast({
+      type: 'success',
+      title: 'Candidate Created & Link Generated',
+      message: `Single-use assessment invite link created for ${payload.email.trim()}.`,
+      duration: 8_000,
+    })
     try {
       await loadUsers()
     } catch {
@@ -312,6 +305,40 @@ export default function UsersManagement() {
       />
 
       <AddUserDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={handleAddUser} />
+
+      {/* Candidate Assessment Invite Link Modal */}
+      <AlertDialog open={Boolean(createdInviteUrl)} onOpenChange={(o) => !o && setCreatedInviteUrl(null)}>
+        <AlertDialogContent className="sm:max-w-lg">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="flex items-center gap-2">
+              <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 text-xs">✓</span>
+              Candidate Assessment Link Generated
+            </AlertDialogTitle>
+            <AlertDialogDescription className="space-y-3 pt-2 text-xs">
+              Candidate provisioned successfully. Share this <strong>single-use secure assessment link</strong> with the candidate:
+              <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-2.5 font-mono text-xs text-foreground mt-2">
+                <span className="truncate flex-1">{createdInviteUrl}</span>
+                <Button
+                  size="sm"
+                  variant="secondary"
+                  className="shrink-0"
+                  onClick={async () => {
+                    if (createdInviteUrl) {
+                      await navigator.clipboard.writeText(createdInviteUrl)
+                      addToast({ type: 'success', title: 'Link copied to clipboard' })
+                    }
+                  }}
+                >
+                  Copy Link
+                </Button>
+              </div>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => setCreatedInviteUrl(null)}>Done</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AlertDialog open={Boolean(deleteId)} onOpenChange={(o) => !o && setDeleteId(null)}>
         <AlertDialogContent>

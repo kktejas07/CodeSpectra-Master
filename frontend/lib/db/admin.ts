@@ -43,6 +43,19 @@ export interface OrganizationInvitationDoc {
   created_at: string
 }
 
+export interface CandidateInviteDoc {
+  id: string
+  token: string
+  user_id: string
+  email: string
+  full_name: string
+  target_url: string
+  invited_by: string
+  status: 'pending' | 'used' | 'expired'
+  expires_at: string
+  created_at: string
+}
+
 export interface UserRoleDoc {
   id: string
   user_id: string
@@ -123,6 +136,11 @@ export async function notificationPreferences(): Promise<Collection<Notification
 export async function permissions(): Promise<Collection<PermissionDoc>> {
   const db = await getMongoDb()
   return db.collection<PermissionDoc>('permissions')
+}
+
+export async function candidateInvites(): Promise<Collection<CandidateInviteDoc>> {
+  const db = await getMongoDb()
+  return db.collection<CandidateInviteDoc>('candidate_invites')
 }
 
 // ---------- User admin queries ----------
