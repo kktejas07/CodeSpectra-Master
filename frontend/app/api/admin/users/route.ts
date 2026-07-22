@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import { getMongoDb } from '@/lib/mongodb'
 import { requireAdmin, requireSuperAdmin } from '@/lib/api-auth'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { listAllUsers, getUserById } from '@/lib/db/admin'
@@ -116,6 +118,24 @@ export async function POST(request: Request) {
       displayName: full_name,
     })
     const newUserId = userRecord.uid
+
+    const passwordHash = await bcrypt.hash(password, 10)
+    const db = await getMongoDb()
+    await db.collection('user').updateOne(
+      { email },
+      {
+        $set: {
+          id: newUserId,
+          email,
+          name: full_name,
+          passwordHash,
+          role,
+          createdAt: new Date(),
+          updatedAt: new Date(),
+        },
+      },
+      { upsert: true },
+    )
 
     const { updateUserById, candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
     await updateUserById(newUserId, { role, fullName: full_name })
