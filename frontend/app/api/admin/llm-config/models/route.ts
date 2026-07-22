@@ -55,7 +55,10 @@ export async function POST(request: Request) {
   try {
     let res: Response
     if (body.provider === 'gemini') {
-      res = await fetch(`${ep}/models?key=${body.api_key || ''}`, { signal: AbortSignal.timeout(10000) })
+      res = await fetch(`${ep}/models`, {
+        headers: body.api_key && !isMaskedSecret(body.api_key) ? { 'x-goog-api-key': body.api_key } : {},
+        signal: AbortSignal.timeout(10000),
+      })
     } else if (body.provider === 'anthropic') {
       res = await fetch(`${ep}/v1/models`, {
         headers: {

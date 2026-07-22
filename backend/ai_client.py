@@ -122,7 +122,7 @@ class DirectAiClient:
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
         base = self.base_url.strip().rstrip("/") if self.base_url else "https://generativelanguage.googleapis.com/v1beta"
         key = self.api_key or ""
-        url = f"{base}/models/{self.model}:streamGenerateContent?key={key}"
+        url = f"{base}/models/{self.model}:streamGenerateContent"
         
         parts = []
         if message.text:

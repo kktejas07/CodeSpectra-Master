@@ -20,15 +20,16 @@ async def generate_embedding(text: str, api_key: str) -> list[float] | None:
     """Call the Gemini embedding API and return a 768-dim vector."""
     url = (
         f"https://generativelanguage.googleapis.com/v1beta/models/"
-        f"{EMBEDDING_MODEL}:embedContent?key={api_key}"
+        f"{EMBEDDING_MODEL}:embedContent"
     )
+    headers = {"x-goog-api-key": api_key} if api_key else {}
     payload = {
         "model": f"models/{EMBEDDING_MODEL}",
         "content": {"parts": [{"text": text[:8192]}]},  # truncate to fit
     }
     try:
         async with httpx.AsyncClient(timeout=15.0) as client:
-            resp = await client.post(url, json=payload)
+            resp = await client.post(url, headers=headers, json=payload)
             if resp.status_code != 200:
                 return None
             data = resp.json()

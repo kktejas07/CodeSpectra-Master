@@ -44,6 +44,8 @@ from routers.features import (
     integration_router,
     scanner_router,
 )
+from routers.assessment_platform import router as assessment_platform_rtr
+from routers.identity_verify import router as identity_verify_rtr
 
 app.include_router(ai_rtr)
 app.include_router(challenges_rtr)
@@ -55,6 +57,8 @@ app.include_router(certifications_rtr)
 app.include_router(achievement_router)
 app.include_router(scanner_router)
 app.include_router(integration_router)
+app.include_router(assessment_platform_rtr)
+app.include_router(identity_verify_rtr)
 
 # ── Proxy to Next.js (for all /api/* requests NOT handled above) ──
 

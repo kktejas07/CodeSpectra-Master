@@ -53,6 +53,9 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/hackathons',
   '/dashboard/admin/hackathons/create',
   '/dashboard/admin/hackathons/edit',
+  '/dashboard/admin/question-bank',
+  '/dashboard/admin/requisitions',
+  '/dashboard/admin/predictive-validity',
 ]
 
 /**
@@ -62,6 +65,8 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
   '/dashboard/interviews/feedback',
   '/dashboard/recruiter-analytics',
+  '/dashboard/admin/hiring-manager-report',
+  '/dashboard/admin/sme-review',
 ]
 
 /**
@@ -207,6 +212,11 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/analytics': 'Analytics',
   '/dashboard/judge': 'Judge Dashboard',
   '/dashboard/cad': 'CAD Editor',
+  '/dashboard/admin/question-bank': 'Engineering Question Bank',
+  '/dashboard/admin/requisitions': 'Workday Requisitions',
+  '/dashboard/admin/hiring-manager-report': 'Hiring Manager Report',
+  '/dashboard/admin/predictive-validity': 'Predictive Validity & Adverse Impact',
+  '/dashboard/admin/sme-review': 'SME Review & Grading',
 }
 
 /**
