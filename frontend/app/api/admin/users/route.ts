@@ -111,16 +111,25 @@ export async function POST(request: Request) {
   const full_name = (body.full_name || '').trim() || email.split('@')[0] || 'User'
   const role = normalizeUserRole(body.role)
   const targetUrl = (body.target_url || '/assessment').trim()
-  const assignedAssessments = Array.isArray(body.assigned_assessments) && body.assigned_assessments.length > 0
-    ? body.assigned_assessments
-    : [{
-        id: crypto.randomUUID(),
-        title: 'Assigned Assessment',
-        target_url: targetUrl,
-        type: (targetUrl.includes('cad') ? 'cad' : targetUrl.includes('identity') ? 'identity' : targetUrl.includes('problems') ? 'coding' : 'general') as any,
-        allowed_languages: body.allowed_languages || [],
-        status: 'pending',
-      }]
+  const assignedAssessments: import('@/lib/db/admin').AssessmentStep[] =
+    Array.isArray(body.assigned_assessments) && body.assigned_assessments.length > 0
+      ? body.assigned_assessments
+      : [
+          {
+            id: crypto.randomUUID(),
+            title: 'Assigned Assessment',
+            target_url: targetUrl,
+            type: (targetUrl.includes('cad')
+              ? 'cad'
+              : targetUrl.includes('identity')
+              ? 'identity'
+              : targetUrl.includes('problems')
+              ? 'coding'
+              : 'general') as any,
+            allowed_languages: body.allowed_languages || [],
+            status: 'pending',
+          },
+        ]
   const allowedLanguages = Array.isArray(body.allowed_languages) ? body.allowed_languages : []
 
   const password =
