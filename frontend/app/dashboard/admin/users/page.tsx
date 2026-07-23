@@ -212,7 +212,32 @@ export default function UsersManagement() {
     }
   }
 
-  const [createdInviteUrl, setCreatedInviteUrl] = useState<string | null>(null)
+function getPipelineLabel(url: string) {
+  switch (url) {
+    case '/assessment':
+      return 'General AI Assessment (/assessment)'
+    case '/dashboard/identity-verify':
+      return 'Identity & Proctoring Check (/dashboard/identity-verify)'
+    case '/assessment/demo/cad':
+      return 'CAD Technical Assessment (/assessment/demo/cad)'
+    case '/dashboard/problems':
+      return 'Coding Challenge IDE (/dashboard/problems)'
+    case '/dashboard/codeathons':
+      return 'Codeathon Challenge Event (/dashboard/codeathons)'
+    case '/dashboard/hackathons':
+      return 'Hackathon Event (/dashboard/hackathons)'
+    default:
+      return url
+  }
+}
+
+  const [createdInvite, setCreatedInvite] = useState<{
+    url: string
+    email: string
+    targetUrl: string
+    assessments?: Array<{ title: string; target_url: string }>
+    allowed_languages?: string[]
+  } | null>(null)
 
   const handleAddUser = async (payload: {
     email: string
@@ -220,6 +245,8 @@ export default function UsersManagement() {
     password: string
     role: UserRole
     target_url?: string
+    assigned_assessments?: import('@/lib/db/admin').AssessmentStep[]
+    allowed_languages?: string[]
   }) => {
     const res = await csrfFetch('/api/admin/users', {
       method: 'POST',
@@ -231,6 +258,8 @@ export default function UsersManagement() {
         password: payload.password || undefined,
         role: payload.role,
         target_url: payload.target_url,
+        assigned_assessments: payload.assigned_assessments,
+        allowed_languages: payload.allowed_languages,
       }),
     })
     const json = await res.json().catch(() => ({}))
@@ -238,12 +267,18 @@ export default function UsersManagement() {
       throw new Error(json.error || 'Could not create user')
     }
     if (json.invite_url) {
-      setCreatedInviteUrl(json.invite_url)
+      setCreatedInvite({
+        url: json.invite_url,
+        email: payload.email,
+        targetUrl: json.target_url || payload.target_url || '/assessment',
+        assessments: payload.assigned_assessments,
+        allowed_languages: payload.allowed_languages,
+      })
     }
     addToast({
       type: 'success',
       title: 'Candidate Created & Link Generated',
-      message: `Single-use assessment invite link created for ${payload.email.trim()}.`,
+      message: `Single-use multi-assessment invite link created for ${payload.email.trim()}.`,
       duration: 8_000,
     })
     try {
@@ -307,24 +342,58 @@ export default function UsersManagement() {
       <AddUserDialog open={addOpen} onOpenChange={setAddOpen} onSubmit={handleAddUser} />
 
       {/* Candidate Assessment Invite Link Modal */}
-      <AlertDialog open={Boolean(createdInviteUrl)} onOpenChange={(o) => !o && setCreatedInviteUrl(null)}>
+      <AlertDialog open={Boolean(createdInvite)} onOpenChange={(o) => !o && setCreatedInvite(null)}>
         <AlertDialogContent className="sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle className="flex items-center gap-2">
               <span className="flex h-6 w-6 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 text-xs">✓</span>
-              Candidate Assessment Link Generated
+              Multi-Assessment Link Generated
             </AlertDialogTitle>
             <AlertDialogDescription className="space-y-3 pt-2 text-xs">
-              Candidate provisioned successfully. Share this <strong>single-use secure assessment link</strong> with the candidate:
+              Candidate provisioned successfully. Share this <strong>secure candidate assessment portal link</strong> with the candidate:
+              {createdInvite && (
+                <div className="rounded-md border border-border bg-muted/30 p-3 space-y-2 text-xs mt-2">
+                  <div>
+                    <span className="text-muted-foreground">Candidate Email: </span>
+                    <strong className="text-foreground">{createdInvite.email}</strong>
+                  </div>
+                  {createdInvite.assessments && createdInvite.assessments.length > 0 ? (
+                    <div>
+                      <span className="text-muted-foreground">Assigned Assessment Pipeline ({createdInvite.assessments.length} Steps):</span>
+                      <ul className="mt-1 space-y-1 pl-2 border-l-2 border-primary/40">
+                        {createdInvite.assessments.map((step, idx) => (
+                          <li key={idx} className="text-foreground font-medium flex items-center justify-between">
+                            <span>Step {idx + 1}: {step.title}</span>
+                            <span className="text-[10px] font-mono text-muted-foreground">{step.target_url}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  ) : (
+                    <div>
+                      <span className="text-muted-foreground">Assigned Assessment Pipeline: </span>
+                      <strong className="text-foreground">{getPipelineLabel(createdInvite.targetUrl)}</strong>
+                    </div>
+                  )}
+                  {createdInvite.allowed_languages && createdInvite.allowed_languages.length > 0 && (
+                    <div>
+                      <span className="text-muted-foreground">Allowed Coding Languages: </span>
+                      <span className="font-mono text-emerald-600 dark:text-emerald-400 capitalize font-bold">
+                        {createdInvite.allowed_languages.join(', ')}
+                      </span>
+                    </div>
+                  )}
+                </div>
+              )}
               <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/50 p-2.5 font-mono text-xs text-foreground mt-2">
-                <span className="truncate flex-1">{createdInviteUrl}</span>
+                <span className="truncate flex-1">{createdInvite?.url}</span>
                 <Button
                   size="sm"
                   variant="secondary"
                   className="shrink-0"
                   onClick={async () => {
-                    if (createdInviteUrl) {
-                      await navigator.clipboard.writeText(createdInviteUrl)
+                    if (createdInvite?.url) {
+                      await navigator.clipboard.writeText(createdInvite.url)
                       addToast({ type: 'success', title: 'Link copied to clipboard' })
                     }
                   }}
@@ -335,7 +404,7 @@ export default function UsersManagement() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => setCreatedInviteUrl(null)}>Done</AlertDialogAction>
+            <AlertDialogAction onClick={() => setCreatedInvite(null)}>Done</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

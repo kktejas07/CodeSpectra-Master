@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server'
+import bcrypt from 'bcryptjs'
+import { getMongoDb } from '@/lib/mongodb'
 import { requireAdmin, requireSuperAdmin } from '@/lib/api-auth'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { listAllUsers, getUserById } from '@/lib/db/admin'
@@ -90,7 +92,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Firebase not configured' }, { status: 500 })
   }
 
-  let body: { email?: string; password?: string; full_name?: string; role?: string; target_url?: string }
+  let body: {
+    email?: string
+    password?: string
+    full_name?: string
+    role?: string
+    target_url?: string
+    assigned_assessments?: import('@/lib/db/admin').AssessmentStep[]
+    allowed_languages?: string[]
+  }
   try {
     body = await request.json()
   } catch {
@@ -101,6 +111,27 @@ export async function POST(request: Request) {
   const full_name = (body.full_name || '').trim() || email.split('@')[0] || 'User'
   const role = normalizeUserRole(body.role)
   const targetUrl = (body.target_url || '/assessment').trim()
+  const assignedAssessments: import('@/lib/db/admin').AssessmentStep[] =
+    Array.isArray(body.assigned_assessments) && body.assigned_assessments.length > 0
+      ? body.assigned_assessments
+      : [
+          {
+            id: crypto.randomUUID(),
+            title: 'Assigned Assessment',
+            target_url: targetUrl,
+            type: (targetUrl.includes('cad')
+              ? 'cad'
+              : targetUrl.includes('identity')
+              ? 'identity'
+              : targetUrl.includes('problems')
+              ? 'coding'
+              : 'general') as any,
+            allowed_languages: body.allowed_languages || [],
+            status: 'pending',
+          },
+        ]
+  const allowedLanguages = Array.isArray(body.allowed_languages) ? body.allowed_languages : []
+
   const password =
     (body.password && body.password.length >= 8 ? body.password : undefined) ||
     `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
@@ -116,6 +147,28 @@ export async function POST(request: Request) {
       displayName: full_name,
     })
     const newUserId = userRecord.uid
+
+    const passwordHash = await bcrypt.hash(password, 10)
+    const db = await getMongoDb()
+    await db.collection('user').updateOne(
+      { email },
+      {
+        $set: {
+          id: newUserId,
+          email,
+          name: full_name,
+          fullName: full_name,
+          passwordHash,
+          role,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          _id: newUserId,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true },
+    )
 
     const { updateUserById, candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
     await updateUserById(newUserId, { role, fullName: full_name })
@@ -135,6 +188,8 @@ export async function POST(request: Request) {
       email,
       full_name,
       target_url: targetUrl,
+      assigned_assessments: assignedAssessments,
+      allowed_languages: allowedLanguages,
       invited_by: gate.user.id,
       status: 'pending',
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),

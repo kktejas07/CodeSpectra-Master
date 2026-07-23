@@ -43,6 +43,15 @@ export interface OrganizationInvitationDoc {
   created_at: string
 }
 
+export interface AssessmentStep {
+  id: string
+  title: string
+  target_url: string
+  type: 'general' | 'identity' | 'coding' | 'cad' | 'codeathon' | 'hackathon'
+  allowed_languages?: string[]
+  status: 'pending' | 'in_progress' | 'completed'
+}
+
 export interface CandidateInviteDoc {
   id: string
   token: string
@@ -50,6 +59,8 @@ export interface CandidateInviteDoc {
   email: string
   full_name: string
   target_url: string
+  assigned_assessments?: AssessmentStep[]
+  allowed_languages?: string[]
   invited_by: string
   status: 'pending' | 'used' | 'expired'
   expires_at: string
