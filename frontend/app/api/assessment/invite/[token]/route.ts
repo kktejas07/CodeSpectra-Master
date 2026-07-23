@@ -31,6 +31,17 @@ export async function GET(
       email: invite.email,
       full_name: invite.full_name,
       target_url: invite.target_url || '/assessment',
+      assigned_assessments: invite.assigned_assessments || [
+        {
+          id: 'step-1',
+          title: 'Assigned Assessment',
+          target_url: invite.target_url || '/assessment',
+          type: invite.target_url?.includes('cad') ? 'cad' : invite.target_url?.includes('identity') ? 'identity' : invite.target_url?.includes('problems') ? 'coding' : 'general',
+          allowed_languages: invite.allowed_languages || [],
+          status: 'pending',
+        },
+      ],
+      allowed_languages: invite.allowed_languages || [],
       status: invite.status,
       created_at: invite.created_at,
     })
