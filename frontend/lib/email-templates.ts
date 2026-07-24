@@ -21,6 +21,13 @@ const FONTS = {
   sans: "-apple-system, BlinkMacSystemFont, 'Segoe UI', Helvetica, Arial, sans-serif",
 }
 
+function getBaseUrl() {
+  return process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+}
+function getIconUrl() {
+  return `${getBaseUrl()}/icon.svg`
+}
+
 const baseStyles = {
   wrapper: `
 <div style="background:#f3f4f6;padding:40px 16px;font-family:${FONTS.sans}">
@@ -31,7 +38,7 @@ const baseStyles = {
         <table cellpadding="0" cellspacing="0" width="100%">
           <tr>
             <td style="vertical-align:middle">
-              <img src="https://codespectra.com/icon.svg" alt="CodeSpectra" width="36" height="36" style="display:inline-block;vertical-align:middle;border-radius:6px" />
+              <img src="${getIconUrl()}" alt="CodeSpectra" width="36" height="36" style="display:inline-block;vertical-align:middle;border-radius:6px" />
             </td>
             <td style="vertical-align:middle;padding-left:12px">
               <span style="font-family:${FONTS.mono};font-size:18px;font-weight:700;color:#ffffff;letter-spacing:-0.5px">CodeSpectra</span>
@@ -51,7 +58,7 @@ const baseStyles = {
             <tr>
               <td style="color:${BRAND.muted}">CodeSpectra &copy; ${new Date().getFullYear()}</td>
               <td style="text-align:right">
-                <a href="https://codespectra.com" style="color:${BRAND.green};text-decoration:none;font-weight:500">codespectra.com</a>
+                <a href="${getBaseUrl()}" style="color:${BRAND.green};text-decoration:none;font-weight:500">${getBaseUrl().replace('https://','').replace('http://','')}</a>
               </td>
             </tr>
           </table>
@@ -73,8 +80,6 @@ const baseStyles = {
   codeBlock: (text: string) =>
     `<pre style="font-family:${FONTS.mono};font-size:12px;background:#1a1a1a;color:#e5e7eb;padding:16px;border-radius:8px;overflow-x:auto;line-height:1.5;margin:16px 0">${text}</pre>`,
 }
-
-const getBaseUrl = () => process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.com'
 
 const statRow = (label: string, value: string, mono = false) =>
   `<tr><td style="padding:4px 0;color:${BRAND.muted};font-size:14px">${label}</td><td style="text-align:right;font-weight:600;font-size:14px;color:${BRAND.text};font-family:${mono ? FONTS.mono : 'inherit'}">${value}</td></tr>`

@@ -80,7 +80,7 @@ export async function POST(req: NextRequest) {
     { $set: { accepted_at: nowIso(), accepted_by_user_id: user.id } },
   )
 
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.com'
+  const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   try {
     const template = hackathonEmailTemplates.teamJoinConfirmation({
       eventName: hk.name,

@@ -22,6 +22,9 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'gemini_api_key',
   'openai_api_key',
   'groq_api_key',
+  'opencode_api_key',
+  'nvidia_api_key',
+  'openrouter_api_key',
   // Cloudflare
   'cloudflare_api_token',
   // PhonePe

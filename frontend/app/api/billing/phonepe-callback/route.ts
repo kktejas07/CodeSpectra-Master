@@ -48,7 +48,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?payment=phonepe&status=failed`)
   }
 
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.com'
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   let status = 'failed'
 
   try {

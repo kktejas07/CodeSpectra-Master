@@ -47,7 +47,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   await invitesCol.updateOne({ id: invite.id }, { $set: { accepted_at: nowIso(), accepted_by_user_id: user.id } })
 
   try {
-    const base = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.com'
+    const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const template = hackathonEmailTemplates.teamJoinConfirmation({
       eventName: hk.name, teamName: team.name,
       memberName: user.name || 'Team Member',

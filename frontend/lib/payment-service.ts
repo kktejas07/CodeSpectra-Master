@@ -184,7 +184,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
   name = 'phonepe' as const
 
   async createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string]): Promise<CheckoutResult> {
-    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.com'
+    const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const callbackUrl = `${baseUrl}/api/billing/phonepe-callback`
     const redirectUrl = `${baseUrl}/dashboard/billing?payment=phonepe&status=success`
 

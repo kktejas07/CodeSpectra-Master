@@ -33,6 +33,7 @@ import {
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
+import { Textarea } from '@/components/ui/textarea'
 import {
   Select,
   SelectContent,
@@ -94,6 +95,12 @@ const BRANDING_KEYS: GeneralKey[] = [
   'timezone',
   'default_locale',
   'platform_currency',
+  'company_name',
+  'copyright_text',
+  'company_address',
+  'website_url',
+  'privacy_policy_url',
+  'terms_of_service_url',
 ]
 const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode']
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
@@ -143,6 +150,9 @@ type SecretsDraft = {
   anthropic_api_key: string
   openai_api_key: string
   groq_api_key: string
+  opencode_api_key: string
+  openrouter_api_key: string
+  nvidia_api_key: string
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
@@ -178,6 +188,9 @@ const emptySecretsDraft = (): SecretsDraft => ({
   anthropic_api_key: '',
   openai_api_key: '',
   groq_api_key: '',
+  opencode_api_key: '',
+  openrouter_api_key: '',
+  nvidia_api_key: '',
 })
 
 function EmailTemplatesSection() {
@@ -720,6 +733,76 @@ function SystemSettingsInner() {
                   ))}
                 </SelectContent>
               </Select>
+            </div>
+
+            <div className="border-t border-border/40 pt-4 mt-4">
+              <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground mb-3">Company & Legal</p>
+              <div className="space-y-4">
+                <div>
+                  <Label htmlFor="company_name">Company name</Label>
+                  <Input
+                    id="company_name"
+                    value={form.company_name}
+                    onChange={(e) => setForm((f) => ({ ...f, company_name: e.target.value }))}
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background"
+                    placeholder="CodeSpectra"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="website_url">Website URL</Label>
+                  <Input
+                    id="website_url"
+                    type="url"
+                    value={form.website_url}
+                    onChange={(e) => setForm((f) => ({ ...f, website_url: e.target.value }))}
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                    placeholder="https://codespectra.ai"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="company_address">Company address</Label>
+                  <Textarea
+                    id="company_address"
+                    value={form.company_address}
+                    onChange={(e) => setForm((f) => ({ ...f, company_address: e.target.value }))}
+                    className="mt-1.5 rounded-lg border-border/60 bg-background text-sm"
+                    placeholder="548 Market St, San Francisco, CA 94104"
+                    rows={2}
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="copyright_text">Copyright text</Label>
+                  <Input
+                    id="copyright_text"
+                    value={form.copyright_text}
+                    onChange={(e) => setForm((f) => ({ ...f, copyright_text: e.target.value }))}
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background"
+                    placeholder="© 2026 CodeSpectra. All rights reserved."
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="privacy_policy_url">Privacy policy URL</Label>
+                  <Input
+                    id="privacy_policy_url"
+                    type="url"
+                    value={form.privacy_policy_url}
+                    onChange={(e) => setForm((f) => ({ ...f, privacy_policy_url: e.target.value }))}
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                    placeholder="https://codespectra.ai/privacy"
+                  />
+                </div>
+                <div>
+                  <Label htmlFor="terms_of_service_url">Terms of service URL</Label>
+                  <Input
+                    id="terms_of_service_url"
+                    type="url"
+                    value={form.terms_of_service_url}
+                    onChange={(e) => setForm((f) => ({ ...f, terms_of_service_url: e.target.value }))}
+                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                    placeholder="https://codespectra.ai/terms"
+                  />
+                </div>
+              </div>
             </div>
           </div>
           <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
@@ -2080,16 +2163,19 @@ function SystemSettingsInner() {
                   Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
                 </p>
                 <div className="space-y-5">
-                  {['gemini','anthropic','openai','groq'].map((provider) => {
+                  {['gemini','opencode','groq','openrouter','openai','anthropic','nvidia'].map((provider) => {
                     const meta: Record<string,any> = {
-                      gemini: { label: 'Google Gemini', placeholder: 'AIza...', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier available. Used for code analysis, hints, and fast completions.', key: 'gemini_api_key' },
-                      anthropic: { label: 'Anthropic Claude', placeholder: 'sk-ant-...', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Used for deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
-                      openai: { label: 'OpenAI', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'GPT models for completions and analysis.', key: 'openai_api_key' },
-                      groq: { label: 'Groq (Fast)', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Ultra-fast inference for chat and completions.', key: 'groq_api_key' },
+                      gemini: { label: 'Google Gemini', placeholder: 'AIza...', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier. Used for code analysis, hints, and fast completions.', key: 'gemini_api_key' },
+                      opencode: { label: 'OpenCode', placeholder: 'ock_...', url: 'https://opencode.ai/keys', urlLabel: 'OpenCode Keys', desc: 'Free & paid. Claude, GPT, Gemini, DeepSeek models. Free models: deepseek-v4-flash-free, mimo-v2.5-free, ling-3.0-flash-free.', key: 'opencode_api_key' },
+                      groq: { label: 'Groq', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama 3.3, Mixtral, Gemma, DeepSeek R1.', key: 'groq_api_key' },
+                      openrouter: { label: 'OpenRouter', placeholder: 'sk-or-...', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. Access 300+ models including free tiers of Gemini, Claude, Llama.', key: 'openrouter_api_key' },
+                      openai: { label: 'OpenAI', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'Paid. GPT-4o, GPT-4-turbo, o1, o3 models.', key: 'openai_api_key' },
+                      anthropic: { label: 'Anthropic Claude', placeholder: 'sk-ant-...', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Paid. Deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
+                      nvidia: { label: 'NVIDIA NIM', placeholder: 'nvapi-...', url: 'https://console.anthropic.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models via NVIDIA infrastructure.', key: 'nvidia_api_key' },
                     }
                     const info = meta[provider]
                     const keyValue = (secretsDraft as any)[info.key] || ""
-                    const hasKey = (secretsMeta as any)[info.key]
+                    const hasKey = (secretsMeta as any)['has_' + info.key]
                     return (
                       <div key={provider} className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
                         <div className="flex items-center justify-between">
@@ -2112,6 +2198,9 @@ function SystemSettingsInner() {
                     )
                   })}
                 </div>
+                <p className="mt-3 text-xs text-muted-foreground">
+                  Provider fallback order (auto-selects): Gemini → OpenCode → Groq → OpenRouter → OpenAI → Anthropic → NVIDIA.
+                </p>
                 <div className="flex justify-end mt-6 pt-4 border-t border-border/40">
                   <Button onClick={() => saveSecrets()} disabled={savingKey === "integrations"} className="gap-2">
                     {savingKey === "integrations" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}

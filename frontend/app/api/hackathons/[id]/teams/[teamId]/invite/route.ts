@@ -66,7 +66,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     await invitesCol.insertOne(doc)
   }
 
-  const base = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.com'
+  const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
   const inviteUrl = `${base}/hackathons/join?token=${token}`
 
   try {

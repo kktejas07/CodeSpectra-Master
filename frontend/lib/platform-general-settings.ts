@@ -46,6 +46,18 @@ export type GeneralPlatformSettings = {
   locked_pages: string[]
   /** Sub-page features that are locked (e.g. "scanner:github"). Superadmin can toggle from /dashboard/admin/permissions. */
   locked_features: string[]
+  /** Company legal name (shown in footer) */
+  company_name: string
+  /** Copyright line e.g. "© 2026 CodeSpectra" — leave empty to use platform_name */
+  copyright_text: string
+  /** Physical address shown in footer and emails */
+  company_address: string
+  /** Website URL shown in footer and emails */
+  website_url: string
+  /** Privacy policy URL */
+  privacy_policy_url: string
+  /** Terms of service URL */
+  terms_of_service_url: string
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -66,6 +78,12 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   admin_new_user_email_delivery: 'resend_recovery',
   locked_pages: [],
   locked_features: [],
+  company_name: 'CodeSpectra',
+  copyright_text: '',
+  company_address: '',
+  website_url: '',
+  privacy_policy_url: '',
+  terms_of_service_url: '',
 }
 
 export function mergeGeneralPlatformSettings(
