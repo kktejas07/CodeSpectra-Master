@@ -564,6 +564,14 @@ export default function HackathonResultsPage({ params }: { params: Promise<{ slu
           />
         )}
 
+        <div className="text-center">
+          <Link href={`/hackathons/${slug}/report`}>
+            <Button variant="outline" className="gap-1.5 text-sm">
+              <FileText className="h-4 w-4" /> View Detailed Performance Report
+            </Button>
+          </Link>
+        </div>
+
         <Card className="p-6 border-primary/30 bg-primary/5">
           <div className="flex flex-wrap justify-center gap-3">
             {linkedinShareUrl && (

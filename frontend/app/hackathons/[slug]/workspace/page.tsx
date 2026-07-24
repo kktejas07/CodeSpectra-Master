@@ -103,6 +103,9 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  const [emailInviteOpen, setEmailInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [sendingInvite, setSendingInvite] = useState(false)
 
   const [submittingFor, setSubmittingFor] = useState<{ problem_slug: string; problem_title: string; points: number } | null>(null)
   const [viewingSubmission, setViewingSubmission] = useState<Submission | null>(null)
@@ -213,6 +216,27 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       setCopied(true)
       setTimeout(() => setCopied(false), 2000)
     }
+  }
+
+  const sendEmailInvite = async () => {
+    if (!hackathon || !inviteEmail.trim()) return
+    const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+    if (!team) return
+    setSendingInvite(true)
+    try {
+      const res = await fetch(`/api/hackathons/${hackathon.id}/teams/${team.id}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: inviteEmail.trim() }),
+      })
+      const data = await res.json()
+      if (data.error) { addToast({ type: 'error', title: data.error }); return }
+      addToast({ type: 'success', title: `Invite sent to ${inviteEmail}` })
+      setInviteEmail('')
+      setEmailInviteOpen(false)
+    } catch { addToast({ type: 'error', title: 'Failed to send invite' }) }
+    finally { setSendingInvite(false) }
   }
 
   async function claimProblem(slug: string) {
@@ -575,15 +599,48 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         {inviteUrl && (
           <Card className="p-5">
             <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Invite Teammates</p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-2">
               <Input readOnly value={inviteUrl} className="text-xs font-mono" />
               <Button size="sm" variant="outline" onClick={copyInvite}>
                 {copied ? <CheckCircle className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1.5">Share this link so teammates can join your team</p>
+            <Button size="sm" variant="outline" className="w-full gap-1.5" onClick={() => setEmailInviteOpen(true)}>
+              <Send className="h-3 w-3" /> Send invite by email
+            </Button>
           </Card>
         )}
+
+        <Dialog open={emailInviteOpen} onOpenChange={setEmailInviteOpen}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle>Invite by email</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <Label htmlFor="invite-email">Email address</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  placeholder="teammate@example.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && void sendEmailInvite()}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                We'll send an invite link to this email address. They don't need the team URL — just sign in and click to join.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEmailInviteOpen(false)}>Cancel</Button>
+              <Button onClick={() => void sendEmailInvite()} disabled={sendingInvite || !inviteEmail.trim()}>
+                {sendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Send Invite
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Card className="p-5">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">

@@ -179,6 +179,101 @@ export async function hackathonClaims(): Promise<Collection<HackathonClaimDoc>> 
   return col
 }
 
+export interface HackathonInviteDoc {
+  id: string
+  hackathon_id: string
+  team_id: string
+  email: string
+  token: string
+  invited_by_user_id: string
+  invited_by_name: string
+  accepted_at?: string
+  accepted_by_user_id?: string
+  expires_at: string
+  created_at: string
+}
+
+export async function hackathonInvites(): Promise<Collection<HackathonInviteDoc>> {
+  const col = (await db()).collection<HackathonInviteDoc>('hackathon_invites')
+  try {
+    await col.createIndex({ token: 1 }, { unique: true, name: 'hackathon_invites_token' })
+    await col.createIndex({ hackathon_id: 1, team_id: 1 }, { name: 'hackathon_invites_event_team' })
+    await col.createIndex({ email: 1 }, { name: 'hackathon_invites_email' })
+    await col.createIndex(
+      { expires_at: 1 },
+      { expireAfterSeconds: 0, name: 'hackathon_invites_ttl' },
+    )
+  } catch { /* index may already exist */ }
+  return col
+}
+
+export type HackathonActivityType =
+  | 'problem_started'
+  | 'problem_claimed'
+  | 'problem_released'
+  | 'problem_submitted'
+  | 'problem_viewed'
+  | 'leaderboard_viewed'
+  | 'workspace_entered'
+  | 'workspace_left'
+
+export interface HackathonActivityDoc {
+  id: string
+  hackathon_id: string
+  team_id: string
+  user_id: string
+  type: HackathonActivityType
+  problem_slug?: string
+  meta?: Record<string, unknown>
+  created_at: string
+}
+
+export async function hackathonActivity(): Promise<Collection<HackathonActivityDoc>> {
+  const col = (await db()).collection<HackathonActivityDoc>('hackathon_activity')
+  try {
+    await col.createIndex({ hackathon_id: 1, team_id: 1 }, { name: 'hackathon_activity_team' })
+    await col.createIndex({ hackathon_id: 1, problem_slug: 1 }, { name: 'hackathon_activity_problem' })
+    await col.createIndex({ hackathon_id: 1, user_id: 1 }, { name: 'hackathon_activity_user' })
+  } catch { /* index may already exist */ }
+  return col
+}
+
+export type ProctorEventType =
+  | 'tab_blur'
+  | 'tab_focus'
+  | 'copy_attempt'
+  | 'paste_attempt'
+  | 'right_click'
+  | 'fullscreen_exit'
+  | 'idle_warning'
+  | 'suspicious_activity'
+
+export interface HackathonProctorEventDoc {
+  id: string
+  hackathon_id: string
+  team_id: string
+  user_id: string
+  type: ProctorEventType
+  problem_slug?: string
+  severity: 'low' | 'medium' | 'high' | 'critical'
+  meta?: {
+    duration_ms?: number
+    attempt_count?: number
+    details?: string
+  }
+  created_at: string
+}
+
+export async function hackathonProctorEvents(): Promise<Collection<HackathonProctorEventDoc>> {
+  const col = (await db()).collection<HackathonProctorEventDoc>('hackathon_proctor_events')
+  try {
+    await col.createIndex({ hackathon_id: 1, team_id: 1 }, { name: 'proctor_team' })
+    await col.createIndex({ hackathon_id: 1, user_id: 1 }, { name: 'proctor_user' })
+    await col.createIndex({ hackathon_id: 1, severity: 1 }, { name: 'proctor_severity' })
+  } catch { /* index may already exist */ }
+  return col
+}
+
 /**
  * Map a Better Auth role to the dashboard variant used on the public scan
  * page. Unknown roles default to `user`.
