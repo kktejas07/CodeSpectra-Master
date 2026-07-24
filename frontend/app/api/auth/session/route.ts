@@ -7,10 +7,15 @@ import { verifySessionToken } from '@/lib/session'
 const SESSION_COOKIE_NAME = 'codespectra_session'
 const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7 * 1000
 
-async function ensureUserProfile(uid: string, email: string, displayName?: string) {
+async function ensureUserProfile(uid: string, email: string, displayName?: string, loginMethod?: string) {
   try {
     const userCol = await getUsersCollection()
     const existing = await userCol.findOne({ id: uid })
+    const updateFields: Record<string, unknown> = { updatedAt: new Date() }
+    if (loginMethod) {
+      updateFields.lastLoginMethod = loginMethod
+      updateFields.lastLoginAt = new Date()
+    }
     if (!existing) {
       await userCol.insertOne({
         _id: uid,
@@ -21,10 +26,10 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
         isActive: true,
         createdAt: new Date(),
         updatedAt: new Date(),
+        ...(loginMethod ? { lastLoginMethod: loginMethod, lastLoginAt: new Date() } : {}),
       } as any)
     } else {
-      // Update last active on every login
-      await userCol.updateOne({ id: uid }, { $set: { updatedAt: new Date() } })
+      await userCol.updateOne({ id: uid }, { $set: updateFields })
     }
   } catch (e) {
     console.error('[Session] Profile sync error:', e)
@@ -33,7 +38,7 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
 
 export async function POST(request: NextRequest) {
   try {
-    const { idToken } = await request.json()
+    const { idToken, loginMethod } = await request.json()
     if (!idToken) {
       return NextResponse.json({ error: 'idToken required' }, { status: 400 })
     }
@@ -59,7 +64,7 @@ export async function POST(request: NextRequest) {
       maxAge: SESSION_EXPIRES_IN / 1000,
     })
 
-    await ensureUserProfile(decoded.uid, decoded.email || '', decoded.name)
+    await ensureUserProfile(decoded.uid, decoded.email || '', decoded.name, loginMethod)
 
     return response
   } catch (error) {
@@ -96,7 +101,6 @@ export async function GET() {
       if (decoded) {
         const userCol = await getUsersCollection()
         const profile = await userCol.findOne({ id: decoded.uid })
-        // Update lastActive timestamp (non-blocking)
         userCol.updateOne({ id: decoded.uid }, { $set: { updatedAt: new Date() } }).catch(() => {})
         return NextResponse.json({
           user: {
@@ -105,6 +109,8 @@ export async function GET() {
             role: profile?.role || 'user',
             plan: profile?.plan || 'free',
             fullName: profile?.fullName || profile?.name || decoded.name || null,
+            lastLoginMethod: profile?.lastLoginMethod || null,
+            lastLoginAt: profile?.lastLoginAt || null,
           },
         })
       }
@@ -118,7 +124,6 @@ export async function GET() {
   if (payload) {
     const userCol = await getUsersCollection()
     const profile = await userCol.findOne({ id: payload.uid })
-    // Update lastActive timestamp (non-blocking)
     userCol.updateOne({ id: payload.uid }, { $set: { updatedAt: new Date() } }).catch(() => {})
     return NextResponse.json({
       user: {
@@ -127,6 +132,8 @@ export async function GET() {
         role: payload.role,
         plan: profile?.plan || 'free',
         fullName: profile?.fullName || profile?.name || null,
+        lastLoginMethod: profile?.lastLoginMethod || null,
+        lastLoginAt: profile?.lastLoginAt || null,
       },
     })
   }

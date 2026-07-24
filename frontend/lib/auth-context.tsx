@@ -22,6 +22,8 @@ export interface AuthUser {
   email: string | null
   displayName: string | null
   photoURL: string | null
+  lastLoginMethod?: 'google' | 'github' | 'email' | 'sso' | null
+  lastLoginAt?: string | null
 }
 
 interface AuthContextValue {
@@ -40,8 +42,18 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-function toAuthUser(u: { uid: string; email: string | null; displayName?: string | null; photoURL?: string | null }): AuthUser {
-  return { uid: u.uid, email: u.email, displayName: u.displayName || null, photoURL: u.photoURL || null }
+function toAuthUser(u: { uid: string; email: string | null; displayName?: string | null; photoURL?: string | null; lastLoginMethod?: string | null; lastLoginAt?: string | null }): AuthUser {
+  return { uid: u.uid, email: u.email, displayName: u.displayName || null, photoURL: u.photoURL || null, lastLoginMethod: u.lastLoginMethod as AuthUser['lastLoginMethod'], lastLoginAt: u.lastLoginAt || null }
+}
+
+async function recordLoginMethod(uid: string, method: 'google' | 'github' | 'email' | 'sso') {
+  try {
+    await csrfFetch('/api/auth/login-method', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ uid, method }),
+    })
+  } catch { /* non-critical */ }
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
@@ -60,6 +72,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             uid: data.user.uid,
             email: data.user.email,
             displayName: data.user.fullName,
+            lastLoginMethod: data.user.lastLoginMethod,
+            lastLoginAt: data.user.lastLoginAt,
           }))
           setLoading(false)
         }
@@ -98,11 +112,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               const res = await fetch('/api/auth/session', { credentials: 'include' })
               const data = await res.json()
               if (data?.user) {
-                // Session cookie is valid — set user from session data
                 setUser(toAuthUser({
                   uid: data.user.uid,
                   email: data.user.email,
                   displayName: data.user.fullName,
+                  lastLoginMethod: data.user.lastLoginMethod,
+                  lastLoginAt: data.user.lastLoginAt,
                 }))
               } else {
                 setUser(null)
@@ -152,7 +167,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Login failed')
-    setUser(toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name }))
+    const authUser = toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name })
+    setUser(authUser)
+    await recordLoginMethod(json.user.id, 'email')
   }
 
   const signUpWithEmailFn = async (email: string, password: string, name: string) => {
@@ -172,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     provider.addScope('email'); provider.addScope('profile')
     const cred = await signInWithPopup(auth, provider)
     setUser(toAuthUser(cred.user))
+    await recordLoginMethod(cred.user.uid, 'google')
   }
 
   const signInWithGithubFn = async () => {
@@ -180,6 +198,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     provider.addScope('user:email')
     const cred = await signInWithPopup(auth, provider)
     setUser(toAuthUser(cred.user))
+    await recordLoginMethod(cred.user.uid, 'github')
   }
 
   const signOutFn = async () => {

@@ -8,6 +8,7 @@ import { writeAuditLog } from '@/lib/db/misc'
 import { notify } from '@/lib/notifications'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
+import { updateUserLastLogin } from '@/lib/db/admin'
 
 export const runtime = 'nodejs'
 
@@ -61,6 +62,7 @@ export async function POST(request: Request) {
     const uid = user.id || user._id
     const role = normalizeUserRole(user.role as string | undefined | null)
     await setSessionCookie({ uid, email: user.email, role })
+    await updateUserLastLogin(uid, 'email')
 
     await writeAuditLog({ action: 'auth.login', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
     notify({ user_id: uid, type: 'auth.login', title: 'New sign-in', message: `Signed in as ${user.email}`, icon: 'log-in' }).catch(() => {})
