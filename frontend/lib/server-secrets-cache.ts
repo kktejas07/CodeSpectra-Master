@@ -87,7 +87,7 @@ async function settingsCol(): Promise<Collection<PlatformSettingDoc>> {
 
 let cached: ServerSecretsRecord | null = null
 let cacheValid = false
-let inflight: Promise<void> | null = null
+let inflight: Promise<ServerSecretsRecord | null> | null = null
 
 export function invalidateServerSecretsCache(): void {
   cached = null
@@ -95,13 +95,13 @@ export function invalidateServerSecretsCache(): void {
   inflight = null
 }
 
-export async function warmServerSecretsCache(): Promise<void> {
-  if (cacheValid) return
+export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
+  if (cacheValid && cached !== null) return cached
   if (inflight) {
-    await inflight
-    return
+    const result = await inflight
+    return result || {}
   }
-  inflight = (async () => {
+  const p = (async () => {
     try {
       const col = await settingsCol()
       const doc = await col.findOne({ key: SERVER_SECRETS_PLATFORM_KEY })
@@ -112,13 +112,16 @@ export async function warmServerSecretsCache(): Promise<void> {
     } finally {
       cacheValid = true
     }
+    return cached!
   })()
-  await inflight
+  inflight = p
+  const result = await p
   inflight = null
+  return result
 }
 
 export function getServerSecretsFromCache(): ServerSecretsRecord {
-  if (cacheValid && cached) return cached
+  if (cacheValid && cached !== null) return cached
   return {}
 }
 
@@ -127,8 +130,7 @@ export function getServerSecretsFromCache(): ServerSecretsRecord {
  * routes that need to read the current values.
  */
 export async function readServerSecrets(): Promise<ServerSecretsRecord> {
-  await warmServerSecretsCache()
-  return getServerSecretsFromCache()
+  return warmServerSecretsCache()
 }
 
 /**
