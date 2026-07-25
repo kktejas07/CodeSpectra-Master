@@ -59,7 +59,7 @@ import {
 } from '@/lib/platform-settings-nav'
 import { isStripePriceId } from '@/lib/pricing-catalog'
 import { PricingCatalogStripeHint } from '@/components/dashboard/pricing-catalog-stripe-hint'
-import { emailTemplates } from '@/lib/email-templates'
+import { emailTemplates, hackathonEmailTemplates } from '@/lib/email-templates'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 type General = GeneralPlatformSettings
@@ -198,21 +198,26 @@ function EmailTemplatesSection() {
 
   const TEMPLATES: { id: string; label: string; desc: string; sample: Record<string, unknown>; icon: React.ReactNode }[] = [
     { id: 'welcomeEmail' as const, label: 'Welcome email', desc: 'Sent after user registration', sample: { name: 'John' }, icon: <Hand className="h-5 w-5" /> },
+    { id: 'loginNotification' as const, label: 'Login notification', desc: 'Sent when a new sign-in is detected on the account', sample: { name: 'John', deviceInfo: 'Chrome on Mac', location: 'Mumbai, India', time: 'Jul 25, 2026 10:30 AM' }, icon: <Eye className="h-5 w-5" /> },
     { id: 'jobApplicationConfirmation' as const, label: 'Job application confirmation', desc: 'Sent when a user applies to a job', sample: { jobTitle: 'Software Engineer', companyName: 'Acme Inc', applicantName: 'Jane' }, icon: <FileSearch className="h-5 w-5" /> },
     { id: 'examStartedNotification' as const, label: 'Exam started', desc: 'Sent when a user starts an exam', sample: { examTitle: 'JavaScript Fundamentals', candidateName: 'Jane' }, icon: <NotebookText className="h-5 w-5" /> },
     { id: 'subscriptionConfirmation' as const, label: 'Subscription confirmation', desc: 'Sent after successful subscription', sample: { planName: 'Pro', amount: 2999 }, icon: <Sparkles className="h-5 w-5" /> },
     { id: 'invoiceNotification' as const, label: 'Invoice notification', desc: 'Sent when a new invoice is generated', sample: { invoiceId: 'INV-001', amount: 2999, planName: 'Pro' }, icon: <FileText className="h-5 w-5" /> },
+    { id: 'phonePePaymentSuccess' as const, label: 'PhonePe payment success', desc: 'Sent after a successful PhonePe UPI payment', sample: { planName: 'Pro', amount: 2999, transactionId: 'TXN123456789' }, icon: <CreditCard className="h-5 w-5" /> },
+    { id: 'phonePePaymentFailed' as const, label: 'PhonePe payment failed', desc: 'Sent when a PhonePe payment fails', sample: { planName: 'Pro', amount: 2999, reason: 'Insufficient funds' }, icon: <KeyRound className="h-5 w-5" /> },
     { id: 'passwordReset' as const, label: 'Password reset', desc: 'Sent when user requests a password reset', sample: {}, icon: <Key className="h-5 w-5" /> },
     { id: 'emailVerification' as const, label: 'Email verification', desc: 'Sent to verify email address', sample: {}, icon: <Mail className="h-5 w-5" /> },
     { id: 'teamInvite' as const, label: 'Team invitation', desc: 'Sent when added to a team', sample: { teamName: 'Engineering', invitedByName: 'Alice' }, icon: <UsersIcon className="h-5 w-5" /> },
     { id: 'twoFactorBackup' as const, label: '2FA backup codes', desc: 'Sent when 2FA is enabled', sample: {}, icon: <ShieldCheck className="h-5 w-5" /> },
+    { id: 'hackathonResultsReleased' as const, label: 'Hackathon results released', desc: 'Sent when hackathon results are published', sample: { eventName: 'CodeSprint 2026', teamName: 'Alpha Coders', rank: 3, totalTeams: 50, score: 920, resultsUrl: 'https://codespectra.ai/hackathons/sprint2026/results' }, icon: <Flame className="h-5 w-5" /> },
   ]
 
   return (
     <div className="grid gap-4 px-6 py-5 md:grid-cols-2">
       {TEMPLATES.map((tpl) => {
-        const tplFn = emailTemplates[tpl.id as keyof typeof emailTemplates]
-        const preview = tplFn ? (tplFn as any)(...Object.values(tpl.sample)) : null
+        const preview = tpl.id === 'hackathonResultsReleased'
+          ? (hackathonEmailTemplates.resultsReleased as any)(tpl.sample)
+          : (emailTemplates[tpl.id as keyof typeof emailTemplates] as any)(...Object.values(tpl.sample))
         return (
           <div key={tpl.id} className="rounded-lg border border-border/60 bg-card/40 p-4 hover:border-primary/20 transition-colors">
             <div className="flex items-start justify-between">

@@ -101,3 +101,4 @@ mobile/expo/ios/*.xcworkspace/
 mobile/expo/ios/build/
 mobile/expo/ios/DerivedData/
 mobile/expo/ios/.xcode.env.local
+.zcode/
