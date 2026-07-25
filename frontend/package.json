@@ -79,6 +79,7 @@
     "react-konva": "^19.2.5",
     "react-markdown": "^10.1.0",
     "react-resizable-panels": "^2.1.7",
+    "react-simple-maps": "^3.0.0",
     "recharts": "2.15.0",
     "rehype-highlight": "^7.0.2",
     "rehype-slug": "^6.0.0",

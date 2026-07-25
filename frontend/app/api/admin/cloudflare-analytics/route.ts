@@ -90,6 +90,41 @@ export async function GET() {
       }
     }
 
+    // Query per-country request counts
+    const countryResult = await cfGraphQL(
+      apiToken,
+      `query GetCountryMetrics($zoneTag: String!, $since: String!, $until: String!) {
+        viewer {
+          zones(filter: {zoneTag: $zoneTag}) {
+            httpRequests1hGroups(
+              limit: 100,
+              filter: {datetime_geq: $since, datetime_leq: $until},
+              orderBy: [sum_requests_DESC]
+            ) {
+              dimensions {
+                clientCountryName
+              }
+              sum {
+                requests
+              }
+            }
+          }
+        }
+      }`,
+      { zoneTag: zoneId, since, until }
+    )
+
+    const countryGroups = countryResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
+    const countryMap = new Map<string, number>()
+    for (const g of countryGroups as any[]) {
+      const name = g?.dimensions?.clientCountryName || 'Unknown'
+      countryMap.set(name, (countryMap.get(name) || 0) + (g?.sum?.requests || 0))
+    }
+    const topCountries = Array.from(countryMap.entries())
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 50)
+      .map(([country, requests]) => ({ country, requests }))
+
     return NextResponse.json({
       configured: true,
       zone: zoneName,
@@ -100,7 +135,7 @@ export async function GET() {
         uniques: totals.uniques,
         cacheRatio: totals.requests > 0 ? Math.round((totals.cachedRequests / totals.requests) * 100) : 0,
       },
-      topCountries: [],
+      topCountries,
     })
   } catch (e) {
     const msg = (e as Error).message
