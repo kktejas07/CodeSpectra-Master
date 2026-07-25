@@ -2,7 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { cookies } from 'next/headers'
 import { users as getUsersCollection } from '@/lib/db/admin'
-import { verifySessionToken } from '@/lib/session'
+import { verifySessionToken, setSessionCookie } from '@/lib/session'
+import { createRemoteJWKSet, jwtVerify } from 'jose'
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
 const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7 * 1000
@@ -44,29 +45,48 @@ export async function POST(request: NextRequest) {
     }
 
     const auth = await getAdminAuthInstance()
-    if (!auth) {
-      return NextResponse.json({ error: 'Firebase not configured' }, { status: 500 })
+    if (auth) {
+      const decoded = await auth.verifyIdToken(idToken)
+      if (!decoded) {
+        return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+      }
+      const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: SESSION_EXPIRES_IN })
+      const response = NextResponse.json({ ok: true })
+      response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
+        httpOnly: true,
+        secure: true,
+        sameSite: 'lax',
+        path: '/',
+        maxAge: SESSION_EXPIRES_IN / 1000,
+      })
+      await ensureUserProfile(decoded.uid, decoded.email || '', decoded.name, loginMethod)
+      return response
     }
 
-    const decoded = await auth.verifyIdToken(idToken)
-    if (!decoded) {
-      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
-    }
-
-    const sessionCookie = await auth.createSessionCookie(idToken, { expiresIn: SESSION_EXPIRES_IN })
-    const response = NextResponse.json({ ok: true })
-
-    response.cookies.set(SESSION_COOKIE_NAME, sessionCookie, {
-      httpOnly: true,
-      secure: true,
-      sameSite: 'lax',
-      path: '/',
-      maxAge: SESSION_EXPIRES_IN / 1000,
+    // ponytail: fallback when Firebase Admin SDK is not configured
+    const projectId = process.env.FIREBASE_PROJECT_ID || 'codespectra-f60cf'
+    const JWKS = createRemoteJWKSet(
+      new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
+    )
+    const { payload } = await jwtVerify(idToken, JWKS, {
+      issuer: `https://securetoken.google.com/${projectId}`,
+      audience: projectId,
     })
-
-    await ensureUserProfile(decoded.uid, decoded.email || '', decoded.name, loginMethod)
-
-    return response
+    if (!payload?.sub) {
+      return NextResponse.json({ error: 'Invalid token payload' }, { status: 401 })
+    }
+    await setSessionCookie({
+      uid: payload.sub,
+      email: (payload.email as string) || '',
+      role: 'user',
+    })
+    await ensureUserProfile(
+      payload.sub,
+      (payload.email as string) || '',
+      payload.name as string | undefined,
+      loginMethod,
+    )
+    return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('[Session] Error creating session:', error)
     return NextResponse.json({ error: 'Internal server error' }, { status: 500 })
