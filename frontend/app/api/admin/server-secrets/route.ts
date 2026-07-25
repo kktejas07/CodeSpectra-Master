@@ -25,12 +25,9 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'opencode_api_key',
   'nvidia_api_key',
   'openrouter_api_key',
-  // Cloudflare
   'cloudflare_api_token',
-  // PhonePe
   'phonepe_salt_key',
   'phonepe_webhook_secret',
-  // legacy
   'stripe_secret_key',
   'stripe_webhook_secret',
 ]
@@ -53,16 +50,13 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'stripe_price_pro_yearly',
   'stripe_price_enterprise_monthly',
   'stripe_price_enterprise_yearly',
-  // Cloudflare
   'cloudflare_zone_id',
-  // Firebase client config (plain — these are public API keys)
   'firebase_api_key',
   'firebase_auth_domain',
   'firebase_project_id',
   'firebase_storage_bucket',
   'firebase_messaging_sender_id',
   'firebase_app_id',
-  // PhonePe
   'phonepe_merchant_id',
   'phonepe_salt_index',
 ]
@@ -106,14 +100,11 @@ export async function PATCH(request: Request) {
     if (v === null) {
       patch[k] = undefined as never
     } else if (typeof v === 'string') {
-      // Ignore UI-masked values (bullet chars) so we never overwrite a stored
-      // secret with its mask.
       if (isMaskedSecret(v)) continue
       patch[k] = v as never
     }
   }
 
-  // Basic Razorpay key sanity-check
   if (patch.razorpay_key_id && !/^rzp_(test|live)_[a-zA-Z0-9]+$/.test(patch.razorpay_key_id)) {
     return NextResponse.json(
       { error: 'razorpay_key_id must start with rzp_test_ or rzp_live_' },
@@ -122,33 +113,20 @@ export async function PATCH(request: Request) {
   }
 
   try {
-    const patch: Partial<ServerSecretsRecord> = {}
-    for (const k of ALL_FIELDS) {
-      if (!(k in body)) continue
-      const v = body[k]
-      if (v === null) {
-        patch[k] = undefined as never
-      } else if (typeof v === 'string') {
-        if (isMaskedSecret(v)) continue
-        patch[k] = v as never
-      }
-    }
-
-    if (patch.razorpay_key_id && !/^rzp_(test|live)_[a-zA-Z0-9]+$/.test(patch.razorpay_key_id)) {
-      return NextResponse.json(
-        { error: 'razorpay_key_id must start with rzp_test_ or rzp_live_' },
-        { status: 400 },
-      )
-    }
-
     const updated = await writeServerSecrets(patch)
-    return NextResponse.json({ ok: true, secrets: {
-      cloudflare_zone_id: updated.cloudflare_zone_id || null,
-      cloudflare_api_token_masked: maskSecret(updated.cloudflare_api_token),
-      has_cloudflare_api_token: Boolean(updated.cloudflare_api_token?.trim()),
-    }})
+    return NextResponse.json({
+      ok: true,
+      secrets: {
+        cloudflare_zone_id: updated.cloudflare_zone_id || null,
+        cloudflare_api_token_masked: maskSecret(updated.cloudflare_api_token),
+        has_cloudflare_api_token: Boolean(updated.cloudflare_api_token?.trim()),
+      },
+    })
   } catch (e) {
     console.error('[server-secrets] PATCH error:', e)
-    return NextResponse.json({ error: 'Save failed: ' + (e instanceof Error ? e.message : String(e)) }, { status: 500 })
+    return NextResponse.json(
+      { error: 'Save failed: ' + (e instanceof Error ? e.message : String(e)) },
+      { status: 500 },
+    )
   }
 }
