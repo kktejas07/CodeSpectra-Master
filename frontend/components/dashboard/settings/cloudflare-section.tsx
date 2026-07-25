@@ -19,7 +19,8 @@ export function CloudflareSettingsSection() {
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
-  useEffect(() => {
+  const loadSettings = useCallback(() => {
+    setLoading(true)
     fetch('/api/admin/server-secrets', { credentials: 'include' })
       .then((r) => r.json())
       .then((d) => {
@@ -28,7 +29,7 @@ export function CloudflareSettingsSection() {
         setHasSavedToken(!!sec.has_cloudflare_api_token)
         setZoneId(sec.cloudflare_zone_id || '')
       })
-      .catch(() => setMessage({ type: 'error', text: 'Failed to load current settings' }))
+      .catch(() => { setMessage({ type: 'error', text: 'Failed to load settings' }) })
       .finally(() => setLoading(false))
   }, [])
 
@@ -50,6 +51,10 @@ export function CloudflareSettingsSection() {
     }
   }, [showToken])
 
+  useEffect(() => {
+    loadSettings()
+  }, [loadSettings])
+
   const save = useCallback(async () => {
     setSaving(true)
     setMessage(null)
@@ -66,15 +71,21 @@ export function CloudflareSettingsSection() {
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error((json.error as string) || 'Save failed')
       setSavedZoneId(zoneId.trim())
-      if (apiToken.trim()) setHasSavedToken(true)
+      if (zoneId.trim()) setHasSavedToken(true)
       setApiToken('')
+      if (json.secrets) {
+        setSavedZoneId(json.secrets.cloudflare_zone_id || zoneId.trim())
+        if (json.secrets.has_cloudflare_api_token) setHasSavedToken(true)
+        setApiToken('')
+      }
       setMessage({ type: 'success', text: 'Cloudflare settings saved. Cache purge is now available.' })
+      loadSettings()
     } catch (e) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Save failed' })
     } finally {
       setSaving(false)
     }
-  }, [zoneId, apiToken])
+  }, [zoneId, apiToken, loadSettings])
 
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }

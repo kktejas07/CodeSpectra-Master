@@ -132,30 +132,44 @@ export async function GET(req: NextRequest) {
     }
 
     const userStatsPipeline = async () => {
-      const stats: Array<{ userId: string; name: string; email: string; scans: number; reviews: number; fixes: number; submissions: number; total: number }> = []
-      for (const uid of userIds.slice(0, 20)) {
-        const [scans, reviews, fixes, submissions, userDoc] = await Promise.all([
-          db.collection('scan_comments').countDocuments({ user_id: uid }),
-          db.collection('code_review_comments').countDocuments({ user_id: uid }),
-          db.collection('suggested_fixes').countDocuments({ user_id: uid }),
-          db.collection('submissions').countDocuments({ user_id: uid }),
-          db.collection('user').findOne({ id: uid }).catch(() => null),
-        ])
-        const total = scans + reviews + fixes + submissions
-        if (total > 0) {
-          stats.push({
-            userId: uid,
-            name: (userDoc as any)?.name || (userDoc as any)?.fullName || uid.slice(0, 8),
-            email: (userDoc as any)?.email || '',
-            scans,
-            reviews,
-            fixes,
-            submissions,
-            total,
-          })
-        }
-      }
-      return stats.sort((a, b) => b.total - a.total)
+      const targetIds = userIds.slice(0, 20)
+      const [scanStats, reviewStats, fixStats, submissionStats, userDocs] = await Promise.all([
+        db.collection('scan_comments').aggregate([
+          { $match: { user_id: { $in: targetIds } } },
+          { $group: { _id: '$user_id', count: { $sum: 1 } } },
+        ]).toArray(),
+        db.collection('code_review_comments').aggregate([
+          { $match: { user_id: { $in: targetIds } } },
+          { $group: { _id: '$user_id', count: { $sum: 1 } } },
+        ]).toArray(),
+        db.collection('suggested_fixes').aggregate([
+          { $match: { user_id: { $in: targetIds } } },
+          { $group: { _id: '$user_id', count: { $sum: 1 } } },
+        ]).toArray(),
+        db.collection('submissions').aggregate([
+          { $match: { user_id: { $in: targetIds } } },
+          { $group: { _id: '$user_id', count: { $sum: 1 } } },
+        ]).toArray(),
+        db.collection('user').find(
+          { id: { $in: targetIds } },
+          { projection: { id: 1, name: 1, email: 1 } },
+        ).toArray(),
+      ])
+
+      const counts: Record<string, { scans: number; reviews: number; fixes: number; submissions: number }> = {}
+      for (const uid of targetIds) counts[uid] = { scans: 0, reviews: 0, fixes: 0, submissions: 0 }
+      for (const s of scanStats) counts[s._id] = { ...counts[s._id], scans: s.count }
+      for (const s of reviewStats) counts[s._id] = { ...counts[s._id], reviews: s.count }
+      for (const s of fixStats) counts[s._id] = { ...counts[s._id], fixes: s.count }
+      for (const s of submissionStats) counts[s._id] = { ...counts[s._id], submissions: s.count }
+
+      const userById: Record<string, { name: string; email: string }> = {}
+      for (const u of userDocs) userById[u.id as string] = { name: (u as any).name || String(u.id).slice(0, 8), email: (u as any).email || '' }
+
+      return targetIds
+        .map((uid) => ({ userId: uid, name: userById[uid]?.name || uid.slice(0, 8), email: userById[uid]?.email || '', ...counts[uid], total: counts[uid].scans + counts[uid].reviews + counts[uid].fixes + counts[uid].submissions }))
+        .filter((x) => x.total > 0)
+        .sort((a, b) => b.total - a.total)
     }
 
     const recentActivityPipeline = async () => {

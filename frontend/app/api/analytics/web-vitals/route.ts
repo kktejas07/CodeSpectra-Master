@@ -46,10 +46,11 @@ function normalizeEvent(raw: z.infer<typeof eventSchema>) {
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
-    const gate = await requireAuth()
-    if ('error' in gate) {
-      return NextResponse.json({ ok: true, inserted: 0 })
-    }
+    let userId: string | null = null
+    try {
+      const gate = await requireAuth()
+      if (!('error' in gate)) userId = gate.user.id
+    } catch { /* anonymous analytics — silently accept */ }
 
     let parsed: z.infer<typeof bodySchema>
     try {
@@ -70,7 +71,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       }
       docs.push({
         id: newId(),
-        user_id: gate.user.id,
+        user_id: userId,
         ...n.row,
         created_at: now,
       })

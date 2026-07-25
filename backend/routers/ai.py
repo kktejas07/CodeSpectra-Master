@@ -9,8 +9,40 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Request
-from fastapi.responses import StreamingResponse
+from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi.responses import JSONResponse, StreamingResponse
+
+import time
+from collections import defaultdict
+
+# Sliding window rate limiter for AI backend routes (60 requests / minute per client IP)
+_ai_rate_limits: dict[str, list[float]] = defaultdict(list)
+AI_MAX_REQUESTS_PER_MINUTE = 60
+AI_RATE_WINDOW_SECONDS = 60.0
+
+
+async def rate_limit_ai_requests(request: Request) -> None:
+    client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else "unknown")
+    client_ip = client_ip.split(",")[0].strip()
+    now = time.time()
+    cutoff = now - AI_RATE_WINDOW_SECONDS
+
+    # Prune timestamps older than cutoff
+    history = [t for t in _ai_rate_limits[client_ip] if t > cutoff]
+    if len(history) >= AI_MAX_REQUESTS_PER_MINUTE:
+        raise HTTPException(
+            status_code=429,
+            detail="Rate limit exceeded for AI endpoints. Please wait before retrying.",
+        )
+    history.append(now)
+    _ai_rate_limits[client_ip] = history
+
+
+router = APIRouter(
+    prefix="/internal/ai",
+    tags=["internal-ai"],
+    dependencies=[Depends(rate_limit_ai_requests)],
+)
 
 from models.ai import (
     AgentReq,
@@ -39,6 +71,22 @@ from services.ai import (
     handle_rag_embed,
     handle_skill_insights,
 )
+
+import functools
+import traceback
+
+def safe_ai_endpoint(fn):
+    @functools.wraps(fn)
+    async def wrapper(request_or_req, *args, **kwargs):
+        try:
+            return await fn(request_or_req, *args, **kwargs)
+        except Exception as e:
+            traceback.print_exc()
+            return JSONResponse(
+                content={"error": str(e), "detail": type(e).__name__},
+                status_code=500,
+            )
+    return wrapper
 
 router = APIRouter(prefix="/internal/ai", tags=["internal-ai"])
 

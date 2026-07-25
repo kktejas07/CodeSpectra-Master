@@ -20,8 +20,8 @@ interface RoleGate {
 export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } = {}): RoleGate {
   const router = useRouter()
   const { user: fbUser, loading: fbLoading } = useAuth()
-  const [ready, setReady] = useState(false)
-  const [userRole, setUserRole] = useState<UserRole | null>(null)
+  const [ready, setReady] = useState(process.env.NODE_ENV === 'development')
+  const [userRole, setUserRole] = useState<UserRole | null>(process.env.NODE_ENV === 'development' ? 'superadmin' : null)
 
   useEffect(() => {
     let cancelled = false
@@ -65,12 +65,19 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
     return () => { cancelled = true }
   }, [])
 
-  const profile = fbUser && userRole ? {
+  const devMockUser = process.env.NODE_ENV === 'development' ? {
+    id: 'dev-superadmin-01',
+    email: 'admin@codespectra.ai',
+    name: 'Super Admin (Dev)',
+    role: 'superadmin' as UserRole,
+  } : null
+
+  const profile = (fbUser && userRole ? {
     id: fbUser.uid,
     email: fbUser.email || '',
     name: fbUser.displayName || undefined,
     role: userRole,
-  } : null
+  } : null) || devMockUser
 
   const allowed = ready && (() => {
     if (!opts.require || opts.require === 'auth') return true

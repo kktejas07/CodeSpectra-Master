@@ -13,6 +13,41 @@ import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS } from '@/lib/db/leaderboard'
 import { executeOnce } from '@/lib/piston'
 import type { PistonExecuteResult } from '@/lib/piston'
 
+export async function GET(request: NextRequest): Promise<NextResponse> {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+
+  const { searchParams } = new URL(request.url)
+  const problemSlug = searchParams.get('problem_slug')
+  const language = searchParams.get('language')
+  const limit = Math.min(Number(searchParams.get('limit') ?? '50'), 100)
+  const offset = Number(searchParams.get('offset') ?? '0')
+
+  const filter: Record<string, unknown> = { user_id: gate.user.id }
+
+  if (problemSlug) {
+    const pCol = await problems()
+    const p = await pCol.findOne({ slug: problemSlug })
+    if (p) filter.problem_id = p.id
+  }
+  if (language) filter.language = language.toLowerCase()
+
+  try {
+    const sCol = await submissions()
+    const [rows, total] = await Promise.all([
+      sCol
+        .find(filter, { projection: { source_code: 0 }, sort: { created_at: -1 }, limit, skip: offset })
+        .toArray(),
+      sCol.countDocuments(filter),
+    ])
+    return NextResponse.json({ submissions: rows, total, limit, offset })
+  } catch {
+    return NextResponse.json({ error: 'Failed to load submissions' }, { status: 500 })
+  }
+}
+
 interface SubmitBody {
   problem_slug?: string
   language?: string
@@ -161,16 +196,20 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
 
   // Only persist `submit` runs — `run` is just a sample check.
   if (mode === 'submit') {
+    const sCol = await submissions()
     try {
-      const sCol = await submissions()
       await sCol.insertOne(doc)
+    } catch (e) {
+      console.error('[CodeSpectra] submission insert failed:', e)
+      return NextResponse.json({ error: 'Submission failed to save. Please retry.' }, { status: 500 })
+    }
 
-      // XP economy: award on first accepted solve + first-blood bonus.
-      if (aggregateStatus === 'accepted') {
+    // XP award is best-effort — failures are logged but don't fail the response.
+    if (aggregateStatus === 'accepted') {
+      try {
         const difficulty = (problem.difficulty || 'easy') as 'easy' | 'medium' | 'hard'
         const baseXp = DIFFICULTY_XP[difficulty] ?? 10
 
-        // Has this user already solved this problem before?
         const prior = await sCol.findOne({
           problem_id: problem.id,
           user_id: gate.user.id,
@@ -187,7 +226,6 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             metadata: { difficulty },
           })
 
-          // First-blood: is there any earlier accepted submission *from anyone*?
           const earlier = await sCol.findOne(
             { problem_id: problem.id, status: 'accepted', id: { $ne: doc.id } },
             { sort: { created_at: 1 } },
@@ -203,9 +241,9 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
             })
           }
         }
+      } catch (e) {
+        console.warn('[CodeSpectra] XP award skipped:', e)
       }
-    } catch (e) {
-      console.warn('[CodeSpectra] submission insert/XP skipped:', e)
     }
   }
 

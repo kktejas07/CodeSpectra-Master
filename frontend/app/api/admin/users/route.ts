@@ -1,18 +1,16 @@
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/api-auth'
+import bcrypt from 'bcryptjs'
+import { getMongoDb } from '@/lib/mongodb'
+import { requireAdmin, requireSuperAdmin } from '@/lib/api-auth'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { listAllUsers, getUserById } from '@/lib/db/admin'
 import { buildAdminUserRow, type ProfileRow } from '@/lib/admin-users'
 import { normalizeUserRole } from '@/lib/rbac'
 
-/**
- * GET /api/admin/users — list all users (superadmin only).
- * Phase 4 migration: reads directly from Better Auth's MongoDB `user`
- * collection. The `buildAdminUserRow` shape is preserved by shimming a
- * `User`-like object from the Better Auth user document.
- */
-export async function GET() {
-  const gate = await requireSuperAdmin()
+import { NextRequest } from 'next/server'
+
+export async function GET(req: NextRequest) {
+  const gate = await requireAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
@@ -20,7 +18,16 @@ export async function GET() {
   try {
     const usersList = await listAllUsers()
 
-    const rows = usersList.map((u) => {
+    const search = req.nextUrl.searchParams.get('search')?.trim().toLowerCase()
+  const filtered = search
+    ? usersList.filter((u) => {
+        const name = ((u.fullName ?? u.name ?? '') as string).toLowerCase()
+        const email = (u.email || '').toLowerCase()
+        return name.includes(search) || email.includes(search)
+      })
+    : usersList
+
+  const rows = filtered.map((u) => {
       const profile: ProfileRow = {
         id: (u._id as unknown as string) || u.id || '',
         email: u.email,
@@ -75,7 +82,7 @@ export async function GET() {
  * `provisionAdminUser`) is deferred to a later phase.
  */
 export async function POST(request: Request) {
-  const gate = await requireSuperAdmin()
+  const gate = await requireAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
@@ -85,7 +92,15 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Firebase not configured' }, { status: 500 })
   }
 
-  let body: { email?: string; password?: string; full_name?: string; role?: string }
+  let body: {
+    email?: string
+    password?: string
+    full_name?: string
+    role?: string
+    target_url?: string
+    assigned_assessments?: import('@/lib/db/admin').AssessmentStep[]
+    allowed_languages?: string[]
+  }
   try {
     body = await request.json()
   } catch {
@@ -95,6 +110,28 @@ export async function POST(request: Request) {
   const email = (body.email || '').trim().toLowerCase()
   const full_name = (body.full_name || '').trim() || email.split('@')[0] || 'User'
   const role = normalizeUserRole(body.role)
+  const targetUrl = (body.target_url || '/assessment').trim()
+  const assignedAssessments: import('@/lib/db/admin').AssessmentStep[] =
+    Array.isArray(body.assigned_assessments) && body.assigned_assessments.length > 0
+      ? body.assigned_assessments
+      : [
+          {
+            id: crypto.randomUUID(),
+            title: 'Assigned Assessment',
+            target_url: targetUrl,
+            type: (targetUrl.includes('cad')
+              ? 'cad'
+              : targetUrl.includes('identity')
+              ? 'identity'
+              : targetUrl.includes('problems')
+              ? 'coding'
+              : 'general') as any,
+            allowed_languages: body.allowed_languages || [],
+            status: 'pending',
+          },
+        ]
+  const allowedLanguages = Array.isArray(body.allowed_languages) ? body.allowed_languages : []
+
   const password =
     (body.password && body.password.length >= 8 ? body.password : undefined) ||
     `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
@@ -111,14 +148,57 @@ export async function POST(request: Request) {
     })
     const newUserId = userRecord.uid
 
-    const { updateUserById } = await import('@/lib/db/admin')
+    const passwordHash = await bcrypt.hash(password, 10)
+    const db = await getMongoDb()
+    await db.collection('user').updateOne(
+      { email },
+      {
+        $set: {
+          id: newUserId,
+          email,
+          name: full_name,
+          fullName: full_name,
+          passwordHash,
+          role,
+          updatedAt: new Date(),
+        },
+        $setOnInsert: {
+          _id: newUserId,
+          createdAt: new Date(),
+        },
+      },
+      { upsert: true },
+    )
+
+    const { updateUserById, candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
     await updateUserById(newUserId, { role, fullName: full_name })
 
     const created = await getUserById(newUserId)
 
+    // Generate single-use secure candidate invite link
+    const inviteToken = crypto.randomUUID()
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const inviteUrl = `${appUrl}/assessment/invite/${inviteToken}`
+
+    const invitesCol = await candidateInvites()
+    await invitesCol.insertOne({
+      id: newId(),
+      token: inviteToken,
+      user_id: newUserId,
+      email,
+      full_name,
+      target_url: targetUrl,
+      assigned_assessments: assignedAssessments,
+      allowed_languages: allowedLanguages,
+      invited_by: gate.user.id,
+      status: 'pending',
+      expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
+      created_at: nowIso(),
+    })
+
     // Send welcome email if Postal or other provider is configured
     let welcomeEmailSent = false
-    let delivery = 'none'
+    let delivery = 'candidate_invite_link'
     try {
       const { sendEmailViaPostal } = await import('@/lib/transactional-mail')
       const { emailTemplates } = await import('@/lib/email-templates')
@@ -126,12 +206,12 @@ export async function POST(request: Request) {
       await sendEmailViaPostal({
         to: email,
         subject: template.subject,
-        html: template.html,
+        html: `${template.html}<p><a href="${inviteUrl}">Click here to start your candidate assessment</a></p>`,
       })
       welcomeEmailSent = true
       delivery = 'postal'
     } catch {
-      // Postal not configured or send failed — that's OK
+      // Postal not configured or send failed — link still returned for manual copy
     }
 
     return NextResponse.json({
@@ -145,6 +225,9 @@ export async function POST(request: Request) {
             ? created.createdAt.toISOString()
             : (created?.createdAt as unknown as string) ?? new Date().toISOString(),
       },
+      invite_url: inviteUrl,
+      invite_token: inviteToken,
+      target_url: targetUrl,
       welcomeEmailSent,
       delivery,
     })

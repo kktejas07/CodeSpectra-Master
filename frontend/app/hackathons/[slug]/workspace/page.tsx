@@ -31,6 +31,28 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import { ClaimCountdown } from '@/components/hackathons/claim-countdown'
+import dynamic from "next/dynamic";
+
+const Editor = dynamic(() => import("@monaco-editor/react"), {
+  ssr: false,
+  loading: () => <div className="flex items-center justify-center h-[300px] text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>,
+});
+
+const TOP_LANGUAGES = [
+  { id: "python", label: "Python", monaco: "python" },
+  { id: "javascript", label: "JavaScript", monaco: "javascript" },
+  { id: "typescript", label: "TypeScript", monaco: "typescript" },
+  { id: "java", label: "Java", monaco: "java" },
+  { id: "cpp", label: "C++", monaco: "cpp" },
+  { id: "c", label: "C", monaco: "c" },
+  { id: "go", label: "Go", monaco: "go" },
+  { id: "rust", label: "Rust", monaco: "rust" },
+  { id: "csharp", label: "C#", monaco: "csharp" },
+  { id: "ruby", label: "Ruby", monaco: "ruby" },
+  { id: "php", label: "PHP", monaco: "php" },
+  { id: "plaintext", label: "Plain Text", monaco: "plaintext" },
+];
+
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Hackathon {
@@ -60,7 +82,9 @@ interface Claim {
 }
 
 interface ProblemDetail {
-  problem_slug: string; title: string; difficulty: string; statement?: string; tags?: string[]
+  problem_slug: string; title: string; difficulty: string; statement_md?: string; tags?: string[]
+  test_cases?: Array<{ id: string; stdin: string; expected_stdout: string; is_sample: boolean }>
+  input_format?: string; output_format?: string; constraints?: string
 }
 
 export default function HackathonWorkspacePage({ params }: { params: Promise<{ slug: string }> }) {
@@ -79,6 +103,9 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
+  const [emailInviteOpen, setEmailInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [sendingInvite, setSendingInvite] = useState(false)
 
   const [submittingFor, setSubmittingFor] = useState<{ problem_slug: string; problem_title: string; points: number } | null>(null)
   const [viewingSubmission, setViewingSubmission] = useState<Submission | null>(null)
@@ -86,7 +113,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [problemDetail, setProblemDetail] = useState<ProblemDetail | null>(null)
   const [problemDetailLoading, setProblemDetailLoading] = useState(false)
 
-  const [submitForm, setSubmitForm] = useState({ repo_url: '', commit_sha: '', code: '' })
+  const [submitForm, setSubmitForm] = useState({ repo_url: '', commit_sha: '', code: '' });
+  const [editorLanguage, setEditorLanguage] = useState("python")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
 
@@ -190,6 +218,27 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     }
   }
 
+  const sendEmailInvite = async () => {
+    if (!hackathon || !inviteEmail.trim()) return
+    const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+    if (!team) return
+    setSendingInvite(true)
+    try {
+      const res = await fetch(`/api/hackathons/${hackathon.id}/teams/${team.id}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ email: inviteEmail.trim() }),
+      })
+      const data = await res.json()
+      if (data.error) { addToast({ type: 'error', title: data.error }); return }
+      addToast({ type: 'success', title: `Invite sent to ${inviteEmail}` })
+      setInviteEmail('')
+      setEmailInviteOpen(false)
+    } catch { addToast({ type: 'error', title: 'Failed to send invite' }) }
+    finally { setSendingInvite(false) }
+  }
+
   async function claimProblem(slug: string) {
     if (!hackathon) return
     setClaiming(slug)
@@ -249,6 +298,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           repo_url: submitForm.repo_url || undefined,
           commit_sha: submitForm.commit_sha || undefined,
           code: submitForm.code || undefined,
+          language: editorLanguage,
         }),
       })
       const data = await res.json()
@@ -376,6 +426,47 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             </div>
           </Card>
         )}
+        {!isLive && !isClosed && (
+          <Card className="p-5 border-blue-500/20 bg-blue-500/5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-blue-400">Event Not Started</p>
+                <p className="text-xs text-muted-foreground">Starts in:</p>
+              </div>
+              <p className="text-3xl font-mono font-bold text-blue-400">
+                <Countdown targetIso={hackathon.starts_at} />
+              </p>
+            </div>
+            <p className="text-xs text-muted-foreground mt-3">Submissions will open when the event begins. Review the problems below to prepare.</p>
+          </Card>
+        )}
+        {isClosed && !hackathon.results_released && (
+          <Card className="p-5 border-amber-500/20 bg-amber-500/5">
+            <div className="flex items-center gap-3">
+              <Clock className="h-5 w-5 text-amber-400" />
+              <div>
+                <p className="text-sm font-semibold text-amber-400">Event Ended</p>
+                <p className="text-xs text-muted-foreground">Waiting for results to be released by the organizers.</p>
+              </div>
+            </div>
+          </Card>
+        )}
+        {isClosed && hackathon.results_released && (
+          <Card className="p-5 border-green-500/20 bg-green-500/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Trophy className="h-5 w-5 text-green-400" />
+                <div>
+                  <p className="text-sm font-semibold text-green-400">Results Released!</p>
+                  <p className="text-xs text-muted-foreground">View your team&apos;s rank and download certificates.</p>
+                </div>
+              </div>
+              <Button asChild variant="outline" size="sm" className="text-green-400 border-green-400/40">
+                <Link href={`/hackathons/${slug}/results`}>View Results</Link>
+              </Button>
+            </div>
+          </Card>
+        )}
 
         {hackathon.tasks && hackathon.tasks.length > 0 && (
           <div>
@@ -422,7 +513,11 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                               </Badge>
                             )}
                             {sub && sub.score !== null && (
-                              <span className="text-[10px] text-green-400">{sub.score}/{task.points}</span>
+                              <span className={`text-[10px] ${
+                                sub.score >= task.points * 0.8 ? 'text-green-400' :
+                                sub.score >= task.points * 0.5 ? 'text-yellow-400' :
+                                'text-red-400'
+                              }`}>{sub.score}/{task.points}</span>
                             )}
                             {isClaimed && !isMyClaim && (
                               <Badge variant="secondary" className="text-[10px] gap-1">
@@ -447,7 +542,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                           <Eye className="h-3 w-3" />
                           View Problem
                         </Button>
-                        {canClaim && (
+                        {canClaim && isLive && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -459,7 +554,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             Claim
                           </Button>
                         )}
-                        {canRelease && (
+                        {canRelease && isLive && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -471,7 +566,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             Release
                           </Button>
                         )}
-                        {sub && status !== 'accepted' && (
+                        {sub && status !== 'accepted' && isLive && (
                           <Button
                             size="sm"
                             variant="outline"
@@ -481,7 +576,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             View Submission
                           </Button>
                         )}
-                        {status !== 'accepted' && (
+                        {status !== 'accepted' && isLive && (
                           <Button
                             size="sm"
                             variant="default"
@@ -504,15 +599,48 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         {inviteUrl && (
           <Card className="p-5">
             <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Invite Teammates</p>
-            <div className="flex gap-2">
+            <div className="flex gap-2 mb-2">
               <Input readOnly value={inviteUrl} className="text-xs font-mono" />
               <Button size="sm" variant="outline" onClick={copyInvite}>
                 {copied ? <CheckCircle className="h-3 w-3" /> : <Copy className="h-3 w-3" />}
               </Button>
             </div>
-            <p className="text-[10px] text-muted-foreground mt-1.5">Share this link so teammates can join your team</p>
+            <Button size="sm" variant="outline" className="w-full gap-1.5" onClick={() => setEmailInviteOpen(true)}>
+              <Send className="h-3 w-3" /> Send invite by email
+            </Button>
           </Card>
         )}
+
+        <Dialog open={emailInviteOpen} onOpenChange={setEmailInviteOpen}>
+          <DialogContent className="sm:max-w-[420px]">
+            <DialogHeader>
+              <DialogTitle>Invite by email</DialogTitle>
+            </DialogHeader>
+            <div className="space-y-4 py-2">
+              <div>
+                <Label htmlFor="invite-email">Email address</Label>
+                <Input
+                  id="invite-email"
+                  type="email"
+                  placeholder="teammate@example.com"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  onKeyDown={e => e.key === 'Enter' && void sendEmailInvite()}
+                />
+              </div>
+              <p className="text-xs text-muted-foreground">
+                We'll send an invite link to this email address. They don't need the team URL — just sign in and click to join.
+              </p>
+            </div>
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setEmailInviteOpen(false)}>Cancel</Button>
+              <Button onClick={() => void sendEmailInvite()} disabled={sendingInvite || !inviteEmail.trim()}>
+                {sendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                Send Invite
+              </Button>
+            </DialogFooter>
+          </DialogContent>
+        </Dialog>
 
         <Card className="p-5">
           <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -522,7 +650,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             <p className="text-xs text-muted-foreground text-center py-4">No teams yet</p>
           ) : (
             <div className="space-y-2">
-              {teams.slice(0, 5).map((t, i) => (
+              {teams.sort((a, b) => b.xp - a.xp).map((t, i) => (
                 <div key={t.id} className="flex items-center gap-3 text-sm">
                   <span className="w-5 font-bold text-muted-foreground text-right">#{i + 1}</span>
                   <span className="flex-1 font-medium">{t.name}</span>
@@ -567,14 +695,27 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="code">Code (optional)</Label>
-                  <Textarea
-                    id="code"
-                    placeholder="Paste your solution code here..."
-                    rows={8}
-                    value={submitForm.code}
-                    onChange={(e) => setSubmitForm(f => ({ ...f, code: e.target.value }))}
-                  />
+                  <Label htmlFor="lang">Language</Label>
+                  <select
+                    value={editorLanguage}
+                    onChange={(e) => setEditorLanguage(e.target.value)}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                  >
+                    {TOP_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
+                  </select>
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="code">Code</Label>
+                  <div className="h-[300px] rounded-md border border-border overflow-hidden">
+                    <Editor
+                      height="100%"
+                      language={TOP_LANGUAGES.find(l => l.id === editorLanguage)?.monaco || "plaintext"}
+                      theme="vs-dark"
+                      value={submitForm.code}
+                      onChange={(v) => setSubmitForm(f => ({ ...f, code: v || "" }))}
+                      options={{ fontSize: 13, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, tabSize: 2 }}
+                    />
+                  </div>
                 </div>
                 {submitError && (
                   <p className="text-sm text-destructive">{submitError}</p>
@@ -654,12 +795,46 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
                   </div>
-                ) : problemDetail?.statement ? (
+                ) : problemDetail?.statement_md ? (
                   <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                    {problemDetail.statement}
+                    {problemDetail.statement_md}
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground">No problem description available.</p>
+                )}
+                {problemDetail?.input_format && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Input Format</p>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded p-2">{problemDetail.input_format}</pre>
+                  </div>
+                )}
+                {problemDetail?.output_format && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Output Format</p>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded p-2">{problemDetail.output_format}</pre>
+                  </div>
+                )}
+                {problemDetail?.constraints && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-1">Constraints</p>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded p-2">{problemDetail.constraints}</pre>
+                  </div>
+                )}
+                {problemDetail?.test_cases && problemDetail.test_cases.length > 0 && (
+                  <div>
+                    <p className="text-xs font-semibold text-muted-foreground mb-2">Sample Test Cases</p>
+                    <div className="space-y-2">
+                      {problemDetail.test_cases.map((tc: any, idx: number) => (
+                        <div key={tc.id || idx} className="rounded border border-border/60 bg-muted/30 p-2 text-xs">
+                          <p className="text-muted-foreground mb-1 font-medium">Test Case #{idx + 1}</p>
+                          <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
+                            <div><span className="text-muted-foreground">Input:</span> <span className="text-foreground">{tc.stdin || '(empty)'}</span></div>
+                            <div><span className="text-muted-foreground">Expected:</span> <span className="text-foreground">{tc.expected_stdout || '(empty)'}</span></div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 )}
                 <a
                   href={`/dashboard/challenges/${selectedProblem.problem_slug}`}

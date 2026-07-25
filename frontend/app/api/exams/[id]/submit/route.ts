@@ -1,66 +1,75 @@
-import { NextResponse } from 'next/server'
+import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
-import { exams, examSubmissions, newId, nowIso } from '@/lib/db/content'
-import type { IdRouteContext } from '@/lib/app-route-context'
+import { getMongoDb } from '@/lib/mongodb'
+import { newId, nowIso } from '@/lib/db/ai'
 
-export async function POST(request: Request, { params }: IdRouteContext) {
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+export async function POST(
+  req: NextRequest,
+  ctx: { params: Promise<{ id: string }> }
+): Promise<NextResponse> {
   const gate = await requireAuth()
-  if ('error' in gate) {
-    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
+  const { id: examId } = await ctx.params
+  const body = await req.json().catch(() => ({})) as {
+    answers?: Record<string, string>
+    auto_submitted?: boolean
   }
 
-  const { id } = await params
   try {
-    const body = (await request.json().catch(() => ({}))) as {
-      answers?: Record<string, number>
-    }
+    const db = await getMongoDb()
+    const exams = db.collection('exams')
+    const exam = await exams.findOne({ id: examId })
+    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
-    const examCol = await exams()
-    const exam = await examCol.findOne({ id })
+    const questions = exam.questions || []
+    const answers = body.answers || {}
+    let totalScore = 0
+    let maxScore = 0
+    const details: Array<{ qId: string; correct: boolean; points: number; answer: string }> = []
 
-    let score = 0
-    let total = 0
+    for (const q of questions) {
+      const points = q.points || 10
+      maxScore += points
+      const userAnswer = (answers[q.id] || '').trim()
 
-    if (exam?.questions?.length && body.answers) {
-      total = exam.questions.length
-      for (const q of exam.questions) {
-        if (
-          typeof q.correctAnswer === 'number' &&
-          body.answers[q.id] === q.correctAnswer
-        ) {
-          score += 1
-        }
+      // Simple grading: for MCQ, check exact match. For others, store for manual review.
+      let correct = false
+      if (q.type === 'multiple-choice' && q.correct_answer) {
+        correct = userAnswer.toLowerCase() === String(q.correct_answer).toLowerCase()
       }
-      score = Math.round((score / total) * 100)
-    } else {
-      // No questions configured — return 0 rather than a random score.
-      score = 0
+
+      if (correct) totalScore += points
+      details.push({ qId: q.id, correct, points, answer: userAnswer })
     }
 
-    const passed = exam?.passing_score ? score >= exam.passing_score : score >= 70
-
-    const sub = {
+    // Save submission
+    const submissions = db.collection('exam_submissions')
+    const submission = {
       id: newId(),
-      exam_id: id,
+      exam_id: examId,
       user_id: gate.user.id,
-      score,
-      passed,
-      certificate_url: passed ? `/certificates/${id}` : null,
-      submitted_at: nowIso(),
+      answers,
+      score: totalScore,
+      max_score: maxScore,
+      auto_submitted: body.auto_submitted || false,
+      details,
+      created_at: nowIso(),
     }
-    const subCol = await examSubmissions()
-    await subCol.insertOne(sub)
+    await submissions.insertOne(submission)
 
     return NextResponse.json({
-      success: true,
-      examId: id,
-      score,
-      passed,
-      submittedAt: sub.submitted_at,
-      certificateUrl: sub.certificate_url,
+      score: totalScore,
+      total: maxScore,
+      details,
+      submission_id: submission.id,
     })
-  } catch (error) {
-    console.error('[CodeSpectra] exam submit:', error)
-    return NextResponse.json({ error: 'Failed to submit exam' }, { status: 400 })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Submit failed'
+    console.error('[CodeSpectra] exam-submit:', e)
+    return NextResponse.json({ error: msg }, { status: 500 })
   }
 }

@@ -12,6 +12,13 @@ import {
   DropdownMenuItem,
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
 
 interface User {
@@ -67,7 +74,7 @@ export function UserManagementTable({
 
   return (
     <div className="space-y-4">
-      <div className="flex gap-4">
+      <div className="flex gap-4 items-center">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -77,16 +84,17 @@ export function UserManagementTable({
             onChange={(e) => setSearchQuery(e.target.value)}
           />
         </div>
-        <select
-          value={roleFilter}
-          onChange={(e) => setRoleFilter(e.target.value)}
-          className="px-4 py-2 rounded-lg bg-background border border-border text-foreground text-sm"
-        >
-          <option value="all">All Roles</option>
-          <option value="superadmin">Superadmin</option>
-          <option value="tenant_admin">Tenant admin</option>
-          <option value="user">User</option>
-        </select>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="w-[160px]">
+            <SelectValue placeholder="All Roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Roles</SelectItem>
+            <SelectItem value="superadmin">Superadmin</SelectItem>
+            <SelectItem value="tenant_admin">Tenant admin</SelectItem>
+            <SelectItem value="user">User</SelectItem>
+          </SelectContent>
+        </Select>
       </div>
 
       <Card className="overflow-hidden">

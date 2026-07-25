@@ -13,6 +13,8 @@ interface CodeReviewComment {
 }
 
 export async function GET(request: NextRequest) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Not authenticated' }, { status: 401 })
   try {
     const searchParams = new URL(request.url).searchParams
     const issueId = searchParams.get('issue_id')

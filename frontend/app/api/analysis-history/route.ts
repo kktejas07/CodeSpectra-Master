@@ -1,9 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
-import { listScansWithMetrics, deleteScan } from '@/lib/db/scans'
+import { listScansWithMetrics, deleteScan, type CodeScanDoc, type CodeMetricsDoc } from '@/lib/db/scans'
 import type { ClientAnalysisPayload } from '@/lib/scanner-analysis-mapper'
 
-type ScanWithMetrics = Awaited<ReturnType<typeof listScansWithMetrics>>['rows'][number]
+type ScanWithMetrics = CodeScanDoc & { code_metrics: CodeMetricsDoc | null }
 
 function rowToClientScan(row: ScanWithMetrics) {
   const m = row.code_metrics

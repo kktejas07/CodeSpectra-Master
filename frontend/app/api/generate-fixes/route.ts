@@ -66,16 +66,13 @@ async function persistGeneratedFixes(params: {
   const issuesCol = await codeIssues()
   const fixesCol = await suggestedFixes()
 
-  for (let i = 0; i < fixes.length; i++) {
-    const fix = fixes[i]
+  const now = nowIso()
+  const issueDocs = fixes.map((fix, i) => {
     const ctx = pickIssueContext(issueContexts, fix, i)
-    const lineNum =
-      typeof fix.line_number === 'number' ? fix.line_number : ctx?.line ?? null
+    const lineNum = typeof fix.line_number === 'number' ? fix.line_number : ctx?.line ?? null
     const message = (fix.issue_description || ctx?.message || 'AI suggested fix').slice(0, 2000)
-    const issueType =
-      typeof ctx?.type === 'string' && ctx.type.length > 0 ? ctx.type : 'code_smell'
-
-    const issueDoc = {
+    const issueType = typeof ctx?.type === 'string' && ctx.type.length > 0 ? ctx.type : 'code_smell'
+    return {
       id: newId(),
       scan_id: scanId,
       user_id: userId,
@@ -85,15 +82,17 @@ async function persistGeneratedFixes(params: {
       rule: (ctx?.rule?.trim() || `ai-fix:${lineNum ?? i}`).slice(0, 500),
       message,
       line_number: lineNum,
-      created_at: nowIso(),
-      updated_at: nowIso(),
+      created_at: now,
+      updated_at: now,
     }
-    await issuesCol.insertOne(issueDoc)
+  })
 
+  const fixDocs = issueDocs.map((issue, i) => {
+    const fix = fixes[i]
     const confidence = Math.round(Math.min(1, Math.max(0, fix.confidence_score)) * 100)
-    const fixDoc = {
+    return {
       id: newId(),
-      issue_id: issueDoc.id,
+      issue_id: issue.id,
       scan_id: scanId,
       user_id: userId,
       description: fix.fix_explanation.slice(0, 4000),
@@ -101,11 +100,17 @@ async function persistGeneratedFixes(params: {
       suggested_code: fix.suggested_code,
       confidence_level: confidence,
       applied: false,
-      created_at: nowIso(),
+      created_at: now,
     }
-    await fixesCol.insertOne(fixDoc)
+  })
 
-    rows.push({ issueId: issueDoc.id, fixId: fixDoc.id })
+  const [issueResult, fixResult] = await Promise.all([
+    issuesCol.insertMany(issueDocs),
+    fixesCol.insertMany(fixDocs),
+  ])
+
+  for (let i = 0; i < fixes.length; i++) {
+    rows.push({ issueId: issueDocs[i].id, fixId: fixDocs[i].id })
   }
 
   return { rows }

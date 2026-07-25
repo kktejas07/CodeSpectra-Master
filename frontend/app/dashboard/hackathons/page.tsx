@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 
 interface Hackathon {
@@ -119,7 +120,7 @@ export default function UserHackathonsPage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             {liveHackathons.map((hk) => (
-              <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} />
+              <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
           </div>
         </section>
@@ -132,7 +133,7 @@ export default function UserHackathonsPage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             {upcomingHackathons.map((hk) => (
-              <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} />
+              <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
           </div>
         </section>
@@ -145,7 +146,7 @@ export default function UserHackathonsPage() {
           </h2>
           <div className="grid gap-4 md:grid-cols-2">
             {closedHackathons.slice(0, 6).map((hk) => (
-              <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} />
+              <HackathonCard key={hk.id} hk={hk} myTeam={myTeams[hk.id]} hasSession={!!hasSession} isSuperAdmin={isSuperAdmin(gate.user?.role ?? 'user')} />
             ))}
           </div>
         </section>
@@ -154,12 +155,13 @@ export default function UserHackathonsPage() {
   )
 }
 
-function HackathonCard({ hk, myTeam, hasSession }: { hk: Hackathon; myTeam?: Team; hasSession: boolean }) {
+function HackathonCard({ hk, myTeam, hasSession, isSuperAdmin }: { hk: Hackathon; myTeam?: Team; hasSession: boolean; isSuperAdmin: boolean }) {
   const starts = new Date(hk.starts_at)
   const ends = new Date(hk.ends_at)
   const now = Date.now()
   const isLive = now >= starts.getTime() && now <= ends.getTime()
   const isClosed = now > ends.getTime() || hk.status === 'closed'
+  const locked = isClosed && !isSuperAdmin
 
   return (
     <Card className="overflow-hidden rounded-xl border-border/60">
@@ -188,17 +190,29 @@ function HackathonCard({ hk, myTeam, hasSession }: { hk: Hackathon; myTeam?: Tea
         </div>
 
         <div className="flex gap-2 pt-1">
-          <Link href={`/hackathons/${hk.slug}`}>
-            <Button size="sm" variant="outline">
+          {locked ? (
+            <Button size="sm" variant="outline" disabled>
               View details <ArrowRight className="ml-1 h-3 w-3" />
             </Button>
-          </Link>
-          {myTeam && (
-            <Link href={`/hackathons/${hk.slug}/workspace`}>
-              <Button size="sm" className="gap-1">
-                <Trophy className="h-3 w-3" /> Enter workspace
+          ) : (
+            <Link href={`/hackathons/${hk.slug}`}>
+              <Button size="sm" variant="outline">
+                View details <ArrowRight className="ml-1 h-3 w-3" />
               </Button>
             </Link>
+          )}
+          {myTeam && (
+            locked ? (
+              <Button size="sm" className="gap-1" disabled>
+                <Trophy className="h-3 w-3" /> Enter workspace
+              </Button>
+            ) : (
+              <Link href={`/hackathons/${hk.slug}/workspace`}>
+                <Button size="sm" className="gap-1">
+                  <Trophy className="h-3 w-3" /> Enter workspace
+                </Button>
+              </Link>
+            )
           )}
           {hasSession && !myTeam && !isClosed && (
             <Link href={`/hackathons/${hk.slug}`}>

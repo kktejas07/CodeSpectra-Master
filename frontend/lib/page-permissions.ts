@@ -10,7 +10,7 @@
  * an entry to ADMIN_ONLY_ROUTES or TENANT_ADMIN_ROUTES below.
  */
 
-import type { UserRole } from '@/lib/rbac'
+import type { UserRole } from '@/lib/types/rbac-types'
 
 export interface PagePermission {
   route: string
@@ -51,6 +51,12 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/settings',
   '/dashboard/admin/workflows',
   '/dashboard/admin/question-generator',
+  '/dashboard/admin/hackathons',
+  '/dashboard/admin/hackathons/create',
+  '/dashboard/admin/hackathons/edit',
+  '/dashboard/admin/announcements',
+  '/dashboard/admin/question-bank',
+  '/dashboard/admin/predictive-validity',
 ]
 
 /**
@@ -59,8 +65,10 @@ export const ADMIN_ONLY_ROUTES: string[] = [
 export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
   '/dashboard/interviews/feedback',
-  '/dashboard/admin/hackathons/create',
-  '/dashboard/admin/hackathons/edit',
+  '/dashboard/recruiter-analytics',
+  '/dashboard/admin/hiring-manager-report',
+  '/dashboard/admin/sme-review',
+  '/dashboard/admin/requisitions',
 ]
 
 /**
@@ -93,15 +101,15 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/support',
   '/dashboard/status',
   '/dashboard/search',
-  '/dashboard/id-card',
   '/dashboard/analytics',
+  '/dashboard/100-days',
   '/dashboard/hackathons',
-  '/dashboard/admin/hackathons',
   '/dashboard/codeathons',
   '/dashboard/jobs',
   '/dashboard/exams',
   '/dashboard/resumes',
   '/dashboard/judge',
+  '/dashboard/cad',
 ]
 
 /**
@@ -162,6 +170,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/hackathons/create': 'Create Hackathon',
   '/dashboard/admin/hackathons/edit': 'Edit Hackathon',
   '/dashboard/admin/hackathons': 'Manage Hackathons',
+  '/dashboard/admin/announcements': 'Announcements',
   '/dashboard/admin/rag': 'RAG & Embeddings',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
   '/dashboard/admin/permissions': 'Role & Permissions',
@@ -185,6 +194,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/interview-prep': 'Interview Prep',
   '/dashboard/interviews/feedback': 'Interview Feedback',
   '/dashboard/interviews/results': 'Interview Results',
+  '/dashboard/recruiter-analytics': 'Recruiter Analytics',
   '/dashboard/prepare': 'Prepare',
   '/dashboard/profile': 'Profile',
   '/dashboard/settings': 'Settings',
@@ -194,14 +204,20 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/notifications/preferences': 'Notification Preferences',
   '/dashboard/support': 'Support',
   '/dashboard/search': 'Search',
-  '/dashboard/id-card': 'ID Card',
   '/dashboard/hackathons': 'Events & Hackathons',
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/jobs': 'Jobs',
   '/dashboard/exams': 'Exams',
   '/dashboard/resumes': 'Resumes',
+  '/dashboard/100-days': '100 Days of Code',
   '/dashboard/analytics': 'Analytics',
   '/dashboard/judge': 'Judge Dashboard',
+  '/dashboard/cad': 'CAD Editor',
+  '/dashboard/admin/question-bank': 'Engineering Question Bank',
+  '/dashboard/admin/requisitions': 'Workday Requisitions',
+  '/dashboard/admin/hiring-manager-report': 'Hiring Manager Report',
+  '/dashboard/admin/predictive-validity': 'Predictive Validity & Adverse Impact',
+  '/dashboard/admin/sme-review': 'SME Review & Grading',
 }
 
 /**

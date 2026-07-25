@@ -30,6 +30,7 @@ class Settings:
     OPENAI_API_KEY: str = os.environ.get("OPENAI_API_KEY", "")
     OPENCODE_API_KEY: str = os.environ.get("OPENCODE_API_KEY", "")
     OPENROUTER_API_KEY: str = os.environ.get("OPENROUTER_API_KEY", "")
+    GROQ_API_KEY: str = os.environ.get("GROQ_API_KEY", "")
     LLM_API_KEY: str = os.environ.get("LLM_API_KEY", "")
 
     # ─── Piston (code execution) ───────────────────────────────
@@ -80,7 +81,7 @@ class Settings:
 
     # ─── Public ────────────────────────────────────────────────
     NEXT_PUBLIC_APP_URL: str = os.environ.get(
-        "NEXT_PUBLIC_APP_URL", "http://localhost:3000"
+        "NEXT_PUBLIC_APP_URL", "https://codespectra.ai"
     )
 
     # ─── LLM Model Registry ────────────────────────────────────

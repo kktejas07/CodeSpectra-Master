@@ -41,14 +41,13 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   }
 
   const col = await qualityGates()
-  const created: ReturnType<typeof rowToQualityGateDTO>[] = []
-  for (const g of parsed.gates) {
+  const docs = parsed.gates.map((g) => {
     const body: Record<string, unknown> = { ...g, is_default: false }
     const row = bodyToQualityGateRow(gate.user.id, body, 'insert')
-    const doc = { ...row, id: newId(), created_at: nowIso() }
-    await col.insertOne(doc as unknown as Parameters<typeof col.insertOne>[0])
-    created.push(rowToQualityGateDTO(doc as unknown as Record<string, unknown>))
-  }
+    return { ...row, id: newId(), created_at: nowIso() } as unknown as Parameters<typeof col.insertOne>[0]
+  })
+  await col.insertMany(docs)
 
+  const created = docs.map((d) => rowToQualityGateDTO(d as unknown as Record<string, unknown>))
   return NextResponse.json({ success: true, created_count: created.length, gates: created })
 }

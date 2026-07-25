@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useSearchParams } from 'next/navigation'
 
 export interface ProblemSummary {
   id: string
@@ -11,11 +12,17 @@ export interface ProblemSummary {
 }
 
 export function useProblemsViewModel() {
+  const searchParams = useSearchParams()
   const [problems, setProblems] = useState<ProblemSummary[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [q, setQ] = useState('')
   const [difficulty, setDifficulty] = useState<string>('all')
+
+  useEffect(() => {
+    setQ(searchParams.get('q') || '')
+    setDifficulty(searchParams.get('difficulty') || 'all')
+  }, [searchParams])
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -24,6 +31,8 @@ export function useProblemsViewModel() {
       const params = new URLSearchParams()
       if (difficulty !== 'all') params.set('difficulty', difficulty)
       if (q) params.set('q', q)
+      const topics = searchParams.get('topics')
+      if (topics) params.set('topics', topics)
       const res = await fetch(`/api/problems?${params.toString()}`, { cache: 'no-store' })
       const json = (await res.json()) as { data?: ProblemSummary[]; error?: string }
       if (!res.ok) throw new Error(json.error || 'Failed to load problems')
@@ -33,7 +42,7 @@ export function useProblemsViewModel() {
     } finally {
       setLoading(false)
     }
-  }, [difficulty, q])
+  }, [difficulty, q, searchParams])
 
   useEffect(() => {
     void load()

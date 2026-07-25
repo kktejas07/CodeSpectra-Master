@@ -33,7 +33,9 @@ export function checkCsrf(request: Request): { pass: boolean; token?: string } {
   // Idempotent methods: no check needed, but we still want the cookie set
   // so the client can read it for subsequent mutating requests.
   if (method === 'GET' || method === 'HEAD' || method === 'OPTIONS') {
-    // Generate a fresh token for each idempotent response
+    // If a cookie already exists, keep it. Only generate fresh if missing.
+    const existing = parseCookie(request.headers.get('cookie') || '', CSRF_COOKIE)
+    if (existing) return { pass: true }
     return { pass: true, token: randomHex(CSRF_TOKEN_LENGTH) }
   }
 
@@ -55,8 +57,8 @@ export function checkCsrf(request: Request): { pass: boolean; token?: string } {
 
   if (diff !== 0) return { pass: false }
 
-  // Token consumed — rotate for next request
-  return { pass: true, token: randomHex(CSRF_TOKEN_LENGTH) }
+  // Do not rotate token on every request to avoid race conditions with concurrent requests
+  return { pass: true }
 }
 
 export { CSRF_COOKIE, CSRF_HEADER }

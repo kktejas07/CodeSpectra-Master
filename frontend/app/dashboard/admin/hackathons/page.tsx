@@ -16,6 +16,7 @@ import {
   Sparkles, ChevronDown, ChevronUp, X,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -38,6 +39,7 @@ export default function HackathonsAdminPage() {
   const [items, setItems] = useState<Hackathon[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
+  const [deleteTarget, setDeleteTarget] = useState<{ id: string; name: string } | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState(1)
@@ -811,15 +813,42 @@ export default function HackathonsAdminPage() {
                     <TooltipContent>Edit event settings</TooltipContent>
                   </Tooltip>
                 </TooltipProvider>
-                <Button variant="ghost" size="sm" onClick={async () => {
-                  if (!confirm(`Delete "${hk.name}"? Only allowed if 0 teams have registered.`)) return
-                  const res = await csrfFetch(`/api/hackathons/${hk.id}`, { method: 'DELETE' })
-                  if (res.ok) await load()
-                }} className="text-destructive"><Trash2 className="h-3 w-3" /></Button>
+                <Button variant="ghost" size="sm" onClick={() => setDeleteTarget({ id: hk.id, name: hk.name })} className="text-destructive"><Trash2 className="h-3 w-3" /></Button>
               </div>
             </Card>
           ))}
         </div>
+      )}
+
+      {deleteTarget && (
+      <AlertDialog open={!!deleteTarget} onOpenChange={() => setDeleteTarget(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Hackathon</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget ? `Delete "${deleteTarget.name}"? Only allowed if no teams registered.` : ''}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={async () => {
+                if (!deleteTarget) return
+                const res = await csrfFetch(`/api/hackathons/${deleteTarget.id}`, { method: 'DELETE' })
+                setDeleteTarget(null)
+                if (!res.ok) {
+                  const err = await res.json().catch(() => ({ error: 'Delete failed' }))
+                  alert(err.error || 'Cannot delete — teams are registered')
+                }
+                await load()
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
       )}
     </div>
   )

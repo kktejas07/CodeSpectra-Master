@@ -1,9 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/route-auth'
 import { executeOnce } from '@/lib/piston'
 
 export const dynamic = 'force-dynamic'
 
 export async function POST(request: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   try {
     const body = await request.json()
     const { language, source, stdin } = body

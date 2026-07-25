@@ -1,6 +1,7 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState, useRef } from 'react'
+import dynamic from 'next/dynamic'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -8,7 +9,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
-import { Textarea } from '@/components/ui/textarea'
 import {
   Play,
   Send,
@@ -16,13 +16,10 @@ import {
   RotateCcw,
   AlertCircle,
   CheckCircle,
-  Clock,
   Loader2,
   HelpCircle,
   BookOpen,
   Github,
-  ExternalLink,
-  ChevronDown,
   ChevronUp,
   Star,
   MessageSquare,
@@ -32,6 +29,15 @@ import {
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { csrfFetch } from '@/lib/csrf-fetch'
+
+const Editor = dynamic(() => import('@monaco-editor/react'), {
+  ssr: false,
+  loading: () => (
+    <div className="flex items-center justify-center h-full text-muted-foreground">
+      <Loader2 className="h-5 w-5 animate-spin" />
+    </div>
+  ),
+})
 
 interface ChallengeEditorProps {
   challengeId: string
@@ -182,6 +188,8 @@ export function ChallengeEditor({
 }: ChallengeEditorProps) {
   const [language, setLanguage] = useState('javascript')
   const [code, setCode] = useState(initialCode || LANGUAGE_TEMPLATES[language] || '')
+  const codeRef = useRef(code)
+  codeRef.current = code
   const [testResults, setTestResults] = useState<any>(null)
   const [running, setRunning] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -191,9 +199,18 @@ export function ChallengeEditor({
   const [githubRepo, setGithubRepo] = useState('')
   const [submittingGithub, setSubmittingGithub] = useState(false)
   const [githubSubmitted, setGithubSubmitted] = useState(false)
+  const [isDark, setIsDark] = useState(true)
+
+  useEffect(() => {
+    const check = () => setIsDark(document.documentElement.classList.contains('dark'))
+    check()
+    const obs = new MutationObserver(check)
+    obs.observe(document.documentElement, { attributes: true, attributeFilter: ['class'] })
+    return () => obs.disconnect()
+  }, [])
 
   const handleRunTests = async () => {
-    if (!code.trim() || !problemSlug) return
+    if (!codeRef.current.trim() || !problemSlug) return
     setRunning(true)
     setTestResults(null)
     try {
@@ -204,7 +221,7 @@ export function ChallengeEditor({
         body: JSON.stringify({
           problem_slug: problemSlug,
           language,
-          source_code: code,
+          source_code: codeRef.current,
           mode: 'run',
         }),
       })
@@ -234,7 +251,7 @@ export function ChallengeEditor({
   }
 
   const handleSubmit = async () => {
-    if (!code.trim() || !problemSlug) return
+    if (!codeRef.current.trim() || !problemSlug) return
     setSubmitting(true)
     setTestResults(null)
     try {
@@ -245,7 +262,7 @@ export function ChallengeEditor({
         body: JSON.stringify({
           problem_slug: problemSlug,
           language,
-          source_code: code,
+          source_code: codeRef.current,
           mode: 'submit',
         }),
       })
@@ -259,7 +276,7 @@ export function ChallengeEditor({
           credentials: 'include',
           body: JSON.stringify({
             problem_slug: problemSlug,
-            code,
+            code: codeRef.current,
             language,
           }),
         }).catch(() => {})
@@ -324,7 +341,7 @@ export function ChallengeEditor({
   }
 
   return (
-    <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-0 h-screen max-h-screen overflow-hidden bg-background">
+    <div className="relative grid grid-cols-1 lg:grid-cols-2 gap-0 h-full overflow-hidden bg-background">
       {/* ─── Left Panel: Problem Statement ─── */}
       <div className="flex flex-col overflow-hidden border-r border-border/40 bg-card/30">
         {/* Header */}
@@ -523,7 +540,7 @@ export function ChallengeEditor({
                     variant="outline"
                     size="sm"
                     className="gap-1.5 h-8 text-xs"
-                    onClick={() => navigator.clipboard.writeText(code)}
+                    onClick={() => navigator.clipboard.writeText(codeRef.current)}
                   >
                     <Copy className="w-3.5 h-3.5" />
                     Copy
@@ -539,7 +556,7 @@ export function ChallengeEditor({
             <Button
               variant="outline"
               onClick={handleRunTests}
-              disabled={running || !code.trim() || !problemSlug}
+              disabled={running || !codeRef.current.trim() || !problemSlug}
               className="flex-1 gap-1.5 h-9 text-xs font-medium"
             >
               {running ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Play className="w-3.5 h-3.5" />}
@@ -547,7 +564,7 @@ export function ChallengeEditor({
             </Button>
             <Button
               onClick={handleSubmit}
-              disabled={submitting || !code.trim() || !problemSlug}
+              disabled={submitting || !codeRef.current.trim() || !problemSlug}
               variant="default"
               className="flex-1 gap-1.5 h-9 text-xs font-medium"
             >
@@ -588,15 +605,22 @@ export function ChallengeEditor({
 
           {/* Editor tab */}
           <TabsContent value="editor" className="flex-1 overflow-hidden m-0">
-            <div className="h-full p-3">
-              <Textarea
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                className="h-full font-mono text-xs resize-none bg-muted/20 border-border/60 leading-relaxed"
-                placeholder={`// Write your ${language} solution here\n// Use "Run Code" to test with sample inputs\n// Use "Submit Code" to run all tests`}
-                spellCheck={false}
-              />
-            </div>
+            <Editor
+              height="100%"
+              language={language === 'csharp' ? 'csharp' : language === 'cpp' ? 'cpp' : language}
+              theme={isDark ? 'vs-dark' : 'vs'}
+              value={code}
+              onChange={(v) => setCode(v ?? '')}
+              options={{
+                fontSize: 13,
+                minimap: { enabled: false },
+                automaticLayout: true,
+                scrollBeyondLastLine: false,
+                tabSize: 2,
+                wordWrap: 'on',
+                padding: { top: 12 },
+              }}
+            />
           </TabsContent>
 
           {/* Results tab */}
@@ -611,10 +635,10 @@ export function ChallengeEditor({
                   Run your code to test against sample inputs, or submit to run against all test cases.
                 </p>
                 <div className="flex gap-2 mt-4">
-                  <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleRunTests} disabled={!code.trim() || !problemSlug}>
+                  <Button variant="outline" size="sm" className="text-xs gap-1.5" onClick={handleRunTests} disabled={!codeRef.current.trim() || !problemSlug}>
                     <Play className="w-3 h-3" /> Run Code
                   </Button>
-                  <Button size="sm" className="text-xs gap-1.5" onClick={handleSubmit} disabled={!code.trim() || !problemSlug}>
+                  <Button size="sm" className="text-xs gap-1.5" onClick={handleSubmit} disabled={!codeRef.current.trim() || !problemSlug}>
                     <Send className="w-3 h-3" /> Submit
                   </Button>
                 </div>

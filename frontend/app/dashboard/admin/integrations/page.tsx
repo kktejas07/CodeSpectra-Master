@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Github, HelpCircle, KeyRound, Plug, Slack, ScanLine, ShieldAlert } from 'lucide-react'
+import { Github, HelpCircle, KeyRound, Plug, ShieldAlert } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -30,22 +30,6 @@ const INTEGRATIONS: IntegrationItem[] = [
     description: 'Repository scanning, PR comments, and activity tracking.',
     connected: false,
     credentialKey: 'has_github_app_token',
-  },
-  {
-    id: 'slack',
-    name: 'Slack',
-    icon: <Slack className="h-6 w-6" />,
-    description: 'Post scan results and alerts to channels.',
-    connected: false,
-    credentialKey: '',
-  },
-  {
-    id: 'sonarqube',
-    name: 'SonarQube',
-    icon: <ScanLine className="h-6 w-6" />,
-    description: 'Pull quality gates from an existing SonarQube server.',
-    connected: false,
-    credentialKey: '',
   },
 ]
 

@@ -155,7 +155,7 @@ Yes. You can cancel anytime from your billing settings. Your Pro features remain
 
 ### How do I upgrade to Enterprise?
 
-Contact our sales team through the platform or reach out to sales@codespectra.io. We'll set up a personalized onboarding call and configure your organization.
+Contact our sales team through the platform or reach out to sales@codespectra.ai. We'll set up a personalized onboarding call and configure your organization.
 
 ---
 

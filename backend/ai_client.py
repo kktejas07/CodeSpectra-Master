@@ -24,55 +24,105 @@ class ImageContent:
 class DirectAiClient:
     def __init__(
         self,
-        api_key: str,
+        api_key: str | list[str],
         provider: str,
         model: str,
         system_message: str = "",
         base_url: str = "",
+        fallback_providers: list[tuple[str, str, str, str]] | None = None,
     ) -> None:
-        self.api_key = api_key
+        self.keys = [api_key] if isinstance(api_key, str) else api_key
+        self.current_key_index = 0
         self.provider = provider
         self.model = model
         self.system_message = system_message
         self.base_url = base_url
+        self.fallback_providers = fallback_providers or []
+        self.fallback_index = 0
+
+    @property
+    def api_key(self) -> str:
+        if self.current_key_index < len(self.keys):
+            return self.keys[self.current_key_index].strip()
+        return ""
+
+    def _next_key(self) -> bool:
+        self.current_key_index += 1
+        return self.current_key_index < len(self.keys) and bool(self.keys[self.current_key_index].strip())
+
+    def _try_fallback(self) -> bool:
+        if self.fallback_index < len(self.fallback_providers):
+            fallback = self.fallback_providers[self.fallback_index]
+            self.fallback_index += 1
+            self.provider = fallback[0]
+            self.model = fallback[1]
+            self.keys = [fallback[2]]
+            self.current_key_index = 0
+            self.base_url = fallback[3]
+            return True
+        return False
 
     async def stream_message(
         self, message: UserMessage
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
         input_chars = len(self.system_message or "") + len(message.text or "")
-        output_chars = 0
-        if self.provider == "gemini":
-            async for chunk in self._stream_gemini(message):
-                if isinstance(chunk, TextDelta):
-                    output_chars += len(chunk.content)
-                elif isinstance(chunk, StreamDone):
-                    chunk.usage["input_chars"] = input_chars
-                    chunk.usage["output_chars"] = output_chars
-                yield chunk
-        elif self.provider == "anthropic":
-            async for chunk in self._stream_anthropic(message):
-                if isinstance(chunk, TextDelta):
-                    output_chars += len(chunk.content)
-                elif isinstance(chunk, StreamDone):
-                    chunk.usage["input_chars"] = input_chars
-                    chunk.usage["output_chars"] = output_chars
-                yield chunk
-        else:
-            # All other providers use OpenAI-compatible format (dynamic base_url)
-            async for chunk in self._stream_openai(message):
-                if isinstance(chunk, TextDelta):
-                    output_chars += len(chunk.content)
-                elif isinstance(chunk, StreamDone):
-                    chunk.usage["input_chars"] = input_chars
-                    chunk.usage["output_chars"] = output_chars
-                yield chunk
+        
+        while True:
+            output_chars = 0
+            had_error = False
+            
+            if self.provider == "gemini":
+                async for chunk in self._stream_gemini(message):
+                    if isinstance(chunk, TextDelta) and "Error" in chunk.content:
+                        had_error = True
+                        if self._next_key():
+                            break  # retry with next key
+                        elif self._try_fallback():
+                            break  # retry with fallback provider
+                    elif isinstance(chunk, StreamDone):
+                        chunk.usage["input_chars"] = input_chars
+                        chunk.usage["output_chars"] = output_chars
+                    if isinstance(chunk, TextDelta):
+                        output_chars += len(chunk.content)
+                    yield chunk
+            elif self.provider == "anthropic":
+                async for chunk in self._stream_anthropic(message):
+                    if isinstance(chunk, TextDelta) and "Error" in chunk.content:
+                        had_error = True
+                        if self._next_key():
+                            break
+                        elif self._try_fallback():
+                            break
+                    elif isinstance(chunk, StreamDone):
+                        chunk.usage["input_chars"] = input_chars
+                        chunk.usage["output_chars"] = output_chars
+                    if isinstance(chunk, TextDelta):
+                        output_chars += len(chunk.content)
+                    yield chunk
+            else:
+                async for chunk in self._stream_openai(message):
+                    if isinstance(chunk, TextDelta) and "API Error" in chunk.content:
+                        had_error = True
+                        if self._next_key():
+                            break
+                        elif self._try_fallback():
+                            break
+                    elif isinstance(chunk, StreamDone):
+                        chunk.usage["input_chars"] = input_chars
+                        chunk.usage["output_chars"] = output_chars
+                    if isinstance(chunk, TextDelta):
+                        output_chars += len(chunk.content)
+                    yield chunk
+            
+            if not had_error:
+                break
 
     async def _stream_gemini(
         self, message: UserMessage
     ) -> AsyncGenerator[TextDelta | StreamDone, None]:
         base = self.base_url.strip().rstrip("/") if self.base_url else "https://generativelanguage.googleapis.com/v1beta"
         key = self.api_key or ""
-        url = f"{base}/models/{self.model}:streamGenerateContent?key={key}"
+        url = f"{base}/models/{self.model}:streamGenerateContent"
         
         parts = []
         if message.text:

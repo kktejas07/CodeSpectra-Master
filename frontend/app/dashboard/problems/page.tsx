@@ -1,8 +1,10 @@
 'use client'
 
+import { useState } from 'react'
 import Link from 'next/link'
-import { Loader2, ArrowRight, Search, Trophy, HelpCircle } from 'lucide-react'
+import { Loader2, ArrowRight, Search, Trophy, HelpCircle, Code2, Layers, TrendingUp, Brain, Binary, GitBranch, BarChart3 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useProblemsViewModel, type ProblemSummary } from './use-problems-viewmodel'
@@ -13,9 +15,28 @@ const DIFFICULTY_TONE: Record<ProblemSummary['difficulty'], string> = {
   hard: 'text-destructive border-destructive/40 bg-destructive/10',
 }
 
+const SKILL_CATEGORIES = [
+  { key: '', label: 'All', icon: Layers },
+  { key: 'Arrays', label: 'Arrays', icon: Layers },
+  { key: 'Strings', label: 'Strings', icon: Code2 },
+  { key: 'Algorithms', label: 'Algorithms', icon: TrendingUp },
+  { key: 'Data Structures', label: 'Data Structures', icon: Binary },
+  { key: 'Math', label: 'Math', icon: BarChart3 },
+  { key: 'Dynamic Programming', label: 'DP', icon: Brain },
+  { key: 'Graphs', label: 'Trees & Graphs', icon: GitBranch },
+  { key: 'Sorting', label: 'Sorting', icon: BarChart3 },
+]
+
 export default function ProblemsListPage() {
   const gate = usePageGuard('user')
   const { loading, error, q, setQ, difficulty, setDifficulty, filtered } = useProblemsViewModel()
+  const [topic, setTopic] = useState('')
+
+  const final = topic
+    ? filtered.filter(p => (p.topics || []).some(t => t.toLowerCase() === topic.toLowerCase()))
+    : filtered
+
+  const countByTopic = (key: string) => key ? filtered.filter(p => (p.topics || []).some(t => t.toLowerCase() === key.toLowerCase())).length : filtered.length
 
   if (!gate.ready) {
     return (
@@ -67,17 +88,40 @@ export default function ProblemsListPage() {
         </div>
       </div>
 
+      <div className="flex flex-wrap gap-2">
+        {SKILL_CATEGORIES.map((cat) => {
+          const active = topic === cat.key
+          const count = countByTopic(cat.key)
+          const Icon = cat.icon
+          return (
+            <button
+              key={cat.key}
+              onClick={() => setTopic(cat.key)}
+              className={`inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs border transition ${
+                active
+                  ? 'bg-primary/10 text-primary border-primary/40'
+                  : 'bg-card text-muted-foreground border-border hover:text-foreground hover:border-muted-foreground/30'
+              }`}
+            >
+              <Icon className="h-3 w-3" />
+              {cat.label}
+              <span className={`${active ? 'text-primary/60' : 'text-muted-foreground/60'}`}>({count})</span>
+            </button>
+          )
+        })}
+      </div>
+
       {loading ? (
         <div className="flex items-center justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
         </div>
       ) : error ? (
         <div className="rounded-lg border border-destructive/40 bg-destructive/10 p-4 text-destructive">{error}</div>
-      ) : filtered.length === 0 ? (
+      ) : final.length === 0 ? (
         <div className="rounded-lg border border-border bg-card/30 p-10 text-center text-muted-foreground">No problems match your filters.</div>
       ) : (
         <ul className="space-y-2">
-          {filtered.map((p, i) => (
+          {final.map((p, i) => (
             <li key={p.id}>
               <Link
                 href={`/dashboard/problems/${p.slug || p.id}`}

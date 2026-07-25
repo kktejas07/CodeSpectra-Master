@@ -7,7 +7,7 @@ const DEMO_USERS = [
   { email: 'superadmin@codespectra.com', password: 'SuperAdmin123!', name: 'Super Admin', role: 'superadmin' },
   { email: 'admin@codespectra.com', password: 'TenentAdmin123!', name: 'Tenant Admin', role: 'tenant_admin' },
   { email: 'demo@codespectra.com', password: 'DemoPass123!', name: 'Demo User', role: 'user' },
-  { email: 'qa@codespectra.dev', password: 'QAAdmin123!', name: 'QA Admin', role: 'superadmin' },
+  { email: 'qa@codespectra.ai', password: 'QAAdmin123!', name: 'QA Admin', role: 'superadmin' },
 ]
 
 export async function POST() {
@@ -40,8 +40,8 @@ export async function POST() {
     return NextResponse.json({
       success: true,
       users: createdUsers.length > 0
-        ? createdUsers.map(u => ({ ...u, password: DEMO_USERS.find(d => d.email === u.email)!.password }))
-        : DEMO_USERS.map(u => ({ email: u.email, name: u.name, role: u.role, password: u.password })),
+        ? createdUsers
+        : DEMO_USERS.map(u => ({ email: u.email, name: u.name, role: u.role })),
     })
   } catch (error) {
     console.error('[CodeSpectra] Setup demo error:', error)

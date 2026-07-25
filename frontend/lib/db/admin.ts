@@ -29,6 +29,8 @@ export interface BetterAuthUserDoc {
   tenantId?: string | null
   organizationId?: string | null
   isActive?: boolean | null
+  lastLoginMethod?: 'google' | 'github' | 'email' | 'sso' | null
+  lastLoginAt?: Date | null
 }
 
 export interface OrganizationInvitationDoc {
@@ -40,6 +42,30 @@ export interface OrganizationInvitationDoc {
   token: string
   expires_at: string
   status: 'pending' | 'accepted' | 'revoked'
+  created_at: string
+}
+
+export interface AssessmentStep {
+  id: string
+  title: string
+  target_url: string
+  type: 'general' | 'identity' | 'coding' | 'cad' | 'codeathon' | 'hackathon'
+  allowed_languages?: string[]
+  status: 'pending' | 'in_progress' | 'completed'
+}
+
+export interface CandidateInviteDoc {
+  id: string
+  token: string
+  user_id: string
+  email: string
+  full_name: string
+  target_url: string
+  assigned_assessments?: AssessmentStep[]
+  allowed_languages?: string[]
+  invited_by: string
+  status: 'pending' | 'used' | 'expired'
+  expires_at: string
   created_at: string
 }
 
@@ -125,6 +151,11 @@ export async function permissions(): Promise<Collection<PermissionDoc>> {
   return db.collection<PermissionDoc>('permissions')
 }
 
+export async function candidateInvites(): Promise<Collection<CandidateInviteDoc>> {
+  const db = await getMongoDb()
+  return db.collection<CandidateInviteDoc>('candidate_invites')
+}
+
 // ---------- User admin queries ----------
 
 export async function listAllUsers(): Promise<BetterAuthUserDoc[]> {
@@ -140,7 +171,7 @@ export async function getUserById(id: string): Promise<BetterAuthUserDoc | null>
 
 export async function updateUserById(
   id: string,
-  update: Partial<Pick<BetterAuthUserDoc, 'role' | 'fullName' | 'name' | 'tenantId' | 'organizationId' | 'isActive'>>,
+  update: Partial<Pick<BetterAuthUserDoc, 'role' | 'fullName' | 'name' | 'tenantId' | 'organizationId' | 'isActive' | 'lastLoginMethod' | 'lastLoginAt'>>,
 ): Promise<BetterAuthUserDoc | null> {
   const col = await users()
   const $set: Record<string, unknown> = { ...update, updatedAt: new Date() }
@@ -149,6 +180,17 @@ export async function updateUserById(
     { $set },
   )
   return getUserById(id)
+}
+
+export async function updateUserLastLogin(
+  id: string,
+  method: NonNullable<BetterAuthUserDoc['lastLoginMethod']>,
+): Promise<void> {
+  const col = await users()
+  await col.updateOne(
+    { $or: [{ _id: id }, { id }] } as Filter<BetterAuthUserDoc>,
+    { $set: { lastLoginMethod: method, lastLoginAt: new Date(), updatedAt: new Date() } },
+  )
 }
 
 export async function deleteUserById(id: string): Promise<boolean> {

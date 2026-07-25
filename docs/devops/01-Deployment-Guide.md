@@ -112,7 +112,7 @@ backend:
 
 | Variable | Description | Source |
 |----------|-------------|--------|
-| `NEXT_PUBLIC_APP_URL` | Public URL of the app (e.g., https://codespectra.io) | `.env.docker` |
+| `NEXT_PUBLIC_APP_URL` | Public URL of the app (e.g., https://codespectra.ai) | `.env.docker` |
 | `NEXT_PUBLIC_FIREBASE_API_KEY` | Firebase Web API key | Firebase Console |
 | `NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN` | Firebase auth domain (project.firebaseapp.com) | Firebase Console |
 | `NEXT_PUBLIC_FIREBASE_PROJECT_ID` | Firebase project ID | Firebase Console |
@@ -258,8 +258,8 @@ docker service update --image codespectra-frontend-dmeptb:patched --force codesp
 
 ```
 Type    Name                Value
-A       codespectra.io      <server-ip>
-CNAME   www.codespectra.io  codespectra.io
+A       codespectra.ai      <server-ip>
+CNAME   www.codespectra.ai  codespectra.ai
 ```
 
 ### Nginx Reverse Proxy (if not using Dokploy)
@@ -267,16 +267,16 @@ CNAME   www.codespectra.io  codespectra.io
 ```nginx
 server {
     listen 80;
-    server_name codespectra.io;
+    server_name codespectra.ai;
     return 301 https://$host$request_uri;
 }
 
 server {
     listen 443 ssl;
-    server_name codespectra.io;
+    server_name codespectra.ai;
 
-    ssl_certificate     /etc/letsencrypt/live/codespectra.io/fullchain.pem;
-    ssl_certificate_key /etc/letsencrypt/live/codespectra.io/privkey.pem;
+    ssl_certificate     /etc/letsencrypt/live/codespectra.ai/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/codespectra.ai/privkey.pem;
 
     location / {
         proxy_pass http://localhost:3000;

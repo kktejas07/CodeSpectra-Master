@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
-import { Bell, Mail, Slack, ChevronRight, Loader2, SlidersHorizontal } from 'lucide-react'
+import { Bell, Mail, ChevronRight, Loader2, SlidersHorizontal, Slack } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -36,29 +36,38 @@ export default function NotificationPreferencesPage() {
   const toast = useToast()
   const [preferences, setPreferences] = useState<NotificationPreference[]>([])
   const [loading, setLoading] = useState(true)
+  const [quietStart, setQuietStart] = useState('22:00')
+  const [quietEnd, setQuietEnd] = useState('08:00')
+  const [savingQuiet, setSavingQuiet] = useState(false)
+  const [dailyDigest, setDailyDigest] = useState(true)
+  const [weeklyReport, setWeeklyReport] = useState(true)
 
-  useEffect(() => {
-    fetchPreferences()
-  }, [])
-
-  const fetchPreferences = async () => {
+  const fetchPreferences = useCallback(async () => {
     try {
-      setLoading(true)
       const res = await fetch('/api/notifications/preferences', { credentials: 'include' })
       if (!res.ok) throw new Error('Failed to fetch')
       const data = await res.json()
-      setPreferences(data)
+      setPreferences(Array.isArray(data) ? data : [])
+      const qh = (data as any).quietHours
+      if (qh) {
+        setQuietStart(qh.quietStart || '22:00')
+        setQuietEnd(qh.quietEnd || '08:00')
+      }
+      if ((data as any).dailyDigest !== undefined) setDailyDigest((data as any).dailyDigest)
+      if ((data as any).weeklyReport !== undefined) setWeeklyReport((data as any).weeklyReport)
     } catch (error) {
       console.error('[CodeSpectra] Failed to fetch preferences:', error)
-      toast({
-        type: 'error',
-        title: 'Failed to load preferences',
-        message: String(error),
-      })
     } finally {
       setLoading(false)
     }
-  }
+  }, [])
+
+  useEffect(() => { void fetchPreferences() }, [fetchPreferences])
+
+  useEffect(() => {
+    const interval = setInterval(() => { void fetchPreferences() }, 30_000)
+    return () => clearInterval(interval)
+  }, [fetchPreferences])
 
   const handleToggle = async (prefId: string, field: string, value: boolean) => {
     try {
@@ -69,42 +78,45 @@ export default function NotificationPreferencesPage() {
         body: JSON.stringify({ [field]: value }),
       })
       if (!res.ok) throw new Error('Failed to update')
-      toast({
-        type: 'success',
-        title: 'Preferences updated',
-      })
-      fetchPreferences()
+      toast({ type: 'success', title: 'Preferences updated' })
+      await fetchPreferences()
     } catch (error) {
       console.error('[CodeSpectra] Failed to update preferences:', error)
-      toast({
-        type: 'error',
-        title: 'Failed to update',
-        message: String(error),
+      toast({ type: 'error', title: 'Failed to update' })
+    }
+  }
+
+  const handleSaveQuietHours = async () => {
+    setSavingQuiet(true)
+    try {
+      const res = await csrfFetch('/api/notifications/preferences/quiet-hours', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ quietStart, quietEnd }),
       })
+      if (!res.ok) throw new Error('Failed to save')
+      toast({ type: 'success', title: 'Quiet hours saved' })
+    } catch {
+      toast({ type: 'error', title: 'Failed to save quiet hours' })
+    } finally {
+      setSavingQuiet(false)
     }
   }
 
   const getChannelLabel = (type: string) => {
     switch (type) {
-      case 'email':
-        return 'Email'
-      case 'slack':
-        return 'Slack'
-      default:
-        return 'In-app'
+      case 'email': return 'Email'
+      case 'slack': return 'Slack'
+      default: return 'In-app'
     }
   }
 
   const channelBlurb = (type: string) => {
     switch (type) {
-      case 'email':
-        return 'Product and account updates in your inbox'
-      case 'in_app':
-        return 'Alerts while you are using the dashboard'
-      case 'slack':
-        return 'Workspace notifications via Slack'
-      default:
-        return ''
+      case 'email': return 'Product and account updates in your inbox'
+      case 'slack': return 'Workspace notifications via Slack'
+      default: return 'Alerts while you are using the dashboard'
     }
   }
 

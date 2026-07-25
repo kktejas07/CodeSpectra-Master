@@ -119,6 +119,25 @@ export async function GET(req: NextRequest) {
     { upsert: true },
   )
 
+  // Also store in account collection (where repos/file/content APIs read from)
+  // The account collection uses camelCase: userId, providerId, accessToken
+  await db.collection('account').updateOne(
+    { userId: stateRow.user_id, providerId: 'github' },
+    {
+      $set: {
+        userId: stateRow.user_id,
+        providerId: 'github',
+        accessToken: tokenJson.access_token,
+        providerAccountId: String(ghUser.id || ''),
+        scope: tokenJson.scope || '',
+        token_type: tokenJson.token_type || 'bearer',
+        updatedAt: now,
+      },
+      $setOnInsert: { createdAt: now },
+    },
+    { upsert: true },
+  )
+
   // 4. Redirect back to the originating page with a success banner.
   const back = new URL(stateRow.redirect || '/dashboard/admin/settings', appOrigin(req))
   back.searchParams.set('github', 'connected')

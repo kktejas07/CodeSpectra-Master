@@ -73,6 +73,19 @@ function CodeScannerPageInner() {
     () => parseScannerMode(searchParams.get('mode')),
     [searchParams]
   )
+
+  // Handle GitHub OAuth callback — auto-refresh when coming back from GitHub auth
+  useEffect(() => {
+    const githubParam = searchParams.get('github')
+    if (githubParam === 'connected') {
+      const login = searchParams.get('login')
+      // Clean URL params without page reload
+      const url = new URL(window.location.href)
+      url.searchParams.delete('github')
+      url.searchParams.delete('login')
+      window.history.replaceState({}, '', url.toString())
+    }
+  }, [searchParams])
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
   const [detectedLang, setDetectedLang] = useState<string | null>(null)
@@ -82,14 +95,10 @@ function CodeScannerPageInner() {
     if (newCode.trim().length > 10) {
       const detected = detectLanguage(newCode)
       if (detected && detected !== 'plaintext') {
-        const norm = runtimeMap[detected] || detected
         setDetectedLang(detected)
-        if (norm !== language) {
-          setLanguage(norm)
-        }
       }
     }
-  }, [language])
+  }, [])
 
   const [loading, setLoading] = useState(false)
   const [analysis, setAnalysis] = useState<AnalysisResult | null>(null)

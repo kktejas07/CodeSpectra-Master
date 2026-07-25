@@ -10,7 +10,7 @@
 
 ### How do I create an account?
 
-Sign up at app.codespectra.io/signup using email and password, Google, or GitHub. No credit card required for the Free tier.
+Sign up at app.codespectra.ai/signup using email and password, Google, or GitHub. No credit card required for the Free tier.
 
 ### Can I delete my account?
 
@@ -150,7 +150,7 @@ Enterprise plans include a 99.9% uptime SLA. Custom SLAs are available for large
 
 ### How do I get started with Enterprise?
 
-Contact sales@codespectra.io or use the contact form in the app. Our team will set up a personalized onboarding call.
+Contact sales@codespectra.ai or use the contact form in the app. Our team will set up a personalized onboarding call.
 
 ---
 
@@ -166,8 +166,8 @@ Yes. This documentation site covers everything from getting started to advanced 
 
 ### How do I report a bug?
 
-Report bugs through the Support page in your dashboard or email support@codespectra.io. Include your browser version, steps to reproduce, and any relevant screenshots.
+Report bugs through the Support page in your dashboard or email support@codespectra.ai. Include your browser version, steps to reproduce, and any relevant screenshots.
 
 ---
 
-> **Still have questions?** Contact us through the Support page in your dashboard or email support@codespectra.io.
+> **Still have questions?** Contact us through the Support page in your dashboard or email support@codespectra.ai.

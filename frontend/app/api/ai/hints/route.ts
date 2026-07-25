@@ -41,16 +41,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   const p = await probsCol.findOne({ slug })
   if (!p) return NextResponse.json({ error: 'problem not found' }, { status: 404 })
 
-  const result = await backendPost<{ hint: string; hint_level: number }>(
-    '/internal/ai/hints',
-    {
-      problem_title: p.title,
-      problem_statement: p.statement_md,
-      language: body.language || 'python',
-      current_code: body.current_code || '',
-      hint_level: Math.max(1, Math.min(4, body.hint_level || 1)),
-    },
-    { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
-  )
-  return NextResponse.json(result)
+  try {
+    const result = await backendPost<{ hint: string; hint_level: number }>(
+      '/internal/ai/hints',
+      {
+        problem_title: p.title,
+        problem_statement: p.statement_md,
+        language: body.language || 'python',
+        current_code: body.current_code || '',
+        hint_level: Math.max(1, Math.min(4, body.hint_level || 1)),
+      },
+      { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
+    )
+    return NextResponse.json(result)
+  } catch (err: any) {
+    return NextResponse.json({ error: err.message || 'AI hints failed' }, { status: 500 })
+  }
 }

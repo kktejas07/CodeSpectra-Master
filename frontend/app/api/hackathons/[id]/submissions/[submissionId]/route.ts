@@ -1,9 +1,29 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
-import { hackathonSubmissions, hackathons, nowIso } from '@/lib/db/qr-events'
+import { hackathonSubmissions, hackathons, hackathonTeams, nowIso, xpToLevel } from '@/lib/db/qr-events'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+const SCORE_TO_XP_RATIO = 1
+
+export async function GET(
+  _req: NextRequest,
+  ctx: { params: Promise<{ id: string; submissionId: string }> },
+) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const { id, submissionId } = await ctx.params
+  const hkCol = await hackathons()
+  const hk = await hkCol.findOne({ $or: [{ id }, { slug: id }] })
+  if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  const subsCol = await hackathonSubmissions()
+  const sub = await subsCol.findOne({ id: submissionId, hackathon_id: hk.id })
+  if (!sub) return NextResponse.json({ error: 'submission not found' }, { status: 404 })
+
+  return NextResponse.json(sub)
+}
 
 export async function PATCH(
   req: NextRequest,
@@ -62,6 +82,23 @@ export async function PATCH(
     { id: submissionId },
     { $set, $push: { scores: scoreEntry } },
   )
+
+  // Grant XP to the team based on judge's score (first-time scoring only)
+  try {
+    const prevScore = sub.score
+    if (prevScore == null) {
+      const xpEarned = Math.round(score * SCORE_TO_XP_RATIO)
+      const teamsCol = await hackathonTeams()
+      const team = await teamsCol.findOne({ id: sub.team_id })
+      if (team) {
+        const newXp = team.xp + xpEarned
+        await teamsCol.updateOne(
+          { id: team.id },
+          { $set: { xp: newXp, level: xpToLevel(newXp), updated_at: now } },
+        )
+      }
+    }
+  } catch { /* XP grant is best-effort — don't fail scoring if XP update fails */ }
 
   return NextResponse.json({ ok: true })
 }

@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -16,8 +16,13 @@ import {
   Loader2,
   ArrowRight,
   MessageCircle,
+  AlertTriangle,
+  Download,
 } from 'lucide-react'
 import { useSpeechToText } from '@/lib/speech-recognition'
+import { ProctorMonitor } from '@/components/ai/proctor-monitor'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { useFeedbackReport } from '@/lib/use-feedback-report'
 import {
   generateFollowUpQuestion,
   generateInterviewFeedback,
@@ -31,6 +36,7 @@ interface DynamicInterviewProps {
   roleId: string
   interviewType: 'technical' | 'behavioral' | 'system-design'
   resumeInfo?: string
+  interviewId?: string
   onComplete?: (feedback: InterviewFeedback[]) => void
 }
 
@@ -45,6 +51,7 @@ export function DynamicInterview({
   roleId,
   interviewType,
   resumeInfo,
+  interviewId,
   onComplete,
 }: DynamicInterviewProps) {
   const [stage, setStage] = useState<'intro' | 'interview' | 'feedback'>('intro')
@@ -57,6 +64,17 @@ export function DynamicInterview({
   const [timeRemaining, setTimeRemaining] = useState(30 * 60) // 30 minutes
   const [answerStartTime, setAnswerStartTime] = useState<number | null>(null)
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const { downloadPdf } = useFeedbackReport()
+
+  const handleKickout = useCallback(async (reason: string) => {
+    if (interviewId) {
+      csrfFetch('/api/proctor/terminate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ session_kind: 'interview', session_id: interviewId, reason }),
+      }).catch(() => null)
+    }
+  }, [interviewId])
 
   // Speech Recognition
   const {
@@ -78,14 +96,27 @@ export function DynamicInterview({
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
   }, [messages])
 
-  // Timer
+  // Timer with auto-submit on expiry
   useEffect(() => {
     if (stage !== 'interview') return
     const timer = setInterval(() => {
-      setTimeRemaining((prev) => (prev > 0 ? prev - 1 : 0))
+      setTimeRemaining((prev) => {
+        if (prev <= 1) {
+          clearInterval(timer)
+          // Auto-submit current answer and finish interview
+          if (userAnswer.trim()) {
+            handleSubmitAnswer()
+          } else {
+            setStage('feedback')
+            onComplete?.(feedback)
+          }
+          return 0
+        }
+        return prev - 1
+      })
     }, 1000)
     return () => clearInterval(timer)
-  }, [stage])
+  }, [stage, userAnswer, feedback, onComplete])
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60)
@@ -296,6 +327,20 @@ export function DynamicInterview({
   }
 
   if (stage === 'feedback') {
+    const overallScore = feedback.length
+      ? Math.round(feedback.reduce((s, f) => s + f.score, 0) / feedback.length)
+      : 0
+
+    const downloadReport = () => {
+      downloadPdf({
+        interviewType,
+        roleId,
+        overallScore,
+        feedback,
+        messages: messages.map(m => ({ role: m.role, content: m.content, duration: m.duration })),
+      })
+    }
+
     return (
       <div className="min-h-screen bg-linear-to-br from-slate-900 to-slate-800 p-6">
         <div className="max-w-4xl mx-auto space-y-6">
@@ -304,6 +349,10 @@ export function DynamicInterview({
             <p className="text-foreground/60">
               Your feedback has been generated. Review your performance below.
             </p>
+            <Button variant="outline" onClick={downloadReport} className="gap-2">
+              <Download className="w-4 h-4" />
+              Download Report
+            </Button>
           </Card>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -356,8 +405,26 @@ export function DynamicInterview({
   }
 
   // Main interview stage
+  const isLowTime = timeRemaining <= 60 && timeRemaining > 0
+  const isTimeUp = timeRemaining === 0
+
   return (
     <div className="min-h-screen bg-black text-white p-6">
+      {interviewId && (
+        <ProctorMonitor
+          sessionKind="interview"
+          sessionId={interviewId}
+          enabled
+          enforceFullscreen
+          captureInterval={30000}
+          kickoutThreshold={5}
+          blockKeyboardShortcuts
+          lockdownBrowser
+          detectFace
+          onKickout={handleKickout}
+        />
+      )}
+
       {/* Header */}
       <div className="flex items-center justify-between mb-8 max-w-6xl mx-auto">
         <div className="flex items-center gap-2">
@@ -365,9 +432,14 @@ export function DynamicInterview({
           <h1 className="text-xl font-bold">{interviewType} Interview</h1>
         </div>
         <div className="flex items-center gap-4">
-          <div className="flex items-center gap-2 bg-white/10 px-4 py-2 rounded-lg">
+          <div className={`flex items-center gap-2 px-4 py-2 rounded-lg ${
+            isTimeUp ? 'bg-red-500/20 text-red-400 animate-pulse' :
+            isLowTime ? 'bg-red-500/10 text-red-400' :
+            'bg-white/10'
+          }`}>
             <Clock className="w-4 h-4" />
             <span className="text-sm font-medium">{formatTime(timeRemaining)}</span>
+            {isLowTime && <AlertTriangle className="w-4 h-4 text-red-400" />}
           </div>
         </div>
       </div>

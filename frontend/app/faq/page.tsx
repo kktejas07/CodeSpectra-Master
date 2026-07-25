@@ -134,10 +134,10 @@ export default function FAQPage() {
             Can&apos;t find the answer you&apos;re looking for? Contact our support team.
           </p>
           <a
-            href="mailto:support@codespectra.dev"
+            href="mailto:support@codespectra.ai"
             className="text-primary hover:underline font-semibold"
           >
-            support@codespectra.dev
+            support@codespectra.ai
           </a>
         </div>
       </div>

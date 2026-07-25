@@ -1,30 +1,27 @@
 import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { getMongoDb } from '@/lib/mongodb'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-async function getCloudflareConfig() {
-  const db = await getMongoDb()
-  const settings = await db.collection('platform_settings').findOne({})
-  const secrets = (settings?.value?.secrets || {}) as Record<string, string>
-
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID?.trim() || secrets.cloudflare_zone_id?.trim() || ''
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || secrets.cloudflare_api_token?.trim() || ''
-  return { zoneId, apiToken }
-}
-
-async function graphQLQuery(token: string, query: string) {
+async function cfGraphQL(token: string, query: string, variables?: Record<string, unknown>) {
   const res = await fetch('https://api.cloudflare.com/client/v4/graphql', {
     method: 'POST',
-    headers: {
-      Authorization: `Bearer ${token}`,
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify({ query }),
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
   })
-  if (!res.ok) throw new Error(`Cloudflare GraphQL API: ${res.status}`)
+  if (!res.ok) throw new Error(`Cloudflare API ${res.status}: ${await res.text()}`)
+  const json = await res.json()
+  if (json.errors?.length) throw new Error(json.errors[0].message)
+  return json
+}
+
+async function cfFetch(token: string, path: string) {
+  const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+  })
+  if (!res.ok) throw new Error(`Cloudflare API ${res.status}: ${await res.text()}`)
   return res.json()
 }
 
@@ -34,60 +31,91 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { zoneId, apiToken } = await getCloudflareConfig()
+  const secrets = await readServerSecrets()
+  const zoneId = process.env.CLOUDFLARE_ZONE_ID?.trim() || (secrets.cloudflare_zone_id?.trim() || '')
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || (secrets.cloudflare_api_token?.trim() || '')
   if (!zoneId || !apiToken) {
     return NextResponse.json({ configured: false, error: 'Cloudflare not configured' })
   }
 
   try {
-    const [trafficResult, countriesResult] = await Promise.all([
-      graphQLQuery(apiToken, `{
-        viewer { zones(filter: {zoneTag: "${zoneId}"}) {
-          httpRequests1mGroups(limit: 30, orderBy: [datetime_DESC]) {
-            dimensions { datetime }
-            sum { requests bytes cachedRequests }
-            uni { uniques }
+    // Use single Date.now() reference to avoid millisecond drift between since/until
+    const nowMs = Date.now()
+    const sinceSec = Math.floor(nowMs / 1000) - 259200 // exactly 3 days ago (seconds)
+    const since = new Date(sinceSec * 1000).toISOString()
+    const until = new Date(Math.floor(nowMs / 1000) * 1000).toISOString()
+
+    // Get zone name
+    const zoneResult = await cfFetch(apiToken, `/zones/${zoneId}`)
+    const zoneName = (zoneResult.result as any)?.name || ''
+
+    // GraphQL query for HTTP request totals (3-day hourly groups)
+    const gqlResult = await cfGraphQL(
+      apiToken,
+      `query GetZoneMetrics($zoneTag: String!, $since: String!, $until: String!) {
+        viewer {
+          zones(filter: {zoneTag: $zoneTag}) {
+            httpRequests1hGroups(
+              limit: 72,
+              filter: {datetime_geq: $since, datetime_leq: $until}
+            ) {
+              sum {
+                bytes
+                cachedBytes
+                requests
+                cachedRequests
+              }
+              uniq {
+                uniques
+              }
+            }
           }
-        }}
-      }`),
-      graphQLQuery(apiToken, `{
-        viewer { zones(filter: {zoneTag: "${zoneId}"}) {
-          httpRequests1hGroups(limit: 50, orderBy: [count_DESC]) {
-            dimensions { countryName }
-            count
-          }
-        }}
-      }`),
-    ])
+        }
+      }`,
+      { zoneTag: zoneId, since, until }
+    )
 
-    const traffic = trafficResult?.data?.viewer?.zones?.[0]?.httpRequests1mGroups || []
-    const countries = countriesResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
+    const groups = gqlResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
+    const totals = { bytes: 0, cachedBytes: 0, requests: 0, cachedRequests: 0, uniques: 0 }
 
-    const totalRequests = traffic.reduce((s: number, g: any) => s + (g.sum?.requests || 0), 0)
-    const totalCached = traffic.reduce((s: number, g: any) => s + (g.sum?.cachedRequests || 0), 0)
-    const totalBytes = traffic.reduce((s: number, g: any) => s + (g.sum?.bytes || 0), 0)
-    const totalUniques = traffic.reduce((s: number, g: any) => s + (g.uni?.uniques || 0), 0)
-
-    const topCountries = countries
-      .filter((c: any) => c.dimensions?.countryName)
-      .slice(0, 10)
-      .map((c: any) => ({
-        country: c.dimensions.countryName,
-        requests: c.count,
-      }))
+    for (const g of groups as any[]) {
+      if (g.sum) {
+        totals.bytes += g.sum.bytes || 0
+        totals.cachedBytes += g.sum.cachedBytes || 0
+        totals.requests += g.sum.requests || 0
+        totals.cachedRequests += g.sum.cachedRequests || 0
+      }
+      if (g.uniq) {
+        totals.uniques += g.uniq.uniques || 0
+      }
+    }
 
     return NextResponse.json({
       configured: true,
+      zone: zoneName,
       traffic: {
-        requests: totalRequests,
-        cached: totalCached,
-        bytes: totalBytes,
-        uniques: totalUniques,
-        cacheRatio: totalRequests > 0 ? Math.round((totalCached / totalRequests) * 100) : 0,
+        requests: totals.requests,
+        cached: totals.cachedRequests,
+        bytes: totals.bytes,
+        uniques: totals.uniques,
+        cacheRatio: totals.requests > 0 ? Math.round((totals.cachedRequests / totals.requests) * 100) : 0,
       },
-      topCountries,
+      topCountries: [],
     })
   } catch (e) {
-    return NextResponse.json({ configured: true, error: (e as Error).message }, { status: 502 })
+    const msg = (e as Error).message
+    if (
+      msg.includes('Authentication error') ||
+      msg.includes('Invalid token') ||
+      msg.includes('10000') ||
+      msg.includes('forbidden') ||
+      msg.includes('Unauthorized')
+    ) {
+      return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token' })
+    }
+    if (msg.includes('zone not found') || msg.includes('No zone')) {
+      return NextResponse.json({ configured: false, error: 'Cloudflare zone not found — check Zone ID' })
+    }
+    return NextResponse.json({ configured: false, error: 'Cloudflare: ' + msg }, { status: 502 })
   }
 }

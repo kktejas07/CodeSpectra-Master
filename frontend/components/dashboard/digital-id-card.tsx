@@ -69,54 +69,54 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt }: Di
   const handleDownload = () => {
     const canvas = document.createElement('canvas')
     canvas.width = 540
-    canvas.height = 440
+    canvas.height = 340
     const ctx = canvas.getContext('2d')
     if (!ctx) return
 
-    const grad = ctx.createLinearGradient(0, 0, 540, 440)
+    const grad = ctx.createLinearGradient(0, 0, 540, 340)
     grad.addColorStop(0, '#34d399')
     grad.addColorStop(0.5, '#10b981')
     grad.addColorStop(1, '#065f46')
     ctx.fillStyle = grad
-    ctx.fillRect(0, 0, 540, 440)
+    ctx.fillRect(0, 0, 540, 340)
 
     ctx.fillStyle = 'rgba(255,255,255,0.12)'
-    roundRect(ctx, 20, 20, 500, 400, 22)
+    roundRect(ctx, 16, 16, 508, 308, 18)
     ctx.fill()
 
     ctx.fillStyle = '#fff'
-    ctx.font = 'bold 14px system-ui'
-    ctx.fillText('CODESPECTRA', 40, 60)
-    ctx.font = 'bold 28px system-ui'
-    ctx.fillText('OFFICIAL ID', 40, 92)
+    ctx.font = 'bold 12px system-ui'
+    ctx.fillText('CODESPECTRA', 32, 48)
+    ctx.font = 'bold 22px system-ui'
+    ctx.fillText('OFFICIAL ID', 32, 76)
 
     ctx.fillStyle = '#022c22'
-    ctx.font = 'bold 18px system-ui'
-    ctx.fillText(name, 40, 160)
-    ctx.font = '14px system-ui'
-    ctx.fillStyle = '#022c2299'
-    ctx.fillText(role, 40, 182)
-
-    ctx.font = 'bold 11px system-ui'
-    ctx.fillStyle = '#022c2280'
-    ctx.fillText('ID', 40, 220)
-    ctx.font = 'bold 14px system-ui'
-    ctx.fillStyle = '#022c22cc'
-    ctx.fillText(idNumber, 40, 238)
-
-    ctx.font = 'bold 11px system-ui'
-    ctx.fillStyle = '#022c2280'
-    ctx.fillText('EMAIL', 40, 268)
-    ctx.font = '13px system-ui'
-    ctx.fillStyle = '#022c22cc'
-    ctx.fillText(email, 40, 286)
-
-    ctx.font = 'bold 11px system-ui'
-    ctx.fillStyle = '#022c2280'
-    ctx.fillText('ISSUED', 40, 316)
+    ctx.font = 'bold 15px system-ui'
+    ctx.fillText(name, 32, 130)
     ctx.font = '12px system-ui'
+    ctx.fillStyle = '#022c2299'
+    ctx.fillText(role, 32, 150)
+
+    ctx.font = 'bold 10px system-ui'
+    ctx.fillStyle = '#022c2280'
+    ctx.fillText('ID', 32, 178)
+    ctx.font = 'bold 13px system-ui'
+    ctx.fillStyle = '#022c22cc'
+    ctx.fillText(idNumber, 32, 194)
+
+    ctx.font = 'bold 10px system-ui'
+    ctx.fillStyle = '#022c2280'
+    ctx.fillText('EMAIL', 32, 220)
+    ctx.font = '12px system-ui'
+    ctx.fillStyle = '#022c22cc'
+    ctx.fillText(email, 32, 236)
+
+    ctx.font = 'bold 10px system-ui'
+    ctx.fillStyle = '#022c2280'
+    ctx.fillText('ISSUED', 32, 264)
+    ctx.font = '11px system-ui'
     ctx.fillStyle = '#022c22b3'
-    ctx.fillText(now, 40, 334)
+    ctx.fillText(now, 32, 280)
 
     const link = document.createElement('a')
     link.download = `codespectra-id-${(name || '').replace(/\s+/g, '-').toLowerCase()}.png`
@@ -132,7 +132,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt }: Di
         onClick={() => setFlipped(!flipped)}
       >
         <div
-          className="relative h-[440px] w-full transition-transform duration-[600ms]"
+          className="relative h-[340px] w-full transition-transform duration-[600ms]"
           style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           {/* Front face */}

@@ -36,7 +36,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   await teamsCol.updateOne(
     { id: team.id },
     {
-      $push: { members: { user_id: user.id, name: user.name || user.email.split('@')[0], role: 'member' } as Record<string, unknown> },
+      $push: { members: { user_id: user.id, name: user.name || (user.email || '').split('@')[0] || 'Member', role: 'member' } as Record<string, unknown> },
       $set: { updated_at: nowIso() },
     },
   )

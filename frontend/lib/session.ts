@@ -9,16 +9,17 @@ let _secret: Uint8Array | null = null
 function getSecret(): Uint8Array {
   if (_secret) return _secret
   const raw = process.env.SESSION_SECRET
-  if (!raw) {
-    if (process.env.NODE_ENV === 'production' && process.env.NEXT_PHASE !== 'phase-production-build') {
+  const isProd = process.env.NODE_ENV === 'production'
+  if (!raw || raw.length < 32) {
+    if (isProd && process.env.NEXT_PHASE !== 'phase-production-build') {
       throw new Error(
-        'SESSION_SECRET environment variable is required in production. ' +
-        'Generate a 32+ character secret with: openssl rand -base64 32',
+        'SESSION_SECRET environment variable is required in production and must be at least 32 characters. ' +
+        'Generate a secret with: openssl rand -base64 32',
       )
     }
     console.warn(
-      '[session] SESSION_SECRET not set — using development fallback. ' +
-      'Set SESSION_SECRET in your environment for production.',
+      '[session] SESSION_SECRET not set or too short — using development fallback. ' +
+      'Set SESSION_SECRET (32+ chars) in your environment for production.',
     )
   }
   _secret = new TextEncoder().encode(raw || 'dev-secret-do-not-use-in-production-32chars')

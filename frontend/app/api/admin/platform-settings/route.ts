@@ -62,6 +62,12 @@ export async function PATCH(request: Request) {
     'platform_currency',
     'locked_pages',
     'locked_features',
+    'company_name',
+    'copyright_text',
+    'company_address',
+    'website_url',
+    'privacy_policy_url',
+    'terms_of_service_url',
   ] as const
 
   try {

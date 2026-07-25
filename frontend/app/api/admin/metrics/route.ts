@@ -11,54 +11,54 @@ export async function GET() {
 
   try {
     const userCol = await users()
-    const list = await userCol.find({}).toArray()
-    const totalUsers = list.length
-    const superadmins = list.filter((r) => r.role === 'superadmin').length
-    const tenantAdmins = list.filter(
-      (r) => r.role === 'tenant_admin' || r.role === 'admin',
-    ).length
-    const endUsers = list.filter((r) => r.role === 'user' || !r.role).length
+    const [
+      totalUsers,
+      superadmins,
+      tenantAdmins,
+      endUsers,
+    ] = await Promise.all([
+      userCol.countDocuments(),
+      userCol.countDocuments({ role: 'superadmin' }),
+      userCol.countDocuments({ role: { $in: ['tenant_admin', 'admin'] } }),
+      userCol.countDocuments({ role: { $in: ['user', null] } }),
+    ])
 
     const since = new Date(Date.now() - 15 * 60 * 1000)
-    const activeNow = list.filter((r) => {
-      const ts = r.updatedAt instanceof Date ? r.updatedAt : new Date(String(r.updatedAt))
-      return ts && ts >= since
-    }).length
+    const activeNow = await userCol.countDocuments({ updatedAt: { $gte: since } })
 
     const scanCol = await codeScans()
     const submissionsCount = await scanCol.estimatedDocumentCount()
 
-    /** Signups by calendar month (UTC), last 6 months. */
     const signupsByMonth: { date: string; users: number }[] = []
     const now = new Date()
     for (let i = 5; i >= 0; i--) {
       const d = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - i, 1))
       const next = new Date(Date.UTC(d.getUTCFullYear(), d.getUTCMonth() + 1, 1))
       const label = d.toLocaleString('en-US', { month: 'short' })
-      const n = list.filter((r) => {
-        const t = r.createdAt instanceof Date ? r.createdAt.getTime() : new Date(String(r.createdAt)).getTime()
-        return t >= d.getTime() && t < next.getTime()
-      }).length
+      const n = await userCol.countDocuments({
+        createdAt: { $gte: d, $lt: next },
+      })
       signupsByMonth.push({ date: label, users: n })
     }
 
-    const submissionsByDay: { date: string; challenges: number; interviews: number; scans: number }[] = []
-    for (let i = 6; i >= 0; i--) {
-      const day = new Date(now)
-      day.setUTCDate(day.getUTCDate() - i)
-      day.setUTCHours(0, 0, 0, 0)
-      const next = new Date(day)
-      next.setUTCDate(next.getUTCDate() + 1)
-      const c = await scanCol.countDocuments({
-        created_at: { $gte: day.toISOString(), $lt: next.toISOString() },
+    const submissionsByDay = await Promise.all(
+      Array.from({ length: 7 }, async (_, i) => {
+        const day = new Date(now)
+        day.setUTCDate(day.getUTCDate() - (6 - i))
+        day.setUTCHours(0, 0, 0, 0)
+        const next = new Date(day)
+        next.setUTCDate(next.getUTCDate() + 1)
+        const c = await scanCol.countDocuments({
+          created_at: { $gte: day.toISOString(), $lt: next.toISOString() },
+        })
+        return {
+          date: day.toLocaleDateString('en-US', { weekday: 'short' }),
+          challenges: 0,
+          interviews: 0,
+          scans: c,
+        }
       })
-      submissionsByDay.push({
-        date: day.toLocaleDateString('en-US', { weekday: 'short' }),
-        challenges: 0,
-        interviews: 0,
-        scans: c,
-      })
-    }
+    )
 
     return NextResponse.json({
       totalUsers,
@@ -70,7 +70,7 @@ export async function GET() {
       submissionsCount,
       leaderboardRows: 0,
       usersByRole: [
-        { name: 'Users', value: Math.max(0, endUsers) },
+        { name: 'Users', value: endUsers },
         { name: 'Org admins', value: tenantAdmins },
         { name: 'Platform admins', value: superadmins },
       ],

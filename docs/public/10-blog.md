@@ -102,4 +102,4 @@ Stay up to date with new posts. Follow us on [Twitter/X](https://x.com/codespect
 
 ---
 
-> **Want to contribute?** We're looking for guest authors. Contact us at blog@codespectra.io with your pitch.
+> **Want to contribute?** We're looking for guest authors. Contact us at blog@codespectra.ai with your pitch.

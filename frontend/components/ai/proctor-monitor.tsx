@@ -1,7 +1,7 @@
 'use client'
 
 import { useEffect, useRef, useState, useCallback } from 'react'
-import { AlertTriangle, Camera, Fullscreen, Ban } from 'lucide-react'
+import { AlertTriangle, Camera, Fullscreen, ShieldOff, X, Eye, EyeOff } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -11,8 +11,68 @@ interface ProctorMonitorProps {
   enabled?: boolean
   enforceFullscreen?: boolean
   captureInterval?: number
+  /** Number of tab switches before forced kickout. 0 = disabled */
+  kickoutThreshold?: number
+  /** Block keyboard shortcuts like Alt+Tab, F12, Ctrl+U */
+  blockKeyboardShortcuts?: boolean
+  /** Override window.open to prevent new tabs */
+  lockdownBrowser?: boolean
+  /** Detect face presence from camera */
+  detectFace?: boolean
+  /** Called when user is kicked out */
+  onKickout?: (reason: string) => void
+  /** Called on any proctor event */
   onEvent?: (eventType: string) => void
+  /** Called when violation threshold is reached */
   onViolation?: (type: string, count: number) => void
+}
+
+// Lightweight face detection using canvas brightness variance.
+// Returns true if the frame likely contains a face (bright center region).
+function detectFacePresence(video: HTMLVideoElement): boolean {
+  try {
+    const canvas = document.createElement('canvas')
+    canvas.width = 80; canvas.height = 60
+    const ctx = canvas.getContext('2d')
+    if (!ctx) return true // assume present if can't analyze
+    ctx.drawImage(video, 0, 0, 80, 60)
+    const imageData = ctx.getImageData(0, 0, 80, 60)
+    const data = imageData.data
+
+    // Sample center region (roughly where a face would be)
+    let centerBrightness = 0
+    let edgeBrightness = 0
+    const centerPixels = []
+    const edgePixels = []
+
+    for (let y = 0; y < 60; y++) {
+      for (let x = 0; x < 80; x++) {
+        const idx = (y * 80 + x) * 4
+        const brightness = (data[idx] + data[idx + 1] + data[idx + 2]) / 3
+        const isCenter = x >= 20 && x <= 60 && y >= 10 && y <= 50
+        if (isCenter) {
+          centerPixels.push(brightness)
+        } else {
+          edgePixels.push(brightness)
+        }
+      }
+    }
+
+    centerBrightness = centerPixels.reduce((a, b) => a + b, 0) / centerPixels.length
+    edgeBrightness = edgePixels.reduce((a, b) => a + b, 0) / edgePixels.length
+
+    // A face typically creates higher brightness in center vs edges
+    // Also check for skin-tone-ish hue (very rough heuristic)
+    const centerVariance = centerPixels.reduce((sum, b) => sum + (b - centerBrightness) ** 2, 0) / centerPixels.length
+
+    // No face: very uniform darkness (empty/dark frame) or no center-edge contrast
+    if (centerBrightness < 15 && edgeBrightness < 15) return false // dark frame = likely no face
+    if (centerVariance < 20 && Math.abs(centerBrightness - edgeBrightness) < 10) return false // too uniform = likely blank
+
+    return true
+  } catch {
+    return true // assume present on error
+  }
 }
 
 export function ProctorMonitor({
@@ -21,15 +81,24 @@ export function ProctorMonitor({
   enabled = true,
   enforceFullscreen = false,
   captureInterval = 0,
+  kickoutThreshold = 5,
+  blockKeyboardShortcuts = false,
+  lockdownBrowser = false,
+  detectFace = false,
+  onKickout,
   onEvent,
   onViolation,
 }: ProctorMonitorProps) {
-  const [counts, setCounts] = useState({ blur: 0, copy: 0, paste: 0, rclick: 0, idle: 0, fsExit: 0 })
+  const [counts, setCounts] = useState({ blur: 0, copy: 0, paste: 0, rclick: 0, idle: 0, fsExit: 0, keyBlock: 0, noFace: 0 })
   const [showWarning, setShowWarning] = useState<string | null>(null)
   const [cameraSnapshot, setCameraSnapshot] = useState<string | null>(null)
+  const [kickedOut, setKickedOut] = useState(false)
+  const [awaySeconds, setAwaySeconds] = useState(0)
   const lastInput = useRef<number>(Date.now())
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
+  const kickedRef = useRef(false)
+  const prevFrameRef = useRef<string | null>(null)
 
   const send = useCallback((event_type: string, meta?: Record<string, unknown>) => {
     onEvent?.(event_type)
@@ -40,12 +109,89 @@ export function ProctorMonitor({
     }).catch(() => null)
   }, [sessionKind, sessionId, onEvent])
 
-  // Fullscreen enforcement
+  const doKickout = useCallback((reason: string) => {
+    if (kickedRef.current) return
+    kickedRef.current = true
+    setKickedOut(true)
+    send('session_kickout', { reason })
+    onKickout?.(reason)
+  }, [send, onKickout])
+
+  // beforeunload — warn when navigating away
   useEffect(() => {
-    if (!enabled || !enforceFullscreen) return
+    if (!enabled || !sessionId) return
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault()
+      e.returnValue = ''
+      send('navigate_away_attempt')
+    }
+    window.addEventListener('beforeunload', handler)
+    return () => window.removeEventListener('beforeunload', handler)
+  }, [enabled, sessionId, send])
+
+  // Browser lockdown — prevent new tabs/windows
+  useEffect(() => {
+    if (!enabled || !lockdownBrowser) return
+    const origOpen = window.open
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    window.open = (() => {
+      send('new_tab_blocked')
+      setCounts(c => ({ ...c, keyBlock: c.keyBlock + 1 }))
+      setShowWarning('Opening new tabs/windows is not allowed during this session.')
+      return null
+    }) as typeof window.open
+    return () => { window.open = origOpen }
+  }, [enabled, lockdownBrowser, send])
+
+  // Keyboard shortcut blocking
+  useEffect(() => {
+    if (!enabled || !blockKeyboardShortcuts) return
+    const handler = (e: KeyboardEvent) => {
+      const key = e.key.toLowerCase()
+      const isMeta = e.metaKey || e.ctrlKey
+
+      // Block: Alt+Tab, Cmd+Tab (OS-level, can't fully block but can detect)
+      // Block: F12, Ctrl+U (view source), Ctrl+Shift+I (devtools), Ctrl+Shift+J
+      // Block: Ctrl+W (close tab), Ctrl+T (new tab), Ctrl+N (new window)
+      const blocked = (
+        key === 'f12' ||
+        (isMeta && key === 'u') ||
+        (isMeta && e.shiftKey && key === 'i') ||
+        (isMeta && e.shiftKey && key === 'j') ||
+        (isMeta && key === 'w') ||
+        (isMeta && key === 't') ||
+        (isMeta && key === 'n') ||
+        (e.altKey && key === 'tab') ||
+        (e.altKey && key === 'f4')
+      )
+
+      if (blocked) {
+        e.preventDefault()
+        e.stopPropagation()
+        setCounts(c => ({ ...c, keyBlock: c.keyBlock + 1 }))
+        send('keyboard_shortcut_blocked', { key: `${e.altKey ? 'Alt+' : ''}${e.metaKey ? 'Cmd+' : ''}${e.ctrlKey ? 'Ctrl+' : ''}${e.shiftKey ? 'Shift+' : ''}${key}` })
+        setShowWarning('Keyboard shortcuts are disabled during this session.')
+        onViolation?.('keyboard_blocked', counts.keyBlock + 1)
+      }
+    }
+    window.addEventListener('keydown', handler, true)
+    return () => window.removeEventListener('keydown', handler, true)
+  }, [enabled, blockKeyboardShortcuts, send, onViolation, counts.keyBlock])
+
+  const isMobile = typeof window !== 'undefined' && (
+    /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    window.matchMedia('(pointer: coarse)').matches
+  )
+
+  // Fullscreen enforcement — desktop only (mobile browsers require user gesture)
+  useEffect(() => {
+    if (!enabled || !enforceFullscreen || isMobile) return
+
     const enterFs = () => {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {})
+        document.documentElement.requestFullscreen().catch(() => {
+          // Silent — fullscreen blocked by browser policy without user gesture
+        })
       }
     }
     const onFsChange = () => {
@@ -70,21 +216,39 @@ export function ProctorMonitor({
       document.removeEventListener('fullscreenchange', onFsChange)
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     }
-  }, [enabled, enforceFullscreen, send, onViolation])
+  }, [enabled, enforceFullscreen, send, onViolation, isMobile])
 
-  // Tab blur, copy, paste, right-click detection
+  // Tab blur, copy, paste, right-click detection + kickout
   useEffect(() => {
     if (!enabled || !sessionId) return
 
     const onBlur = () => {
-      setCounts((c) => ({ ...c, blur: c.blur + 1 }))
+      if (kickedRef.current) return
       send('tab_blur')
-      if (counts.blur >= 5) {
-        onViolation?.('tab_blur', counts.blur + 1)
-        setShowWarning('Multiple tab switches detected.')
-      }
+      setCounts((c) => {
+        const newCount = c.blur + 1
+        if (kickoutThreshold > 0 && newCount >= kickoutThreshold) {
+          doKickout('Tab switched too many times')
+          return { ...c, blur: newCount }
+        }
+        if (newCount >= Math.max(1, kickoutThreshold - 2)) {
+          const remaining = kickoutThreshold - newCount
+          setShowWarning(
+            remaining > 0
+              ? `Tab switch detected. ${remaining} more switch${remaining > 1 ? 'es' : ''} and you will be removed.`
+              : 'Final warning: one more tab switch will remove you from this session.'
+          )
+        } else if (newCount >= 1) {
+          setShowWarning('Tab switch detected. Do not navigate away during the session.')
+        }
+        onViolation?.('tab_blur', newCount)
+        return { ...c, blur: newCount }
+      })
     }
-    const onFocus = () => send('tab_focus')
+    const onFocus = () => {
+      send('tab_focus')
+      setAwaySeconds(0)
+    }
     const onCopy = (e: ClipboardEvent) => {
       e.preventDefault()
       setCounts((c) => ({ ...c, copy: c.copy + 1 }))
@@ -111,6 +275,20 @@ export function ProctorMonitor({
       }
     }, 30_000)
 
+    const awayTimer = window.setInterval(() => {
+      if (document.visibilityState === 'visible') {
+        setAwaySeconds(0)
+        return
+      }
+      setAwaySeconds((prev) => {
+        const next = prev + 5
+        if (next >= 60 && !kickedRef.current) {
+          doKickout('Navigated away from tab for too long')
+        }
+        return next
+      })
+    }, 5000)
+
     window.addEventListener('blur', onBlur)
     window.addEventListener('focus', onFocus)
     window.addEventListener('copy', onCopy)
@@ -128,10 +306,11 @@ export function ProctorMonitor({
       window.removeEventListener('keydown', onInput)
       window.removeEventListener('mousemove', onInput)
       window.clearInterval(idleTimer)
+      window.clearInterval(awayTimer)
     }
-  }, [enabled, sessionId, sessionKind, send, onViolation, counts.blur])
+  }, [enabled, sessionId, sessionKind, send, onViolation, kickoutThreshold, doKickout])
 
-  // Camera capture
+  // Camera capture + face detection
   useEffect(() => {
     if (!enabled || captureInterval <= 0) return
     let mounted = true
@@ -155,31 +334,73 @@ export function ProctorMonitor({
           ctx.drawImage(videoRef.current, 0, 0, 320, 240)
           const dataUrl = canvas.toDataURL('image/jpeg', 0.5)
           setCameraSnapshot(dataUrl)
-          send('camera_capture', { timestamp: Date.now() })
+
+          // Face detection
+          if (detectFace) {
+            const hasFace = detectFacePresence(videoRef.current)
+            if (!hasFace) {
+              setCounts(c => {
+                const newNoFace = c.noFace + 1
+                send('no_face', { consecutive: newNoFace, timestamp: Date.now() })
+                if (newNoFace >= 3) {
+                  setShowWarning('No face detected in camera. Please ensure you are visible.')
+                  onViolation?.('no_face', newNoFace)
+                }
+                return { ...c, noFace: newNoFace }
+              })
+            } else {
+              // Reset no-face counter when face is detected
+              setCounts(c => c.noFace > 0 ? { ...c, noFace: 0 } : c)
+            }
+          }
+
+          send('camera_capture', { timestamp: Date.now(), face_detected: detectFace ? undefined : true })
         }
-      } catch {} // silent fail on snapshots
+      } catch {} // silent fail
     }, captureInterval)
     return () => {
       mounted = false
       window.clearInterval(capTimer)
       streamRef.current?.getTracks().forEach((t) => t.stop())
     }
-  }, [enabled, captureInterval, send])
+  }, [enabled, captureInterval, send, detectFace, onViolation])
 
   if (!enabled) return null
+
+  // Kickout overlay
+  if (kickedOut) {
+    return (
+      <div className="fixed inset-0 z-[100] flex items-center justify-center bg-black/90">
+        <div className="text-center space-y-4 p-8">
+          <ShieldOff className="h-16 w-16 mx-auto text-red-500" />
+          <h2 className="text-2xl font-bold text-white">Session Terminated</h2>
+          <p className="text-white/70 max-w-md">
+            You have been removed from this session due to proctoring violations.
+            Your progress has been saved and reported to the administrator.
+          </p>
+          <Button variant="destructive" onClick={() => window.location.href = '/dashboard'}>
+            Return to Dashboard
+          </Button>
+        </div>
+      </div>
+    )
+  }
 
   return (
     <>
       {showWarning && (
         <div className="fixed top-4 left-1/2 -translate-x-1/2 z-50 animate-in slide-in-from-top">
-          <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur shadow-lg">
-            <AlertTriangle className="h-4 w-4" />
-            {showWarning}
-            <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setShowWarning(null)}>Dismiss</Button>
+          <div className="flex items-center gap-2 rounded-lg border border-destructive/50 bg-destructive/10 px-4 py-2 text-sm text-destructive backdrop-blur shadow-lg max-w-lg">
+            <AlertTriangle className="h-4 w-4 shrink-0" />
+            <span className="flex-1">{showWarning}</span>
+            <Button size="sm" variant="ghost" className="h-6 text-xs shrink-0" onClick={() => setShowWarning(null)}>
+              <X className="h-3 w-3" />
+            </Button>
           </div>
         </div>
       )}
 
+      {!isMobile && (
       <div className="fixed top-3 right-3 z-30 flex items-center gap-2 rounded-md border border-border bg-card/90 backdrop-blur px-2 py-1 text-[10px] uppercase tracking-wide shadow-sm">
         <span className="flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -188,9 +409,16 @@ export function ProctorMonitor({
         <span title="Tab blur">T:{counts.blur}</span>
         <span title="Copy events">C:{counts.copy}</span>
         <span title="Fullscreen exits">F:{counts.fsExit}</span>
+        {blockKeyboardShortcuts && counts.keyBlock > 0 && <span title="Blocked shortcuts">K:{counts.keyBlock}</span>}
+        {detectFace && (
+          counts.noFace > 0
+            ? <EyeOff className="h-3 w-3 text-red-500" />
+            : <Eye className="h-3 w-3 text-green-500" />
+        )}
         {captureInterval > 0 && cameraSnapshot && <Camera className="h-3 w-3 text-green-500" />}
         {enforceFullscreen && <Fullscreen className="h-3 w-3 text-blue-500" />}
       </div>
+      )}
 
       <video ref={videoRef} className="hidden" playsInline muted />
     </>
