@@ -24,6 +24,26 @@ export interface AuthUser {
   photoURL: string | null
 }
 
+interface LastLoginInfo {
+  method: 'email' | 'google' | 'github'
+  at: string // ISO timestamp
+}
+
+const LAST_LOGIN_KEY = 'cs_last_login'
+
+export function getLastLogin(): LastLoginInfo | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(LAST_LOGIN_KEY)
+    return raw ? (JSON.parse(raw) as LastLoginInfo) : null
+  } catch { return null }
+}
+
+function setLastLogin(method: LastLoginInfo['method']) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(LAST_LOGIN_KEY, JSON.stringify({ method, at: new Date().toISOString() }))
+}
+
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
@@ -152,6 +172,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Login failed')
+    setLastLogin('email')
     setUser(toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name }))
   }
 
@@ -171,6 +192,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GoogleAuthProvider()
     provider.addScope('email'); provider.addScope('profile')
     const cred = await signInWithPopup(auth, provider)
+    setLastLogin('google')
     setUser(toAuthUser(cred.user))
   }
 
@@ -179,6 +201,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GithubAuthProvider()
     provider.addScope('user:email')
     const cred = await signInWithPopup(auth, provider)
+    setLastLogin('github')
     setUser(toAuthUser(cred.user))
   }
 

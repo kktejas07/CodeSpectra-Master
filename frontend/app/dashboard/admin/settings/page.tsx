@@ -1,6 +1,6 @@
 'use client'
 
-import { Suspense, useCallback, useEffect, useState } from 'react'
+import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useSearchParams } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -267,7 +267,34 @@ function SystemSettingsInner() {
   })
 
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({})
-  const toggleVisible = (key: string) => setVisibleFields((v) => ({ ...v, [key]: !v[key] }))
+  const [revealedValues, setRevealedValues] = useState<Record<string, string>>({})
+  const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
+
+  const handleRevealToggle = useCallback(async (key: string) => {
+    if (visibleFields[key]) {
+      clearTimeout(timers.current[key])
+      delete timers.current[key]
+      setVisibleFields((v) => ({ ...v, [key]: false }))
+      setRevealedValues((v) => { const n = { ...v }; delete n[key]; return n })
+    } else {
+      const res = await fetch(`/api/admin/server-secrets/reveal?key=${key}`, { credentials: 'include' })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok && json.value) {
+        setRevealedValues((v) => ({ ...v, [key]: json.value }))
+      }
+      setVisibleFields((v) => ({ ...v, [key]: true }))
+      clearTimeout(timers.current[key])
+      timers.current[key] = setTimeout(() => {
+        setVisibleFields((v) => ({ ...v, [key]: false }))
+        setRevealedValues((v) => { const n = { ...v }; delete n[key]; return n })
+        delete timers.current[key]
+      }, 30_000)
+    }
+  }, [visibleFields])
+
+  useEffect(() => {
+    return () => { Object.values(timers.current).forEach(clearTimeout) }
+  }, [])
 
   useEffect(() => {
     if (!gate.ready) return
@@ -360,11 +387,7 @@ function SystemSettingsInner() {
         }
       }
       
-      // Also pre-populate masked secrets so they don't look empty in the UI
-      if (secretsMeta.resend_api_key_masked) next.resend_api_key = String(secretsMeta.resend_api_key_masked)
-      if (secretsMeta.sendgrid_api_key_masked) next.sendgrid_api_key = String(secretsMeta.sendgrid_api_key_masked)
-      if (secretsMeta.postal_api_key_masked) next.postal_api_key = String(secretsMeta.postal_api_key_masked)
-      if (secretsMeta.smtp_pass_masked) next.smtp_pass = String(secretsMeta.smtp_pass_masked)
+      // Mail secret keys are intentionally left empty — click eye icon to reveal saved values
 
       return next
     })
@@ -818,7 +841,7 @@ function SystemSettingsInner() {
                       type={visibleFields.resend_api_key ? 'text' : 'password'}
                       autoComplete="off"
                       placeholder="re_…"
-                      value={mailSecretsDraft.resend_api_key}
+                      value={visibleFields.resend_api_key ? (revealedValues.resend_api_key ?? '') : ''}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, resend_api_key: e.target.value }))
                       }
@@ -827,7 +850,7 @@ function SystemSettingsInner() {
                     <button
                       type="button"
                       tabIndex={-1}
-                      onClick={() => toggleVisible('resend_api_key')}
+                      onClick={() => handleRevealToggle('resend_api_key')}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {visibleFields.resend_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -873,7 +896,7 @@ function SystemSettingsInner() {
                       id="mail_sg_key"
                       type={visibleFields.sendgrid_api_key ? 'text' : 'password'}
                       autoComplete="off"
-                      value={mailSecretsDraft.sendgrid_api_key}
+                      value={visibleFields.sendgrid_api_key ? (revealedValues.sendgrid_api_key ?? '') : ''}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, sendgrid_api_key: e.target.value }))
                       }
@@ -882,7 +905,7 @@ function SystemSettingsInner() {
                     <button
                       type="button"
                       tabIndex={-1}
-                      onClick={() => toggleVisible('sendgrid_api_key')}
+                      onClick={() => handleRevealToggle('sendgrid_api_key')}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {visibleFields.sendgrid_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -942,7 +965,7 @@ function SystemSettingsInner() {
                       type={visibleFields.postal_api_key ? 'text' : 'password'}
                       autoComplete="off"
                       placeholder={secretsMeta.has_postal_api_key ? 'Key saved — enter new value to replace' : 'post_…'}
-                      value={mailSecretsDraft.postal_api_key}
+                      value={visibleFields.postal_api_key ? (revealedValues.postal_api_key ?? '') : ''}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, postal_api_key: e.target.value }))
                       }
@@ -951,7 +974,7 @@ function SystemSettingsInner() {
                     <button
                       type="button"
                       tabIndex={-1}
-                      onClick={() => toggleVisible('postal_api_key')}
+                      onClick={() => handleRevealToggle('postal_api_key')}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {visibleFields.postal_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1036,7 +1059,7 @@ function SystemSettingsInner() {
                       id="mail_smtp_pass"
                       type={visibleFields.smtp_pass ? 'text' : 'password'}
                       autoComplete="off"
-                      value={mailSecretsDraft.smtp_pass}
+                      value={visibleFields.smtp_pass ? (revealedValues.smtp_pass ?? '') : ''}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, smtp_pass: e.target.value }))
                       }
@@ -1045,7 +1068,7 @@ function SystemSettingsInner() {
                     <button
                       type="button"
                       tabIndex={-1}
-                      onClick={() => toggleVisible('smtp_pass')}
+                      onClick={() => handleRevealToggle('smtp_pass')}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {visibleFields.smtp_pass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1367,7 +1390,7 @@ function SystemSettingsInner() {
                     <Input
                       id="sec_github_app_token"
                       type={visibleFields.github_app_token ? 'text' : 'password'}
-                      value={secretsDraft.github_app_token}
+                      value={visibleFields.github_app_token ? (revealedValues.github_app_token ?? '') : ''}
                       onChange={(e) =>
                         setSecretsDraft((d) => ({ ...d, github_app_token: e.target.value }))
                       }
@@ -1379,7 +1402,7 @@ function SystemSettingsInner() {
                     <button
                       type="button"
                       tabIndex={-1}
-                      onClick={() => toggleVisible('github_app_token')}
+                      onClick={() => handleRevealToggle('github_app_token')}
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                     >
                       {visibleFields.github_app_token ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1445,7 +1468,7 @@ function SystemSettingsInner() {
                       <div className="relative">
                         <Input
                           type={visibleFields.github_client_secret ? 'text' : 'password'}
-                          value={secretsDraft.github_client_secret}
+                          value={visibleFields.github_client_secret ? (revealedValues.github_client_secret ?? '') : ''}
                           onChange={(e) =>
                             setSecretsDraft((d) => ({ ...d, github_client_secret: e.target.value }))
                           }
@@ -1457,7 +1480,7 @@ function SystemSettingsInner() {
                         <button
                           type="button"
                           tabIndex={-1}
-                          onClick={() => toggleVisible('github_client_secret')}
+                          onClick={() => handleRevealToggle('github_client_secret')}
                           className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                         >
                           {visibleFields.github_client_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1533,7 +1556,7 @@ function SystemSettingsInner() {
                           <button
                             type="button"
                             tabIndex={-1}
-                            onClick={() => toggleVisible(key)}
+                            onClick={() => handleRevealToggle(key)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                           >
                             {visibleFields[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1612,7 +1635,7 @@ function SystemSettingsInner() {
                         id="pay_rzp_id"
                         type={visibleFields.razorpay_key_id ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.razorpay_key_id}
+                        value={visibleFields.razorpay_key_id ? (revealedValues.razorpay_key_id ?? '') : ''}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, razorpay_key_id: e.target.value }))
                         }
@@ -1623,7 +1646,7 @@ function SystemSettingsInner() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => toggleVisible('razorpay_key_id')}
+                        onClick={() => handleRevealToggle('razorpay_key_id')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.razorpay_key_id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1642,7 +1665,7 @@ function SystemSettingsInner() {
                         id="pay_rzp_sk"
                         type={visibleFields.razorpay_key_secret ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.razorpay_key_secret}
+                        value={visibleFields.razorpay_key_secret ? (revealedValues.razorpay_key_secret ?? '') : ''}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, razorpay_key_secret: e.target.value }))
                         }
@@ -1653,7 +1676,7 @@ function SystemSettingsInner() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => toggleVisible('razorpay_key_secret')}
+                        onClick={() => handleRevealToggle('razorpay_key_secret')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.razorpay_key_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1672,7 +1695,7 @@ function SystemSettingsInner() {
                         id="pay_rzp_wh"
                         type={visibleFields.razorpay_webhook_secret ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.razorpay_webhook_secret}
+                        value={visibleFields.razorpay_webhook_secret ? (revealedValues.razorpay_webhook_secret ?? '') : ''}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, razorpay_webhook_secret: e.target.value }))
                         }
@@ -1683,7 +1706,7 @@ function SystemSettingsInner() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => toggleVisible('razorpay_webhook_secret')}
+                        onClick={() => handleRevealToggle('razorpay_webhook_secret')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.razorpay_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1748,7 +1771,7 @@ function SystemSettingsInner() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => toggleVisible('phonepe_merchant_id')}
+                        onClick={() => handleRevealToggle('phonepe_merchant_id')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.phonepe_merchant_id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1767,7 +1790,7 @@ function SystemSettingsInner() {
                         id="pay_phonepe_sk"
                         type={visibleFields.phonepe_salt_key ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.phonepe_salt_key}
+                        value={visibleFields.phonepe_salt_key ? (revealedValues.phonepe_salt_key ?? '') : ''}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, phonepe_salt_key: e.target.value }))
                         }
@@ -1778,7 +1801,7 @@ function SystemSettingsInner() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => toggleVisible('phonepe_salt_key')}
+                        onClick={() => handleRevealToggle('phonepe_salt_key')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.phonepe_salt_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1815,7 +1838,7 @@ function SystemSettingsInner() {
                         id="pay_phonepe_wh"
                         type={visibleFields.phonepe_webhook_secret ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.phonepe_webhook_secret}
+                        value={visibleFields.phonepe_webhook_secret ? (revealedValues.phonepe_webhook_secret ?? '') : ''}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, phonepe_webhook_secret: e.target.value }))
                         }
@@ -1826,7 +1849,7 @@ function SystemSettingsInner() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => toggleVisible('phonepe_webhook_secret')}
+                        onClick={() => handleRevealToggle('phonepe_webhook_secret')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.phonepe_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1866,7 +1889,7 @@ function SystemSettingsInner() {
                         id="pay_stripe_sk"
                         type={visibleFields.stripe_secret_key ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.stripe_secret_key}
+                        value={visibleFields.stripe_secret_key ? (revealedValues.stripe_secret_key ?? '') : ''}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, stripe_secret_key: e.target.value }))
                         }
@@ -1876,7 +1899,7 @@ function SystemSettingsInner() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => toggleVisible('stripe_secret_key')}
+                        onClick={() => handleRevealToggle('stripe_secret_key')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.stripe_secret_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -1895,7 +1918,7 @@ function SystemSettingsInner() {
                         id="pay_stripe_wh"
                         type={visibleFields.stripe_webhook_secret ? 'text' : 'password'}
                         autoComplete="off"
-                        value={secretsDraft.stripe_webhook_secret}
+                        value={visibleFields.stripe_webhook_secret ? (revealedValues.stripe_webhook_secret ?? '') : ''}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, stripe_webhook_secret: e.target.value }))
                         }
@@ -1905,7 +1928,7 @@ function SystemSettingsInner() {
                       <button
                         type="button"
                         tabIndex={-1}
-                        onClick={() => toggleVisible('stripe_webhook_secret')}
+                        onClick={() => handleRevealToggle('stripe_webhook_secret')}
                         className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                       >
                         {visibleFields.stripe_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

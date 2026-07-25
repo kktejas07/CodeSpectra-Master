@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
@@ -15,6 +15,8 @@ export function CloudflareSettingsSection() {
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
   const [showToken, setShowToken] = useState(false)
+  const [revealedToken, setRevealedToken] = useState('')
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
   useEffect(() => {
@@ -25,11 +27,28 @@ export function CloudflareSettingsSection() {
         setSavedZoneId(sec.cloudflare_zone_id || '')
         setHasSavedToken(!!sec.has_cloudflare_api_token)
         setZoneId(sec.cloudflare_zone_id || '')
-        setApiToken(sec.cloudflare_api_token_masked || '')
       })
       .catch(() => setMessage({ type: 'error', text: 'Failed to load current settings' }))
       .finally(() => setLoading(false))
   }, [])
+
+  const handleRevealToggle = useCallback(async () => {
+    if (showToken) {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      setShowToken(false)
+      setRevealedToken('')
+    } else {
+      const res = await fetch('/api/admin/server-secrets/reveal?key=cloudflare_api_token', { credentials: 'include' })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok && json.value) setRevealedToken(json.value)
+      setShowToken(true)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        setShowToken(false)
+        setRevealedToken('')
+      }, 30_000)
+    }
+  }, [showToken])
 
   const save = useCallback(async () => {
     setSaving(true)
@@ -56,6 +75,10 @@ export function CloudflareSettingsSection() {
       setSaving(false)
     }
   }, [zoneId, apiToken])
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [])
 
   if (loading) {
     return <div className="flex min-h-[20vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading…</div>
@@ -109,14 +132,14 @@ export function CloudflareSettingsSection() {
             <input
               id="cf_api_token"
               type={showToken ? 'text' : 'password'}
-              value={apiToken}
+              value={showToken ? revealedToken : ''}
               onChange={(e) => setApiToken(e.target.value)}
               className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder={hasSavedToken ? 'Token saved — enter new value to replace' : 'cf-api-token-...'}
             />
             <button
               type="button"
-              onClick={() => setShowToken(!showToken)}
+              onClick={handleRevealToggle}
               className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
             >
               {showToken ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
