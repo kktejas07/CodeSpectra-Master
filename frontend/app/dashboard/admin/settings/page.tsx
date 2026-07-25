@@ -1651,7 +1651,7 @@ function SystemSettingsInner() {
                           <button
                             type="button"
                             tabIndex={-1}
-                            onClick={() => handleRevealToggle(key)}
+                            onClick={() => toggleVisible(key)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
                           >
                             {visibleFields[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

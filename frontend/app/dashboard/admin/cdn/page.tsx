@@ -7,10 +7,10 @@ import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { 
-  Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle, 
+import { Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle, 
   MapPin, CheckCircle2, Activity, Loader2,
 } from 'lucide-react'
+import { WorldTrafficMap } from '@/components/admin/world-traffic-map'
 
 interface CloudflareData {
   configured: boolean
@@ -42,13 +42,19 @@ export default function CdnAdminPage() {
     { id: '4', name: 'Bad Bot Ingress Blocker', description: 'Restricts unverified scrapers and vulnerability scanners from indexing pages.', action: 'challenge', enabled: false },
   ])
 
-  useEffect(() => {
-    if (!gate.ready) return
+  const fetchCfData = () => {
     fetch('/api/admin/cloudflare-analytics', { credentials: 'include' })
       .then(r => r.json())
       .then(d => setCfData(d))
       .catch(() => setCfData({ configured: false }))
       .finally(() => setCfLoading(false))
+  }
+
+  useEffect(() => {
+    if (!gate.ready) return
+    fetchCfData()
+    const interval = setInterval(fetchCfData, 30_000)
+    return () => clearInterval(interval)
   }, [gate.ready])
 
   const handlePurge = async (all: boolean) => {
@@ -269,18 +275,26 @@ export default function CdnAdminPage() {
               ) : !cfData?.configured ? (
                 <p className="text-xs text-muted-foreground text-center py-10">Configure Cloudflare in Settings → Cloudflare</p>
               ) : cfData?.topCountries && cfData.topCountries.length > 0 ? (
-                cfData.topCountries.map((c, i) => (
-                  <div key={c.country} className="flex items-center justify-between p-3 rounded-lg bg-card/50 border border-muted-foreground/5">
-                    <div className="flex items-center gap-3">
-                      <MapPin className="h-4 w-4 text-fuchsia-500 shrink-0" />
-                      <p className="text-sm font-medium">{c.country}</p>
-                    </div>
-                    <div className="text-right">
-                      <p className="text-sm font-semibold font-mono text-emerald-500">{c.requests.toLocaleString()}</p>
-                      <span className="text-[10px] text-muted-foreground">requests</span>
-                    </div>
+                <>
+                  <WorldTrafficMap
+                    data={cfData.topCountries}
+                    totalRequests={cfData.traffic?.requests || 0}
+                  />
+                  <div className="space-y-2 mt-4">
+                    {cfData.topCountries.slice(0, 10).map((c, i) => (
+                      <div key={c.country} className="flex items-center justify-between p-2 rounded-lg bg-card/50 border border-muted-foreground/5">
+                        <div className="flex items-center gap-3">
+                          <MapPin className="h-4 w-4 text-fuchsia-500 shrink-0" />
+                          <p className="text-sm font-medium">{c.country}</p>
+                        </div>
+                        <div className="text-right">
+                          <p className="text-sm font-semibold font-mono text-emerald-500">{c.requests.toLocaleString()}</p>
+                          <span className="text-[10px] text-muted-foreground">requests</span>
+                        </div>
+                      </div>
+                    ))}
                   </div>
-                ))
+                </>
               ) : (
                 <p className="text-xs text-muted-foreground text-center py-10">No traffic data yet</p>
               )}
