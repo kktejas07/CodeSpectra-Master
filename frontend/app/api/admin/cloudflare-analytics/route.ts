@@ -39,8 +39,11 @@ export async function GET() {
   }
 
   try {
-    const since = new Date(Date.now() - 3 * 86400 * 1000).toISOString()
-    const until = new Date().toISOString()
+    // Use single Date.now() reference to avoid millisecond drift between since/until
+    const nowMs = Date.now()
+    const sinceSec = Math.floor(nowMs / 1000) - 259200 // exactly 3 days ago (seconds)
+    const since = new Date(sinceSec * 1000).toISOString()
+    const until = new Date(Math.floor(nowMs / 1000) * 1000).toISOString()
 
     // Get zone name
     const zoneResult = await cfFetch(apiToken, `/zones/${zoneId}`)
@@ -54,7 +57,6 @@ export async function GET() {
           zones(filter: {zoneTag: $zoneTag}) {
             httpRequests1hGroups(
               limit: 72,
-              orderBy: ["datetime_DESC"],
               filter: {datetime_geq: $since, datetime_leq: $until}
             ) {
               sum {

@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures/test-fixtures';
-import { DashboardPage } from '../pages/dashboard-pages';
-import { PageHelper, NavigationHelper } from '../helpers/utilities';
+import { test, expect } from '../../fixtures/test-fixtures';
+import { DashboardPage } from '../../pages/dashboard-pages';
+import { PageHelper, NavigationHelper } from '../../helpers/utilities';
 
 test.describe('Navigation Tests', () => {
   let dashboardPage: DashboardPage;

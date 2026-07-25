@@ -1,7 +1,7 @@
-import { test, expect } from '../fixtures/test-fixtures';
-import { ProblemsPage, HackathonsPage, JobsPage, InterviewsPage } from '../pages/dashboard-pages';
-import { DynamicForm, DynamicTable, Modal, Toast } from '../pages/components';
-import { DataGenerator } from '../helpers/utilities';
+import { test, expect } from '../../fixtures/test-fixtures';
+import { ProblemsPage, HackathonsPage, JobsPage, InterviewsPage } from '../../pages/dashboard-pages';
+import { DynamicForm, DynamicTable, Modal, Toast } from '../../pages/components';
+import { DataGenerator } from '../../helpers/utilities';
 
 test.describe('CRUD Operations Tests', () => {
   let toast: Toast;

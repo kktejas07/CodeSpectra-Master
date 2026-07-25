@@ -1,5 +1,5 @@
-import { test, expect } from '../fixtures/test-fixtures';
-import { ApiMonitor, ConsoleMonitor, PerformanceMonitor } from '../helpers/monitors';
+import { test, expect } from '../../fixtures/test-fixtures';
+import { ApiMonitor, ConsoleMonitor, PerformanceMonitor } from '../../helpers/monitors';
 
 test.describe('API Validation Tests', () => {
   test('should monitor API calls', async ({ page, authenticatedPage }) => {

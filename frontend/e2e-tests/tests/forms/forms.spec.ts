@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures/test-fixtures';
-import { DynamicForm } from '../pages/components';
-import { DataGenerator, ValidationHelper } from '../helpers/utilities';
+import { test, expect } from '../../fixtures/test-fixtures';
+import { DynamicForm } from '../../pages/components';
+import { DataGenerator, ValidationHelper } from '../../helpers/utilities';
 
 test.describe('Forms Validation Tests', () => {
   test.describe('Required Fields', () => {

@@ -12,10 +12,13 @@ export class BasePage {
 
   async navigate(path = ''): Promise<void> {
     const start = Date.now();
-    await this.page.goto(`${this.url}${path}`, { waitUntil: 'networkidle' });
+    const fullUrl = this.url.startsWith('http') 
+      ? `${this.url}${path}` 
+      : `${testConfig.baseUrl}${this.url}${path}`;
+    await this.page.goto(fullUrl, { waitUntil: 'networkidle' });
     const loadTime = Date.now() - start;
     if (loadTime > testConfig.slowThreshold) {
-      console.warn(`⚠️ Slow page load: ${loadTime}ms for ${this.url}${path}`);
+      console.warn(`⚠️ Slow page load: ${loadTime}ms for ${fullUrl}`);
     }
   }
 

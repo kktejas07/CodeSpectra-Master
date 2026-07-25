@@ -1,6 +1,6 @@
-import { test, expect } from '../fixtures/test-fixtures';
-import { LoginPage, SignupPage, ForgotPasswordPage, ResetPasswordPage, LogoutPage } from '../pages/auth-pages';
-import { DataGenerator, ValidationHelper } from '../helpers/utilities';
+import { test, expect } from '../../fixtures/test-fixtures';
+import { LoginPage, SignupPage, ForgotPasswordPage, ResetPasswordPage, LogoutPage } from '../../pages/auth-pages';
+import { DataGenerator, ValidationHelper } from '../../helpers/utilities';
 
 test.describe('Authentication Tests', () => {
   let loginPage: LoginPage;

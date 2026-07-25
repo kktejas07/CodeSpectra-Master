@@ -1,5 +1,5 @@
-import { test, expect } from '../fixtures/test-fixtures';
-import { PageHelper } from '../helpers/utilities';
+import { test, expect } from '../../fixtures/test-fixtures';
+import { PageHelper } from '../../helpers/utilities';
 
 test.describe('UI Testing', () => {
   test.describe('Broken Buttons', () => {

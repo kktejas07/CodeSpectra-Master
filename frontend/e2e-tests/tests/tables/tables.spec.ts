@@ -1,5 +1,5 @@
-import { test, expect } from '../fixtures/test-fixtures';
-import { DynamicTable } from '../pages/components';
+import { test, expect } from '../../fixtures/test-fixtures';
+import { DynamicTable } from '../../pages/components';
 
 test.describe('Tables Tests', () => {
   test.describe('Pagination', () => {

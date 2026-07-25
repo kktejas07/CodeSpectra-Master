@@ -1,5 +1,5 @@
-import { test, expect } from '../fixtures/test-fixtures';
-import { PerformanceMonitor } from '../helpers/monitors';
+import { test, expect } from '../../fixtures/test-fixtures';
+import { PerformanceMonitor } from '../../helpers/monitors';
 
 test.describe('Performance Tests', () => {
   test.describe('Page Load Time', () => {
