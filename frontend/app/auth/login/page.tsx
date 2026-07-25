@@ -34,6 +34,8 @@ function LoginInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastLogin, setLastLogin] = useState<{ method: string; at: string } | null>(null);
+  const [totpRequired, setTotpRequired] = useState(false);
+  const [totpCode, setTotpCode] = useState("");
 
   useEffect(() => {
     const info = getLastLogin()
@@ -66,12 +68,17 @@ function LoginInner() {
     setLoading(true);
 
     try {
-      await signInWithEmail(email.trim().toLowerCase(), password);
+      await signInWithEmail(email.trim().toLowerCase(), password, totpCode || undefined);
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Invalid email or password";
-      setError(msg);
+      if (err && typeof err === 'object' && 'twoFactorRequired' in err) {
+        setTotpRequired(true);
+        setError('Enter your two-factor code');
+      } else {
+        const msg = err instanceof Error ? err.message : "Invalid email or password";
+        setError(msg);
+      }
     } finally {
       setLoading(false);
     }
@@ -315,6 +322,23 @@ function LoginInner() {
                 </button>
               </div>
             </div>
+
+            {totpRequired && (
+              <div className="space-y-2">
+                <Label htmlFor="totp-code">Two-factor code</Label>
+                <Input
+                  id="totp-code"
+                  type="text"
+                  inputMode="numeric"
+                  maxLength={6}
+                  value={totpCode}
+                  onChange={e => setTotpCode(e.target.value.replace(/\D/g, '').slice(0, 6))}
+                  placeholder="000000"
+                  className="h-11 text-center font-mono text-lg tracking-widest"
+                  autoComplete="one-time-code"
+                />
+              </div>
+            )}
 
             <label className="flex items-center gap-2 text-sm cursor-pointer select-none">
               <input

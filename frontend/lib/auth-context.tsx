@@ -51,7 +51,7 @@ interface AuthContextValue {
   loading: boolean
   sessionExpired: boolean
   clearSessionExpired: () => void
-  signInWithEmail: (email: string, password: string) => Promise<void>
+  signInWithEmail: (email: string, password: string, totpToken?: string) => Promise<void>
   signUpWithEmail: (email: string, password: string, name: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signInWithGithub: () => Promise<void>
@@ -178,14 +178,19 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval)
   }, [loading, user])
 
-  const signInWithEmailFn = async (email: string, password: string) => {
+  const signInWithEmailFn = async (email: string, password: string, totpToken?: string) => {
     setSessionExpired(false)
+    const body: Record<string, string> = { email, password }
+    if (totpToken) body.totpToken = totpToken
     const res = await csrfFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password }),
+      body: JSON.stringify(body),
     })
     const json = await res.json()
+    if (json.twoFactorRequired) {
+      throw { twoFactorRequired: true, message: 'Two-factor code required' }
+    }
     if (!res.ok) throw new Error(json.error || 'Login failed')
     const authUser = toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name })
     setUser(authUser)

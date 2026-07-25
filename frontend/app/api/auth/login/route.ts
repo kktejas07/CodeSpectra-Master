@@ -23,7 +23,7 @@ export async function POST(request: Request) {
       )
     }
 
-    const { email, password } = await request.json()
+    const { email, password, totpToken } = await request.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
@@ -61,6 +61,20 @@ export async function POST(request: Request) {
 
     const uid = user.id || user._id
     const role = normalizeUserRole(user.role as string | undefined | null)
+
+    if (user.totp_enabled) {
+      if (!totpToken) {
+        return NextResponse.json({ twoFactorRequired: true, uid })
+      }
+      const { TOTP } = await import('otplib')
+      const totp = new TOTP()
+      const isValid = totp.verify({ token: totpToken, secret: user.totp_secret } as unknown as string)
+      if (!isValid) {
+        await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'warning', detail: 'invalid 2FA code', user_id: uid })
+        return NextResponse.json({ error: 'Invalid two-factor code' }, { status: 401 })
+      }
+    }
+
     await setSessionCookie({ uid, email: user.email, role })
     await updateUserLastLogin(uid, 'email')
 

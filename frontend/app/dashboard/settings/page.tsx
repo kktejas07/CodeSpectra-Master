@@ -23,15 +23,24 @@ import {
   Shield,
   ChevronRight,
   Loader2,
+  CheckCircle2,
+  XCircle,
+  Key,
+  Download,
+  Trash2,
 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useToast } from '@/lib/toast-context'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 const LS = {
   language: 'codespectra:user:language',
   emailNotif: 'codespectra:user:emailNotif',
   pushNotif: 'codespectra:user:pushNotif',
-  twoFactor: 'codespectra:user:twoFactor',
 } as const
 
 const languages = [
@@ -63,10 +72,16 @@ export default function SettingsPage() {
   const [language, setLanguage] = useState('en')
   const [emailNotifications, setEmailNotifications] = useState(true)
   const [pushNotifications, setPushNotifications] = useState(true)
-  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false)
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState<boolean | null>(null)
   const [hydrated, setHydrated] = useState(false)
   const [themeReady, setThemeReady] = useState(false)
-  const [savingKey, setSavingKey] = useState<'appearance' | 'notifications' | 'security' | null>(null)
+  const [savingKey, setSavingKey] = useState<'appearance' | 'notifications' | null>(null)
+
+  const [pwDialogOpen, setPwDialogOpen] = useState(false)
+  const [pwCurrent, setPwCurrent] = useState('')
+  const [pwNew, setPwNew] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+  const [pwError, setPwError] = useState('')
 
   useEffect(() => {
     try {
@@ -74,7 +89,6 @@ export default function SettingsPage() {
       if (lang) setLanguage(lang)
       setEmailNotifications(readLsBool(LS.emailNotif, true))
       setPushNotifications(readLsBool(LS.pushNotif, true))
-      setTwoFactorEnabled(readLsBool(LS.twoFactor, false))
       /** One-time migration from old appearance key to `next-themes`. */
       const legacy = window.localStorage.getItem('codespectra:user:theme')
       if (legacy === 'auto') {
@@ -92,6 +106,13 @@ export default function SettingsPage() {
 
   useEffect(() => {
     setThemeReady(true)
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/user/2fa/status')
+      .then(r => r.json())
+      .then(data => { if (!data.error) setTwoFactorEnabled(data.enabled) })
+      .catch(() => {})
   }, [])
 
   const saveAppearance = useCallback(() => {
@@ -125,17 +146,51 @@ export default function SettingsPage() {
     }
   }, [addToast, emailNotifications, pushNotifications])
 
-  const saveSecurity = useCallback(() => {
-    setSavingKey('security')
+  const handleChangePassword = async () => {
+    if (!pwCurrent || !pwNew) { setPwError('Both fields are required'); return }
+    if (pwNew.length < 8) { setPwError('New password must be at least 8 characters'); return }
+    setPwSaving(true); setPwError('')
     try {
-      window.localStorage.setItem(LS.twoFactor, String(twoFactorEnabled))
-      addToast({ type: 'success', title: 'Security preferences saved', message: '2FA toggle is local only until auth APIs enforce it.' })
-    } catch {
-      addToast({ type: 'error', title: 'Could not save', message: 'Local storage may be disabled.' })
-    } finally {
-      setSavingKey(null)
-    }
-  }, [addToast, twoFactorEnabled])
+      const res = await csrfFetch('/api/user/change-password', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ currentPassword: pwCurrent, newPassword: pwNew }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setPwError(json.error || 'Failed to change password'); return }
+      addToast({ type: 'success', title: 'Password changed', message: 'Use your new password next time you sign in.' })
+      setPwDialogOpen(false); setPwCurrent(''); setPwNew('')
+    } catch { setPwError('Network error') }
+    setPwSaving(false)
+  }
+
+  const handleExportData = async () => {
+    try {
+      const res = await fetch('/api/user/export')
+      if (!res.ok) { addToast({ type: 'error', title: 'Export failed', message: 'Could not export your data.' }); return }
+      const blob = await res.blob()
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a'); a.href = url; a.download = 'codespectra-export.json'; a.click()
+      URL.revokeObjectURL(url)
+      addToast({ type: 'success', title: 'Data exported', message: 'Your data has been downloaded.' })
+    } catch { addToast({ type: 'error', title: 'Export failed', message: 'Network error.' }) }
+  }
+
+  const handleDeleteAccount = async () => {
+    if (!confirm('Are you sure you want to delete your account? This action is irreversible.')) return
+    const pw = prompt('Enter your password to confirm deletion:')
+    if (!pw) return
+    try {
+      const res = await csrfFetch('/api/user/delete-account', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      })
+      const json = await res.json()
+      if (!res.ok) { addToast({ type: 'error', title: 'Deletion failed', message: json.error || 'Could not delete account.' }); return }
+      window.location.href = '/'
+    } catch { addToast({ type: 'error', title: 'Deletion failed', message: 'Network error.' }) }
+  }
 
   if (!hydrated || !themeReady) {
     return (
@@ -281,22 +336,50 @@ export default function SettingsPage() {
                 <Shield className="h-5 w-5 text-primary" />
                 <h2 className="text-lg font-semibold">Security</h2>
               </div>
-              <p className="mt-1 text-sm text-muted-foreground">Account protection (local preview until backend wiring).</p>
+              <p className="mt-1 text-sm text-muted-foreground">
+                Manage your password and two-factor authentication.
+              </p>
             </div>
             <div className="flex items-center justify-between gap-4 px-6 py-5">
               <div className="min-w-0 space-y-0.5">
                 <p className="font-medium text-foreground">Two-factor authentication</p>
-                <p className="text-sm text-muted-foreground">Extra verification at sign-in</p>
+                <p className="text-sm text-muted-foreground">
+                  {twoFactorEnabled === null
+                    ? 'Loading status…'
+                    : twoFactorEnabled
+                      ? 'Enabled — extra verification at sign-in'
+                      : 'Not enabled — set up from your profile page'}
+                </p>
               </div>
-              <Switch checked={twoFactorEnabled} onCheckedChange={setTwoFactorEnabled} />
+              <div className="flex items-center gap-2">
+                {twoFactorEnabled === null ? (
+                  <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+                ) : twoFactorEnabled ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-muted-foreground" />
+                )}
+              </div>
             </div>
-            <div className="flex flex-col gap-3 border-t border-border/60 bg-muted/20 px-6 py-4 sm:flex-row sm:justify-end">
-              <Button variant="outline" className="w-full rounded-lg sm:w-auto">
+            {twoFactorEnabled !== null && !twoFactorEnabled && (
+              <div className="px-6 pb-4">
+                <Button variant="outline" size="sm" asChild className="gap-2">
+                  <Link href="/dashboard/profile">
+                    <Shield className="h-4 w-4" />
+                    Set up 2FA on profile page
+                  </Link>
+                </Button>
+              </div>
+            )}
+            <Separator className="mx-6 w-auto" />
+            <div className="flex items-center justify-between gap-4 px-6 py-5">
+              <div className="min-w-0 space-y-0.5">
+                <p className="font-medium text-foreground">Password</p>
+                <p className="text-sm text-muted-foreground">Change your account password</p>
+              </div>
+              <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={() => { setPwDialogOpen(true); setPwError(''); setPwCurrent(''); setPwNew('') }}>
+                <Key className="h-4 w-4" />
                 Change password
-              </Button>
-              <Button className="gap-2 rounded-lg sm:min-w-[140px]" onClick={() => void saveSecurity()} disabled={savingKey !== null}>
-                {savingKey === 'security' ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
-                Save security
               </Button>
             </div>
           </Card>
@@ -308,10 +391,12 @@ export default function SettingsPage() {
             </p>
             <Separator className="my-5 bg-destructive/20" />
             <div className="flex flex-col gap-3 sm:flex-row">
-              <Button variant="outline" className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10">
+              <Button variant="outline" className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 gap-2" onClick={handleExportData}>
+                <Download className="h-4 w-4" />
                 Export my data
               </Button>
-              <Button variant="outline" className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10">
+              <Button variant="outline" className="rounded-lg border-destructive/40 text-destructive hover:bg-destructive/10 gap-2" onClick={handleDeleteAccount}>
+                <Trash2 className="h-4 w-4" />
                 Delete account
               </Button>
             </div>
@@ -331,6 +416,27 @@ export default function SettingsPage() {
           </Card>
         </aside>
       </div>
+
+      <Dialog open={pwDialogOpen} onOpenChange={setPwDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Change password</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="pw-current">Current password</Label>
+            <Input id="pw-current" type="password" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)} placeholder="Enter current password" />
+            <Label htmlFor="pw-new">New password</Label>
+            <Input id="pw-new" type="password" value={pwNew} onChange={e => setPwNew(e.target.value)} placeholder="At least 8 characters" />
+            {pwError ? <p className="text-xs text-red-500">{pwError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPwDialogOpen(false)} disabled={pwSaving}>Cancel</Button>
+            <Button onClick={handleChangePassword} disabled={pwSaving}>
+              {pwSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Change password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
