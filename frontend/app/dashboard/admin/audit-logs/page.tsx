@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useCallback, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -27,6 +27,8 @@ import {
   Search,
   Clock,
   HelpCircle,
+  ChevronLeft,
+  ChevronRight,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -76,11 +78,17 @@ export default function AuditLogsPage() {
   const [query, setQuery] = useState('')
   const [severity, setSeverity] = useState<string>('all')
   const [outcome, setOutcome] = useState<string>('all')
+  const [limit, setLimit] = useState(25)
+  const [page, setPage] = useState(1)
+  const [total, setTotal] = useState(0)
+  const [pages, setPages] = useState(1)
 
-  const fetchLogs = async () => {
+  const fetchLogs = useCallback(async () => {
     setLoading(true)
     try {
       const params = new URLSearchParams()
+      params.set('page', String(page))
+      params.set('limit', String(limit))
       if (severity !== 'all') params.set('severity', severity)
       if (outcome !== 'all') params.set('outcome', outcome)
       if (query.trim()) params.set('q', query.trim())
@@ -88,20 +96,25 @@ export default function AuditLogsPage() {
       const json = await res.json()
       if (json.data) setLogs(json.data)
       if (json.stats) setStats(json.stats)
+      if (json.total != null) setTotal(json.total)
+      if (json.pages != null) setPages(json.pages)
     } catch (error) {
       console.error('[CodeSpectra] Error fetching audit logs:', error)
     } finally {
       setLoading(false)
     }
+  }, [page, limit, severity, outcome, query])
+
+  useEffect(() => { void fetchLogs() }, [fetchLogs])
+
+  const handleSearch = () => {
+    setPage(1)
   }
 
-  useEffect(() => {
-    fetchLogs()
-  }, [])
-
-  const filtered = useMemo(() => {
-    return logs
-  }, [logs])
+  const handleLimitChange = (v: number) => {
+    setLimit(v)
+    setPage(1)
+  }
 
   if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
 
@@ -202,7 +215,7 @@ export default function AuditLogsPage() {
               placeholder="Search action, actor, resource…"
               value={query}
               onChange={(e) => setQuery(e.target.value)}
-              onKeyDown={(e) => { if (e.key === 'Enter') fetchLogs() }}
+              onKeyDown={(e) => { if (e.key === 'Enter') { e.preventDefault(); handleSearch() } }}
               className="pl-9"
             />
           </div>
@@ -218,7 +231,7 @@ export default function AuditLogsPage() {
                 <SelectItem value="critical">Critical</SelectItem>
               </SelectContent>
             </Select>
-            <Select value={outcome} onValueChange={(v) => { setOutcome(v); setTimeout(fetchLogs, 0) }}>
+            <Select value={outcome} onValueChange={(v) => { setOutcome(v); setPage(1) }}>
               <SelectTrigger className="w-[160px]">
                 <SelectValue placeholder="Outcome" />
               </SelectTrigger>
@@ -227,6 +240,16 @@ export default function AuditLogsPage() {
                 <SelectItem value="success">Success</SelectItem>
                 <SelectItem value="failure">Failure</SelectItem>
                 <SelectItem value="denied">Denied</SelectItem>
+              </SelectContent>
+            </Select>
+            <Select value={String(limit)} onValueChange={(v) => handleLimitChange(Number(v))}>
+              <SelectTrigger className="w-[100px]">
+                <SelectValue placeholder="Limit" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 / page</SelectItem>
+                <SelectItem value="25">25 / page</SelectItem>
+                <SelectItem value="50">50 / page</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -250,7 +273,7 @@ export default function AuditLogsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-border/60">
-                {filtered.map((row) => (
+                {logs.map((row) => (
                   <tr key={row.id} className="bg-card/40 hover:bg-muted/30">
                     <td className="whitespace-nowrap px-4 py-3 text-muted-foreground">
                       <div className="flex items-center gap-1.5">
@@ -291,9 +314,39 @@ export default function AuditLogsPage() {
           </div>
         )}
 
-        {!loading && filtered.length === 0 ? (
+        {!loading && logs.length === 0 ? (
           <p className="mt-4 text-center text-sm text-muted-foreground">No audit events found.</p>
         ) : null}
+
+        {!loading && logs.length > 0 && (
+          <div className="mt-4 flex items-center justify-between">
+            <p className="text-sm text-muted-foreground">
+              Showing <span className="font-medium text-foreground">{logs.length}</span> of{' '}
+              <span className="font-medium text-foreground">{total.toLocaleString()}</span> events
+            </p>
+            <div className="flex items-center gap-2">
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.max(1, p - 1))}
+                disabled={page <= 1 || loading}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <span className="text-sm text-muted-foreground">
+                Page {page} of {pages || 1}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => setPage(p => Math.min(pages, p + 1))}
+                disabled={page >= pages || loading}
+              >
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
+          </div>
+        )}
       </Card>
     </div>
   )

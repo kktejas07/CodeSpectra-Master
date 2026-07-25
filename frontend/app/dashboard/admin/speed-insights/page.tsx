@@ -1,11 +1,11 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Activity, CheckCircle2, Gauge, HelpCircle, Info, TriangleAlert, Timer, MousePointer, Layout } from 'lucide-react'
+import { Activity, CheckCircle2, Gauge, HelpCircle, Info, TriangleAlert, Timer, MousePointer, Layout, Loader2 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -44,6 +44,7 @@ export default function SpeedInsightsPage() {
   const [routeScope, setRouteScope] = useState('all')
   const [summary, setSummary] = useState<VitalsSummary | null>(null)
   const [loading, setLoading] = useState(false)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const load = useCallback(async () => {
     if (!gate.ready) return
@@ -54,10 +55,15 @@ export default function SpeedInsightsPage() {
       const body = await res.json()
       if (res.ok) setSummary(body)
     } catch { /* ignore */ }
-    finally { setLoading(false) }
+    finally { setLoading(false); setLastUpdated(new Date()) }
   }, [gate.ready, range, routeScope])
 
   useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    const interval = setInterval(() => { void load() }, 30_000)
+    return () => clearInterval(interval)
+  }, [load])
 
   if (!gate.ready) return <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">Loading…</div>
 
@@ -83,8 +89,8 @@ export default function SpeedInsightsPage() {
             <SelectTrigger className="w-[180px] h-8 text-xs"><SelectValue /></SelectTrigger>
             <SelectContent><SelectItem value="all">All routes</SelectItem><SelectItem value="/">Landing /</SelectItem><SelectItem value="/dashboard">/dashboard</SelectItem><SelectItem value="/dashboard/scanner">/dashboard/scanner</SelectItem></SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            {loading ? 'Refreshing…' : 'Refresh'}
+          <Button variant="outline" size="sm" onClick={() => load()} disabled={loading}>
+            {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Refresh'}
           </Button>
         </div>
       </div>
@@ -94,6 +100,7 @@ export default function SpeedInsightsPage() {
         <Info className="h-3.5 w-3.5 shrink-0" />
         <span>Real user events from <code className="bg-muted px-1 rounded">web_vitals_events</code> collection</span>
         {summary && <Badge variant="secondary" className="text-[10px]">{summary.sampleSize} samples</Badge>}
+        {lastUpdated && <span className="text-[10px] text-muted-foreground ml-auto">Updated {lastUpdated.toLocaleTimeString()}</span>}
       </div>
 
       {/* Metric cards */}
@@ -120,6 +127,14 @@ export default function SpeedInsightsPage() {
             </Card>
           )
         })}
+
+        {summary && summary.sampleSize === 0 && (
+          <Card className="border-dashed border-muted-foreground/30 p-8 text-center col-span-full">
+            <Gauge className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm font-medium text-muted-foreground">No web vitals data collected yet</p>
+            <p className="text-xs text-muted-foreground mt-1">Real user events will appear here once the dashboard is used by visitors</p>
+          </Card>
+        )}
       </div>
 
       {/* Summary bar */}
