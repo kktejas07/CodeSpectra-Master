@@ -121,14 +121,14 @@ export default function NotificationsPage() {
             const Icon = IconComponent(n.icon || 'bell') as React.ComponentType<{ className?: string }>
             return (
               <div key={n.id} className={`rounded-lg border transition-colors ${
-                n.is_read ? 'border-border/40 bg-card/40' : 'border-primary/20 bg-primary/5'
+                n.is_read ? 'border-border bg-card hover:bg-muted/30' : 'border-primary/30 bg-primary/10 hover:bg-primary/15'
               }`}>
-                <div className={`flex items-start gap-3 p-4 ${n.link ? 'cursor-pointer hover:bg-muted/20' : ''}`}
+                <div className={`flex items-start gap-3 p-4 ${n.link ? 'cursor-pointer' : ''}`}
                   onClick={async () => {
                     if (!n.is_read) await markRead(n.id)
                   }}>
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
-                    n.is_read ? 'bg-muted/50' : 'bg-primary/10'
+                    n.is_read ? 'bg-muted' : 'bg-primary/15'
                   }`}>
                     <Icon className={`h-4 w-4 ${n.is_read ? 'text-muted-foreground' : 'text-primary'}`} />
                   </div>
