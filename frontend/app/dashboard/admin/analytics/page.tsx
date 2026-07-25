@@ -32,20 +32,23 @@ export default function Analytics() {
 
   useEffect(() => {
     if (!gate.ready) return
+    let cancelled = false
     const run = async () => {
-      setLoading(true)
       const res = await fetch('/api/admin/metrics', { credentials: 'include' })
       const json = await res.json().catch(() => ({}))
+      if (cancelled) return
       if (!res.ok) { setError(json.error || `HTTP ${res.status}`); setLoading(false); return }
       setData(json)
       setLoading(false)
     }
     const runCf = async () => {
-      setCfLoading(true)
-      try { const r = await fetch('/api/admin/cloudflare-analytics'); const j = await r.json(); setCfData(j) } catch {} finally { setCfLoading(false) }
+      try { const r = await fetch('/api/admin/cloudflare-analytics'); const j = await r.json(); if (!cancelled) setCfData(j) } catch {}
+      if (!cancelled) setCfLoading(false)
     }
     void run()
     void runCf()
+    const interval = setInterval(() => { void run(); void runCf() }, 30_000)
+    return () => { cancelled = true; clearInterval(interval) }
   }, [gate.ready])
 
   const growthPct = useMemo(() => {

@@ -1,19 +1,9 @@
 import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { getMongoDb } from '@/lib/mongodb'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-
-async function getCloudflareConfig() {
-  const db = await getMongoDb()
-  const settings = await db.collection('platform_settings').findOne({})
-  const secrets = (settings?.value?.secrets || {}) as Record<string, string>
-
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID?.trim() || secrets.cloudflare_zone_id?.trim() || ''
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || secrets.cloudflare_api_token?.trim() || ''
-  return { zoneId, apiToken }
-}
 
 async function graphQLQuery(token: string, query: string) {
   const res = await fetch('https://api.cloudflare.com/client/v4/graphql', {
@@ -34,7 +24,9 @@ export async function GET() {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  const { zoneId, apiToken } = await getCloudflareConfig()
+  const secrets = await readServerSecrets()
+  const zoneId = process.env.CLOUDFLARE_ZONE_ID?.trim() || (secrets.cloudflare_zone_id?.trim() || '')
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || (secrets.cloudflare_api_token?.trim() || '')
   if (!zoneId || !apiToken) {
     return NextResponse.json({ configured: false, error: 'Cloudflare not configured' })
   }

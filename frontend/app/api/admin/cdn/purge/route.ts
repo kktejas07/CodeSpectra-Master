@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import { getMongoDb } from '@/lib/mongodb'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
 
 export const runtime = 'nodejs'
 
@@ -18,14 +18,9 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
-  const db = await getMongoDb()
-  const col = db.collection('platform_settings')
-  const settings = await col.findOne({})
-  const secretsDoc = await col.findOne({ key: 'secrets' })
-  const serverSecrets = (((settings?.value as Record<string, unknown>)?.secrets || secretsDoc?.value || {}) as Record<string, string>)
-
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID?.trim() || serverSecrets.cloudflare_zone_id?.trim() || ''
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || serverSecrets.cloudflare_api_token?.trim() || ''
+  const secrets = await readServerSecrets()
+  const zoneId = process.env.CLOUDFLARE_ZONE_ID?.trim() || (secrets.cloudflare_zone_id?.trim() || '')
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || (secrets.cloudflare_api_token?.trim() || '')
 
   if (!zoneId || !apiToken) {
     return NextResponse.json(
