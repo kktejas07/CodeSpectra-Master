@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -26,6 +26,8 @@ export function LlmSettingsSection() {
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
   const [showKey, setShowKey] = useState(false)
+  const [revealedKey, setRevealedKey] = useState('')
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [fetchedModels, setFetchedModels] = useState<string[] | null>(null)
   const [fetchingModels, setFetchingModels] = useState(false)
 
@@ -74,6 +76,24 @@ export function LlmSettingsSection() {
     }
   }
 
+  async function handleRevealToggle() {
+    if (showKey) {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      setShowKey(false)
+      setRevealedKey('')
+    } else {
+      const res = await fetch('/api/admin/llm-config/reveal', { credentials: 'include' })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok && json.value) setRevealedKey(json.value)
+      setShowKey(true)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        setShowKey(false)
+        setRevealedKey('')
+      }, 30_000)
+    }
+  }
+
   async function handleTest() {
     if (!draft) return
     setTesting(true)
@@ -119,6 +139,10 @@ export function LlmSettingsSection() {
       setFetchingModels(false)
     }
   }
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [])
 
   if (loading) {
     return <div className="flex min-h-[20vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading…</div>
@@ -222,7 +246,7 @@ export function LlmSettingsSection() {
               <Input
                 id="api_key"
                 type={showKey ? 'text' : 'password'}
-                value={draft?.api_key || ''}
+                value={showKey ? revealedKey : ''}
                 onChange={e => updateField('api_key', e.target.value)}
                 placeholder="••••••••"
                 className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
@@ -230,7 +254,7 @@ export function LlmSettingsSection() {
               />
               <button
                 type="button"
-                onClick={() => setShowKey(!showKey)}
+                onClick={handleRevealToggle}
                 className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
               >
                 {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}

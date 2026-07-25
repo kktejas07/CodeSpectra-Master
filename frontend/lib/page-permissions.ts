@@ -39,6 +39,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/permissions',
   '/dashboard/admin/plans',
   '/dashboard/admin/settings/llm',
+  '/dashboard/admin/settings/cloudflare',
   '/dashboard/admin/settings/mobile',
   '/dashboard/admin/teams',
   '/dashboard/admin/jobs',

@@ -26,6 +26,26 @@ export interface AuthUser {
   lastLoginAt?: string | null
 }
 
+interface LastLoginInfo {
+  method: 'email' | 'google' | 'github'
+  at: string // ISO timestamp
+}
+
+const LAST_LOGIN_KEY = 'cs_last_login'
+
+export function getLastLogin(): LastLoginInfo | null {
+  if (typeof window === 'undefined') return null
+  try {
+    const raw = localStorage.getItem(LAST_LOGIN_KEY)
+    return raw ? (JSON.parse(raw) as LastLoginInfo) : null
+  } catch { return null }
+}
+
+function setLastLogin(method: LastLoginInfo['method']) {
+  if (typeof window === 'undefined') return
+  localStorage.setItem(LAST_LOGIN_KEY, JSON.stringify({ method, at: new Date().toISOString() }))
+}
+
 interface AuthContextValue {
   user: AuthUser | null
   loading: boolean
@@ -169,6 +189,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!res.ok) throw new Error(json.error || 'Login failed')
     const authUser = toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name })
     setUser(authUser)
+    setLastLogin('email')
     await recordLoginMethod(json.user.id, 'email')
   }
 
@@ -188,6 +209,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GoogleAuthProvider()
     provider.addScope('email'); provider.addScope('profile')
     const cred = await signInWithPopup(auth, provider)
+    setLastLogin('google')
     setUser(toAuthUser(cred.user))
     await recordLoginMethod(cred.user.uid, 'google')
   }
@@ -197,6 +219,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     const provider = new GithubAuthProvider()
     provider.addScope('user:email')
     const cred = await signInWithPopup(auth, provider)
+    setLastLogin('github')
     setUser(toAuthUser(cred.user))
     await recordLoginMethod(cred.user.uid, 'github')
   }

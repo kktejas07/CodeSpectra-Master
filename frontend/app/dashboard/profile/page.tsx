@@ -5,6 +5,9 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Separator } from '@/components/ui/separator'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { DigitalIdCard } from '@/components/dashboard/digital-id-card'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
@@ -19,6 +22,7 @@ import {
   CheckCircle2,
   XCircle,
   Smartphone,
+  User,
 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -171,6 +175,34 @@ export default function ProfilePage() {
     totalActiveDays: number
   } | null>(null)
   const [loading, setLoading] = useState(true)
+  const [editOpen, setEditOpen] = useState(false)
+  const [editName, setEditName] = useState('')
+  const [editSaving, setEditSaving] = useState(false)
+  const [editError, setEditError] = useState('')
+
+  const openEdit = () => {
+    setEditName(user?.name || user?.email?.split('@')[0] || '')
+    setEditError('')
+    setEditOpen(true)
+  }
+
+  const saveEdit = async () => {
+    if (!editName.trim()) { setEditError('Name cannot be empty'); return }
+    setEditSaving(true)
+    setEditError('')
+    try {
+      const res = await csrfFetch('/api/user/profile', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editName.trim() }),
+      })
+      const json = await res.json()
+      if (!res.ok) { setEditError(json.error || 'Failed to update'); return }
+      setUser(prev => prev ? { ...prev, name: editName.trim() } : prev)
+      setEditOpen(false)
+    } catch { setEditError('Network error') }
+    setEditSaving(false)
+  }
 
   const load = useCallback(async () => {
     try {
@@ -236,7 +268,7 @@ export default function ProfilePage() {
           </div>
           <h1 className="mt-4 text-xl font-bold text-foreground">{displayName}</h1>
           <p className="mt-1 text-sm text-muted-foreground">{user?.email}</p>
-          <Button variant="outline" size="sm" className="mt-4 w-full gap-2">
+          <Button variant="outline" size="sm" className="mt-4 w-full gap-2" onClick={openEdit}>
             <Edit2 className="h-4 w-4" />
             Edit profile
           </Button>
