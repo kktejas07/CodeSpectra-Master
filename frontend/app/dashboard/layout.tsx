@@ -13,6 +13,12 @@ import {
   isSuperAdmin,
   isTenantAdmin,
 } from '@/lib/rbac'
+import {
+  ADMIN_ONLY_ROUTES,
+  TENANT_ADMIN_ROUTES,
+  ALL_USER_ROUTES,
+  ROUTE_LABELS,
+} from '@/lib/page-permissions'
 import { cn } from '@/lib/utils'
 import {
   Home,
@@ -67,7 +73,6 @@ import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-sett
 import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
 import { PageLocked } from '@/components/page-locked'
-import { ROUTE_LABELS } from '@/lib/page-permissions'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -242,64 +247,99 @@ export default function DashboardLayout({
     const role = normalizeUserRole(userProfile.role)
     const p = DASHBOARD_ROUTES.platform
 
-    // ── All possible nav entries across all roles ──
-    // Each entry is a (href, icon, label) tuple. The DB permission filter
-    // below is the sole gate — entries the user's role lacks "read" for are
-    // hidden. This lets superadmins grant (or revoke) any page to any role.
-    const allLeaves: NavLeaf[] = [
-      // Home
-      { href: '/dashboard', icon: Home, label: 'Overview' },
-      // Platform / admin pages
-      { href: p.system, icon: Home, label: 'Operations overview' },
-      { href: p.users, icon: Users, label: 'Users' },
-      { href: p.roles, icon: Lock, label: 'User Roles' },
-      { href: p.analytics, icon: BarChart3, label: 'Insights' },
-      { href: p.auditLogs, icon: ScrollText, label: 'Audit logs' },
-      { href: p.integrations, icon: Plug, label: 'Integrations' },
-      { href: p.speedInsights, icon: Gauge, label: 'Speed Insights' },
-      { href: p.cdn, icon: Globe2, label: 'CDN' },
-      { href: '/dashboard/admin/settings?section=cloudflare', icon: Globe2, label: 'Cloudflare' },
-      { href: p.permissions, icon: Shield, label: 'Permissions' },
-      { href: p.plans, icon: FileText, label: 'Plans' },
-      { href: p.pricing, icon: FileText, label: 'Pricing' },
-        { href: '/dashboard/admin/hackathons', icon: Trophy, label: 'Manage Hackathons' },
-        { href: '/dashboard/admin/rag', icon: Database, label: 'RAG & Embeddings' },
-      { href: '/dashboard/admin/ai-inventory', icon: Sparkles, label: 'AI Inventory' },
-      { href: '/dashboard/admin/settings?section=llm', icon: Sparkles, label: 'LLM Config' },
-      { href: p.settings, icon: Settings, label: 'Platform settings' },
-      { href: DASHBOARD_ROUTES.organization.team, icon: Users, label: 'Organization' },
-      // User pages
-      { href: '/dashboard/arena', icon: Trophy, label: 'Arena' },
-      { href: '/dashboard/hackathons', icon: Trophy, label: 'Events & Hackathons' },
-      { href: '/dashboard/problems', icon: CodeIcon, label: 'Problems' },
-      { href: '/dashboard/tracks', icon: LayersIcon, label: 'Tracks' },
-      { href: '/dashboard/scanner?mode=manual', icon: CodeIcon, label: 'Scanner' },
-      { href: '/dashboard/agent', icon: Bot, label: 'Agent' },
-      { href: LEARNING_HUB_DEFAULT, icon: BookOpen, label: 'Learning' },
-      { href: '/dashboard/skill-analytics', icon: SparklesIcon, label: 'Skill Analytics' },
-      { href: '/dashboard/identity-verify', icon: CameraIcon, label: 'Identity Verify' },
-      { href: '/dashboard/leaderboard', icon: BarChart3, label: 'Leaderboard' },
-      { href: '/dashboard/achievements', icon: Star, label: 'Achievements' },
-      { href: '/dashboard/certifications', icon: Award, label: 'Certifications' },
-      { href: '/dashboard/pricing', icon: CreditCardIcon, label: 'Pricing' },
-      { href: '/dashboard/settings/ai', icon: SparklesIcon, label: 'AI Models' },
-      { href: '/dashboard/status', icon: Activity, label: 'Status' },
-      { href: '/dashboard/support', icon: MessageSquare, label: 'Support' },
-      // Missing user routes from page-permissions.ts
-      { href: '/dashboard/codeathons', icon: Trophy, label: 'Codeathons' },
-      { href: '/dashboard/challenges', icon: CodeIcon, label: 'Challenges' },
-      { href: '/dashboard/interviews', icon: Users, label: 'Interviews' },
-      { href: '/dashboard/prepare', icon: BookOpen, label: 'Prepare' },
-      { href: '/dashboard/profile', icon: User, label: 'Profile' },
-      { href: '/dashboard/search', icon: Search, label: 'Search' },
-      { href: '/dashboard/id-card', icon: CreditCard, label: 'ID Card' },
-      { href: '/dashboard/jobs', icon: Briefcase, label: 'Jobs' },
-      { href: '/dashboard/exams', icon: FileText, label: 'Exams' },
-      { href: '/dashboard/resumes', icon: FileText, label: 'Resumes' },
-      { href: '/dashboard/analytics', icon: BarChart3, label: 'Analytics' },
-      { href: '/dashboard/billing', icon: CreditCardIcon, label: 'Billing' },
-      { href: '/dashboard/notifications', icon: Bell, label: 'Notifications' },
-    ]
+    // ── Icon map: canonical route → LucideIcon ──
+    // Every canonical route with an entry here gets a sidebar nav item.
+    // Routes without icons (e.g. sub-pages) are automatically excluded.
+    // ponytail: add route → page-permissions.ts + icon here, done.
+    const ICON_MAP: Record<string, LucideIcon> = {
+      '/dashboard': Home,
+      [p.system]: Home,
+      [p.users]: Users,
+      [p.roles]: Lock,
+      [p.analytics]: BarChart3,
+      [p.auditLogs]: ScrollText,
+      [p.integrations]: Plug,
+      [p.speedInsights]: Gauge,
+      [p.cdn]: Globe2,
+      [p.permissions]: Shield,
+      [p.plans]: FileText,
+      [p.pricing]: FileText,
+      '/dashboard/admin/hackathons': Trophy,
+      '/dashboard/admin/rag': Database,
+      '/dashboard/admin/ai-inventory': Sparkles,
+      [p.settings]: Settings,
+      [p.security]: Shield,
+      '/dashboard/admin/proctor': Shield,
+      [p.teams]: Users,
+      [p.jobs]: Briefcase,
+      [p.resumes]: FileText,
+      [p.codeathons]: Trophy,
+      [p.exams]: FileText,
+      '/dashboard/admin/settings/mobile': Settings,
+      '/dashboard/admin/settings/llm': Sparkles,
+      '/dashboard/admin/settings/cloudflare': Globe2,
+      [p.workflows]: Settings,
+      [p.questionGenerator]: Bot,
+      [DASHBOARD_ROUTES.organization.team]: Users,
+      '/dashboard/arena': Trophy,
+      '/dashboard/hackathons': Trophy,
+      '/dashboard/problems': CodeIcon,
+      '/dashboard/tracks': LayersIcon,
+      '/dashboard/agent': Bot,
+      '/dashboard/learning': BookOpen,
+      '/dashboard/skill-analytics': SparklesIcon,
+      '/dashboard/identity-verify': CameraIcon,
+      '/dashboard/leaderboard': BarChart3,
+      '/dashboard/achievements': Star,
+      '/dashboard/certifications': Award,
+      '/dashboard/pricing': CreditCardIcon,
+      '/dashboard/settings/ai': SparklesIcon,
+      '/dashboard/status': Activity,
+      '/dashboard/support': MessageSquare,
+      '/dashboard/codeathons': Trophy,
+      '/dashboard/challenges': CodeIcon,
+      '/dashboard/interviews': Users,
+      '/dashboard/prepare': BookOpen,
+      '/dashboard/profile': User,
+      '/dashboard/search': Search,
+      '/dashboard/id-card': CreditCard,
+      '/dashboard/jobs': Briefcase,
+      '/dashboard/exams': FileText,
+      '/dashboard/resumes': FileText,
+      '/dashboard/analytics': BarChart3,
+      '/dashboard/billing': CreditCardIcon,
+      '/dashboard/notifications': Bell,
+      '/dashboard/interview-prep': BookOpen,
+      '/dashboard/judge': Shield,
+    }
+
+    // Non-canonical hrefs for sidebar links that differ from the canonical route.
+    // ponytail: keeps ICON_MAP clean — only routes that need a display override.
+    const HREF_OVERRIDES: Record<string, string> = {
+      '/dashboard/admin/settings/llm': '/dashboard/admin/settings?section=llm',
+      '/dashboard/admin/settings/cloudflare': '/dashboard/admin/settings?section=cloudflare',
+      '/dashboard/scanner': '/dashboard/scanner?mode=manual',
+      '/dashboard/learning': LEARNING_HUB_DEFAULT,
+    }
+
+    // Build allLeaves dynamically from page-permissions.ts.
+    // Order: admin → org → user; duplicates skipped; only routes with icons appear.
+    const allRouteGroups = [ADMIN_ONLY_ROUTES, TENANT_ADMIN_ROUTES, ALL_USER_ROUTES] as const
+    const seen = new Set<string>()
+    const allLeaves: NavLeaf[] = []
+    for (const group of allRouteGroups) {
+      for (const route of group) {
+        if (seen.has(route)) continue
+        seen.add(route)
+        const icon = ICON_MAP[route]
+        if (!icon) continue
+        allLeaves.push({
+          href: HREF_OVERRIDES[route] || route,
+          icon,
+          label: ROUTE_LABELS[route] || route,
+        })
+      }
+    }
 
     // If DB permissions are loaded, use them as the sole filter.
     // Otherwise fall back to static role-based lists.
@@ -322,11 +362,10 @@ export default function DashboardLayout({
       return allLeaves.map(leaf => ({ type: 'link' as const, item: leaf }))
     }
     if (isTenantAdmin(role)) {
-      const allowedPrefixes = ['/dashboard', DASHBOARD_ROUTES.organization.team]
       return allLeaves
         .filter(leaf =>
-          allowedPrefixes.some(p => leaf.href.startsWith(p)) &&
-          !leaf.href.startsWith('/dashboard/admin/')
+          !leaf.href.startsWith('/dashboard/admin/') ||
+          leaf.href.startsWith(DASHBOARD_ROUTES.organization.team)
         )
         .map(leaf => ({ type: 'link' as const, item: leaf }))
     }
