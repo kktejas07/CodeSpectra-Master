@@ -58,6 +58,11 @@ export default function NotificationsPage() {
 
   useEffect(() => { void load() }, [load])
 
+  useEffect(() => {
+    const interval = setInterval(() => { void load() }, 30_000)
+    return () => clearInterval(interval)
+  }, [load])
+
   const markAllRead = async () => {
     await csrfFetch('/api/notifications/mark-all-read', { method: 'POST' })
     setItems((prev) => prev.map((n) => ({ ...n, is_read: true })))

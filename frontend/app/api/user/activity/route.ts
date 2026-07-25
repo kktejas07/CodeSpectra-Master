@@ -32,6 +32,7 @@ export async function GET(req: NextRequest) {
   const { searchParams } = new URL(req.url)
   const limit = Math.min(parseInt(searchParams.get('limit') || '20'), 50)
   const userId = gate.user.id
+  const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
 
   try {
     const db = await getMongoDb()
@@ -60,12 +61,23 @@ export async function GET(req: NextRequest) {
       }))
     }
 
-    const [scans, reviews, fixes, submissions, dailyChallenges] = await Promise.all([
+    const [
+      scans,
+      reviews,
+      fixes,
+      submissions,
+      dailyChallenges,
+    ] = await Promise.all([
       fetchCollection('scan_comments', 'scan', 'Completed code scan'),
       fetchCollection('code_review_comments', 'review', 'Submitted code review'),
       fetchCollection('suggested_fixes', 'fix', 'Applied fix', 'created_at', 'description'),
       fetchCollection('submissions', 'challenge', 'Solved challenge', 'submittedAt', 'problemId'),
-      db.collection('daily_challenges').find({ user_id: userId }).sort({ completedAt: -1 }).limit(limit).toArray(),
+      fetchCollection('daily_challenges', 'daily', 'Daily challenge completed', 'completedAt', 'problemId'),
+    ])
+
+    const [hackathonEvents, proctorEvents] = await Promise.all([
+      db.collection('hackathon_activity').find({ user_id: userId, created_at: { $exists: true } }).sort({ created_at: -1 }).limit(limit).toArray(),
+      db.collection('hackathon_proctor_events').find({ user_id: userId, created_at: { $exists: true } }).sort({ created_at: -1 }).limit(limit).toArray(),
     ])
 
     for (const s of scans) events.push(s)
@@ -82,15 +94,59 @@ export async function GET(req: NextRequest) {
       })
     }
     for (const dc of dailyChallenges) {
-      if (dc.completedAt) {
+      if (dc.ts) {
         events.push({
-          ts: dc.completedAt as string,
+          ts: dc.ts,
           type: 'daily',
           title: 'Daily challenge completed',
-          meta: `Daily · ${timeAgo(dc.completedAt as string)}`,
-          detail: (dc.problemId as string) || 'Daily challenge',
+          meta: `Daily · ${timeAgo(dc.ts)}`,
+          detail: dc.detail || 'Daily challenge',
           icon: 'daily',
         })
+      }
+    }
+    for (const he of hackathonEvents as any[]) {
+      if (he.created_at) {
+        events.push({
+          ts: he.created_at as string,
+          type: 'challenge',
+          title: he.action || ' Participated',
+          meta: `Hackathon · ${timeAgo(he.created_at as string)}`,
+          detail: he.detail || he.problem_slug || 'Event',
+          icon: 'challenge',
+        })
+      }
+    }
+    for (const pe of proctorEvents as any[]) {
+      if (pe.created_at) {
+        events.push({
+          ts: pe.created_at as string,
+          type: 'challenge',
+          title: pe.event_type || 'Proctor event',
+          meta: `Proctor · ${timeAgo(pe.created_at as string)}`,
+          detail: pe.meta || pe.session_kind || 'Event',
+          icon: 'challenge',
+        })
+      }
+    }
+
+    if (isAdmin) {
+      const auditEvents = await db.collection('audit_logs')
+        .find({ actor: userId, ts: { $exists: true } })
+        .sort({ ts: -1 })
+        .limit(limit)
+        .toArray()
+      for (const ae of auditEvents) {
+        if ((ae as any).ts) {
+          events.push({
+            ts: (ae as any).ts as string,
+            type: 'challenge',
+            title: (ae as any).action || 'Admin action',
+            meta: `Admin · ${timeAgo((ae as any).ts as string)}`,
+            detail: ((ae as any).resource as string) || 'System',
+            icon: 'challenge',
+          })
+        }
       }
     }
 

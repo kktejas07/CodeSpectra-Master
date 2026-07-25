@@ -1,7 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
-import Link from 'next/link'
+import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -12,19 +11,14 @@ import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import {
   Edit2,
   Trophy,
-  Target,
-  Flame,
   Shield,
   Clock,
-  GitCommit,
-  GitPullRequest,
   FolderGit2,
   Activity,
   Loader,
   CheckCircle2,
   XCircle,
   Smartphone,
-  LogIn,
 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -165,8 +159,8 @@ function TwoFactorAuth() {
 }
 
 export default function ProfilePage() {
-  const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null } | null>(null)
-  const [stats, setStats] = useState<Record<string, number> | null>(null)
+  const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string } | null>(null)
+  const [stats, setStats] = useState<Record<string, number | string> | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [heatmapData, setHeatmapData] = useState<{
     cells: number[][] | null
@@ -178,42 +172,55 @@ export default function ProfilePage() {
   } | null>(null)
   const [loading, setLoading] = useState(true)
 
-  useEffect(() => {
-    async function load() {
-      try {
-        const [userRes, statsRes, activityRes, heatmapRes] = await Promise.all([
-          fetch('/api/auth/me').then(r => r.json()).catch(() => null),
-          fetch('/api/user/stats').then(r => r.json()).catch(() => null),
-          fetch('/api/user/activity?limit=10').then(r => r.json()).catch(() => null),
-          fetch('/api/user/heatmap?weeks=52').then(r => r.json()).catch(() => null),
-        ])
+  const load = useCallback(async () => {
+    try {
+      const [userRes, statsRes, activityRes, heatmapRes] = await Promise.all([
+        fetch('/api/auth/me').then(r => r.json()).catch(() => null),
+        fetch('/api/user/stats').then(r => r.json()).catch(() => null),
+        fetch('/api/user/activity?limit=20').then(r => r.json()).catch(() => null),
+        fetch('/api/user/heatmap?weeks=52').then(r => r.json()).catch(() => null),
+      ])
 
-        if (userRes?.user) setUser(userRes.user)
-        if (statsRes && !statsRes.error) setStats(statsRes)
-        if (activityRes?.data) setActivity(activityRes.data)
-        if (heatmapRes?.cells) {
-          setHeatmapData({
-            cells: heatmapRes.cells,
-            dayLabels: heatmapRes.dayLabels ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
-            monthLabels: heatmapRes.monthLabels ?? [],
-            tooltipData: heatmapRes.tooltipData ?? {},
-            totalContributions: heatmapRes.totalContributions ?? 0,
-            totalActiveDays: heatmapRes.totalActiveDays ?? 0,
-          })
-        }
-      } catch {
-        /* render with defaults */
-      } finally {
-        setLoading(false)
+      if (userRes?.user) setUser(userRes.user)
+      if (statsRes && !statsRes.error) setStats(statsRes)
+      if (activityRes?.data) setActivity(activityRes.data)
+      if (heatmapRes?.cells) {
+        setHeatmapData({
+          cells: heatmapRes.cells,
+          dayLabels: heatmapRes.dayLabels ?? ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'],
+          monthLabels: heatmapRes.monthLabels ?? [],
+          tooltipData: heatmapRes.tooltipData ?? {},
+          totalContributions: heatmapRes.totalContributions ?? 0,
+          totalActiveDays: heatmapRes.totalActiveDays ?? 0,
+        })
       }
+    } catch {
+      /* render with defaults */
+    } finally {
+      setLoading(false)
     }
-    load()
   }, [])
+
+  useEffect(() => { void load() }, [load])
+
+  useEffect(() => {
+    const interval = setInterval(() => { void load() }, 30_000)
+    return () => clearInterval(interval)
+  }, [load])
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'User'
   const avatarSrc = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`
 
-  const hasStats = stats && (stats.scans! > 0 || stats.reviews! > 0 || stats.fixes! > 0)
+  const hasStats = stats && (
+    (typeof stats.scans === 'number' && stats.scans > 0) ||
+    (typeof stats.reviews === 'number' && stats.reviews > 0) ||
+    (typeof stats.fixes === 'number' && stats.fixes > 0)
+  )
+
+  const memberSince = stats?.memberSince as string | undefined
+  const memberDate = memberSince
+    ? new Date(memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
+    : null
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,280px)_1fr]">
@@ -239,7 +246,7 @@ export default function ProfilePage() {
           <div className="flex justify-between text-muted-foreground">
             <span>Member since</span>
             <span className="font-medium text-foreground">
-              {user?.id ? 'Active' : '—'}
+              {memberDate || (user?.id ? 'Active' : '—')}
             </span>
           </div>
           <Separator className="my-3" />
