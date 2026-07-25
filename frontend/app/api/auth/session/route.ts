@@ -64,14 +64,23 @@ export async function POST(request: NextRequest) {
     }
 
     // ponytail: fallback when Firebase Admin SDK is not configured
+    console.log('[Session] Firebase Admin not available, falling back to JWKS verify')
     const projectId = process.env.FIREBASE_PROJECT_ID || 'codespectra-f60cf'
     const JWKS = createRemoteJWKSet(
       new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
     )
-    const { payload } = await jwtVerify(idToken, JWKS, {
-      issuer: `https://securetoken.google.com/${projectId}`,
-      audience: projectId,
-    })
+    console.log('[Session] JWKS created, calling jwtVerify...')
+    let payload: { sub?: string; email?: string; name?: string; [key: string]: unknown }
+    try {
+      const result = await jwtVerify(idToken, JWKS, {
+        issuer: `https://securetoken.google.com/${projectId}`,
+        audience: projectId,
+      })
+      payload = result.payload as typeof payload
+    } catch (jwtErr) {
+      console.error('[Session] jwtVerify failed:', jwtErr)
+      return NextResponse.json({ error: 'Invalid token' }, { status: 401 })
+    }
     if (!payload?.sub) {
       return NextResponse.json({ error: 'Invalid token payload' }, { status: 401 })
     }

@@ -399,6 +399,32 @@ export default function ProfilePage() {
           </div>
         )}
       </div>
+
+      <Dialog open={editOpen} onOpenChange={setEditOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Edit profile</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-3 py-2">
+            <Label htmlFor="edit-name">Display name</Label>
+            <Input
+              id="edit-name"
+              value={editName}
+              onChange={e => setEditName(e.target.value)}
+              placeholder="Your name"
+            />
+            {editError ? <p className="text-xs text-red-500">{editError}</p> : null}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditOpen(false)} disabled={editSaving}>
+              Cancel
+            </Button>
+            <Button onClick={saveEdit} disabled={editSaving}>
+              {editSaving ? <Loader className="h-4 w-4 animate-spin" /> : 'Save'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
