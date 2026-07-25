@@ -5,6 +5,18 @@ import { readServerSecrets } from '@/lib/server-secrets-cache'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+async function cfGraphQL(token: string, query: string, variables?: Record<string, unknown>) {
+  const res = await fetch('https://api.cloudflare.com/client/v4/graphql', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ query, variables }),
+  })
+  if (!res.ok) throw new Error(`Cloudflare API ${res.status}: ${await res.text()}`)
+  const json = await res.json()
+  if (json.errors?.length) throw new Error(json.errors[0].message)
+  return json
+}
+
 async function cfFetch(token: string, path: string) {
   const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
@@ -27,51 +39,81 @@ export async function GET() {
   }
 
   try {
-    const since = Math.floor(Date.now() / 1000) - 30 * 86400
-    const until = Math.floor(Date.now() / 1000)
+    const since = new Date(Date.now() - 3 * 86400 * 1000).toISOString()
+    const until = new Date().toISOString()
 
-    const [dashResult, zoneResult] = await Promise.all([
-      cfFetch(apiToken, `/zones/${zoneId}/analytics/dashboard?since=${since}&until=${until}`),
-      cfFetch(apiToken, `/zones/${zoneId}`),
-    ])
-
-    if (!dashResult.success) {
-      const code = dashResult.errors?.[0]?.code
-      const msg = dashResult.errors?.[0]?.message || ''
-      if (code === 10000 || code === 10001 || msg.toLowerCase().includes('authentication') || msg.toLowerCase().includes('forbidden')) {
-        return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token' })
-      }
-      throw new Error(msg || `Cloudflare error code ${code}`)
-    }
-
+    // Get zone name
+    const zoneResult = await cfFetch(apiToken, `/zones/${zoneId}`)
     const zoneName = (zoneResult.result as any)?.name || ''
 
-    const d = (dashResult.result as any) || {}
-    const requests = d.requests || {}
-    const bandwidth = d.bandwidth || {}
+    // GraphQL query for HTTP request totals (3-day hourly groups)
+    const gqlResult = await cfGraphQL(
+      apiToken,
+      `query GetZoneMetrics($zoneTag: String!, $since: String!, $until: String!) {
+        viewer {
+          zones(filter: {zoneTag: $zoneTag}) {
+            httpRequests1hGroups(
+              limit: 72,
+              orderBy: ["datetime_DESC"],
+              filter: {datetime_geq: $since, datetime_leq: $until}
+            ) {
+              sum {
+                bytes
+                cachedBytes
+                requests
+                cachedRequests
+              }
+              uniq {
+                uniques
+              }
+            }
+          }
+        }
+      }`,
+      { zoneTag: zoneId, since, until }
+    )
 
-    const totalRequests = requests.requests_total || requests.total || 0
-    const totalCached = requests.cached || 0
-    const totalBytes = bandwidth.pure_total || bandwidth.total || 0
-    const totalUniques = requests.uniques || 0
+    const groups = gqlResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
+    const totals = { bytes: 0, cachedBytes: 0, requests: 0, cachedRequests: 0, uniques: 0 }
+
+    for (const g of groups as any[]) {
+      if (g.sum) {
+        totals.bytes += g.sum.bytes || 0
+        totals.cachedBytes += g.sum.cachedBytes || 0
+        totals.requests += g.sum.requests || 0
+        totals.cachedRequests += g.sum.cachedRequests || 0
+      }
+      if (g.uniq) {
+        totals.uniques += g.uniq.uniques || 0
+      }
+    }
 
     return NextResponse.json({
       configured: true,
       zone: zoneName,
       traffic: {
-        requests: totalRequests,
-        cached: totalCached,
-        bytes: totalBytes,
-        uniques: totalUniques,
-        cacheRatio: totalRequests > 0 ? Math.round((totalCached / totalRequests) * 100) : 0,
+        requests: totals.requests,
+        cached: totals.cachedRequests,
+        bytes: totals.bytes,
+        uniques: totals.uniques,
+        cacheRatio: totals.requests > 0 ? Math.round((totals.cachedRequests / totals.requests) * 100) : 0,
       },
       topCountries: [],
     })
   } catch (e) {
     const msg = (e as Error).message
-    if (msg.includes('Authentication error') || msg.includes('Invalid token') || msg.includes('10000')) {
+    if (
+      msg.includes('Authentication error') ||
+      msg.includes('Invalid token') ||
+      msg.includes('10000') ||
+      msg.includes('forbidden') ||
+      msg.includes('Unauthorized')
+    ) {
       return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token' })
     }
-    return NextResponse.json({ configured: false, error: msg }, { status: 502 })
+    if (msg.includes('zone not found') || msg.includes('No zone')) {
+      return NextResponse.json({ configured: false, error: 'Cloudflare zone not found — check Zone ID' })
+    }
+    return NextResponse.json({ configured: false, error: 'Cloudflare: ' + msg }, { status: 502 })
   }
 }
