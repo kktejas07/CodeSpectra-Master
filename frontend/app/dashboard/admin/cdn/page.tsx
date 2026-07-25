@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -35,12 +35,18 @@ export default function CdnAdminPage() {
   const [cfData, setCfData] = useState<CloudflareData | null>(null)
   const [cfLoading, setCfLoading] = useState(true)
 
-  const [wafRules, setWafRules] = useState<WafRule[]>([
-    { id: '1', name: 'SQL Injection Protection', description: 'Detects and blocks SQL injection attempt patterns in incoming requests.', action: 'block', enabled: true },
-    { id: '2', name: 'Cross-Site Scripting (XSS)', description: 'Sanitizes and blocks scripts sent through URL queries or POST payloads.', action: 'challenge', enabled: true },
-    { id: '3', name: 'Rate Limiting (Anti-DDoS)', description: 'Limits clients to maximum 120 requests/minute during surge periods.', action: 'block', enabled: true },
-    { id: '4', name: 'Bad Bot Ingress Blocker', description: 'Restricts unverified scrapers and vulnerability scanners from indexing pages.', action: 'challenge', enabled: false },
-  ])
+  const [wafRules, setWafRules] = useState<WafRule[]>(() => {
+    try {
+      const saved = localStorage.getItem('cs_waf_rules')
+      if (saved) return JSON.parse(saved)
+    } catch {}
+    return [
+      { id: '1', name: 'SQL Injection Protection', description: 'Detects and blocks SQL injection attempt patterns in incoming requests.', action: 'block', enabled: true },
+      { id: '2', name: 'Cross-Site Scripting (XSS)', description: 'Sanitizes and blocks scripts sent through URL queries or POST payloads.', action: 'challenge', enabled: true },
+      { id: '3', name: 'Rate Limiting (Anti-DDoS)', description: 'Limits clients to maximum 120 requests/minute during surge periods.', action: 'block', enabled: true },
+      { id: '4', name: 'Bad Bot Ingress Blocker', description: 'Restricts unverified scrapers and vulnerability scanners from indexing pages.', action: 'challenge', enabled: false },
+    ]
+  })
 
   const fetchCfData = () => {
     fetch('/api/admin/cloudflare-analytics', { credentials: 'include' })
@@ -77,20 +83,24 @@ export default function CdnAdminPage() {
     }
   }
 
-  const toggleWafRule = (id: string) => {
-    setWafRules(prev => prev.map(rule => {
-      if (rule.id === id) {
-        const nextState = !rule.enabled
-        toast({
-          type: 'success',
-          title: `Waf Rule ${nextState ? 'Enabled' : 'Disabled'}`,
-          message: `Successfully modified security status for "${rule.name}"`,
-        })
-        return { ...rule, enabled: nextState }
-      }
-      return rule
-    }))
-  }
+  const toggleWafRule = useCallback((id: string) => {
+    setWafRules(prev => {
+      const next = prev.map(rule => {
+        if (rule.id === id) {
+          const nextState = !rule.enabled
+          toast({
+            type: 'success',
+            title: `Waf Rule ${nextState ? 'Enabled' : 'Disabled'}`,
+            message: `Successfully modified security status for "${rule.name}"`,
+          })
+          return { ...rule, enabled: nextState }
+        }
+        return rule
+      })
+      try { localStorage.setItem('cs_waf_rules', JSON.stringify(next)) } catch {}
+      return next
+    })
+  }, [toast])
 
   return (
     <div className="space-y-8 p-6 max-w-7xl mx-auto">
