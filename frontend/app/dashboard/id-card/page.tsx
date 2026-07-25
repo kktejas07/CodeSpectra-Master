@@ -167,8 +167,9 @@ export default function IdCardPage() {
           <div className="grid gap-8 md:grid-cols-[260px_1fr]">
             <div className="space-y-3">
               <div
-                className="rounded-2xl border border-border bg-white p-3"
-                dangerouslySetInnerHTML={{ __html: data.qr_svg }}
+                className="rounded-2xl border border-border bg-white p-3 overflow-hidden flex items-center justify-center"
+                style={{ width: 200, height: 200, maxWidth: '100%' }}
+                dangerouslySetInnerHTML={{ __html: data.qr_svg.replace(/<svg([^>]*)>/, '<svg$1 width="100%" height="100%">') }}
               />
               <div className="flex gap-2">
                 <Button onClick={downloadSvg} variant="outline" size="sm" className="flex-1" data-testid="id-card-download">
