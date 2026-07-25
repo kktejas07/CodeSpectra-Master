@@ -178,12 +178,20 @@ export function ProctorMonitor({
     return () => window.removeEventListener('keydown', handler, true)
   }, [enabled, blockKeyboardShortcuts, send, onViolation, counts.keyBlock])
 
-  // Fullscreen enforcement
+  const isMobile = typeof window !== 'undefined' && (
+    /Mobi|Android|iPhone|iPad|iPod/i.test(navigator.userAgent) ||
+    window.matchMedia('(pointer: coarse)').matches
+  )
+
+  // Fullscreen enforcement — desktop only (mobile browsers require user gesture)
   useEffect(() => {
-    if (!enabled || !enforceFullscreen) return
+    if (!enabled || !enforceFullscreen || isMobile) return
+
     const enterFs = () => {
       if (!document.fullscreenElement) {
-        document.documentElement.requestFullscreen().catch(() => {})
+        document.documentElement.requestFullscreen().catch(() => {
+          // Silent — fullscreen blocked by browser policy without user gesture
+        })
       }
     }
     const onFsChange = () => {
@@ -208,7 +216,7 @@ export function ProctorMonitor({
       document.removeEventListener('fullscreenchange', onFsChange)
       if (document.fullscreenElement) document.exitFullscreen().catch(() => {})
     }
-  }, [enabled, enforceFullscreen, send, onViolation])
+  }, [enabled, enforceFullscreen, send, onViolation, isMobile])
 
   // Tab blur, copy, paste, right-click detection + kickout
   useEffect(() => {
@@ -392,6 +400,7 @@ export function ProctorMonitor({
         </div>
       )}
 
+      {!isMobile && (
       <div className="fixed top-3 right-3 z-30 flex items-center gap-2 rounded-md border border-border bg-card/90 backdrop-blur px-2 py-1 text-[10px] uppercase tracking-wide shadow-sm">
         <span className="flex items-center gap-1">
           <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 animate-pulse" />
@@ -409,6 +418,7 @@ export function ProctorMonitor({
         {captureInterval > 0 && cameraSnapshot && <Camera className="h-3 w-3 text-green-500" />}
         {enforceFullscreen && <Fullscreen className="h-3 w-3 text-blue-500" />}
       </div>
+      )}
 
       <video ref={videoRef} className="hidden" playsInline muted />
     </>
