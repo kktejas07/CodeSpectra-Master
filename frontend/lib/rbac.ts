@@ -21,6 +21,7 @@ export type { UserRole }
 import {
   ADMIN_ONLY_ROUTES,
   TENANT_ADMIN_ROUTES,
+  JUDGE_ROUTES,
   ALL_USER_ROUTES,
   ROUTE_LABELS,
   buildPermissionMatrix,
@@ -65,6 +66,7 @@ export function normalizeUserRole(raw: string | null | undefined): UserRole {
   const r = (raw || 'user').toLowerCase().trim()
   if (r === 'superadmin') return 'superadmin'
   if (r === 'tenant_admin' || r === 'admin') return 'tenant_admin'
+  if (r === 'judge') return 'judge'
   if (r === 'user') return 'user'
   return 'user'
 }
@@ -77,6 +79,7 @@ export const SUPERADMIN_PAGES: string[] = [
   DASHBOARD_ROUTES.userHome,
   ...ADMIN_ONLY_ROUTES,
   ...TENANT_ADMIN_ROUTES,
+  ...JUDGE_ROUTES,
   ...ALL_USER_ROUTES,
 ]
 
@@ -97,10 +100,18 @@ export const USER_PAGES: string[] = [
   ...ALL_USER_ROUTES,
 ]
 
+/**
+ * AUTO-GENERATED from page-permissions.ts — do NOT edit manually.
+ */
+export const JUDGE_PAGES: string[] = [
+  DASHBOARD_ROUTES.userHome,
+  ...JUDGE_ROUTES,
+]
+
 export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
   superadmin: SUPERADMIN_PAGES,
   tenant_admin: TENANT_ADMIN_PAGES,
-  judge: USER_PAGES,
+  judge: JUDGE_PAGES,
   user: USER_PAGES,
 }
 

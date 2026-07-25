@@ -175,7 +175,7 @@ export default function NotificationPreferencesPage() {
 
               {pref.enabled ? (
                 <div className="divide-y divide-border/60 px-6">
-                  {Object.entries(pref.categories).map(([category, enabled]) => (
+                  {(pref.categories ? Object.entries(pref.categories) : []).map(([category, enabled]) => (
                     <div key={category} className="flex items-center justify-between gap-4 py-4">
                       <div className="min-w-0 space-y-0.5">
                         <p className="font-medium capitalize text-foreground">{category}</p>
@@ -207,14 +207,14 @@ export default function NotificationPreferencesPage() {
                   <p className="font-medium text-foreground">Daily digest</p>
                   <p className="text-sm text-muted-foreground">One summary per day</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={dailyDigest} onCheckedChange={setDailyDigest} />
               </div>
               <div className="flex items-center justify-between gap-4 py-4">
                 <div className="min-w-0 space-y-0.5">
                   <p className="font-medium text-foreground">Weekly report</p>
                   <p className="text-sm text-muted-foreground">Activity and usage highlights</p>
                 </div>
-                <Switch defaultChecked />
+                <Switch checked={weeklyReport} onCheckedChange={setWeeklyReport} />
               </div>
             </div>
           </Card>
@@ -229,26 +229,28 @@ export default function NotificationPreferencesPage() {
             <div className="grid gap-4 px-6 py-5 sm:grid-cols-2">
               <div className="space-y-2">
                 <Label htmlFor="quiet-start">Start</Label>
-                <Input
-                  id="quiet-start"
-                  type="time"
-                  defaultValue="22:00"
-                  className="rounded-lg border-border/60"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="quiet-end">End</Label>
-                <Input
-                  id="quiet-end"
-                  type="time"
-                  defaultValue="08:00"
-                  className="rounded-lg border-border/60"
-                />
+                  <Input
+                    id="quiet-start"
+                    type="time"
+                    value={quietStart}
+                    onChange={(e) => setQuietStart(e.target.value)}
+                    className="rounded-lg border-border/60"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="quiet-end">End</Label>
+                  <Input
+                    id="quiet-end"
+                    type="time"
+                    value={quietEnd}
+                    onChange={(e) => setQuietEnd(e.target.value)}
+                    className="rounded-lg border-border/60"
+                  />
               </div>
             </div>
             <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
-              <Button type="button" className="rounded-lg">
-                Save quiet hours
+              <Button type="button" className="rounded-lg" disabled={savingQuiet} onClick={handleSaveQuietHours}>
+                {savingQuiet ? 'Saving…' : 'Save quiet hours'}
               </Button>
             </div>
           </Card>

@@ -25,38 +25,38 @@ export interface PagePermission {
  */
 export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin',
+  '/dashboard/admin/system',
   '/dashboard/admin/users',
   '/dashboard/admin/roles',
-  '/dashboard/admin/analytics',
-  '/dashboard/admin/audit-logs',
-  '/dashboard/admin/integrations',
-  '/dashboard/admin/pricing',
+  '/dashboard/admin/permissions',
   '/dashboard/admin/security',
   '/dashboard/admin/proctor',
-  '/dashboard/admin/rag',
-  '/dashboard/admin/ai-inventory',
-  '/dashboard/admin/system',
-  '/dashboard/admin/permissions',
-  '/dashboard/admin/plans',
-  '/dashboard/admin/settings/llm',
-  '/dashboard/admin/settings/cloudflare',
-  '/dashboard/admin/settings/mobile',
+  '/dashboard/admin/analytics',
+  '/dashboard/admin/speed-insights',
+  '/dashboard/admin/cdn',
   '/dashboard/admin/teams',
   '/dashboard/admin/jobs',
   '/dashboard/admin/resumes',
   '/dashboard/admin/codeathons',
   '/dashboard/admin/exams',
-  '/dashboard/admin/speed-insights',
-  '/dashboard/admin/cdn',
-  '/dashboard/admin/settings',
   '/dashboard/admin/workflows',
   '/dashboard/admin/question-generator',
   '/dashboard/admin/hackathons',
   '/dashboard/admin/hackathons/create',
   '/dashboard/admin/hackathons/edit',
-  '/dashboard/admin/announcements',
   '/dashboard/admin/question-bank',
   '/dashboard/admin/predictive-validity',
+  '/dashboard/admin/rag',
+  '/dashboard/admin/ai-inventory',
+  '/dashboard/admin/integrations',
+  '/dashboard/admin/pricing',
+  '/dashboard/admin/plans',
+  '/dashboard/admin/audit-logs',
+  '/dashboard/admin/announcements',
+  '/dashboard/admin/settings',
+  '/dashboard/admin/settings/llm',
+  '/dashboard/admin/settings/cloudflare',
+  '/dashboard/admin/settings/mobile',
 ]
 
 /**
@@ -72,6 +72,26 @@ export const TENANT_ADMIN_ROUTES: string[] = [
 ]
 
 /**
+ * Routes accessible to judge role only.
+ * Judges evaluate code submissions and review assessments.
+ */
+export const JUDGE_ROUTES: string[] = [
+  '/dashboard/judge',
+  '/dashboard',
+  '/dashboard/leaderboard',
+  '/dashboard/achievements',
+  '/dashboard/problems',
+  '/dashboard/challenges',
+  '/dashboard/interviews',
+  '/dashboard/interview-prep',
+  '/dashboard/certifications',
+  '/dashboard/profile',
+  '/dashboard/notifications',
+  '/dashboard/support',
+  '/dashboard/status',
+]
+
+/**
  * Routes accessible to all authenticated users (user, tenant_admin, superadmin).
  * Everything else under /dashboard/ defaults to 'user' unless specified above.
  */
@@ -80,36 +100,36 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/arena',
   '/dashboard/problems',
   '/dashboard/tracks',
-  '/dashboard/scanner',
-  '/dashboard/agent',
-  '/dashboard/learning',
-  '/dashboard/skill-analytics',
-  '/dashboard/identity-verify',
-  '/dashboard/leaderboard',
-  '/dashboard/achievements',
-  '/dashboard/certifications',
-  '/dashboard/pricing',
   '/dashboard/challenges',
+  '/dashboard/hackathons',
+  '/dashboard/codeathons',
+  '/dashboard/exams',
+  '/dashboard/jobs',
+  '/dashboard/resumes',
   '/dashboard/interviews',
   '/dashboard/interview-prep',
   '/dashboard/prepare',
+  '/dashboard/learning',
+  '/dashboard/scanner',
+  '/dashboard/agent',
+  '/dashboard/leaderboard',
+  '/dashboard/achievements',
+  '/dashboard/certifications',
+  '/dashboard/100-days',
+  '/dashboard/identity-verify',
   '/dashboard/profile',
-  '/dashboard/settings',
-  '/dashboard/settings/ai',
   '/dashboard/billing',
   '/dashboard/notifications',
-  '/dashboard/support',
-  '/dashboard/status',
   '/dashboard/search',
   '/dashboard/analytics',
-  '/dashboard/100-days',
-  '/dashboard/hackathons',
-  '/dashboard/codeathons',
-  '/dashboard/jobs',
-  '/dashboard/exams',
-  '/dashboard/resumes',
-  '/dashboard/judge',
+  '/dashboard/skill-analytics',
+  '/dashboard/pricing',
+  '/dashboard/status',
+  '/dashboard/support',
   '/dashboard/cad',
+  '/dashboard/settings',
+  '/dashboard/settings/ai',
+  '/dashboard/recruiter-analytics',
 ]
 
 /**
@@ -126,6 +146,11 @@ export function getRequiredRoleForRoute(pathname: string): UserRole {
   // Admin routes → superadmin
   for (const route of ADMIN_ONLY_ROUTES) {
     if (base === route || base.startsWith(route + '/')) return 'superadmin'
+  }
+
+  // Judge routes
+  for (const route of JUDGE_ROUTES) {
+    if (base === route || base.startsWith(route + '/')) return 'judge'
   }
 
   // All authenticated user routes
@@ -242,6 +267,17 @@ export function buildPermissionMatrix(): PagePermission[] {
         label: ROUTE_LABELS[route] || route,
         requiredRole: 'tenant_admin',
         category: 'organization',
+      })
+    }
+  }
+
+  for (const route of JUDGE_ROUTES) {
+    if (!ADMIN_ONLY_ROUTES.includes(route) && !TENANT_ADMIN_ROUTES.includes(route) && !ALL_USER_ROUTES.includes(route)) {
+      matrix.push({
+        route,
+        label: ROUTE_LABELS[route] || route,
+        requiredRole: 'judge',
+        category: 'user',
       })
     }
   }

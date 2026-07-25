@@ -12,10 +12,12 @@ import {
   UserRole,
   isSuperAdmin,
   isTenantAdmin,
+  isJudge,
 } from '@/lib/rbac'
 import {
   ADMIN_ONLY_ROUTES,
   TENANT_ADMIN_ROUTES,
+  JUDGE_ROUTES,
   ALL_USER_ROUTES,
   ROUTE_LABELS,
 } from '@/lib/page-permissions'
@@ -372,6 +374,12 @@ export default function DashboardLayout({
           !leaf.href.startsWith('/dashboard/admin/') ||
           leaf.href.startsWith(DASHBOARD_ROUTES.organization.team)
         )
+        .map(leaf => ({ type: 'link' as const, item: leaf }))
+    }
+    if (isJudge(role)) {
+      const judgeRouteSet = new Set(JUDGE_ROUTES)
+      return allLeaves
+        .filter(leaf => judgeRouteSet.has(leaf.href.split('?')[0]))
         .map(leaf => ({ type: 'link' as const, item: leaf }))
     }
     // User

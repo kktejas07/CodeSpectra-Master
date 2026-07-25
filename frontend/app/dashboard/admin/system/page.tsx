@@ -104,6 +104,12 @@ export default function SystemAdminDashboard() {
     finally { setRefreshing(false) }
   }, [])
 
+  const copyCmd = (cmd: string) => {
+    navigator.clipboard.writeText(cmd).then(() => {
+      addToast({ type: 'success', title: 'Copied', message: 'SSH command copied to clipboard' })
+    })
+  }
+
   const clearCache = useCallback(async (type: string) => {
     setClearing(type)
     try {
@@ -115,7 +121,11 @@ export default function SystemAdminDashboard() {
       })
       const json = await res.json().catch(() => ({}))
       if (res.ok) {
-        addToast({ type: 'success', title: `Cache cleared`, message: json.message || `${type} cache cleared` })
+        const msg = json.message || `${type} cache cleared`
+        addToast({ type: 'success', title: `Cache cleared`, message: msg })
+        if (json.dockerCommand) {
+          copyCmd(json.dockerCommand)
+        }
         fetchServerStats()
       } else {
         addToast({ type: 'error', title: 'Failed', message: json.error || 'Could not clear cache' })
@@ -319,7 +329,7 @@ export default function SystemAdminDashboard() {
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium text-foreground">System cleanup</p>
-                    <p className="text-[10px] text-muted-foreground">Docker prune + report memory usage</p>
+                    <p className="text-[10px] text-muted-foreground">Report memory usage · copies SSH command</p>
                   </div>
                   <Button
                     variant="outline"
@@ -333,7 +343,7 @@ export default function SystemAdminDashboard() {
                 <div className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2">
                   <div>
                     <p className="text-xs font-medium text-foreground">Docker system prune</p>
-                    <p className="text-[10px] text-muted-foreground">Remove unused images, containers, volumes</p>
+                    <p className="text-[10px] text-muted-foreground">Run on server · copies SSH command</p>
                   </div>
                   <Button
                     variant="destructive"

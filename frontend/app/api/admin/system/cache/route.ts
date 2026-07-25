@@ -86,23 +86,19 @@ export async function POST(request: Request) {
     }
 
     case 'system': {
-      // Report current memory usage (can't drop host caches from container)
       const mem = process.memoryUsage()
-      const { ok, output: dockerPrune } = safeExec('docker system prune -f 2>&1', 30000)
       return NextResponse.json({
-        message: 'Docker prune triggered' + (ok ? '' : ' (Docker unavailable)'),
+        message: 'Memory usage reported. Docker is not available inside the frontend container.',
         nodeMemory: { heapUsed: Math.round(mem.heapUsed / 1024 / 1024) + 'MB', rss: Math.round(mem.rss / 1024 / 1024) + 'MB' },
-        dockerPrune: ok ? (dockerPrune || 'done') : 'Docker not available — run on host',
+        dockerCommand: 'ssh server-host "docker system prune -f"',
       })
     }
 
     case 'docker': {
-      if (!hasDocker()) {
-        return NextResponse.json({ error: 'Docker CLI not available in this container. Mount /var/run/docker.sock and install docker-cli in the Dockerfile.' }, { status: 500 })
-      }
-      const { ok, output } = safeExec('docker system prune -f --volumes 2>&1', 60000)
-      if (!ok) return NextResponse.json({ error: output }, { status: 500 })
-      return NextResponse.json({ message: output || 'Docker system pruned' })
+      return NextResponse.json({
+        message: 'Docker is not available inside this container. Run the command below on your server host.',
+        dockerCommand: 'docker system prune -f --volumes',
+      })
     }
 
     default:
