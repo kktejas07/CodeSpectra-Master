@@ -9,7 +9,7 @@ async function cfFetch(token: string, path: string) {
   const res = await fetch(`https://api.cloudflare.com/client/v4${path}`, {
     headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
   })
-  if (!res.ok) throw new Error(`Cloudflare API ${res.status}`)
+  if (!res.ok) throw new Error(`Cloudflare API ${res.status}: ${await res.text()}`)
   return res.json()
 }
 
@@ -30,26 +30,34 @@ export async function GET() {
     const since = Math.floor(Date.now() / 1000) - 30 * 86400
     const until = Math.floor(Date.now() / 1000)
 
-    const [dash, countries] = await Promise.all([
+    const [dashResult, zoneResult] = await Promise.all([
       cfFetch(apiToken, `/zones/${zoneId}/analytics/dashboard?since=${since}&until=${until}`),
-      cfFetch(apiToken, `/zones/${zoneId}/analytics/dashboard?since=${since}&until=${until}`),
+      cfFetch(apiToken, `/zones/${zoneId}`),
     ])
 
-    if (!dash.success && !countries.success) {
-      throw new Error('Cloudflare API returned errors')
+    if (!dashResult.success) {
+      const code = dashResult.errors?.[0]?.code
+      const msg = dashResult.errors?.[0]?.message || ''
+      if (code === 10000 || code === 10001 || msg.toLowerCase().includes('authentication') || msg.toLowerCase().includes('forbidden')) {
+        return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token' })
+      }
+      throw new Error(msg || `Cloudflare error code ${code}`)
     }
 
-    const d = (dash.result || {}) as Record<string, any>
+    const zoneName = (zoneResult.result as any)?.name || ''
+
+    const d = (dashResult.result as any) || {}
     const requests = d.requests || {}
     const bandwidth = d.bandwidth || {}
 
-    const totalRequests = requests.throughput_all || requests.cached || 0
+    const totalRequests = requests.requests_total || requests.total || 0
     const totalCached = requests.cached || 0
-    const totalBytes = bandwidth.pure_uniques || 0
+    const totalBytes = bandwidth.pure_total || bandwidth.total || 0
     const totalUniques = requests.uniques || 0
 
     return NextResponse.json({
       configured: true,
+      zone: zoneName,
       traffic: {
         requests: totalRequests,
         cached: totalCached,
@@ -60,6 +68,10 @@ export async function GET() {
       topCountries: [],
     })
   } catch (e) {
-    return NextResponse.json({ configured: true, error: (e as Error).message }, { status: 502 })
+    const msg = (e as Error).message
+    if (msg.includes('Authentication error') || msg.includes('Invalid token') || msg.includes('10000')) {
+      return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token' })
+    }
+    return NextResponse.json({ configured: false, error: msg }, { status: 502 })
   }
 }
