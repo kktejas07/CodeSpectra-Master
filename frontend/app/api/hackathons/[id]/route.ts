@@ -126,10 +126,12 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { id } = await ctx.params
+  const doc = await col.findOne({ id }, { projection: { _id: 0 } })
+  if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
   const teams = await (await hackathonTeams()).countDocuments({ hackathon_id: id })
-  if (teams > 0) {
+  if (teams > 0 && doc.status !== 'closed') {
     return NextResponse.json(
-      { error: `cannot delete — ${teams} team(s) are registered` },
+      { error: `cannot delete — ${teams} team(s) are registered and hackathon is ${doc.status}` },
       { status: 409 },
     )
   }
