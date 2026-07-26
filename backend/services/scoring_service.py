@@ -81,8 +81,6 @@ class ScoringService:
 
         final_cad_score = (auto_score * 0.6 + sme_score * 0.4) if sme_score is not None else auto_score
 
-        final_cad_score = (auto_score * 0.6 + sme_score * 0.4) if sme_score is not None else auto_score
-
         return {
             "auto_score": round(auto_score, 2),
             "sme_score": round(sme_score, 2) if sme_score is not None else None,

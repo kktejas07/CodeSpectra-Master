@@ -10,6 +10,7 @@ from __future__ import annotations
 import asyncio
 import json
 import os
+import pymongo
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, Request
@@ -77,15 +78,11 @@ async def handle_chat(
     request: Request, req: ChatStreamReq
 ) -> StreamingResponse:
     """SSE stream: chat with RAG context enrichment."""
-    check_rate_limit(
-        f"chat:{client_ip(request)}:{req.session_id or 'anon'}", 30, 60
-    )
+    check_rate_limit(f"chat:{client_ip(request)}", 30, 60)
 
     rag_context: str | None = None
     if req.rag_enabled and RAG_API_KEY:
         try:
-            import pymongo
-
             uri = (
                 settings.MONGO_URL
                 or settings.MONGODB_URI
@@ -152,20 +149,24 @@ async def handle_chat(
     )
 
 
+_rag_client: pymongo.MongoClient | None = None
+
+
 async def _search_rag(query: str, uri: str) -> str | None:
-    """Sync-blocking RAG search (run in thread pool)."""
-    import pymongo
+    """RAG search — embedding generated in async context, similarity search in thread."""
+    global _rag_client
+    from rag import cosine_similarity, build_context
+
+    query_emb = await generate_embedding(query, RAG_API_KEY)
+    if not query_emb:
+        return None
 
     def _search() -> str | None:
-        client = pymongo.MongoClient(uri)
+        global _rag_client
         try:
-            col = client[settings.MONGODB_DB_NAME]["embeddings"]
-            from rag import cosine_similarity, build_context
-
-            query_emb = asyncio.run(generate_embedding(query, RAG_API_KEY))
-            if not query_emb:
-                return None
-
+            if _rag_client is None:
+                _rag_client = pymongo.MongoClient(uri)
+            col = _rag_client[settings.MONGODB_DB_NAME]["embeddings"]
             cands: list[dict] = []
             for doc in col.find(
                 {}, projection={"text": 1, "source": 1, "embedding": 1}
@@ -183,10 +184,8 @@ async def _search_rag(query: str, uri: str) -> str | None:
                         )
             cands.sort(key=lambda x: x["score"], reverse=True)
             ctx = build_context(cands[:5])
-            client.close()
             return ctx if ctx else None
         except Exception:
-            client.close()
             return None
 
     return await asyncio.to_thread(_search)
@@ -230,10 +229,10 @@ async def handle_complete(request: Request, req: CompleteReq) -> dict[str, Any]:
             except Exception as e2:
                 raise HTTPException(
                     status_code=500,
-                    detail=f"LLM error (fallback also failed): {e2}",
+                    detail="AI service temporarily unavailable. Please try again.",
                 )
         else:
-            raise HTTPException(status_code=500, detail=f"LLM error: {e}")
+            raise HTTPException(status_code=500, detail="AI service temporarily unavailable. Please try again.")
 
     raw = "".join(buf).strip()
     if req.response_format == "json":

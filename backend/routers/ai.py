@@ -80,15 +80,16 @@ def safe_ai_endpoint(fn):
     async def wrapper(request_or_req, *args, **kwargs):
         try:
             return await fn(request_or_req, *args, **kwargs)
-        except Exception as e:
+        except Exception:
             traceback.print_exc()
             return JSONResponse(
-                content={"error": str(e), "detail": type(e).__name__},
+                content={"error": "AI service temporarily unavailable.", "type": type(fn).__name__},
                 status_code=500,
             )
     return wrapper
 
 @router.post("/rag/embed")
+@safe_ai_endpoint
 async def rag_embed(req: RagEmbedReq, request: Request) -> dict:
     """Generate an embedding vector for the given text using Gemini."""
     return await handle_rag_embed(req, request)
@@ -101,54 +102,63 @@ async def chat_stream(request: Request, req: ChatStreamReq) -> StreamingResponse
 
 
 @router.post("/complete")
+@safe_ai_endpoint
 async def complete(request: Request, req: CompleteReq) -> dict[str, Any]:
     """Single-turn LLM completion (non-streaming)."""
     return await handle_complete(request, req)
 
 
 @router.post("/hints")
+@safe_ai_endpoint
 async def smart_hints(request: Request, req: HintsReq) -> dict[str, Any]:
     """Progressive coding hints."""
     return await handle_hints(request, req)
 
 
 @router.post("/code-review")
+@safe_ai_endpoint
 async def code_review(request: Request, req: CodeReviewReq) -> dict[str, Any]:
     """Deep AI code review."""
     return await handle_code_review(request, req)
 
 
 @router.post("/code-analysis")
+@safe_ai_endpoint
 async def code_analysis(request: Request, req: CodeAnalysisReq) -> dict[str, Any]:
     """Automated code analysis (time complexity, efficiency, etc.)."""
     return await handle_code_analysis(request, req)
 
 
 @router.post("/grade")
+@safe_ai_endpoint
 async def grade(request: Request, req: GradeReq) -> dict[str, Any]:
     """Grade a submission by rubric."""
     return await handle_grade(request, req)
 
 
 @router.post("/generate-problem")
+@safe_ai_endpoint
 async def generate_problem(request: Request, req: GenerateProblemReq) -> dict[str, Any]:
     """Generate a coding interview problem."""
     return await handle_generate_problem(request, req)
 
 
 @router.post("/skill-insights")
+@safe_ai_endpoint
 async def skill_insights(request: Request, req: SkillInsightsReq) -> dict[str, Any]:
     """Analyze developer submissions and return skill insights."""
     return await handle_skill_insights(request, req)
 
 
 @router.post("/identity-verify")
+@safe_ai_endpoint
 async def identity_verify(request: Request, req: IdentityVerifyReq) -> dict[str, Any]:
     """Compare selfie vs ID photo using Gemini vision."""
     return await handle_identity_verify(request, req)
 
 
 @router.post("/agent")
+@safe_ai_endpoint
 async def agentic_fix(request: Request, req: AgentReq) -> dict[str, Any]:
     """Multi-step agentic code-fix loop."""
     return await handle_agent(request, req)
