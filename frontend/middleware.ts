@@ -68,8 +68,15 @@ export function middleware(request: NextRequest) {
     'camera=(), microphone=(), geolocation=(), interest-cohort=()',
   )
 
-  // CORS headers
-  response.headers.set('Access-Control-Allow-Origin', request.headers.get('origin') || '*')
+  // CORS — only allow known origins, never reflect arbitrary origins with credentials
+  const origin = request.headers.get('origin')
+  const allowedOrigins = [
+    'https://codespectra.ai',
+    'http://localhost:3000',
+    'http://localhost:3001',
+  ]
+  const isAllowedOrigin = allowedOrigins.includes(origin || '')
+  response.headers.set('Access-Control-Allow-Origin', isAllowedOrigin ? (origin || '*') : allowedOrigins[0])
   response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
   response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token')
   response.headers.set('Access-Control-Allow-Credentials', 'true')

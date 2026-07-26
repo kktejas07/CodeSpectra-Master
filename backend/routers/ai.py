@@ -88,9 +88,6 @@ def safe_ai_endpoint(fn):
             )
     return wrapper
 
-router = APIRouter(prefix="/internal/ai", tags=["internal-ai"])
-
-
 @router.post("/rag/embed")
 async def rag_embed(req: RagEmbedReq, request: Request) -> dict:
     """Generate an embedding vector for the given text using Gemini."""

@@ -57,7 +57,10 @@ class CRUDBase(Generic[DocT, ModelT]):
 
     async def get(self, id: str) -> Optional[DocT]:
         c = await self.col()
-        return await c.find_one({"_id": ObjectId(id)})
+        try:
+            return await c.find_one({"_id": ObjectId(id)})
+        except Exception:
+            return await c.find_one({"_id": id})
 
     async def get_by(self, field: str, value: Any) -> Optional[DocT]:
         c = await self.col()
@@ -72,12 +75,18 @@ class CRUDBase(Generic[DocT, ModelT]):
         self, id: str, data: Dict[str, Any]
     ) -> Optional[DocT]:
         c = await self.col()
-        await c.update_one({"_id": ObjectId(id)}, {"$set": data})
+        try:
+            await c.update_one({"_id": ObjectId(id)}, {"$set": data})
+        except Exception:
+            await c.update_one({"_id": id}, {"$set": data})
         return await self.get(id)
 
     async def delete(self, id: str) -> bool:
         c = await self.col()
-        result = await c.delete_one({"_id": ObjectId(id)})
+        try:
+            result = await c.delete_one({"_id": ObjectId(id)})
+        except Exception:
+            result = await c.delete_one({"_id": id})
         return result.deleted_count > 0
 
     async def count(self, filter: Optional[Dict[str, Any]] = None) -> int:

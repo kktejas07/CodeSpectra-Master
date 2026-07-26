@@ -40,16 +40,10 @@ async def get_database() -> AsyncIOMotorDatabase:
     return client[settings.MONGODB_DB_NAME]
 
 
-def get_collection(name: str):
-    """Shortcut to get a named collection from the app database.
-
-    Usage:
-        col = get_collection("users")
-        doc = await col.find_one({"id": uid})
-    """
-    import asyncio
-
-    return asyncio.run(get_database()).get_collection(name)
+async def get_collection(name: str):
+    """Shortcut to get a named collection from the app database (async)."""
+    db = await get_database()
+    return db.get_collection(name)
 
 
 async def close_client() -> None:

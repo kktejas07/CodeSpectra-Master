@@ -51,7 +51,7 @@ export async function POST(request: Request) {
   await db.collection('user').updateOne(
     { email: user.email },
     {
-      $set: { password: passwordHash, reset_token_used: true, updated_at: new Date().toISOString() },
+      $set: { passwordHash: passwordHash, reset_token_used: true, updated_at: new Date().toISOString() },
       $unset: { reset_token_hash: '', reset_token_expires: '' },
     },
   )

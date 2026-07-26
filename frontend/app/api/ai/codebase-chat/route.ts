@@ -44,10 +44,12 @@ Provide concrete, developer-friendly recommendations.`
       return NextResponse.json({ error: ssrfCheck.error }, { status: 400 });
     }
 
+    const internalSecret = process.env.INTERNAL_BACKEND_SECRET || ''
     const aiRes = await fetch(`${ssrfCheck.url.toString()}/internal/ai/complete`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
+        ...(internalSecret ? { 'x-internal-secret': internalSecret } : {}),
       },
       body: JSON.stringify({
         session_id: `codebase-chat-${user.id}`,

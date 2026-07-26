@@ -2,9 +2,10 @@
 Authentication & authorization dependencies.
 
 These mirror the checks that Next.js/Better Auth performs before proxying
-to the Python backend. The internal AI router trusts that auth has already
-happened at the Next.js layer; these stubs are here for future use when
-routes are served directly from FastAPI.
+to the FastAPI backend. The internal AI router trusts that auth has already
+happened at the Next.js layer; however, calls to internal routers can also
+arrive directly from the browser (in-cluster), so we validate an internal
+shared-secret header as defense-in-depth.
 """
 from __future__ import annotations
 
@@ -12,24 +13,31 @@ from fastapi import Depends, HTTPException, Request, status
 from motor.motor_asyncio import AsyncIOMotorDatabase
 
 from core.database import get_database
+from core.config import settings
 
 
 async def require_auth(request: Request):
     """
-    Placeholder: verify that the request carries a valid session/token.
+    Validate internal request secret header for direct browser-to-backend calls.
 
-    In the current architecture, Next.js / Better Auth authenticates the user
-    before proxying to the FastAPI backend, so the internal router endpoints
-    intentionally trust the caller.  This stub exists for routes that need
-    their own auth (e.g., future admin-only endpoints served directly).
+    In the current architecture, Next.js API routes validate the session cookie
+    before calling internal backend routers. However, the internal router port
+    (8001) is reachable from browsers in the cluster network (not just from
+    Next.js), so we add a shared-secret check as defense-in-depth.
 
-    ponytail: The current architecture trusts the caller because the Kubernetes
-    ingress only exposes the proxy (server.py), not the internal router
-    directly. If we ever expose FastAPI routes directly, wire in JWT/Session
-    validation here.
+    Requests with a valid x-internal-secret header are allowed through.
     """
-    # Future: validate bearer token or session cookie
-    return True
+    secret = request.headers.get("x-internal-secret", "")
+    if secret and secret == settings.INTERNAL_BACKEND_SECRET:
+        return True
+
+    if not settings.INTERNAL_BACKEND_SECRET:
+        return True
+
+    raise HTTPException(
+        status_code=status.HTTP_401_UNAUTHORIZED,
+        detail="Missing or invalid internal request credentials",
+    )
 
 
 async def get_current_user(

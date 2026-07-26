@@ -40,6 +40,8 @@ async function getBackendSecrets(): Promise<{
 
 async function backendHeaders(opts?: { apiKeyOverride?: string }): Promise<Record<string, string>> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
+  const internalSecret = process.env.INTERNAL_BACKEND_SECRET
+  if (internalSecret) h['x-internal-secret'] = internalSecret
   if (opts?.apiKeyOverride) {
     h['x-api-key'] = opts.apiKeyOverride
     h['x-openai-api-key'] = opts.apiKeyOverride

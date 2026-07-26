@@ -78,6 +78,7 @@ class Settings:
     SESSION_SECRET: str = os.environ.get("SESSION_SECRET", "")
     CRON_SECRET: str = os.environ.get("CRON_SECRET", "")
     CORS_ORIGINS: str = os.environ.get("CORS_ORIGINS", "*")
+    INTERNAL_BACKEND_SECRET: str = os.environ.get("INTERNAL_BACKEND_SECRET", "")
 
     # ─── Public ────────────────────────────────────────────────
     NEXT_PUBLIC_APP_URL: str = os.environ.get(
