@@ -34,6 +34,8 @@ import { CodeEditor } from '@/components/code-scanner/code-editor'
 import { CodebaseChatSidebar } from '@/components/scanner/codebase-chat-sidebar'
 import { DependencyScannerPanel } from '@/components/scanner/dependency-scanner-panel'
 import { SecretScannerPanel } from '@/components/scanner/secret-scanner-panel'
+import { PatternDetector } from '@/components/scanner/pattern-detector'
+import { PRImpactAnalysis } from '@/components/scanner/pr-impact-analysis'
 import { detectLanguage } from '@/lib/local-code-analyzer'
 
 interface AnalysisResult {
@@ -321,6 +323,8 @@ function CodeScannerPageInner() {
             {mode === 'dependencies' && !isModeLocked('dependencies') && 'Dependency Vulnerability Scan'}
             {mode === 'secrets' && !isModeLocked('secrets') && 'Secret Detection'}
             {mode === 'chat' && !isModeLocked('chat') && 'Codebase Assistant'}
+            {mode === 'patterns' && !isModeLocked('patterns') && 'Pattern Detection'}
+            {mode === 'pr-impact' && !isModeLocked('pr-impact') && 'PR Impact Analysis'}
             {(!mode || mode === 'manual') && !isModeLocked('manual') && 'Code Scanner'}
             {isModeLocked(mode) && <span className="text-muted-foreground">Locked Feature</span>}
           </h1>
@@ -344,6 +348,8 @@ function CodeScannerPageInner() {
             {mode === 'dependencies' && !isModeLocked('dependencies') && 'Check project dependencies against the OSV vulnerability database and embedded security advisories.'}
             {mode === 'secrets' && !isModeLocked('secrets') && 'Scan source code for hardcoded API keys, tokens, passwords, private keys, and other secrets.'}
             {mode === 'chat' && !isModeLocked('chat') && 'Interact with your codebase files using our advanced Gemini AI Assistant.'}
+            {mode === 'patterns' && !isModeLocked('patterns') && 'Detect design patterns, anti-patterns, and React hook usage across your codebase.'}
+            {mode === 'pr-impact' && !isModeLocked('pr-impact') && 'Analyze GitHub PR impact — affected components, blast radius, and dependency cascade analysis.'}
             {(!mode || mode === 'manual') && !isModeLocked('manual') && 'Analyze code directly — paste code and get AI-powered insights on bugs, vulnerabilities, and quality.'}
           </p>
         </div>
@@ -881,6 +887,31 @@ function CodeScannerPageInner() {
       {mode === 'secrets' && !isModeLocked('secrets') && (
         <div className="max-w-4xl mx-auto">
           <SecretScannerPanel />
+        </div>
+      )}
+
+      {/* Pattern Detection Mode */}
+      {mode === 'patterns' && !isModeLocked('patterns') && (
+        <div className="space-y-6">
+          <Card className="p-5 bg-card/30 border-dashed">
+            <h3 className="font-semibold text-foreground mb-1">Pattern Detection</h3>
+            <p className="text-sm text-muted-foreground">Detect design patterns, React hooks, and anti-patterns in your codebase. Supports common architectural patterns including singleton, factory, observer, decorator, and more.</p>
+          </Card>
+          <PatternDetector />
+        </div>
+      )}
+
+      {/* PR Impact Analysis Mode */}
+      {mode === 'pr-impact' && !isModeLocked('pr-impact') && (
+        <div className="space-y-6">
+          <Card className="p-5 bg-card/30 border-dashed">
+            <h3 className="font-semibold text-foreground mb-1">PR Impact Analysis</h3>
+            <p className="text-sm text-muted-foreground">Paste any GitHub pull request URL to see which architecture components it affects and compute its blast radius across your dependency graph.</p>
+          </Card>
+          <PRImpactAnalysis
+            components={[]}
+            dependencies={[]}
+          />
         </div>
       )}
 
