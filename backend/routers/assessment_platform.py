@@ -1,7 +1,6 @@
 """FastAPI endpoints for Engineering Technical Assessment Platform (Workday, Question Bank, Requisitions, CAD Scoring)."""
 from __future__ import annotations
 
-import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
@@ -12,81 +11,53 @@ from models.question_bank import QuestionItem, QuestionItemCreate, QuestionItemU
 from models.requisition import Requisition, RequisitionCreate, RequisitionUpdate
 from services.scoring_service import scoring_service
 from services.workday_service import workday_service
+from services import assessment_service as store
 
 router = APIRouter(prefix="/api/assessment-platform", tags=["Engineering Assessment Platform"])
 
-# In-memory storage mock for fast prototype (ponytail: memory store backed by DB service)
-_requisitions: Dict[str, Dict[str, Any]] = {}
-_question_bank: Dict[str, Dict[str, Any]] = {}
 
-
-# --- REQUISITIONS CRUD ---
+# --- REQUISITIONS CRUD (MongoDB-backed) ---
 @router.post("/requisitions", response_model=Requisition)
 async def create_requisition(req: RequisitionCreate):
-    req_id = f"req-{uuid.uuid4().hex[:8]}"
-    now = datetime.now(timezone.utc).isoformat()
-    record = {
-        "id": req_id,
-        "status": "active",
-        "created_at": now,
-        "updated_at": now,
-        **req.model_dump(),
-    }
-    _requisitions[req_id] = record
-    return record
+    return await store.create_requisition(req.model_dump())
 
 
 @router.get("/requisitions", response_model=List[Requisition])
 async def list_requisitions(region: Optional[str] = None, discipline: Optional[str] = None):
-    results = list(_requisitions.values())
-    if region:
-        results = [r for r in results if (r.get("region") or "").lower() == region.lower()]
-    if discipline:
-        results = [r for r in results if (r.get("discipline") or "").lower() == discipline.lower()]
+    results = await store.list_requisitions(region, discipline)
     return results
 
 
 @router.get("/requisitions/{req_id}", response_model=Requisition)
 async def get_requisition(req_id: str):
-    if req_id not in _requisitions:
+    record = await store.get_requisition(req_id)
+    if not record:
         raise HTTPException(status_code=404, detail="Requisition not found")
-    return _requisitions[req_id]
+    return record
 
 
 @router.patch("/requisitions/{req_id}", response_model=Requisition)
 async def update_requisition(req_id: str, patch: RequisitionUpdate):
-    if req_id not in _requisitions:
+    record = await store.get_requisition(req_id)
+    if not record:
         raise HTTPException(status_code=404, detail="Requisition not found")
-    record = _requisitions[req_id]
     update_data = patch.model_dump(exclude_unset=True)
-    record.update(update_data)
-    record["updated_at"] = datetime.now(timezone.utc).isoformat()
-    return record
+    updated = await store.update_requisition(req_id, update_data)
+    return updated
 
 
 @router.delete("/requisitions/{req_id}")
 async def delete_requisition(req_id: str):
-    if req_id not in _requisitions:
+    ok = await store.delete_requisition(req_id)
+    if not ok:
         raise HTTPException(status_code=404, detail="Requisition not found")
-    del _requisitions[req_id]
     return {"ok": True, "deleted_id": req_id}
 
 
-# --- QUESTION BANK CRUD ---
+# --- QUESTION BANK CRUD (MongoDB-backed) ---
 @router.post("/question-bank", response_model=QuestionItem)
 async def create_question_item(item: QuestionItemCreate):
-    item_id = f"q-{uuid.uuid4().hex[:8]}"
-    now = datetime.now(timezone.utc).isoformat()
-    record = {
-        "id": item_id,
-        "version": 1,
-        "is_active": True,
-        "created_at": now,
-        "updated_at": now,
-        **item.model_dump(),
-    }
-    _question_bank[item_id] = record
-    return record
+    return await store.create_question_item(item.model_dump())
 
 
 @router.get("/question-bank", response_model=List[QuestionItem])
@@ -96,42 +67,34 @@ async def list_question_items(
     experience_band: Optional[str] = None,
     modality: Optional[str] = None,
 ):
-    results = list(_question_bank.values())
-    if discipline:
-        results = [q for q in results if (q.get("discipline") or "").lower() == discipline.lower()]
-    if competency:
-        results = [q for q in results if (q.get("competency") or "").lower() == competency.lower()]
-    if experience_band:
-        results = [q for q in results if (q.get("experience_band") or "").lower() == experience_band.lower()]
-    if modality:
-        results = [q for q in results if (q.get("modality") or "").lower() == modality.lower()]
+    results = await store.list_question_items(discipline, competency, experience_band, modality)
     return results
 
 
 @router.get("/question-bank/{item_id}", response_model=QuestionItem)
 async def get_question_item(item_id: str):
-    if item_id not in _question_bank:
+    record = await store.get_question_item(item_id)
+    if not record:
         raise HTTPException(status_code=404, detail="Question item not found")
-    return _question_bank[item_id]
+    return record
 
 
 @router.patch("/question-bank/{item_id}", response_model=QuestionItem)
 async def update_question_item(item_id: str, patch: QuestionItemUpdate):
-    if item_id not in _question_bank:
+    record = await store.get_question_item(item_id)
+    if not record:
         raise HTTPException(status_code=404, detail="Question item not found")
-    record = _question_bank[item_id]
     update_data = patch.model_dump(exclude_unset=True)
-    record.update(update_data)
-    record["version"] = record.get("version", 1) + 1
-    record["updated_at"] = datetime.now(timezone.utc).isoformat()
-    return record
+    updated = await store.update_question_item(item_id, update_data)
+    return updated
 
 
 @router.delete("/question-bank/{item_id}")
 async def delete_question_item(item_id: str):
-    if item_id not in _question_bank:
+    record = await store.get_question_item(item_id)
+    if not record:
         raise HTTPException(status_code=404, detail="Question item not found")
-    _question_bank[item_id]["is_active"] = False
+    await store.retire_question_item(item_id)
     return {"ok": True, "retired_id": item_id}
 
 
@@ -189,35 +152,19 @@ async def workday_reconcile_failed_syncs():
 @router.get("/export/bi")
 async def export_bi_analytics_data(format: str = Query("json", description="'json' or 'csv'")):
     """REST API access for client BI tools (PowerBI, Tableau) and downstream analytics (FR-40)."""
-    data = [
-        {
-            "requisition_code": "REQ-2026-089",
-            "candidate_id": "cand-8901",
-            "name": "Marcus Vance",
-            "composite_score": 92.4,
-            "cad_score": 95.0,
-            "qna_score": 90.0,
-            "written_score": 88.0,
-            "psychometric_score": 94.0,
-            "english_score": 96.0,
-            "experience_band": "2-3 yr",
-            "status": "Shortlisted",
-        },
-        {
-            "requisition_code": "REQ-2026-089",
-            "candidate_id": "cand-8902",
-            "name": "Elena Rostova",
-            "composite_score": 87.8,
-            "cad_score": 88.5,
-            "qna_score": 86.0,
-            "written_score": 90.0,
-            "psychometric_score": 85.0,
-            "english_score": 92.0,
-            "experience_band": "2-3 yr",
-            "status": "Shortlisted",
-        },
-    ]
-    return {"ok": True, "count": len(data), "export_format": format, "records": data}
+    requisitions = await store.list_requisitions()
+    records = []
+    for req in requisitions:
+        records.append({
+            "requisition_code": req.get("req_code", req.get("id", "N/A")),
+            "title": req.get("title", ""),
+            "discipline": req.get("discipline", ""),
+            "region": req.get("region", ""),
+            "experience_band": req.get("experience_band", ""),
+            "status": req.get("status", "active"),
+            "created_at": req.get("created_at", ""),
+        })
+    return {"ok": True, "count": len(records), "export_format": format, "records": records}
 
 
 # --- SCORING SERVICE ENDPOINTS ---

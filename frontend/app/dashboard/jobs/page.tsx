@@ -1,99 +1,125 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
+import { Button } from '@/components/ui/button'
+import { useAuth } from '@/lib/auth-context'
+import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
-import { DollarSign, Briefcase, MapPinIcon, Loader, Search } from 'lucide-react'
+import {
+  Briefcase, ExternalLink, Clock, Loader2,
+  CheckCircle, XCircle, Hourglass, ArrowRight,
+} from 'lucide-react'
 
-interface JobPosting {
+interface AppliedJob {
   id: string
-  title: string
+  jobId: string
+  jobTitle: string
   company: string
-  location: string
-  salary?: { min: number; max: number; currency: string }
-  jobType: string
-  experienceLevel: string
-  description: string
-  skills: string[]
-  applicants: number
-  postedAt: string
+  appliedAt: string
+  status: 'submitted' | 'in_review' | 'rejected' | 'accepted' | 'withdrawn'
+  resumeName: string | null
 }
 
-export default function JobsPage() {
+const STATUS_CONFIG: Record<AppliedJob['status'], { label: string; color: string; icon: any }> = {
+  submitted:   { label: 'Submitted',    color: 'bg-blue-500/20 text-blue-700',    icon: Hourglass },
+  in_review:   { label: 'In Review',   color: 'bg-yellow-500/20 text-yellow-700', icon: Clock },
+  rejected:    { label: 'Rejected',    color: 'bg-red-500/20 text-red-700',       icon: XCircle },
+  accepted:    { label: 'Accepted',   color: 'bg-green-500/20 text-green-700',   icon: CheckCircle },
+  withdrawn:   { label: 'Withdrawn',   color: 'bg-gray-500/20 text-gray-700',     icon: XCircle },
+}
+
+export default function DashboardJobsPage() {
+  const { user } = useAuth()
+  const gate = usePageGuard('user')
   const addToast = useToast()
-  const [jobs, setJobs] = useState<JobPosting[]>([])
+  const [applications, setApplications] = useState<AppliedJob[]>([])
   const [loading, setLoading] = useState(true)
-  const [searchTerm, setSearchTerm] = useState('')
-  const [filter, setFilter] = useState({ location: '', jobType: '', level: '' })
 
   useEffect(() => {
-    fetch('/api/jobs')
+    if (!gate.ready || !user) return
+    fetch('/api/jobs/applications', { credentials: 'include' })
       .then(r => r.json())
-      .then(json => { if (json.data) setJobs(json.data) })
-      .catch(() => {})
+      .then(data => { if (Array.isArray(data)) setApplications(data) })
+      .catch(() => addToast({ type: 'error', title: 'Error', message: 'Failed to load applications' }))
       .finally(() => setLoading(false))
-  }, [])
+  }, [gate.ready, user])
 
-  const filteredJobs = jobs.filter(job => {
-    const matchesSearch = (job.title || '').toLowerCase().includes(searchTerm.toLowerCase()) || (job.company || '').toLowerCase().includes(searchTerm.toLowerCase())
-    const matchesLocation = !filter.location || job.location.includes(filter.location)
-    const matchesType = !filter.jobType || job.jobType === filter.jobType
-    const matchesLevel = !filter.level || job.experienceLevel === filter.level
-    return matchesSearch && matchesLocation && matchesType && matchesLevel
-  })
-
-  if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+  if (!gate.ready) return (
+    <div className="flex justify-center py-20">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  )
 
   return (
     <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Jobs</h1>
-        <p className="text-muted-foreground mt-1">Find your next opportunity</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h1 className="text-3xl font-bold">My Applications</h1>
+          <p className="text-muted-foreground mt-1">Track your job applications and their status</p>
+        </div>
+        <Button variant="outline" asChild className="gap-1.5">
+          <Link href="/jobs">Browse Jobs <ArrowRight className="h-4 w-4" /></Link>
+        </Button>
       </div>
 
-      <div className="relative">
-        <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
-        <Input
-          placeholder="Search jobs by title or company..."
-          value={searchTerm}
-          onChange={e => setSearchTerm(e.target.value)}
-          className="pl-9"
-        />
-      </div>
-
-      {jobs.length === 0 ? (
-        <Card className="border-border/60 p-10 text-center">
-          <Briefcase className="mx-auto h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No job listings available yet.</p>
+      {loading ? (
+        <div className="flex justify-center py-20">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : applications.length === 0 ? (
+        <Card className="border-border/60 p-12 text-center">
+          <Briefcase className="mx-auto h-12 w-12 text-muted-foreground/30" />
+          <p className="mt-3 text-lg font-medium">No applications yet</p>
+          <p className="mt-1 text-sm text-muted-foreground">
+            Browse open positions and apply to ones that interest you.
+          </p>
+          <Button className="mt-4" asChild>
+            <Link href="/jobs">Browse Open Jobs</Link>
+          </Button>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredJobs.map(job => (
-            <Card key={job.id} className="border-border/60 p-5">
-              <h3 className="mb-1 font-semibold text-foreground">{job.title}</h3>
-              <div className="mb-2 flex items-center gap-3 text-xs text-muted-foreground">
-                <span>{job.company}</span>
-                <span className="flex items-center gap-1"><MapPinIcon className="h-3 w-3" />{job.location}</span>
-              </div>
-              <div className="mb-3 flex flex-wrap gap-1.5">
-                {job.skills.map(s => <Badge key={s} variant="secondary" className="text-[10px]">{s}</Badge>)}
-              </div>
-              <p className="mb-4 line-clamp-2 text-xs text-muted-foreground">{job.description}</p>
-              <div className="mb-4 flex items-center gap-4 text-xs text-muted-foreground">
-                {job.salary && <span className="flex items-center gap-1"><DollarSign className="h-3 w-3" />${(job.salary.min / 1000).toFixed(0)}k-${(job.salary.max / 1000).toFixed(0)}k</span>}
-                <span>{job.jobType}</span>
-                <span>{job.applicants} applicants</span>
-              </div>
-              <Button variant="outline" size="sm" className="w-full" onClick={() => addToast({ type: 'info', title: 'Coming soon', message: 'Job application feature is coming soon!' })}>Apply Now</Button>
-            </Card>
-          ))}
+        <div className="space-y-3">
+          {applications.map(app => {
+            const cfg = STATUS_CONFIG[app.status]
+            const Icon = cfg.icon
+            return (
+              <Card key={app.id} className="p-4 flex items-center justify-between gap-4">
+                <div className="flex items-center gap-4 flex-1 min-w-0">
+                  <div className="h-10 w-10 rounded-lg bg-muted flex items-center justify-center shrink-0">
+                    <Briefcase className="h-5 w-5 text-muted-foreground" />
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="font-medium truncate">{app.jobTitle || 'Unknown Position'}</p>
+                    <p className="text-sm text-muted-foreground truncate">{app.company || 'Company'}</p>
+                  </div>
+                  <Badge className={`gap-1 ${cfg.color} shrink-0`}>
+                    <Icon className="h-3 w-3" />
+                    {cfg.label}
+                  </Badge>
+                </div>
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-xs text-muted-foreground hidden sm:block">
+                    Applied {new Date(app.appliedAt).toLocaleDateString()}
+                  </span>
+                  <Button variant="outline" size="sm" asChild>
+                    <Link href={`/jobs/${app.jobId}`} target="_blank">
+                      View Job <ExternalLink className="h-3 w-3 ml-1" />
+                    </Link>
+                  </Button>
+                </div>
+              </Card>
+            )
+          })}
         </div>
       )}
+
+      <div className="border-t pt-6">
+        <p className="text-sm text-muted-foreground mb-2">Looking for more opportunities?</p>
+        <Button asChild><Link href="/jobs">Explore Open Positions</Link></Button>
+      </div>
     </div>
   )
 }
-
-

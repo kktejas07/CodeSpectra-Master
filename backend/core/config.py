@@ -75,9 +75,10 @@ class Settings:
     UPSTASH_REDIS_REST_TOKEN: str = os.environ.get("UPSTASH_REDIS_REST_TOKEN", "")
 
     # ─── Security ──────────────────────────────────────────────
+    ENVIRONMENT: str = os.environ.get("ENVIRONMENT", "production")
     SESSION_SECRET: str = os.environ.get("SESSION_SECRET", "")
     CRON_SECRET: str = os.environ.get("CRON_SECRET", "")
-    CORS_ORIGINS: str = os.environ.get("CORS_ORIGINS", "*")
+    CORS_ORIGINS: str = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
     INTERNAL_BACKEND_SECRET: str = os.environ.get("INTERNAL_BACKEND_SECRET", "")
 
     # ─── Public ────────────────────────────────────────────────

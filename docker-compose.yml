@@ -1,10 +1,10 @@
-version: '3.8'
-
 services:
   piston:
     image: ghcr.io/engineer-man/piston:latest
     container_name: codespectra-piston
-    privileged: true
+    cap_add:
+      - SYS_ADMIN
+      - SYS_PTRACE
     ports:
       - "2000:2000"
     volumes:
