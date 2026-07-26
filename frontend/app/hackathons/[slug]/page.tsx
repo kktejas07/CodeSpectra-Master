@@ -257,6 +257,10 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                   </div>
                 )}
 
+                {(!hackathon.tasks || hackathon.tasks.length === 0) && (
+                  <p className="text-xs text-muted-foreground">No problems assigned yet — check back soon.</p>
+                )}
+
                 {/* Invite link */}
                 {myTeam && (
                   <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">

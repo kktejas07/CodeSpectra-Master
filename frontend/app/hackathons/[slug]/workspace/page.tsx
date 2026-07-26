@@ -596,6 +596,14 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           </div>
         )}
 
+        {(!hackathon.tasks || hackathon.tasks.length === 0) && (
+          <Card className="p-5 text-center">
+            <ListChecks className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+            <p className="text-sm font-medium">No problems added yet</p>
+            <p className="text-xs text-muted-foreground mt-1">The organizer hasn&apos;t added any problems to this hackathon.</p>
+          </Card>
+        )}
+
         {inviteUrl && (
           <Card className="p-5">
             <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Invite Teammates</p>
