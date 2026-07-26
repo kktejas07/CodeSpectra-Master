@@ -126,6 +126,7 @@ export async function DELETE(
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
   const { id } = await ctx.params
+  const col = await hackathons()
   const doc = await col.findOne({ id }, { projection: { _id: 0 } })
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
   const teams = await (await hackathonTeams()).countDocuments({ hackathon_id: id })
