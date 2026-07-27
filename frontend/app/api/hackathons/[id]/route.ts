@@ -19,7 +19,7 @@ function isAdmin(role?: string | null): boolean {
   return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
 }
 
-function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): string {
+function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): 'draft' | 'open' | 'live' | 'closed' {
   if (currentStatus === 'draft') return 'draft'
   const now = Date.now()
   const start = new Date(startsAt).getTime()

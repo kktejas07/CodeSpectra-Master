@@ -24,7 +24,7 @@ import {
   type HackathonRule,
 } from '@/lib/db/qr-events'
 
-function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): string {
+function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): 'draft' | 'open' | 'live' | 'closed' {
   if (currentStatus === 'draft') return 'draft'
   const now = Date.now()
   const start = new Date(startsAt).getTime()
