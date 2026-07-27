@@ -395,6 +395,30 @@ export default function HackathonsAdminPage() {
                 </p>
               </div>
               <div className="space-y-2">
+                <Label>Event type</Label>
+                <div className="flex gap-4">
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" value="hackathon" checked={form.event_type === 'hackathon'} onChange={() => setForm((f) => ({ ...f, event_type: 'hackathon' }))} />
+                    <span className="text-sm">Hackathon</span>
+                  </label>
+                  <label className="flex items-center gap-2 cursor-pointer">
+                    <input type="radio" value="speed_contest" checked={form.event_type === 'speed_contest'} onChange={() => setForm((f) => ({ ...f, event_type: 'speed_contest' }))} />
+                    <span className="text-sm">Speed Contest</span>
+                  </label>
+                </div>
+                <p className="text-xs text-muted-foreground">
+                  {form.event_type === 'speed_contest'
+                    ? 'Each problem has a time limit. Teams race against the clock per problem.'
+                    : 'Teams work on all problems concurrently over the full event window.'}
+                </p>
+              </div>
+              {form.event_type === 'speed_contest' && (
+                <div>
+                  <Label>Default time per problem (minutes)</Label>
+                  <Input type="number" min={1} max={1440} value={form.per_problem_time_minutes} onChange={(e) => setForm((f) => ({ ...f, per_problem_time_minutes: Number(e.target.value) }))} />
+                </div>
+              )}
+              <div className="space-y-2">
                   <Label>Banner image</Label>
                   {form.banner_url && (
                     <div className="relative w-full h-32 rounded-lg overflow-hidden border bg-muted mb-2">
