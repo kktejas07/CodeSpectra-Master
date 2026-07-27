@@ -79,8 +79,8 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
               <span>{teamName}</span>
             </div>
             <div className="flex gap-3 pt-4">
-              <Button onClick={() => router.push(`/hackathons/${slug}`)}>
-                View Event <ArrowRight className="ml-1 h-4 w-4" />
+              <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)}>
+                Go to Workspace <ArrowRight className="ml-1 h-4 w-4" />
               </Button>
             </div>
           </>

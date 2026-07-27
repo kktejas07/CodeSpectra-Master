@@ -97,8 +97,8 @@ export async function GET(
     return NextResponse.json({
       kind: 'team',
       role_variant: 'user',
-      theme: { label: 'Team', accent: 'cyan', dashboard: hk ? `/hackathons/${hk.slug}` : '/' },
-      dashboard_url: hk ? `/hackathons/${hk.slug}` : '/',
+      theme: { label: 'Team', accent: 'cyan', dashboard: hk ? `/hackathons/${hk.slug}/workspace` : '/' },
+      dashboard_url: hk ? `/hackathons/${hk.slug}/workspace` : '/',
       team: {
         id: team.id,
         name: team.name,

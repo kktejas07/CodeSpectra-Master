@@ -168,27 +168,27 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
     if (!team) { router.replace(`/hackathons/${slug}`); return }
 
-    // Poll submissions every 10s
-    const [subRes] = await Promise.all([
-      fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store', credentials: 'include' }),
-    ])
-    if (subRes.ok) {
-      const d = await subRes.json()
-      setSubmissions(d.items || [])
-    }
-
-    // Also re-fetch hackathon state to detect if event just ended
-    const hRes = await fetch(`/api/hackathons/${slug}?by=slug`, { cache: 'no-store', credentials: 'include' })
-    if (hRes.ok) {
-      const hk = await hRes.json() as Hackathon
-      setHackathon(hk)
-      if (hk.status === 'closed') {
-        addToast({ type: 'info', title: 'Event ended', message: 'The hackathon has concluded. Check the results.' })
+    try {
+      const [subRes] = await Promise.all([
+        fetch(`/api/hackathons/${hackathon.id}/submissions?team_id=${team.id}`, { cache: 'no-store', credentials: 'include' }),
+      ])
+      if (subRes.ok) {
+        const d = await subRes.json()
+        setSubmissions(d.items || [])
       }
-    }
 
-    const base = typeof window !== 'undefined' ? window.location.origin : ''
-    setInviteUrl(`${base}/hackathons/${slug}/join/${team.qr_token}`)
+      const hRes = await fetch(`/api/hackathons/${slug}?by=slug`, { cache: 'no-store', credentials: 'include' })
+      if (hRes.ok) {
+        const hk = await hRes.json() as Hackathon
+        setHackathon(hk)
+        if (hk.status === 'closed') {
+          addToast({ type: 'info', title: 'Event ended', message: 'The hackathon has concluded. Check the results.' })
+        }
+      }
+
+      const base = typeof window !== 'undefined' ? window.location.origin : ''
+      setInviteUrl(`${base}/hackathons/${slug}/join/${team.qr_token}`)
+    } catch { /* ignore polling errors */ }
   }, [hackathon, hasSession, teams, slug, router, addToast])
 
   // Initial load + 10s polling for submissions + hackathon state
