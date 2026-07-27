@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useRef, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -18,8 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
-import { usePlatformTimezone } from '@/lib/use-platform-timezone'
+import { toLocalDatetimeString } from '@/lib/datetime-local'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -38,7 +37,6 @@ interface ProblemOption { slug: string; title: string; difficulty: string; topic
 
 export default function HackathonsAdminPage() {
   const gate = usePageGuard('superadmin')
-  const tz = usePlatformTimezone()
   const [items, setItems] = useState<Hackathon[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -53,7 +51,7 @@ export default function HackathonsAdminPage() {
     num_teams: 8,
     max_per_team: 4,
     timeout_minutes: 60,
-    starts_at: '',
+    starts_at: toLocalDatetimeString(new Date(Date.now() + 3600000)),
     event_type: 'hackathon' as 'hackathon' | 'speed_contest',
     per_problem_time_minutes: 30,
     tasks: [] as { slug: string; title: string; points: number; difficulty: string; required: boolean; time_limit_minutes?: number }[],
@@ -66,16 +64,6 @@ export default function HackathonsAdminPage() {
     banner_url: '',
   })
   const [editing, setEditing] = useState<Hackathon | null>(null)
-
-  const formInitRef = useRef(false)
-  useEffect(() => {
-    if (formInitRef.current) return
-    formInitRef.current = true
-    setForm((f) => {
-      if (f.starts_at) return f
-      return { ...f, starts_at: toZonedDatetimeString(new Date(Date.now() + 3600000), tz) }
-    })
-  }, [])
 
   const [problemSearch, setProblemSearch] = useState('')
   const [problemResults, setProblemResults] = useState<ProblemOption[]>([])
@@ -239,7 +227,7 @@ export default function HackathonsAdminPage() {
           name: form.name, description: form.description,
           num_teams: form.num_teams, max_per_team: form.max_per_team,
           timeout_minutes: form.timeout_minutes,
-          starts_at: fromZonedDatetimeString(form.starts_at, tz),
+          starts_at: new Date(form.starts_at).toISOString(),
           event_type: form.event_type,
           per_problem_time_minutes: form.per_problem_time_minutes,
           tasks: form.tasks.map((t) => ({
@@ -274,7 +262,7 @@ export default function HackathonsAdminPage() {
           timeout_minutes: form.timeout_minutes,
           event_type: form.event_type,
           per_problem_time_minutes: form.per_problem_time_minutes,
-          starts_at: fromZonedDatetimeString(form.starts_at, tz),
+          starts_at: new Date(form.starts_at).toISOString(),
           tasks: form.tasks.map((t) => ({
             problem_slug: t.slug, problem_title: t.title,
             points: t.points, difficulty: t.difficulty, required: t.required,
@@ -303,7 +291,7 @@ export default function HackathonsAdminPage() {
       num_teams: hk.num_teams,
       max_per_team: hk.max_per_team,
       timeout_minutes: hk.timeout_minutes,
-      starts_at: hk.starts_at ? toZonedDatetimeString(new Date(hk.starts_at), tz) : '',
+      starts_at: hk.starts_at ? toLocalDatetimeString(new Date(hk.starts_at)) : '',
       event_type: (hk as any).event_type === 'speed_contest' ? 'speed_contest' : 'hackathon',
       per_problem_time_minutes: (hk as any).per_problem_time_minutes || 30,
       tasks: (hk.tasks || []).map((t) => ({

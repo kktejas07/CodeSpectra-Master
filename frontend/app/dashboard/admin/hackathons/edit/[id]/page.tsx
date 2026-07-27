@@ -8,8 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
-import { usePlatformTimezone } from '@/lib/use-platform-timezone'
+import { toLocalDatetimeString } from '@/lib/datetime-local'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
@@ -27,7 +26,6 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
   const { id } = use(params)
   const router = useRouter()
   const gate = usePageGuard('superadmin')
-  const tz = usePlatformTimezone()
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -62,7 +60,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
           num_teams: Number(doc.num_teams) || 8,
           max_per_team: Number(doc.max_per_team) || 4,
           timeout_minutes: Number(doc.timeout_minutes) || 60,
-          starts_at: toZonedDatetimeString(startsAt, tz),
+          starts_at: toLocalDatetimeString(startsAt),
           tasks: (Array.isArray(doc.tasks) ? doc.tasks : []).map((t: any) => ({
             slug: String(t.problem_slug || t.slug || ''),
             title: String(t.problem_title || t.title || ''),
@@ -240,7 +238,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         num_teams: form.num_teams,
         max_per_team: form.max_per_team,
         timeout_minutes: form.timeout_minutes,
-        starts_at: fromZonedDatetimeString(form.starts_at, tz),
+        starts_at: new Date(form.starts_at).toISOString(),
         tasks: form.tasks.map((t) => ({
           problem_slug: t.slug,
           problem_title: t.title,
