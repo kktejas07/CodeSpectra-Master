@@ -411,7 +411,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           <div className="flex items-center gap-3">
             <Link href={`/hackathons/${slug}`} className="text-sm text-muted-foreground hover:text-foreground">← {hackathon.name}</Link>
             <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase">
-              {isLive ? '🔴 LIVE' : isClosed ? 'Closed' : 'Upcoming'}
+              {isLive ? <span className="flex items-center gap-1"><span className="h-2 w-2 rounded-full bg-red-500 animate-pulse" />LIVE</span> : isClosed ? 'Closed' : 'Upcoming'}
             </Badge>
           </div>
           {isLive && (

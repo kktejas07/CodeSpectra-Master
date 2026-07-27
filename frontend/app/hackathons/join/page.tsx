@@ -148,20 +148,24 @@ function JoinPage() {
           </div>
         )}
 
-        {(invite?.eventStatus !== 'live' && invite?.eventStatus !== 'closed') && (
+        {(invite?.eventStatus !== 'live' && invite?.eventStatus !== 'closed') ? (
         <div className="space-y-2">
           <Button onClick={handleJoin} disabled={joining || !user} className="w-full gap-1">
             {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
             {user ? 'Join Team' : 'Sign in to Join'}
           </Button>
-        )}
+          <Link href={`/hackathons/${invite?.eventSlug}`} className="block">
+            <Button variant="outline" className="w-full gap-1">
+              View Event Details
+            </Button>
+          </Link>
+        </div>
+        ) : (
         <Link href={`/hackathons/${invite?.eventSlug}`} className="block">
           <Button variant="outline" className="w-full gap-1">
             View Event Details
           </Button>
         </Link>
-        {invite?.eventStatus !== 'live' && invite?.eventStatus !== 'closed' && (
-        </div>
         )}
       </Card>
     </div>
