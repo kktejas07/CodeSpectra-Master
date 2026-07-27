@@ -636,7 +636,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           </Card>
         )}
 
-        {inviteUrl && (
+        {inviteUrl && !isClosed && !isLive && (
           <Card className="p-5">
             <p className="text-xs font-semibold text-muted-foreground mb-2 uppercase tracking-wider">Invite Teammates</p>
             <div className="flex gap-2 mb-2">
@@ -822,7 +822,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
           {selectedProblem && (
             <>
-              <div className="flex-shrink-0 border-b border-border px-6 py-4 flex items-center justify-between">
+              <div className="flex-shrink-0 border-b border-border p-6 sm:px-8 flex items-center justify-between">
                 <div className="min-w-0 flex-1">
                   <SheetHeader className="p-0">
                     <SheetTitle className="text-lg truncate">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
@@ -838,13 +838,13 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
+              <div className="flex-1 overflow-y-auto pl-6 pr-6 sm:pl-8 sm:pr-8 py-6 space-y-8">
                 {problemDetailLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
                   </div>
                 ) : problemDetail?.statement_md ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed [&_p]:mb-3 [&_ul]:pl-4 [&_ul]:mb-3 [&_li]:mb-1 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-muted [&_code]:text-xs [&_code]:font-mono [&_strong]:font-semibold">
+                  <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed [&_p]:mb-3 [&_ul]:pl-4 [&_ul]:mb-3 [&_li]:mb-1 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-muted [&_code]:text-xs [&_code]:font-mono [&_strong]:font-semibold">
                     <ReactMarkdown>{problemDetail.statement_md}</ReactMarkdown>
                   </div>
                 ) : (
@@ -947,7 +947,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
               </div>
 
               {isLive && (
-                <div className="flex-shrink-0 border-t border-border px-6 py-4 flex items-center gap-3">
+                <div className="flex-shrink-0 border-t border-border p-6 sm:px-8 flex items-center gap-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mr-auto">
                     <span className="font-medium text-foreground">{selectedProblem.points}</span> pts
                   </div>

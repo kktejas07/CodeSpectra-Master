@@ -26,7 +26,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
 
   const hk = await (await hackathons()).findOne({ id: invite.hackathon_id })
   if (!hk) return NextResponse.json({ error: 'Event not found' }, { status: 404 })
-  if (hk.status === 'closed') return NextResponse.json({ error: 'Event is closed' }, { status: 409 })
+  if (hk.status === 'live') return NextResponse.json({ error: 'Event is in progress, cannot join' }, { status: 409 })
+if (hk.status === 'closed') return NextResponse.json({ error: 'Event is closed' }, { status: 409 })
 
   const teamsCol = await hackathonTeams()
   const team = await teamsCol.findOne({ id: invite.team_id })

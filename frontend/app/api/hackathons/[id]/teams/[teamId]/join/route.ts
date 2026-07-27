@@ -12,7 +12,8 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'event not found' }, { status: 404 })
-  if (hk.status === 'closed') return NextResponse.json({ error: 'event closed' }, { status: 409 })
+  if (hk.status === 'live') return NextResponse.json({ error: 'event in progress, cannot join' }, { status: 409 })
+if (hk.status === 'closed') return NextResponse.json({ error: 'event closed' }, { status: 409 })
 
   const teamsCol = await hackathonTeams()
   const team = await teamsCol.findOne({

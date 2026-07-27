@@ -17,7 +17,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
   const [status, setStatus] = useState<'checking' | 'loading' | 'success' | 'error'>('checking')
   const [teamName, setTeamName] = useState('')
   const [message, setMessage] = useState('')
-  const [errorMeta, setErrorMeta] = useState<'already_this_team' | 'already_other_team' | 'team_full' | 'other'>('other')
+  const [errorMeta, setErrorMeta] = useState<'already_this_team' | 'already_other_team' | 'team_full' | 'event_in_progress' | 'other'>('other')
   const [otherTeamSlug, setOtherTeamSlug] = useState('')
   const [otherTeamName, setOtherTeamName] = useState('')
 
@@ -41,6 +41,8 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
           }
         } else if (data.error?.includes('Team is full') || data.error?.includes('full')) {
           setErrorMeta('team_full')
+        } else if (data.error?.includes('in progress') || data.error?.includes('closed')) {
+          setErrorMeta('event_in_progress')
         } else {
           setErrorMeta('other')
         }
@@ -163,6 +165,21 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
                 Browse Events
+              </Button>
+            </div>
+          </>
+        )}
+
+        {status === 'error' && errorMeta === 'event_in_progress' && (
+          <>
+            <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-full bg-amber-500/10">
+              <ShieldAlert className="h-8 w-8 text-amber-500" />
+            </div>
+            <h2 className="text-lg font-semibold">Event in Progress</h2>
+            <p className="text-sm text-muted-foreground">Cannot join — the event is already running.</p>
+            <div className="flex gap-3 pt-4">
+              <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
+                View Event
               </Button>
             </div>
           </>

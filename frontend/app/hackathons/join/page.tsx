@@ -12,6 +12,7 @@ interface InviteInfo {
   token: string
   eventName: string
   eventSlug: string
+  eventStatus?: string
   teamName: string
   teamId: string
   invitedBy: string
@@ -134,17 +135,34 @@ function JoinPage() {
           </div>
         )}
 
+        {invite?.eventStatus === 'live' && (
+          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 text-center">
+            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Event in Progress</p>
+            <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">Cannot join — the event is already running.</p>
+          </div>
+        )}
+        {invite?.eventStatus === 'closed' && (
+          <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 text-center">
+            <p className="text-sm font-medium text-red-700 dark:text-red-400">Event Ended</p>
+            <p className="text-xs text-red-600 dark:text-red-500 mt-1">Cannot join — the event has ended.</p>
+          </div>
+        )}
+
+        {(invite?.eventStatus !== 'live' && invite?.eventStatus !== 'closed') && (
         <div className="space-y-2">
           <Button onClick={handleJoin} disabled={joining || !user} className="w-full gap-1">
             {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}
             {user ? 'Join Team' : 'Sign in to Join'}
           </Button>
-          <Link href={`/hackathons/${invite?.eventSlug}`} className="block">
-            <Button variant="outline" className="w-full gap-1">
-              View Event Details
-            </Button>
-          </Link>
+        )}
+        <Link href={`/hackathons/${invite?.eventSlug}`} className="block">
+          <Button variant="outline" className="w-full gap-1">
+            View Event Details
+          </Button>
+        </Link>
+        {invite?.eventStatus !== 'live' && invite?.eventStatus !== 'closed' && (
         </div>
+        )}
       </Card>
     </div>
   )

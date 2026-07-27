@@ -198,23 +198,32 @@ export default function QrScanPage({
             <h1 className="mt-1 text-2xl font-bold" data-testid="qr-team-name">
               {teamData!.team.name}
             </h1>
-            <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
-              <p className="text-sm font-medium">Join this team to start competing</p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Sign in or create an account to register and access the hackathon problems.
-              </p>
-              <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
-                <Button className="mt-3 w-full gap-2">
-                  <LogIn className="h-4 w-4" />
-                  Sign in to join team
-                </Button>
-              </Link>
-              <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
-                <Button variant="outline" className="mt-2 w-full gap-2">
-                  Create account
-                </Button>
-              </Link>
-            </div>
+            {teamData?.hackathon?.status === 'live' || teamData?.hackathon?.status === 'closed' ? (
+              <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
+                <p className="text-sm font-medium">Event is {teamData.hackathon.status === 'live' ? 'in progress' : 'closed'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {teamData.hackathon.status === 'live' ? 'Cannot join — the event is already running.' : 'Cannot join — the event has ended.'}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
+                <p className="text-sm font-medium">Join this team to start competing</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Sign in or create an account to register and access the hackathon problems.
+                </p>
+                <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
+                  <Button className="mt-3 w-full gap-2">
+                    <LogIn className="h-4 w-4" />
+                    Sign in to join team
+                  </Button>
+                </Link>
+                <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
+                  <Button variant="outline" className="mt-2 w-full gap-2">
+                    Create account
+                  </Button>
+                </Link>
+              </div>
+            )}
           </article>
         ) : data.kind === 'team' && !isMember ? (
           <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-amber-500/40 shadow-xl">
@@ -234,21 +243,30 @@ export default function QrScanPage({
                 Event ends {new Date(teamData.hackathon.ends_at).toLocaleString()}
               </div>
             )}
-            <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
-              <p className="text-sm font-medium flex items-center gap-2">
-                <UserPlus className="h-4 w-4 text-amber-500" />
-                You&apos;re not on this team yet
-              </p>
-              <p className="mt-1 text-xs text-muted-foreground">
-                Join this team to compete in the hackathon.
-              </p>
-              <Link href={`/hackathons/${teamData!.hackathon?.slug}/join/${token}`}>
-                <Button className="mt-3 w-full gap-2">
-                  <UserPlus className="h-4 w-4" />
-                  Join this team
-                </Button>
-              </Link>
-            </div>
+            {teamData?.hackathon?.status === 'live' || teamData?.hackathon?.status === 'closed' ? (
+              <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4 text-center">
+                <p className="text-sm font-medium">Event is {teamData.hackathon.status === 'live' ? 'in progress' : 'closed'}</p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  {teamData.hackathon.status === 'live' ? 'Cannot join — the event is already running.' : 'Cannot join — the event has ended.'}
+                </p>
+              </div>
+            ) : (
+              <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+                <p className="text-sm font-medium flex items-center gap-2">
+                  <UserPlus className="h-4 w-4 text-amber-500" />
+                  You&apos;re not on this team yet
+                </p>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  Join this team to compete in the hackathon.
+                </p>
+                <Link href={`/hackathons/${teamData!.hackathon?.slug}/join/${token}`}>
+                  <Button className="mt-3 w-full gap-2">
+                    <UserPlus className="h-4 w-4" />
+                    Join this team
+                  </Button>
+                </Link>
+              </div>
+            )}
           </article>
         ) : data.kind === 'user' ? (
           <UserCard data={data} ringClass={ringClass} />

@@ -79,6 +79,9 @@ export async function POST(
   const { id } = await ctx.params
   const hk = await resolveHackathon(id)
   if (!hk) return NextResponse.json({ error: 'hackathon not found' }, { status: 404 })
+  if (hk.status === 'live') {
+    return NextResponse.json({ error: 'event in progress, cannot create team' }, { status: 409 })
+  }
   if (hk.status === 'closed') {
     return NextResponse.json({ error: 'event closed' }, { status: 409 })
   }
