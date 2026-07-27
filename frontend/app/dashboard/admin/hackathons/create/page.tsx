@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { toLocalDatetimeString } from '@/lib/db/qr-events'
+import { toLocalDatetimeString } from '@/lib/datetime-local'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,

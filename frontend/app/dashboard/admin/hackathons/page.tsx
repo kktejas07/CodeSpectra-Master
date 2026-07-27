@@ -18,7 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { toLocalDatetimeString } from '@/lib/db/qr-events'
+import { toLocalDatetimeString } from '@/lib/datetime-local'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
