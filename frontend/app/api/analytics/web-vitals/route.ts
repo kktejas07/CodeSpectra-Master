@@ -3,6 +3,10 @@ import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
 import { webVitalsEvents, newId, nowIso } from '@/lib/db/misc'
 
+export async function OPTIONS() {
+  return new NextResponse(null, { status: 204 })
+}
+
 const ALLOWED_METRICS = new Set(['CLS', 'FCP', 'FID', 'INP', 'LCP', 'TTFB'])
 
 const eventSchema = z.object({

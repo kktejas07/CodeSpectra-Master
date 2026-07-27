@@ -9,7 +9,7 @@ export function usePlatformTimezone(): string {
     if (cached) return
     fetch('/api/platform/tz', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
-      .then(d => { if (d?.timezone) { cached = d.timezone; setTz(d.timezone) } })
+      .then(d => { if (d?.timezone && d.timezone !== cached) { cached = d.timezone; setTz(d.timezone) } })
       .catch(() => {})
   }, [])
   return tz
