@@ -824,7 +824,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             <>
               <div className="flex-shrink-0 border-b border-border p-6 sm:px-8 flex items-center justify-between">
                 <div className="min-w-0 flex-1">
-                  <SheetHeader className="p-0">
+                  <SheetHeader className="p-0 pr-6">
                     <SheetTitle className="text-lg truncate">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
                   </SheetHeader>
                   <div className="flex items-center gap-2 mt-1">
@@ -833,9 +833,6 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     {selectedProblem.required && <Badge variant="destructive" className="text-[10px]">Required</Badge>}
                   </div>
                 </div>
-                <button onClick={closeProblemPanel} className="ml-4 p-1.5 rounded-md hover:bg-muted transition-colors">
-                  <X className="h-4 w-4 text-muted-foreground" />
-                </button>
               </div>
 
               <div className="flex-1 overflow-y-auto pl-6 pr-6 sm:pl-8 sm:pr-8 py-6 space-y-8">

@@ -87,17 +87,26 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const teamsCol = await hackathonTeams()
   await teamsCol.updateOne({ id: team.id }, { $inc: { submissions: 1 } })
 
-  // If auto-graded and scored, grant XP
+  // If auto-graded and scored, grant XP once per problem
   if (score && score > 0) {
     try {
-      const xpEarned = score
-      const teamDoc = await teamsCol.findOne({ id: team.id })
-      if (teamDoc) {
-        const newXp = teamDoc.xp + xpEarned
-        await teamsCol.updateOne(
-          { id: team.id },
-          { $set: { xp: newXp, updated_at: nowIso() } },
-        )
+      const subsCol = await hackathonSubmissions()
+      const prior = await subsCol.findOne({
+        team_id: team.id,
+        problem_slug: body.problem_slug,
+        score: { $gt: 0 },
+        _id: { $ne: subDoc._id },
+      } as any)
+      if (!prior) {
+        const xpEarned = score
+        const teamDoc = await teamsCol.findOne({ id: team.id })
+        if (teamDoc) {
+          const newXp = teamDoc.xp + xpEarned
+          await teamsCol.updateOne(
+            { id: team.id },
+            { $set: { xp: newXp, updated_at: nowIso() } },
+          )
+        }
       }
     } catch { /* XP best-effort */ }
   }
