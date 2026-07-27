@@ -24,6 +24,16 @@ import {
   type HackathonRule,
 } from '@/lib/db/qr-events'
 
+function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): string {
+  if (currentStatus === 'draft') return 'draft'
+  const now = Date.now()
+  const start = new Date(startsAt).getTime()
+  const end = new Date(endsAt).getTime()
+  if (now >= end) return 'closed'
+  if (now >= start) return 'live'
+  return 'open'
+}
+
 export const runtime = 'nodejs'
 
 function slugify(s: string): string {
@@ -56,19 +66,15 @@ export async function GET(req: NextRequest) {
     .sort({ created_at: -1 })
     .toArray()
 
-  // Auto-close hackathons whose ends_at has passed
-  const now = Date.now()
+  // Auto-transition status based on dates
   const updates: Promise<void>[] = []
   for (const h of items) {
-    if (
-      h.status !== 'closed' &&
-      h.status !== 'draft' &&
-      new Date(h.ends_at).getTime() < now
-    ) {
+    const computed = computeStatus(h.starts_at, h.ends_at, h.status)
+    if (computed !== h.status) {
       updates.push(
-        col.updateOne({ id: h.id }, { $set: { status: 'closed', updated_at: nowIso() } }).then(() => {})
+        col.updateOne({ id: h.id }, { $set: { status: computed, updated_at: nowIso() } }).then(() => {})
       )
-      h.status = 'closed'
+      h.status = computed
     }
   }
   void updates
@@ -134,7 +140,7 @@ export async function POST(req: NextRequest) {
     timeout_minutes: timeoutMin,
     starts_at: startsAt.toISOString(),
     ends_at: endsAt.toISOString(),
-    status: 'open',
+    status: computeStatus(startsAt.toISOString(), endsAt.toISOString(), body.status || 'open'),
     tasks,
     rules: rulesHackathon,
     scoring: {

@@ -26,6 +26,12 @@ export function newToken(): string {
     .replace(/=+$/, '')
 }
 
+/** Format a Date as local YYYY-MM-DDTHH:MM for datetime-local inputs. */
+export function toLocalDatetimeString(d: Date): string {
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export type IdCardRoleVariant = string
 
 export interface IdCardTokenDoc {

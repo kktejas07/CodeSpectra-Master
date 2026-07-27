@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { toLocalDatetimeString } from '@/lib/db/qr-events'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
@@ -34,7 +35,7 @@ export default function HackathonCreatePage() {
     num_teams: 8,
     max_per_team: 4,
     timeout_minutes: 60,
-    starts_at: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
+    starts_at: toLocalDatetimeString(new Date(Date.now() + 3600000)),
     tasks: [] as { slug: string; title: string; points: number; difficulty: string; required: boolean }[],
     rules: [
       { type: 'scoring' as const, title: 'Scoring', description: 'Points are awarded based on test cases passed and code quality.' },

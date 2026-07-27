@@ -227,7 +227,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     if (!team) return
     setSendingInvite(true)
     try {
-      const res = await fetch(`/api/hackathons/${hackathon.id}/teams/${team.id}/invite`, {
+      const res = await csrfFetch(`/api/hackathons/${hackathon.id}/teams/${team.id}/invite`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -844,7 +844,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
                   </div>
                 ) : problemDetail?.statement_md ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
+                  <div className="prose prose-sm dark:prose-invert max-w-none leading-relaxed [&_p]:mb-3 [&_ul]:pl-4 [&_ul]:mb-3 [&_li]:mb-1 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-muted [&_code]:text-xs [&_code]:font-mono [&_strong]:font-semibold">
                     <ReactMarkdown>{problemDetail.statement_md}</ReactMarkdown>
                   </div>
                 ) : (

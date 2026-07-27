@@ -18,6 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { toLocalDatetimeString } from '@/lib/db/qr-events'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -50,7 +51,7 @@ export default function HackathonsAdminPage() {
     num_teams: 8,
     max_per_team: 4,
     timeout_minutes: 60,
-    starts_at: new Date(Date.now() + 3600000).toISOString().slice(0, 16),
+    starts_at: toLocalDatetimeString(new Date(Date.now() + 3600000)),
     tasks: [] as { slug: string; title: string; points: number; difficulty: string; required: boolean }[],
     rules: [
       { type: 'scoring' as const, title: 'Scoring', description: 'Points are awarded based on test cases passed and code quality.' },
@@ -282,7 +283,7 @@ export default function HackathonsAdminPage() {
       num_teams: hk.num_teams,
       max_per_team: hk.max_per_team,
       timeout_minutes: hk.timeout_minutes,
-      starts_at: hk.starts_at ? new Date(hk.starts_at).toISOString().slice(0, 16) : '',
+      starts_at: hk.starts_at ? toLocalDatetimeString(new Date(hk.starts_at)) : '',
       tasks: (hk.tasks || []).map((t) => ({
         slug: t.problem_slug, title: t.problem_title,
         points: t.points, difficulty: t.difficulty, required: t.required,

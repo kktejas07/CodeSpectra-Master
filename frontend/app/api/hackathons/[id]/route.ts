@@ -19,6 +19,16 @@ function isAdmin(role?: string | null): boolean {
   return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
 }
 
+function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): string {
+  if (currentStatus === 'draft') return 'draft'
+  const now = Date.now()
+  const start = new Date(startsAt).getTime()
+  const end = new Date(endsAt).getTime()
+  if (now >= end) return 'closed'
+  if (now >= start) return 'live'
+  return 'open'
+}
+
 async function resolve(idOrSlug: string, by: 'id' | 'slug'): Promise<HackathonDoc | null> {
   const col = await hackathons()
   return (await col.findOne(
@@ -39,6 +49,11 @@ export async function GET(
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
   if (doc.status === 'draft' && !isAdmin(user.role)) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
+  }
+  const computed = computeStatus(doc.starts_at, doc.ends_at, doc.status)
+  if (computed !== doc.status) {
+    await (await hackathons()).updateOne({ id: doc.id }, { $set: { status: computed, updated_at: nowIso() } })
+    doc.status = computed
   }
   return NextResponse.json(doc)
 }
@@ -112,8 +127,16 @@ export async function PATCH(
   }
 
   await col.updateOne({ id }, { $set })
-  const next = await col.findOne({ id }, { projection: { _id: 0 } })
-  return NextResponse.json(next)
+  // Recalculate status from new dates
+  const after = await col.findOne({ id }, { projection: { _id: 0 } })
+  if (after) {
+    const computed = computeStatus(after.starts_at, after.ends_at, after.status)
+    if (computed !== after.status) {
+      await col.updateOne({ id }, { $set: { status: computed, updated_at: nowIso() } })
+      after.status = computed
+    }
+  }
+  return NextResponse.json(after)
 }
 
 export async function DELETE(
