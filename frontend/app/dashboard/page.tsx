@@ -7,7 +7,8 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle,
-  ArrowRight, Clock, Target, Flame, Star, Layers
+  ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users,
+  ExternalLink
 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
@@ -32,6 +33,7 @@ export default function DashboardPage() {
   const [role, setRole] = useState<string | null>(null)
   const [stats, setStats] = useState({ scans: 0, reviews: 0, fixes: 0, challenges: 0, dailyChallenges: 0, streak: 0, xp: 0 })
   const [activities, setActivities] = useState<ActivityItem[]>([])
+  const [myTeams, setMyTeams] = useState<any[]>([])
   const [heatmap, setHeatmap] = useState<{
     cells: number[][] | null
     dayLabels: string[]
@@ -61,7 +63,8 @@ export default function DashboardPage() {
       fetch('/api/user/stats', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/user/activity?limit=10', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/user/heatmap?weeks=52', { credentials: 'include' }).then(r => r.json()).catch(() => null),
-    ]).then(([statsData, activityData, heatmapData]) => {
+      fetch('/api/hackathons/my-teams', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([statsData, activityData, heatmapData, teamsData]) => {
       if (statsData && !statsData.error) {
         setStats({
           scans: statsData.scans ?? 0,
@@ -84,6 +87,7 @@ export default function DashboardPage() {
           totalActiveDays: heatmapData.totalActiveDays ?? 0,
         })
       }
+      if (teamsData?.teams) setMyTeams(teamsData.teams)
     })
   }, [])
 
@@ -147,6 +151,51 @@ export default function DashboardPage() {
         totalContributions={heatmap?.totalContributions ?? 0}
         totalActiveDays={heatmap?.totalActiveDays ?? 0}
       />
+
+      {myTeams.length > 0 && (
+        <Card className="border-border/60 p-6">
+          <div className="mb-4 flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              <Calendar className="h-5 w-5 text-primary" />
+              <h2 className="text-lg font-semibold text-foreground">My Events</h2>
+            </div>
+            <Link href="/dashboard/hackathons">
+              <Button variant="ghost" size="sm" className="gap-1 text-sm">
+                View all <ArrowRight className="h-3 w-3" />
+              </Button>
+            </Link>
+          </div>
+          <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+            {myTeams.map((t: any) => {
+              const h = t.hackathon
+              if (!h) return null
+              const now = new Date()
+              const start = new Date(h.starts_at)
+              const end = new Date(h.ends_at)
+              const isActive = now >= start && now <= end
+              const isUpcoming = now < start
+              return (
+                <Link key={t.hackathon_id} href={`/hackathons/${h.slug}/workspace`}>
+                  <div className="rounded-lg border border-border/60 bg-muted/20 p-4 transition-all hover:border-primary/40 hover:bg-primary/5">
+                    <div className="flex items-center justify-between mb-2">
+                      <h3 className="font-medium text-foreground text-sm truncate">{h.name}</h3>
+                      <Badge variant={isActive ? 'default' : isUpcoming ? 'secondary' : 'outline'} className="text-[10px]">
+                        {isActive ? 'Live' : isUpcoming ? 'Upcoming' : 'Ended'}
+                      </Badge>
+                    </div>
+                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                      <Users className="h-3 w-3" />
+                      <span>{t.members?.length || 0} {t.members?.length === 1 ? 'member' : 'members'}</span>
+                      <span className="text-border">|</span>
+                      <span>{t.name}</span>
+                    </div>
+                  </div>
+                </Link>
+              )
+            })}
+          </div>
+        </Card>
+      )}
 
       <div className="grid gap-6 lg:grid-cols-3">
         <Card className="border-border/60 p-6 lg:col-span-2">
