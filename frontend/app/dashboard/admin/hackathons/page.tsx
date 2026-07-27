@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useEffect, useState } from 'react'
+import { useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -67,13 +67,15 @@ export default function HackathonsAdminPage() {
   })
   const [editing, setEditing] = useState<Hackathon | null>(null)
 
-  // Set default starts_at once platform timezone is loaded (for create form)
+  const formInitRef = useRef(false)
   useEffect(() => {
+    if (formInitRef.current) return
+    formInitRef.current = true
     setForm((f) => {
       if (f.starts_at) return f
       return { ...f, starts_at: toZonedDatetimeString(new Date(Date.now() + 3600000), tz) }
     })
-  }, [tz])
+  }, [])
 
   const [problemSearch, setProblemSearch] = useState('')
   const [problemResults, setProblemResults] = useState<ProblemOption[]>([])
