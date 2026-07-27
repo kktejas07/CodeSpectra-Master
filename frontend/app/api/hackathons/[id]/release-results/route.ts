@@ -2,7 +2,6 @@ import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonSubmissions, nowIso } from '@/lib/db/qr-events'
 import { hackathonEmailTemplates } from '@/lib/email-templates'
-import { sendEmail } from '@/lib/send-email'
 import { notifyMany } from '@/lib/notifications'
 
 export const runtime = 'nodejs'

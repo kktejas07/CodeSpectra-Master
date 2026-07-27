@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonInvites, nowIso } from '@/lib/db/qr-events'
-import { hackathonEmailTemplates, sendEmail } from '@/lib/email-templates'
+import { hackathonEmailTemplates } from '@/lib/email-templates'
+import { sendEmail } from '@/lib/send-email'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
