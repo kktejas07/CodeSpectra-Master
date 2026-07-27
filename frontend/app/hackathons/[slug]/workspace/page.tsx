@@ -60,7 +60,8 @@ interface Hackathon {
   id: string; name: string; slug: string; description?: string
   num_teams: number; max_per_team: number; timeout_minutes: number
   starts_at: string; ends_at: string; status: string
-  tasks: { problem_slug: string; problem_title: string; points: number; difficulty: string; required: boolean }[]
+  event_type?: string; per_problem_time_minutes?: number
+  tasks: { problem_slug: string; problem_title: string; points: number; difficulty: string; required: boolean; time_limit_minutes?: number }[]
   rules: { type: string; title: string; description: string }[]
   scoring: { auto_grade: boolean; points_per_problem: number }
   results_released: boolean
@@ -392,6 +393,16 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     return sub.status
   }
 
+  const getPerProblemTimeLeft = (problemSlug: string, task: typeof hackathon.tasks[0]) => {
+    if (hackathon.event_type !== 'speed_contest') return null
+    const timeLimit = task.time_limit_minutes || hackathon.per_problem_time_minutes || 30
+    const firstSub = submissions.filter(s => s.problem_slug === problemSlug).sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime())[0]
+    if (!firstSub) return { remaining: timeLimit, total: timeLimit }
+    const elapsed = (Date.now() - new Date(firstSub.submitted_at).getTime()) / 60000
+    const remaining = Math.max(0, Math.round(timeLimit - elapsed))
+    return { remaining, total: timeLimit }
+  }
+
   if (loading) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading workspace…</div>
   if (error || !hackathon) return <div className="p-10 text-center"><p className="text-sm text-destructive">{error || 'Event not found'}</p><Link href="/" className="mt-3 inline-block text-sm text-primary hover:underline">← Home</Link></div>
 
@@ -561,6 +572,17 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                                 <Timer className="h-3 w-3" /> {getClaimCountdown(claim)}
                               </Badge>
                             )}
+                            {(() => {
+                              const t = getPerProblemTimeLeft(task.problem_slug, task)
+                              if (!t) return null
+                              const color = t.remaining <= 0 ? 'text-red-400' : t.remaining <= 5 ? 'text-yellow-400' : 'text-blue-400'
+                              return (
+                                <span className={`text-[10px] ${color}`}>
+                                  <Timer className="h-3 w-3 inline mr-0.5" />
+                                  {t.remaining <= 0 ? "Time's up" : `${t.remaining}m / ${t.total}m`}
+                                </span>
+                              )
+                            })()}
                           </div>
                         </div>
                       </div>

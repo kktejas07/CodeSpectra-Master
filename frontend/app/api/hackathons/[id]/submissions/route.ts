@@ -31,6 +31,22 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const task = (hk.tasks || []).find((t) => t.problem_slug === body.problem_slug)
   if (!task) return NextResponse.json({ error: 'problem not assigned to this event' }, { status: 400 })
 
+  // Speed contest: enforce per-problem time limit
+  if ((hk as any).event_type === 'speed_contest') {
+    const timeLimit = (task as any).time_limit_minutes || (hk as any).per_problem_time_minutes || 30
+    const subsCol = await hackathonSubmissions()
+    const firstSub = await subsCol.find({ team_id: team.id, problem_slug: body.problem_slug })
+      .sort({ submitted_at: 1 })
+      .limit(1)
+      .toArray()
+    if (firstSub.length > 0) {
+      const elapsed = (Date.now() - new Date(firstSub[0].submitted_at).getTime()) / 60_000
+      if (elapsed >= timeLimit) {
+        return NextResponse.json({ error: `Time limit of ${timeLimit} minutes exceeded for this problem` }, { status: 409 })
+      }
+    }
+  }
+
   const shouldAutoGrade = (hk.scoring as any)?.auto_grade !== false && body.code?.trim()
   let score: number | null = null
   let status = 'pending'
