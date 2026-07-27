@@ -18,7 +18,8 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { toLocalDatetimeString } from '@/lib/datetime-local'
+import { toZonedDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -37,6 +38,7 @@ interface ProblemOption { slug: string; title: string; difficulty: string; topic
 
 export default function HackathonsAdminPage() {
   const gate = usePageGuard('superadmin')
+  const tz = usePlatformTimezone()
   const [items, setItems] = useState<Hackathon[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -51,7 +53,7 @@ export default function HackathonsAdminPage() {
     num_teams: 8,
     max_per_team: 4,
     timeout_minutes: 60,
-    starts_at: toLocalDatetimeString(new Date(Date.now() + 3600000)),
+    starts_at: '',
     tasks: [] as { slug: string; title: string; points: number; difficulty: string; required: boolean }[],
     rules: [
       { type: 'scoring' as const, title: 'Scoring', description: 'Points are awarded based on test cases passed and code quality.' },
@@ -62,6 +64,14 @@ export default function HackathonsAdminPage() {
     banner_url: '',
   })
   const [editing, setEditing] = useState<Hackathon | null>(null)
+
+  // Set default starts_at once platform timezone is loaded (for create form)
+  useEffect(() => {
+    setForm((f) => {
+      if (f.starts_at) return f
+      return { ...f, starts_at: toZonedDatetimeString(new Date(Date.now() + 3600000), tz) }
+    })
+  }, [tz])
 
   const [problemSearch, setProblemSearch] = useState('')
   const [problemResults, setProblemResults] = useState<ProblemOption[]>([])
@@ -225,7 +235,7 @@ export default function HackathonsAdminPage() {
           name: form.name, description: form.description,
           num_teams: form.num_teams, max_per_team: form.max_per_team,
           timeout_minutes: form.timeout_minutes,
-          starts_at: new Date(form.starts_at).toISOString(),
+          starts_at: fromZonedDatetimeString(form.starts_at, tz),
           tasks: form.tasks.map((t) => ({
             problem_slug: t.slug, problem_title: t.title,
             points: t.points, difficulty: t.difficulty, required: t.required,
@@ -255,7 +265,7 @@ export default function HackathonsAdminPage() {
           name: form.name, description: form.description,
           num_teams: form.num_teams, max_per_team: form.max_per_team,
           timeout_minutes: form.timeout_minutes,
-          starts_at: new Date(form.starts_at).toISOString(),
+          starts_at: fromZonedDatetimeString(form.starts_at, tz),
           tasks: form.tasks.map((t) => ({
             problem_slug: t.slug, problem_title: t.title,
             points: t.points, difficulty: t.difficulty, required: t.required,
@@ -283,7 +293,7 @@ export default function HackathonsAdminPage() {
       num_teams: hk.num_teams,
       max_per_team: hk.max_per_team,
       timeout_minutes: hk.timeout_minutes,
-      starts_at: hk.starts_at ? toLocalDatetimeString(new Date(hk.starts_at)) : '',
+      starts_at: hk.starts_at ? toZonedDatetimeString(new Date(hk.starts_at), tz) : '',
       tasks: (hk.tasks || []).map((t) => ({
         slug: t.problem_slug, title: t.problem_title,
         points: t.points, difficulty: t.difficulty, required: t.required,
