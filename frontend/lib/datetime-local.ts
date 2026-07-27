@@ -10,16 +10,19 @@ export function fromZonedDatetimeString(value: string, tz: string): string {
   const [datePart, timePart] = value.split('T')
   const [y, m, d] = datePart.split('-').map(Number)
   const [h, min] = timePart.split(':').map(Number)
-  const utcMs = Date.UTC(y, m - 1, d, h, min)
-  const date = new Date(utcMs)
-  const utcStr = date.toLocaleString('en-US', { timeZone: 'UTC', hour12: false })
-  const tzStr = date.toLocaleString('en-US', { timeZone: tz, hour12: false })
-  const offsetMs = new Date(utcStr).getTime() - new Date(tzStr).getTime()
-  const corrected = utcMs - offsetMs
-  return new Date(corrected).toISOString()
+  const refUtc = Date.UTC(y, m - 1, d, h, min)
+  const fmt = new Intl.DateTimeFormat('en-US', {
+    timeZone: tz, year: 'numeric', month: 'numeric', day: 'numeric',
+    hour: 'numeric', minute: 'numeric', hour12: false,
+  })
+  const parts = fmt.formatToParts(new Date(refUtc))
+  const gp = (type: string) => Number(parts.find(p => p.type === type)?.value || '0')
+  let offsetMin = (gp('hour') * 60 + gp('minute')) - (h * 60 + min)
+  while (offsetMin > 720) offsetMin -= 1440
+  while (offsetMin < -720) offsetMin += 1440
+  return new Date(refUtc - offsetMin * 60 * 1000).toISOString()
 }
 
-/** Kept for backward compatibility — uses browser local timezone */
 export function toLocalDatetimeString(d: Date): string {
   return toZonedDatetimeString(d, Intl.DateTimeFormat().resolvedOptions().timeZone)
 }
