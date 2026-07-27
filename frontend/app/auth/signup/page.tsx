@@ -1,7 +1,7 @@
 "use client";
 
 import { Suspense, useMemo, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,8 @@ import { useAuth } from "@/lib/auth-context";
 
 function SignupInner() {
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const redirectTo = searchParams.get("redirect") || searchParams.get("redirectTo") || "/dashboard";
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
@@ -57,7 +59,7 @@ function SignupInner() {
 
     try {
       await signUpWithEmail(email.trim().toLowerCase(), password, name.trim());
-      router.push("/dashboard");
+      router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Sign up failed";
@@ -72,7 +74,7 @@ function SignupInner() {
     setLoading(true);
     try {
       await signInWithGoogle();
-      router.push("/dashboard");
+      router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Google sign-up failed";
@@ -87,7 +89,7 @@ function SignupInner() {
     setLoading(true);
     try {
       await signInWithGithub();
-      router.push("/dashboard");
+      router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "GitHub sign-up failed";

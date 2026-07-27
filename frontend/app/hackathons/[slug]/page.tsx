@@ -10,13 +10,18 @@ import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Trophy, Users, Clock, CalendarDays, ScanLine,
   Sparkles, ArrowRight, CheckCircle, ListChecks, Shield,
-  Copy, ExternalLink, Share2, Timer, LogIn,
+  Copy, ExternalLink, Share2, Timer, LogIn, Send,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
+import { Label } from '@/components/ui/label'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+} from '@/components/ui/dialog'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -43,6 +48,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
+  const addToast = useToast()
   const [hackathon, setHackathon] = useState<Hackathon | null>(null)
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,6 +59,9 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [myTeam, setMyTeam] = useState<Team | null>(null)
   const [copied, setCopied] = useState(false)
+  const [emailInviteOpen, setEmailInviteOpen] = useState(false)
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [sendingInvite, setSendingInvite] = useState(false)
 
   const load = useCallback(async () => {
     try {
@@ -113,6 +122,24 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   const getInviteUrl = (team: Team) => {
     const base = typeof window !== 'undefined' ? window.location.origin : ''
     return `${base}/hackathons/${slug}/join/${team.qr_token}`
+  }
+
+  const sendEmailInvite = async () => {
+    if (!hackathon || !inviteEmail.trim() || !myTeam) return
+    setSendingInvite(true)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${hackathon.id}/teams/${myTeam.id}/invite`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email: inviteEmail.trim() }),
+      })
+      const data = await res.json()
+      if (data.error) { addToast({ type: 'error', title: data.error }); return }
+      addToast({ type: 'success', title: `Invite sent to ${inviteEmail}` })
+      setInviteEmail('')
+      setEmailInviteOpen(false)
+    } catch { addToast({ type: 'error', title: 'Failed to send invite' }) }
+    finally { setSendingInvite(false) }
   }
 
   const getQrSvg = (team: Team) => {
@@ -271,6 +298,9 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                         {copied ? 'Copied!' : <Copy className="h-3 w-3" />}
                       </Button>
                     </div>
+                    <Button size="sm" variant="outline" className="w-full gap-1.5 mt-2" onClick={() => setEmailInviteOpen(true)}>
+                      <Send className="h-3 w-3" /> Send invite by email
+                    </Button>
                   </div>
                 )}
 
@@ -371,6 +401,37 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
           )}
         </section>
       </main>
+
+      <Dialog open={emailInviteOpen} onOpenChange={setEmailInviteOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Invite by email</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="invite-email">Email address</Label>
+              <Input
+                id="invite-email"
+                type="email"
+                placeholder="teammate@example.com"
+                value={inviteEmail}
+                onChange={e => setInviteEmail(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && void sendEmailInvite()}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              We&apos;ll send an invite link to this email address. They don&apos;t need the team URL — just sign in and click to join.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEmailInviteOpen(false)}>Cancel</Button>
+            <Button onClick={() => void sendEmailInvite()} disabled={sendingInvite || !inviteEmail.trim()}>
+              {sendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Send Invite
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
