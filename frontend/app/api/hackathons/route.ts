@@ -122,6 +122,7 @@ export async function POST(req: NextRequest) {
     difficulty: String(t.difficulty || 'medium'),
     required: t.required !== false,
     order: i,
+    ...(typeof t.time_limit_minutes === 'number' ? { time_limit_minutes: t.time_limit_minutes } : {}),
   }))
 
   const rulesHackathon: HackathonRule[] = (body.rules || []).map((r: any) => ({
@@ -141,6 +142,8 @@ export async function POST(req: NextRequest) {
     starts_at: startsAt.toISOString(),
     ends_at: endsAt.toISOString(),
     status: computeStatus(startsAt.toISOString(), endsAt.toISOString(), body.status || 'open'),
+    event_type: body.event_type === 'speed_contest' ? 'speed_contest' : 'hackathon',
+    per_problem_time_minutes: Math.min(1440, Math.max(1, Number(body.per_problem_time_minutes) || 30)),
     tasks,
     rules: rulesHackathon,
     scoring: {

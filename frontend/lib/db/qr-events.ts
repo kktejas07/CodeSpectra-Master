@@ -51,6 +51,8 @@ export interface HackathonTask {
   difficulty: string
   required: boolean
   order: number
+  /** Per-problem time limit in minutes (only for speed_contest type). Overrides event default. */
+  time_limit_minutes?: number
 }
 
 export interface HackathonRule {
@@ -73,6 +75,10 @@ export interface HackathonDoc {
   starts_at: string
   ends_at: string
   status: 'draft' | 'open' | 'live' | 'closed'
+  /** Event type: hackathon (all problems concurrently) or speed_contest (per-problem timers) */
+  event_type: 'hackathon' | 'speed_contest'
+  /** Default per-problem time limit in minutes for speed_contests. Ignored for hackathons. */
+  per_problem_time_minutes: number
   /** Assigned problems for this event */
   tasks: HackathonTask[]
   /** Event-specific rules */

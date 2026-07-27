@@ -76,7 +76,7 @@ export async function PATCH(
   }
 
   const $set: Record<string, unknown> = { updated_at: nowIso() }
-  for (const k of ['name', 'description', 'num_teams', 'max_per_team', 'status'] as const) {
+  for (const k of ['name', 'description', 'num_teams', 'max_per_team', 'status', 'event_type', 'per_problem_time_minutes'] as const) {
     if (k in body) $set[k] = body[k]
   }
   if (Array.isArray(body.judges)) {
@@ -90,6 +90,7 @@ export async function PATCH(
       difficulty: String(t.difficulty || 'medium'),
       required: t.required !== false,
       order: i,
+      ...(typeof t.time_limit_minutes === 'number' ? { time_limit_minutes: t.time_limit_minutes } : {}),
     }))
   }
   if (Array.isArray(body.rules)) {
