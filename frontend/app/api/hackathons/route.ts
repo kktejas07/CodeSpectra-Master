@@ -26,6 +26,7 @@ import {
 
 function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): 'draft' | 'open' | 'live' | 'closed' {
   if (currentStatus === 'draft') return 'draft'
+  if (currentStatus === 'closed') return 'closed'
   const now = Date.now()
   const start = new Date(startsAt).getTime()
   const end = new Date(endsAt).getTime()
