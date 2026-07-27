@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
-import { hackathonClaims, hackathons, nowIso } from '@/lib/db/qr-events'
+import { hackathonClaims, hackathons, hackathonTeams, nowIso } from '@/lib/db/qr-events'
 
 export const runtime = 'nodejs'
 
@@ -37,6 +37,10 @@ export async function POST(
   const { id } = await ctx.params
   const hk = await resolveHackathon(id)
   if (!hk) return NextResponse.json({ error: 'hackathon not found' }, { status: 404 })
+  if (hk.status !== 'live') return NextResponse.json({ error: 'claims only allowed during the live event' }, { status: 409 })
+
+  const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
+  if (!team) return NextResponse.json({ error: 'you must be on a team to claim problems' }, { status: 403 })
 
   let body: { problem_slug?: string } = {}
   try {
@@ -54,10 +58,10 @@ export async function POST(
   // Check if claim already exists and is still active (not expired)
   const existing = await claims.findOne({ hackathon_id: hk.id, problem_slug })
   if (existing && new Date(existing.expires_at).getTime() > Date.now()) {
-    if (existing.user_id !== user.id) {
+    const existingTeam = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': existing.user_id })
+    if (!existingTeam || existingTeam.id !== team.id) {
       return NextResponse.json({ error: 'Problem already claimed by another team' }, { status: 409 })
     }
-    // Same user re-claiming — extend the TTL
   }
 
   const expires_at = new Date(Date.now() + CLAIM_TTL_MS).toISOString()

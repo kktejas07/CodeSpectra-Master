@@ -22,6 +22,18 @@ export async function GET(
   const sub = await subsCol.findOne({ id: submissionId, hackathon_id: hk.id })
   if (!sub) return NextResponse.json({ error: 'submission not found' }, { status: 404 })
 
+  const isAdmin = ['superadmin', 'admin', 'tenant_admin'].includes((user.role || '').toLowerCase())
+  const isJudge = (hk.judges || []).includes(user.id)
+  const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, id: sub.team_id, 'members.user_id': user.id })
+
+  if (!isAdmin && !isJudge && !team) {
+    if (hk.results_released) {
+      const { code, repo_url, commit_sha, ...safe } = sub
+      return NextResponse.json(safe)
+    }
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   return NextResponse.json(sub)
 }
 

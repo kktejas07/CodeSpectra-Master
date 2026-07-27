@@ -14,7 +14,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'event not found' }, { status: 404 })
-  if (hk.status === 'closed') return NextResponse.json({ error: 'event closed' }, { status: 409 })
+  if (hk.status !== 'live') return NextResponse.json({ error: 'submissions only accepted during the live event' }, { status: 409 })
 
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
   if (!team) return NextResponse.json({ error: 'you are not on a team in this event' }, { status: 403 })
@@ -133,9 +133,12 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const isAdmin = ['superadmin', 'admin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
 
-  // SECURITY: Only allow filtering by the user's own team. Admins can bypass.
+  if (!isAdmin && !team) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const queryTeamId = req.nextUrl.searchParams.get('team_id')
-  const teamId = isAdmin ? (queryTeamId || team?.id) : (team?.id || '')
+  const teamId = isAdmin ? (queryTeamId || team?.id) : team!.id
 
   const filter: Record<string, unknown> = { hackathon_id: hk.id }
   if (teamId) filter.team_id = teamId
@@ -145,13 +148,13 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
     .sort({ submitted_at: -1 })
     .toArray()
 
-  // Admins always see everything. During an active event, teams can see their
-  // own submissions (status, timestamps) but NOT scores until results are released.
-  const userIsOnTeam = Boolean(team)
-  const showFullDetails = (isAdmin || hk.results_released || userIsOnTeam)
-  const result = showFullDetails
-    ? items
-    : items.map((s) => ({ ...s, score: s.status === 'released' ? s.score : null }))
+  const result = items.map((s) => {
+    const masked = { ...s, score: null as number | null }
+    if (isAdmin || hk.results_released) {
+      masked.score = s.score
+    }
+    return masked
+  })
 
   return NextResponse.json({ items: result })
 }
