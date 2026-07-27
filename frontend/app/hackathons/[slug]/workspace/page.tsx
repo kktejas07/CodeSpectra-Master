@@ -393,9 +393,9 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     return sub.status
   }
 
-  const getPerProblemTimeLeft = (problemSlug: string, task: typeof hackathon.tasks[0]) => {
-    if (hackathon.event_type !== 'speed_contest') return null
-    const timeLimit = task.time_limit_minutes || hackathon.per_problem_time_minutes || 30
+  const getPerProblemTimeLeft = (problemSlug: string, task: { time_limit_minutes?: number }) => {
+    if (hackathon?.event_type !== 'speed_contest') return null
+    const timeLimit = task.time_limit_minutes || hackathon?.per_problem_time_minutes || 30
     const firstSub = submissions.filter(s => s.problem_slug === problemSlug).sort((a, b) => new Date(a.submitted_at).getTime() - new Date(b.submitted_at).getTime())[0]
     if (!firstSub) return { remaining: timeLimit, total: timeLimit }
     const elapsed = (Date.now() - new Date(firstSub.submitted_at).getTime()) / 60000

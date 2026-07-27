@@ -235,7 +235,7 @@ export default function DashboardLayout({
     }
   }, [userProfile?.id, pathname])
 
-  type NavLeaf = { href: string; label: string; icon: LucideIcon }
+  type NavLeaf = { href: string; label: string; icon: LucideIcon; route: string }
   type NavEntry = { type: 'link'; item: NavLeaf }
 
   const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? [] : lockedPages
@@ -344,6 +344,7 @@ export default function DashboardLayout({
           href: HREF_OVERRIDES[route] || route,
           icon,
           label: ROUTE_LABELS[route] || route,
+          route: route,
         })
       }
     }
@@ -353,13 +354,13 @@ export default function DashboardLayout({
     if (allowedDbRoutes.size > 0) {
       return allLeaves
         .filter(leaf => {
-          const basePath = leaf.href.split('?')[0]
-          if (effectiveLockedPages.some(r => basePath === r || basePath.startsWith(r + '/'))) {
+          const checkRoute = leaf.route
+          if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) {
             // Still include locked pages but mark them - the renderer will add lock icon
             return true
           }
-          return allowedDbRoutes.has(basePath) ||
-            Array.from(allowedDbRoutes).some(r => basePath.startsWith(r + '/'))
+          return allowedDbRoutes.has(checkRoute) ||
+            Array.from(allowedDbRoutes).some(r => checkRoute.startsWith(r + '/'))
         })
         .map(leaf => ({ type: 'link' as const, item: leaf }))
     }

@@ -14,7 +14,7 @@ export async function GET() {
     const perms = (roleDoc?.permissions || []) as Array<{ resource: string; actions: string[] }>
 
     const pageRoutes = perms
-      .filter(p => p.resource.startsWith('/dashboard/') && (p.actions.includes('read') || p.actions.includes('manage')))
+      .filter(p => (p.resource === '/dashboard' || p.resource.startsWith('/dashboard/')) && (p.actions.includes('read') || p.actions.includes('manage')))
       .map(p => p.resource)
 
     return NextResponse.json({ routes: pageRoutes })

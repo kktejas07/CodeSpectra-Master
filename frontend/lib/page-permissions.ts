@@ -96,40 +96,57 @@ export const JUDGE_ROUTES: string[] = [
  * Everything else under /dashboard/ defaults to 'user' unless specified above.
  */
 export const ALL_USER_ROUTES: string[] = [
+  // Dashboard & AI
   '/dashboard',
+  '/dashboard/agent',
+
+  // Practice & Coding
   '/dashboard/arena',
   '/dashboard/problems',
-  '/dashboard/tracks',
   '/dashboard/challenges',
-  '/dashboard/hackathons',
+  '/dashboard/tracks',
+  '/dashboard/100-days',
+
+  // Events & Competitions
   '/dashboard/codeathons',
-  '/dashboard/exams',
-  '/dashboard/jobs',
-  '/dashboard/resumes',
-  '/dashboard/interviews',
+  '/dashboard/hackathons',
+  
+  // Learning & Prep
+  '/dashboard/learning',
   '/dashboard/interview-prep',
   '/dashboard/prepare',
-  '/dashboard/learning',
+  
+  // Career & Hiring
+  '/dashboard/jobs',
+  '/dashboard/interviews',
+  '/dashboard/resumes',
+  '/dashboard/exams',
+  '/dashboard/certifications',
+  '/dashboard/recruiter-analytics',
+  
+  // Tools
   '/dashboard/scanner',
-  '/dashboard/agent',
+  '/dashboard/cad',
+
+  // Stats & Progress
   '/dashboard/leaderboard',
   '/dashboard/achievements',
-  '/dashboard/certifications',
-  '/dashboard/100-days',
-  '/dashboard/identity-verify',
-  '/dashboard/profile',
-  '/dashboard/billing',
-  '/dashboard/notifications',
-  '/dashboard/search',
   '/dashboard/analytics',
   '/dashboard/skill-analytics',
+
+  // User & Account
+  '/dashboard/profile',
+  '/dashboard/notifications',
+  '/dashboard/billing',
   '/dashboard/pricing',
-  '/dashboard/status',
-  '/dashboard/support',
-  '/dashboard/cad',
+  '/dashboard/identity-verify',
   '/dashboard/settings',
   '/dashboard/settings/ai',
-  '/dashboard/recruiter-analytics',
+
+  // Misc
+  '/dashboard/search',
+  '/dashboard/support',
+  '/dashboard/status',
 ]
 
 /**
