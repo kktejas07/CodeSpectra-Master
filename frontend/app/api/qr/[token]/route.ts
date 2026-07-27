@@ -107,10 +107,11 @@ export async function GET(
         level: team.level,
         achievements: team.achievements,
         submissions: team.submissions,
-        members: team.members.map((m) => ({
-          name: m.name,
-          role: m.role,
-        })),
+members: team.members.map((m) => ({
+  name: m.name,
+  role: m.role,
+  user_id: m.user_id,
+})),
         created_at: team.created_at,
       },
       hackathon: hk

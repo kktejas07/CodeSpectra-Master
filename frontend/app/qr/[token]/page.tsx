@@ -23,6 +23,7 @@ import {
   Clock,
   AlertTriangle,
   LogIn,
+  UserPlus,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { Badge } from '@/components/ui/badge'
@@ -61,7 +62,7 @@ interface TeamResp {
     level: number
     achievements: Array<{ id: string; name: string; awarded_at: string }>
     submissions: number
-    members: Array<{ name: string; role: 'captain' | 'member' }>
+    members: Array<{ name: string; role: 'captain' | 'member'; user_id: string }>
     created_at: string
   }
   hackathon: { id: string; name: string; slug: string; status: string; ends_at: string } | null
@@ -94,9 +95,10 @@ export default function QrScanPage({
   const [error, setError] = useState<string | null>(null)
   const [status, setStatus] = useState<number>(0)
 
-  const joinHref = data?.kind === 'team'
-    ? `/hackathons/${(data as TeamResp).hackathon?.slug}/join/${token}`
-    : null
+  const teamData = data?.kind === 'team' ? (data as TeamResp) : null
+  const isMember = teamData && authUser?.uid
+    ? teamData.team.members.some((m) => m.user_id === authUser.uid)
+    : false
 
   useEffect(() => {
     let cancelled = false
@@ -191,25 +193,59 @@ export default function QrScanPage({
         {data.kind === 'team' && !authUser?.uid ? (
           <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-primary/40 shadow-xl">
             <p className="text-xs uppercase tracking-wider text-muted-foreground">
-              {(data as TeamResp).hackathon?.name || 'Hackathon team'}
+              {teamData?.hackathon?.name || 'Hackathon team'}
             </p>
             <h1 className="mt-1 text-2xl font-bold" data-testid="qr-team-name">
-              {(data as TeamResp).team.name}
+              {teamData!.team.name}
             </h1>
             <div className="mt-6 rounded-xl border border-primary/20 bg-primary/5 p-4">
               <p className="text-sm font-medium">Join this team to start competing</p>
               <p className="mt-1 text-xs text-muted-foreground">
                 Sign in or create an account to register and access the hackathon problems.
               </p>
-              <Link href={`/auth/login?redirect=${encodeURIComponent(joinHref!)}`}>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
                 <Button className="mt-3 w-full gap-2">
                   <LogIn className="h-4 w-4" />
                   Sign in to join team
                 </Button>
               </Link>
-              <Link href={`/auth/signup?redirect=${encodeURIComponent(joinHref!)}`}>
+              <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${teamData!.hackathon?.slug}/join/${token}`)}`}>
                 <Button variant="outline" className="mt-2 w-full gap-2">
                   Create account
+                </Button>
+              </Link>
+            </div>
+          </article>
+        ) : data.kind === 'team' && !isMember ? (
+          <article className="overflow-hidden rounded-3xl bg-card p-8 ring-2 ring-amber-500/40 shadow-xl">
+            <p className="text-xs uppercase tracking-wider text-muted-foreground">
+              {teamData?.hackathon?.name || 'Hackathon team'}
+            </p>
+            <h1 className="mt-1 text-2xl font-bold">{teamData!.team.name}</h1>
+            <div className="mt-4 grid gap-3 sm:grid-cols-4">
+              <Stat icon={<Trophy className="h-4 w-4" />} label="XP" value={teamData!.team.xp.toLocaleString()} />
+              <Stat icon={<Sparkles className="h-4 w-4" />} label="Level" value={`Lv ${teamData!.team.level}`} />
+              <Stat icon={<Users className="h-4 w-4" />} label="Members" value={teamData!.team.members.length} />
+              <Stat icon={<ScanLine className="h-4 w-4" />} label="Submissions" value={teamData!.team.submissions} />
+            </div>
+            {teamData?.hackathon?.ends_at && (
+              <div className="mt-4 inline-flex items-center gap-2 rounded-md bg-muted/40 px-3 py-1 text-xs text-muted-foreground">
+                <Clock className="h-3 w-3" />
+                Event ends {new Date(teamData.hackathon.ends_at).toLocaleString()}
+              </div>
+            )}
+            <div className="mt-6 rounded-xl border border-amber-500/20 bg-amber-500/5 p-4">
+              <p className="text-sm font-medium flex items-center gap-2">
+                <UserPlus className="h-4 w-4 text-amber-500" />
+                You&apos;re not on this team yet
+              </p>
+              <p className="mt-1 text-xs text-muted-foreground">
+                Join this team to compete in the hackathon.
+              </p>
+              <Link href={`/hackathons/${teamData!.hackathon?.slug}/join/${token}`}>
+                <Button className="mt-3 w-full gap-2">
+                  <UserPlus className="h-4 w-4" />
+                  Join this team
                 </Button>
               </Link>
             </div>
