@@ -19,6 +19,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
   const [message, setMessage] = useState('')
   const [errorMeta, setErrorMeta] = useState<'already_this_team' | 'already_other_team' | 'team_full' | 'other'>('other')
   const [otherTeamSlug, setOtherTeamSlug] = useState('')
+  const [otherTeamName, setOtherTeamName] = useState('')
 
   const join = useCallback(async () => {
     if (!authUser?.uid) return
@@ -29,27 +30,31 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
         credentials: 'include',
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Failed to join')
+      if (!res.ok) {
+        if (data.team) {
+          setOtherTeamSlug(data.team)
+          setOtherTeamName(data.team_name || data.team)
+          if (data.team === token || data.team === slug) {
+            setErrorMeta('already_this_team')
+          } else {
+            setErrorMeta('already_other_team')
+          }
+        } else if (data.error?.includes('Team is full') || data.error?.includes('full')) {
+          setErrorMeta('team_full')
+        } else {
+          setErrorMeta('other')
+        }
+        setMessage(data.error || 'Failed to join')
+        setStatus('error')
+        return
+      }
       setStatus('success')
       setTeamName(data.team.name)
       setMessage(`You joined "${data.team.name}"`)
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Failed to join team'
-      setMessage(msg)
+      setMessage(e instanceof Error ? e.message : 'Failed to join team')
       setStatus('error')
-      if (msg.includes('already on a team')) {
-        const slugMatch = msg.match(/team:\s*(\S+)/)
-        if (slugMatch) {
-          setErrorMeta('already_other_team')
-          setOtherTeamSlug(slugMatch[1])
-        } else {
-          setErrorMeta('already_this_team')
-        }
-      } else if (msg.includes('Team is full')) {
-        setErrorMeta('team_full')
-      } else {
-        setErrorMeta('other')
-      }
+      setErrorMeta('other')
     }
   }, [slug, token, authUser?.uid])
 
@@ -129,13 +134,19 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
             </div>
             <h2 className="text-lg font-semibold">Already Registered</h2>
             <p className="text-sm text-muted-foreground">
-              You&apos;re already on a different team for this event.
+              You&apos;re already on <strong>{otherTeamName}</strong> for this event.
             </p>
+            {otherTeamSlug && (
+              <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
+                <Users className="h-3 w-3" />
+                {otherTeamName}
+              </Badge>
+            )}
             <div className="flex gap-3 pt-4">
               <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
                 Event Details
               </Button>
-              <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)} className="flex-1 gap-2">
+              <Button onClick={() => router.push(`/hackathons/${otherTeamSlug || slug}/workspace`)} className="flex-1 gap-2">
                 Your Workspace <ArrowRight className="h-4 w-4" />
               </Button>
             </div>

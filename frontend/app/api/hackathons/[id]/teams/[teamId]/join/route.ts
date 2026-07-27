@@ -30,7 +30,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     'members.user_id': user.id,
   })
   if (already) {
-    return NextResponse.json({ error: 'already on a team in this event', team: already.slug }, { status: 409 })
+    return NextResponse.json({ error: `already on a team in this event`, team: already.slug, team_name: already.name }, { status: 409 })
   }
 
   await teamsCol.updateOne(
