@@ -141,7 +141,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (teamId) filter.team_id = teamId
 
   const items = await (await hackathonSubmissions())
-    .find(filter, { projection: { code: 0 } })
+    .find(filter)
     .sort({ submitted_at: -1 })
     .toArray()
 
