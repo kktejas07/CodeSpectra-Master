@@ -102,7 +102,7 @@ export async function sendEmailViaPostal(params: {
     )
   }
 
-  const url = `${server.replace(/\/+$/, '')}/api/v1/send/raw`
+  const url = `${server.replace(/\/+$/, '')}/api/v1/send/message`
   const res = await fetch(url, {
     method: 'POST',
     headers: {
