@@ -25,13 +25,14 @@ import {
 import {
   Loader2, Trophy, Users, Clock, CalendarDays, Timer,
   CheckCircle, AlertCircle, ArrowRight, Copy, Sparkles, Shield, ListChecks,
-  Hand, Eye, Send, X,
+  Hand, Eye, Send, X, Code, FileText, ChevronDown, ChevronUp,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import { ClaimCountdown } from '@/components/hackathons/claim-countdown'
 import dynamic from "next/dynamic";
+import ReactMarkdown from 'react-markdown'
 
 const Editor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
@@ -117,6 +118,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [editorLanguage, setEditorLanguage] = useState("python")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
+  const [sheetCode, setSheetCode] = useState('')
+  const [sheetLang, setSheetLang] = useState('python')
 
   interface HackathonTask {
     problem_slug: string; problem_title: string; points: number; difficulty: string; required: boolean
@@ -330,6 +333,35 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     finally {
       setProblemDetailLoading(false)
     }
+  }
+
+  const closeProblemPanel = () => {
+    setSelectedProblem(null)
+    setSheetCode('')
+  }
+
+  const handleSheetSubmit = async () => {
+    if (!selectedProblem || !hackathon) return
+    setSubmitting(true)
+    setSubmitError(null)
+    try {
+      const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+      if (!team) return
+      const res = await csrfFetch(`/api/hackathons/${hackathon.id}/submissions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          problem_slug: selectedProblem.problem_slug,
+          code: sheetCode || undefined,
+          language: sheetLang,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) { setSubmitError(data.error || 'Submission failed'); return }
+      addToast({ type: 'success', title: 'Solution submitted!' })
+      await refreshSubmissions()
+    } catch { setSubmitError('Network error') }
+    finally { setSubmitting(false) }
   }
 
   const myClaim = (problemSlug: string) => claims[problemSlug]?.user_id === hasSession
@@ -786,73 +818,151 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         </DialogContent>
       </Dialog>
 
-      <Sheet open={!!selectedProblem} onOpenChange={(o) => { if (!o) setSelectedProblem(null) }}>
-        <SheetContent side="right">
+      <Sheet open={!!selectedProblem} onOpenChange={(o) => { if (!o) closeProblemPanel() }}>
+        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
           {selectedProblem && (
             <>
-              <SheetHeader>
-                <SheetTitle>{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
-              </SheetHeader>
-              <div className="mt-4 space-y-3">
-                <div className="flex items-center gap-2">
-                  <Badge variant="outline">{selectedProblem.difficulty}</Badge>
-                  <span className="text-sm text-muted-foreground">{selectedProblem.points} pts</span>
-                  {selectedProblem.required && <Badge variant="destructive" className="text-[10px]">Required</Badge>}
+              <div className="flex-shrink-0 border-b border-border px-6 py-4 flex items-center justify-between">
+                <div className="min-w-0 flex-1">
+                  <SheetHeader className="p-0">
+                    <SheetTitle className="text-lg truncate">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
+                  </SheetHeader>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline" className="text-[10px]">{selectedProblem.difficulty}</Badge>
+                    <span className="text-xs text-muted-foreground">{selectedProblem.points} pts</span>
+                    {selectedProblem.required && <Badge variant="destructive" className="text-[10px]">Required</Badge>}
+                  </div>
                 </div>
+                <button onClick={closeProblemPanel} className="ml-4 p-1.5 rounded-md hover:bg-muted transition-colors">
+                  <X className="h-4 w-4 text-muted-foreground" />
+                </button>
+              </div>
+
+              <div className="flex-1 overflow-y-auto px-6 py-4 space-y-6">
                 {problemDetailLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
                   </div>
                 ) : problemDetail?.statement_md ? (
-                  <div className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
-                    {problemDetail.statement_md}
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-sm leading-relaxed">
+                    <ReactMarkdown>{problemDetail.statement_md}</ReactMarkdown>
                   </div>
                 ) : (
-                  <p className="text-sm text-muted-foreground">No problem description available.</p>
+                  <p className="text-sm text-muted-foreground py-8 text-center">No problem description available.</p>
                 )}
+
                 {problemDetail?.input_format && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Input Format</p>
-                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded p-2">{problemDetail.input_format}</pre>
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="h-3 w-3" /> Input Format
+                    </h4>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded-lg p-3 border border-border/50">{problemDetail.input_format}</pre>
                   </div>
                 )}
                 {problemDetail?.output_format && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Output Format</p>
-                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded p-2">{problemDetail.output_format}</pre>
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <FileText className="h-3 w-3" /> Output Format
+                    </h4>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded-lg p-3 border border-border/50">{problemDetail.output_format}</pre>
                   </div>
                 )}
                 {problemDetail?.constraints && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-1">Constraints</p>
-                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded p-2">{problemDetail.constraints}</pre>
+                  <div className="space-y-1.5">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <Shield className="h-3 w-3" /> Constraints
+                    </h4>
+                    <pre className="text-xs font-mono whitespace-pre-wrap bg-muted/40 rounded-lg p-3 border border-border/50">{problemDetail.constraints}</pre>
                   </div>
                 )}
                 {problemDetail?.test_cases && problemDetail.test_cases.length > 0 && (
-                  <div>
-                    <p className="text-xs font-semibold text-muted-foreground mb-2">Sample Test Cases</p>
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <ListChecks className="h-3 w-3" /> Sample Test Cases ({problemDetail.test_cases.length})
+                    </h4>
                     <div className="space-y-2">
                       {problemDetail.test_cases.map((tc: any, idx: number) => (
-                        <div key={tc.id || idx} className="rounded border border-border/60 bg-muted/30 p-2 text-xs">
-                          <p className="text-muted-foreground mb-1 font-medium">Test Case #{idx + 1}</p>
-                          <div className="grid grid-cols-2 gap-2 font-mono text-[11px]">
-                            <div><span className="text-muted-foreground">Input:</span> <span className="text-foreground">{tc.stdin || '(empty)'}</span></div>
-                            <div><span className="text-muted-foreground">Expected:</span> <span className="text-foreground">{tc.expected_stdout || '(empty)'}</span></div>
+                        <div key={tc.id || idx} className="rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
+                          <p className="text-muted-foreground mb-2 font-medium text-[11px] uppercase">Test Case #{idx + 1}</p>
+                          <div className="grid grid-cols-2 gap-3">
+                            <div className="space-y-1">
+                              <span className="text-[10px] text-muted-foreground block">Input</span>
+                              <pre className="font-mono text-[11px] bg-background rounded p-2 border border-border/40">{tc.stdin || <span className="text-muted-foreground italic">(empty)</span>}</pre>
+                            </div>
+                            <div className="space-y-1">
+                              <span className="text-[10px] text-muted-foreground block">Expected Output</span>
+                              <pre className="font-mono text-[11px] bg-background rounded p-2 border border-border/40">{tc.expected_stdout || <span className="text-muted-foreground italic">(empty)</span>}</pre>
+                            </div>
                           </div>
                         </div>
                       ))}
                     </div>
                   </div>
                 )}
-                <a
-                  href={`/dashboard/challenges/${selectedProblem.problem_slug}`}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="inline-flex items-center gap-1 text-sm text-primary hover:underline mt-2"
-                >
-                  View Full Problem <ArrowRight className="h-3 w-3" />
-                </a>
+
+                <div className="pt-2 border-t border-border">
+                  <div className="flex items-center justify-between mb-3">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-1.5">
+                      <Code className="h-3 w-3" /> Solution
+                    </h4>
+                    <select
+                      value={sheetLang}
+                      onChange={(e) => setSheetLang(e.target.value)}
+                      className="rounded-md border border-border bg-background px-2 py-1 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    >
+                      {TOP_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
+                    </select>
+                  </div>
+                  <div className="h-[250px] rounded-lg border border-border overflow-hidden">
+                    <Editor
+                      height="100%"
+                      language={TOP_LANGUAGES.find(l => l.id === sheetLang)?.monaco || "plaintext"}
+                      theme="vs-dark"
+                      value={sheetCode}
+                      onChange={(v) => setSheetCode(v || "")}
+                      options={{ fontSize: 13, minimap: { enabled: false }, automaticLayout: true, scrollBeyondLastLine: false, tabSize: 2 }}
+                    />
+                  </div>
+                </div>
+
+                {submissions.filter(s => s.problem_slug === selectedProblem.problem_slug).length > 0 && (
+                  <div className="space-y-2">
+                    <h4 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Previous Submissions</h4>
+                    {submissions.filter(s => s.problem_slug === selectedProblem.problem_slug).map((sub) => (
+                      <div key={sub.id} className="flex items-center justify-between rounded-lg border border-border/60 bg-muted/20 p-3 text-xs">
+                        <div className="flex items-center gap-2">
+                          {sub.status === 'released' ? <CheckCircle className="h-3.5 w-3.5 text-green-500" /> :
+                           sub.status === 'under_review' ? <AlertCircle className="h-3.5 w-3.5 text-yellow-500" /> :
+                           <Clock className="h-3.5 w-3.5 text-yellow-500" />}
+                          <span className="capitalize">{sub.status.replace('_', ' ')}</span>
+                          {sub.score !== null && <span className="text-muted-foreground">· {sub.score}/{sub.max_score}</span>}
+                        </div>
+                        <span className="text-muted-foreground">{new Date(sub.submitted_at).toLocaleString()}</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
+
+                {submitError && <p className="text-sm text-destructive bg-destructive/10 rounded-lg p-3">{submitError}</p>}
               </div>
+
+              {isLive && (
+                <div className="flex-shrink-0 border-t border-border px-6 py-4 flex items-center gap-3">
+                  <div className="flex items-center gap-2 text-xs text-muted-foreground mr-auto">
+                    <span className="font-medium text-foreground">{selectedProblem.points}</span> pts
+                  </div>
+                  <Button variant="outline" size="sm" onClick={closeProblemPanel}>Close</Button>
+                  <Button
+                    size="sm"
+                    className="gap-2"
+                    onClick={() => void handleSheetSubmit()}
+                    disabled={submitting || !sheetCode.trim()}
+                  >
+                    {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    {submitting ? 'Submitting...' : 'Submit Solution'}
+                  </Button>
+                </div>
+              )}
             </>
           )}
         </SheetContent>
