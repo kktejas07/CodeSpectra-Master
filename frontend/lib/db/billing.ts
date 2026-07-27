@@ -26,6 +26,7 @@ export interface BillingOrderDoc {
   receipt: string
   status: 'created' | 'attempted' | 'paid' | 'failed' | 'refunded'
   notes?: Record<string, string>
+  coupon_id?: string
   created_at: string
   updated_at: string
 }
@@ -53,6 +54,19 @@ export interface BillingSubscriptionDoc {
   created_at: string
 }
 
+export interface BillingCouponDoc {
+  id: string
+  code: string
+  discount_type: 'percentage' | 'flat'
+  discount_value: number
+  max_uses: number
+  current_uses: number
+  valid_until?: string
+  active: boolean
+  created_at: string
+  created_by?: string
+}
+
 export async function billingOrders(): Promise<Collection<BillingOrderDoc>> {
   return (await getMongoDb()).collection<BillingOrderDoc>('billing_orders')
 }
@@ -61,6 +75,9 @@ export async function billingPayments(): Promise<Collection<BillingPaymentDoc>> 
 }
 export async function billingSubscriptions(): Promise<Collection<BillingSubscriptionDoc>> {
   return (await getMongoDb()).collection<BillingSubscriptionDoc>('billing_subscriptions')
+}
+export async function billingCoupons(): Promise<Collection<BillingCouponDoc>> {
+  return (await getMongoDb()).collection<BillingCouponDoc>('billing_coupons')
 }
 
 /** Catalog of buyable plans. Amounts in paise. */

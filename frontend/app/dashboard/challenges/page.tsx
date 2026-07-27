@@ -4,9 +4,10 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Lock, Star, Code, Zap, CheckCircle, ArrowRight, Loader, Trophy, HelpCircle } from 'lucide-react'
+import { Lock, Star, Code, Zap, CheckCircle, ArrowRight, Loader, Trophy, HelpCircle, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Challenge {
   id: string
@@ -22,6 +23,9 @@ interface Challenge {
 }
 
 export default function ChallengesPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedType, setSelectedType] = useState<string | null>(null)
@@ -143,5 +147,4 @@ export default function ChallengesPage() {
     </div>
   )
 }
-
 

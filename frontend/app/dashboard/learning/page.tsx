@@ -6,24 +6,9 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Flame,
-  Zap,
-  BookOpen,
-  Volume2,
-  Play,
-  Star,
-  Clock,
-  Loader,
-  Trophy,
-  ArrowRight,
-  HelpCircle,
-  CheckCircle2,
-  TrendingUp,
-  Target,
-  Layers,
-} from 'lucide-react'
+import { Flame, Zap, BookOpen, Volume2, Play, Star, Clock, Loader, Trophy, ArrowRight, HelpCircle, CheckCircle2, TrendingUp, Target, Layers, Loader2 } from 'lucide-react'
 import { HUNDRED_DAYS } from '@/lib/100-days-data'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const HUNDRED_DAYS_TOTAL_DAYS = 100
 
@@ -320,6 +305,9 @@ function LearningPageInner() {
 }
 
 export default function LearningPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   return (
     <Suspense>
       <LearningPageInner />

@@ -2,23 +2,11 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import {
-  ArrowRight,
-  Code2,
-  Database,
-  FileCode2,
-  GitBranch,
-  Layers,
-  Loader2,
-  ServerCog,
-  Sparkles,
-  Terminal,
-  TrendingUp,
-  HelpCircle,
-} from 'lucide-react'
+import { ArrowRight, Code2, Database, FileCode2, GitBranch, Layers, Loader2, ServerCog, Sparkles, Terminal, TrendingUp, HelpCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const TRACK_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   python: FileCode2,
@@ -43,6 +31,9 @@ interface TrackDef {
 }
 
 export default function TracksPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [tracks, setTracks] = useState<TrackDef[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
@@ -135,5 +126,4 @@ export default function TracksPage() {
     </div>
   )
 }
-
 

@@ -3,7 +3,7 @@
 import { useMemo, useState, Suspense, useEffect, useCallback } from 'react'
 import { useSearchParams } from 'next/navigation'
 import { useLockedFeatures } from '@/lib/use-page-guard'
-import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle, AlertTriangle, Info, Lock, Play } from 'lucide-react'
+import { Code2, Sparkles, Loader, Github, Plus, BarChart3, Settings, FileText, Users, Shield, Activity, GitBranch, GitPullRequest, Zap, HelpCircle, AlertTriangle, Info, Lock, Play, Loader2 } from 'lucide-react'
 import { parseScannerMode } from '@/lib/scanner-modes'
 import { Button } from '@/components/ui/button'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -37,6 +37,7 @@ import { SecretScannerPanel } from '@/components/scanner/secret-scanner-panel'
 import { PatternDetector } from '@/components/scanner/pattern-detector'
 import { PRImpactAnalysis } from '@/components/scanner/pr-impact-analysis'
 import { detectLanguage } from '@/lib/local-code-analyzer'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface AnalysisResult {
   id: string
@@ -964,6 +965,9 @@ function CodeScannerPageInner() {
 }
 
 export default function CodeScannerPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   return (
     <Suspense
       fallback={
@@ -974,5 +978,4 @@ export default function CodeScannerPage() {
     </Suspense>
   )
 }
-
 

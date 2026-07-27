@@ -1,18 +1,9 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import {
-  Activity,
-  CheckCircle2,
-  Clock,
-  Loader2,
-  Sparkles,
-  Target,
-  TrendingUp,
-  Users,
-  Zap,
-} from 'lucide-react'
+import { Activity, CheckCircle2, Clock, Loader2, Sparkles, Target, TrendingUp, Users, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface SkillData {
   user?: { email?: string; id?: string } | null
@@ -47,6 +38,9 @@ interface SkillData {
 }
 
 export default function SkillAnalyticsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [data, setData] = useState<SkillData | null>(null)
   const [err, setErr] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
@@ -324,5 +318,4 @@ function Block({
     </div>
   )
 }
-
 

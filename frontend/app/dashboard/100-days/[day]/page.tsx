@@ -8,12 +8,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import {
-  ArrowLeft, Play, Send, Loader2, CheckCircle, AlertCircle, Trophy,
-  ChevronRight, ChevronLeft, BookOpen, Flame,
-} from 'lucide-react'
+import { ArrowLeft, Play, Send, Loader2, CheckCircle, AlertCircle, Trophy, ChevronRight, ChevronLeft, BookOpen, Flame } from 'lucide-react'
 import { HUNDRED_DAYS, type HundredDayProblem } from '@/lib/100-days-data'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -67,6 +65,9 @@ function getCompletedProblems(dayNum: number): Set<string> {
 }
 
 export default function DayPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const params = useParams()
   const router = useRouter()
   const day = parseInt(String(params?.day ?? '0'), 10)

@@ -5,6 +5,7 @@ import { Camera, CheckCircle2, Loader2, Upload, XCircle, Eye, RotateCcw } from '
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface VerifyResult {
   match?: boolean
@@ -16,6 +17,9 @@ interface VerifyResult {
 }
 
 export default function IdentityVerificationPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const [selfie, setSelfie] = useState<string | null>(null)
@@ -253,5 +257,4 @@ export default function IdentityVerificationPage() {
     </div>
   )
 }
-
 

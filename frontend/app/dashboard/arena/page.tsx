@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Trophy, Code, Loader } from 'lucide-react'
+import { Trophy, Code, Loader, Loader2 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ArenaChallenge {
   id: string
@@ -26,6 +27,9 @@ const difficultyColors: Record<string, string> = {
 }
 
 export default function ArenaPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [challenges, setChallenges] = useState<ArenaChallenge[]>([])
   const [loading, setLoading] = useState(true)
   const [difficulty, setDifficulty] = useState('all')
@@ -128,5 +132,4 @@ export default function ArenaPage() {
     </div>
   )
 }
-
 

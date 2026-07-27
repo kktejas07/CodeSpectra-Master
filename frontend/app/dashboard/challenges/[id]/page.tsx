@@ -5,6 +5,7 @@ import { ChallengeEditor } from '@/components/challenges/challenge-editor'
 import { Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ProblemData {
   id: string
@@ -30,6 +31,9 @@ interface ChallengeData {
 }
 
 export default function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const { id: challengeId } = use(params)
   const [challenge, setChallenge] = useState<ChallengeData | null>(null)
   const [problem, setProblem] = useState<ProblemData | null>(null)

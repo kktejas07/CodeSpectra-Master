@@ -8,6 +8,10 @@ import { Badge } from '@/components/ui/badge'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface PlanDef {
   plan: string; name: string; description: string; price?: string
@@ -21,10 +25,19 @@ const PLAN_COLORS: Record<string, string> = {
 }
 
 export default function PricingPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const addToast = useToast()
   const [plans, setPlans] = useState<PlanDef[]>([])
   const [currency, setCurrency] = useState('USD')
   const [loading, setLoading] = useState(true)
+
+  const [checkoutPlan, setCheckoutPlan] = useState<PlanDef | null>(null)
+  const [couponCode, setCouponCode] = useState('')
+  const [discountInfo, setDiscountInfo] = useState<{ valid: boolean, type: string, value: number, error?: string } | null>(null)
+  const [checkingCoupon, setCheckingCoupon] = useState(false)
+  const [checkoutLoading, setCheckoutLoading] = useState(false)
 
   useEffect(() => {
     Promise.all([
@@ -36,12 +49,36 @@ export default function PricingPage() {
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 
-  const handleUpgrade = async (planId: string) => {
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return
     try {
+      setCheckingCoupon(true)
+      const res = await csrfFetch('/api/billing/coupons/validate', {
+        method: 'POST', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: couponCode }),
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        setDiscountInfo({ valid: false, type: '', value: 0, error: data.error || 'Invalid coupon' })
+        return
+      }
+      setDiscountInfo({ valid: true, type: data.coupon.discount_type, value: data.coupon.discount_value })
+    } catch (e: any) {
+      setDiscountInfo({ valid: false, type: '', value: 0, error: e.message })
+    } finally {
+      setCheckingCoupon(false)
+    }
+  }
+
+  const handleCheckout = async () => {
+    if (!checkoutPlan) return
+    try {
+      setCheckoutLoading(true)
       const res = await csrfFetch('/api/billing/create-order', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ plan_id: planId }),
+        body: JSON.stringify({ plan_id: checkoutPlan.plan, coupon_code: discountInfo?.valid ? couponCode : undefined }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error)
@@ -58,14 +95,19 @@ export default function PricingPage() {
               body: JSON.stringify(response),
             })
             if (verify.ok) {
-              addToast({ type: 'success', title: 'Subscribed!', message: `You are now on the ${planId} plan.` })
+              addToast({ type: 'success', title: 'Subscribed!', message: `You are now on the ${checkoutPlan.plan} plan.` })
+              setCheckoutPlan(null)
             }
           },
         })
         rzp.open()
+      } else if (data.redirect_url) {
+        window.location.href = data.redirect_url
       }
     } catch (e: any) {
       addToast({ type: 'error', title: 'Payment failed', message: e.message })
+    } finally {
+      setCheckoutLoading(false)
     }
   }
 
@@ -117,7 +159,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
               <Button
                 className="w-full"
                 variant={isPro || (plan.price && plan.price !== '$0' && plan.price !== 'Free') ? 'default' : 'outline'}
-                onClick={() => (!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free') ? null : handleUpgrade(plan.plan)}
+                onClick={() => (!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free') ? null : setCheckoutPlan(plan)}
                 asChild={!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free'}
               >
                 {(!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free') ? (
@@ -141,8 +183,54 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
           <Link href="/pricing" className="text-primary underline">Public pricing page</Link>
         </p>
       </div>
+
+      <Dialog open={!!checkoutPlan} onOpenChange={(v) => { if (!v) { setCheckoutPlan(null); setCouponCode(''); setDiscountInfo(null) } }}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Complete Your Upgrade</DialogTitle>
+            <DialogDescription>You are upgrading to {checkoutPlan?.name}.</DialogDescription>
+          </DialogHeader>
+          
+          <div className="py-4 space-y-4">
+            <div className="flex justify-between items-center bg-muted/20 p-4 rounded-lg border border-border/50">
+              <span className="font-medium text-foreground">Base Price</span>
+              <span className="font-bold">{checkoutPlan?.price ? `${currSymbol}${checkoutPlan.price.replace('$', '').replace('/month', '')}` : ''}</span>
+            </div>
+            
+            <div className="space-y-2">
+              <Label htmlFor="coupon">Have a coupon code?</Label>
+              <div className="flex gap-2">
+                <Input 
+                  id="coupon" 
+                  placeholder="Enter code" 
+                  value={couponCode} 
+                  onChange={(e) => setCouponCode(e.target.value.toUpperCase())}
+                  className="uppercase"
+                />
+                <Button variant="secondary" onClick={handleApplyCoupon} disabled={checkingCoupon || !couponCode}>
+                  {checkingCoupon ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Apply'}
+                </Button>
+              </div>
+              {discountInfo && (
+                <p className={`text-sm ${discountInfo.valid ? 'text-green-500' : 'text-red-500'}`}>
+                  {discountInfo.valid 
+                    ? `Coupon applied! ${discountInfo.type === 'percentage' ? `${discountInfo.value}% OFF` : `${currSymbol}${discountInfo.value} OFF`}`
+                    : discountInfo.error}
+                </p>
+              )}
+            </div>
+          </div>
+          
+          <DialogFooter>
+            <Button variant="outline" onClick={() => { setCheckoutPlan(null); setCouponCode(''); setDiscountInfo(null) }}>Cancel</Button>
+            <Button onClick={handleCheckout} disabled={checkoutLoading}>
+              {checkoutLoading ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Zap className="h-4 w-4 mr-2" />}
+              Proceed to Payment
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
-
 

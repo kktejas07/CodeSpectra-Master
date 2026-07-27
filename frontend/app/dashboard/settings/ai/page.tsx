@@ -2,9 +2,13 @@
 
 import { Card } from '@/components/ui/card'
 import { ModelSelector } from '@/components/ai/model-selector'
-import { Sparkles, Bot, FileText, GraduationCap } from 'lucide-react'
+import { Sparkles, Bot, FileText, GraduationCap, Loader2 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function AISettingsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   return (
     <div className="space-y-6 max-w-2xl">
       <h1 className="text-3xl font-bold flex items-center gap-2">

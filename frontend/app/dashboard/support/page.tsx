@@ -4,10 +4,14 @@ import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2, Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 type Ticket = { id: string; subject: string; message: string; category: string; status: string; created_at: string; updated_at: string }
 
 export default function SupportPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
   const [selectedTicket, setSelectedTicket] = useState<Ticket | null>(null)

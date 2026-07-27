@@ -4,8 +4,9 @@ import { useMemo, useState } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Flame, CheckCircle2, Lock, Code2, Trophy, TrendingUp, BookOpen, ArrowRight } from 'lucide-react'
+import { Flame, CheckCircle2, Lock, Code2, Trophy, TrendingUp, BookOpen, ArrowRight, Loader2 } from 'lucide-react'
 import { HUNDRED_DAYS, type HundredDay } from '@/lib/100-days-data'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 function getCompleted(): Set<number> {
   if (typeof window === 'undefined') return new Set()
@@ -16,6 +17,9 @@ function getCompleted(): Set<number> {
 }
 
 export default function HundredDaysPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [completed, setCompleted] = useState<Set<number>>(getCompleted)
   const [filter, setFilter] = useState<'all' | 'available' | 'completed' | 'locked'>('all')
 

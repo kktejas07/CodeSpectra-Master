@@ -52,7 +52,7 @@ export interface PaymentMethod {
 
 export interface PaymentGatewayAdapter {
   name: PaymentProvider
-  createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string]): Promise<CheckoutResult>
+  createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult>
   getSubscription(userId: string): Promise<SubscriptionResult | null>
   cancelSubscription(userId: string): Promise<void>
   listPaymentMethods(userId: string, email: string): Promise<PaymentMethod[]>
@@ -123,6 +123,7 @@ export class PaymentService {
     email: string,
     planId: string,
     countryCode?: string | null,
+    couponId?: string,
   ): Promise<CheckoutResult> {
     let plan = BILLING_PLANS[planId]
     if (!plan) {
@@ -153,8 +154,19 @@ export class PaymentService {
       }
     }
     if (!plan) throw new Error(`Unknown plan: ${planId}`)
+
+    if (couponId) {
+      const { billingCoupons } = await import('@/lib/db/billing')
+      const { calculateDiscount } = await import('@/lib/coupon-service')
+      const coupons = await billingCoupons()
+      const coupon = await coupons.findOne({ id: couponId })
+      if (coupon) {
+        plan = { ...plan, amount_paise: calculateDiscount(plan.amount_paise, coupon) }
+      }
+    }
+
     const adapter = await this.getAdapterForCountry(countryCode)
-    return adapter.createCheckout(userId, email, planId, plan)
+    return adapter.createCheckout(userId, email, planId, plan, couponId)
   }
 
   async getSubscription(userId: string): Promise<SubscriptionResult | null> {
@@ -183,7 +195,7 @@ export class PaymentService {
 class PhonePeAdapter implements PaymentGatewayAdapter {
   name = 'phonepe' as const
 
-  async createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string]): Promise<CheckoutResult> {
+  async createCheckout(userId: string, email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult> {
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const callbackUrl = `${baseUrl}/api/billing/phonepe-callback`
     const redirectUrl = `${baseUrl}/dashboard/billing?payment=phonepe&status=success`
@@ -215,6 +227,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
       currency: plan.currency,
       plan_id: planId,
       receipt,
+      coupon_id: couponId,
       status: 'created',
       created_at: nowIso(),
       updated_at: nowIso(),
@@ -256,7 +269,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
 class RazorpayAdapter implements PaymentGatewayAdapter {
   name = 'razorpay' as const
 
-  async createCheckout(userId: string, _email: string, planId: string, plan: typeof BILLING_PLANS[string]): Promise<CheckoutResult> {
+  async createCheckout(userId: string, _email: string, planId: string, plan: typeof BILLING_PLANS[string], couponId?: string): Promise<CheckoutResult> {
     const rp = await getRazorpay()
     const receipt = `${userId}_${planId}_${Date.now()}`
     const order = await rp.orders.create({
@@ -275,6 +288,7 @@ class RazorpayAdapter implements PaymentGatewayAdapter {
       currency: plan.currency,
       plan_id: planId,
       receipt,
+      coupon_id: couponId,
       status: 'created',
       created_at: nowIso(),
       updated_at: nowIso(),

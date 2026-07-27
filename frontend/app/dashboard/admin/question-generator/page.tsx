@@ -26,7 +26,7 @@ export default function QuestionGeneratorPage() {
   const [err, setErr] = useState<string | null>(null)
   const [publish, setPublish] = useState(true)
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   async function generate() {
     setBusy(true)

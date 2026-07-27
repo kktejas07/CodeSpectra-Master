@@ -11,20 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '
 import { DigitalIdCard } from '@/components/dashboard/digital-id-card'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
-import {
-  Edit2,
-  Trophy,
-  Shield,
-  Clock,
-  FolderGit2,
-  Activity,
-  Loader,
-  CheckCircle2,
-  XCircle,
-  Smartphone,
-  User,
-} from 'lucide-react'
+import { Edit2, Trophy, Shield, Clock, FolderGit2, Activity, Loader, CheckCircle2, XCircle, Smartphone, User, Loader2 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ActivityItem {
   ts: string
@@ -163,6 +152,9 @@ function TwoFactorAuth() {
 }
 
 export default function ProfilePage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string } | null>(null)
   const [stats, setStats] = useState<Record<string, number | string> | null>(null)
   const [activity, setActivity] = useState<ActivityItem[]>([])
@@ -428,5 +420,4 @@ export default function ProfilePage() {
     </div>
   )
 }
-
 

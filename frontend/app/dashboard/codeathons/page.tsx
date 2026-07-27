@@ -5,8 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Trophy, Users, Clock, Loader, HelpCircle } from 'lucide-react'
+import { Trophy, Users, Clock, Loader, HelpCircle, Loader2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Codeathon {
   id: string
@@ -23,6 +24,9 @@ interface Codeathon {
 }
 
 export default function CodeathonsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const router = useRouter()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
   const [loading, setLoading] = useState(true)
@@ -99,5 +103,4 @@ export default function CodeathonsPage() {
     </div>
   )
 }
-
 

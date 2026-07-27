@@ -245,13 +245,7 @@ export default function HackathonDetailPage({
     setJudgeIds((prev) => prev.filter((j) => j !== uid))
   }
 
-  if (!gate.ready) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
+  if (!gate.ready) return null
 
   if (loading && !event) {
     return (

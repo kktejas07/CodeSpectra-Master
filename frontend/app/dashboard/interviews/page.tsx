@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Video, Calendar, Clock, ArrowRight, Bot } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -15,6 +16,9 @@ interface Interview {
 }
 
 export default function InterviewsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
 

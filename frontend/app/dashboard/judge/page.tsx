@@ -21,7 +21,7 @@ interface Hackathon {
 }
 
 export default function JudgeDashboardPage() {
-  const gate = usePageGuard('user')
+  const gate = usePageGuard('judge')
   const [hackathons, setHackathons] = useState<Hackathon[]>([])
   const [pendingCounts, setPendingCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)

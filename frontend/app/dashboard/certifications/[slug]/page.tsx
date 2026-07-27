@@ -5,8 +5,9 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, XCircle, Clock, ArrowLeft } from 'lucide-react'
+import { CheckCircle, XCircle, Clock, ArrowLeft, Loader2 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Question {
   id: string
@@ -43,6 +44,9 @@ interface SubmitResponse {
  * URL.
  */
 export default function CertificationAttemptPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const params = useParams() as { slug: string }
   const router = useRouter()
   const [data, setData] = useState<StartResponse | null>(null)
@@ -221,5 +225,4 @@ export default function CertificationAttemptPage() {
     </div>
   )
 }
-
 

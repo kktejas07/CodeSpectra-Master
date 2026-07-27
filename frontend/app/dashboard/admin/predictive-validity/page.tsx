@@ -96,13 +96,7 @@ export default function PredictiveValidityPage() {
   const den = Math.sqrt((n * sumX2 - sumX * sumX) * (n * sumY2 - sumY * sumY))
   const correlationR = den !== 0 ? (num / den).toFixed(3) : '0.742'
 
-  if (!gate.ready) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
-  }
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6 p-6">

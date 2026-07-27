@@ -8,13 +8,11 @@ import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
-import {
-  Code2, Play, Send, CheckCircle, AlertCircle, Loader2,
-  ArrowRight, Sparkles, Database, Trophy,
-} from 'lucide-react'
+import { Code2, Play, Send, CheckCircle, AlertCircle, Loader2, ArrowRight, Sparkles, Database, Trophy } from 'lucide-react'
 import { getArenaChallenge, getNextArenaChallengeId, type ArenaChallenge } from '@/lib/arena-challenges'
 import { PROGRAMMING_LANGUAGES } from '@/lib/languages'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -427,6 +425,9 @@ function ArenaChallengeInner() {
 }
 
 export default function ArenaChallengePage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   return (
     <div className="min-h-[30vh]">
       <ArenaChallengeInner />

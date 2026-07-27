@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, use } from 'react'
-import { BookOpen, CheckCircle, Play, Download, MessageCircle } from 'lucide-react'
+import { BookOpen, CheckCircle, Play, Download, MessageCircle, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { useToast } from '@/lib/toast-context'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const lessons = [
   {
@@ -39,6 +40,9 @@ const lessons = [
 ]
 
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const courseId = use(params).id
   const addToast = useToast()
   const [activeLesson, setActiveLesson] = useState(1)
@@ -185,5 +189,4 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     </div>
   )
 }
-
 

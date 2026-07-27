@@ -3,9 +3,13 @@
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, ArrowLeft } from 'lucide-react'
+import { CheckCircle, ArrowLeft, Loader2 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function InterviewResultsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const router = useRouter()
 
   return (
@@ -30,5 +34,4 @@ export default function InterviewResultsPage() {
     </div>
   )
 }
-
 

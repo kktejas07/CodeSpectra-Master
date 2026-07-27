@@ -102,7 +102,7 @@ export default function ExamPage() {
     return `${m}:${sec.toString().padStart(2, '0')}`
   }
 
-  if (!gate.ready) return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
+  if (!gate.ready) return null
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
   if (!exam) return <div className="p-8 text-center text-muted-foreground">Exam not found.</div>
 

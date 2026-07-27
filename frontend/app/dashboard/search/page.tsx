@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Search, Loader2, ArrowRight } from 'lucide-react'
 import Link from 'next/link'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface SearchResult {
   id: string
@@ -29,6 +30,9 @@ const CATEGORIES = [
 ]
 
 export default function GlobalSearchPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchCategory, setSearchCategory] = useState('all')
@@ -233,5 +237,4 @@ export default function GlobalSearchPage() {
     </div>
   )
 }
-
 

@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Brain, Code, BookOpen, ArrowRight, Loader2, Trophy, Clock } from 'lucide-react'
 import Link from 'next/link'
 import { useToast } from '@/lib/toast-context'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface PrepKit {
   id: string
@@ -24,6 +25,9 @@ interface Topic {
 }
 
 export default function PreparePage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const addToast = useToast()
   const [kits, setKits] = useState<PrepKit[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
@@ -152,5 +156,4 @@ export default function PreparePage() {
     </div>
   )
 }
-
 

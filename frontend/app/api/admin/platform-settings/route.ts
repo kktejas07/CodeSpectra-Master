@@ -58,6 +58,7 @@ export async function PATCH(request: Request) {
     'maintenance_mode',
     'require_email_verification',
     'show_public_leaderboard',
+    'enable_sso_login',
     'admin_new_user_email_delivery',
     'platform_currency',
     'locked_pages',
@@ -84,7 +85,8 @@ export async function PATCH(request: Request) {
         k === 'email_notifications' ||
         k === 'maintenance_mode' ||
         k === 'require_email_verification' ||
-        k === 'show_public_leaderboard'
+        k === 'show_public_leaderboard' ||
+        k === 'enable_sso_login'
       ) {
         next[k] = Boolean(v)
         continue

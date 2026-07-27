@@ -6,13 +6,11 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import {
-  Loader2, ArrowLeft, Video, Bot, Clock, Calendar,
-  CheckCircle, Send, SkipForward, BarChart3, Code2,
-} from 'lucide-react'
+import { Loader2, ArrowLeft, Video, Bot, Clock, Calendar, CheckCircle, Send, SkipForward, BarChart3, Code2 } from 'lucide-react'
 import { CollabEditor } from '@/components/interviews/collab-editor'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -29,6 +27,9 @@ interface Interview {
 }
 
 export default function InterviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const { id } = use(params)
   const router = useRouter()
   const [interview, setInterview] = useState<Interview | null>(null)

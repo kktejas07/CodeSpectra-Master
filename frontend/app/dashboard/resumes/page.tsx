@@ -4,8 +4,9 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Download, Trash2, Brain, FileText, Upload, HelpCircle } from 'lucide-react'
+import { Plus, Download, Trash2, Brain, FileText, Upload, HelpCircle, Loader2 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Resume {
   id: string
@@ -22,6 +23,9 @@ interface Resume {
 }
 
 export default function ResumesPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [resumes, setResumes] = useState<Resume[]>([
     {
       id: '1',
@@ -213,5 +217,4 @@ export default function ResumesPage() {
     </div>
   )
 }
-
 

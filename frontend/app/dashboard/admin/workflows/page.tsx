@@ -121,7 +121,7 @@ export default function WorkflowsPage() {
     }
   }, [draft])
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   function patchDraft(patch: Partial<WorkflowSummary>) {
     if (!parsedDraft) return

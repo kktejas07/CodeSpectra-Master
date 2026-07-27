@@ -6,24 +6,13 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
-import {
-  Brain,
-  ChevronDown,
-  ChevronUp,
-  Lightbulb,
-  Loader2,
-  Target,
-  Zap,
-  CheckCircle2,
-  XCircle,
-  RotateCcw,
-  Sparkles,
-} from 'lucide-react'
+import { Brain, ChevronDown, ChevronUp, Lightbulb, Loader2, Target, Zap, CheckCircle2, XCircle, RotateCcw, Sparkles } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { INTERVIEW_PREP_QUESTIONS, type InterviewPrepQuestion } from '@/lib/interview-prep-data'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 type Tab = 'browse' | 'quiz'
 
@@ -49,6 +38,9 @@ interface QuizQuestion {
 }
 
 export default function InterviewPrepPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const addToast = useToast()
   const { lockedFeatures } = useLockedFeatures()
   const quizLocked = lockedFeatures.includes('interview-prep:quiz')

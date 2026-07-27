@@ -334,15 +334,16 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 <Input type="number" min={5} value={form.timeout_minutes} onChange={(e) => setForm((f) => ({ ...f, timeout_minutes: Number(e.target.value) }))} />
               </div>
             </div>
-            <div className="space-y-2">
-              <Label>Starts at</Label>
-              <Input type="datetime-local" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
-              <p className="mt-1 text-xs text-muted-foreground">
-                Ends at {new Date(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000).toLocaleString()}
-              </p>
-            </div>
-            <div className="space-y-2">
-              <Label>Banner image</Label>
+            <div className="grid gap-6 md:grid-cols-2 mt-6">
+              <div className="space-y-2.5">
+                <Label className="text-sm font-medium">Starts at</Label>
+                <Input type="datetime-local" className="h-10" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
+                <p className="mt-1.5 text-[11px] text-muted-foreground bg-muted/30 p-2 rounded-md border border-border/50 inline-block">
+                  Ends at {new Date(new Date(form.starts_at).getTime() + form.timeout_minutes * 60000).toLocaleString()}
+                </p>
+              </div>
+              <div className="space-y-2.5">
+                <Label className="text-sm font-medium">Banner image</Label>
               {form.banner_url && (
                 <div className="relative w-full h-48 rounded-lg overflow-hidden border bg-muted mb-2">
                   <img src={form.banner_url} alt="Banner preview" className="w-full h-full object-cover" />
@@ -358,6 +359,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               <Input
                 type="file"
                 accept="image/*"
+                className="h-10 pt-2 cursor-pointer file:cursor-pointer file:mr-4 file:py-1 file:px-4 file:rounded-md file:border-0 file:text-xs file:font-semibold file:bg-primary/10 file:text-primary hover:file:bg-primary/20"
                 onChange={(e) => {
                   const file = e.target.files?.[0]
                   if (!file) return
@@ -375,6 +377,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 onChange={(e) => setForm((f) => ({ ...f, banner_url: e.target.value }))}
                 placeholder="Or paste image URL..."
               />
+            </div>
             </div>
             <Button onClick={() => setStep(2)}>Next: Problems →</Button>
           </div>

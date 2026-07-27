@@ -60,7 +60,7 @@ export default function AdminProctorPage() {
   const countViolations = events.filter((e) => EVENT_SEVERITY[e.event_type] === 'critical').length
   const countWarnings = events.filter((e) => EVENT_SEVERITY[e.event_type] === 'warning').length
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">

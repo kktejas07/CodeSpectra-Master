@@ -48,7 +48,7 @@ export default function AdminCodeathonsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newCodeathon, setNewCodeathon] = useState({ title: '', startDate: '', endDate: '' })
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   const handleCreateCodeathon = (e: React.FormEvent) => {
     e.preventDefault()

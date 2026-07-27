@@ -128,7 +128,7 @@ export default function UsersManagement() {
     [rows, tick]
   )
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   const handleEdit = (user: TableUser) => {
     setSelectedUser(user)

@@ -4,23 +4,14 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import {
-  ArrowLeft,
-  CheckCircle2,
-  ChevronRight,
-  Code2,
-  Loader2,
-  Play,
-  Send,
-  Sparkles,
-  XCircle,
-} from 'lucide-react'
+import { ArrowLeft, CheckCircle2, ChevronRight, Code2, Loader2, Play, Send, Sparkles, XCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { AnalysisPanel } from '@/components/ai/analysis-panel'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -124,6 +115,9 @@ const TOP_LANGUAGES = [
 ]
 
 export default function ProblemDetailPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const params = useParams<{ slug: string }>()
   const slug = params?.slug ?? ''
   const [problem, setProblem] = useState<Problem | null>(null)
@@ -877,5 +871,4 @@ function ResultsPanel({
     </div>
   )
 }
-
 

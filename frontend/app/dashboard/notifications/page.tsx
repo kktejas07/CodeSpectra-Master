@@ -5,12 +5,9 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  Bell, Loader2, CheckCheck, Filter, Trophy, Shield, CreditCard,
-  Video, Search, Users, Award, LogIn, AlertTriangle, FileText,
-  MessageSquare, Clock, Building, Key, Play, XCircle, Star,
-} from 'lucide-react'
+import { Bell, Loader2, CheckCheck, Filter, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   trophy: Trophy, shield: Shield, 'credit-card': CreditCard, video: Video,
@@ -40,6 +37,9 @@ const CATEGORIES = [
 ]
 
 export default function NotificationsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [items, setItems] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('all')

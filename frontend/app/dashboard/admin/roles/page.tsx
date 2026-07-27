@@ -69,7 +69,7 @@ export default function UserRoleAssignments() {
   )
   const roleCounts = { superadmin: users.filter(u => normalizeUserRole(u.role) === 'superadmin').length, tenant_admin: users.filter(u => normalizeUserRole(u.role) === 'tenant_admin').length, user: users.filter(u => normalizeUserRole(u.role) === 'user').length }
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading…</div>
+  if (!gate.ready) return null
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading users…</div>
 
   return (

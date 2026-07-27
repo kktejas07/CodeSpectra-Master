@@ -2,27 +2,14 @@
 
 import { useEffect, useRef, useState } from 'react'
 import dynamic from 'next/dynamic'
-import {
-  ArrowUp,
-  Bot,
-  CheckCircle2,
-  Code2,
-  Cpu,
-  FileText,
-  Loader2,
-  Play,
-  Sparkles,
-  Terminal,
-  Wand2,
-  HelpCircle,
-  Settings2,
-} from 'lucide-react'
+import { ArrowUp, Bot, CheckCircle2, Code2, Cpu, FileText, Loader2, Play, Sparkles, Terminal, Wand2, HelpCircle, Settings2 } from 'lucide-react'
 import { ModelSelector } from '@/components/ai/model-selector'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 
@@ -61,6 +48,9 @@ def fib(n):
  *   RIGHT : live Monaco editor showing the code as the agent edits it
  */
 export default function AgentPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [language, setLanguage] = useState<string>('python')
   const [code, setCode] = useState<string>(STARTER_CODE)
   const [input, setInput] = useState<string>('')
@@ -372,5 +362,4 @@ function AgentBubble({ turn }: { turn: AgentTurn }) {
     </div>
   )
 }
-
 

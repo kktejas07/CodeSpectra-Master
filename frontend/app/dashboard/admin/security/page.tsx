@@ -31,7 +31,7 @@ export default function Security() {
       .finally(() => setLoading(false))
   }, [])
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
   if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
 
   return (

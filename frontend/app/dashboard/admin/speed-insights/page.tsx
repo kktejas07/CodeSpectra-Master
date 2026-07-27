@@ -65,7 +65,7 @@ export default function SpeedInsightsPage() {
     return () => clearInterval(interval)
   }, [load])
 
-  if (!gate.ready) return <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

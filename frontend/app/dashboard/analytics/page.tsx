@@ -5,7 +5,8 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell } from 'recharts'
-import { TrendingUp, Calendar, Target, Zap, Loader } from 'lucide-react'
+import { TrendingUp, Calendar, Target, Zap, Loader, Loader2 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface SkillData {
   skill: string
@@ -21,6 +22,9 @@ interface PerformanceData {
 }
 
 export default function AnalyticsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [skills, setSkills] = useState<SkillData[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -159,5 +163,4 @@ export default function AnalyticsPage() {
     </div>
   )
 }
-
 

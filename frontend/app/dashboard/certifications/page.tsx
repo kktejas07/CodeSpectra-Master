@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Award, CheckCircle, ArrowRight, BookOpen, ExternalLink } from 'lucide-react'
+import { Award, CheckCircle, ArrowRight, BookOpen, ExternalLink, Loader2 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface CertCatalog {
   id: string
@@ -40,6 +41,9 @@ interface MyResponse {
 }
 
 export default function CertificationsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [catalog, setCatalog] = useState<CertCatalog[]>([])
   const [me, setMe] = useState<MyResponse | null>(null)
   const [loading, setLoading] = useState(true)
@@ -264,5 +268,4 @@ function CertCard({
     </Card>
   )
 }
-
 

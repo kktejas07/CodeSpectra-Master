@@ -51,7 +51,7 @@ export default function AdminExamsPage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newExam, setNewExam] = useState({ title: '', subject: '', level: 'Beginner' })
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   const handleCreateExam = (e: React.FormEvent) => {
     e.preventDefault()

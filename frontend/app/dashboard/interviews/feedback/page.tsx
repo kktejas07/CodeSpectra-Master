@@ -5,10 +5,14 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { Play, Download, Volume2, Clock, CheckCircle, AlertCircle } from 'lucide-react'
+import { Play, Download, Volume2, Clock, CheckCircle, AlertCircle, Loader2 } from 'lucide-react'
 import { useLockedFeatures } from '@/lib/use-page-guard'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function InterviewFeedbackPage() {
+  const gate = usePageGuard('tenant_admin')
+  if (!gate.ready) return null
+
   const { lockedFeatures } = useLockedFeatures()
   const chatLocked = lockedFeatures.includes('interviews/feedback:chat')
   const analysisLocked = lockedFeatures.includes('interviews/feedback:analysis')
@@ -236,5 +240,4 @@ export default function InterviewFeedbackPage() {
     </div>
   )
 }
-
 

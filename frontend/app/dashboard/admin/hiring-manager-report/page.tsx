@@ -98,13 +98,7 @@ export default function HiringManagerReportPage() {
     return nameMatch && reqMatch
   })
 
-  if (!gate.ready) {
-    return (
-      <div className="flex h-96 items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    )
-  }
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6 p-6">

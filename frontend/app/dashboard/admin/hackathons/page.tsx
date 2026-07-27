@@ -321,7 +321,7 @@ export default function HackathonsAdminPage() {
 
   const isEditing = !!editing
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6" data-testid="hackathons-admin-page">

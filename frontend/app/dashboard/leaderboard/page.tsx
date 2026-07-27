@@ -9,6 +9,7 @@ import { Trophy, Medal, Award, Loader2, CheckCircle2, HelpCircle } from 'lucide-
 import { cn } from '@/lib/utils'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 function PodiumIcon({ rank }: { rank: number }) {
   if (rank === 1) {
@@ -35,6 +36,9 @@ function PodiumIcon({ rank }: { rank: number }) {
 type Scope = 'global' | 'team' | 'monthly'
 
 export default function LeaderboardPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [view, setView] = useState<Scope>('global')
   const [entries, setEntries] = useState<LeaderboardEntryDTO[]>([])
   const [loading, setLoading] = useState(true)
@@ -280,5 +284,4 @@ export default function LeaderboardPage() {
     </div>
   )
 }
-
 

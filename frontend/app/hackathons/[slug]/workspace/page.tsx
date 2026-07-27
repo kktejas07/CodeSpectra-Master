@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useCallback, useEffect, useState } from 'react'
+import { use, useCallback, useEffect, useState, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -158,14 +158,16 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         setClaims(map)
       }
     } catch { /* ignore */ }
-  }, [hackathon])
+  }, [hackathon?.id])
 
   useEffect(() => { void fetchClaims() }, [fetchClaims])
   useEffect(() => {
     if (!hackathon) return
     const t = setInterval(() => { void fetchClaims() }, 10000)
     return () => clearInterval(t)
-  }, [hackathon, fetchClaims])
+  }, [hackathon?.id, fetchClaims])
+
+  const notifiedClosed = useRef(false)
 
   const refreshAll = useCallback(async () => {
     if (!hackathon || !hasSession) return
@@ -185,7 +187,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       if (hRes.ok) {
         const hk = await hRes.json() as Hackathon
         setHackathon(hk)
-        if (hk.status === 'closed') {
+        if (hk.status === 'closed' && !notifiedClosed.current) {
+          notifiedClosed.current = true
           addToast({ type: 'info', title: 'Event ended', message: 'The hackathon has concluded. Check the results.' })
         }
       }
@@ -193,7 +196,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       const base = typeof window !== 'undefined' ? window.location.origin : ''
       setInviteUrl(`${base}/hackathons/${slug}/join/${team.qr_token}`)
     } catch { /* ignore polling errors */ }
-  }, [hackathon, hasSession, teams, slug, router, addToast])
+  }, [hackathon?.id, hasSession, teams, slug, router, addToast])
 
   // Initial load + 10s polling for submissions + hackathon state
   useEffect(() => {
@@ -201,7 +204,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     void refreshAll()
     const t = setInterval(() => { void refreshAll() }, 10000)
     return () => clearInterval(t)
-  }, [hackathon, hasSession, refreshAll])
+  }, [hackathon?.id, hasSession, refreshAll])
 
   const refreshSubmissions = useCallback(async () => {
     if (!hackathon || !hasSession) return
@@ -212,7 +215,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       const data = await res.json()
       setSubmissions(data.items || [])
     } catch { /* ignore */ }
-  }, [hackathon, hasSession, teams])
+  }, [hackathon?.id, hasSession, teams])
 
   const copyInvite = async () => {
     if (inviteUrl) {
@@ -841,23 +844,28 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       </Dialog>
 
       <Sheet open={!!selectedProblem} onOpenChange={(o) => { if (!o) closeProblemPanel() }}>
-        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col">
+        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col [&>button]:hidden">
           {selectedProblem && (
             <>
-              <div className="flex-shrink-0 border-b border-border p-6 sm:px-8 flex items-center justify-between">
+              <div className="flex-shrink-0 border-b border-border px-6 py-5 sm:px-8 flex items-start justify-between bg-muted/30">
                 <div className="min-w-0 flex-1">
-                  <SheetHeader className="p-0 pr-6">
-                    <SheetTitle className="text-lg truncate">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
-                  </SheetHeader>
-                  <div className="flex items-center gap-2 mt-1">
-                    <Badge variant="outline" className="text-[10px]">{selectedProblem.difficulty}</Badge>
-                    <span className="text-xs text-muted-foreground">{selectedProblem.points} pts</span>
-                    {selectedProblem.required && <Badge variant="destructive" className="text-[10px]">Required</Badge>}
+                  <SheetTitle className="text-xl font-bold truncate pr-4">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
+                  <div className="flex items-center gap-2 mt-2">
+                    <Badge variant="outline" className="text-[10px] uppercase font-semibold tracking-wider">{selectedProblem.difficulty}</Badge>
+                    <span className="text-xs font-medium text-muted-foreground">{selectedProblem.points} pts</span>
+                    {selectedProblem.required && <Badge variant="destructive" className="text-[10px] uppercase font-semibold tracking-wider">Required</Badge>}
                   </div>
                 </div>
+                <button
+                  onClick={closeProblemPanel}
+                  className="rounded-full bg-background/50 p-1.5 text-muted-foreground hover:text-foreground hover:bg-muted transition-colors focus:outline-none focus:ring-2 focus:ring-primary"
+                >
+                  <X className="h-5 w-5" />
+                  <span className="sr-only">Close</span>
+                </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto pl-6 pr-6 sm:pl-8 sm:pr-8 py-6 space-y-8">
+              <div className="flex-1 overflow-y-auto px-6 py-6 sm:px-8 space-y-8">
                 {problemDetailLoading ? (
                   <div className="flex items-center gap-2 text-sm text-muted-foreground py-8 justify-center">
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...

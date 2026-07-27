@@ -14,21 +14,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import {
-  Settings,
-  Moon,
-  Sun,
-  Palette,
-  Bell,
-  Shield,
-  ChevronRight,
-  Loader2,
-  CheckCircle2,
-  XCircle,
-  Key,
-  Download,
-  Trash2,
-} from 'lucide-react'
+import { Settings, Moon, Sun, Palette, Bell, Shield, ChevronRight, Loader2, CheckCircle2, XCircle, Key, Download, Trash2 } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useToast } from '@/lib/toast-context'
 import {
@@ -36,6 +22,7 @@ import {
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const LS = {
   language: 'codespectra:user:language',
@@ -67,6 +54,9 @@ function readLsBool(key: string, fallback: boolean) {
 }
 
 export default function SettingsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const addToast = useToast()
   const { theme: nextTheme, setTheme } = useTheme()
   const [language, setLanguage] = useState('en')
@@ -440,5 +430,4 @@ export default function SettingsPage() {
     </div>
   )
 }
-
 

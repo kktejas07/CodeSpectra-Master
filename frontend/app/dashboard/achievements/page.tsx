@@ -1,12 +1,13 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Trophy, Zap, BookOpen, Target, Flame, Code2, Loader, HelpCircle } from 'lucide-react'
+import { Trophy, Zap, BookOpen, Target, Flame, Code2, Loader, HelpCircle, Loader2 } from 'lucide-react'
 import { BadgesShowcase } from '@/components/achievements/badges-showcase'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Achievement {
   id: number
@@ -23,6 +24,9 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 }
 
 export default function AchievementsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
   const { lockedFeatures } = useLockedFeatures()
@@ -120,5 +124,4 @@ export default function AchievementsPage() {
     </div>
   )
 }
-
 

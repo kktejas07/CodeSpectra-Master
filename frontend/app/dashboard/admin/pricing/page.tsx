@@ -79,7 +79,7 @@ export default function PricingAdminPage() {
 
   const formatLimit = (v: number) => v === -1 || v === 0 ? 'Unlimited' : String(v)
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading…</div>
+  if (!gate.ready) return null
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading plans…</div>
 
   return (

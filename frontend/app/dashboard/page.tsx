@@ -5,11 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {
-  TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle,
-  ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users,
-  ExternalLink
-} from 'lucide-react'
+import { TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle, ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users, ExternalLink, Loader2 } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
@@ -17,6 +13,7 @@ import { DailyChallengeWidget } from '@/components/dashboard/daily-challenge-wid
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } from '@/lib/rbac'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ActivityItem {
   ts: string
@@ -27,6 +24,9 @@ interface ActivityItem {
 }
 
 export default function DashboardPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const router = useRouter()
   const { user: fbUser, loading: isPending } = useAuth()
   const addToast = useToast()

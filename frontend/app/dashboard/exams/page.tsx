@@ -5,7 +5,8 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, BookOpen, Play, Loader } from 'lucide-react'
+import { Clock, BookOpen, Play, Loader, Loader2 } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Exam {
   id: string
@@ -22,6 +23,9 @@ interface Exam {
 }
 
 export default function ExamsPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])
   const [loading, setLoading] = useState(true)
@@ -95,5 +99,4 @@ export default function ExamsPage() {
     </div>
   )
 }
-
 

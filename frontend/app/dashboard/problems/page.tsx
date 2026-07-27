@@ -38,13 +38,7 @@ export default function ProblemsListPage() {
 
   const countByTopic = (key: string) => key ? filtered.filter(p => (p.topics || []).some(t => t.toLowerCase() === key.toLowerCase())).length : filtered.length
 
-  if (!gate.ready) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      </div>
-    )
-  }
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

@@ -173,7 +173,7 @@ export default function JudgeReviewPage() {
   const params = useParams<{ id: string }>()
   const hackathonId = params.id
 
-  const gate = usePageGuard('user')
+  const gate = usePageGuard('judge')
   const [hackathon, setHackathon] = useState<Hackathon | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)

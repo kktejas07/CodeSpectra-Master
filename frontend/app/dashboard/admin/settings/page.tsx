@@ -102,7 +102,7 @@ const BRANDING_KEYS: GeneralKey[] = [
   'privacy_policy_url',
   'terms_of_service_url',
 ]
-const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode']
+const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode', 'enable_sso_login']
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
 
@@ -1247,6 +1247,19 @@ function SystemSettingsInner() {
                 id="maintenance_mode"
                 checked={form.maintenance_mode}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, maintenance_mode: v }))}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="enable_sso_login" className="text-foreground">
+                  Enterprise SSO
+                </Label>
+                <p className="text-sm text-muted-foreground">Show Single Sign-On (SAML/OIDC) option on the login page</p>
+              </div>
+              <Switch
+                id="enable_sso_login"
+                checked={form.enable_sso_login}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, enable_sso_login: v }))}
               />
             </div>
           </div>

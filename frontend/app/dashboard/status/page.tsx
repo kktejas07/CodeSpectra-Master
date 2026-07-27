@@ -2,10 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { CheckCircle2, XCircle, AlertTriangle, RefreshCw, Loader2, Activity } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 type ComponentStatus = { name: string; status: 'operational' | 'degraded' | 'down'; latency?: number; message?: string }
 
 export default function StatusPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const [data, setData] = useState<{ status: string; updated_at: string; components: ComponentStatus[] } | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState('')

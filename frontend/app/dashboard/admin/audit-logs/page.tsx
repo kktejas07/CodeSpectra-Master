@@ -116,7 +116,7 @@ export default function AuditLogsPage() {
     setPage(1)
   }
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

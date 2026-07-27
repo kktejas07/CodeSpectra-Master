@@ -4,6 +4,8 @@ import { Suspense } from 'react'
 import { useRouter, useSearchParams } from 'next/navigation'
 import { DynamicInterview } from '@/components/interviews/dynamic-interview'
 import type { InterviewFeedback } from '@/lib/interview-service'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { Loader2 } from 'lucide-react'
 
 function DynamicInterviewPageInner() {
   const router = useRouter()
@@ -31,6 +33,9 @@ function DynamicInterviewPageInner() {
 }
 
 export default function DynamicInterviewPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   return (
     <Suspense
       fallback={

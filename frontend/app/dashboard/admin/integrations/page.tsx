@@ -47,7 +47,7 @@ export default function IntegrationsPage() {
       .catch(() => {})
   }, [gate.ready])
 
-  if (!gate.ready) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready) return null
 
   const integrations = INTEGRATIONS.map(item => ({
     ...item,

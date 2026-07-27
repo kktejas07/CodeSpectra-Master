@@ -10,8 +10,12 @@ import { Label } from '@/components/ui/label'
 import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function ScheduleInterviewPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const router = useRouter()
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)

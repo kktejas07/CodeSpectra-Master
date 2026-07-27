@@ -42,6 +42,8 @@ export type GeneralPlatformSettings = {
   platform_currency: string
   /** How to notify users when an admin creates an account without setting a password. */
   admin_new_user_email_delivery: AdminNewUserEmailDelivery
+  /** Whether to show the Enterprise SSO login button on the login page */
+  enable_sso_login: boolean
   /** Routes that show a "Coming Soon" lock screen. Superadmin can toggle from /dashboard/admin/permissions. */
   locked_pages: string[]
   /** Sub-page features that are locked (e.g. "scanner:github"). Superadmin can toggle from /dashboard/admin/permissions. */
@@ -76,6 +78,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   show_public_leaderboard: true,
   platform_currency: 'USD',
   admin_new_user_email_delivery: 'resend_recovery',
+  enable_sso_login: false,
   locked_pages: [],
   locked_features: [],
   company_name: 'CodeSpectra',

@@ -5,6 +5,8 @@ import { useRouter } from 'next/navigation'
 import { ResumeUpload } from '@/components/interviews/resume-upload'
 import { AudioCameraSettings } from '@/components/interviews/audio-camera-settings'
 import { InterviewRoleSelector } from '@/components/interviews/interview-role-selector'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { Loader2 } from 'lucide-react'
 
 type InterviewStage = 'role-selection' | 'resume' | 'settings' | 'dynamic' | 'feedback'
 
@@ -15,6 +17,9 @@ interface InterviewConfig {
 }
 
 export default function InterviewSetupPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const router = useRouter()
   const [stage, setStage] = useState<InterviewStage>('role-selection')
   const [selectedRole, setSelectedRole] = useState<string>('')

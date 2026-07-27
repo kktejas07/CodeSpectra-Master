@@ -29,6 +29,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/users',
   '/dashboard/admin/roles',
   '/dashboard/admin/permissions',
+  '/dashboard/admin/coupons',
   '/dashboard/admin/security',
   '/dashboard/admin/proctor',
   '/dashboard/admin/analytics',
@@ -77,18 +78,6 @@ export const TENANT_ADMIN_ROUTES: string[] = [
  */
 export const JUDGE_ROUTES: string[] = [
   '/dashboard/judge',
-  '/dashboard',
-  '/dashboard/leaderboard',
-  '/dashboard/achievements',
-  '/dashboard/problems',
-  '/dashboard/challenges',
-  '/dashboard/interviews',
-  '/dashboard/interview-prep',
-  '/dashboard/certifications',
-  '/dashboard/profile',
-  '/dashboard/notifications',
-  '/dashboard/support',
-  '/dashboard/status',
 ]
 
 /**

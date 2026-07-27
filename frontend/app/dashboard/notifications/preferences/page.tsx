@@ -11,6 +11,7 @@ import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-heade
 import { Bell, Mail, ChevronRight, Loader2, SlidersHorizontal, Slack } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface NotificationPreference {
   id: string
@@ -33,6 +34,9 @@ function ChannelIcon({ type }: { type: string }) {
 }
 
 export default function NotificationPreferencesPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   const toast = useToast()
   const [preferences, setPreferences] = useState<NotificationPreference[]>([])
   const [loading, setLoading] = useState(true)
@@ -269,5 +273,4 @@ export default function NotificationPreferencesPage() {
     </div>
   )
 }
-
 

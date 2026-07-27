@@ -31,6 +31,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { cn } from '@/lib/utils'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { findPlan } from '@/lib/billing-catalog'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 type InvoiceRow = {
   id: string
@@ -702,6 +703,9 @@ function BillingContent() {
 }
 
 export default function BillingPage() {
+  const gate = usePageGuard('user')
+  if (!gate.ready) return null
+
   return (
     <Suspense
       fallback={
@@ -715,5 +719,4 @@ export default function BillingPage() {
     </Suspense>
   )
 }
-
 

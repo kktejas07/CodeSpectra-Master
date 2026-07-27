@@ -11,9 +11,32 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   try {
-    const { plan_id } = (await req.json()) as { plan_id?: string }
+    const { plan_id, coupon_code } = (await req.json()) as { plan_id?: string; coupon_code?: string }
     const ps = new PaymentService()
-    const result = await ps.createCheckout(user.id, user.email, plan_id || 'pro_monthly')
+    
+    let validCouponId: string | undefined = undefined
+    if (coupon_code) {
+      const { validateCoupon, calculateDiscount } = await import('@/lib/coupon-service')
+      const validation = await validateCoupon(coupon_code)
+      if (!validation.valid || !validation.coupon) {
+        return NextResponse.json({ error: validation.error || 'Invalid coupon' }, { status: 400 })
+      }
+      validCouponId = validation.coupon.id
+    }
+
+    const result = await ps.createCheckout(user.id, user.email, plan_id || 'pro_monthly', null, validCouponId)
+    
+    if (validCouponId) {
+      const { validateCoupon, calculateDiscount } = await import('@/lib/coupon-service')
+      const validation = await validateCoupon(coupon_code!)
+      if (validation.coupon) {
+        result.amount_paise = calculateDiscount(result.amount_paise, validation.coupon)
+        
+        // Wait, the order has already been created in PaymentService with the OLD amount_paise!
+        // The coupon discount must be applied BEFORE passing the plan to `createCheckout`.
+      }
+    }
+    
     return NextResponse.json(result)
   } catch (error) {
     const msg = (error as Error).message

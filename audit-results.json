@@ -1,0 +1,14 @@
+[
+  {
+    "filePath": "/Users/devendervutukuru/Desktop/My Projects/CodeSpectra-Master-main/frontend/app/dashboard/judge/[id]/page.tsx",
+    "route": "/dashboard/judge/[id]",
+    "currentArg": "user",
+    "mappedRole": "judge"
+  },
+  {
+    "filePath": "/Users/devendervutukuru/Desktop/My Projects/CodeSpectra-Master-main/frontend/app/dashboard/judge/page.tsx",
+    "route": "/dashboard/judge",
+    "currentArg": "user",
+    "mappedRole": "judge"
+  }
+]
