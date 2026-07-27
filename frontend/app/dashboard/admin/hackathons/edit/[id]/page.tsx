@@ -325,16 +325,16 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 <Label>Teams allowed</Label>
                 <Input type="number" min={1} max={500} value={form.num_teams} onChange={(e) => setForm((f) => ({ ...f, num_teams: Number(e.target.value) }))} />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Max per team</Label>
                 <Input type="number" min={1} max={20} value={form.max_per_team} onChange={(e) => setForm((f) => ({ ...f, max_per_team: Number(e.target.value) }))} />
               </div>
-              <div>
+              <div className="space-y-2">
                 <Label>Duration (minutes)</Label>
                 <Input type="number" min={5} value={form.timeout_minutes} onChange={(e) => setForm((f) => ({ ...f, timeout_minutes: Number(e.target.value) }))} />
               </div>
             </div>
-            <div>
+            <div className="space-y-2">
               <Label>Starts at</Label>
               <Input type="datetime-local" value={form.starts_at} onChange={(e) => setForm((f) => ({ ...f, starts_at: e.target.value }))} />
               <p className="mt-1 text-xs text-muted-foreground">
@@ -689,18 +689,18 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
 
             <div className="rounded border p-4 space-y-3">
               <h4 className="text-sm font-semibold">Scoring Configuration</h4>
-              <div className="grid gap-3 md:grid-cols-3">
-                <div>
+              <div className="grid gap-4 md:grid-cols-3">
+                <div className="space-y-2">
                   <Label>Points per problem</Label>
                   <Input type="number" value={form.scoring.points_per_problem}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, points_per_problem: Number(e.target.value) } }))} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label>Bonus time (early submit bonus)</Label>
                   <Input type="number" value={form.scoring.bonus_time}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, bonus_time: Number(e.target.value) } }))} />
                 </div>
-                <div>
+                <div className="space-y-2">
                   <Label>Penalty per attempt</Label>
                   <Input type="number" value={form.scoring.penalty_per_attempt}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, penalty_per_attempt: Number(e.target.value) } }))} />
