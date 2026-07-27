@@ -24,40 +24,51 @@ export interface PagePermission {
  * Everything under /dashboard/admin/ is superadmin by default.
  */
 export const ADMIN_ONLY_ROUTES: string[] = [
+  // System & Core
   '/dashboard/admin',
   '/dashboard/admin/system',
+  '/dashboard/admin/analytics',
   '/dashboard/admin/users',
+  '/dashboard/admin/teams',
   '/dashboard/admin/roles',
   '/dashboard/admin/permissions',
-  '/dashboard/admin/coupons',
   '/dashboard/admin/security',
-  '/dashboard/admin/proctor',
-  '/dashboard/admin/analytics',
-  '/dashboard/admin/speed-insights',
-  '/dashboard/admin/cdn',
-  '/dashboard/admin/teams',
-  '/dashboard/admin/jobs',
-  '/dashboard/admin/resumes',
-  '/dashboard/admin/codeathons',
-  '/dashboard/admin/exams',
-  '/dashboard/admin/workflows',
-  '/dashboard/admin/question-generator',
+  '/dashboard/admin/audit-logs',
+
+  // Events, Problems & Proctoring
   '/dashboard/admin/hackathons',
   '/dashboard/admin/hackathons/create',
   '/dashboard/admin/hackathons/edit',
+  '/dashboard/admin/codeathons',
   '/dashboard/admin/question-bank',
-  '/dashboard/admin/predictive-validity',
-  '/dashboard/admin/rag',
-  '/dashboard/admin/ai-inventory',
-  '/dashboard/admin/integrations',
+  '/dashboard/admin/exams',
+  '/dashboard/admin/proctor',
+
+  // Billing & Plans
   '/dashboard/admin/pricing',
   '/dashboard/admin/plans',
-  '/dashboard/admin/audit-logs',
-  '/dashboard/admin/announcements',
+  '/dashboard/admin/coupons',
+
+  // Hiring & ATS
+  '/dashboard/admin/jobs',
+  '/dashboard/admin/resumes',
+  '/dashboard/admin/predictive-validity',
+
+  // AI & Generation Tools
+  '/dashboard/admin/rag',
+  '/dashboard/admin/ai-inventory',
+  '/dashboard/admin/question-generator',
+  '/dashboard/admin/workflows',
+
+  // Infrastructure, Settings & Announcements
   '/dashboard/admin/settings',
   '/dashboard/admin/settings/llm',
   '/dashboard/admin/settings/cloudflare',
   '/dashboard/admin/settings/mobile',
+  '/dashboard/admin/integrations',
+  '/dashboard/admin/cdn',
+  '/dashboard/admin/speed-insights',
+  '/dashboard/admin/announcements',
 ]
 
 /**

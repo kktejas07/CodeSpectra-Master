@@ -263,6 +263,8 @@ export default function DashboardLayout({
       [p.permissions]: Shield,
       [p.plans]: FileText,
       [p.pricing]: FileText,
+      '/dashboard/admin/coupons': CreditCardIcon,
+      '/dashboard/admin/announcements': Bell,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/rag': Database,
       '/dashboard/admin/ai-inventory': Sparkles,
