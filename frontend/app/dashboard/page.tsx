@@ -40,12 +40,10 @@ export default function DashboardPage() {
     totalContributions: number
     totalActiveDays: number
   } | null>(null)
-  if (!gate.ready) return null
 
   useEffect(() => {
     if (isPending) return
     if (!fbUser) { router.push('/auth/login'); return }
-
     fetch('/api/auth/me', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
@@ -89,6 +87,8 @@ export default function DashboardPage() {
       if (teamsData?.teams) setMyTeams(teamsData.teams)
     })
   }, [])
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">
