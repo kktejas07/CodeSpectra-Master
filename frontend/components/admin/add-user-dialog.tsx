@@ -45,7 +45,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('user')
   const [selectedPipelines, setSelectedPipelines] = useState<string[]>(['/assessment'])
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>(['python', 'javascript', 'cpp'])
+  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([...ALL_LANGUAGES])
   const [loading, setLoading] = useState(false)
 
   const reset = () => {
@@ -54,7 +54,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
     setPassword('')
     setRole('user')
     setSelectedPipelines(['/assessment'])
-    setSelectedLanguages(['python', 'javascript', 'cpp'])
+    setSelectedLanguages([...ALL_LANGUAGES])
     setLoading(false)
   }
 
@@ -143,6 +143,34 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
             </div>
 
             <div className="grid gap-2">
+              <Label htmlFor="add-user-password">Password (optional)</Label>
+              <Input
+                id="add-user-password"
+                type="password"
+                autoComplete="new-password"
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+                placeholder="Leave blank to auto-generate"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="add-user-role">Role</Label>
+              <select
+                id="add-user-role"
+                value={role}
+                onChange={(e) => setRole(e.target.value as UserRole)}
+                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+              >
+                <option value="user">Candidate / User</option>
+                <option value="tenant_admin">Organization admin</option>
+                <option value="superadmin">Platform admin</option>
+              </select>
+            </div>
+
+            {role === 'user' && (
+              <>
+
+            <div className="grid gap-2">
               <Label className="font-semibold text-foreground">Assigned Assessment Pipeline (Select Multiple)</Label>
               <div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-muted/20 p-3">
                 {AVAILABLE_PIPELINES.map((p) => {
@@ -196,31 +224,8 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
                 })}
               </div>
             </div>
-
-            <div className="grid gap-2">
-              <Label htmlFor="add-user-password">Password (optional)</Label>
-              <Input
-                id="add-user-password"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Leave blank to auto-generate"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-user-role">Role</Label>
-              <select
-                id="add-user-role"
-                value={role}
-                onChange={(e) => setRole(e.target.value as UserRole)}
-                className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
-              >
-                <option value="user">Candidate / User</option>
-                <option value="tenant_admin">Organization admin</option>
-                <option value="superadmin">Platform admin</option>
-              </select>
-            </div>
+              </>
+            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
             <Button type="button" variant="outline" onClick={() => handleClose(false)}>
