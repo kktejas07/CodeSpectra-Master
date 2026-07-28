@@ -21,6 +21,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { toLocalDatetimeString } from '@/lib/datetime-local'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -37,6 +38,7 @@ interface ProblemOption { slug: string; title: string; difficulty: string; topic
 
 export default function HackathonsAdminPage() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
   const [items, setItems] = useState<Hackathon[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -875,7 +877,7 @@ export default function HackathonsAdminPage() {
                 setDeleteTarget(null)
                 if (!res.ok) {
                   const err = await res.json().catch(() => ({ error: 'Delete failed' }))
-                  alert(err.error || 'Cannot delete — teams are registered')
+                  addToast({ type: 'error', title: 'Delete Failed', message: err.error || 'Cannot delete — teams are registered' })
                 }
                 await load()
               }}
