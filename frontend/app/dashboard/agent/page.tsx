@@ -61,9 +61,10 @@ export default function AgentPage() {
   const logLocked = lockedFeatures.includes('agent:log')
   const logRef = useRef<HTMLDivElement>(null)
 
+  if (!gate.ready) return null
+
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
-  if (!gate.ready) return null
   }, [turns])
 
   async function runAgent() {
