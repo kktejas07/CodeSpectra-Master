@@ -302,7 +302,6 @@ export default function DashboardLayout({
       '/dashboard/codeathons': Trophy,
       '/dashboard/challenges': CodeIcon,
       '/dashboard/interviews': Users,
-      '/dashboard/id-card': CreditCard,
       '/dashboard/jobs': Briefcase,
       '/dashboard/exams': FileText,
       '/dashboard/resumes': FileText,
