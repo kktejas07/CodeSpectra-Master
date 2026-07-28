@@ -78,10 +78,10 @@ export async function POST(request: Request) {
     }
 
     const existingPerms = body.permissions || []
-    // Only save submitted permissions that have at least one action.
-    // Resources not in the submission won't appear — the admin UI shows them as "new" on next load.
-    // This prevents the old bug where every save wrote ALL resources (with [] for unchecked).
-    const mergedPermissions = existingPerms.filter((p: any) => p.actions.length > 0)
+    // Save ALL submitted permissions — including those with empty actions.
+    // Resources with empty actions are treated as "explicitly denied" and
+    // the sidebar uses this to hide pages the admin has toggled off.
+    const mergedPermissions = existingPerms
 
     const doc = {
       role: body.role, name: body.name, description: body.description || '',
