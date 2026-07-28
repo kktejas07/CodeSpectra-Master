@@ -110,7 +110,6 @@ export default function DashboardLayout({
   const [unreadNotifications, setUnreadNotifications] = useState(0)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [userPlan, setUserPlan] = useState<string>('free')
-  const [allowedDbRoutes, setAllowedDbRoutes] = useState<Set<string>>(new Set())
   const [lockedPages, setLockedPages] = useState<string[]>([])
 
   const { user: fbUser, signOut } = useAuth()
@@ -152,20 +151,6 @@ export default function DashboardLayout({
     }
     return null
   })()
-
-  // Fetch DB-driven page permissions for sidebar filtering — works for all roles
-  useEffect(() => {
-    if (!userRole) return
-    let cancelled = false
-    fetch('/api/user/my-permissions', { credentials: 'include' })
-      .then(r => r.ok ? r.json() : null)
-      .then(data => {
-        if (cancelled || !data?.routes) return
-        setAllowedDbRoutes(new Set(data.routes))
-      })
-      .catch(() => {})
-    return () => { cancelled = true }
-  }, [userRole, pathname])
 
   const userProfile = useMemo(() => {
     if (!fbUser || !userRole) return null
@@ -370,22 +355,10 @@ export default function DashboardLayout({
       }
     }
 
-    // If DB permissions are loaded, use them as the sole filter.
-    // Otherwise fall back to static role-based lists.
-    if (allowedDbRoutes.size > 0) {
-      return addSectionHeaders(allLeaves
-        .filter(leaf => {
-          const checkRoute = leaf.route
-          if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) {
-            // Still include locked pages but mark them - the renderer will add lock icon
-            return true
-          }
-          return allowedDbRoutes.has(checkRoute) ||
-            Array.from(allowedDbRoutes).some(r => checkRoute.startsWith(r + '/'))
-        }))
-    }
-
-    // ── Fallback: static role-based nav (no DB permissions loaded yet) ──
+    // Sidebar visibility is controlled by static role-based lists — DB
+    // permissions only govern API-level CRUD, not which nav items appear.
+    // ponytail: DB permissions for sidebar causes routes to disappear when
+    // saved without read/manage; static role lists are the source of truth.
     if (isSuperAdmin(role)) {
       return addSectionHeaders(allLeaves)
     }
@@ -409,7 +382,7 @@ export default function DashboardLayout({
           !route.startsWith(DASHBOARD_ROUTES.organization.team) &&
           !tenantOnlySet.has(route)
       }))
-  }, [userProfile?.role, userPlan, allowedDbRoutes, effectiveLockedPages])
+  }, [userProfile?.role, userPlan, effectiveLockedPages])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
