@@ -146,12 +146,14 @@ export default function DashboardLayout({
       .then(r => r.ok ? r.json() : null)
       .then(data => {
         if (cancelled || !data) return
-        if (data.readable) setAllowedRoutes(new Set(data.readable))
+        if (data.readable) {
+          setAllowedRoutes(new Set(data.readable))
+        }
         if (data.denied) setDeniedRoutes(new Set(data.denied))
       })
       .catch(() => {})
     return () => { cancelled = true }
-  }, [userRole, pathname])
+  }, [userRole])
 
   const currentPageLocked = (() => {
     if (userRole && isSuperAdmin(userRole)) return false
