@@ -31,9 +31,10 @@ export default function AchievementsPage() {
   const { lockedFeatures } = useLockedFeatures()
   const badgesLocked = lockedFeatures.includes('achievements:badges')
 
+  if (!gate.ready) return null
+
   useEffect(() => {
     fetch('/api/achievements')
-  if (!gate.ready) return null
       .then(r => r.json())
       .then(json => { if (json.data) setAchievements(json.data) })
       .catch(() => {})
