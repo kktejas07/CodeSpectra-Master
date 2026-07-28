@@ -369,20 +369,26 @@ export default function DashboardLayout({
       leaves = allLeaves
     } else if (isTenantAdmin(role)) {
       const tenantAdminSet = new Set(TENANT_ADMIN_ROUTES)
-      leaves = allLeaves.filter(leaf =>
-        !leaf.href.startsWith('/dashboard/admin/') || tenantAdminSet.has(leaf.href.split('?')[0]))
+      const judgeOnlySet = new Set(JUDGE_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
+      leaves = allLeaves.filter(leaf => {
+        const route = leaf.href.split('?')[0]
+        return (!route.startsWith('/dashboard/admin/') || tenantAdminSet.has(route)) &&
+          !judgeOnlySet.has(route)
+      })
     } else if (isJudge(role)) {
       const judgeSet = new Set([...JUDGE_ROUTES, ...ALL_USER_ROUTES])
       leaves = allLeaves.filter(leaf => judgeSet.has(leaf.href.split('?')[0]))
     } else {
       // User — non-admin, non-org, non-tenant-exclusive routes
       const tenantOnlySet = new Set(TENANT_ADMIN_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
+      const judgeOnlySet = new Set(JUDGE_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
       leaves = allLeaves.filter(leaf => {
         const route = leaf.href.split('?')[0]
         return route.startsWith('/dashboard') &&
           !route.startsWith('/dashboard/admin/') &&
           !route.startsWith(DASHBOARD_ROUTES.organization.team) &&
-          !tenantOnlySet.has(route)
+          !tenantOnlySet.has(route) &&
+          !judgeOnlySet.has(route)
       })
     }
 
