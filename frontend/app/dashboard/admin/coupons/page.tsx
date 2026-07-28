@@ -26,7 +26,7 @@ interface Coupon {
 
 export default function CouponsAdminPage() {
   const gate = usePageGuard('superadmin')
-  const { addToast } = useToast()
+  const addToast = useToast()
   
   const [coupons, setCoupons] = useState<Coupon[]>([])
   const [loading, setLoading] = useState(true)
