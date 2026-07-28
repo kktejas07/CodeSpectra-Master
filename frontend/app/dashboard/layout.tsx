@@ -111,6 +111,7 @@ export default function DashboardLayout({
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [userPlan, setUserPlan] = useState<string>('free')
   const [deniedRoutes, setDeniedRoutes] = useState<Set<string>>(new Set())
+  const [allowedRoutes, setAllowedRoutes] = useState<Set<string>>(new Set())
   const [lockedPages, setLockedPages] = useState<string[]>([])
 
   const { user: fbUser, signOut } = useAuth()
@@ -145,8 +146,9 @@ export default function DashboardLayout({
     fetch('/api/user/my-permissions', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (cancelled || !data?.denied) return
-        setDeniedRoutes(new Set(data.denied))
+        if (cancelled || !data) return
+        if (data.readable) setAllowedRoutes(new Set(data.readable))
+        if (data.denied) setDeniedRoutes(new Set(data.denied))
       })
       .catch(() => {})
     return () => { cancelled = true }
@@ -365,24 +367,31 @@ export default function DashboardLayout({
       }
     }
 
-    // Sidebar visibility is controlled by static role-based lists — DB
-    // permissions only REMOVE routes where admin explicitly toggled off 'read'.
-    const notDenied = (leaf: NavLeaf) => !deniedRoutes.has(leaf.route)
+    // Sidebar visibility: when admin has assigned DB page permissions
+    // (allowedRoutes non-empty), use them as the sole filter. Otherwise
+    // fall back to static role-based lists.
+    if (allowedRoutes.size > 0) {
+      const showLeaf = (leaf: NavLeaf) => {
+        const checkRoute = leaf.route
+        if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) return true
+        return allowedRoutes.has(checkRoute) ||
+          Array.from(allowedRoutes).some(r => checkRoute.startsWith(r + '/'))
+      }
+      return addSectionHeaders(allLeaves.filter(showLeaf))
+    }
 
     if (isSuperAdmin(role)) {
-      return addSectionHeaders(allLeaves.filter(notDenied))
+      return addSectionHeaders(allLeaves)
     }
     if (isTenantAdmin(role)) {
       const tenantAdminSet = new Set(TENANT_ADMIN_ROUTES)
       return addSectionHeaders(allLeaves
-        .filter(leaf => !leaf.href.startsWith('/dashboard/admin/') || tenantAdminSet.has(leaf.href.split('?')[0]))
-        .filter(notDenied))
+        .filter(leaf => !leaf.href.startsWith('/dashboard/admin/') || tenantAdminSet.has(leaf.href.split('?')[0])))
     }
     if (isJudge(role)) {
       const judgeSet = new Set([...JUDGE_ROUTES, ...ALL_USER_ROUTES])
       return addSectionHeaders(allLeaves
-        .filter(leaf => judgeSet.has(leaf.href.split('?')[0]))
-        .filter(notDenied))
+        .filter(leaf => judgeSet.has(leaf.href.split('?')[0])))
     }
     // User — non-admin, non-org, non-tenant-exclusive routes
     const tenantOnlySet = new Set(TENANT_ADMIN_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
@@ -393,9 +402,8 @@ export default function DashboardLayout({
           !route.startsWith('/dashboard/admin/') &&
           !route.startsWith(DASHBOARD_ROUTES.organization.team) &&
           !tenantOnlySet.has(route)
-      })
-      .filter(notDenied))
-  }, [userProfile?.role, userPlan, deniedRoutes, effectiveLockedPages])
+      }))
+  }, [userProfile?.role, userPlan, allowedRoutes, deniedRoutes, effectiveLockedPages])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
