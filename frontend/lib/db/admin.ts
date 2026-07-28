@@ -9,7 +9,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
-import type { Collection, Filter } from 'mongodb'
+import { type Collection, type Filter, ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
 // ---------- Document types ----------
@@ -165,8 +165,9 @@ export async function listAllUsers(): Promise<BetterAuthUserDoc[]> {
 
 export async function getUserById(id: string): Promise<BetterAuthUserDoc | null> {
   const col = await users()
-  // Better Auth stores id as _id (string). Try both fields for safety.
-  return col.findOne({ $or: [{ _id: id }, { id }] } as Filter<BetterAuthUserDoc>)
+  const orQueries: any[] = [{ _id: id }, { id }]
+  if (ObjectId.isValid(id)) orQueries.push({ _id: new ObjectId(id) })
+  return col.findOne({ $or: orQueries } as Filter<BetterAuthUserDoc>)
 }
 
 export async function updateUserById(
@@ -175,8 +176,11 @@ export async function updateUserById(
 ): Promise<BetterAuthUserDoc | null> {
   const col = await users()
   const $set: Record<string, unknown> = { ...update, updatedAt: new Date() }
+  const orQueries: any[] = [{ _id: id }, { id }]
+  if (ObjectId.isValid(id)) orQueries.push({ _id: new ObjectId(id) })
+  
   await col.updateOne(
-    { $or: [{ _id: id }, { id }] } as Filter<BetterAuthUserDoc>,
+    { $or: orQueries } as Filter<BetterAuthUserDoc>,
     { $set },
   )
   return getUserById(id)
@@ -187,16 +191,20 @@ export async function updateUserLastLogin(
   method: NonNullable<BetterAuthUserDoc['lastLoginMethod']>,
 ): Promise<void> {
   const col = await users()
+  const orQueries: any[] = [{ _id: id }, { id }]
+  if (ObjectId.isValid(id)) orQueries.push({ _id: new ObjectId(id) })
   await col.updateOne(
-    { $or: [{ _id: id }, { id }] } as Filter<BetterAuthUserDoc>,
+    { $or: orQueries } as Filter<BetterAuthUserDoc>,
     { $set: { lastLoginMethod: method, lastLoginAt: new Date(), updatedAt: new Date() } },
   )
 }
 
 export async function deleteUserById(id: string): Promise<boolean> {
   const col = await users()
+  const orQueries: any[] = [{ _id: id }, { id }]
+  if (ObjectId.isValid(id)) orQueries.push({ _id: new ObjectId(id) })
   const result = await col.deleteOne({
-    $or: [{ _id: id }, { id }],
+    $or: orQueries,
   } as Filter<BetterAuthUserDoc>)
   return result.deletedCount > 0
 }

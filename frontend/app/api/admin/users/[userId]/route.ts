@@ -120,7 +120,10 @@ export async function DELETE(
   }
 
   try {
-    await deleteUserById(userId)
+    const deleted = await deleteUserById(userId)
+    if (!deleted) {
+      return NextResponse.json({ error: 'User not found or already deleted' }, { status: 404 })
+    }
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Delete failed'
