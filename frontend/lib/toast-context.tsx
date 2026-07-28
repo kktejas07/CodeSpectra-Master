@@ -52,10 +52,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 function ToastComponent({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const colors = {
-    success: 'bg-green-500/10 border-green-500 text-green-700',
-    error: 'bg-red-500/10 border-red-500 text-red-700',
-    info: 'bg-blue-500/10 border-blue-500 text-blue-700',
-    warning: 'bg-yellow-500/10 border-yellow-500 text-yellow-700',
+    success: 'bg-green-50 border-green-500 text-green-800 dark:bg-green-500/20 dark:border-green-500/50 dark:text-green-400',
+    error: 'bg-red-50 border-red-500 text-red-800 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-400',
+    info: 'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-500/20 dark:border-blue-500/50 dark:text-blue-400',
+    warning: 'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-500/20 dark:border-yellow-500/50 dark:text-yellow-400',
   }
 
   const icons = {
