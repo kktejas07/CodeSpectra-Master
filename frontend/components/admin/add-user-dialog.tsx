@@ -13,6 +13,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import type { UserRole } from '@/lib/rbac'
+import { Eye, EyeOff } from 'lucide-react'
 
 export interface AddUserDialogProps {
   open: boolean
@@ -32,6 +33,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState<UserRole>('user')
   const [loading, setLoading] = useState(false)
 
@@ -39,6 +41,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
     setEmail('')
     setFullName('')
     setPassword('')
+    setShowPassword(false)
     setRole('user')
     setLoading(false)
   }
@@ -99,14 +102,24 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
 
             <div className="grid gap-2">
               <Label htmlFor="add-user-password">Password (optional)</Label>
-              <Input
-                id="add-user-password"
-                type="password"
-                autoComplete="new-password"
-                value={password}
-                onChange={(e) => setPassword(e.target.value)}
-                placeholder="Leave blank to auto-generate"
-              />
+              <div className="relative">
+                <Input
+                  id="add-user-password"
+                  type={showPassword ? 'text' : 'password'}
+                  autoComplete="new-password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  placeholder="Leave blank to auto-generate"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowPassword(!showPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
             <div className="grid gap-2">
               <Label htmlFor="add-user-role">Role</Label>
@@ -122,7 +135,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
               </select>
             </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-0">
+          <DialogFooter className="gap-2 sm:gap-2">
             <Button type="button" variant="outline" onClick={() => { reset(); onOpenChange(false) }}>
               Cancel
             </Button>

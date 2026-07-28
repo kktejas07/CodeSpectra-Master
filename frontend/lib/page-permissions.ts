@@ -135,7 +135,6 @@ export const ALL_USER_ROUTES: string[] = [
   // Learning & Prep
   '/dashboard/learning',
   '/dashboard/interview-prep',
-  '/dashboard/prepare',
   
   // Career & Hiring
   '/dashboard/jobs',
@@ -258,7 +257,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/interviews/feedback': 'Interview Feedback',
   '/dashboard/interviews/results': 'Interview Results',
   '/dashboard/recruiter-analytics': 'Recruiter Analytics',
-  '/dashboard/prepare': 'Prepare',
   '/dashboard/profile': 'Profile',
   '/dashboard/settings': 'Settings',
   '/dashboard/settings/ai': 'AI Settings',

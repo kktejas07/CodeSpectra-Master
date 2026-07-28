@@ -301,7 +301,6 @@ export default function DashboardLayout({
       '/dashboard/codeathons': Trophy,
       '/dashboard/challenges': CodeIcon,
       '/dashboard/interviews': Users,
-      '/dashboard/prepare': BookOpen,
       '/dashboard/profile': User,
       '/dashboard/search': Search,
       '/dashboard/id-card': CreditCard,
