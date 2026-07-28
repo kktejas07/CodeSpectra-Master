@@ -363,42 +363,45 @@ export default function DashboardLayout({
       }
     }
 
-    // Sidebar visibility: when admin has assigned DB page permissions
-    // (allowedRoutes non-empty), use them as the sole filter. Otherwise
-    // fall back to static role-based lists.
-    if (allowedRoutes.size > 0) {
-      const showLeaf = (leaf: NavLeaf) => {
-        const checkRoute = leaf.route
-        if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) return true
-        return allowedRoutes.has(checkRoute) ||
-          Array.from(allowedRoutes).some(r => checkRoute.startsWith(r + '/'))
-      }
-      return addSectionHeaders(allLeaves.filter(showLeaf))
-    }
-
+    // First: role-based filter — always applied
+    let leaves: NavLeaf[]
     if (isSuperAdmin(role)) {
-      return addSectionHeaders(allLeaves)
-    }
-    if (isTenantAdmin(role)) {
+      leaves = allLeaves
+    } else if (isTenantAdmin(role)) {
       const tenantAdminSet = new Set(TENANT_ADMIN_ROUTES)
-      return addSectionHeaders(allLeaves
-        .filter(leaf => !leaf.href.startsWith('/dashboard/admin/') || tenantAdminSet.has(leaf.href.split('?')[0])))
-    }
-    if (isJudge(role)) {
+      leaves = allLeaves.filter(leaf =>
+        !leaf.href.startsWith('/dashboard/admin/') || tenantAdminSet.has(leaf.href.split('?')[0]))
+    } else if (isJudge(role)) {
       const judgeSet = new Set([...JUDGE_ROUTES, ...ALL_USER_ROUTES])
-      return addSectionHeaders(allLeaves
-        .filter(leaf => judgeSet.has(leaf.href.split('?')[0])))
-    }
-    // User — non-admin, non-org, non-tenant-exclusive routes
-    const tenantOnlySet = new Set(TENANT_ADMIN_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
-    return addSectionHeaders(allLeaves
-      .filter(leaf => {
+      leaves = allLeaves.filter(leaf => judgeSet.has(leaf.href.split('?')[0]))
+    } else {
+      // User — non-admin, non-org, non-tenant-exclusive routes
+      const tenantOnlySet = new Set(TENANT_ADMIN_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
+      leaves = allLeaves.filter(leaf => {
         const route = leaf.href.split('?')[0]
         return route.startsWith('/dashboard') &&
           !route.startsWith('/dashboard/admin/') &&
           !route.startsWith(DASHBOARD_ROUTES.organization.team) &&
           !tenantOnlySet.has(route)
-      }))
+      })
+    }
+
+    // Second: DB permission filter — further restrict if admin assigned permissions
+    if (allowedRoutes.size > 0) {
+      leaves = leaves.filter(leaf => {
+        const checkRoute = leaf.route
+        if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) return true
+        return allowedRoutes.has(checkRoute) ||
+          Array.from(allowedRoutes).some(r => checkRoute.startsWith(r + '/'))
+      })
+    }
+
+    // Third: denied routes — explicitly hidden by admin
+    if (deniedRoutes.size > 0) {
+      leaves = leaves.filter(leaf => !deniedRoutes.has(leaf.route))
+    }
+
+    return addSectionHeaders(leaves)
   }, [userProfile?.role, userPlan, allowedRoutes, deniedRoutes, effectiveLockedPages])
 
   const toggleSidebarCollapsed = () => {
