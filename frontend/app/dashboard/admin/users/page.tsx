@@ -136,8 +136,6 @@ export default function UsersManagement() {
     allowed_languages?: string[]
   } | null>(null)
 
-  if (!gate.ready) return null
-
   const handleEdit = (user: TableUser) => {
     setSelectedUser(user)
     setRoleDialogMode('edit-profile')
@@ -287,6 +285,8 @@ function getPipelineLabel(url: string) {
       /* ignore */
     }
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">
