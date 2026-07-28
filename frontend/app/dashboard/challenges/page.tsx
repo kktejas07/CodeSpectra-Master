@@ -24,7 +24,6 @@ interface Challenge {
 
 export default function ChallengesPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [loading, setLoading] = useState(true)
@@ -48,6 +47,8 @@ export default function ChallengesPage() {
   const completedCount = challenges.filter(c => c.completed).length
   const types = [...new Set(challenges.map(c => c.type))]
   const difficulties = [...new Set(challenges.map(c => c.difficulty))]
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

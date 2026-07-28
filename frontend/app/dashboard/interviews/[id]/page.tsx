@@ -28,7 +28,6 @@ interface Interview {
 
 export default function InterviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const { id } = use(params)
   const router = useRouter()
@@ -71,6 +70,8 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
       await load()
     } catch {} finally { setSubmitting(false) }
   }
+
+  if (!gate.ready) return null
 
   if (loading) return <div className="flex h-64 items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading interview…</div>
   if (!interview) return <div className="p-10 text-center text-destructive">{error || 'Not found'}</div>

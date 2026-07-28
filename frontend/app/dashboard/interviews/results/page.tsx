@@ -8,9 +8,10 @@ import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function InterviewResultsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const router = useRouter()
+
+  if (!gate.ready) return null
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">

@@ -18,7 +18,6 @@ interface VerifyResult {
 
 export default function IdentityVerificationPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -97,6 +96,8 @@ export default function IdentityVerificationPage() {
     setResult(null)
     setErr(null)
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6" data-testid="identity-verify-page">

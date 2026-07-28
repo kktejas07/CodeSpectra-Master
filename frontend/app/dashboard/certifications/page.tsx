@@ -42,7 +42,6 @@ interface MyResponse {
 
 export default function CertificationsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [catalog, setCatalog] = useState<CertCatalog[]>([])
   const [me, setMe] = useState<MyResponse | null>(null)
@@ -95,6 +94,8 @@ export default function CertificationsPage() {
       </div>
     )
   }
+  if (!gate.ready) return null
+
   if (error) {
     return (
       <div className="p-8 text-center text-destructive" data-testid="certifications-error">

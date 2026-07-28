@@ -20,6 +20,8 @@ import {
   JUDGE_ROUTES,
   ALL_USER_ROUTES,
   ROUTE_LABELS,
+  ADMIN_SECTIONS,
+  USER_SECTIONS,
 } from '@/lib/page-permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -236,7 +238,7 @@ export default function DashboardLayout({
   }, [userProfile?.id, pathname])
 
   type NavLeaf = { href: string; label: string; icon: LucideIcon; route: string }
-  type NavEntry = { type: 'link'; item: NavLeaf }
+  type NavEntry = { type: 'link'; item: NavLeaf } | { type: 'section'; label: string }
 
   const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? [] : lockedPages
 
@@ -331,6 +333,23 @@ export default function DashboardLayout({
       '/dashboard/learning': LEARNING_HUB_DEFAULT,
     }
 
+    const addSectionHeaders = (leaves: NavLeaf[]): NavEntry[] => {
+      const sectionByRoute = new Map<string, string>()
+      for (const s of ADMIN_SECTIONS) sectionByRoute.set(s.firstRoute, s.label)
+      for (const s of USER_SECTIONS) sectionByRoute.set(s.firstRoute, s.label)
+      const seenSections = new Set<string>()
+      const result: NavEntry[] = []
+      for (const leaf of leaves) {
+        const label = sectionByRoute.get(leaf.route)
+        if (label && !seenSections.has(label)) {
+          seenSections.add(label)
+          result.push({ type: 'section', label })
+        }
+        result.push({ type: 'link', item: leaf })
+      }
+      return result
+    }
+
     // Build allLeaves dynamically from page-permissions.ts.
     // Order: admin → org → user; duplicates skipped; only routes with icons appear.
     const allRouteGroups = [ADMIN_ONLY_ROUTES, TENANT_ADMIN_ROUTES, JUDGE_ROUTES, ALL_USER_ROUTES] as const
@@ -354,7 +373,7 @@ export default function DashboardLayout({
     // If DB permissions are loaded, use them as the sole filter.
     // Otherwise fall back to static role-based lists.
     if (allowedDbRoutes.size > 0) {
-      return allLeaves
+      return addSectionHeaders(allLeaves
         .filter(leaf => {
           const checkRoute = leaf.route
           if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) {
@@ -363,37 +382,33 @@ export default function DashboardLayout({
           }
           return allowedDbRoutes.has(checkRoute) ||
             Array.from(allowedDbRoutes).some(r => checkRoute.startsWith(r + '/'))
-        })
-        .map(leaf => ({ type: 'link' as const, item: leaf }))
+        }))
     }
 
     // ── Fallback: static role-based nav (no DB permissions loaded yet) ──
     if (isSuperAdmin(role)) {
-      return allLeaves.map(leaf => ({ type: 'link' as const, item: leaf }))
+      return addSectionHeaders(allLeaves)
     }
     if (isTenantAdmin(role)) {
       const tenantAdminSet = new Set(TENANT_ADMIN_ROUTES)
-      return allLeaves
-        .filter(leaf => !leaf.href.startsWith('/dashboard/admin/') || tenantAdminSet.has(leaf.href.split('?')[0]))
-        .map(leaf => ({ type: 'link' as const, item: leaf }))
+      return addSectionHeaders(allLeaves
+        .filter(leaf => !leaf.href.startsWith('/dashboard/admin/') || tenantAdminSet.has(leaf.href.split('?')[0])))
     }
     if (isJudge(role)) {
       const judgeSet = new Set([...JUDGE_ROUTES, ...ALL_USER_ROUTES])
-      return allLeaves
-        .filter(leaf => judgeSet.has(leaf.href.split('?')[0]))
-        .map(leaf => ({ type: 'link' as const, item: leaf }))
+      return addSectionHeaders(allLeaves
+        .filter(leaf => judgeSet.has(leaf.href.split('?')[0])))
     }
     // User — non-admin, non-org, non-tenant-exclusive routes
     const tenantOnlySet = new Set(TENANT_ADMIN_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
-    return allLeaves
+    return addSectionHeaders(allLeaves
       .filter(leaf => {
         const route = leaf.href.split('?')[0]
         return route.startsWith('/dashboard') &&
           !route.startsWith('/dashboard/admin/') &&
           !route.startsWith(DASHBOARD_ROUTES.organization.team) &&
           !tenantOnlySet.has(route)
-      })
-      .map(leaf => ({ type: 'link' as const, item: leaf }))
+      }))
   }, [userProfile?.role, userPlan, allowedDbRoutes, effectiveLockedPages])
 
   const toggleSidebarCollapsed = () => {
@@ -573,6 +588,16 @@ export default function DashboardLayout({
                   </div>
                 ) : (
                   navEntries.map((entry) => {
+                    if (entry.type === 'section') {
+                      return (
+                        <div key={entry.label} className={cn(
+                          'px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60',
+                          sidebarCollapsed && 'lg:sr-only'
+                        )}>
+                          {entry.label}
+                        </div>
+                      )
+                    }
                     const { href, label, icon: IconComponent } = entry.item
                     const active = isActive(href)
                     const nestedShell = mainNavHasNestedShell(href)

@@ -8,7 +8,6 @@ type ComponentStatus = { name: string; status: 'operational' | 'degraded' | 'dow
 
 export default function StatusPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [data, setData] = useState<{ status: string; updated_at: string; components: ComponentStatus[] } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -37,6 +36,8 @@ export default function StatusPage() {
   }
 
   const overallIcon = data?.status === 'operational' ? 'text-green-500' : data?.status === 'degraded' ? 'text-yellow-500' : 'text-red-500'
+
+  if (!gate.ready) return null
 
   return (
     <div className="mx-auto max-w-3xl space-y-8 px-6 py-10">

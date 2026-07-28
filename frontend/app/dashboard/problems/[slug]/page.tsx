@@ -116,7 +116,6 @@ const TOP_LANGUAGES = [
 
 export default function ProblemDetailPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const params = useParams<{ slug: string }>()
   const slug = params?.slug ?? ''
@@ -298,6 +297,8 @@ export default function ProblemDetailPage() {
         ? 'text-amber-400 border-amber-400/30 bg-amber-400/10'
         : 'text-destructive border-destructive/40 bg-destructive/10'
   }, [problem])
+
+  if (!gate.ready) return null
 
   if (loadError) {
     return (

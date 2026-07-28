@@ -41,7 +41,6 @@ const lessons = [
 
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const courseId = use(params).id
   const addToast = useToast()
@@ -49,6 +48,8 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const completed = lessons.filter((l) => l.completed).length
 
   const currentLesson = lessons.find((l) => l.id === activeLesson) || lessons[0]
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">

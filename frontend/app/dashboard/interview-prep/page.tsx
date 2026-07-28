@@ -39,7 +39,6 @@ interface QuizQuestion {
 
 export default function InterviewPrepPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const addToast = useToast()
   const { lockedFeatures } = useLockedFeatures()
@@ -147,6 +146,8 @@ export default function InterviewPrepPage() {
     })
     return { correct, total: quizQuestions.length, pct: Math.round((correct / quizQuestions.length) * 100) }
   }, [quizSubmitted, quizAnswers, quizQuestions])
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">

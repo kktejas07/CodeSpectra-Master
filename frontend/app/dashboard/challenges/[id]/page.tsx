@@ -32,7 +32,6 @@ interface ChallengeData {
 
 export default function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const { id: challengeId } = use(params)
   const [challenge, setChallenge] = useState<ChallengeData | null>(null)
@@ -69,6 +68,8 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
       </div>
     )
   }
+
+  if (!gate.ready) return null
 
   const title = problem?.title || challenge?.title || challengeId
   const description = problem?.statement_md || challenge?.description || ''

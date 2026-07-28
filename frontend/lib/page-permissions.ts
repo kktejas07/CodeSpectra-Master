@@ -71,6 +71,27 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/announcements',
 ]
 
+export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
+  { label: 'System & Core', firstRoute: '/dashboard/admin/system' },
+  { label: 'Events, Problems & Proctoring', firstRoute: '/dashboard/admin/hackathons' },
+  { label: 'Billing & Plans', firstRoute: '/dashboard/admin/pricing' },
+  { label: 'Hiring & ATS', firstRoute: '/dashboard/admin/jobs' },
+  { label: 'AI & Generation Tools', firstRoute: '/dashboard/admin/rag' },
+  { label: 'Infrastructure & Settings', firstRoute: '/dashboard/admin/settings' },
+]
+
+export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
+  { label: 'Dashboard & AI', firstRoute: '/dashboard' },
+  { label: 'Practice & Coding', firstRoute: '/dashboard/arena' },
+  { label: 'Events & Competitions', firstRoute: '/dashboard/codeathons' },
+  { label: 'Learning & Prep', firstRoute: '/dashboard/learning' },
+  { label: 'Career & Hiring', firstRoute: '/dashboard/jobs' },
+  { label: 'Tools', firstRoute: '/dashboard/scanner' },
+  { label: 'Stats & Progress', firstRoute: '/dashboard/leaderboard' },
+  { label: 'User & Account', firstRoute: '/dashboard/profile' },
+  { label: 'Misc', firstRoute: '/dashboard/search' },
+]
+
 /**
  * Routes accessible to tenant_admin and above.
  */

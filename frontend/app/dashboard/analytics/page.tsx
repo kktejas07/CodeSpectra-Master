@@ -23,7 +23,6 @@ interface PerformanceData {
 
 export default function AnalyticsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [skills, setSkills] = useState<SkillData[]>([])
   const [loading, setLoading] = useState(true)
@@ -35,6 +34,8 @@ export default function AnalyticsPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  if (!gate.ready) return null
 
   const totalSolved = skills.reduce((s, sk) => s + sk.solved, 0)
   const totalProblems = skills.reduce((s, sk) => s + sk.total, 0)

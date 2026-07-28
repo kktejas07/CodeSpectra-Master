@@ -38,7 +38,6 @@ const CATEGORIES = [
 
 export default function NotificationsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [items, setItems] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -62,6 +61,8 @@ export default function NotificationsPage() {
     const interval = setInterval(() => { void load() }, 30_000)
     return () => clearInterval(interval)
   }, [load])
+
+  if (!gate.ready) return null
 
   const markAllRead = async () => {
     await csrfFetch('/api/notifications/mark-all-read', { method: 'POST' })

@@ -26,7 +26,6 @@ const PLAN_COLORS: Record<string, string> = {
 
 export default function PricingPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const addToast = useToast()
   const [plans, setPlans] = useState<PlanDef[]>([])
@@ -117,6 +116,8 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
     const map: Record<string, string> = { 'seats': ' /user', 'storage': ' GB', 'requests': ' /mo', 'api_calls': ' /mo' }
     return map[key] || ''
   }
+
+  if (!gate.ready) return null
 
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading plans…</div>
 

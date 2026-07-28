@@ -45,7 +45,6 @@ interface SubmitResponse {
  */
 export default function CertificationAttemptPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const params = useParams() as { slug: string }
   const router = useRouter()
@@ -161,6 +160,8 @@ export default function CertificationAttemptPage() {
       </div>
     )
   }
+
+  if (!gate.ready) return null
 
   const allAnswered = data.questions.every((q) => typeof answers[q.id] === 'number')
 

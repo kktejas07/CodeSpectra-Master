@@ -153,7 +153,6 @@ function TwoFactorAuth() {
 
 export default function ProfilePage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string } | null>(null)
   const [stats, setStats] = useState<Record<string, number | string> | null>(null)
@@ -245,6 +244,8 @@ export default function ProfilePage() {
   const memberDate = memberSince
     ? new Date(memberSince).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
     : null
+
+  if (!gate.ready) return null
 
   return (
     <div className="grid gap-8 lg:grid-cols-[minmax(0,280px)_1fr]">

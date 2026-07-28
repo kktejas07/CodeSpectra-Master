@@ -32,7 +32,6 @@ interface TrackDef {
 
 export default function TracksPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [tracks, setTracks] = useState<TrackDef[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -78,6 +77,8 @@ export default function TracksPage() {
           </Tooltip>
         </TooltipProvider>
       </div>
+
+      if (!gate.ready) return null
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground text-sm py-20 justify-center">

@@ -28,7 +28,6 @@ const difficultyColors: Record<string, string> = {
 
 export default function ArenaPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [challenges, setChallenges] = useState<ArenaChallenge[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,6 +50,8 @@ export default function ArenaPage() {
 
   const categories = ['all', ...new Set(challenges.map(c => c.category).filter(Boolean))]
   const difficulties = ['all', 'easy', 'medium', 'hard']
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

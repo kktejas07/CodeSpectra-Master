@@ -14,7 +14,6 @@ import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function ScheduleInterviewPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const router = useRouter()
   const [busy, setBusy] = useState(false)
@@ -62,6 +61,8 @@ export default function ScheduleInterviewPage() {
       setError(e instanceof Error ? e.message : String(e))
     } finally { setBusy(false) }
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="max-w-2xl space-y-6">

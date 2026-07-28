@@ -39,7 +39,6 @@ interface SkillData {
 
 export default function SkillAnalyticsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [data, setData] = useState<SkillData | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -56,6 +55,8 @@ export default function SkillAnalyticsPage() {
       .catch((e) => setErr(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false))
   }, [])
+
+  if (!gate.ready) return null
 
   if (loading) {
     return (

@@ -25,7 +25,6 @@ interface Codeathon {
 
 export default function CodeathonsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const router = useRouter()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
@@ -52,6 +51,8 @@ export default function CodeathonsPage() {
   }
 
   if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

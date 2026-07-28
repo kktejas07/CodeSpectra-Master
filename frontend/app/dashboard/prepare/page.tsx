@@ -26,7 +26,6 @@ interface Topic {
 
 export default function PreparePage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const addToast = useToast()
   const [kits, setKits] = useState<PrepKit[]>([])
@@ -70,6 +69,8 @@ export default function PreparePage() {
       </div>
     )
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

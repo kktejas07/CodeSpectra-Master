@@ -66,7 +66,6 @@ function getCompletedProblems(dayNum: number): Set<string> {
 
 export default function DayPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const params = useParams()
   const router = useRouter()
@@ -182,6 +181,8 @@ export default function DayPage() {
     } catch (e: any) { setResult({ status: 'error', passed_tests: 0, total_tests: problem.examples.length, total_time_ms: 0, stderr_excerpt: e.message, results: [] }) }
     finally { setSubmitting(false) }
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">

@@ -35,7 +35,6 @@ function ChannelIcon({ type }: { type: string }) {
 
 export default function NotificationPreferencesPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const toast = useToast()
   const [preferences, setPreferences] = useState<NotificationPreference[]>([])
@@ -123,6 +122,8 @@ export default function NotificationPreferencesPage() {
       default: return 'Alerts while you are using the dashboard'
     }
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="w-full space-y-8">

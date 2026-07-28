@@ -55,7 +55,6 @@ function readLsBool(key: string, fallback: boolean) {
 
 export default function SettingsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const addToast = useToast()
   const { theme: nextTheme, setTheme } = useTheme()
@@ -166,7 +165,7 @@ export default function SettingsPage() {
     } catch { addToast({ type: 'error', title: 'Export failed', message: 'Network error.' }) }
   }
 
-  const handleDeleteAccount = async () => {
+const handleDeleteAccount = async () => {
     if (!confirm('Are you sure you want to delete your account? This action is irreversible.')) return
     const pw = prompt('Enter your password to confirm deletion:')
     if (!pw) return
@@ -177,10 +176,14 @@ export default function SettingsPage() {
         body: JSON.stringify({ password: pw }),
       })
       const json = await res.json()
-      if (!res.ok) { addToast({ type: 'error', title: 'Deletion failed', message: json.error || 'Could not delete account.' }); return }
-      window.location.href = '/'
-    } catch { addToast({ type: 'error', title: 'Deletion failed', message: 'Network error.' }) }
+
+      if (!res.ok) { addToast({ type: 'error', title: 'Delete failed', message: json.error || 'Failed' }); return }
+      addToast({ type: 'success', title: 'Account deleted', message: 'We are sorry to see you go.' })
+      window.location.href = '/auth/logout'
+    } catch { addToast({ type: 'error', title: 'Network error', message: 'Could not reach server.' }) }
   }
+
+  if (!gate.ready) return null
 
   if (!hydrated || !themeReady) {
     return (

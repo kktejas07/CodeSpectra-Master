@@ -25,7 +25,6 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 
 export default function AchievementsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
@@ -44,6 +43,8 @@ export default function AchievementsPage() {
   const userBadges = achievements.filter(a => a.earned).map(a => (a.name || '').toLowerCase().replace(/\s+/g, '-'))
 
   if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">

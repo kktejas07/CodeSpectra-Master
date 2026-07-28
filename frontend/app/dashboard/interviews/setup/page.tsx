@@ -18,7 +18,6 @@ interface InterviewConfig {
 
 export default function InterviewSetupPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const router = useRouter()
   const [stage, setStage] = useState<InterviewStage>('role-selection')
@@ -53,6 +52,8 @@ export default function InterviewSetupPage() {
   const handleBackToRole = () => {
     setStage('role-selection')
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="min-h-screen bg-background">

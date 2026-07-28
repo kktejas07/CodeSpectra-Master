@@ -11,7 +11,6 @@ import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function InterviewFeedbackPage() {
   const gate = usePageGuard('tenant_admin')
-  if (!gate.ready) return null
 
   const { lockedFeatures } = useLockedFeatures()
   const chatLocked = lockedFeatures.includes('interviews/feedback:chat')
@@ -60,6 +59,8 @@ export default function InterviewFeedbackPage() {
       content: 'Priyanshu showed some practical experience with React and integrating third-party APIs. However, critical gaps emerged when asked about state management and component architecture.'
     }
   ]
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

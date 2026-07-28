@@ -101,6 +101,8 @@ export default function AgentPage() {
     }
   }
 
+  if (!gate.ready) return null
+
   return (
     <div className="h-screen flex flex-col overflow-hidden">
       {/* Header */}

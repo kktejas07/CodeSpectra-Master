@@ -18,7 +18,6 @@ function getCompleted(): Set<number> {
 
 export default function HundredDaysPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [completed, setCompleted] = useState<Set<number>>(getCompleted)
   const [filter, setFilter] = useState<'all' | 'available' | 'completed' | 'locked'>('all')
@@ -37,6 +36,8 @@ export default function HundredDaysPage() {
     })()
     return { total, done, streak, pct: Math.round((done / 100) * 100), totalProblems: HUNDRED_DAYS.reduce((s, d) => s + d.problems.length, 0) }
   }, [completed])
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-8">

@@ -37,7 +37,6 @@ type Scope = 'global' | 'team' | 'monthly'
 
 export default function LeaderboardPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [view, setView] = useState<Scope>('global')
   const [entries, setEntries] = useState<LeaderboardEntryDTO[]>([])
@@ -106,6 +105,8 @@ export default function LeaderboardPage() {
       {label}
     </button>
   )
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">

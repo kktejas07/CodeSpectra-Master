@@ -24,7 +24,6 @@ interface Exam {
 
 export default function ExamsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])
@@ -51,6 +50,8 @@ export default function ExamsPage() {
     if (l === 'advanced') return 'bg-red-500/20 text-red-700'
     return 'bg-muted text-muted-foreground'
   }
+
+  if (!gate.ready) return null
 
   if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
 

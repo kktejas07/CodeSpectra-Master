@@ -24,7 +24,6 @@ interface Resume {
 
 export default function ResumesPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [resumes, setResumes] = useState<Resume[]>([
     {
@@ -73,6 +72,8 @@ export default function ResumesPage() {
   const handleSetPrimary = (id: string) => {
     setResumes(resumes.map(r => ({ ...r, isPrimary: r.id === id })))
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">

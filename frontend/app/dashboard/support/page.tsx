@@ -10,7 +10,6 @@ type Ticket = { id: string; subject: string; message: string; category: string; 
 
 export default function SupportPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
@@ -89,7 +88,9 @@ export default function SupportPage() {
   }
 
   if (selectedTicket) {
-    return (
+if (!gate.ready) return null
+
+  return (
       <div className="mx-auto max-w-3xl space-y-6 px-6 py-10">
         <button onClick={() => setSelectedTicket(null)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3 w-3" /> Back</button>
         <div className="flex items-center justify-between">

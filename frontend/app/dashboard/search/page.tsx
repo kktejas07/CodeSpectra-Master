@@ -31,7 +31,6 @@ const CATEGORIES = [
 
 export default function GlobalSearchPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
@@ -146,6 +145,8 @@ export default function GlobalSearchPage() {
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }, [searchQuery, searchCategory])
+
+  if (!gate.ready) return null
 
   return (
     <div className="space-y-6">
