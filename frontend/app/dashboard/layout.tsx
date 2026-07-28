@@ -333,7 +333,7 @@ export default function DashboardLayout({
 
     // Build allLeaves dynamically from page-permissions.ts.
     // Order: admin → org → user; duplicates skipped; only routes with icons appear.
-    const allRouteGroups = [ADMIN_ONLY_ROUTES, TENANT_ADMIN_ROUTES, ALL_USER_ROUTES] as const
+    const allRouteGroups = [ADMIN_ONLY_ROUTES, TENANT_ADMIN_ROUTES, JUDGE_ROUTES, ALL_USER_ROUTES] as const
     const seen = new Set<string>()
     const allLeaves: NavLeaf[] = []
     for (const group of allRouteGroups) {
@@ -372,11 +372,9 @@ export default function DashboardLayout({
       return allLeaves.map(leaf => ({ type: 'link' as const, item: leaf }))
     }
     if (isTenantAdmin(role)) {
+      const tenantAdminSet = new Set(TENANT_ADMIN_ROUTES)
       return allLeaves
-        .filter(leaf =>
-          !leaf.href.startsWith('/dashboard/admin/') ||
-          leaf.href.startsWith(DASHBOARD_ROUTES.organization.team)
-        )
+        .filter(leaf => !leaf.href.startsWith('/dashboard/admin/') || tenantAdminSet.has(leaf.href.split('?')[0]))
         .map(leaf => ({ type: 'link' as const, item: leaf }))
     }
     if (isJudge(role)) {

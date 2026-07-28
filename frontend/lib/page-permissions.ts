@@ -121,9 +121,8 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/interviews',
   '/dashboard/resumes',
   '/dashboard/exams',
-  '/dashboard/certifications',
-  '/dashboard/recruiter-analytics',
-  
+'/dashboard/certifications',
+
   // Tools
   '/dashboard/scanner',
   '/dashboard/cad',
