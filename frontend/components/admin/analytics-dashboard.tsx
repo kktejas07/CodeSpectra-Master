@@ -79,8 +79,8 @@ export function AnalyticsDashboard({
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={userGrowth}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" stroke="var(--muted-foreground)" />
-              <YAxis stroke="var(--muted-foreground)" allowDecimals={false} />
+              <XAxis dataKey="date" stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)' }} />
+              <YAxis stroke="var(--muted-foreground)" allowDecimals={false} tick={{ fill: 'var(--muted-foreground)' }} />
               <Tooltip
                 contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
               />
@@ -108,9 +108,8 @@ export function AnalyticsDashboard({
                   cx="50%"
                   cy="50%"
                   labelLine={false}
-                  label={(entry: { name?: string }) => entry.name}
+                  label={({ name }: { name?: string }) => name || ''}
                   outerRadius={100}
-                  fill="#8884d8"
                   dataKey="value"
                 >
                   {usersByRole.map((_, index) => (
@@ -157,12 +156,12 @@ export function AnalyticsDashboard({
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={activityTrend}>
               <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" stroke="var(--muted-foreground)" />
-              <YAxis stroke="var(--muted-foreground)" allowDecimals={false} />
+              <XAxis dataKey="date" stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)' }} />
+              <YAxis stroke="var(--muted-foreground)" allowDecimals={false} tick={{ fill: 'var(--muted-foreground)' }} />
               <Tooltip
                 contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
               />
-              <Legend />
+              <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
               <Bar dataKey="challenges" name="Submissions" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
