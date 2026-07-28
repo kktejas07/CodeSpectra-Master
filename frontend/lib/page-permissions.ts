@@ -88,7 +88,7 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Career & Hiring', firstRoute: '/dashboard/jobs' },
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
   { label: 'Stats & Progress', firstRoute: '/dashboard/leaderboard' },
-  { label: 'User & Account', firstRoute: '/dashboard/profile' },
+  { label: 'User & Account', firstRoute: '/dashboard/pricing' },
   { label: 'Misc', firstRoute: '/dashboard/search' },
 ]
 
