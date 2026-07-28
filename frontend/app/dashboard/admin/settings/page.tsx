@@ -936,7 +936,7 @@ function SystemSettingsInner() {
                       type={visibleFields.resend_api_key ? 'text' : 'password'}
                       autoComplete="off"
                       placeholder="re_…"
-                      value={visibleFields.resend_api_key ? (revealedValues.resend_api_key ?? '') : ''}
+                      value={visibleFields.resend_api_key ? (revealedValues.resend_api_key ?? '') : '••••••••'}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, resend_api_key: e.target.value }))
                       }
@@ -991,7 +991,7 @@ function SystemSettingsInner() {
                       id="mail_sg_key"
                       type={visibleFields.sendgrid_api_key ? 'text' : 'password'}
                       autoComplete="off"
-                      value={visibleFields.sendgrid_api_key ? (revealedValues.sendgrid_api_key ?? '') : ''}
+                      value={visibleFields.sendgrid_api_key ? (revealedValues.sendgrid_api_key ?? '') : '••••••••'}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, sendgrid_api_key: e.target.value }))
                       }
@@ -1060,7 +1060,7 @@ function SystemSettingsInner() {
                       type={visibleFields.postal_api_key ? 'text' : 'password'}
                       autoComplete="off"
                       placeholder={secretsMeta.has_postal_api_key ? 'Key saved — enter new value to replace' : 'post_…'}
-                      value={visibleFields.postal_api_key ? (revealedValues.postal_api_key ?? '') : ''}
+                      value={visibleFields.postal_api_key ? (revealedValues.postal_api_key ?? '') : '••••••••'}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, postal_api_key: e.target.value }))
                       }
@@ -1154,7 +1154,7 @@ function SystemSettingsInner() {
                       id="mail_smtp_pass"
                       type={visibleFields.smtp_pass ? 'text' : 'password'}
                       autoComplete="off"
-                      value={visibleFields.smtp_pass ? (revealedValues.smtp_pass ?? '') : ''}
+                      value={visibleFields.smtp_pass ? (revealedValues.smtp_pass ?? '') : '••••••••'}
                       onChange={(e) =>
                         setMailSecretsDraft((d) => ({ ...d, smtp_pass: e.target.value }))
                       }
@@ -1498,7 +1498,7 @@ function SystemSettingsInner() {
                     <Input
                       id="sec_github_app_token"
                       type={visibleFields.github_app_token ? 'text' : 'password'}
-                      value={visibleFields.github_app_token ? (revealedValues.github_app_token ?? '') : ''}
+                      value={visibleFields.github_app_token ? (revealedValues.github_app_token ?? '') : '••••••••'}
                       onChange={(e) =>
                         setSecretsDraft((d) => ({ ...d, github_app_token: e.target.value }))
                       }
@@ -1576,7 +1576,7 @@ function SystemSettingsInner() {
                       <div className="relative">
                         <Input
                           type={visibleFields.github_client_secret ? 'text' : 'password'}
-                          value={visibleFields.github_client_secret ? (revealedValues.github_client_secret ?? '') : ''}
+                          value={visibleFields.github_client_secret ? (revealedValues.github_client_secret ?? '') : '••••••••'}
                           onChange={(e) =>
                             setSecretsDraft((d) => ({ ...d, github_client_secret: e.target.value }))
                           }
@@ -1743,7 +1743,7 @@ function SystemSettingsInner() {
                         id="pay_rzp_id"
                         type={visibleFields.razorpay_key_id ? 'text' : 'password'}
                         autoComplete="off"
-                        value={visibleFields.razorpay_key_id ? (revealedValues.razorpay_key_id ?? '') : ''}
+                        value={visibleFields.razorpay_key_id ? (revealedValues.razorpay_key_id ?? '') : '••••••••'}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, razorpay_key_id: e.target.value }))
                         }
@@ -1773,7 +1773,7 @@ function SystemSettingsInner() {
                         id="pay_rzp_sk"
                         type={visibleFields.razorpay_key_secret ? 'text' : 'password'}
                         autoComplete="off"
-                        value={visibleFields.razorpay_key_secret ? (revealedValues.razorpay_key_secret ?? '') : ''}
+                        value={visibleFields.razorpay_key_secret ? (revealedValues.razorpay_key_secret ?? '') : '••••••••'}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, razorpay_key_secret: e.target.value }))
                         }
@@ -1803,7 +1803,7 @@ function SystemSettingsInner() {
                         id="pay_rzp_wh"
                         type={visibleFields.razorpay_webhook_secret ? 'text' : 'password'}
                         autoComplete="off"
-                        value={visibleFields.razorpay_webhook_secret ? (revealedValues.razorpay_webhook_secret ?? '') : ''}
+                        value={visibleFields.razorpay_webhook_secret ? (revealedValues.razorpay_webhook_secret ?? '') : '••••••••'}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, razorpay_webhook_secret: e.target.value }))
                         }
@@ -1898,7 +1898,7 @@ function SystemSettingsInner() {
                         id="pay_phonepe_sk"
                         type={visibleFields.phonepe_salt_key ? 'text' : 'password'}
                         autoComplete="off"
-                        value={visibleFields.phonepe_salt_key ? (revealedValues.phonepe_salt_key ?? '') : ''}
+                        value={visibleFields.phonepe_salt_key ? (revealedValues.phonepe_salt_key ?? '') : '••••••••'}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, phonepe_salt_key: e.target.value }))
                         }
@@ -1946,7 +1946,7 @@ function SystemSettingsInner() {
                         id="pay_phonepe_wh"
                         type={visibleFields.phonepe_webhook_secret ? 'text' : 'password'}
                         autoComplete="off"
-                        value={visibleFields.phonepe_webhook_secret ? (revealedValues.phonepe_webhook_secret ?? '') : ''}
+                        value={visibleFields.phonepe_webhook_secret ? (revealedValues.phonepe_webhook_secret ?? '') : '••••••••'}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, phonepe_webhook_secret: e.target.value }))
                         }
@@ -1997,7 +1997,7 @@ function SystemSettingsInner() {
                         id="pay_stripe_sk"
                         type={visibleFields.stripe_secret_key ? 'text' : 'password'}
                         autoComplete="off"
-                        value={visibleFields.stripe_secret_key ? (revealedValues.stripe_secret_key ?? '') : ''}
+                        value={visibleFields.stripe_secret_key ? (revealedValues.stripe_secret_key ?? '') : '••••••••'}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, stripe_secret_key: e.target.value }))
                         }
@@ -2026,7 +2026,7 @@ function SystemSettingsInner() {
                         id="pay_stripe_wh"
                         type={visibleFields.stripe_webhook_secret ? 'text' : 'password'}
                         autoComplete="off"
-                        value={visibleFields.stripe_webhook_secret ? (revealedValues.stripe_webhook_secret ?? '') : ''}
+                        value={visibleFields.stripe_webhook_secret ? (revealedValues.stripe_webhook_secret ?? '') : '••••••••'}
                         onChange={(e) =>
                           setSecretsDraft((d) => ({ ...d, stripe_webhook_secret: e.target.value }))
                         }

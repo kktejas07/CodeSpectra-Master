@@ -151,6 +151,6 @@ export async function GET() {
     if (msg.includes('zone not found') || msg.includes('No zone')) {
       return NextResponse.json({ configured: false, error: 'Cloudflare zone not found — check Zone ID' })
     }
-    return NextResponse.json({ configured: false, error: 'Cloudflare: ' + msg }, { status: 502 })
+    return NextResponse.json({ configured: false, error: 'Cloudflare: ' + msg }, { status: 200 })
   }
 }

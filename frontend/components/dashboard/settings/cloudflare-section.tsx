@@ -143,7 +143,7 @@ export function CloudflareSettingsSection() {
             <input
               id="cf_api_token"
               type={showToken ? 'text' : 'password'}
-              value={showToken ? revealedToken : ''}
+              value={showToken ? revealedToken : '••••••••'}
               onChange={(e) => setApiToken(e.target.value)}
               className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-primary"
               placeholder={hasSavedToken ? 'Token saved — enter new value to replace' : 'cf-api-token-...'}
