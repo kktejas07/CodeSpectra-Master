@@ -30,6 +30,64 @@ export default function MyPage() {
 
 ---
 
+## Sidebar Visibility & DB Permissions Flow
+
+### How it works (3-layer filter in `layout.tsx`)
+
+1. **Role filter (always)** — `page-permissions.ts` route arrays determine what each role CAN see
+2. **DB permissions (when loaded)** — `/api/user/my-permissions` returns `readable` + `denied` routes
+3. **Denied filter (always)** — pages explicitly denied in DB are hidden
+
+### Key files
+| File | Purpose |
+|---|---|
+| `frontend/lib/page-permissions.ts` | Route arrays + ROUTE_LABELS + section headers |
+| `frontend/app/dashboard/layout.tsx` | Sidebar rendering + 3-layer filter |
+| `frontend/app/api/user/my-permissions/route.ts` | Returns `{ readable, denied }` for logged-in role |
+| `frontend/app/api/admin/permissions/roles/route.ts` | CRUD for role permissions (saves ALL resources including denied) |
+| `frontend/lib/route-auth.ts` | 60s in-memory permission cache (`_permCache`), `getAPIUser()` |
+| `frontend/components/ui/data-table.tsx` | Reusable DataTable with bulk select, pagination, search, filters |
+
+### Adding a new page to the sidebar
+1. Create `page.tsx` under `frontend/app/dashboard/`
+2. Add route to `ALL_USER_ROUTES` / `ADMIN_ONLY_ROUTES` / `TENANT_ADMIN_ROUTES` / `JUDGE_ROUTES` in `page-permissions.ts`
+3. Add label to `ROUTE_LABELS` in `page-permissions.ts`
+4. Add icon to `ICON_MAP` in `layout.tsx` — **routes without icons don't appear in sidebar**
+5. Run `yarn build` to verify
+
+### Removing a page from the sidebar
+1. Go to `/dashboard/admin/permissions` → select role → uncheck `read` → Save
+2. The save **preserves the denied entry** (empty actions) in the `roles` collection
+3. `/api/user/my-permissions` returns it in the `denied` array
+4. Sidebar layer 3 hides it
+
+### What NOT to do
+- Do NOT remove routes from `page-permissions.ts` to hide pages — that breaks RBAC for all roles
+- Do NOT manually delete permission entries from the `roles` MongoDB collection
+- Always use the permissions UI to toggle read on/off
+
+### Debugging sidebar not filtering
+1. Check MongoDB: `db.roles.findOne({role:"user"})` — verify permissions have `actions: ['read']`
+2. Check the `roles` API saves ALL resources (not just those with actions). The old code had `filter(p => p.actions.length > 0)` which dropped denied pages silently
+3. Check `layout.tsx` has `permsLoaded` gate — sidebar waits for API before applying DB filter
+4. Build locally if server `yarn build` produces stale output (`.next` webpack cache issue)
+5. Deploy: `tar czf .next` from local → `docker cp` to server → restart service
+
+### Ponytail: sidebar permissions known ceilings
+- `useMemo` dependency on `allowedRoutes`/`deniedRoutes` Sets — works because new Set() is a new reference
+- 60s permission cache in `route-auth.ts` — `invalidatePermissionCache()` on role save, cache auto-expires
+- Local `.next` build preferred over server build when server produces stale output (webpack cache issue)
+
+### Adding bulk-select to tables
+Use the reusable `DataTable` component from `components/ui/data-table.tsx`:
+```tsx
+import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
+```
+- Built-in: checkbox column, select all, bulk action bar, search, filters, pagination
+- See `admin/exams/page.tsx` or `admin/codeathons/page.tsx` for usage examples
+
+---
+
 ## Null Safety
 
 Always guard `.toLowerCase()`, `.toUpperCase()`, `.charAt()` on potentially null/undefined values with `|| ''`:
