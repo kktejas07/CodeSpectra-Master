@@ -35,7 +35,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/security',
   '/dashboard/admin/audit-logs',
 
-  // Events, Problems & Proctoring
+  // Hackathons, Problems & Proctoring
   '/dashboard/admin/hackathons',
   '/dashboard/admin/hackathons/create',
   '/dashboard/admin/hackathons/edit',
@@ -73,7 +73,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
 
 export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'System & Core', firstRoute: '/dashboard/admin/system' },
-  { label: 'Events, Problems & Proctoring', firstRoute: '/dashboard/admin/hackathons' },
+  { label: 'Hackathons, Problems & Proctoring', firstRoute: '/dashboard/admin/hackathons' },
   { label: 'Billing & Plans', firstRoute: '/dashboard/admin/pricing' },
   { label: 'Hiring & ATS', firstRoute: '/dashboard/admin/jobs' },
   { label: 'AI & Generation Tools', firstRoute: '/dashboard/admin/rag' },
@@ -83,7 +83,7 @@ export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
 export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Dashboard & AI', firstRoute: '/dashboard' },
   { label: 'Practice & Coding', firstRoute: '/dashboard/arena' },
-  { label: 'Events & Competitions', firstRoute: '/dashboard/codeathons' },
+  { label: 'Hackathons & Competitions', firstRoute: '/dashboard/codeathons' },
   { label: 'Learning & Prep', firstRoute: '/dashboard/learning' },
   { label: 'Career & Hiring', firstRoute: '/dashboard/jobs' },
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
@@ -266,7 +266,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/support': 'Support',
   '/dashboard/search': 'Search',
   '/dashboard/status': 'System Status',
-  '/dashboard/hackathons': 'Events & Hackathons',
+  '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/jobs': 'Jobs',
   '/dashboard/exams': 'Exams',
