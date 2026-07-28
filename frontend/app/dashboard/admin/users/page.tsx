@@ -3,7 +3,8 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Users, Plus, Loader2, HelpCircle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Users, Plus, Loader2, HelpCircle, KeyRound } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { UserManagementTable } from '@/components/admin/user-management-table'
 import {
@@ -67,6 +68,10 @@ export default function UsersManagement() {
   const [selectedUser, setSelectedUser] = useState<TableUser | null>(null)
   const [deleteId, setDeleteId] = useState<string | null>(null)
   const [deleteName, setDeleteName] = useState('')
+  const [resetPwUserId, setResetPwUserId] = useState<string | null>(null)
+  const [resetPwValue, setResetPwValue] = useState('')
+  const [resetPwLoading, setResetPwLoading] = useState(false)
+  const [sendingResetEmail, setSendingResetEmail] = useState<string | null>(null)
 
   const loadUsers = useCallback(async () => {
     const res = await fetch('/api/admin/users', { credentials: 'include' })
@@ -152,6 +157,52 @@ export default function UsersManagement() {
     const u = displayUsers.find((x) => x.id === userId)
     setDeleteName(u?.name || u?.email || userId)
     setDeleteId(userId)
+  }
+
+  const handleResetPassword = (userId: string) => {
+    setResetPwUserId(userId)
+    setResetPwValue('')
+  }
+
+  const confirmResetPassword = async () => {
+    if (!resetPwUserId || !resetPwValue) return
+    setResetPwLoading(true)
+    try {
+      const res = await csrfFetch(`/api/admin/users/${resetPwUserId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ password: resetPwValue }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Failed')
+      addToast({ type: 'success', title: 'Password reset successfully' })
+      setResetPwUserId(null)
+      setResetPwValue('')
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed'
+      addToast({ type: 'error', title: 'Password reset failed', message: msg })
+    } finally {
+      setResetPwLoading(false)
+    }
+  }
+
+  const handleSendResetEmail = async (userId: string) => {
+    setSendingResetEmail(userId)
+    try {
+      const res = await fetch(`/api/admin/users/${userId}`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Failed')
+      addToast({ type: 'success', title: 'Password reset email sent' })
+    } catch (e) {
+      const msg = e instanceof Error ? e.message : 'Failed'
+      addToast({ type: 'error', title: 'Failed to send reset email', message: msg })
+    } finally {
+      setSendingResetEmail(null)
+    }
   }
 
   const confirmDelete = async () => {
@@ -324,6 +375,8 @@ function getPipelineLabel(url: string) {
           onEdit={handleEdit as any}
           onDelete={handleDeleteRequest as any}
           onRoleChange={handleChangeRole as any}
+          onResetPassword={handleResetPassword}
+          onSendResetEmail={handleSendResetEmail}
         />
       )}
 
@@ -427,6 +480,37 @@ function getPipelineLabel(url: string) {
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={Boolean(resetPwUserId)} onOpenChange={(o) => !o && setResetPwUserId(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reset password</AlertDialogTitle>
+            <AlertDialogDescription>
+              Enter a new password for this user (min 8 characters).
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <Input
+            type="password"
+            placeholder="New password"
+            value={resetPwValue}
+            onChange={(e) => setResetPwValue(e.target.value)}
+            className="my-2"
+          />
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={resetPwValue.length < 8 || resetPwLoading}
+              onClick={(e) => {
+                e.preventDefault()
+                void confirmResetPassword()
+              }}
+            >
+              {resetPwLoading ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <KeyRound className="h-4 w-4 mr-1" />}
+              Reset
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Users, Search, Edit2, Trash2, MoreVertical, Shield } from 'lucide-react'
+import { Users, Search, Edit2, Trash2, MoreVertical, Shield, KeyRound, Mail } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -38,6 +38,8 @@ interface UserManagementTableProps {
   onDelete?: (userId: string) => void
   /** Opens role-only dialog (display name is not edited here). */
   onRoleChange?: (user: User) => void
+  onResetPassword?: (userId: string) => void
+  onSendResetEmail?: (userId: string) => void
 }
 
 export function UserManagementTable({ 
@@ -45,6 +47,8 @@ export function UserManagementTable({
   onEdit,
   onDelete,
   onRoleChange,
+  onResetPassword,
+  onSendResetEmail,
 }: UserManagementTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
@@ -153,6 +157,14 @@ export function UserManagementTable({
                           <DropdownMenuItem onClick={() => onRoleChange?.(user)}>
                             <Shield className="w-4 h-4 mr-2" />
                             Change role
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onResetPassword?.(user.id)}>
+                            <KeyRound className="w-4 h-4 mr-2" />
+                            Reset password
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => onSendResetEmail?.(user.id)}>
+                            <Mail className="w-4 h-4 mr-2" />
+                            Send password reset email
                           </DropdownMenuItem>
                           <DropdownMenuItem
                             onClick={() => onDelete?.(user.id)}
