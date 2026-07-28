@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Edit, Trash2, Eye, HelpCircle } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { BookOpen, Plus, Loader2, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
+import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Exam {
   id: string
@@ -22,226 +23,96 @@ interface Exam {
 
 export default function AdminExamsPage() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
+  const [exams, setExams] = useState<Exam[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [exams, setExams] = useState<Exam[]>([
-    {
-      id: '1',
-      title: 'JavaScript Fundamentals',
-      subject: 'JavaScript',
-      level: 'Beginner',
-      duration: 60,
-      questions: 50,
-      published: true,
-      attempts: 234,
-      avgScore: 72,
-    },
-    {
-      id: '2',
-      title: 'React Advanced Patterns',
-      subject: 'React',
-      level: 'Advanced',
-      duration: 90,
-      questions: 40,
-      published: true,
-      attempts: 156,
-      avgScore: 68,
-    },
-  ])
+  const fetchExams = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/exams', { credentials: 'include' })
+      const json = await res.json()
+      setExams(json.data || [])
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }
 
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newExam, setNewExam] = useState({ title: '', subject: '', level: 'Beginner' })
+  useEffect(() => { fetchExams() }, [])
+
+  const handleDelete = async (ids: string[]) => {
+    for (const id of ids) {
+      await csrfFetch(`/api/exams?id=${id}`, { method: 'DELETE', credentials: 'include' })
+    }
+    addToast({ type: 'success', title: `${ids.length} exam${ids.length !== 1 ? 's' : ''} deleted` })
+    setExams(prev => prev.filter(e => !ids.includes(e.id)))
+  }
+
+  const columns: DataTableColumn<Exam>[] = [
+    { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
+    { key: 'subject', header: 'Subject', cell: (r) => r.subject },
+    { key: 'level', header: 'Level', cell: (r) => r.level },
+    { key: 'duration', header: 'Duration', cell: (r) => `${r.duration} min` },
+    { key: 'questions', header: 'Questions', cell: (r) => r.questions },
+    { key: 'status', header: 'Status', cell: (r) => (
+      <Badge className={r.published ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}>
+        {r.published ? 'Published' : 'Draft'}
+      </Badge>
+    )},
+    { key: 'stats', header: 'Stats', cell: (r) => (
+      <span className="text-xs text-muted-foreground">{r.attempts} attempts · {r.avgScore}% avg</span>
+    )},
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
+  ]
 
   if (!gate.ready) return null
-
-  const handleCreateExam = (e: React.FormEvent) => {
-    e.preventDefault()
-    const exam: Exam = {
-      id: String(exams.length + 1),
-      ...newExam,
-      duration: 60,
-      questions: 0,
-      published: false,
-      attempts: 0,
-      avgScore: 0,
-    }
-    setExams([exam, ...exams])
-    setNewExam({ title: '', subject: '', level: 'Beginner' })
-    setShowCreateModal(false)
-  }
-
-  const handleDelete = (id: string) => {
-    setExams(exams.filter(e => e.id !== id))
-  }
-
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'Beginner':
-        return 'bg-green-500/20 text-green-700'
-      case 'Intermediate':
-        return 'bg-yellow-500/20 text-yellow-700'
-      case 'Advanced':
-        return 'bg-red-500/20 text-red-700'
-      default:
-        return ''
-    }
-  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <BookOpen className="w-8 h-8 text-primary" />
-            Exam Management
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs max-w-[250px]">Create and manage coding exams</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </h1>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <BookOpen className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Exam Management</h1>
+            <p className="text-muted-foreground text-sm">{exams.length} exams</p>
+          </div>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Create Exam
+        <Button className="gap-2" onClick={() => {
+          const title = prompt('Exam title:')
+          if (!title) return
+          const subject = prompt('Subject:') || ''
+          const level = prompt('Level (Beginner/Intermediate/Advanced):') || 'Beginner'
+          const duration = parseInt(prompt('Duration (minutes):') || '60')
+          const questions = parseInt(prompt('Number of questions:') || '0')
+          csrfFetch('/api/exams', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ title, subject, level, duration, questions, published: false }),
+          }).then(() => fetchExams()).then(() => addToast({ type: 'success', title: 'Exam created' }))
+            .catch(() => addToast({ type: 'error', title: 'Failed to create exam' }))
+        }}>
+          <Plus className="w-4 h-4" />Add Exam
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Total Exams</p>
-          <p className="text-3xl font-bold text-foreground">{exams.length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Published</p>
-          <p className="text-3xl font-bold text-green-600">{exams.filter(e => e.published).length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Total Attempts</p>
-          <p className="text-3xl font-bold text-primary">{exams.reduce((sum, e) => sum + e.attempts, 0)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Avg Score</p>
-          <p className="text-3xl font-bold text-blue-600">
-            {(exams.reduce((sum, e) => sum + e.avgScore, 0) / exams.length).toFixed(1)}%
-          </p>
-        </Card>
-      </div>
-
-      {/* Exams Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-muted/50">
-              <tr>
-                <th className="px-6 py-3 text-left font-semibold">Title</th>
-                <th className="px-6 py-3 text-left font-semibold">Subject</th>
-                <th className="px-6 py-3 text-left font-semibold">Level</th>
-                <th className="px-6 py-3 text-left font-semibold">Questions</th>
-                <th className="px-6 py-3 text-left font-semibold">Attempts</th>
-                <th className="px-6 py-3 text-left font-semibold">Avg Score</th>
-                <th className="px-6 py-3 text-left font-semibold">Status</th>
-                <th className="px-6 py-3 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {exams.map((exam) => (
-                <tr key={exam.id} className="border-t border-border hover:bg-muted/30">
-                  <td className="px-6 py-3 font-medium">{exam.title}</td>
-                  <td className="px-6 py-3">{exam.subject}</td>
-                  <td className="px-6 py-3">
-                    <Badge className={getLevelColor(exam.level)}>{exam.level}</Badge>
-                  </td>
-                  <td className="px-6 py-3">{exam.questions}</td>
-                  <td className="px-6 py-3">{exam.attempts}</td>
-                  <td className="px-6 py-3 font-semibold">{exam.avgScore}%</td>
-                  <td className="px-6 py-3">
-                    <Badge className={exam.published ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}>
-                      {exam.published ? 'Published' : 'Draft'}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(exam.id)}>
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading exams...
         </div>
-      </Card>
-
-      {/* Create Exam Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Create New Exam</h2>
-            <form onSubmit={handleCreateExam} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Exam Title</label>
-                <input
-                  type="text"
-                  value={newExam.title}
-                  onChange={(e) => setNewExam({ ...newExam, title: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Subject</label>
-                <input
-                  type="text"
-                  value={newExam.subject}
-                  onChange={(e) => setNewExam({ ...newExam, subject: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Level</label>
-                <select
-                  value={newExam.level}
-                  onChange={(e) => setNewExam({ ...newExam, level: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-                >
-                  <option>Beginner</option>
-                  <option>Intermediate</option>
-                  <option>Advanced</option>
-                </select>
-              </div>
-              <div className="flex gap-3">
-                <Button type="submit" className="flex-1">
-                  Create Exam
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={exams}
+          searchPlaceholder="Search exams..."
+          searchKeys={['title', 'subject', 'level']}
+          bulkActions={bulkActions}
+          loading={loading}
+          emptyMessage="No exams. Click 'Add Exam' to create one."
+        />
       )}
     </div>
   )
 }
-
-

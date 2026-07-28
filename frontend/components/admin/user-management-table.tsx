@@ -1,11 +1,11 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Users, Search, Edit2, Trash2, MoreVertical, Shield, KeyRound, Mail } from 'lucide-react'
+import { Users, Search, Edit2, Trash2, MoreVertical, Shield, KeyRound, Mail, CheckSquare, Square } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -25,7 +25,6 @@ interface User {
   id: string
   name: string
   email: string
-  /** Access level (`tenant_admin`, `superadmin`, `user`; legacy `admin` normalized in UI). */
   role: string
   status: 'active' | 'inactive'
   joinedAt: string
@@ -36,10 +35,11 @@ interface UserManagementTableProps {
   users?: User[]
   onEdit?: (user: User) => void
   onDelete?: (userId: string) => void
-  /** Opens role-only dialog (display name is not edited here). */
   onRoleChange?: (user: User) => void
   onResetPassword?: (userId: string) => void
   onSendResetEmail?: (userId: string) => void
+  onBulkDelete?: (userIds: string[]) => void
+  onBulkRoleChange?: (userIds: string[], role: string) => void
 }
 
 export function UserManagementTable({ 
@@ -49,11 +49,14 @@ export function UserManagementTable({
   onRoleChange,
   onResetPassword,
   onSendResetEmail,
+  onBulkDelete,
+  onBulkRoleChange,
 }: UserManagementTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [selected, setSelected] = useState<Set<string>>(new Set())
 
-  const filteredUsers = users.filter((user) => {
+  const filteredUsers = useMemo(() => users.filter((user) => {
     const matchesSearch =
       (user.name || '').toLowerCase().includes(searchQuery.toLowerCase()) ||
       (user.email || '').toLowerCase().includes(searchQuery.toLowerCase())
@@ -61,7 +64,28 @@ export function UserManagementTable({
     const matchesRole =
       roleFilter === 'all' || canon === (roleFilter as 'superadmin' | 'tenant_admin' | 'user')
     return matchesSearch && matchesRole
-  })
+  }), [users, searchQuery, roleFilter])
+
+  const filteredIds = useMemo(() => new Set(filteredUsers.map(u => u.id)), [filteredUsers])
+  const allSelected = filteredUsers.length > 0 && filteredUsers.every(u => selected.has(u.id))
+  const someSelected = selected.size > 0
+
+  const toggleSelectAll = () => {
+    const next = new Set(selected)
+    if (allSelected) {
+      filteredIds.forEach(id => next.delete(id))
+    } else {
+      filteredIds.forEach(id => next.add(id))
+    }
+    setSelected(next)
+  }
+
+  const toggleUser = (id: string) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelected(next)
+  }
 
   const getRoleColor = (role: string) => {
     switch (normalizeUserRole(role)) {
@@ -101,11 +125,54 @@ export function UserManagementTable({
         </Select>
       </div>
 
+      {someSelected && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <div className="flex-1" />
+          {onBulkRoleChange && (
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" size="sm">
+                  <Shield className="w-3.5 h-3.5 mr-1" />
+                  Change role
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'user'); setSelected(new Set()) }}>
+                  Set as User
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'tenant_admin'); setSelected(new Set()) }}>
+                  Set as Org Admin
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => { onBulkRoleChange(Array.from(selected), 'superadmin'); setSelected(new Set()) }}>
+                  Set as Platform Admin
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          )}
+          {onBulkDelete && (
+            <Button variant="outline" size="sm" className="text-red-600 hover:bg-red-50 dark:hover:bg-red-950" onClick={() => { onBulkDelete(Array.from(selected)); setSelected(new Set()) }}>
+              <Trash2 className="w-3.5 h-3.5 mr-1" />
+              Delete
+            </Button>
+          )}
+        </div>
+      )}
+
       <Card className="overflow-hidden">
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead className="bg-muted/50 border-b border-border">
               <tr>
+                <th className="w-10 py-3 px-4">
+                  <button
+                    onClick={toggleSelectAll}
+                    className="text-muted-foreground hover:text-foreground transition-colors"
+                    aria-label={allSelected ? 'Deselect all' : 'Select all'}
+                  >
+                    {allSelected ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                  </button>
+                </th>
                 <th className="text-left py-3 px-4 font-semibold">User</th>
                 <th className="text-left py-3 px-4 font-semibold">Email</th>
                 <th className="text-left py-3 px-4 font-semibold">Role</th>
@@ -118,13 +185,22 @@ export function UserManagementTable({
             <tbody>
               {filteredUsers.length === 0 ? (
                 <tr>
-                  <td colSpan={7} className="py-8 text-center text-muted-foreground">
+                  <td colSpan={8} className="py-8 text-center text-muted-foreground">
                     No users found
                   </td>
                 </tr>
               ) : (
                 filteredUsers.map((user) => (
                   <tr key={user.id} className="border-b border-border hover:bg-muted/50 transition-colors">
+                    <td className="py-3 px-4">
+                      <button
+                        onClick={() => toggleUser(user.id)}
+                        className="text-muted-foreground hover:text-foreground transition-colors"
+                        aria-label={selected.has(user.id) ? 'Deselect' : 'Select'}
+                      >
+                        {selected.has(user.id) ? <CheckSquare className="w-4 h-4" /> : <Square className="w-4 h-4" />}
+                      </button>
+                    </td>
                     <td className="py-3 px-4 font-medium">{user.name}</td>
                     <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
                     <td className="py-3 px-4">

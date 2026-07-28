@@ -197,27 +197,58 @@ export default function UsersManagement() {
     }
   }
 
+  const handleBulkDelete = async (userIds: string[]) => {
+    setDeleteId('__bulk__')
+    setDeleteName(`${userIds.length} users`)
+    // Store bulk IDs for confirm
+    ;(window as any).__bulkDeleteIds = userIds
+  }
+
   const confirmDelete = async () => {
-    if (!deleteId) return
+    const ids: string[] = deleteId === '__bulk__' ? ((window as any).__bulkDeleteIds || []) : (deleteId ? [deleteId] : [])
+    if (ids.length === 0) return
     try {
-      const res = await csrfFetch(`/api/admin/users/${deleteId}`, {
-        method: 'DELETE',
-        credentials: 'include',
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) {
-        throw new Error(json.error || 'Delete failed')
+      let failed = 0
+      for (const id of ids) {
+        const res = await csrfFetch(`/api/admin/users/${id}`, { method: 'DELETE', credentials: 'include' })
+        if (!res.ok) failed++
       }
-      addToast({ type: 'success', title: 'User deleted' })
-      // Optimistic: remove from local state immediately
-      setRows(prev => prev.filter(r => r.id !== deleteId))
+      if (failed > 0) {
+        addToast({ type: 'error', title: 'Partial failure', message: `${ids.length - failed} deleted, ${failed} failed` })
+      } else {
+        addToast({ type: 'success', title: `${ids.length} user${ids.length !== 1 ? 's' : ''} deleted` })
+      }
+      setRows(prev => prev.filter(r => !ids.includes(r.id)))
       try { await loadUsers() } catch { /* ignore */ }
     } catch (e) {
-      const msg = e instanceof Error ? e.message : 'Delete failed'
-      addToast({ type: 'error', title: 'Delete failed', message: msg })
+      addToast({ type: 'error', title: 'Delete failed', message: e instanceof Error ? e.message : 'Unknown error' })
     } finally {
       setDeleteId(null)
+      delete (window as any).__bulkDeleteIds
     }
+    // Keep old single-delete path working
+    if (ids.length === 1) {
+      setDeleteId(null)
+    }
+  }
+
+  const handleBulkRoleChange = async (userIds: string[], role: string) => {
+    let failed = 0
+    for (const id of userIds) {
+      try {
+        const res = await csrfFetch(`/api/admin/users/${id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ role }),
+        })
+        if (!res.ok) failed++
+      } catch { failed++ }
+    }
+    if (failed > 0) {
+      addToast({ type: 'error', title: 'Partial failure', message: `${userIds.length - failed} updated, ${failed} failed` })
+    } else {
+      addToast({ type: 'success', title: `${userIds.length} user${userIds.length !== 1 ? 's' : ''} role updated` })
+    }
+    try { await loadUsers() } catch { /* ignore */ }
   }
 
   const handleConfirmRole = async (payload: { role?: string; full_name?: string; status?: string; plan?: string }) => {
@@ -334,6 +365,8 @@ export default function UsersManagement() {
           onRoleChange={handleChangeRole as any}
           onResetPassword={handleResetPassword}
           onSendResetEmail={handleSendResetEmail}
+          onBulkDelete={handleBulkDelete}
+          onBulkRoleChange={handleBulkRoleChange}
         />
       )}
 

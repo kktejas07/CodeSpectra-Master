@@ -1,240 +1,119 @@
 'use client'
 
-import { useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Trophy, Plus, Edit, Trash2, Eye, HelpCircle } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Trophy, Plus, Loader2, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
+import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Codeathon {
   id: string
   title: string
+  description: string
   startDate: string
   endDate: string
-  prizePool: string
+  status: string
   participants: number
-  difficulty: string
-  status: 'upcoming' | 'ongoing' | 'ended'
+  prizePool: string
 }
 
 export default function AdminCodeathonsPage() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
+  const [codeathons, setCodeathons] = useState<Codeathon[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [codeathons, setCodeathons] = useState<Codeathon[]>([
-    {
-      id: '1',
-      title: 'Web Development Challenge 2024',
-      startDate: '2024-05-01',
-      endDate: '2024-05-31',
-      prizePool: '$5,000',
-      participants: 342,
-      difficulty: 'Intermediate',
-      status: 'upcoming',
-    },
-    {
-      id: '2',
-      title: 'AI/ML Hackathon',
-      startDate: '2024-04-20',
-      endDate: '2024-04-22',
-      prizePool: '$10,000',
-      participants: 128,
-      difficulty: 'Advanced',
-      status: 'ongoing',
-    },
-  ])
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/codeathons', { credentials: 'include' })
+      const json = await res.json()
+      setCodeathons(json.data || [])
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }
 
-  const [showCreateModal, setShowCreateModal] = useState(false)
-  const [newCodeathon, setNewCodeathon] = useState({ title: '', startDate: '', endDate: '' })
+  useEffect(() => { fetchData() }, [])
+
+  const handleDelete = async (ids: string[]) => {
+    for (const id of ids) {
+      await csrfFetch(`/api/codeathons?id=${id}`, { method: 'DELETE', credentials: 'include' })
+    }
+    addToast({ type: 'success', title: `${ids.length} codeathon${ids.length !== 1 ? 's' : ''} deleted` })
+    setCodeathons(prev => prev.filter(c => !ids.includes(c.id)))
+  }
+
+  const columns: DataTableColumn<Codeathon>[] = [
+    { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
+    { key: 'status', header: 'Status', cell: (r) => (
+      <Badge className={r.status === 'active' ? 'bg-green-500/20 text-green-700' : r.status === 'upcoming' ? 'bg-blue-500/20 text-blue-700' : 'bg-gray-500/20 text-gray-700'}>
+        {r.status}
+      </Badge>
+    )},
+    { key: 'dates', header: 'Dates', cell: (r) => <span className="text-xs">{r.startDate ? new Date(r.startDate).toLocaleDateString() : 'N/A'} — {r.endDate ? new Date(r.endDate).toLocaleDateString() : 'N/A'}</span> },
+    { key: 'participants', header: 'Participants', cell: (r) => r.participants },
+    { key: 'prize', header: 'Prize Pool', cell: (r) => r.prizePool || '—' },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
+  ]
 
   if (!gate.ready) return null
-
-  const handleCreateCodeathon = (e: React.FormEvent) => {
-    e.preventDefault()
-    const codeathon: Codeathon = {
-      id: String(codeathons.length + 1),
-      ...newCodeathon,
-      prizePool: '$0',
-      participants: 0,
-      difficulty: 'Intermediate',
-      status: 'upcoming',
-    }
-    setCodeathons([codeathon, ...codeathons])
-    setNewCodeathon({ title: '', startDate: '', endDate: '' })
-    setShowCreateModal(false)
-  }
-
-  const handleDelete = (id: string) => {
-    setCodeathons(codeathons.filter(c => c.id !== id))
-  }
-
-  const getStatusColor = (status: string) => {
-    switch (status) {
-      case 'upcoming':
-        return 'bg-blue-500/20 text-blue-700'
-      case 'ongoing':
-        return 'bg-green-500/20 text-green-700'
-      case 'ended':
-        return 'bg-gray-500/20 text-gray-700'
-      default:
-        return ''
-    }
-  }
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <Trophy className="w-8 h-8 text-primary" />
-            Codeathon Management
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs max-w-[250px]">Manage coding competitions and hackathons</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </h1>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <Trophy className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Codeathon Management</h1>
+            <p className="text-muted-foreground text-sm">{codeathons.length} codeathons</p>
+          </div>
         </div>
-        <Button onClick={() => setShowCreateModal(true)} className="gap-2">
-          <Plus className="w-4 h-4" />
-          Create Codeathon
+        <Button className="gap-2" onClick={() => {
+          const title = prompt('Codeathon title:')
+          if (!title) return
+          const startDate = prompt('Start date (YYYY-MM-DD):') || ''
+          const endDate = prompt('End date (YYYY-MM-DD):') || ''
+          csrfFetch('/api/codeathons', {
+            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+            body: JSON.stringify({ title, startDate, endDate, status: 'upcoming' }),
+          }).then(() => { fetchData(); addToast({ type: 'success', title: 'Codeathon created' }) })
+            .catch(() => addToast({ type: 'error', title: 'Failed to create codeathon' }))
+        }}>
+          <Plus className="w-4 h-4" />Add Codeathon
         </Button>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Total Events</p>
-          <p className="text-3xl font-bold text-foreground">{codeathons.length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Ongoing</p>
-          <p className="text-3xl font-bold text-green-600">{codeathons.filter(c => c.status === 'ongoing').length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Total Participants</p>
-          <p className="text-3xl font-bold text-primary">{codeathons.reduce((sum, c) => sum + c.participants, 0)}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Total Prize Pool</p>
-          <p className="text-3xl font-bold text-blue-600">${codeathons.reduce((sum, c) => {
-            const amount = parseInt(c.prizePool.replace(/[$,]/g, ''))
-            return sum + (isNaN(amount) ? 0 : amount)
-          }, 0).toLocaleString()}</p>
-        </Card>
-      </div>
-
-      {/* Codeathons Table */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-muted/50">
-              <tr>
-                <th className="px-6 py-3 text-left font-semibold">Title</th>
-                <th className="px-6 py-3 text-left font-semibold">Duration</th>
-                <th className="px-6 py-3 text-left font-semibold">Prize Pool</th>
-                <th className="px-6 py-3 text-left font-semibold">Participants</th>
-                <th className="px-6 py-3 text-left font-semibold">Difficulty</th>
-                <th className="px-6 py-3 text-left font-semibold">Status</th>
-                <th className="px-6 py-3 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {codeathons.map((codeathon) => (
-                <tr key={codeathon.id} className="border-t border-border hover:bg-muted/30">
-                  <td className="px-6 py-3 font-medium">{codeathon.title}</td>
-                  <td className="px-6 py-3 text-xs">
-                    {codeathon.startDate} → {codeathon.endDate}
-                  </td>
-                  <td className="px-6 py-3 font-semibold">{codeathon.prizePool}</td>
-                  <td className="px-6 py-3">{codeathon.participants}</td>
-                  <td className="px-6 py-3">{codeathon.difficulty}</td>
-                  <td className="px-6 py-3">
-                    <Badge className={getStatusColor(codeathon.status)}>
-                      {codeathon.status.charAt(0).toUpperCase() + codeathon.status.slice(1)}
-                    </Badge>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm">
-                        <Eye className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Edit className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm" onClick={() => handleDelete(codeathon.id)}>
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading codeathons...
         </div>
-      </Card>
-
-      {/* Create Codeathon Modal */}
-      {showCreateModal && (
-        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
-          <Card className="w-full max-w-md p-6">
-            <h2 className="text-xl font-bold text-foreground mb-4">Create New Codeathon</h2>
-            <form onSubmit={handleCreateCodeathon} className="space-y-4">
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Event Title</label>
-                <input
-                  type="text"
-                  value={newCodeathon.title}
-                  onChange={(e) => setNewCodeathon({ ...newCodeathon, title: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">Start Date</label>
-                <input
-                  type="date"
-                  value={newCodeathon.startDate}
-                  onChange={(e) => setNewCodeathon({ ...newCodeathon, startDate: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-                  required
-                />
-              </div>
-              <div>
-                <label className="block text-sm font-medium text-foreground mb-1">End Date</label>
-                <input
-                  type="date"
-                  value={newCodeathon.endDate}
-                  onChange={(e) => setNewCodeathon({ ...newCodeathon, endDate: e.target.value })}
-                  className="w-full px-3 py-2 rounded border border-border bg-background text-foreground"
-                  required
-                />
-              </div>
-              <div className="flex gap-3">
-                <Button type="submit" className="flex-1">
-                  Create Event
-                </Button>
-                <Button
-                  type="button"
-                  variant="outline"
-                  onClick={() => setShowCreateModal(false)}
-                  className="flex-1"
-                >
-                  Cancel
-                </Button>
-              </div>
-            </form>
-          </Card>
-        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={codeathons}
+          searchPlaceholder="Search codeathons..."
+          searchKeys={['title']}
+          filters={[{
+            label: 'Status', key: 'status',
+            options: [
+              { label: 'Upcoming', value: 'upcoming' },
+              { label: 'Active', value: 'active' },
+              { label: 'Ended', value: 'ended' },
+            ],
+          }]}
+          bulkActions={bulkActions}
+          loading={loading}
+          emptyMessage="No codeathons. Click 'Add Codeathon' to create one."
+        />
       )}
     </div>
   )
 }
-
-

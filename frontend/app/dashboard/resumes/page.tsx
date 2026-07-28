@@ -1,221 +1,110 @@
 'use client'
 
-import { useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Plus, Download, Trash2, Brain, FileText, Upload, HelpCircle, Loader2 } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { FileText, Upload, Loader2, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
+import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Resume {
   id: string
-  fileName: string
-  fileSize: number
-  uploadedAt: string
-  isPrimary: boolean
-  extractedData?: {
-    skills: string[]
-    experience: string
-    education: string
-  }
-  analysisStatus: 'pending' | 'completed' | 'failed'
+  file_name: string
+  file_size: number
+  status: string
+  skills: string[]
+  created_at: string
 }
 
-export default function ResumesPage() {
+export default function MyResumesPage() {
   const gate = usePageGuard('user')
+  const addToast = useToast()
+  const [resumes, setResumes] = useState<Resume[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [resumes, setResumes] = useState<Resume[]>([
-    {
-      id: '1',
-      fileName: 'John_Doe_Resume.pdf',
-      fileSize: 245,
-      uploadedAt: '2024-04-15',
-      isPrimary: true,
-      analysisStatus: 'completed',
-      extractedData: {
-        skills: ['JavaScript', 'React', 'Node.js', 'TypeScript', 'Python'],
-        experience: '5 years in full-stack development',
-        education: 'BS in Computer Science',
-      },
-    },
-    {
-      id: '2',
-      fileName: 'John_Doe_Resume_v2.pdf',
-      fileSize: 256,
-      uploadedAt: '2024-04-10',
-      isPrimary: false,
-      analysisStatus: 'completed',
-    },
-  ])
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/resumes', { credentials: 'include' })
+      const json = await res.json()
+      setResumes(json.data || [])
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }
 
-  const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+  useEffect(() => { fetchData() }, [])
 
-    const newResume: Resume = {
-      id: String(resumes.length + 1),
-      fileName: file.name,
-      fileSize: file.size,
-      uploadedAt: new Date().toISOString().split('T')[0],
-      isPrimary: false,
-      analysisStatus: 'pending',
+  const handleDelete = async (ids: string[]) => {
+    for (const id of ids) {
+      await csrfFetch(`/api/resumes/${id}`, { method: 'DELETE', credentials: 'include' })
     }
-
-    setResumes([newResume, ...resumes])
+    addToast({ type: 'success', title: `${ids.length} resume${ids.length !== 1 ? 's' : ''} deleted` })
+    setResumes(prev => prev.filter(r => !ids.includes(r.id)))
   }
 
-  const handleDelete = (id: string) => {
-    setResumes(resumes.filter(r => r.id !== id))
+  const handleUpload = () => {
+    const name = prompt('File name:')
+    if (!name) return
+    csrfFetch('/api/resumes', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+      body: JSON.stringify({ file_name: name, file_size: 0, storage_url: '' }),
+    }).then(() => { fetchData(); addToast({ type: 'success', title: 'Resume uploaded' }) })
+      .catch(() => addToast({ type: 'error', title: 'Upload failed' }))
   }
 
-  const handleSetPrimary = (id: string) => {
-    setResumes(resumes.map(r => ({ ...r, isPrimary: r.id === id })))
-  }
+  const formatSize = (bytes: number) => bytes < 1024 ? `${bytes}B` : bytes < 1048576 ? `${(bytes/1024).toFixed(1)}KB` : `${(bytes/1048576).toFixed(1)}MB`
+
+  const columns: DataTableColumn<Resume>[] = [
+    { key: 'name', header: 'File', cell: (r) => <span className="font-medium">{r.file_name}</span> },
+    { key: 'size', header: 'Size', cell: (r) => <span className="text-xs text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
+    { key: 'status', header: 'Status', cell: (r) => (
+      <Badge className={r.status === 'processed' ? 'bg-green-500/20 text-green-700' : 'bg-yellow-500/20 text-yellow-700'}>
+        {r.status || 'pending'}
+      </Badge>
+    )},
+    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs text-muted-foreground">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</span> },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
+  ]
 
   if (!gate.ready) return null
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-            <FileText className="w-8 h-8 text-primary" />
-            My Resumes
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs max-w-[250px]">Upload and manage your resumes with AI analysis</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </h1>
-        </div>
-        <label className="cursor-pointer">
-          <Button className="gap-2" asChild>
-            <span>
-              <Plus className="w-4 h-4" />
-              Upload Resume
-            </span>
-          </Button>
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
-      </div>
-
-      {/* Upload Area */}
-      <Card className="p-8 border-2 border-dashed border-border">
-        <label className="cursor-pointer flex items-center justify-center">
-          <div className="text-center">
-            <Upload className="w-12 h-12 text-primary/40 mx-auto mb-2" />
-            <p className="font-medium text-foreground">Drag and drop your resume here</p>
-            <p className="text-sm text-muted-foreground">or click to browse (PDF, DOC, DOCX)</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <FileText className="h-6 w-6 text-primary" />
           </div>
-          <input
-            type="file"
-            accept=".pdf,.doc,.docx"
-            onChange={handleFileUpload}
-            className="hidden"
-          />
-        </label>
-      </Card>
-
-      {/* Resumes List */}
-      <div className="space-y-4">
-        {resumes.map((resume) => (
-          <Card key={resume.id} className="p-6 hover:bg-muted/30 transition-colors">
-            <div className="flex items-start justify-between mb-4">
-              <div className="flex-1">
-                <div className="flex items-center gap-3 mb-2">
-                  <FileText className="w-5 h-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">{resume.fileName}</h3>
-                  {resume.isPrimary && <Badge className="bg-primary/20 text-primary">Primary</Badge>}
-                </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span>{(resume.fileSize / 1024).toFixed(2)} KB</span>
-                  <span>Uploaded {resume.uploadedAt}</span>
-                  <Badge className={
-                    resume.analysisStatus === 'completed'
-                      ? 'bg-green-500/20 text-green-700'
-                      : resume.analysisStatus === 'pending'
-                      ? 'bg-yellow-500/20 text-yellow-700'
-                      : 'bg-red-500/20 text-red-700'
-                  }>
-                    {resume.analysisStatus}
-                  </Badge>
-                </div>
-              </div>
-              <div className="flex gap-2">
-                {resume.analysisStatus === 'completed' && (
-                  <Button variant="outline" size="sm" className="gap-2">
-                    <Brain className="w-4 h-4" />
-                    View Analysis
-                  </Button>
-                )}
-                {!resume.isPrimary && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => handleSetPrimary(resume.id)}
-                  >
-                    Set Primary
-                  </Button>
-                )}
-                <Button variant="outline" size="sm" className="gap-2">
-                  <Download className="w-4 h-4" />
-                </Button>
-                <Button
-                  variant="outline"
-                  size="sm"
-                  onClick={() => handleDelete(resume.id)}
-                  className="text-red-600"
-                >
-                  <Trash2 className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-
-            {resume.extractedData && (
-              <div className="grid md:grid-cols-3 gap-4 pt-4 border-t border-border">
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Skills</p>
-                  <div className="flex flex-wrap gap-2">
-                    {resume.extractedData.skills.map((skill) => (
-                      <Badge key={skill} variant="outline" className="text-xs">
-                        {skill}
-                      </Badge>
-                    ))}
-                  </div>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Experience</p>
-                  <p className="text-sm text-foreground">{resume.extractedData.experience}</p>
-                </div>
-                <div>
-                  <p className="text-xs font-medium text-muted-foreground mb-2">Education</p>
-                  <p className="text-sm text-foreground">{resume.extractedData.education}</p>
-                </div>
-              </div>
-            )}
-          </Card>
-        ))}
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">My Resumes</h1>
+            <p className="text-muted-foreground text-sm">{resumes.length} resumes</p>
+          </div>
+        </div>
+        <Button className="gap-2" onClick={handleUpload}>
+          <Upload className="w-4 h-4" />Upload Resume
+        </Button>
       </div>
 
-      {resumes.length === 0 && (
-        <Card className="p-12 text-center">
-          <FileText className="w-16 h-16 text-muted-foreground/30 mx-auto mb-4" />
-          <p className="text-foreground font-medium mb-2">No resumes uploaded yet</p>
-          <p className="text-muted-foreground text-sm">Upload your first resume to get started with AI analysis</p>
-        </Card>
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading resumes...
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={resumes}
+          searchPlaceholder="Search resumes..."
+          searchKeys={['file_name']}
+          bulkActions={bulkActions}
+          loading={loading}
+          emptyMessage="No resumes. Upload one to get started."
+        />
       )}
     </div>
   )
 }
-

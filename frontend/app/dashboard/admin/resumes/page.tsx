@@ -1,157 +1,102 @@
 'use client'
 
-import { useState } from 'react'
-import { Card } from '@/components/ui/card'
+import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Plus, Trash2, Brain, Download, HelpCircle } from 'lucide-react'
-import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { FileText, Loader2, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
+import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Resume {
   id: string
-  fileName: string
-  uploadedDate: string
-  analyzed: boolean
-  score: number
-  matchPercentage?: number
+  file_name: string
+  file_size: number
+  status: string
   skills: string[]
+  created_at: string
 }
 
 export default function AdminResumesPage() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
+  const [resumes, setResumes] = useState<Resume[]>([])
+  const [loading, setLoading] = useState(true)
 
-  const [resumes] = useState<Resume[]>([
-    {
-      id: '1',
-      fileName: 'John_Doe_Resume.pdf',
-      uploadedDate: '2024-04-15',
-      analyzed: true,
-      score: 85,
-      matchPercentage: 92,
-      skills: ['JavaScript', 'React', 'Node.js'],
-    },
-    {
-      id: '2',
-      fileName: 'Jane_Smith_Resume.pdf',
-      uploadedDate: '2024-04-14',
-      analyzed: true,
-      score: 78,
-      matchPercentage: 85,
-      skills: ['Python', 'ML', 'Data Science'],
-    },
-  ])
+  const fetchData = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/resumes', { credentials: 'include' })
+      const json = await res.json()
+      setResumes(json.data || [])
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }
 
-  const [jdText, setJdText] = useState('Looking for a Full-Stack Developer with React and Node.js experience')
+  useEffect(() => { fetchData() }, [])
+
+  const handleDelete = async (ids: string[]) => {
+    for (const id of ids) {
+      await csrfFetch(`/api/resumes/${id}`, { method: 'DELETE', credentials: 'include' })
+    }
+    addToast({ type: 'success', title: `${ids.length} resume${ids.length !== 1 ? 's' : ''} deleted` })
+    setResumes(prev => prev.filter(r => !ids.includes(r.id)))
+  }
+
+  const formatSize = (bytes: number) => bytes < 1024 ? `${bytes}B` : bytes < 1048576 ? `${(bytes/1024).toFixed(1)}KB` : `${(bytes/1048576).toFixed(1)}MB`
+
+  const columns: DataTableColumn<Resume>[] = [
+    { key: 'name', header: 'File', cell: (r) => <span className="font-medium">{r.file_name}</span> },
+    { key: 'size', header: 'Size', cell: (r) => <span className="text-xs text-muted-foreground">{formatSize(r.file_size || 0)}</span> },
+    { key: 'status', header: 'Status', cell: (r) => (
+      <Badge className={r.status === 'processed' ? 'bg-green-500/20 text-green-700' : 'bg-yellow-500/20 text-yellow-700'}>
+        {r.status || 'pending'}
+      </Badge>
+    )},
+    { key: 'skills', header: 'Skills', cell: (r) => (
+      <div className="flex flex-wrap gap-1">
+        {(r.skills || []).slice(0, 4).map(s => <Badge key={s} className="text-[10px] bg-muted">{s}</Badge>)}
+      </div>
+    )},
+    { key: 'date', header: 'Uploaded', cell: (r) => <span className="text-xs text-muted-foreground">{r.created_at ? new Date(r.created_at).toLocaleDateString() : '—'}</span> },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
+  ]
 
   if (!gate.ready) return null
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-          <FileText className="w-8 h-8 text-primary" />
-          Resume AI Analysis
-          <TooltipProvider>
-            <Tooltip>
-              <TooltipTrigger asChild>
-                <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
-              </TooltipTrigger>
-              <TooltipContent side="right">
-                <p className="text-xs max-w-[250px]">Analyze resumes with AI and match against job descriptions</p>
-              </TooltipContent>
-            </Tooltip>
-          </TooltipProvider>
-        </h1>
-      </div>
-
-      {/* JD Matcher */}
-      <Card className="p-6">
-        <h2 className="text-xl font-bold text-foreground mb-4">Job Description Matcher</h2>
-        <textarea
-          value={jdText}
-          onChange={(e) => setJdText(e.target.value)}
-          placeholder="Paste job description here..."
-          className="w-full px-3 py-2 rounded border border-border bg-background text-foreground h-24 resize-none"
-        />
-        <Button className="mt-3">Analyze Matches</Button>
-      </Card>
-
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Total Resumes</p>
-          <p className="text-3xl font-bold text-foreground">{resumes.length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Analyzed</p>
-          <p className="text-3xl font-bold text-green-600">{resumes.filter(r => r.analyzed).length}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-sm text-muted-foreground">Avg Score</p>
-          <p className="text-3xl font-bold text-primary">
-            {(resumes.reduce((sum, r) => sum + r.score, 0) / resumes.length).toFixed(1)}
-          </p>
-        </Card>
-      </div>
-
-      {/* Resumes List */}
-      <Card>
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm">
-            <thead className="border-b border-border bg-muted/50">
-              <tr>
-                <th className="px-6 py-3 text-left font-semibold">File Name</th>
-                <th className="px-6 py-3 text-left font-semibold">Uploaded</th>
-                <th className="px-6 py-3 text-left font-semibold">Analysis Score</th>
-                <th className="px-6 py-3 text-left font-semibold">JD Match</th>
-                <th className="px-6 py-3 text-left font-semibold">Top Skills</th>
-                <th className="px-6 py-3 text-right font-semibold">Actions</th>
-              </tr>
-            </thead>
-            <tbody>
-              {resumes.map((resume) => (
-                <tr key={resume.id} className="border-t border-border hover:bg-muted/30">
-                  <td className="px-6 py-3 font-medium">{resume.fileName}</td>
-                  <td className="px-6 py-3">{resume.uploadedDate}</td>
-                  <td className="px-6 py-3">
-                    <Badge className="bg-blue-500/20 text-blue-700">{resume.score}%</Badge>
-                  </td>
-                  <td className="px-6 py-3">
-                    {resume.matchPercentage && (
-                      <Badge className="bg-green-500/20 text-green-700">{resume.matchPercentage}%</Badge>
-                    )}
-                  </td>
-                  <td className="px-6 py-3">
-                    <div className="flex gap-1">
-                      {resume.skills.slice(0, 2).map((skill) => (
-                        <Badge key={skill} variant="outline" className="text-xs">
-                          {skill}
-                        </Badge>
-                      ))}
-                    </div>
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <div className="flex gap-2 justify-end">
-                      <Button variant="ghost" size="sm">
-                        <Brain className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Download className="w-4 h-4" />
-                      </Button>
-                      <Button variant="ghost" size="sm">
-                        <Trash2 className="w-4 h-4 text-red-600" />
-                      </Button>
-                    </div>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
+            <FileText className="h-6 w-6 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Resume Analysis</h1>
+            <p className="text-muted-foreground text-sm">{resumes.length} resumes</p>
+          </div>
         </div>
-      </Card>
+      </div>
+
+      {loading ? (
+        <div className="flex items-center justify-center py-16 text-muted-foreground">
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading resumes...
+        </div>
+      ) : (
+        <DataTable
+          columns={columns}
+          data={resumes}
+          searchPlaceholder="Search resumes..."
+          searchKeys={['file_name']}
+          bulkActions={bulkActions}
+          loading={loading}
+          emptyMessage="No resumes yet."
+        />
+      )}
     </div>
   )
 }
-
-
