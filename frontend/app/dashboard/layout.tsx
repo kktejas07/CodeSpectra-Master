@@ -378,18 +378,21 @@ export default function DashboardLayout({
         .map(leaf => ({ type: 'link' as const, item: leaf }))
     }
     if (isJudge(role)) {
-      const judgeRouteSet = new Set(JUDGE_ROUTES)
+      const judgeSet = new Set([...JUDGE_ROUTES, ...ALL_USER_ROUTES])
       return allLeaves
-        .filter(leaf => judgeRouteSet.has(leaf.href.split('?')[0]))
+        .filter(leaf => judgeSet.has(leaf.href.split('?')[0]))
         .map(leaf => ({ type: 'link' as const, item: leaf }))
     }
-    // User
+    // User — non-admin, non-org, non-tenant-exclusive routes
+    const tenantOnlySet = new Set(TENANT_ADMIN_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
     return allLeaves
-      .filter(leaf =>
-        leaf.href.startsWith('/dashboard') &&
-        !leaf.href.startsWith('/dashboard/admin/') &&
-        !leaf.href.startsWith(DASHBOARD_ROUTES.organization.team)
-      )
+      .filter(leaf => {
+        const route = leaf.href.split('?')[0]
+        return route.startsWith('/dashboard') &&
+          !route.startsWith('/dashboard/admin/') &&
+          !route.startsWith(DASHBOARD_ROUTES.organization.team) &&
+          !tenantOnlySet.has(route)
+      })
       .map(leaf => ({ type: 'link' as const, item: leaf }))
   }, [userProfile?.role, userPlan, allowedDbRoutes, effectiveLockedPages])
 

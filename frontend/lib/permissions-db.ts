@@ -83,7 +83,7 @@ export function discoverAllResources(): ResourcePermission[] {
   const resources: ResourcePermission[] = []
 
   // Page resources from route registry
-  const allRoutes = [...new Set([...ADMIN_ONLY_ROUTES, ...TENANT_ADMIN_ROUTES, ...ALL_USER_ROUTES])]
+  const allRoutes = [...new Set([...ADMIN_ONLY_ROUTES, ...TENANT_ADMIN_ROUTES, ...JUDGE_ROUTES, ...ALL_USER_ROUTES])]
   for (const route of allRoutes) {
     resources.push({
       resource: route,
@@ -152,10 +152,8 @@ export function getDefaultRolePermissions(role: UserRole): ResourcePermission[] 
 
     case 'judge':
       return [
-        // Same user pages (ALL_USER_ROUTES includes /dashboard/judge)
-        ...pageResources.filter(r => ALL_USER_ROUTES.includes(r.resource))
+        ...pageResources.filter(r => JUDGE_ROUTES.includes(r.resource) || ALL_USER_ROUTES.includes(r.resource))
           .map(r => ({ ...r, actions: ['read'] as PermissionAction[] })),
-        // Basic entity access (same as user)
         ...entityResources.filter(r =>
           ['problems', 'challenges', 'tracks', 'certifications', 'scanner', 'ai', 'notifications', 'billing']
             .some(e => r.resource === `entity:${e}`)
