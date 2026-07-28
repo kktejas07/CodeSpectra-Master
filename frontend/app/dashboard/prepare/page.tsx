@@ -32,9 +32,10 @@ export default function PreparePage() {
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
 
+  if (!gate.ready) return null
+
   useEffect(() => {
     Promise.all([
-  if (!gate.ready) return null
       fetch('/api/tracks', { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
       fetch('/api/problems?limit=200', { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
     ]).then(([tracksData, problemsData]) => {

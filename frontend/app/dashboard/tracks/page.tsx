@@ -37,9 +37,10 @@ export default function TracksPage() {
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
 
+  if (!gate.ready) return null
+
   useEffect(() => {
     Promise.all([
-  if (!gate.ready) return null
       fetch('/api/tracks').then(r => r.json()),
       fetch('/api/problems', { cache: 'no-store' }).then(r => r.json()),
     ]).then(([tracksJson, problemsJson]) => {

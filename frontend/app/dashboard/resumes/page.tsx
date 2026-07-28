@@ -27,7 +27,6 @@ export default function ResumesPage() {
 
   const [resumes, setResumes] = useState<Resume[]>([
     {
-  if (!gate.ready) return null
       id: '1',
       fileName: 'John_Doe_Resume.pdf',
       fileSize: 245,
@@ -49,6 +48,8 @@ export default function ResumesPage() {
       analysisStatus: 'completed',
     },
   ])
+
+  if (!gate.ready) return null
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

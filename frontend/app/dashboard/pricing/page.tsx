@@ -38,9 +38,10 @@ export default function PricingPage() {
   const [checkingCoupon, setCheckingCoupon] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
 
+  if (!gate.ready) return null
+
   useEffect(() => {
     Promise.all([
-  if (!gate.ready) return null
       fetch('/api/admin/plans', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
       fetch('/api/admin/platform-settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
     ]).then(([plansData, settingsData]) => {

@@ -25,9 +25,10 @@ export default function InterviewSetupPage() {
   const [completedRoles] = useState<string[]>([])
   const [config, setConfig] = useState<InterviewConfig>({
     role: '',
-  if (!gate.ready) return null
     interviewType: 'technical',
   })
+
+  if (!gate.ready) return null
 
   const handleRoleSelect = (roleId: string) => {
     setSelectedRole(roleId)
