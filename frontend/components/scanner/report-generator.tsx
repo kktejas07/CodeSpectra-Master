@@ -1,4 +1,5 @@
 'use client'
+import { useToast } from '@/lib/toast-context'
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
@@ -32,6 +33,7 @@ interface ReportGeneratorProps {
 type ReportFormat = 'pdf' | 'json' | 'csv'
 
 export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGeneratorProps) {
+  const addToast = useToast()
   const [reportData, setReportData] = useState<ReportData | null>(null)
   const [loading, setLoading] = useState(!data)
   const [showEmailForm, setShowEmailForm] = useState(false)
@@ -294,7 +296,7 @@ export function ReportGenerator({ data, onExport, onEmail, onShare }: ReportGene
           variant="outline"
           className="w-full"
           size="sm"
-          onClick={() => window.alert('Scheduled reports coming soon!')}
+          onClick={() => addToast({ type: 'info', title: 'Notification', message: 'Scheduled reports coming soon!' })}
         >
           <Zap className="w-4 h-4 mr-2" />
           Configure Schedules

@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -13,6 +14,7 @@ interface Status {
 }
 
 export default function GitHubConnectButton() {
+  const confirmDialog = useConfirm()
   const [status, setStatus] = useState<Status | null>(null)
   const [busy, setBusy] = useState(false)
   const [error, setError] = useState<string | null>(null)
@@ -38,7 +40,7 @@ export default function GitHubConnectButton() {
   }, [])
 
   async function disconnect() {
-    if (!confirm('Disconnect your GitHub account?')) return
+    if (!await confirmDialog({ title: 'Confirmation', description: 'Disconnect your GitHub account?' })) return
     setBusy(true)
     try {
       await csrfFetch('/api/github/integrations/me', { method: 'DELETE' })

@@ -1,4 +1,5 @@
 'use client'
+import { useToast } from '@/lib/toast-context'
 
 import { useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -88,6 +89,7 @@ const MOCK_SHORTLIST: CandidateScoreCard[] = [
 ]
 
 export default function HiringManagerReportPage() {
+  const addToast = useToast()
   const gate = usePageGuard('tenant_admin')
   const [searchTerm, setSearchTerm] = useState('')
   const [selectedReq, setSelectedReq] = useState('REQ-2026-089')
@@ -112,7 +114,7 @@ export default function HiringManagerReportPage() {
         </div>
         <div className="flex items-center gap-2">
           <button
-            onClick={() => alert('Exporting Hiring Manager Summary Report as PDF...')}
+            onClick={() => addToast({ type: 'info', title: 'Notification', message: 'Exporting Hiring Manager Summary Report as PDF...' })}
             className="flex items-center gap-1.5 rounded-lg border border-border bg-card px-3 py-2 text-xs font-semibold text-foreground transition-colors hover:bg-accent"
           >
             <FileSpreadsheet className="h-4 w-4" />

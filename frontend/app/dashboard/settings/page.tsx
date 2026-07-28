@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -54,6 +55,7 @@ function readLsBool(key: string, fallback: boolean) {
 }
 
 export default function SettingsPage() {
+  const confirmDialog = useConfirm()
   const gate = usePageGuard('user')
 
   const addToast = useToast()
@@ -166,7 +168,7 @@ export default function SettingsPage() {
   }
 
 const handleDeleteAccount = async () => {
-    if (!confirm('Are you sure you want to delete your account? This action is irreversible.')) return
+    if (!await confirmDialog({ title: 'Confirmation', description: 'Are you sure you want to delete your account? This action is irreversible.' })) return
     const pw = prompt('Enter your password to confirm deletion:')
     if (!pw) return
     try {

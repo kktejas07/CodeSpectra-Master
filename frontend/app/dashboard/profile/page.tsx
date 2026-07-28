@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
@@ -24,6 +25,7 @@ interface ActivityItem {
 }
 
 function TwoFactorAuth() {
+  const confirmDialog = useConfirm()
   const [status, setStatus] = useState<{ enabled: boolean; setupAt?: string | null; verifiedAt?: string | null } | null>(null)
   const [loading, setLoading] = useState(true)
   const [setupData, setSetupData] = useState<{ secret: string; otpauth: string } | null>(null)
@@ -81,7 +83,7 @@ function TwoFactorAuth() {
   }
 
   const handleDisable = async () => {
-    if (!confirm('Disable two-factor authentication? This reduces account security.')) return
+    if (!await confirmDialog({ title: 'Confirmation', description: 'Disable two-factor authentication? This reduces account security.' })) return
     try {
       await csrfFetch('/api/user/2fa/disable', { method: 'POST' })
       setStatus(null)
@@ -152,6 +154,7 @@ function TwoFactorAuth() {
 }
 
 export default function ProfilePage() {
+  const confirmDialog = useConfirm()
   const gate = usePageGuard('user')
 
   const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string } | null>(null)

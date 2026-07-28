@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 /**
  * /dashboard/admin/hackathons/[id] — superadmin event detail.
@@ -72,6 +73,7 @@ export default function HackathonDetailPage({
 }: {
   params: Promise<{ id: string }>
 }) {
+  const confirmDialog = useConfirm()
   const { id } = use(params)
   const gate = usePageGuard('superadmin')
   const [event, setEvent] = useState<Hackathon | null>(null)
@@ -186,7 +188,7 @@ export default function HackathonDetailPage({
   }
 
   async function removeTeam(team: Team) {
-    if (!confirm(`Disqualify "${team.name}"?`)) return
+    if (!await confirmDialog({ title: 'Confirmation', description: `Disqualify "${team.name}"?` })) return
     try {
       await csrfFetch(`/api/hackathons/${id}/teams/${team.id}`, { method: 'DELETE' })
       await load()
@@ -299,7 +301,7 @@ export default function HackathonDetailPage({
             value={event.status}
             onChange={async (e) => {
               const newStatus = e.target.value
-              if (!confirm(`Change status from "${event.status}" to "${newStatus}"?`)) return
+              if (!await confirmDialog({ title: 'Confirmation', description: `Change status from "${event.status}" to "${newStatus}"?` })) return
               try {
                 const res = await csrfFetch(`/api/hackathons/${id}`, {
                   method: 'PATCH',
@@ -527,7 +529,7 @@ export default function HackathonDetailPage({
           </Badge>
         ) : (
           <Button onClick={async () => {
-            if (!confirm('Release all results to participants? This action cannot be undone.')) return
+            if (!await confirmDialog({ title: 'Confirmation', description: 'Release all results to participants? This action cannot be undone.' })) return
             setBusy(true)
             try {
               const res = await csrfFetch(`/api/hackathons/${id}/release-results`, { method: 'POST' })

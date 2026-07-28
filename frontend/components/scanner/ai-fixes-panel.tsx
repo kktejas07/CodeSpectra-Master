@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 import { useCallback, useEffect, useState } from 'react'
 import { Loader, Sparkles } from 'lucide-react'
@@ -34,6 +35,7 @@ interface AIFixesPanelProps {
 }
 
 export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixesPanelProps) {
+  const confirmDialog = useConfirm()
   const [aiFixBusy, setAiFixBusy] = useState(false)
   const [batchBusy, setBatchBusy] = useState(false)
   const [aiFixError, setAiFixError] = useState<string | null>(null)
@@ -96,7 +98,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
   }, [])
 
   const handleRestoreOnGitHub = useCallback(async (fixId: string) => {
-    if (!window.confirm('Overwrite this file on GitHub with the original code from this fix?')) return
+    if (!await confirmDialog({ title: 'Confirmation', description: 'Overwrite this file on GitHub with the original code from this fix?' })) return
     setAiFixError(null)
     try {
       const res = await fetch('/api/github/restore-file', {

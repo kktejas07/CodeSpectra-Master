@@ -1,4 +1,5 @@
 'use client'
+import { useToast } from '@/lib/toast-context'
 
 import { useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -86,6 +87,7 @@ const MOCK_REVIEW_QUEUE: SMEReviewTask[] = [
 ]
 
 export default function SMEReviewPage() {
+  const addToast = useToast()
   const gate = usePageGuard('tenant_admin')
   const [tasks, setTasks] = useState<SMEReviewTask[]>(MOCK_REVIEW_QUEUE)
   const [activeSubmissionId, setActiveSubmissionId] = useState<string>('sub-702')
@@ -103,7 +105,7 @@ export default function SMEReviewPage() {
           : t
       )
     )
-    alert(`Saved SME grade (${manualRating}%) for ${blindReviewMode ? 'Candidate ID ' + activeTask.submissionId : activeTask.candidateName}!`)
+    addToast({ type: 'info', title: 'Notification', message: `Saved SME grade (${manualRating}%) for ${blindReviewMode ? 'Candidate ID ' + activeTask.submissionId : activeTask.candidateName}!` })
   }
 
   if (!gate.ready) return null

@@ -1,17 +1,20 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/lib/toast-context'
-import { Users, Loader2, Search, Trash2, HelpCircle } from 'lucide-react'
+import { Users, Loader2, Search, Trash2, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { normalizeUserRole } from '@/lib/rbac'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import Link from 'next/link'
+import { useConfirm } from '@/lib/confirm-context'
 
 interface UserData {
   id: string; email: string; full_name?: string; name?: string
@@ -19,11 +22,15 @@ interface UserData {
 }
 
 export default function UserRoleAssignments() {
+  const confirmDialog = useConfirm()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const [users, setUsers] = useState<UserData[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState('')
+  const [search, setSearch] = useState('')
+  const [roleFilter, setRoleFilter] = useState('all')
+  const [page, setPage] = useState(1)
+  const pageSize = 20
 
   const fetchUsers = async () => {
     setLoading(true)
@@ -55,7 +62,7 @@ export default function UserRoleAssignments() {
   }
 
   const deleteUser = async (userId: string) => {
-    if (!confirm('Delete this user?')) return
+    if (!await confirmDialog({ title: 'Confirmation', description: 'Delete this user?' })) return
     try {
       const res = await csrfFetch(`/api/admin/users/${userId}`, { method: 'DELETE', credentials: 'include' })
       if (res.ok) { addToast({ type: 'success', title: 'Deleted', message: 'User removed' }); await fetchUsers() }
@@ -63,10 +70,24 @@ export default function UserRoleAssignments() {
     } catch { addToast({ type: 'error', title: 'Error', message: 'Network error' }) }
   }
 
-  const filteredUsers = users.filter(u =>
-    !filter || (u.email || '').toLowerCase().includes(filter.toLowerCase()) ||
-    ((u.full_name || u.name || '') || '').toLowerCase().includes(filter.toLowerCase())
-  )
+  useEffect(() => { setPage(1) }, [search, roleFilter])
+
+  const filteredUsers = useMemo(() => {
+    let list = users
+    if (roleFilter !== 'all') list = list.filter(u => normalizeUserRole(u.role) === roleFilter)
+    if (search) {
+      const q = search.toLowerCase()
+      list = list.filter(u =>
+        (u.email || '').toLowerCase().includes(q) ||
+        ((u.full_name || u.name || '') || '').toLowerCase().includes(q)
+      )
+    }
+    return list
+  }, [users, search, roleFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const paginatedUsers = filteredUsers.slice((safePage - 1) * pageSize, safePage * pageSize)
   const roleCounts = { superadmin: users.filter(u => normalizeUserRole(u.role) === 'superadmin').length, tenant_admin: users.filter(u => normalizeUserRole(u.role) === 'tenant_admin').length, user: users.filter(u => normalizeUserRole(u.role) === 'user').length }
 
   if (!gate.ready) return null
@@ -112,9 +133,23 @@ export default function UserRoleAssignments() {
       </div>
 
       {/* Filters */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-        <Input placeholder="Search users..." value={filter} onChange={e => setFilter(e.target.value)} className="pl-7 h-8 text-xs" />
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
+        </div>
+        <Select value={roleFilter} onValueChange={setRoleFilter}>
+          <SelectTrigger className="h-8 w-[140px] text-xs">
+            <SelectValue placeholder="All roles" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all" className="text-xs">All roles</SelectItem>
+            <SelectItem value="superadmin" className="text-xs">Platform Admin</SelectItem>
+            <SelectItem value="tenant_admin" className="text-xs">Org Admin</SelectItem>
+            <SelectItem value="user" className="text-xs">User</SelectItem>
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* User table */}
@@ -134,7 +169,7 @@ export default function UserRoleAssignments() {
             {filteredUsers.length === 0 ? (
               <tr><td colSpan={6} className="py-8 text-center text-muted-foreground text-xs">No users found</td></tr>
             ) : (
-              filteredUsers.map(u => (
+              paginatedUsers.map(u => (
                 <tr key={u.id} className="border-b border-border hover:bg-muted/50">
                   <td className="py-2.5 px-4 font-medium text-xs">{u.full_name || u.name || u.email?.split('@')[0] || 'User'}</td>
                   <td className="py-2.5 px-4 text-xs text-muted-foreground">{u.email}</td>
@@ -160,6 +195,30 @@ export default function UserRoleAssignments() {
           </tbody>
         </table>
       </Card>
+
+      {totalPages > 1 && (
+        <div className="flex items-center justify-between">
+          <p className="text-xs text-muted-foreground">
+            Page {safePage} of {totalPages}
+          </p>
+          <div className="flex items-center gap-1">
+            <Button
+              variant="outline" size="sm" className="h-8 text-xs"
+              disabled={safePage <= 1}
+              onClick={() => setPage((p: number) => Math.max(1, p - 1))}
+            >
+              <ChevronLeft className="h-3 w-3 mr-1" />Prev
+            </Button>
+            <Button
+              variant="outline" size="sm" className="h-8 text-xs"
+              disabled={safePage >= totalPages}
+              onClick={() => setPage((p: number) => Math.min(totalPages, p + 1))}
+            >
+              Next<ChevronRight className="h-3 w-3 ml-1" />
+            </Button>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

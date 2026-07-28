@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 /**
  * /dashboard/admin/ai-inventory — comprehensive AI-component inventory & control plane.
@@ -89,6 +90,7 @@ const STATUS_COLOR: Record<InventoryItem['status'], string> = {
 }
 
 export default function AiInventoryPage() {
+  const confirmDialog = useConfirm()
   const gate = usePageGuard('superadmin')
 
   const [tab, setTab] = useState<Tab>('inventory')
@@ -206,7 +208,7 @@ export default function AiInventoryPage() {
   }
 
   async function handleDeleteItem(item: InventoryItem) {
-    if (!confirm(`Remove override / custom component "${item.name}"?`)) return
+    if (!await confirmDialog({ title: 'Confirmation', description: `Remove override / custom component "${item.name}"?` })) return
     setTogglingId(item.id)
     try {
       const res = await csrfFetch(`/api/ai-inventory/${encodeURIComponent(item.id)}`, {

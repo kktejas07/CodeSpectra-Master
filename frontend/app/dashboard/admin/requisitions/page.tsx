@@ -1,4 +1,5 @@
 'use client'
+import { useToast } from '@/lib/toast-context'
 
 import { useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -62,6 +63,7 @@ const INITIAL_REQS: RequisitionItem[] = [
 ]
 
 export default function RequisitionsPage() {
+  const addToast = useToast()
   const gate = usePageGuard('tenant_admin')
   const [reqs, setReqs] = useState<RequisitionItem[]>(INITIAL_REQS)
   const [searchTerm, setSearchTerm] = useState('')
@@ -84,7 +86,7 @@ export default function RequisitionsPage() {
     setSyncingReqId(id)
     setTimeout(() => {
       setSyncingReqId(null)
-      alert(`Workday Candidate Stage Sync completed for Requisition ${id}!`)
+      addToast({ type: 'info', title: 'Notification', message: `Workday Candidate Stage Sync completed for Requisition ${id}!` })
     }, 1200)
   }
 
@@ -110,7 +112,7 @@ export default function RequisitionsPage() {
 
       setGeneratedLink(json.invite_url || `http://localhost:3000/assessment/invite/demo-${Date.now()}`)
     } catch (err: unknown) {
-      alert(err instanceof Error ? err.message : 'Error creating candidate invite link')
+      addToast({ type: 'info', title: 'Notification', message: err instanceof Error ? err.message : 'Error creating candidate invite link' })
     } finally {
       setSubmittingInvite(false)
     }
@@ -311,7 +313,7 @@ export default function RequisitionsPage() {
                       type="button"
                       onClick={async () => {
                         await navigator.clipboard.writeText(generatedLink)
-                        alert('Link copied to clipboard!')
+                        addToast({ type: 'info', title: 'Notification', message: 'Link copied to clipboard!' })
                       }}
                       className="rounded bg-primary px-2.5 py-1 text-xs font-bold text-primary-foreground"
                     >

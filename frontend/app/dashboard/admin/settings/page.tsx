@@ -647,7 +647,7 @@ function SystemSettingsInner() {
                 onChange={(e) => {
                   const file = e.target.files?.[0]
                   if (!file) return
-                  if (file.size > 2 * 1024 * 1024) { alert('Image must be under 2MB'); return }
+                  if (file.size > 2 * 1024 * 1024) { addToast({ type: 'info', title: 'Notification', message: 'Image must be under 2MB' }); return }
                   const reader = new FileReader()
                   reader.onload = (ev) => setForm((f) => ({ ...f, logo_url: ev.target?.result as string || '' }))
                   reader.readAsDataURL(file)
@@ -670,7 +670,7 @@ function SystemSettingsInner() {
                 onChange={(e) => {
                   const file = e.target.files?.[0]
                   if (!file) return
-                  if (file.size > 1 * 1024 * 1024) { alert('Favicon must be under 1MB'); return }
+                  if (file.size > 1 * 1024 * 1024) { addToast({ type: 'info', title: 'Notification', message: 'Favicon must be under 1MB' }); return }
                   const reader = new FileReader()
                   reader.onload = (ev) => setForm((f) => ({ ...f, favicon_url: ev.target?.result as string || '' }))
                   reader.readAsDataURL(file)

@@ -1,4 +1,5 @@
 'use client'
+import { useToast } from '@/lib/toast-context'
 
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
@@ -31,6 +32,7 @@ interface QualityGatesManagerProps {
 }
 
 export function QualityGatesManager({ gates = [], onSave }: QualityGatesManagerProps) {
+  const addToast = useToast()
   const [allGates, setAllGates] = useState<QualityGate[]>(gates)
   const [isCreating, setIsCreating] = useState(false)
   const [editingId, setEditingId] = useState<string | null>(null)
@@ -66,7 +68,7 @@ export function QualityGatesManager({ gates = [], onSave }: QualityGatesManagerP
 
   const handleSave = async () => {
     if (!formData.name) {
-      alert('Gate name is required')
+      addToast({ type: 'info', title: 'Notification', message: 'Gate name is required' })
       return
     }
 

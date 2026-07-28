@@ -1,4 +1,5 @@
 'use client'
+import { useToast } from '@/lib/toast-context'
 
 import { use, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -102,13 +103,14 @@ function CountdownTimer({ targetDate, eventEnded }: { targetDate: string; eventE
 }
 
 function LockedState({ hackathon }: { hackathon: Hackathon }) {
+  const addToast = useToast()
   const [notifyClicked, setNotifyClicked] = useState(false)
   const eventEnded = new Date(hackathon.ends_at).getTime() < Date.now()
 
   const handleNotify = () => {
     setNotifyClicked(true)
     setTimeout(() => {
-      alert("You'll be notified when results are released")
+      addToast({ type: 'info', title: 'Notification', message: "You'll be notified when results are released" })
     }, 100)
   }
 
@@ -305,6 +307,7 @@ function MyTeamResults({
 }
 
 export default function HackathonResultsPage({ params }: { params: Promise<{ slug: string }> }) {
+  const addToast = useToast()
   const { slug } = use(params)
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()

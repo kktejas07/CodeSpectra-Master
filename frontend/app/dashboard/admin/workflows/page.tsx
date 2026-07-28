@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 /**
  * Workflow automation — Phase 8.
@@ -70,6 +71,7 @@ interface RunResult {
 type Tab = 'visual' | 'json'
 
 export default function WorkflowsPage() {
+  const confirmDialog = useConfirm()
   const gate = usePageGuard('superadmin')
 
   const [items, setItems] = useState<WorkflowSummary[]>([])
@@ -191,7 +193,7 @@ export default function WorkflowsPage() {
 
   async function remove() {
     if (!current) return
-    if (!confirm(`Delete workflow "${current.name}"?`)) return
+    if (!await confirmDialog({ title: 'Confirmation', description: `Delete workflow "${current.name}"?` })) return
     setBusy(true)
     try {
       await csrfFetch(`/api/workflows/${current.id}`, { method: 'DELETE' })

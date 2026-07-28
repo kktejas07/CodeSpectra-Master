@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
@@ -59,6 +60,7 @@ const emptyForm: JobForm = {
 }
 
 export default function AdminJobsPage() {
+  const confirmDialog = useConfirm()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const [jobs, setJobs] = useState<JobPosting[]>([])
@@ -159,7 +161,7 @@ export default function AdminJobsPage() {
   }
 
   const handleDelete = async (id: string) => {
-    if (!confirm('Delete this job posting? This cannot be undone.')) return
+    if (!await confirmDialog({ title: 'Confirmation', description: 'Delete this job posting? This cannot be undone.' })) return
     setDeletingId(id)
     try {
       const res = await fetch(`/api/jobs/${id}`, { method: 'DELETE', credentials: 'include' })

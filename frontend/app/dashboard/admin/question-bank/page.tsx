@@ -1,4 +1,5 @@
 'use client'
+import { useToast } from '@/lib/toast-context'
 
 import { useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -94,6 +95,7 @@ const INITIAL_ITEMS: QuestionItem[] = [
 ]
 
 export default function QuestionBankPage() {
+  const addToast = useToast()
   const gate = usePageGuard('superadmin')
   const [items, setItems] = useState<QuestionItem[]>(INITIAL_ITEMS)
   const [searchTerm, setSearchTerm] = useState('')
@@ -258,7 +260,7 @@ export default function QuestionBankPage() {
                 <td className="py-3 px-4 text-right">
                   <div className="flex items-center justify-end gap-2">
                     <button
-                      onClick={() => alert(`Editing item ${item.id}`)}
+                      onClick={() => addToast({ type: 'info', title: 'Notification', message: `Editing item ${item.id}` })}
                       className="rounded p-1 text-muted-foreground hover:bg-accent hover:text-foreground"
                     >
                       <Edit className="h-4 w-4" />

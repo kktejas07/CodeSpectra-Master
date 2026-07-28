@@ -1,4 +1,5 @@
 'use client'
+import { useConfirm } from '@/lib/confirm-context'
 
 import { useCallback, useEffect, useRef, useState, type ChangeEvent } from 'react'
 import { Card } from '@/components/ui/card'
@@ -43,6 +44,7 @@ function makeEmptyForm() {
 }
 
 export function QualityGatesLivePanel() {
+  const confirmDialog = useConfirm()
   const [gates, setGates] = useState<GateDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -251,7 +253,7 @@ export function QualityGatesLivePanel() {
   }
 
   const deleteGate = async (id: string) => {
-    if (!window.confirm('Delete this quality gate?')) return
+    if (!await confirmDialog({ title: 'Confirmation', description: 'Delete this quality gate?' })) return
     setDeletingId(id)
     setError(null)
     try {

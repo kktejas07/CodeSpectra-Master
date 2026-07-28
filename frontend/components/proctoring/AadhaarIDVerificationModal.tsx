@@ -1,4 +1,5 @@
 'use client'
+import { useToast } from '@/lib/toast-context'
 
 import { useRef, useState } from 'react'
 import {
@@ -24,6 +25,7 @@ interface AadhaarIDVerificationModalProps {
 }
 
 export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVerificationModalProps) {
+  const addToast = useToast()
   const [step, setStep] = useState<'upload_id' | 'face_match' | 'liveness_video' | 'complete'>('upload_id')
   const [idFile, setIdFile] = useState<File | null>(null)
   const [idPhotoSnippet, setIdPhotoSnippet] = useState<string | null>(null)
@@ -69,7 +71,7 @@ export function AadhaarIDVerificationModal({ onVerified, onCancel }: AadhaarIDVe
         videoRef.current.srcObject = stream
       }
     } catch (e) {
-      alert('Unable to access camera for live face match.')
+      addToast({ type: 'info', title: 'Notification', message: 'Unable to access camera for live face match.' })
     }
   }
 
