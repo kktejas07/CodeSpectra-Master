@@ -28,21 +28,11 @@ export interface AddUserDialogProps {
   }) => Promise<void>
 }
 
-const AVAILABLE_PIPELINES = [
-  { id: 'identity', title: 'Identity & Proctoring Verification', url: '/dashboard/identity-verify', type: 'identity' },
-  { id: 'general', title: 'General AI Assessment', url: '/assessment', type: 'general' },
-  { id: 'coding', title: 'Coding Challenge IDE', url: '/dashboard/problems', type: 'coding' },
-  { id: 'codeathon', title: 'Codeathon Challenge Event', url: '/dashboard/codeathons', type: 'codeathon' },
-  { id: 'hackathon', title: 'Hackathon Event', url: '/dashboard/hackathons', type: 'hackathon' },
-  { id: 'cad', title: 'CAD Technical Assessment', url: '/assessment/demo/cad', type: 'cad' },
-]
-
 export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogProps) {
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('user')
-  const [selectedPipelines, setSelectedPipelines] = useState<string[]>(['/assessment'])
   const [loading, setLoading] = useState(false)
 
   const reset = () => {
@@ -50,44 +40,19 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
     setFullName('')
     setPassword('')
     setRole('user')
-    setSelectedPipelines(['/assessment'])
     setLoading(false)
-  }
-
-  const handleClose = (next: boolean) => {
-    if (!next) reset()
-    onOpenChange(next)
-  }
-
-  const togglePipeline = (url: string) => {
-    setSelectedPipelines((prev) =>
-      prev.includes(url) ? (prev.length > 1 ? prev.filter((p) => p !== url) : prev) : [...prev, url]
-    )
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
     try {
-      const assigned_assessments = selectedPipelines.map((url) => {
-        const item = AVAILABLE_PIPELINES.find((p) => p.url === url)
-        return {
-          id: crypto.randomUUID(),
-          title: item?.title || 'Assessment Step',
-          target_url: url,
-          type: (item?.type || 'general') as any,
-allowed_languages: role === 'user' ? ['python','javascript','typescript','cpp','java','go','rust'] : undefined,
-          status: 'pending' as const,
-        }
-      })
-
       await onSubmit({
         email: email.trim(),
         full_name: fullName.trim() || email.trim().split('@')[0] || 'User',
         password: password.trim(),
         role,
-        target_url: selectedPipelines[0] || '/assessment',
-        assigned_assessments,
+        target_url: '/dashboard',
         allowed_languages: role === 'user' ? ['python','javascript','typescript','cpp','java','go','rust'] : undefined,
       })
       reset()
@@ -100,13 +65,13 @@ allowed_languages: role === 'user' ? ['python','javascript','typescript','cpp','
   }
 
   return (
-    <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+    <Dialog open={open} onOpenChange={(v) => { if (!v) reset(); onOpenChange(v) }}>
+      <DialogContent className="sm:max-w-md">
         <form onSubmit={handleSubmit}>
           <DialogHeader>
-            <DialogTitle>Provision Candidate / User</DialogTitle>
+            <DialogTitle>Add User</DialogTitle>
             <DialogDescription>
-              Creates a candidate account and generates a <strong>multi-assessment invite link</strong> supporting Codeathons, Hackathons, CAD tests, and language restrictions.
+              Creates a new user account with full platform access. Every user can freely join events, interviews, codeathons, and use all features.
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 text-xs">
@@ -119,7 +84,7 @@ allowed_languages: role === 'user' ? ['python','javascript','typescript','cpp','
                 required
                 value={email}
                 onChange={(e) => setEmail(e.target.value)}
-                placeholder="candidate@company.com"
+                placeholder="user@company.com"
               />
             </div>
             <div className="grid gap-2">
@@ -151,52 +116,18 @@ allowed_languages: role === 'user' ? ['python','javascript','typescript','cpp','
                 onChange={(e) => setRole(e.target.value as UserRole)}
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
-                <option value="user">Candidate / User</option>
+                <option value="user">User</option>
                 <option value="tenant_admin">Organization admin</option>
                 <option value="superadmin">Platform admin</option>
               </select>
             </div>
-
-            {role === 'user' && (
-              <>
-
-            <div className="grid gap-2">
-              <Label className="font-semibold text-foreground">Assigned Assessment Pipeline (Select Multiple)</Label>
-              <div className="grid grid-cols-1 gap-2 rounded-lg border border-border bg-muted/20 p-3">
-                {AVAILABLE_PIPELINES.map((p) => {
-                  const active = selectedPipelines.includes(p.url)
-                  return (
-                    <label
-                      key={p.url}
-                      className={`flex items-center gap-2.5 p-2 rounded-md border text-xs cursor-pointer transition-colors ${
-                        active
-                          ? 'border-primary bg-primary/10 font-medium text-foreground'
-                          : 'border-border bg-card text-muted-foreground hover:bg-accent/50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        onChange={() => togglePipeline(p.url)}
-                        className="rounded text-primary focus:ring-primary h-3.5 w-3.5"
-                      />
-                      <span>{p.title}</span>
-                      <span className="ml-auto font-mono text-[10px] opacity-70">{p.url}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
-
-              </>
-            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-0">
-            <Button type="button" variant="outline" onClick={() => handleClose(false)}>
+            <Button type="button" variant="outline" onClick={() => { reset(); onOpenChange(false) }}>
               Cancel
             </Button>
-            <Button type="submit" disabled={loading}>
-              {loading ? 'Generating Link…' : 'Generate Multi-Assessment Candidate Link'}
+            <Button type="submit" disabled={loading || !email.trim()}>
+              {loading ? 'Creating…' : 'Add User'}
             </Button>
           </DialogFooter>
         </form>
