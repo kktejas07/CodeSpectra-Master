@@ -111,6 +111,7 @@ export default function DashboardLayout({
   const [userPlan, setUserPlan] = useState<string>('free')
   const [deniedRoutes, setDeniedRoutes] = useState<Set<string>>(new Set())
   const [allowedRoutes, setAllowedRoutes] = useState<Set<string>>(new Set())
+  const [permsLoaded, setPermsLoaded] = useState(false)
   const [lockedPages, setLockedPages] = useState<string[]>([])
 
   const { user: fbUser, signOut } = useAuth()
@@ -145,13 +146,14 @@ export default function DashboardLayout({
     fetch('/api/user/my-permissions', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (cancelled || !data) return
-        if (data.readable) {
+        if (cancelled) return
+        if (data?.readable?.length) {
           setAllowedRoutes(new Set(data.readable))
         }
-        if (data.denied) setDeniedRoutes(new Set(data.denied))
+        if (data?.denied?.length) setDeniedRoutes(new Set(data.denied))
+        setPermsLoaded(true)
       })
-      .catch(() => {})
+      .catch(() => { if (!cancelled) setPermsLoaded(true) })
     return () => { cancelled = true }
   }, [userRole])
 
@@ -391,8 +393,8 @@ export default function DashboardLayout({
       })
     }
 
-    // Second: DB permission filter — further restrict if admin assigned permissions
-    if (allowedRoutes.size > 0) {
+    // Second: DB permission filter — only apply when permissions loaded
+    if (permsLoaded && allowedRoutes.size > 0) {
       leaves = leaves.filter(leaf => {
         const checkRoute = leaf.route
         if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) return true
@@ -407,7 +409,7 @@ export default function DashboardLayout({
     }
 
     return addSectionHeaders(leaves)
-  }, [userProfile?.role, userPlan, allowedRoutes, deniedRoutes, effectiveLockedPages])
+  }, [userProfile?.role, userPlan, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
