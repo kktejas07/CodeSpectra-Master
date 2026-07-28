@@ -263,9 +263,6 @@ export default function DashboardLayout({
       [p.resumes]: FileText,
       [p.codeathons]: Trophy,
       [p.exams]: FileText,
-      '/dashboard/admin/settings/mobile': Settings,
-      '/dashboard/admin/settings/llm': Sparkles,
-      '/dashboard/admin/settings/cloudflare': Globe2,
       [p.workflows]: Settings,
       [p.questionGenerator]: Bot,
       [DASHBOARD_ROUTES.organization.team]: Users,
@@ -312,8 +309,6 @@ export default function DashboardLayout({
     // Non-canonical hrefs for sidebar links that differ from the canonical route.
     // ponytail: keeps ICON_MAP clean — only routes that need a display override.
     const HREF_OVERRIDES: Record<string, string> = {
-      '/dashboard/admin/settings/llm': '/dashboard/admin/settings?section=llm',
-      '/dashboard/admin/settings/cloudflare': '/dashboard/admin/settings?section=cloudflare',
       '/dashboard/scanner': '/dashboard/scanner?mode=manual',
       '/dashboard/learning': LEARNING_HUB_DEFAULT,
     }
