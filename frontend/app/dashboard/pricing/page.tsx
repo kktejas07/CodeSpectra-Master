@@ -26,6 +26,7 @@ const PLAN_COLORS: Record<string, string> = {
 
 export default function PricingPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const addToast = useToast()
   const [plans, setPlans] = useState<PlanDef[]>([])
@@ -37,8 +38,6 @@ export default function PricingPage() {
   const [discountInfo, setDiscountInfo] = useState<{ valid: boolean, type: string, value: number, error?: string } | null>(null)
   const [checkingCoupon, setCheckingCoupon] = useState(false)
   const [checkoutLoading, setCheckoutLoading] = useState(false)
-
-  if (!gate.ready) return null
 
   useEffect(() => {
     Promise.all([

@@ -18,10 +18,10 @@ function getCompleted(): Set<number> {
 
 export default function HundredDaysPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [completed, setCompleted] = useState<Set<number>>(getCompleted)
   const [filter, setFilter] = useState<'all' | 'available' | 'completed' | 'locked'>('all')
-  if (!gate.ready) return null
 
   const stats = useMemo(() => {
     const total = HUNDRED_DAYS.length

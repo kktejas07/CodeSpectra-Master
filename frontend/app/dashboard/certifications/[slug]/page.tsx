@@ -45,6 +45,7 @@ interface SubmitResponse {
  */
 export default function CertificationAttemptPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const params = useParams() as { slug: string }
   const router = useRouter()
@@ -57,7 +58,6 @@ export default function CertificationAttemptPage() {
 
   useEffect(() => {
     let active = true
-  if (!gate.ready) return null
     async function start() {
       try {
         const res = await csrfFetch(`/api/certifications/${params.slug}/start`, {

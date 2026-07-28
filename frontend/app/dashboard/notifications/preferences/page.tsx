@@ -35,6 +35,7 @@ function ChannelIcon({ type }: { type: string }) {
 
 export default function NotificationPreferencesPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const toast = useToast()
   const [preferences, setPreferences] = useState<NotificationPreference[]>([])
@@ -44,7 +45,6 @@ export default function NotificationPreferencesPage() {
   const [savingQuiet, setSavingQuiet] = useState(false)
   const [dailyDigest, setDailyDigest] = useState(true)
   const [weeklyReport, setWeeklyReport] = useState(true)
-  if (!gate.ready) return null
 
   const fetchPreferences = useCallback(async () => {
     try {

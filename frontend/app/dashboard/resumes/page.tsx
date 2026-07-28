@@ -24,6 +24,7 @@ interface Resume {
 
 export default function ResumesPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [resumes, setResumes] = useState<Resume[]>([
     {
@@ -48,8 +49,6 @@ export default function ResumesPage() {
       analysisStatus: 'completed',
     },
   ])
-
-  if (!gate.ready) return null
 
   const handleFileUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]

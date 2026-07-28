@@ -18,6 +18,7 @@ interface InterviewConfig {
 
 export default function InterviewSetupPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const router = useRouter()
   const [stage, setStage] = useState<InterviewStage>('role-selection')
@@ -27,8 +28,6 @@ export default function InterviewSetupPage() {
     role: '',
     interviewType: 'technical',
   })
-
-  if (!gate.ready) return null
 
   const handleRoleSelect = (roleId: string) => {
     setSelectedRole(roleId)

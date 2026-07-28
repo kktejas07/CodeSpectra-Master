@@ -28,6 +28,7 @@ const difficultyColors: Record<string, string> = {
 
 export default function ArenaPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [challenges, setChallenges] = useState<ArenaChallenge[]>([])
   const [loading, setLoading] = useState(true)
@@ -36,7 +37,6 @@ export default function ArenaPage() {
 
   useEffect(() => {
     fetch('/api/arena/challenges')
-  if (!gate.ready) return null
       .then(r => r.json())
       .then(json => { if (json.data) setChallenges(json.data) })
       .catch(() => {})

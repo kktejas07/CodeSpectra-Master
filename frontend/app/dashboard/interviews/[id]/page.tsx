@@ -28,6 +28,7 @@ interface Interview {
 
 export default function InterviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const { id } = use(params)
   const router = useRouter()
@@ -36,7 +37,6 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   const [error, setError] = useState<string | null>(null)
   const [currentAnswer, setCurrentAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
-  if (!gate.ready) return null
 
   const load = useCallback(async () => {
     try {

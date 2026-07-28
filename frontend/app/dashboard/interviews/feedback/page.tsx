@@ -11,13 +11,13 @@ import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function InterviewFeedbackPage() {
   const gate = usePageGuard('tenant_admin')
+  if (!gate.ready) return null
 
   const { lockedFeatures } = useLockedFeatures()
   const chatLocked = lockedFeatures.includes('interviews/feedback:chat')
   const analysisLocked = lockedFeatures.includes('interviews/feedback:analysis')
   const [audioTime, setAudioTime] = useState('00:00')
   const [playSpeed, setPlaySpeed] = useState('1x')
-  if (!gate.ready) return null
 
   const chatTranscript = [
     {

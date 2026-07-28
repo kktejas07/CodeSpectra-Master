@@ -66,6 +66,7 @@ function getCompletedProblems(dayNum: number): Set<string> {
 
 export default function DayPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const params = useParams()
   const router = useRouter()
@@ -86,7 +87,6 @@ export default function DayPage() {
   const [bottomTab, setBottomTab] = useState<'testcases' | 'results'>('testcases')
   const [completedProblems, setCompletedProblems] = useState<Set<string>>(() => getCompletedProblems(day))
   const codeRef = useRef(code)
-  if (!gate.ready) return null
   codeRef.current = code
 
   const allDone = dayData ? dayData.problems.length === completedProblems.size : false

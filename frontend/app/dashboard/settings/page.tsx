@@ -55,6 +55,7 @@ function readLsBool(key: string, fallback: boolean) {
 
 export default function SettingsPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const addToast = useToast()
   const { theme: nextTheme, setTheme } = useTheme()
@@ -74,7 +75,6 @@ export default function SettingsPage() {
 
   useEffect(() => {
     try {
-  if (!gate.ready) return null
       const lang = window.localStorage.getItem(LS.language)
       if (lang) setLanguage(lang)
       setEmailNotifications(readLsBool(LS.emailNotif, true))

@@ -25,13 +25,12 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 
 export default function AchievementsPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
   const { lockedFeatures } = useLockedFeatures()
   const badgesLocked = lockedFeatures.includes('achievements:badges')
-
-  if (!gate.ready) return null
 
   useEffect(() => {
     fetch('/api/achievements')

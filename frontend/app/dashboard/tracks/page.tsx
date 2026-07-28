@@ -32,12 +32,11 @@ interface TrackDef {
 
 export default function TracksPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [tracks, setTracks] = useState<TrackDef[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
-
-  if (!gate.ready) return null
 
   useEffect(() => {
     Promise.all([

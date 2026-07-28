@@ -24,6 +24,7 @@ interface Exam {
 
 export default function ExamsPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])
@@ -32,7 +33,6 @@ export default function ExamsPage() {
 
   useEffect(() => {
     fetch('/api/exams')
-  if (!gate.ready) return null
       .then(r => r.json())
       .then(json => { if (json.data) setExams(json.data) })
       .catch(() => {})

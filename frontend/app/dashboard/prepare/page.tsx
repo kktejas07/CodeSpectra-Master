@@ -26,13 +26,12 @@ interface Topic {
 
 export default function PreparePage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const addToast = useToast()
   const [kits, setKits] = useState<PrepKit[]>([])
   const [topics, setTopics] = useState<Topic[]>([])
   const [loading, setLoading] = useState(true)
-
-  if (!gate.ready) return null
 
   useEffect(() => {
     Promise.all([

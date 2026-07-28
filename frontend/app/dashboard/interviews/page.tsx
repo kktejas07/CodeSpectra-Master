@@ -17,6 +17,7 @@ interface Interview {
 
 export default function InterviewsPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
@@ -32,7 +33,6 @@ export default function InterviewsPage() {
   }, [])
 
   useEffect(() => { void load() }, [load])
-  if (!gate.ready) return null
 
   const statusColor: Record<string, string> = {
     scheduled: 'bg-blue-500/10 text-blue-500',

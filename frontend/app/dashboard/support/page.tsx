@@ -10,6 +10,7 @@ type Ticket = { id: string; subject: string; message: string; category: string; 
 
 export default function SupportPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
@@ -23,7 +24,6 @@ export default function SupportPage() {
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
   const [category, setCategory] = useState('general')
-  if (!gate.ready) return null
 
   const fetchTickets = useCallback(async () => {
     try {

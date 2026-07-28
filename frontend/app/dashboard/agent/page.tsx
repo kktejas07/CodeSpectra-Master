@@ -49,6 +49,7 @@ def fib(n):
  */
 export default function AgentPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [language, setLanguage] = useState<string>('python')
   const [code, setCode] = useState<string>(STARTER_CODE)
@@ -60,8 +61,6 @@ export default function AgentPage() {
   const { lockedFeatures } = useLockedFeatures()
   const logLocked = lockedFeatures.includes('agent:log')
   const logRef = useRef<HTMLDivElement>(null)
-
-  if (!gate.ready) return null
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight

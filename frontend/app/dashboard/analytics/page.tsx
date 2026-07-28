@@ -23,13 +23,13 @@ interface PerformanceData {
 
 export default function AnalyticsPage() {
   const gate = usePageGuard('user')
+  if (!gate.ready) return null
 
   const [skills, setSkills] = useState<SkillData[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     fetch('/api/analytics/skills')
-  if (!gate.ready) return null
       .then(r => r.json())
       .then(json => { if (json.data) setSkills(json.data) })
       .catch(() => {})

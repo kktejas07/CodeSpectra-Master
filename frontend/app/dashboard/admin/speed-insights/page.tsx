@@ -47,6 +47,7 @@ export default function SpeedInsightsPage() {
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
 
   const load = useCallback(async () => {
+    if (!gate.ready) return
     setLoading(true)
     try {
       const q = new URLSearchParams({ range, route: routeScope })
@@ -61,7 +62,6 @@ export default function SpeedInsightsPage() {
 
   useEffect(() => {
     const interval = setInterval(() => { void load() }, 30_000)
-    if (!gate.ready) return
     return () => clearInterval(interval)
   }, [load])
 
