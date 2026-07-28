@@ -49,7 +49,6 @@ def fib(n):
  */
 export default function AgentPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [language, setLanguage] = useState<string>('python')
   const [code, setCode] = useState<string>(STARTER_CODE)
@@ -65,6 +64,8 @@ export default function AgentPage() {
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [turns])
+
+  if (!gate.ready) return null
 
   async function runAgent() {
     const goal = input.trim()
@@ -100,8 +101,6 @@ export default function AgentPage() {
       setBusy(false)
     }
   }
-
-  if (!gate.ready) return null
 
   return (
     <div className="h-screen flex flex-col overflow-hidden">

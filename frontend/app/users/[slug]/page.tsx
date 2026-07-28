@@ -56,6 +56,30 @@ export default function UserProfilePage({
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
 
+  useEffect(() => {
+    let cancelled = false
+    async function run() {
+      setLoading(true)
+      setError(null)
+      try {
+        const res = await fetch(`/api/users/${encodeURIComponent(slug)}`, {
+          cache: 'no-store',
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'Failed to load profile')
+        if (!cancelled) setData(json as ProfileResponse)
+      } catch (e) {
+        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
+      } finally {
+        if (!cancelled) setLoading(false)
+      }
+    }
+    void run()
+    return () => {
+      cancelled = true
+    }
+  }, [slug])
+
   if (!gate.ready) {
     return (
       <div className="flex min-h-screen items-center justify-center text-muted-foreground" data-testid="user-profile-loading">
@@ -87,30 +111,6 @@ export default function UserProfilePage({
       </div>
     )
   }
-
-  useEffect(() => {
-    let cancelled = false
-    async function run() {
-      setLoading(true)
-      setError(null)
-      try {
-        const res = await fetch(`/api/users/${encodeURIComponent(slug)}`, {
-          cache: 'no-store',
-        })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'Failed to load profile')
-        if (!cancelled) setData(json as ProfileResponse)
-      } catch (e) {
-        if (!cancelled) setError(e instanceof Error ? e.message : String(e))
-      } finally {
-        if (!cancelled) setLoading(false)
-      }
-    }
-    void run()
-    return () => {
-      cancelled = true
-    }
-  }, [slug])
 
   if (loading) {
     return (
