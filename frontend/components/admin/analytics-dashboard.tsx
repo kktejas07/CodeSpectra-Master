@@ -82,7 +82,7 @@ export function AnalyticsDashboard({
               <XAxis dataKey="date" stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)' }} />
               <YAxis stroke="var(--muted-foreground)" allowDecimals={false} tick={{ fill: 'var(--muted-foreground)' }} />
               <Tooltip
-                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
+                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }} labelStyle={{ color: 'var(--foreground)' }}
               />
               <Line type="monotone" dataKey="users" stroke="var(--primary)" strokeWidth={2} />
             </LineChart>
@@ -117,7 +117,7 @@ export function AnalyticsDashboard({
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
+                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }} labelStyle={{ color: 'var(--foreground)' }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -159,7 +159,7 @@ export function AnalyticsDashboard({
               <XAxis dataKey="date" stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)' }} />
               <YAxis stroke="var(--muted-foreground)" allowDecimals={false} tick={{ fill: 'var(--muted-foreground)' }} />
               <Tooltip
-                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)' }}
+                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }} labelStyle={{ color: 'var(--foreground)' }}
               />
               <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
               <Bar dataKey="challenges" name="Submissions" fill="#3b82f6" />

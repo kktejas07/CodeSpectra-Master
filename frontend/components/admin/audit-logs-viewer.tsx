@@ -1,8 +1,9 @@
 'use client'
 
+import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Clock, User, CheckCircle } from 'lucide-react'
+import { Clock, User, Loader2 } from 'lucide-react'
 
 interface AuditLog {
   id: string
@@ -18,55 +19,25 @@ interface AuditLogsViewerProps {
   logs?: AuditLog[]
 }
 
-export function AuditLogsViewer({
-  logs = [
-    {
-      id: '1',
-      action: 'USER_CREATED',
-      resource: 'users',
-      user: 'superadmin@example.com',
-      timestamp: '2 minutes ago',
-      status: 'success',
-      details: 'Created new user: john@example.com',
-    },
-    {
-      id: '2',
-      action: 'ROLE_ASSIGNED',
-      resource: 'roles',
-      user: 'admin@example.com',
-      timestamp: '15 minutes ago',
-      status: 'success',
-      details: 'Assigned admin role to jane@example.com',
-    },
-    {
-      id: '3',
-      action: 'SYSTEM_SETTINGS_UPDATED',
-      resource: 'settings',
-      user: 'superadmin@example.com',
-      timestamp: '1 hour ago',
-      status: 'success',
-      details: 'Updated security settings',
-    },
-    {
-      id: '4',
-      action: 'USER_DELETED',
-      resource: 'users',
-      user: 'superadmin@example.com',
-      timestamp: '3 hours ago',
-      status: 'success',
-      details: 'Deleted inactive user account',
-    },
-    {
-      id: '5',
-      action: 'UNAUTHORIZED_ACCESS',
-      resource: 'admin',
-      user: 'user@example.com',
-      timestamp: '5 hours ago',
-      status: 'failed',
-      details: 'Attempted to access admin panel without permission',
-    },
-  ],
-}: AuditLogsViewerProps) {
+export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
+  const [logs, setLogs] = useState<AuditLog[]>([])
+  const [loading, setLoading] = useState(!propLogs)
+
+  useEffect(() => {
+    if (propLogs) {
+      setLogs(propLogs)
+      setLoading(false)
+      return
+    }
+    let cancelled = false
+    fetch('/api/admin/audit-logs', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : { data: [] })
+      .then(d => { if (!cancelled) setLogs(d.data || d.logs || []) })
+      .catch(() => { if (!cancelled) setLogs([]) })
+      .finally(() => { if (!cancelled) setLoading(false) })
+    return () => { cancelled = true }
+  }, [propLogs])
+
   const getStatusColor = (status: string) => {
     switch (status) {
       case 'success':
@@ -91,54 +62,60 @@ export function AuditLogsViewer({
         Audit Logs
       </h2>
 
-      <Card className="overflow-hidden">
-        <div className="space-y-0">
-          {logs.length === 0 ? (
-            <div className="p-8 text-center text-muted-foreground">
-              No audit logs found
-            </div>
-          ) : (
-            logs.map((log, index) => (
-              <div
-                key={log.id}
-                className={`p-4 border-b border-border/50 hover:bg-muted/50 transition-colors ${
-                  index === logs.length - 1 ? 'border-b-0' : ''
-                }`}
-              >
-                <div className="flex items-start justify-between gap-4">
-                  <div className="flex-1">
-                    <div className="flex items-center gap-2 mb-2">
-                      <span className="font-semibold text-foreground">
-                        {getActionLabel(log.action)}
-                      </span>
-                      <Badge className={getStatusColor(log.status)}>
-                        {log.status}
-                      </Badge>
-                      <span className="text-xs text-muted-foreground ml-auto">
-                        {log.timestamp}
-                      </span>
-                    </div>
-                    {log.details && (
-                      <p className="text-sm text-muted-foreground mb-2">{log.details}</p>
-                    )}
-                    <div className="flex gap-4 text-xs text-muted-foreground">
-                      <span className="flex items-center gap-1">
-                        <User className="w-3 h-3" />
-                        {log.user}
-                      </span>
-                      <span>Resource: {log.resource}</span>
+      {loading ? (
+        <Card className="p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
+          <Loader2 className="h-4 w-4 animate-spin" /> Loading audit logs...
+        </Card>
+      ) : (
+        <Card className="overflow-hidden">
+          <div className="space-y-0">
+            {logs.length === 0 ? (
+              <div className="p-8 text-center text-muted-foreground">
+                No audit logs yet
+              </div>
+            ) : (
+              logs.slice(0, 10).map((log, index) => (
+                <div
+                  key={log.id || index}
+                  className={`p-4 border-b border-border/50 hover:bg-muted/50 transition-colors ${
+                    index === logs.length - 1 ? 'border-b-0' : ''
+                  }`}
+                >
+                  <div className="flex items-start justify-between gap-4">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 mb-2">
+                        <span className="font-semibold text-foreground">
+                          {getActionLabel(log.action)}
+                        </span>
+                        <Badge className={getStatusColor(log.status)}>
+                          {log.status}
+                        </Badge>
+                        <span className="text-xs text-muted-foreground ml-auto">
+                          {log.timestamp}
+                        </span>
+                      </div>
+                      {log.details && (
+                        <p className="text-sm text-muted-foreground mb-2">{log.details}</p>
+                      )}
+                      <div className="flex gap-4 text-xs text-muted-foreground">
+                        <span className="flex items-center gap-1">
+                          <User className="w-3 h-3" />
+                          {log.user}
+                        </span>
+                        <span>Resource: {log.resource}</span>
+                      </div>
                     </div>
                   </div>
                 </div>
-              </div>
-            ))
-          )}
-        </div>
-      </Card>
+              ))
+            )}
+          </div>
+        </Card>
+      )}
 
       {logs.length > 0 && (
         <div className="text-sm text-muted-foreground">
-          Showing {logs.length} most recent logs
+          Showing {Math.min(logs.length, 10)} of {logs.length} logs
         </div>
       )}
     </div>
