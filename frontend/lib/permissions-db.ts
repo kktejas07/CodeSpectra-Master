@@ -46,6 +46,7 @@ export interface RoleDefinition {
 import {
   ADMIN_ONLY_ROUTES,
   TENANT_ADMIN_ROUTES,
+  JUDGE_ROUTES,
   ALL_USER_ROUTES,
   ROUTE_LABELS,
 } from '@/lib/page-permissions'
