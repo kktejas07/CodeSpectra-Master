@@ -37,15 +37,12 @@ const AVAILABLE_PIPELINES = [
   { id: 'cad', title: 'CAD Technical Assessment', url: '/assessment/demo/cad', type: 'cad' },
 ]
 
-const ALL_LANGUAGES = ['python', 'javascript', 'typescript', 'cpp', 'java', 'go', 'rust']
-
 export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogProps) {
   const [email, setEmail] = useState('')
   const [fullName, setFullName] = useState('')
   const [password, setPassword] = useState('')
   const [role, setRole] = useState<UserRole>('user')
   const [selectedPipelines, setSelectedPipelines] = useState<string[]>(['/assessment'])
-  const [selectedLanguages, setSelectedLanguages] = useState<string[]>([...ALL_LANGUAGES])
   const [loading, setLoading] = useState(false)
 
   const reset = () => {
@@ -54,7 +51,6 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
     setPassword('')
     setRole('user')
     setSelectedPipelines(['/assessment'])
-    setSelectedLanguages([...ALL_LANGUAGES])
     setLoading(false)
   }
 
@@ -69,12 +65,6 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
     )
   }
 
-  const toggleLanguage = (lang: string) => {
-    setSelectedLanguages((prev) =>
-      prev.includes(lang) ? prev.filter((l) => l !== lang) : [...prev, lang]
-    )
-  }
-
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setLoading(true)
@@ -86,7 +76,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
           title: item?.title || 'Assessment Step',
           target_url: url,
           type: (item?.type || 'general') as any,
-          allowed_languages: selectedLanguages,
+allowed_languages: role === 'user' ? ['python','javascript','typescript','cpp','java','go','rust'] : undefined,
           status: 'pending' as const,
         }
       })
@@ -98,7 +88,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
         role,
         target_url: selectedPipelines[0] || '/assessment',
         assigned_assessments,
-        allowed_languages: selectedLanguages,
+        allowed_languages: role === 'user' ? ['python','javascript','typescript','cpp','java','go','rust'] : undefined,
       })
       reset()
       onOpenChange(false)
@@ -198,32 +188,6 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
               </div>
             </div>
 
-            <div className="grid gap-2">
-              <Label className="font-semibold text-foreground">Allowed Code Assessment Languages</Label>
-              <div className="flex flex-wrap gap-2 rounded-lg border border-border bg-muted/20 p-3">
-                {ALL_LANGUAGES.map((lang) => {
-                  const active = selectedLanguages.includes(lang)
-                  return (
-                    <label
-                      key={lang}
-                      className={`flex items-center gap-1.5 px-2.5 py-1 rounded-full border text-xs cursor-pointer capitalize transition-colors ${
-                        active
-                          ? 'border-emerald-500/50 bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 font-semibold'
-                          : 'border-border bg-card text-muted-foreground hover:bg-accent/50'
-                      }`}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={active}
-                        onChange={() => toggleLanguage(lang)}
-                        className="rounded text-emerald-500 focus:ring-emerald-500 h-3 w-3"
-                      />
-                      <span>{lang}</span>
-                    </label>
-                  )
-                })}
-              </div>
-            </div>
               </>
             )}
           </div>
