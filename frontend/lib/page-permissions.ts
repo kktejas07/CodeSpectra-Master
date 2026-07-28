@@ -89,7 +89,7 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
   { label: 'Stats & Progress', firstRoute: '/dashboard/leaderboard' },
   { label: 'User & Account', firstRoute: '/dashboard/pricing' },
-  { label: 'Misc', firstRoute: '/dashboard/search' },
+  { label: 'Misc', firstRoute: '/dashboard/support' },
 ]
 
 /**
@@ -163,7 +163,6 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/settings/ai',
 
   // Misc
-  '/dashboard/search',
   '/dashboard/support',
   '/dashboard/status',
 ]
@@ -264,7 +263,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/notifications': 'Notifications',
   '/dashboard/notifications/preferences': 'Notification Preferences',
   '/dashboard/support': 'Support',
-  '/dashboard/search': 'Search',
   '/dashboard/status': 'System Status',
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',
