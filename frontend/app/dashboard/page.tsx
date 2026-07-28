@@ -29,7 +29,6 @@ export default function DashboardPage() {
   const { user: fbUser, loading: isPending } = useAuth()
   const addToast = useToast()
   const [role, setRole] = useState<string | null>(null)
-  if (!gate.ready) return null
   const [stats, setStats] = useState({ scans: 0, reviews: 0, fixes: 0, challenges: 0, dailyChallenges: 0, streak: 0, xp: 0 })
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [myTeams, setMyTeams] = useState<any[]>([])
@@ -41,6 +40,7 @@ export default function DashboardPage() {
     totalContributions: number
     totalActiveDays: number
   } | null>(null)
+  if (!gate.ready) return null
 
   useEffect(() => {
     if (isPending) return
