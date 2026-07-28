@@ -49,7 +49,6 @@ def fib(n):
  */
 export default function AgentPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [language, setLanguage] = useState<string>('python')
   const [code, setCode] = useState<string>(STARTER_CODE)
@@ -64,6 +63,7 @@ export default function AgentPage() {
 
   useEffect(() => {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
+  if (!gate.ready) return null
   }, [turns])
 
   async function runAgent() {

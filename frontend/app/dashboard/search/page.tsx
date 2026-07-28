@@ -31,13 +31,13 @@ const CATEGORIES = [
 
 export default function GlobalSearchPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<SearchResult[]>([])
   const [searchCategory, setSearchCategory] = useState('all')
   const [loading, setLoading] = useState(false)
   const [searched, setSearched] = useState(false)
+  if (!gate.ready) return null
 
   const handleSearch = useCallback(async (e?: React.FormEvent) => {
     if (e) e.preventDefault()

@@ -25,7 +25,6 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 
 export default function AchievementsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,6 +33,7 @@ export default function AchievementsPage() {
 
   useEffect(() => {
     fetch('/api/achievements')
+  if (!gate.ready) return null
       .then(r => r.json())
       .then(json => { if (json.data) setAchievements(json.data) })
       .catch(() => {})

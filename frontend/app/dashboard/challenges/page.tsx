@@ -24,7 +24,6 @@ interface Challenge {
 
 export default function ChallengesPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [challenges, setChallenges] = useState<Challenge[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,6 +32,7 @@ export default function ChallengesPage() {
 
   useEffect(() => {
     fetch('/api/challenges')
+  if (!gate.ready) return null
       .then(r => r.json())
       .then(json => { if (json.data) setChallenges(json.data) })
       .catch(() => {})

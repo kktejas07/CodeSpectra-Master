@@ -32,7 +32,6 @@ interface ChallengeData {
 
 export default function ChallengePage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const { id: challengeId } = use(params)
   const [challenge, setChallenge] = useState<ChallengeData | null>(null)
@@ -41,6 +40,7 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
 
   useEffect(() => {
     const load = async () => {
+  if (!gate.ready) return null
       try {
         const chRes = await fetch(`/api/challenges/${challengeId}`, { credentials: 'include' })
         const chData = await chRes.json()

@@ -116,7 +116,6 @@ const TOP_LANGUAGES = [
 
 export default function ProblemDetailPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const params = useParams<{ slug: string }>()
   const slug = params?.slug ?? ''
@@ -135,6 +134,7 @@ export default function ProblemDetailPage() {
   const [commentText, setCommentText] = useState('')
   const [postingComment, setPostingComment] = useState(false)
   const { lockedFeatures } = useLockedFeatures()
+  if (!gate.ready) return null
   const resultsLocked = lockedFeatures.includes('problems:results')
   const consoleLocked = lockedFeatures.includes('problems:console')
   const analysisLocked = lockedFeatures.includes('problems:analysis')

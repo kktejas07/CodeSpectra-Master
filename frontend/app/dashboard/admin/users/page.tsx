@@ -128,6 +128,14 @@ export default function UsersManagement() {
     [rows, tick]
   )
 
+  const [createdInvite, setCreatedInvite] = useState<{
+    url: string
+    email: string
+    targetUrl: string
+    assessments?: Array<{ title: string; target_url: string }>
+    allowed_languages?: string[]
+  } | null>(null)
+
   if (!gate.ready) return null
 
   const handleEdit = (user: TableUser) => {
@@ -230,14 +238,6 @@ function getPipelineLabel(url: string) {
       return url
   }
 }
-
-  const [createdInvite, setCreatedInvite] = useState<{
-    url: string
-    email: string
-    targetUrl: string
-    assessments?: Array<{ title: string; target_url: string }>
-    allowed_languages?: string[]
-  } | null>(null)
 
   const handleAddUser = async (payload: {
     email: string

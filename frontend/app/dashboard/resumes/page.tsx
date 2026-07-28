@@ -24,10 +24,10 @@ interface Resume {
 
 export default function ResumesPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [resumes, setResumes] = useState<Resume[]>([
     {
+  if (!gate.ready) return null
       id: '1',
       fileName: 'John_Doe_Resume.pdf',
       fileSize: 245,

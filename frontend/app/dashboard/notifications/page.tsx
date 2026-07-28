@@ -38,7 +38,6 @@ const CATEGORIES = [
 
 export default function NotificationsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [items, setItems] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -60,6 +59,7 @@ export default function NotificationsPage() {
 
   useEffect(() => {
     const interval = setInterval(() => { void load() }, 30_000)
+  if (!gate.ready) return null
     return () => clearInterval(interval)
   }, [load])
 

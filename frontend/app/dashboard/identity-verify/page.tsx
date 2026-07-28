@@ -18,7 +18,6 @@ interface VerifyResult {
 
 export default function IdentityVerificationPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
@@ -30,6 +29,7 @@ export default function IdentityVerificationPage() {
   const [err, setErr] = useState<string | null>(null)
 
   useEffect(() => {
+  if (!gate.ready) return null
     return () => stopCamera()
   }, [])
 

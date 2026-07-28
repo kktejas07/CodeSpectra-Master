@@ -42,7 +42,6 @@ interface MyResponse {
 
 export default function CertificationsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [catalog, setCatalog] = useState<CertCatalog[]>([])
   const [me, setMe] = useState<MyResponse | null>(null)
@@ -51,6 +50,7 @@ export default function CertificationsPage() {
 
   useEffect(() => {
     let active = true
+  if (!gate.ready) return null
     async function load() {
       try {
         const [catRes, meRes] = await Promise.all([

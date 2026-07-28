@@ -8,7 +8,6 @@ type ComponentStatus = { name: string; status: 'operational' | 'degraded' | 'dow
 
 export default function StatusPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [data, setData] = useState<{ status: string; updated_at: string; components: ComponentStatus[] } | null>(null)
   const [loading, setLoading] = useState(true)
@@ -29,6 +28,7 @@ export default function StatusPage() {
   }
 
   useEffect(() => { fetchStatus() }, [])
+  if (!gate.ready) return null
 
   const badge = (status: string) => {
     if (status === 'operational') return <span className="flex items-center gap-1 text-xs text-green-500"><CheckCircle2 className="h-3 w-3" /> Operational</span>

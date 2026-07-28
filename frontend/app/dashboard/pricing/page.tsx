@@ -26,7 +26,6 @@ const PLAN_COLORS: Record<string, string> = {
 
 export default function PricingPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const addToast = useToast()
   const [plans, setPlans] = useState<PlanDef[]>([])
@@ -41,6 +40,7 @@ export default function PricingPage() {
 
   useEffect(() => {
     Promise.all([
+  if (!gate.ready) return null
       fetch('/api/admin/plans', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
       fetch('/api/admin/platform-settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null),
     ]).then(([plansData, settingsData]) => {

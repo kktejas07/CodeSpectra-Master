@@ -39,7 +39,6 @@ interface QuizQuestion {
 
 export default function InterviewPrepPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const addToast = useToast()
   const { lockedFeatures } = useLockedFeatures()
@@ -53,6 +52,7 @@ export default function InterviewPrepPage() {
   const [expandedId, setExpandedId] = useState<string | null>(null)
   const [answers, setAnswers] = useState<Record<string, AnswerData>>({})
   const [loadingAnswer, setLoadingAnswer] = useState<string | null>(null)
+  if (!gate.ready) return null
 
   const filtered = useMemo(() => {
     return INTERVIEW_PREP_QUESTIONS.filter((q) => {

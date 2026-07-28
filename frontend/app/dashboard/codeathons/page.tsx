@@ -25,7 +25,6 @@ interface Codeathon {
 
 export default function CodeathonsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const router = useRouter()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
@@ -34,6 +33,7 @@ export default function CodeathonsPage() {
 
   useEffect(() => {
     fetch('/api/codeathons')
+  if (!gate.ready) return null
       .then(r => r.json())
       .then(json => { if (json.data) setCodeathons(json.data) })
       .catch(() => {})

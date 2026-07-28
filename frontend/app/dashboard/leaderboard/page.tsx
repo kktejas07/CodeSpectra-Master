@@ -37,7 +37,6 @@ type Scope = 'global' | 'team' | 'monthly'
 
 export default function LeaderboardPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [view, setView] = useState<Scope>('global')
   const [entries, setEntries] = useState<LeaderboardEntryDTO[]>([])
@@ -45,6 +44,7 @@ export default function LeaderboardPage() {
   const [error, setError] = useState<string | null>(null)
   const [message, setMessage] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  if (!gate.ready) return null
 
   const load = useCallback(async () => {
     setLoading(true)

@@ -32,7 +32,6 @@ interface TrackDef {
 
 export default function TracksPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [tracks, setTracks] = useState<TrackDef[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -40,6 +39,7 @@ export default function TracksPage() {
 
   useEffect(() => {
     Promise.all([
+  if (!gate.ready) return null
       fetch('/api/tracks').then(r => r.json()),
       fetch('/api/problems', { cache: 'no-store' }).then(r => r.json()),
     ]).then(([tracksJson, problemsJson]) => {

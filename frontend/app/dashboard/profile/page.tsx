@@ -153,7 +153,6 @@ function TwoFactorAuth() {
 
 export default function ProfilePage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string } | null>(null)
   const [stats, setStats] = useState<Record<string, number | string> | null>(null)
@@ -171,6 +170,7 @@ export default function ProfilePage() {
   const [editName, setEditName] = useState('')
   const [editSaving, setEditSaving] = useState(false)
   const [editError, setEditError] = useState('')
+  if (!gate.ready) return null
 
   const openEdit = () => {
     setEditName(user?.name || user?.email?.split('@')[0] || '')

@@ -26,7 +26,6 @@ interface Topic {
 
 export default function PreparePage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const addToast = useToast()
   const [kits, setKits] = useState<PrepKit[]>([])
@@ -35,6 +34,7 @@ export default function PreparePage() {
 
   useEffect(() => {
     Promise.all([
+  if (!gate.ready) return null
       fetch('/api/tracks', { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
       fetch('/api/problems?limit=200', { credentials: 'include' }).then(r => r.json()).catch(() => ({ data: [] })),
     ]).then(([tracksData, problemsData]) => {

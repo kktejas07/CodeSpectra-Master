@@ -14,7 +14,6 @@ import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function ScheduleInterviewPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const router = useRouter()
   const [busy, setBusy] = useState(false)
@@ -32,6 +31,7 @@ export default function ScheduleInterviewPage() {
 
   useEffect(() => {
     fetch('/api/admin/users', { cache: 'no-store' })
+  if (!gate.ready) return null
       .then((r) => r.ok ? r.json() : [])
       .then((d) => setUsers(d.users || d.items || []))
       .catch(() => {})

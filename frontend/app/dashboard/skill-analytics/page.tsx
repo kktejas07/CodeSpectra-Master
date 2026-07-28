@@ -39,7 +39,6 @@ interface SkillData {
 
 export default function SkillAnalyticsPage() {
   const gate = usePageGuard('user')
-  if (!gate.ready) return null
 
   const [data, setData] = useState<SkillData | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -47,6 +46,7 @@ export default function SkillAnalyticsPage() {
 
   useEffect(() => {
     fetch('/api/analytics/skills', { cache: 'no-store' })
+  if (!gate.ready) return null
       .then(async (r) => {
         const j = await r.json()
         if (!r.ok) throw new Error(j.error || `HTTP ${r.status}`)
