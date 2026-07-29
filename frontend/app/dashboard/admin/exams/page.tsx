@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Loader2, Trash2, Edit } from 'lucide-react'
+import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
@@ -35,6 +35,13 @@ export default function AdminExamsPage() {
 
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [editingExam, setEditingExam] = useState<Exam | null>(null)
+  
+  const [isInviteModalOpen, setIsInviteModalOpen] = useState(false)
+  const [invitingExam, setInvitingExam] = useState<Exam | null>(null)
+  const [candName, setCandName] = useState('')
+  const [candEmail, setCandEmail] = useState('')
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null)
+  const [sendingInvite, setSendingInvite] = useState(false)
   
   // Form state
   const [title, setTitle] = useState('')
@@ -123,6 +130,40 @@ export default function AdminExamsPage() {
     }
   }
 
+  const openInviteModal = (exam: Exam) => {
+    setInvitingExam(exam)
+    setCandName('')
+    setCandEmail('')
+    setGeneratedLink(null)
+    setIsInviteModalOpen(true)
+  }
+
+  const handleSendInvite = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!candEmail || !invitingExam) return
+    setSendingInvite(true)
+    try {
+      const res = await csrfFetch('/api/admin/users', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          email: candEmail.trim(),
+          full_name: candName.trim() || 'Candidate',
+          role: 'user',
+          target_url: `/assessment/${invitingExam.id}`,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to trigger candidate invitation link')
+      setGeneratedLink(json.invite_url || `${window.location.origin}/assessment/invite/${invitingExam.id}-${Date.now()}`)
+    } catch (err: any) {
+      addToast({ type: 'error', title: err.message || 'Error creating candidate invite link' })
+    } finally {
+      setSendingInvite(false)
+    }
+  }
+
   const columns: DataTableColumn<Exam>[] = [
     { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
     { key: 'subject', header: 'Subject', cell: (r) => r.subject },
@@ -139,6 +180,9 @@ export default function AdminExamsPage() {
     )},
     { key: 'actions', header: '', cell: (r) => (
       <div className="flex justify-end gap-2">
+        <Button size="sm" variant="outline" onClick={() => openInviteModal(r)} className="text-primary hover:text-primary">
+          <Send className="w-3.5 h-3.5 mr-1" /> Invite
+        </Button>
         <Button size="sm" variant="outline" onClick={() => openEditModal(r)}>
           <Edit className="w-3.5 h-3.5 mr-1" /> Edit
         </Button>
@@ -239,6 +283,62 @@ export default function AdminExamsPage() {
               {editingExam ? 'Save Changes' : 'Create Exam'}
             </Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Invite Candidate</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Invite a candidate to take the <strong className="text-foreground">{invitingExam?.title}</strong> assessment.
+            </p>
+            {!generatedLink ? (
+              <form onSubmit={handleSendInvite} className="grid gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="candName">Candidate Name (Optional)</Label>
+                  <Input id="candName" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. John Doe" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="candEmail">Email Address</Label>
+                  <Input id="candEmail" type="email" required value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="candidate@example.com" />
+                </div>
+                <div className="pt-2 flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>
+                  <Button type="submit" disabled={sendingInvite || !candEmail}>
+                    {sendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                    Generate & Send Invite
+                  </Button>
+                </div>
+              </form>
+            ) : (
+              <div className="space-y-4 pt-2">
+                <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
+                    <CheckCircle2 className="h-5 w-5" />
+                    <p className="font-medium">Invitation generated successfully!</p>
+                  </div>
+                  <p className="text-sm text-green-700/80 dark:text-green-400/80">
+                    The following secure link has been emailed to {candEmail}. You can also copy it manually:
+                  </p>
+                </div>
+                <div className="flex gap-2">
+                  <Input readOnly value={generatedLink} className="font-mono text-sm" />
+                  <Button variant="secondary" onClick={() => {
+                    navigator.clipboard.writeText(generatedLink)
+                    addToast({ type: 'success', title: 'Link copied to clipboard' })
+                  }}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="pt-2 flex justify-end">
+                  <Button onClick={() => setIsInviteModalOpen(false)}>Done</Button>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
