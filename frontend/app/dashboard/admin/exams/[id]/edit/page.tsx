@@ -414,16 +414,18 @@ export default function ExamReviewPage() {
                 <strong>CSV:</strong> type,title,prompt,options,answer,score (options pipe-delimited, header required)<br />
                 <strong>Plain text:</strong> blank-line separated blocks become descriptive questions
               </p>
-              <Textarea
-                value={importText}
-                onChange={(e) => {
-                  setImportText(e.target.value)
-                  setImportedPreview(null)
-                }}
-                rows={10}
-                placeholder='Paste JSON, CSV, or text here...'
-                className="font-mono text-sm"
-              />
+              <div className="max-h-[400px] overflow-y-auto border rounded-md">
+                <Textarea
+                  value={importText}
+                  onChange={(e) => {
+                    setImportText(e.target.value)
+                    setImportedPreview(null)
+                  }}
+                  rows={20}
+                  placeholder='Paste JSON, CSV, or text here...'
+                  className="font-mono text-sm min-h-[300px] border-0 focus-visible:ring-0 rounded-none"
+                />
+              </div>
             </div>
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => {
