@@ -67,6 +67,11 @@ export interface CandidateInviteDoc {
   status: 'pending' | 'used' | 'expired'
   expires_at: string
   created_at: string
+  updated_at?: string | null
+  postal_message_id?: number | null
+  delivery_status?: 'sending' | 'delivered' | 'failed' | 'bounced' | null
+  delivery_error?: string | null
+  delivery_updated_at?: string | null
 }
 
 export interface UserRoleDoc {

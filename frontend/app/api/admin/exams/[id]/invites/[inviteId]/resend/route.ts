@@ -42,9 +42,18 @@ export async function POST(
 
     const result = await sendEmail(invite.email, template)
 
+    // Store Postal message ID for delivery tracking
+    if (result.postalMessageId) {
+      await db.collection('candidate_invites').updateOne(
+        { id: inviteId },
+        { $set: { postal_message_id: result.postalMessageId, delivery_status: 'sending' } }
+      )
+    }
+
     return NextResponse.json({
       success: result.success,
       provider: result.provider,
+      postalMessageId: result.postalMessageId,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to resend invite'

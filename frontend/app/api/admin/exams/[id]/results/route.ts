@@ -62,12 +62,23 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       submittedAt: string | null
       proctoringFlags: number
       released: boolean
+      deliveryStatus: string | null
+    }
+
+    // Deduplicate invites by email — keep the most recent one
+    const latestInviteByEmail = new Map<string, typeof invites[0]>()
+    for (const inv of invites) {
+      const key = (inv.email || '').toLowerCase()
+      const existing = latestInviteByEmail.get(key)
+      if (!existing || new Date(inv.created_at) > new Date(existing.created_at)) {
+        latestInviteByEmail.set(key, inv)
+      }
     }
 
     const results: CandidateResultRow[] = []
     const seenEmails = new Set<string>()
 
-    for (const inv of invites) {
+    for (const [, inv] of latestInviteByEmail) {
       const sub = submissionsByUser[inv.user_id]
       const user = userMap[inv.user_id] || {}
       let status = inv.status === 'used' ? 'completed' : inv.status
@@ -89,6 +100,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         submittedAt: sub?.submitted_at || null,
         proctoringFlags: 0,
         released: sub?.released_at ? true : false,
+        deliveryStatus: inv.delivery_status || null,
       })
     }
 
@@ -110,6 +122,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         submittedAt: sub.submitted_at || null,
         proctoringFlags: 0,
         released: sub.released_at ? true : false,
+        deliveryStatus: null,
       })
       if (fetched.email) seenEmails.add(fetched.email.toLowerCase())
     }

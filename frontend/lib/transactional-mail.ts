@@ -5,7 +5,7 @@ export async function sendEmailViaPostal(params: {
   subject: string
   html: string
   text?: string
-}): Promise<void> {
+}): Promise<{ messageId: number | null }> {
   await warmServerSecretsCache()
   const s = getServerSecretsFromCache()
   const server = (process.env.POSTAL_SERVER?.trim() || s.postal_server?.trim()) ?? ''
@@ -37,4 +37,7 @@ export async function sendEmailViaPostal(params: {
     const body = await res.text().catch(() => '')
     throw new Error(`Postal API error (${res.status}): ${body || res.statusText}`)
   }
+
+  const data = await res.json()
+  return { messageId: data.id ?? null }
 }

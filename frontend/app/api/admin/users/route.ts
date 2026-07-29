@@ -186,14 +186,21 @@ export async function POST(request: Request) {
 
     const { candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
 
+    // Expire old pending invites for same email + exam
+    const invitesCol = await candidateInvites()
+    await invitesCol.updateMany(
+      { email, target_url: targetUrl, status: 'pending' },
+      { $set: { status: 'expired', updated_at: nowIso() } }
+    )
+
     // Generate single-use secure candidate invite link
+    const inviteId = newId()
     const inviteToken = crypto.randomUUID()
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const inviteUrl = `${appUrl}/assessment/invite/${inviteToken}`
 
-    const invitesCol = await candidateInvites()
     await invitesCol.insertOne({
-      id: newId(),
+      id: inviteId,
       token: inviteToken,
       user_id: newUserId,
       email,
@@ -205,11 +212,12 @@ export async function POST(request: Request) {
       status: 'pending',
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       created_at: nowIso(),
+      delivery_status: 'sending',
     })
 
     const created = isExistingUser ? await getUserById(newUserId) : null
 
-    // Send assessment invite email via the fallback chain (Resend → SendGrid → Postal → SMTP → log)
+    // Send assessment invite email via Postal
     let welcomeEmailSent = false
     let delivery = 'candidate_invite_link'
     try {
@@ -226,6 +234,14 @@ export async function POST(request: Request) {
       const result = await sendEmail(email, template)
       welcomeEmailSent = result.success
       delivery = result.provider
+
+      // Store Postal message ID for delivery tracking
+      if (result.postalMessageId) {
+        await invitesCol.updateOne(
+          { id: inviteId },
+          { $set: { postal_message_id: result.postalMessageId } }
+        )
+      }
     } catch {
       // All providers failed — link still returned for manual copy
     }

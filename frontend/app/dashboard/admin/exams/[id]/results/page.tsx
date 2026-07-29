@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2 } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -25,6 +25,7 @@ interface CandidateResult {
   facePhoto?: string | null
   userId?: string
   released?: boolean
+  deliveryStatus?: string | null
 }
 
 interface Exam {
@@ -249,6 +250,22 @@ export default function ExamResultsPage() {
           expired: <Badge variant="secondary" className="text-amber-500">Expired</Badge>,
         }
         return badges[row.status] || <Badge variant="outline">{row.status}</Badge>
+      },
+    },
+    {
+      key: 'deliveryStatus',
+      header: 'Email',
+      cell: (row: CandidateResult) => {
+        if (!row.deliveryStatus || row.deliveryStatus === 'sending') {
+          return <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> Sending</span>
+        }
+        if (row.deliveryStatus === 'delivered') {
+          return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
+        }
+        if (row.deliveryStatus === 'failed' || row.deliveryStatus === 'bounced') {
+          return <span className="text-xs text-rose-500 flex items-center gap-1"><XCircle className="w-3 h-3"/> {row.deliveryStatus === 'bounced' ? 'Bounced' : 'Failed'}</span>
+        }
+        return <span className="text-xs text-muted-foreground">--</span>
       },
     },
     {
