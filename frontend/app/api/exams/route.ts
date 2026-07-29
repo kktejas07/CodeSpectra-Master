@@ -19,6 +19,30 @@ export async function POST(request: Request) {
     const body = await request.json()
     const db = await getMongoDb()
     const now = new Date().toISOString()
+    // AI Mock Generation
+    const numQuestions = body.questions || 5
+    const questionList = []
+    
+    if (body.techStack && body.techStack.length > 0) {
+      for (let i = 0; i < numQuestions; i++) {
+        const stack = body.techStack[i % body.techStack.length]
+        questionList.push({
+          id: crypto.randomUUID(),
+          type: i % 3 === 0 ? 'coding' : 'mcq',
+          title: `${stack} ${body.level} Challenge: Question ${i + 1}`,
+          prompt: `As a Senior Technical Interviewer, I'd like you to demonstrate your proficiency with ${stack} at a ${body.level} level. Please read the requirements carefully and provide your best solution.`,
+          options: i % 3 === 0 ? undefined : [
+            `Implement the standard ${stack} best practices`, 
+            `Use the legacy pattern`, 
+            `Ignore the architecture completely`, 
+            `Write arbitrary logic`
+          ],
+          answer: i % 3 === 0 ? undefined : `Implement the standard ${stack} best practices`,
+          score: 10
+        })
+      }
+    }
+
     const doc = {
       id: crypto.randomUUID(),
       title: body.title,
@@ -26,8 +50,8 @@ export async function POST(request: Request) {
       level: body.level || 'Beginner',
       techStack: body.techStack || [],
       duration: body.duration || 60,
-      questions: body.questions || 0,
-      questionList: body.questionList || [],
+      questions: numQuestions,
+      questionList: questionList,
       published: body.published ?? false,
       attempts: 0,
       avgScore: 0,
