@@ -67,6 +67,13 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
     }
   }
 
+  // Automatically attach active stream to video element when it mounts/re-renders
+  useEffect(() => {
+    if (videoRef.current && streamRef.current && videoRef.current.srcObject !== streamRef.current) {
+      videoRef.current.srcObject = streamRef.current
+    }
+  }, [step, idPhoto, facePhoto])
+
   const handleNextFromConsent = () => {
     if (agreedTerms && agreedPrivacy) {
       setStep('capture_id')
