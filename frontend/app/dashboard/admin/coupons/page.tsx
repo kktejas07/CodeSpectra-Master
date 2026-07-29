@@ -12,6 +12,16 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { Loader2, Plus, Tag, Trash2, Pencil, Power, PowerOff } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface Coupon {
   id: string
@@ -35,6 +45,7 @@ export default function CouponsAdminPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [saving, setSaving] = useState(false)
   const [editCoupon, setEditCoupon] = useState<Coupon | null>(null)
+  const [confirmDeleteCoupon, setConfirmDeleteCoupon] = useState<{ id: string; code: string } | null>(null)
 
   const [code, setCode] = useState('')
   const [type, setType] = useState<'percentage' | 'flat' | 'trial'>('percentage')
@@ -94,7 +105,6 @@ export default function CouponsAdminPage() {
   }
 
   const handleDeleteOne = async (id: string) => {
-    if (!confirm('Delete this coupon?')) return
     await csrfFetch(`/api/admin/coupons?id=${id}`, { method: 'DELETE', credentials: 'include' })
     addToast({ type: 'success', title: 'Deleted' })
     setCoupons(prev => prev.filter(c => c.id !== id))
@@ -127,7 +137,7 @@ export default function CouponsAdminPage() {
         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleActive(r)} title={r.active ? 'Deactivate' : 'Activate'}>
           {r.active ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
         </Button>
-        <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => handleDeleteOne(r.id)}><Trash2 className="h-3 w-3" /></Button>
+        <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => setConfirmDeleteCoupon({ id: r.id, code: r.code })}><Trash2 className="h-3 w-3" /></Button>
       </div>
     )},
   ]
@@ -200,6 +210,32 @@ export default function CouponsAdminPage() {
       </Dialog>
 
       <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyMessage="No coupons yet." pageSize={20} />
+
+      <AlertDialog open={!!confirmDeleteCoupon} onOpenChange={(open) => !open && setConfirmDeleteCoupon(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Coupon?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the coupon code "{confirmDeleteCoupon?.code}"? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={async () => {
+                if (confirmDeleteCoupon) {
+                  const { id } = confirmDeleteCoupon
+                  setConfirmDeleteCoupon(null)
+                  await handleDeleteOne(id)
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }

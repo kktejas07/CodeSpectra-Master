@@ -11,6 +11,16 @@ import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
 import type { DataTableColumn } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 
 interface CandidateResult {
@@ -178,6 +188,7 @@ export default function ExamResultsPage() {
 
   const [resendingId, setResendingId] = useState<string | null>(null)
   const [deletingId, setDeletingId] = useState<string | null>(null)
+  const [confirmDeleteInvite, setConfirmDeleteInvite] = useState<{ id: string; name: string } | null>(null)
 
   const resendInvite = async (inviteId: string, name: string) => {
     setResendingId(inviteId)
@@ -197,7 +208,6 @@ export default function ExamResultsPage() {
   }
 
   const deleteInvite = async (inviteId: string, name: string) => {
-    if (!confirm(`Delete invite for ${name}? This cannot be undone.`)) return
     setDeletingId(inviteId)
     try {
       const res = await csrfFetch(`/api/admin/exams/${params.id}/invites/${inviteId}`, {
@@ -344,7 +354,7 @@ export default function ExamResultsPage() {
               <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
                 <Link className="h-4 w-4" /> Copy Link
               </DropdownMenuItem>
-              <DropdownMenuItem onClick={() => deleteInvite(row.inviteId, row.name)} className="gap-2 text-destructive focus:text-destructive">
+              <DropdownMenuItem onClick={() => setConfirmDeleteInvite({ id: row.inviteId, name: row.name })} className="gap-2 text-destructive focus:text-destructive">
                 <Trash2 className="h-4 w-4" /> Delete
               </DropdownMenuItem>
             </DropdownMenuContent>
@@ -622,6 +632,32 @@ export default function ExamResultsPage() {
           </div>
         </div>
       )}
+
+      <AlertDialog open={!!confirmDeleteInvite} onOpenChange={(open) => !open && setConfirmDeleteInvite(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Delete Invite?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you sure you want to delete the invite for {confirmDeleteInvite?.name}? This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive hover:bg-destructive/90 text-destructive-foreground"
+              onClick={async () => {
+                if (confirmDeleteInvite) {
+                  const { id, name } = confirmDeleteInvite
+                  setConfirmDeleteInvite(null)
+                  await deleteInvite(id, name)
+                }
+              }}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   )
 }
