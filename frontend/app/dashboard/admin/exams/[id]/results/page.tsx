@@ -4,7 +4,8 @@ import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -13,6 +14,7 @@ import type { DataTableColumn } from '@/components/ui/data-table'
 
 interface CandidateResult {
   id: string
+  inviteId: string
   name: string
   email: string
   status: string
@@ -102,7 +104,7 @@ export default function ExamResultsPage() {
       setExam(json.exam)
       setResults((json.results || []).map((r: CandidateResult) => ({
         ...r,
-        userId: r.id,
+        inviteId: r.id,
       })))
     } catch {
       addToast({ type: 'error', title: 'Failed to load results' })
@@ -170,6 +172,51 @@ export default function ExamResultsPage() {
     } finally {
       setBulkReleasing(false)
     }
+  }
+
+  const [resendingId, setResendingId] = useState<string | null>(null)
+  const [deletingId, setDeletingId] = useState<string | null>(null)
+
+  const resendInvite = async (inviteId: string, name: string) => {
+    setResendingId(inviteId)
+    try {
+      const res = await fetch(`/api/admin/exams/${params.id}/invites/${inviteId}/resend`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to resend')
+      addToast({ type: 'success', title: `Invite resent to ${name}` })
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Failed to resend invite' })
+    } finally {
+      setResendingId(null)
+    }
+  }
+
+  const deleteInvite = async (inviteId: string, name: string) => {
+    if (!confirm(`Delete invite for ${name}? This cannot be undone.`)) return
+    setDeletingId(inviteId)
+    try {
+      const res = await fetch(`/api/admin/exams/${params.id}/invites/${inviteId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Failed to delete')
+      addToast({ type: 'success', title: `Invite deleted for ${name}` })
+      setResults(prev => prev.filter(r => r.inviteId !== inviteId))
+    } catch {
+      addToast({ type: 'error', title: `Failed to delete invite for ${name}` })
+    } finally {
+      setDeletingId(null)
+    }
+  }
+
+  const copyInviteLink = (row: CandidateResult) => {
+    const link = `${window.location.origin}/assessment/invite/${row.id}`
+    navigator.clipboard.writeText(link).then(() => {
+      addToast({ type: 'success', title: `Invite link copied for ${row.name}` })
+    })
   }
 
   const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
@@ -243,16 +290,47 @@ export default function ExamResultsPage() {
       key: 'actions',
       header: '',
       cell: (row: CandidateResult) => (
-        <div className="flex items-center gap-2">
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            disabled={row.status !== 'completed'}
-            onClick={() => openReview(row)}
-            className="text-xs h-8"
-          >
-            <Eye className="w-3.5 h-3.5 mr-1.5" /> Review
-          </Button>
+        <div className="flex items-center gap-1">
+          {row.status === 'completed' && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => openReview(row)}
+              className="text-xs h-8"
+            >
+              <Eye className="w-3.5 h-3.5 mr-1.5" /> Review
+            </Button>
+          )}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
+                disabled={resendingId === row.inviteId || deletingId === row.inviteId}
+              >
+                {resendingId === row.inviteId || deletingId === row.inviteId
+                  ? <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  : <MoreHorizontal className="w-3.5 h-3.5" />
+                }
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              {row.status === 'completed' && (
+                <DropdownMenuItem onClick={() => openReview(row)} className="gap-2">
+                  <Eye className="h-4 w-4" /> Review
+                </DropdownMenuItem>
+              )}
+              {row.status !== 'completed' && (
+                <DropdownMenuItem onClick={() => resendInvite(row.inviteId, row.name)} className="gap-2">
+                  <Mail className="h-4 w-4" /> Resend Invite
+                </DropdownMenuItem>
+              )}
+              <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
+                <Link className="h-4 w-4" /> Copy Link
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => deleteInvite(row.inviteId, row.name)} className="gap-2 text-destructive focus:text-destructive">
+                <Trash2 className="h-4 w-4" /> Delete
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       ),
     },

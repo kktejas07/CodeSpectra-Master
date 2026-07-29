@@ -96,6 +96,7 @@ export default function ExamPage() {
         body: JSON.stringify({ answers, auto_submitted: autoSubmitted }),
       })
       const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Submit failed')
       setResults(data)
       setSubmitted(true)
     } catch {
@@ -130,7 +131,7 @@ export default function ExamPage() {
           </p>
         </Card>
         <div className="space-y-3">
-          {results.details.map((d, i) => (
+          {(results.details || []).map((d, i) => (
             <Card key={d.qId} className="p-4 flex items-center gap-3">
               {d.correct ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
               <span className="flex-1 text-sm">Question {i + 1}</span>
