@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2 } from 'lucide-react'
+import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
@@ -198,11 +198,17 @@ export default function AdminExamsPage() {
     )},
     { key: 'actions', header: '', cell: (r) => (
       <div className="flex justify-end gap-2">
-        <Button size="sm" variant="outline" onClick={() => openInviteModal(r)} className="text-primary hover:text-primary">
+        <Button size="sm" variant="outline" onClick={() => openInviteModal(r)} className="text-primary hover:text-primary" disabled={!r.published}>
           <Send className="w-3.5 h-3.5 mr-1" /> Invite
         </Button>
-        <Button size="sm" variant="outline" onClick={() => openEditModal(r)}>
+        <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/admin/exams/${r.id}/results`)}>
+          <Eye className="w-3.5 h-3.5 mr-1" /> View Results
+        </Button>
+        <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/admin/exams/${r.id}/edit`)}>
           <Edit className="w-3.5 h-3.5 mr-1" /> Edit
+        </Button>
+        <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete([r.id])}>
+          <Trash2 className="w-3.5 h-3.5" />
         </Button>
       </div>
     )}
