@@ -130,6 +130,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
                 className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
               >
                 <option value="user">User</option>
+                <option value="judge">Judge</option>
                 <option value="tenant_admin">Organization admin</option>
                 <option value="superadmin">Platform admin</option>
               </select>
