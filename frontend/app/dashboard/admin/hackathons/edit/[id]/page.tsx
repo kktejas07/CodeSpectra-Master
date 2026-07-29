@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { toLocalDatetimeString } from '@/lib/datetime-local'
+import { toLocalDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
@@ -238,7 +238,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         num_teams: form.num_teams,
         max_per_team: form.max_per_team,
         timeout_minutes: form.timeout_minutes,
-        starts_at: new Date(form.starts_at).toISOString(),
+        starts_at: fromZonedDatetimeString(form.starts_at, Intl.DateTimeFormat().resolvedOptions().timeZone),
         tasks: form.tasks.map((t) => ({
           problem_slug: t.slug,
           problem_title: t.title,

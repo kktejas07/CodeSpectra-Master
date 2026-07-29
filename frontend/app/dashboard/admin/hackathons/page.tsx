@@ -18,7 +18,7 @@ import {
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { toLocalDatetimeString } from '@/lib/datetime-local'
+import { toLocalDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
@@ -229,7 +229,7 @@ export default function HackathonsAdminPage() {
           name: form.name, description: form.description,
           num_teams: form.num_teams, max_per_team: form.max_per_team,
           timeout_minutes: form.timeout_minutes,
-          starts_at: new Date(form.starts_at).toISOString(),
+          starts_at: fromZonedDatetimeString(form.starts_at, Intl.DateTimeFormat().resolvedOptions().timeZone),
           event_type: form.event_type,
           per_problem_time_minutes: form.per_problem_time_minutes,
           tasks: form.tasks.map((t) => ({
@@ -264,7 +264,7 @@ export default function HackathonsAdminPage() {
           timeout_minutes: form.timeout_minutes,
           event_type: form.event_type,
           per_problem_time_minutes: form.per_problem_time_minutes,
-          starts_at: new Date(form.starts_at).toISOString(),
+          starts_at: fromZonedDatetimeString(form.starts_at, Intl.DateTimeFormat().resolvedOptions().timeZone),
           tasks: form.tasks.map((t) => ({
             problem_slug: t.slug, problem_title: t.title,
             points: t.points, difficulty: t.difficulty, required: t.required,
