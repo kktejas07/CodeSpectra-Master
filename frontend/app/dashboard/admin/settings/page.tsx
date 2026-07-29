@@ -2243,7 +2243,7 @@ function SystemSettingsInner() {
                         <p className="text-xs text-muted-foreground">{info.desc} <a href={info.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{info.urlLabel}</a>.</p>
                         <div className="relative">
                           <Input type={(visibleFields as any)[info.key] ? 'text' : 'password'} autoComplete="off"
-                            value={keyValue}
+                            value={keyValue || (hasKey ? '••••••••' : '')}
                             onChange={(e) => setSecretsDraft((d) => ({ ...d, [info.key]: e.target.value }))}
                             className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
                             placeholder={info.placeholder + " (key1,key2 for rotation)"} />
