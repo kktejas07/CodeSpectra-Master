@@ -10,6 +10,7 @@ import {
 
 const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'postal_api_key',
+  'postal_webhook_secret',
   'razorpay_key_id',
   'razorpay_key_secret',
   'razorpay_webhook_secret',

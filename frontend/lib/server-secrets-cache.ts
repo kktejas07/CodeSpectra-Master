@@ -18,6 +18,7 @@ export type ServerSecretsRecord = {
   postal_server?: string
   postal_api_key?: string
   postal_from_email?: string
+  postal_webhook_secret?: string
   // --- Razorpay -----------------------------------------------------------
   razorpay_key_id?: string
   razorpay_key_secret?: string

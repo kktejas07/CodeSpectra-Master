@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
+import { getServerSecretsFromCache, warmServerSecretsCache } from '@/lib/server-secrets-cache'
 
 export const runtime = 'nodejs'
 
@@ -13,6 +14,16 @@ const STATUS_MAP: Record<string, string> = {
 }
 
 export async function POST(request: NextRequest) {
+  await warmServerSecretsCache()
+  const secrets = getServerSecretsFromCache()
+  const expectedSecret = secrets.postal_webhook_secret?.trim()
+  if (expectedSecret) {
+    const receivedSecret = request.headers.get('x-postal-webhook-secret') || request.headers.get('x-postal-secret') || ''
+    if (receivedSecret !== expectedSecret) {
+      return NextResponse.json({ error: 'Invalid webhook secret' }, { status: 401 })
+    }
+  }
+
   let rawBody: string
   try {
     rawBody = await request.text()
