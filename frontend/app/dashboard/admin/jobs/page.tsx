@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
+import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
@@ -173,6 +174,15 @@ export default function AdminJobsPage() {
     } finally { setDeletingId(null) }
   }
 
+  const handleBulkDelete = async (ids: string[]) => {
+    if (!await confirmDialog({ title: 'Confirmation', description: `Delete ${ids.length} job posting(s)? This cannot be undone.` })) return
+    for (const id of ids) {
+      await fetch(`/api/jobs/${id}`, { method: 'DELETE', credentials: 'include' })
+    }
+    addToast({ type: 'success', title: `${ids.length} job(s) deleted` })
+    setJobs(prev => prev.filter(j => !ids.includes(j.id)))
+  }
+
   const toggleActive = async (job: JobPosting) => {
     try {
       const res = await fetch(`/api/jobs/${job.id}`, {
@@ -197,6 +207,49 @@ export default function AdminJobsPage() {
 
   const getStatusLabel = (job: JobPosting) =>
     !job.is_active ? 'Closed' : new Date(job.created_at).getTime() > Date.now() - 604800000 ? 'New' : 'Active'
+
+  const columns: DataTableColumn<JobPosting>[] = [
+    { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
+    { key: 'company', header: 'Company', cell: (r) => r.company || '—' },
+    { key: 'location', header: 'Location', cell: (r) => r.location || '—' },
+    { key: 'job_type', header: 'Type', cell: (r) => r.job_type || '—' },
+    { key: 'applicants', header: 'Applicants', cell: (r) => r.applicants || 0 },
+    {
+      key: 'status', header: 'Status',
+      cell: (r) => <Badge className={getStatusColor(r)}>{getStatusLabel(r)}</Badge>,
+    },
+    {
+      key: 'created_at', header: 'Posted',
+      cell: (r) => <span className="text-xs text-muted-foreground">{new Date(r.created_at).toLocaleDateString()}</span>,
+    },
+    {
+      key: 'actions', header: 'Actions', className: 'text-right',
+      cell: (r) => (
+        <div className="flex gap-1 justify-end">
+          <Button variant="ghost" size="sm" title="Toggle active" onClick={() => toggleActive(r)}>
+            {r.is_active ? <CheckCircle className="w-4 h-4 text-green-600" /> : <AlertCircle className="w-4 h-4 text-gray-400" />}
+          </Button>
+          <Button variant="ghost" size="sm" asChild>
+            <a href={`/jobs/${r.id}`} target="_blank" rel="noopener">
+              <Eye className="w-4 h-4" />
+            </a>
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
+            <Edit className="w-4 h-4" />
+          </Button>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id}>
+            {deletingId === r.id
+              ? <Loader2 className="w-4 h-4 animate-spin text-red-600" />
+              : <Trash2 className="w-4 h-4 text-red-600" />}
+          </Button>
+        </div>
+      ),
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleBulkDelete },
+  ]
 
   if (!gate.ready) return (
     <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
@@ -233,79 +286,24 @@ export default function AdminJobsPage() {
         </Card>
       </div>
 
-      {loading ? (
-        <div className="flex justify-center py-12"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-      ) : jobs.length === 0 ? (
+      {jobs.length === 0 && !loading ? (
         <Card className="p-10 text-center">
           <Briefcase className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No job postings yet. Create your first one.</p>
           <Button className="mt-4" onClick={openCreate}><Plus className="w-4 h-4 mr-1" />Post a Job</Button>
         </Card>
       ) : (
-        <Card>
-          <div className="overflow-x-auto">
-            <table className="w-full text-sm">
-              <thead className="border-b border-border bg-muted/50">
-                <tr>
-                  <th className="px-6 py-3 text-left font-semibold">Title</th>
-                  <th className="px-6 py-3 text-left font-semibold">Company</th>
-                  <th className="px-6 py-3 text-left font-semibold">Location</th>
-                  <th className="px-6 py-3 text-left font-semibold">Type</th>
-                  <th className="px-6 py-3 text-left font-semibold">Applicants</th>
-                  <th className="px-6 py-3 text-left font-semibold">Status</th>
-                  <th className="px-6 py-3 text-left font-semibold">Posted</th>
-                  <th className="px-6 py-3 text-right font-semibold">Actions</th>
-                </tr>
-              </thead>
-              <tbody>
-                {jobs.map(job => (
-                  <tr key={job.id} className="border-t border-border hover:bg-muted/30">
-                    <td className="px-6 py-3 font-medium">{job.title}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{job.company || '—'}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{job.location || '—'}</td>
-                    <td className="px-6 py-3 text-muted-foreground">{job.job_type || '—'}</td>
-                    <td className="px-6 py-3">{job.applicants || 0}</td>
-                    <td className="px-6 py-3">
-                      <Badge className={getStatusColor(job)}>{getStatusLabel(job)}</Badge>
-                    </td>
-                    <td className="px-6 py-3 text-xs text-muted-foreground">
-                      {new Date(job.created_at).toLocaleDateString()}
-                    </td>
-                    <td className="px-6 py-3">
-                      <div className="flex gap-1 justify-end">
-                        <Button
-                          variant="ghost" size="sm" title="Toggle active"
-                          onClick={() => toggleActive(job)}
-                        >
-                          {job.is_active
-                            ? <CheckCircle className="w-4 h-4 text-green-600" />
-                            : <AlertCircle className="w-4 h-4 text-gray-400" />}
-                        </Button>
-                        <Button variant="ghost" size="sm" asChild>
-                          <a href={`/jobs/${job.id}`} target="_blank" rel="noopener">
-                            <Eye className="w-4 h-4" />
-                          </a>
-                        </Button>
-                        <Button variant="ghost" size="sm" onClick={() => openEdit(job)}>
-                          <Edit className="w-4 h-4" />
-                        </Button>
-                        <Button
-                          variant="ghost" size="sm"
-                          onClick={() => handleDelete(job.id)}
-                          disabled={deletingId === job.id}
-                        >
-                          {deletingId === job.id
-                            ? <Loader2 className="w-4 h-4 animate-spin text-red-600" />
-                            : <Trash2 className="w-4 h-4 text-red-600" />}
-                        </Button>
-                      </div>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </Card>
+        <DataTable
+          columns={columns}
+          data={jobs}
+          tableId="admin-jobs"
+          searchPlaceholder="Search title, company..."
+          searchKeys={['title', 'company'] as (keyof JobPosting)[]}
+          bulkActions={bulkActions}
+          loading={loading}
+          emptyMessage="No job postings yet."
+          pageSize={20}
+        />
       )}
 
       {showModal && (

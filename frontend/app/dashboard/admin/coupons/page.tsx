@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Badge } from '@/components/ui/badge'
+import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -29,13 +30,12 @@ interface Coupon {
 export default function CouponsAdminPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
-  
+
   const [coupons, setCoupons] = useState<Coupon[]>([])
   const [loading, setLoading] = useState(true)
   const [createOpen, setCreateOpen] = useState(false)
   const [saving, setSaving] = useState(false)
 
-  // Form State
   const [code, setCode] = useState('')
   const [type, setType] = useState<'percentage' | 'flat' | 'trial'>('percentage')
   const [value, setValue] = useState('')
@@ -58,9 +58,7 @@ export default function CouponsAdminPage() {
   }
 
   useEffect(() => {
-    if (gate.ready) {
-      fetchCoupons()
-    }
+    if (gate.ready) { fetchCoupons() }
   }, [gate.ready])
 
   const handleCreate = async () => {
@@ -81,7 +79,7 @@ export default function CouponsAdminPage() {
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Creation failed')
-      
+
       addToast({ type: 'success', title: 'Success', message: 'Coupon created successfully' })
       setCreateOpen(false)
       setCode('')
@@ -96,8 +94,43 @@ export default function CouponsAdminPage() {
     }
   }
 
+  const handleDelete = async (ids: string[]) => {
+    for (const id of ids) {
+      await csrfFetch(`/api/admin/coupons/${id}`, { method: 'DELETE', credentials: 'include' })
+    }
+    addToast({ type: 'success', title: `${ids.length} coupon(s) deleted` })
+    setCoupons(prev => prev.filter(c => !ids.includes(c.id)))
+  }
+
+  const columns: DataTableColumn<Coupon>[] = [
+    { key: 'code', header: 'Code', cell: (r) => <span className="font-mono font-bold">{r.code}</span> },
+    {
+      key: 'discount', header: 'Discount',
+      cell: (r) => r.discount_type === 'trial'
+        ? `Free ${r.trial_duration_days || '?'} days`
+        : r.discount_type === 'percentage' ? `${r.discount_value}% OFF` : `₹${r.discount_value} OFF`,
+    },
+    {
+      key: 'usage', header: 'Usage',
+      cell: (r) => <span>{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span>,
+    },
+    {
+      key: 'status', header: 'Status',
+      cell: (r) => r.active
+        ? <Badge variant="default" className="bg-green-500/10 text-green-600 hover:bg-green-500/20">Active</Badge>
+        : <Badge variant="secondary">Inactive</Badge>,
+    },
+    {
+      key: 'expiry', header: 'Expiry',
+      cell: (r) => <span className="text-muted-foreground">{r.valid_until ? new Date(r.valid_until).toLocaleDateString() : 'Never'}</span>,
+    },
+  ]
+
+  const bulkActions: BulkAction[] = [
+    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleDelete },
+  ]
+
   if (!gate.ready) return null
-  if (loading) return <div className="p-8 flex justify-center"><Loader2 className="animate-spin h-8 w-8 text-primary" /></div>
 
   return (
     <div className="p-6 md:p-8 max-w-6xl mx-auto space-y-6">
@@ -108,7 +141,7 @@ export default function CouponsAdminPage() {
           </h1>
           <p className="text-muted-foreground mt-1">Generate and monitor discount codes.</p>
         </div>
-        
+
         <Dialog open={createOpen} onOpenChange={setCreateOpen}>
           <DialogTrigger asChild>
             <Button><Plus className="h-4 w-4 mr-2" /> New Coupon</Button>
@@ -159,7 +192,7 @@ export default function CouponsAdminPage() {
             </div>
             <DialogFooter>
               <Button variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
-              <Button onClick={handleCreate} disabled={saving || !code || !value}>
+              <Button onClick={handleCreate} disabled={saving || !code || (type !== 'trial' && !value)}>
                 {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                 Generate
               </Button>
@@ -168,51 +201,17 @@ export default function CouponsAdminPage() {
         </Dialog>
       </div>
 
-      <Card className="overflow-hidden border-border/50 shadow-sm">
-        <div className="overflow-x-auto">
-          <table className="w-full text-sm text-left">
-            <thead className="text-xs text-muted-foreground uppercase bg-muted/40 border-b border-border/50">
-              <tr>
-                <th className="px-6 py-4 font-medium">Code</th>
-                <th className="px-6 py-4 font-medium">Discount</th>
-                <th className="px-6 py-4 font-medium">Usage</th>
-                <th className="px-6 py-4 font-medium">Status</th>
-                <th className="px-6 py-4 font-medium">Expiry</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-border/30">
-              {coupons.map(coupon => (
-                <tr key={coupon.id} className="hover:bg-muted/20 transition-colors">
-                  <td className="px-6 py-4 font-mono font-bold">{coupon.code}</td>
-                  <td className="px-6 py-4">
-                    {coupon.discount_type === 'trial' ? `Free ${coupon.trial_duration_days || '?'} days` : coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` : `₹${coupon.discount_value} OFF`}
-                  </td>
-                  <td className="px-6 py-4">
-                    {coupon.current_uses} / {coupon.max_uses > 0 ? coupon.max_uses : '∞'}
-                  </td>
-                  <td className="px-6 py-4">
-                    {coupon.active ? (
-                      <Badge variant="default" className="bg-green-500/10 text-green-600 hover:bg-green-500/20">Active</Badge>
-                    ) : (
-                      <Badge variant="secondary">Inactive</Badge>
-                    )}
-                  </td>
-                  <td className="px-6 py-4 text-muted-foreground">
-                    {coupon.valid_until ? new Date(coupon.valid_until).toLocaleDateString() : 'Never'}
-                  </td>
-                </tr>
-              ))}
-              {coupons.length === 0 && (
-                <tr>
-                  <td colSpan={5} className="px-6 py-12 text-center text-muted-foreground">
-                    No coupons generated yet.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </Card>
+      <DataTable
+        columns={columns}
+        data={coupons}
+        tableId="admin-coupons"
+        searchPlaceholder="Search coupons..."
+        searchKeys={['code'] as (keyof Coupon)[]}
+        bulkActions={bulkActions}
+        loading={loading}
+        emptyMessage="No coupons generated yet."
+        pageSize={20}
+      />
     </div>
   )
 }

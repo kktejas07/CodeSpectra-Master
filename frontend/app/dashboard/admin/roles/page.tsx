@@ -1,16 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { useToast } from '@/lib/toast-context'
-import { Users, Loader2, Search, Trash2, HelpCircle, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Users, Loader2, Search, Trash2, HelpCircle, ChevronLeft, ChevronRight, CheckSquare, Square } from 'lucide-react'
 import {
   Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from '@/components/ui/select'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { Card } from '@/components/ui/card'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { normalizeUserRole } from '@/lib/rbac'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -30,6 +30,8 @@ export default function UserRoleAssignments() {
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
   const [page, setPage] = useState(1)
+  const [selected, setSelected] = useState<Set<string>>(new Set())
+  const [bulkRoleOpen, setBulkRoleOpen] = useState(false)
   const pageSize = 20
 
   const fetchUsers = async () => {
@@ -43,6 +45,8 @@ export default function UserRoleAssignments() {
   }
 
   useEffect(() => { fetchUsers() }, [])
+
+  useEffect(() => { setPage(1) }, [search, roleFilter])
 
   const updateUserRole = async (userId: string, newRole: string) => {
     try {
@@ -70,7 +74,35 @@ export default function UserRoleAssignments() {
     } catch { addToast({ type: 'error', title: 'Error', message: 'Network error' }) }
   }
 
-  useEffect(() => { setPage(1) }, [search, roleFilter])
+  const bulkDelete = async (ids: string[]) => {
+    if (!await confirmDialog({ title: 'Delete users?', description: `Delete ${ids.length} user${ids.length !== 1 ? 's' : ''}?` })) return
+    let failed = 0
+    for (const id of ids) {
+      try {
+        await csrfFetch(`/api/admin/users/${id}`, { method: 'DELETE', credentials: 'include' })
+      } catch { failed++ }
+    }
+    addToast({ type: 'success', title: 'Deleted', message: `${ids.length - failed} deleted` })
+    setSelected(new Set())
+    await fetchUsers()
+  }
+
+  const bulkRoleChange = async (newRole: string) => {
+    let failed = 0
+    for (const id of selected) {
+      try {
+        const res = await csrfFetch(`/api/admin/users/${id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+          body: JSON.stringify({ role: newRole }),
+        })
+        if (!res.ok) failed++
+      } catch { failed++ }
+    }
+    addToast({ type: 'success', title: 'Updated', message: `${selected.size - failed} role${selected.size - failed !== 1 ? 's' : ''} changed` })
+    setSelected(new Set())
+    setBulkRoleOpen(false)
+    await fetchUsers()
+  }
 
   const filteredUsers = useMemo(() => {
     let list = users
@@ -88,7 +120,26 @@ export default function UserRoleAssignments() {
   const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize))
   const safePage = Math.min(page, totalPages)
   const paginatedUsers = filteredUsers.slice((safePage - 1) * pageSize, safePage * pageSize)
-  const roleCounts = { superadmin: users.filter(u => normalizeUserRole(u.role) === 'superadmin').length, tenant_admin: users.filter(u => normalizeUserRole(u.role) === 'tenant_admin').length, user: users.filter(u => normalizeUserRole(u.role) === 'user').length }
+  const allSelected = paginatedUsers.length > 0 && paginatedUsers.every(u => selected.has(u.id))
+  const roleCounts = {
+    superadmin: users.filter(u => normalizeUserRole(u.role) === 'superadmin').length,
+    tenant_admin: users.filter(u => normalizeUserRole(u.role) === 'tenant_admin').length,
+    user: users.filter(u => normalizeUserRole(u.role) === 'user').length,
+  }
+
+  const toggleSelectAll = () => {
+    const next = new Set(selected)
+    if (allSelected) paginatedUsers.forEach(u => next.delete(u.id))
+    else paginatedUsers.forEach(u => next.add(u.id))
+    setSelected(next)
+  }
+
+  const toggleUser = (id: string) => {
+    const next = new Set(selected)
+    if (next.has(id)) next.delete(id)
+    else next.add(id)
+    setSelected(next)
+  }
 
   if (!gate.ready) return null
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading users…</div>
@@ -152,11 +203,37 @@ export default function UserRoleAssignments() {
         <p className="text-xs text-muted-foreground">{filteredUsers.length} user{filteredUsers.length !== 1 ? 's' : ''}</p>
       </div>
 
+      {/* Bulk Actions */}
+      {selected.size > 0 && (
+        <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
+          <span className="text-sm font-medium">{selected.size} selected</span>
+          <div className="flex-1" />
+          <Select value="" onValueChange={(v) => { if (v) bulkRoleChange(v) }}>
+            <SelectTrigger className="h-8 w-[160px] text-xs">
+              <SelectValue placeholder="Change role" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="user">Set as User</SelectItem>
+              <SelectItem value="tenant_admin">Set as Org Admin</SelectItem>
+              <SelectItem value="superadmin">Set as Platform Admin</SelectItem>
+            </SelectContent>
+          </Select>
+          <Button variant="outline" size="sm" className="text-red-600 h-8 text-xs" onClick={() => bulkDelete(Array.from(selected))}>
+            <Trash2 className="h-3 w-3 mr-1" />Delete
+          </Button>
+        </div>
+      )}
+
       {/* User table */}
       <Card className="overflow-hidden border-border/60">
         <table className="w-full text-sm">
           <thead className="bg-muted/50 border-b border-border">
             <tr>
+              <th className="w-10 py-3 px-4">
+                <button onClick={toggleSelectAll} className="text-muted-foreground hover:text-foreground">
+                  {allSelected ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                </button>
+              </th>
               <th className="text-left py-3 px-4 font-semibold text-xs">User</th>
               <th className="text-left py-3 px-4 font-semibold text-xs">Email</th>
               <th className="text-left py-3 px-4 font-semibold text-xs">Role</th>
@@ -167,10 +244,15 @@ export default function UserRoleAssignments() {
           </thead>
           <tbody>
             {filteredUsers.length === 0 ? (
-              <tr><td colSpan={6} className="py-8 text-center text-muted-foreground text-xs">No users found</td></tr>
+              <tr><td colSpan={7} className="py-8 text-center text-muted-foreground text-xs">No users found</td></tr>
             ) : (
               paginatedUsers.map(u => (
                 <tr key={u.id} className="border-b border-border hover:bg-muted/50">
+                  <td className="py-2.5 px-4">
+                    <button onClick={() => toggleUser(u.id)} className="text-muted-foreground hover:text-foreground">
+                      {selected.has(u.id) ? <CheckSquare className="h-4 w-4" /> : <Square className="h-4 w-4" />}
+                    </button>
+                  </td>
                   <td className="py-2.5 px-4 font-medium text-xs">{u.full_name || u.name || u.email?.split('@')[0] || 'User'}</td>
                   <td className="py-2.5 px-4 text-xs text-muted-foreground">{u.email}</td>
                   <td className="py-2.5 px-4">
@@ -198,22 +280,12 @@ export default function UserRoleAssignments() {
 
       {totalPages > 1 && (
         <div className="flex items-center justify-between">
-          <p className="text-xs text-muted-foreground">
-            Page {safePage} of {totalPages}
-          </p>
+          <p className="text-xs text-muted-foreground">Page {safePage} of {totalPages}</p>
           <div className="flex items-center gap-1">
-            <Button
-              variant="outline" size="sm" className="h-8 text-xs"
-              disabled={safePage <= 1}
-              onClick={() => setPage((p: number) => Math.max(1, p - 1))}
-            >
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
               <ChevronLeft className="h-3 w-3 mr-1" />Prev
             </Button>
-            <Button
-              variant="outline" size="sm" className="h-8 text-xs"
-              disabled={safePage >= totalPages}
-              onClick={() => setPage((p: number) => Math.min(totalPages, p + 1))}
-            >
+            <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
               Next<ChevronRight className="h-3 w-3 ml-1" />
             </Button>
           </div>
@@ -222,5 +294,3 @@ export default function UserRoleAssignments() {
     </div>
   )
 }
-
-
