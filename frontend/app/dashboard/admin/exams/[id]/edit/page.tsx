@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload } from 'lucide-react'
+import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload, Download } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -57,16 +57,35 @@ function parseQuestions(raw: string): { questions: Question[]; errors: string[] 
     const arr = JSON.parse(trimmed)
     if (Array.isArray(arr) && arr.length > 0) {
       const mapped = arr.map((item: any, i: number) => {
-        const type: QuestionType = ['mcq','multiple_response','true_false','coding','descriptive','fill_blanks'].includes(item.type) ? item.type : 'mcq'
+        const rawType = String(item.type || '').toLowerCase().trim().replace(/[-_]/g, '')
+        let type: QuestionType = 'mcq'
+        if (['descriptive', 'openended', 'essay', 'shortanswer'].includes(rawType)) {
+          type = 'descriptive'
+        } else if (['mcq', 'multiplechoice', 'singlechoice'].includes(rawType)) {
+          type = 'mcq'
+        } else if (['multipleresponse', 'multiselect'].includes(rawType)) {
+          type = 'multiple_response'
+        } else if (['truefalse', 'boolean', 'tf'].includes(rawType)) {
+          type = 'true_false'
+        } else if (['coding', 'code', 'programming'].includes(rawType)) {
+          type = 'coding'
+        } else if (['fillblanks', 'fillintheblanks', 'fib'].includes(rawType)) {
+          type = 'fill_blanks'
+        } else {
+          type = ['mcq','multiple_response','true_false','coding','descriptive','fill_blanks'].includes(item.type) ? item.type : 'mcq'
+        }
+
         const opts = Array.isArray(item.options) ? item.options.map(String).filter(Boolean) : undefined
+        const titleVal = item.title || item.category || (item.question && item.question.length > 60 ? item.question.slice(0, 60) + '...' : item.question) || `Question ${i + 1}`
+        
         return {
           id: crypto.randomUUID(),
           type,
-          title: String(item.title || item.question || `Question ${i + 1}`),
-          prompt: String(item.prompt || item.description || ''),
+          title: String(titleVal),
+          prompt: String(item.prompt || item.question || item.description || ''),
           options: ['mcq','multiple_response','true_false','fill_blanks'].includes(type) && opts?.length ? opts : undefined,
           answer: item.answer ? String(item.answer) : undefined,
-          score: Number(item.score) || 10,
+          score: Number(item.score || item.marks || item.points) || 10,
         }
       })
       return { questions: mapped, errors }
@@ -140,6 +159,8 @@ export default function ExamReviewPage() {
   const [importModal, setImportModal] = useState(false)
   const [importText, setImportText] = useState('')
   const [importedPreview, setImportedPreview] = useState<Question[] | null>(null)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [deletingSelected, setDeletingSelected] = useState(false)
 
   const fetchExam = async () => {
     setLoading(true)
@@ -335,6 +356,30 @@ export default function ExamReviewPage() {
             </p>
           </div>
           <div className="flex gap-2">
+            {selectedIds.size > 0 && (
+              <Button variant="destructive" size="sm" disabled={deletingSelected} onClick={async () => {
+                setDeletingSelected(true)
+                const remaining = exam.questionList.filter(q => !selectedIds.has(q.id))
+                setExam({ ...exam, questionList: remaining })
+                await saveExam(remaining)
+                setSelectedIds(new Set())
+                setDeletingSelected(false)
+                addToast({ type: 'success', title: `${selectedIds.size} questions removed` })
+              }} className="gap-2">
+                {deletingSelected ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                Delete {selectedIds.size}
+              </Button>
+            )}
+            <Button variant="outline" size="sm" onClick={() => {
+              if (selectedIds.size === exam.questionList.length) {
+                setSelectedIds(new Set())
+              } else {
+                setSelectedIds(new Set(exam.questionList.map(q => q.id)))
+              }
+            }} className="gap-2">
+              <CheckSquare className="h-4 w-4" />
+              {selectedIds.size === exam.questionList.length ? 'Deselect All' : 'Select All'}
+            </Button>
             <Button variant="outline" onClick={() => { setImportText(''); setImportedPreview(null); setImportModal(true) }} className="gap-2">
               <Upload className="h-4 w-4" /> Import
             </Button>
@@ -346,9 +391,17 @@ export default function ExamReviewPage() {
 
         <div className="space-y-4">
           {exam.questionList.map((q, idx) => (
-            <div key={q.id} className="border rounded-md p-4 bg-muted/20 relative group">
+            <div key={q.id} className={`border rounded-md p-4 bg-muted/20 relative group transition-colors ${selectedIds.has(q.id) ? 'border-primary ring-1 ring-primary/30' : ''}`}>
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-2 mb-2">
+                  <button onClick={() => {
+                    const next = new Set(selectedIds)
+                    if (next.has(q.id)) next.delete(q.id)
+                    else next.add(q.id)
+                    setSelectedIds(next)
+                  }} className={`shrink-0 w-5 h-5 rounded border flex items-center justify-center transition-colors ${selectedIds.has(q.id) ? 'bg-primary border-primary text-primary-foreground' : 'border-muted-foreground/30 hover:border-muted-foreground/60'}`}>
+                    {selectedIds.has(q.id) && <CheckSquare className="w-3.5 h-3.5" />}
+                  </button>
                   <Badge variant="outline" className="bg-background">
                     {QUESTION_TYPE_META[q.type]?.icon}
                     {QUESTION_TYPE_META[q.type]?.label || q.type}
@@ -427,7 +480,24 @@ export default function ExamReviewPage() {
                 />
               </div>
             </div>
-            <div className="flex gap-2">
+            <div className="flex gap-2 flex-wrap">
+              <Button variant="outline" size="sm" onClick={() => {
+                const sample = [
+                  { type: 'mcq', title: 'Basic SQL Query', prompt: 'Which SQL clause is used to filter records?', options: ['WHERE', 'HAVING', 'FILTER', 'MATCH'], answer: 'WHERE', score: 10 },
+                  { type: 'true_false', title: 'JavaScript Hoisting', prompt: 'In JavaScript, variable declarations using `var` are hoisted to the top of their scope.', options: ['True', 'False'], answer: 'True', score: 5 },
+                  { type: 'coding', title: 'Reverse a String', prompt: 'Write a function that reverses a string without using built-in reverse methods.', score: 20 },
+                  { type: 'descriptive', title: 'Explain REST', prompt: 'Explain the principles of RESTful API design and its key constraints.', score: 15 },
+                  { type: 'multiple_response', title: 'CSS Selectors', prompt: 'Which of the following are valid CSS selectors?', options: ['.class', '#id', '$name', ':hover'], answer: '.class, #id, :hover', score: 10 },
+                  { type: 'fill_blanks', title: 'HTTP Status Codes', prompt: 'HTTP 200 means ___, 404 means ___, and 500 means ___.', options: ['OK', 'Not Found', 'Server Error'], answer: 'OK, Not Found, Server Error', score: 5 },
+                ]
+                const blob = new Blob([JSON.stringify(sample, null, 2)], { type: 'application/json' })
+                const url = URL.createObjectURL(blob)
+                const a = document.createElement('a')
+                a.href = url; a.download = 'sample-questions.json'; a.click()
+                URL.revokeObjectURL(url)
+              }} className="gap-2">
+                <Download className="h-4 w-4" /> Sample
+              </Button>
               <Button variant="outline" onClick={() => {
                 const fileInput = document.getElementById('import-file-input')
                 if (fileInput) fileInput.click()
