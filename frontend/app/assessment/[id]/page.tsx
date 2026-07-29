@@ -235,7 +235,7 @@ export default function CandidateAssessmentPage() {
                     isAnswered ? 'bg-primary/10 text-foreground hover:bg-primary/20' : 'bg-card text-foreground border hover:bg-muted'
                   }`}
                 >
-                  <span className="truncate pr-2">Q{idx + 1}: {q.type === 'mcq' ? 'Multiple Choice' : 'Coding'}</span>
+                  <span className="truncate pr-2" title={q.title}>Q{idx + 1}: {q.title}</span>
                   {isAnswered && !isActive && <CheckCircle2 className="h-3.5 w-3.5 text-primary" />}
                 </button>
               )
