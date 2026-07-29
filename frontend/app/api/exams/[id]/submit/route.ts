@@ -17,6 +17,8 @@ export async function POST(
   const body = await req.json().catch(() => ({})) as {
     answers?: Record<string, string>
     auto_submitted?: boolean
+    idPhoto?: string
+    facePhoto?: string
   }
 
   try {
@@ -56,6 +58,8 @@ export async function POST(
       score: totalScore,
       max_score: maxScore,
       auto_submitted: body.auto_submitted || false,
+      id_photo: body.idPhoto || null,
+      face_photo: body.facePhoto || null,
       details,
       created_at: nowIso(),
     }

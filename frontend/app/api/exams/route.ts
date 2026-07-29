@@ -94,41 +94,43 @@ export async function POST(request: Request) {
     const stacks = body.techStack || ['General']
     let questionList: QuestionDoc[] = []
 
-    try {
-      const typesStr = Object.keys(QUESTION_TYPE_LABELS).join('|')
-      const topicsList = stacks.join(', ')
-      const aiPrompt = 'Generate a ' + body.level + ' level assessment for: ' + (body.subject || 'General') + '.\n' +
-        'Topics/skills to assess: ' + topicsList + '.\n' +
-        'Duration: ' + (body.duration || 60) + ' minutes.\n' +
-        'Number of questions: ' + numQuestions + '.\n\n' +
-        'REQUIREMENTS:\n' +
-        '- Each question must test a DIFFERENT specific concept or skill\n' +
-        '- Questions must be realistic, practical, and job-relevant — like a real screening test\n' +
-        '- Write clear, specific questions with well-crafted wrong options that seem plausible (good distractors)\n' +
-        '- Include a mix of conceptual, practical, scenario-based, and coding questions\n' +
-        '- Coding questions should describe a real task with expected output or behavior\n' +
-        '- For mcq: exactly 4 distinct options, one clearly correct, others realistic but wrong\n' +
-        '- For multiple_response: 4-5 options, mark ALL correct answers in answer field (comma separated)\n' +
-        '- For true_false: options=["True","False"], answer="True" or "False"\n' +
-        '- For coding: omit options and answer, prompt must describe a specific coding task\n' +
-        '- For descriptive: omit options, answer should be key points or a model answer\n' +
-        '- For fill_blanks: use ___ in prompt for blanks, answer is the missing word(s)\n\n' +
-        'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number }.\n' +
-        'Never repeat content. Return exactly ' + numQuestions + ' items.'
-      const aiRes = await backendComplete({
-        systemMessage: 'You are a senior technical assessor who creates realistic job screening questions. Each question must test a distinct skill with realistic distractors. Return ONLY valid JSON.',
-        userMessage: aiPrompt,
-        responseFormat: 'json',
-      })
-      const rawJson = aiRes.ok ? (aiRes.json || (aiRes.text ? tryParseJsonArray(aiRes.text) : null)) : null
-      if (rawJson && Array.isArray(rawJson) && rawJson.length > 0) {
-        questionList = (rawJson as Array<Record<string, unknown>>).map((q: Record<string, unknown>) => normalizeQuestion(q as Record<string, unknown>))
+    if (numQuestions > 0) {
+      try {
+        const typesStr = Object.keys(QUESTION_TYPE_LABELS).join('|')
+        const topicsList = stacks.join(', ')
+        const aiPrompt = 'Generate a ' + body.level + ' level assessment for: ' + (body.subject || 'General') + '.\n' +
+          'Topics/skills to assess: ' + topicsList + '.\n' +
+          'Duration: ' + (body.duration || 60) + ' minutes.\n' +
+          'Number of questions: ' + numQuestions + '.\n\n' +
+          'REQUIREMENTS:\n' +
+          '- Each question must test a DIFFERENT specific concept or skill\n' +
+          '- Questions must be realistic, practical, and job-relevant — like a real screening test\n' +
+          '- Write clear, specific questions with well-crafted wrong options that seem plausible (good distractors)\n' +
+          '- Include a mix of conceptual, practical, scenario-based, and coding questions\n' +
+          '- Coding questions should describe a real task with expected output or behavior\n' +
+          '- For mcq: exactly 4 distinct options, one clearly correct, others realistic but wrong\n' +
+          '- For multiple_response: 4-5 options, mark ALL correct answers in answer field (comma separated)\n' +
+          '- For true_false: options=["True","False"], answer="True" or "False"\n' +
+          '- For coding: omit options and answer, prompt must describe a specific coding task\n' +
+          '- For descriptive: omit options, answer should be key points or a model answer\n' +
+          '- For fill_blanks: use ___ in prompt for blanks, answer is the missing word(s)\n\n' +
+          'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number }.\n' +
+          'Never repeat content. Return exactly ' + numQuestions + ' items.'
+        const aiRes = await backendComplete({
+          systemMessage: 'You are a senior technical assessor who creates realistic job screening questions. Each question must test a distinct skill with realistic distractors. Return ONLY valid JSON.',
+          userMessage: aiPrompt,
+          responseFormat: 'json',
+        })
+        const rawJson = aiRes.ok ? (aiRes.json || (aiRes.text ? tryParseJsonArray(aiRes.text) : null)) : null
+        if (rawJson && Array.isArray(rawJson) && rawJson.length > 0) {
+          questionList = (rawJson as Array<Record<string, unknown>>).map((q: Record<string, unknown>) => normalizeQuestion(q as Record<string, unknown>))
+        }
+      } catch {
+        // AI fallback
       }
-    } catch {
-      // AI fallback
     }
 
-    if (questionList.length === 0) {
+    if (questionList.length === 0 && numQuestions > 0) {
       const typesPool: QuestionType[] = ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks']
       for (let i = 0; i < numQuestions; i++) {
         const stack = stacks[i % stacks.length]

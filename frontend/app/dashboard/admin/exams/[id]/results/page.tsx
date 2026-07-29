@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, ExternalLink } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, ExternalLink, X } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -18,6 +18,8 @@ interface CandidateResult {
   score: number | null
   submittedAt: string | null
   proctoringFlags: number
+  idPhoto?: string | null
+  facePhoto?: string | null
 }
 
 interface Exam {
@@ -36,6 +38,7 @@ export default function ExamResultsPage() {
   const [exam, setExam] = useState<Exam | null>(null)
   const [results, setResults] = useState<CandidateResult[]>([])
   const [loading, setLoading] = useState(true)
+  const [selectedCandidate, setSelectedCandidate] = useState<CandidateResult | null>(null)
 
   useEffect(() => {
     const fetchData = async () => {
@@ -108,14 +111,25 @@ export default function ExamResultsPage() {
       key: 'actions',
       header: 'Actions',
       cell: (row: CandidateResult) => (
-        <Button 
-          variant="ghost" 
-          size="sm" 
-          disabled={row.status !== 'completed'}
-          className="text-xs h-8"
-        >
-          <Eye className="w-3.5 h-3.5 mr-1.5" /> Review
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            disabled={row.status !== 'completed'}
+            onClick={() => setSelectedCandidate(row)}
+            className="text-xs h-8"
+          >
+            <User className="w-3.5 h-3.5 mr-1.5 text-primary" /> Verify ID
+          </Button>
+          <Button 
+            variant="ghost" 
+            size="sm" 
+            disabled={row.status !== 'completed'}
+            className="text-xs h-8"
+          >
+            <Eye className="w-3.5 h-3.5 mr-1.5" /> Review
+          </Button>
+        </div>
       ),
     },
   ]
@@ -166,6 +180,59 @@ export default function ExamResultsPage() {
           searchPlaceholder="Search candidates..."
         />
       </div>
+
+      {selectedCandidate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs">
+          <div className="max-w-2xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
+            <div className="flex items-center justify-between border-b pb-3">
+              <div>
+                <h3 className="font-bold text-lg">Candidate Identity Verification</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{selectedCandidate.name} ({selectedCandidate.email})</p>
+              </div>
+              <Button variant="ghost" size="sm" onClick={() => setSelectedCandidate(null)}>
+                <X className="h-4 w-4" />
+              </Button>
+            </div>
+
+            <div className="grid grid-cols-2 gap-6 py-2">
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-muted-foreground block text-center">Government ID Photo</span>
+                <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
+                  {selectedCandidate.idPhoto ? (
+                    <img src={selectedCandidate.idPhoto} alt="Government ID" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No ID photo captured</span>
+                  )}
+                </div>
+              </div>
+
+              <div className="space-y-2">
+                <span className="text-xs font-semibold text-muted-foreground block text-center">Live Face Capture</span>
+                <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
+                  {selectedCandidate.facePhoto ? (
+                    <img src={selectedCandidate.facePhoto} alt="Face Selfie" className="w-full h-full object-cover" />
+                  ) : (
+                    <span className="text-xs text-muted-foreground">No face photo captured</span>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex justify-end gap-3 pt-3 border-t">
+              <Button variant="outline" onClick={() => setSelectedCandidate(null)}>Close</Button>
+              <Button 
+                onClick={() => {
+                  addToast({ type: 'success', title: 'Identity Verified', message: `Identity for ${selectedCandidate.name} has been verified.` })
+                  setSelectedCandidate(null)
+                }}
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Verified
+              </Button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   )
 }

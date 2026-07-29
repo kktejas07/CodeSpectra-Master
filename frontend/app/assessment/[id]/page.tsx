@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
+import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 
 interface Question {
   id: string
@@ -44,6 +45,11 @@ export default function CandidateAssessmentPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [currentQIndex, setCurrentQIndex] = useState(0)
+  
+  // Verification State
+  const [showVerification, setShowVerification] = useState(false)
+  const [idPhoto, setIdPhoto] = useState<string | null>(null)
+  const [facePhoto, setFacePhoto] = useState<string | null>(null)
   
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -118,25 +124,38 @@ export default function CandidateAssessmentPage() {
 
   const handleAutoSubmit = async () => {
     addToast({ type: 'error', title: 'Time is up! Auto-submitting...' })
-    await submitAssessment()
+    await submitAssessment(true)
   }
 
   const handleManualSubmit = async () => {
     if (confirm('Are you sure you want to submit? You cannot return to the assessment once submitted.')) {
-      await submitAssessment()
+      await submitAssessment(false)
     }
   }
 
-  const submitAssessment = async () => {
+  const submitAssessment = async (autoSubmitted = false) => {
     if (!exam) return
     setIsSubmitting(true)
     try {
-      // Mocking successful submission for Phase 3.
-      await new Promise(r => setTimeout(r, 1500))
+      const res = await fetch(`/api/exams/${exam.id}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          answers,
+          auto_submitted: autoSubmitted,
+          idPhoto,
+          facePhoto,
+        }),
+        credentials: 'include',
+      })
+      if (!res.ok) {
+        const err = await res.json().catch(() => ({}))
+        throw new Error(err.error || 'Failed to submit')
+      }
       setIsSubmitted(true)
       addToast({ type: 'success', title: 'Assessment submitted successfully!' })
-    } catch {
-      addToast({ type: 'error', title: 'Failed to submit' })
+    } catch (e: any) {
+      addToast({ type: 'error', title: 'Failed to submit', message: e.message || '' })
     } finally {
       setIsSubmitting(false)
     }
@@ -211,10 +230,23 @@ export default function CandidateAssessmentPage() {
             </p>
           </div>
 
-          <Button onClick={handleStart} className="w-full text-lg h-12">
+          <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
             Start Assessment Now
           </Button>
         </Card>
+
+        {showVerification && (
+          <IdentityVerification
+            examTitle={exam.title}
+            onCancel={() => setShowVerification(false)}
+            onComplete={(data) => {
+              setIdPhoto(data.idPhoto)
+              setFacePhoto(data.facePhoto)
+              setShowVerification(false)
+              handleStart()
+            }}
+          />
+        )}
       </div>
     )
   }

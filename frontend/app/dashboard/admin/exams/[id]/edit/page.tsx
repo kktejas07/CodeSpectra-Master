@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type } from 'lucide-react'
+import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -47,6 +47,74 @@ interface Exam {
   published: boolean
 }
 
+function parseQuestions(raw: string): { questions: Question[]; errors: string[] } {
+  const errors: string[] = []
+  const trimmed = raw.trim()
+  if (!trimmed) return { questions: [], errors: ['No content provided'] }
+
+  // Try JSON
+  try {
+    const arr = JSON.parse(trimmed)
+    if (Array.isArray(arr) && arr.length > 0) {
+      const mapped = arr.map((item: any, i: number) => {
+        const type: QuestionType = ['mcq','multiple_response','true_false','coding','descriptive','fill_blanks'].includes(item.type) ? item.type : 'mcq'
+        const opts = Array.isArray(item.options) ? item.options.map(String).filter(Boolean) : undefined
+        return {
+          id: crypto.randomUUID(),
+          type,
+          title: String(item.title || item.question || `Question ${i + 1}`),
+          prompt: String(item.prompt || item.description || ''),
+          options: ['mcq','multiple_response','true_false','fill_blanks'].includes(type) && opts?.length ? opts : undefined,
+          answer: item.answer ? String(item.answer) : undefined,
+          score: Number(item.score) || 10,
+        }
+      })
+      return { questions: mapped, errors }
+    }
+  } catch {}
+
+  // Try CSV (header: type,title,prompt,options,answer,score)
+  const lines = trimmed.split('\n').map(l => l.trim()).filter(Boolean)
+  if (lines.length >= 2 && lines[0].toLowerCase().includes('type')) {
+    const parsed: Question[] = []
+    for (let i = 1; i < lines.length; i++) {
+      const parts = lines[i].split(',').map(s => s.trim().replace(/^"(.*)"$/, '$1'))
+      if (parts.length < 2) { errors.push(`Row ${i + 1}: too few columns`); continue }
+      const type: QuestionType = ['mcq','multiple_response','true_false','coding','descriptive','fill_blanks'].includes(parts[0]) ? parts[0] as QuestionType : 'mcq'
+      const opts = parts[3] ? parts[3].split('|').map(s => s.trim()).filter(Boolean) : undefined
+      parsed.push({
+        id: crypto.randomUUID(),
+        type,
+        title: parts[1] || `Question ${i}`,
+        prompt: parts[2] || '',
+        options: ['mcq','multiple_response','true_false','fill_blanks'].includes(type) && opts?.length ? opts : undefined,
+        answer: parts[4] || undefined,
+        score: parseInt(parts[5]) || 10,
+      })
+    }
+    if (parsed.length) return { questions: parsed, errors }
+  }
+
+  // Fallback: plain text — each block separated by blank line
+  const blocks = trimmed.split(/\n\s*\n/).filter(Boolean)
+  if (blocks.length) {
+    return {
+      questions: blocks.map((block, i) => ({
+        id: crypto.randomUUID(),
+        type: 'descriptive' as QuestionType,
+        title: `Question ${i + 1}`,
+        prompt: block,
+        options: undefined,
+        answer: undefined,
+        score: 10,
+      })),
+      errors,
+    }
+  }
+
+  return { questions: [], errors: ['Could not parse any questions'] }
+}
+
 const emptyQuestion = (): Question => ({
   id: crypto.randomUUID(),
   type: 'mcq',
@@ -69,6 +137,9 @@ export default function ExamReviewPage() {
   const [questionModal, setQuestionModal] = useState(false)
   const [editingQuestion, setEditingQuestion] = useState<Question | null>(null)
   const [regeneratingId, setRegeneratingId] = useState<string | null>(null)
+  const [importModal, setImportModal] = useState(false)
+  const [importText, setImportText] = useState('')
+  const [importedPreview, setImportedPreview] = useState<Question[] | null>(null)
 
   const fetchExam = async () => {
     setLoading(true)
@@ -263,9 +334,14 @@ export default function ExamReviewPage() {
               Review the questions for this assessment. You can add, edit, or remove questions.
             </p>
           </div>
-          <Button onClick={openAddQuestion} className="gap-2">
-            <Plus className="h-4 w-4" /> Add Question
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => { setImportText(''); setImportedPreview(null); setImportModal(true) }} className="gap-2">
+              <Upload className="h-4 w-4" /> Import
+            </Button>
+            <Button onClick={openAddQuestion} className="gap-2">
+              <Plus className="h-4 w-4" /> Add Question
+            </Button>
+          </div>
         </div>
 
         <div className="space-y-4">
@@ -324,6 +400,93 @@ export default function ExamReviewPage() {
           )}
         </div>
       </div>
+
+      <Dialog open={importModal} onOpenChange={setImportModal}>
+        <DialogContent className="sm:max-w-[600px]">
+          <DialogHeader>
+            <DialogTitle>Import Questions</DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid gap-2">
+              <Label>Paste JSON, CSV, or plain text</Label>
+              <p className="text-xs text-muted-foreground">
+                <strong>JSON:</strong> [{'{type, title, prompt, options[], answer, score}'}]<br />
+                <strong>CSV:</strong> type,title,prompt,options,answer,score (options pipe-delimited, header required)<br />
+                <strong>Plain text:</strong> blank-line separated blocks become descriptive questions
+              </p>
+              <Textarea
+                value={importText}
+                onChange={(e) => {
+                  setImportText(e.target.value)
+                  setImportedPreview(null)
+                }}
+                rows={10}
+                placeholder='Paste JSON, CSV, or text here...'
+                className="font-mono text-sm"
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button variant="outline" onClick={() => {
+                const fileInput = document.getElementById('import-file-input')
+                if (fileInput) fileInput.click()
+              }} className="gap-2">
+                <Upload className="h-4 w-4" /> Upload File (.csv, .json, .txt)
+              </Button>
+              <input
+                id="import-file-input"
+                type="file"
+                accept=".csv,.json,.txt"
+                className="hidden"
+                onChange={async (e) => {
+                  const file = e.target.files?.[0]
+                  if (!file) return
+                  setImportText(await file.text())
+                  setImportedPreview(null)
+                }}
+              />
+              <Button onClick={() => {
+                const result = parseQuestions(importText)
+                if (result.questions.length) {
+                  setImportedPreview(result.questions)
+                } else {
+                  addToast({ type: 'error', title: result.errors[0] || 'No questions found' })
+                }
+              }} disabled={!importText.trim()}>
+                Preview
+              </Button>
+            </div>
+            {importedPreview && (
+              <div className="border rounded-md p-3 bg-muted/20 space-y-2">
+                <p className="text-sm font-medium">{importedPreview.length} question{importedPreview.length !== 1 ? 's' : ''} parsed</p>
+                <div className="max-h-48 overflow-y-auto space-y-1 text-xs text-muted-foreground">
+                  {importedPreview.map((q, i) => (
+                    <div key={q.id} className="flex gap-2">
+                      <span className="font-mono text-primary shrink-0">Q{i + 1}</span>
+                      <span className="font-medium text-foreground truncate">{q.title || 'Untitled'}</span>
+                      <Badge variant="outline" className="ml-auto text-[10px]">{q.type}</Badge>
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setImportModal(false)}>Cancel</Button>
+            <Button disabled={!importedPreview || importedPreview.length === 0} onClick={async () => {
+              if (!importedPreview || !exam) return
+              const newQuestions = [...exam.questionList, ...importedPreview]
+              setExam({ ...exam, questionList: newQuestions })
+              await saveExam(newQuestions)
+              setImportModal(false)
+              setImportedPreview(null)
+              setImportText('')
+              addToast({ type: 'success', title: `${importedPreview.length} questions imported` })
+            }}>
+              <Upload className="h-4 w-4 mr-2" /> Import {importedPreview?.length || 0} Questions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <Dialog open={questionModal} onOpenChange={setQuestionModal}>
         <DialogContent className="sm:max-w-[600px]">

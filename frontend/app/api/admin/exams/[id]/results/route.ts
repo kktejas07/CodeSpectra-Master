@@ -52,6 +52,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       score: number | null
       submittedAt: string | null
       proctoringFlags: number
+      idPhoto?: string | null
+      facePhoto?: string | null
     }
 
     const results: CandidateResultRow[] = []
@@ -73,6 +75,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         score: sub ? Math.round(sub.score) : null,
         submittedAt: sub?.submitted_at || null,
         proctoringFlags: 0,
+        idPhoto: sub?.id_photo || null,
+        facePhoto: sub?.face_photo || null,
       })
     }
 
@@ -91,6 +95,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
           score: Math.round(sub.score),
           submittedAt: sub.submitted_at || null,
           proctoringFlags: 0,
+          idPhoto: sub.id_photo || null,
+          facePhoto: sub.face_photo || null,
         })
       }
     }

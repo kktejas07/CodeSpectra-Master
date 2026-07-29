@@ -354,8 +354,9 @@ export default function AdminExamsPage() {
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
             <Button onClick={handleSaveExam} disabled={saving} className={!editingExam ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {!editingExam && !saving && <Wand2 className="mr-2 h-4 w-4" />}
-              {editingExam ? 'Save Changes' : 'Generate with AI'}
+              {!editingExam && !saving && questions > 0 && <Wand2 className="mr-2 h-4 w-4" />}
+              {!editingExam && !saving && questions === 0 && <Plus className="mr-2 h-4 w-4" />}
+              {editingExam ? 'Save Changes' : questions > 0 ? 'Generate with AI' : 'Create Blank Exam'}
             </Button>
           </DialogFooter>
         </DialogContent>
