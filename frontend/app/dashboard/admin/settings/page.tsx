@@ -29,6 +29,7 @@ import {
   ShieldCheck,
   Hand,
   FileSearch,
+  Zap,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -2259,7 +2260,23 @@ function SystemSettingsInner() {
                 <p className="mt-3 text-xs text-muted-foreground">
                   Provider fallback order (auto-selects): Gemini → OpenCode → Groq → OpenRouter → OpenAI → Anthropic → NVIDIA.
                 </p>
-                <div className="flex justify-end mt-6 pt-4 border-t border-border/40">
+                <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
+                  <Button variant="outline" size="sm" onClick={async () => {
+                    const providers = ['gemini','opencode','groq','openrouter','openai','anthropic']
+                    const results: string[] = []
+                    for (const p of providers) {
+                      const key = (secretsDraft as any)[(p === 'gemini' ? 'gemini_api_key' : p === 'opencode' ? 'opencode_api_key' : p === 'groq' ? 'groq_api_key' : p === 'openrouter' ? 'openrouter_api_key' : p === 'openai' ? 'openai_api_key' : 'anthropic_api_key')] || ''
+                      if (!key) { results.push(`⚠️ ${p}: no key`); continue }
+                      try {
+                        const r = await fetch('/api/admin/llm-test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ provider: p, key }) })
+                        const d = await r.json()
+                        results.push(d.ok ? `✅ ${p}: working` : `❌ ${p}: ${d.error}`)
+                      } catch { results.push(`❌ ${p}: network error`) }
+                    }
+                    addToast({ type: 'info', title: 'Key Test Results', message: results.join(' · '), duration: 15000 })
+                  }}>
+                    <Zap className="h-3 w-3 mr-1" />Test All Keys
+                  </Button>
                   <Button onClick={() => saveSecrets()} disabled={savingKey === "integrations"} className="gap-2">
                     {savingKey === "integrations" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
                     Save Keys
