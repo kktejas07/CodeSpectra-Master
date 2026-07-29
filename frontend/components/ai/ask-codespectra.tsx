@@ -26,8 +26,25 @@ export function AskCodeSpectra() {
   const [sessionId, setSessionId] = useState<string | null>(null)
   const [busy, setBusy] = useState(false)
   const [contextMode, setContextMode] = useState<ContextMode>('rag')
+  const sidebarRef = useRef<HTMLElement>(null)
   const scrollRef = useRef<HTMLDivElement>(null)
   const abortRef = useRef<AbortController | null>(null)
+
+  useEffect(() => {
+    if (!open) return
+    const handleClick = (e: MouseEvent) => {
+      const target = e.target as HTMLElement
+      if (
+        sidebarRef.current &&
+        !sidebarRef.current.contains(target) &&
+        !target.closest('[data-testid="ask-codespectra-launcher"]')
+      ) {
+        setOpen(false)
+      }
+    }
+    document.addEventListener('mousedown', handleClick)
+    return () => document.removeEventListener('mousedown', handleClick)
+  }, [open])
 
   useEffect(() => {
     if (open && scrollRef.current) {
@@ -140,6 +157,7 @@ export function AskCodeSpectra() {
 
       {/* Slide-out sidebar */}
       <aside
+        ref={sidebarRef}
         className={cn(
           'fixed right-0 top-0 z-40 flex flex-col h-dvh w-full max-w-md border-l border-border bg-card/95 backdrop-blur-md shadow-2xl',
           'transition-transform duration-200',
