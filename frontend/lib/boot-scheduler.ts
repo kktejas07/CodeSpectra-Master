@@ -18,6 +18,7 @@ export function bootSchedulerOnce(): void {
     try {
       const mod = await import('./scheduler')
       mod.startSchedulerLoop()
+      mod.startTrialExpiryLoop()
       console.log('[CodeSpectra] scheduler loop booted lazily on first request')
     } catch (e) {
       console.warn('[CodeSpectra] scheduler bootstrap skipped:', e)

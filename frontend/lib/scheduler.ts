@@ -232,3 +232,22 @@ export function stopSchedulerLoop(): void {
   }
   _bootstrapped = false
 }
+
+// ── Trial expiry check (runs daily) ─────────────────────────────────────────
+let _trialTimer: ReturnType<typeof setInterval> | null = null
+
+export function startTrialExpiryLoop(): void {
+  if (_trialTimer || process.env.NEXT_PUBLIC_DISABLE_SCHEDULER === '1') return
+  setTimeout(() => {
+    checkTrials()
+    _trialTimer = setInterval(checkTrials, 24 * 60 * 60_000)
+  }, 60_000)
+}
+
+async function checkTrials(): Promise<void> {
+  try {
+    const { expireTrials } = await import('./coupon-service')
+    const count = await expireTrials()
+    if (count > 0) console.log(`[trial] Expired ${count} trial subscription(s)`)
+  } catch { /* ignore */ }
+}

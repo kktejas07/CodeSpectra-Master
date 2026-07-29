@@ -51,18 +51,20 @@ export interface BillingSubscriptionDoc {
   started_at: string
   ends_at: string
   last_payment_id?: string
+  trial_ends_at?: string
   created_at: string
 }
 
 export interface BillingCouponDoc {
   id: string
   code: string
-  discount_type: 'percentage' | 'flat'
+  discount_type: 'percentage' | 'flat' | 'trial'
   discount_value: number
   max_uses: number
   current_uses: number
   valid_until?: string
   active: boolean
+  trial_duration_days?: number
   created_at: string
   created_by?: string
 }

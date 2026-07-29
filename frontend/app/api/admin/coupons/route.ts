@@ -29,9 +29,9 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json()
-    const { code, discount_type, discount_value, max_uses, valid_until } = body
+    const { code, discount_type, discount_value, max_uses, valid_until, trial_duration_days } = body
 
-    if (!code || !discount_type || discount_value === undefined) {
+    if (!code || !discount_type || (discount_type !== 'trial' && discount_value === undefined)) {
       return NextResponse.json({ error: 'Missing required fields' }, { status: 400 })
     }
 
@@ -45,11 +45,12 @@ export async function POST(req: NextRequest) {
       id: newId(),
       code: code.toUpperCase(),
       discount_type,
-      discount_value: Number(discount_value),
+      discount_value: discount_type === 'trial' ? 100 : Number(discount_value),
       max_uses: Number(max_uses) || 0,
       current_uses: 0,
       valid_until: valid_until ? new Date(valid_until).toISOString() : undefined,
       active: true,
+      trial_duration_days: trial_duration_days ? Number(trial_duration_days) : undefined,
       created_by: user.id,
       created_at: nowIso(),
     }

@@ -16,8 +16,9 @@ import { Label } from '@/components/ui/label'
 interface Coupon {
   id: string
   code: string
-  discount_type: 'percentage' | 'flat'
+  discount_type: 'percentage' | 'flat' | 'trial'
   discount_value: number
+  trial_duration_days?: number
   max_uses: number
   current_uses: number
   valid_until?: string
@@ -36,8 +37,9 @@ export default function CouponsAdminPage() {
 
   // Form State
   const [code, setCode] = useState('')
-  const [type, setType] = useState<'percentage' | 'flat'>('percentage')
+  const [type, setType] = useState<'percentage' | 'flat' | 'trial'>('percentage')
   const [value, setValue] = useState('')
+  const [trialDays, setTrialDays] = useState('')
   const [maxUses, setMaxUses] = useState('')
   const [validUntil, setValidUntil] = useState('')
 
@@ -71,9 +73,10 @@ export default function CouponsAdminPage() {
         body: JSON.stringify({
           code: code.trim().toUpperCase(),
           discount_type: type,
-          discount_value: Number(value),
+          discount_value: type === 'trial' ? 100 : Number(value),
           max_uses: maxUses ? Number(maxUses) : 0,
           valid_until: validUntil || undefined,
+          trial_duration_days: type === 'trial' ? Number(trialDays) : undefined,
         })
       })
       const data = await res.json()
@@ -129,13 +132,22 @@ export default function CouponsAdminPage() {
                   <SelectContent>
                     <SelectItem value="percentage">Percentage (%)</SelectItem>
                     <SelectItem value="flat">Flat Amount (INR)</SelectItem>
+                    <SelectItem value="trial">Free Trial (Days)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
+              {type !== 'trial' && (
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="value" className="text-right">Value</Label>
                 <Input id="value" type="number" value={value} onChange={e => setValue(e.target.value)} className="col-span-3" placeholder={type === 'percentage' ? "20" : "500"} />
               </div>
+              )}
+              {type === 'trial' && (
+              <div className="grid grid-cols-4 items-center gap-4">
+                <Label htmlFor="days" className="text-right">Duration (Days)</Label>
+                <Input id="days" type="number" value={trialDays} onChange={e => setTrialDays(e.target.value)} className="col-span-3" placeholder="90" />
+              </div>
+              )}
               <div className="grid grid-cols-4 items-center gap-4">
                 <Label htmlFor="uses" className="text-right">Max Uses</Label>
                 <Input id="uses" type="number" value={maxUses} onChange={e => setMaxUses(e.target.value)} className="col-span-3" placeholder="Leave empty for unlimited" />
@@ -173,7 +185,7 @@ export default function CouponsAdminPage() {
                 <tr key={coupon.id} className="hover:bg-muted/20 transition-colors">
                   <td className="px-6 py-4 font-mono font-bold">{coupon.code}</td>
                   <td className="px-6 py-4">
-                    {coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` : `₹${coupon.discount_value} OFF`}
+                    {coupon.discount_type === 'trial' ? `Free ${coupon.trial_duration_days || '?'} days` : coupon.discount_type === 'percentage' ? `${coupon.discount_value}% OFF` : `₹${coupon.discount_value} OFF`}
                   </td>
                   <td className="px-6 py-4">
                     {coupon.current_uses} / {coupon.max_uses > 0 ? coupon.max_uses : '∞'}

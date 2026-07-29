@@ -111,6 +111,21 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       })
       subscription = { id: sId, ends_at }
     }
+
+    // If the order used a trial coupon, mark the subscription
+    if (order.coupon_id) {
+      const { billingCoupons } = await import('@/lib/db/billing')
+      const couponsCol = await billingCoupons()
+      const coupon = await couponsCol.findOne({ id: order.coupon_id })
+      if (coupon?.discount_type === 'trial' && coupon?.trial_duration_days) {
+        const trialEnds = new Date(Date.now() + coupon.trial_duration_days * 86400000).toISOString()
+        await subs.updateOne(
+          { id: subscription.id },
+          { $set: { trial_ends_at: trialEnds } }
+        )
+        subscription = { ...subscription, trial_ends_at: trialEnds } as any
+      }
+    }
   }
 
   return NextResponse.json({

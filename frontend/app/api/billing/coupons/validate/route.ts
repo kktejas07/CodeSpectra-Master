@@ -26,7 +26,10 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: result.error }, { status: 400 })
     }
 
-    return NextResponse.json({ coupon: result.coupon })
+    return NextResponse.json({ coupon: {
+      ...result.coupon,
+      trial_duration_days: result.coupon?.trial_duration_days,
+    } })
   } catch (error) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
