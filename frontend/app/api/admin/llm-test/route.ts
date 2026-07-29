@@ -9,6 +9,7 @@ const TEST_URLS: Record<string, string> = {
   openrouter: 'https://openrouter.ai/api/v1/models',
   opencode: 'https://api.opencode.ai/v1/models',
   anthropic: 'https://api.anthropic.com/v1/models',
+  nvidia: 'https://integrate.api.nvidia.com/v1/models',
 }
 
 const KEY_FIELDS: Record<string, string> = {
@@ -18,6 +19,7 @@ const KEY_FIELDS: Record<string, string> = {
   openrouter: 'openrouter_api_key',
   opencode: 'opencode_api_key',
   anthropic: 'anthropic_api_key',
+  nvidia: 'nvidia_api_key',
 }
 
 export async function POST(request: Request) {

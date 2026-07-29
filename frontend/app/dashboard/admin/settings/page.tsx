@@ -2246,11 +2246,11 @@ function SystemSettingsInner() {
                         <p className="text-xs text-muted-foreground">{info.desc} <a href={info.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{info.urlLabel}</a>.</p>
                         <div className="relative">
                           <Input type={(visibleFields as any)[info.key] ? 'text' : 'password'} autoComplete="off"
-                            value={keyValue || (hasKey ? '••••••••' : '')}
+                            value={((visibleFields as any)[info.key] ? (revealedValues[info.key] ?? '') : '') || (hasKey ? '••••••••' : '')}
                             onChange={(e) => setSecretsDraft((d) => ({ ...d, [info.key]: e.target.value }))}
                             className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
                             placeholder={info.placeholder + " (key1,key2 for rotation)"} />
-                          <button type="button" tabIndex={-1} onClick={() => toggleVisible(info.key)}
+                          <button type="button" tabIndex={-1} onClick={() => handleRevealToggle(info.key)}
                             className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
                             {(visibleFields as any)[info.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -2264,7 +2264,7 @@ function SystemSettingsInner() {
                 </p>
                 <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
                   <Button variant="outline" size="sm" onClick={async () => {
-                    const providers = ['gemini','opencode','groq','openrouter','openai','anthropic']
+                    const providers = ['gemini','opencode','groq','openrouter','openai','anthropic','nvidia']
                     const results: React.ReactNode[] = []
                     for (const p of providers) {
                       try {
