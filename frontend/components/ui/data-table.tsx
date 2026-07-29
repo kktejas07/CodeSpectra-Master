@@ -76,7 +76,8 @@ export function DataTable<T extends { id: string }>({
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
 
-  const filtered = data.filter(item => {
+  const safeData = data || []
+  const filtered = safeData.filter(item => {
     if (search && searchKeys?.length) {
       const q = search.toLowerCase()
       const match = searchKeys.some(key => {
