@@ -98,6 +98,7 @@ export async function POST(request: Request) {
     full_name?: string
     role?: string
     target_url?: string
+    exam_title?: string
     assigned_assessments?: import('@/lib/db/admin').AssessmentStep[]
     allowed_languages?: string[]
   }
@@ -208,22 +209,25 @@ export async function POST(request: Request) {
 
     const created = isExistingUser ? await getUserById(newUserId) : null
 
-    // Send welcome email if Postal or other provider is configured
+    // Send assessment invite email via the fallback chain (Resend → SendGrid → Postal → SMTP → log)
     let welcomeEmailSent = false
     let delivery = 'candidate_invite_link'
     try {
-      const { sendEmailViaPostal } = await import('@/lib/transactional-mail')
+      const { sendEmail } = await import('@/lib/send-email')
       const { emailTemplates } = await import('@/lib/email-templates')
-      const template = emailTemplates.welcomeEmail(full_name)
-      await sendEmailViaPostal({
-        to: email,
-        subject: template.subject,
-        html: `${template.html}<p><a href="${inviteUrl}">Click here to start your candidate assessment</a></p>`,
+      const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000)
+      const expiresStr = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
+      const template = emailTemplates.assessmentInvite({
+        candidateName: full_name,
+        examTitle: body.exam_title || 'Technical Assessment',
+        inviteUrl,
+        expiresIn: expiresStr,
       })
-      welcomeEmailSent = true
-      delivery = 'postal'
+      const result = await sendEmail(email, template)
+      welcomeEmailSent = result.success
+      delivery = result.provider
     } catch {
-      // Postal not configured or send failed — link still returned for manual copy
+      // All providers failed — link still returned for manual copy
     }
 
     return NextResponse.json({

@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Code2, AlertCircle, Loader2, ArrowRight, ShieldCheck } from 'lucide-react'
+import { Code2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Lock } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface AssessmentStepData {
@@ -24,6 +24,7 @@ export default function CandidateInviteLandingPage() {
 
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [starting, setStarting] = useState<string | null>(null)
   const [candidateData, setCandidateData] = useState<{
     email: string
     full_name: string
@@ -168,14 +169,33 @@ export default function CandidateInviteLandingPage() {
                     </div>
                   </div>
                   <Button
-                    onClick={() => {
-                      const url = `${step.target_url}?inviteEmail=${encodeURIComponent(candidateData.email)}&inviteToken=${token}`
-                      router.push(url)
+                    onClick={async () => {
+                      setStarting(step.id || 'start')
+                      try {
+                        const res = await csrfFetch(`/api/assessment/invite/${token}`, {
+                          method: 'PATCH',
+                          headers: { 'Content-Type': 'application/json' },
+                          body: JSON.stringify({ email: candidateData.email }),
+                        })
+                        const json = await res.json()
+                        if (!res.ok) throw new Error(json.error || 'Failed to activate invite')
+                        const url = `${step.target_url}?inviteEmail=${encodeURIComponent(candidateData.email)}&inviteToken=${token}`
+                        router.push(url)
+                      } catch (e: unknown) {
+                        const msg = e instanceof Error ? e.message : 'Failed to start'
+                        setError(msg)
+                        setStarting(null)
+                      }
                     }}
                     size="sm"
+                    disabled={starting !== null}
                     className="gap-1.5 shrink-0 self-end sm:self-center"
                   >
-                    Start Stage <ArrowRight className="h-3.5 w-3.5" />
+                    {starting === (step.id || 'start') ? (
+                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Activating...</>
+                    ) : (
+                      <><Lock className="h-3.5 w-3.5" /> Start Stage <ArrowRight className="h-3.5 w-3.5" /></>
+                    )}
                   </Button>
                 </div>
               )
@@ -183,8 +203,14 @@ export default function CandidateInviteLandingPage() {
           </div>
         </div>
 
+        {starting && (
+          <p className="text-[11px] text-center text-muted-foreground pt-2">
+            <Loader2 className="h-3 w-3 animate-spin inline mr-1" />
+            Activating secure assessment link — please wait...
+          </p>
+        )}
         <p className="text-[11px] text-center text-muted-foreground pt-2">
-          🔒 Identity check and anti-cheat session proctoring are automatically active for all pipeline stages.
+          🔒 This invite link can only be used once. Identity check and anti-cheat session proctoring are automatically active.
         </p>
       </Card>
     </div>

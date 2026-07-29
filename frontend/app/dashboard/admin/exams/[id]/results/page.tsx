@@ -14,7 +14,7 @@ interface CandidateResult {
   id: string
   name: string
   email: string
-  status: 'invited' | 'in_progress' | 'completed' | 'time_expired' | 'flagged'
+  status: string
   score: number | null
   submittedAt: string | null
   proctoringFlags: number
@@ -41,25 +41,14 @@ export default function ExamResultsPage() {
     const fetchData = async () => {
       setLoading(true)
       try {
-        const res = await fetch(`/api/exams`, { credentials: 'include' })
+        const res = await fetch(`/api/admin/exams/${params.id}/results`, { credentials: 'include' })
         const json = await res.json()
-        const found = json.data?.find((e: Exam) => e.id === params.id)
-        if (found) {
-          setExam(found)
-          // Mock Candidate Results
-          setResults([
-            { id: 'c1', name: 'Alice Smith', email: 'alice@example.com', status: 'completed', score: 92, submittedAt: new Date().toISOString(), proctoringFlags: 0 },
-            { id: 'c2', name: 'Bob Jones', email: 'bob@example.com', status: 'time_expired', score: 65, submittedAt: new Date(Date.now() - 3600000).toISOString(), proctoringFlags: 1 },
-            { id: 'c3', name: 'Charlie Davis', email: 'charlie@example.com', status: 'flagged', score: null, submittedAt: new Date(Date.now() - 7200000).toISOString(), proctoringFlags: 5 },
-            { id: 'c4', name: 'Diana Prince', email: 'diana@example.com', status: 'in_progress', score: null, submittedAt: null, proctoringFlags: 0 },
-            { id: 'c5', name: 'Evan Wright', email: 'evan@example.com', status: 'invited', score: null, submittedAt: null, proctoringFlags: 0 },
-          ])
-        } else {
-          addToast({ type: 'error', title: 'Exam not found' })
-          router.push('/dashboard/admin/exams')
-        }
+        if (!res.ok) throw new Error(json.error || 'Failed to load results')
+        setExam(json.exam)
+        setResults(json.results || [])
       } catch {
         addToast({ type: 'error', title: 'Failed to load results' })
+        router.push('/dashboard/admin/exams')
       } finally {
         setLoading(false)
       }
@@ -83,13 +72,12 @@ export default function ExamResultsPage() {
       header: 'Status',
       cell: (row: CandidateResult) => {
         const badges: Record<string, React.ReactNode> = {
-          invited: <Badge variant="outline" className="text-muted-foreground">Invited</Badge>,
+          pending: <Badge variant="outline" className="text-muted-foreground">Invited</Badge>,
           in_progress: <Badge variant="outline" className="text-blue-500 border-blue-500/20">In Progress</Badge>,
           completed: <Badge variant="default" className="bg-emerald-500 hover:bg-emerald-600 text-white">Completed</Badge>,
-          time_expired: <Badge variant="secondary" className="text-amber-500">Auto-Submitted</Badge>,
-          flagged: <Badge variant="destructive" className="flex w-fit items-center gap-1"><ShieldAlert className="w-3 h-3"/> Flagged</Badge>
+          expired: <Badge variant="secondary" className="text-amber-500">Expired</Badge>,
         }
-        return badges[row.status] || badges.invited
+        return badges[row.status] || <Badge variant="outline">{row.status}</Badge>
       },
     },
     {
@@ -109,7 +97,7 @@ export default function ExamResultsPage() {
     },
     {
       key: 'score',
-      header: 'AI Score',
+      header: 'Score',
       cell: (row: CandidateResult) => (
         <div className="font-mono font-medium">
           {row.score !== null ? `${row.score}%` : '--'}
@@ -123,10 +111,10 @@ export default function ExamResultsPage() {
         <Button 
           variant="ghost" 
           size="sm" 
-          disabled={row.status === 'invited' || row.status === 'in_progress'}
+          disabled={row.status !== 'completed'}
           className="text-xs h-8"
         >
-          <Eye className="w-3.5 h-3.5 mr-1.5" /> Review Code
+          <Eye className="w-3.5 h-3.5 mr-1.5" /> Review
         </Button>
       ),
     },
@@ -156,16 +144,16 @@ export default function ExamResultsPage() {
             <Badge variant="outline">{exam.level}</Badge>
             <Badge variant="outline">{exam.duration} mins</Badge>
             <Badge variant="secondary" className="bg-primary/10 text-primary">
-              {results.filter(r => r.status === 'completed' || r.status === 'time_expired').length} Submitted
+              {results.filter(r => r.status === 'completed').length} Submitted
+            </Badge>
+            <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">
+              {results.length} Total Invited
             </Badge>
           </div>
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" className="gap-2">
             <Download className="w-4 h-4" /> Export CSV
-          </Button>
-          <Button onClick={() => window.open(`/assessment/${exam.id}`, '_blank')} className="gap-2">
-            <ExternalLink className="w-4 h-4" /> View Candidate UI
           </Button>
         </div>
       </div>

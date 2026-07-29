@@ -127,7 +127,7 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
             { projection: { email: 1 } },
           )
           if (user?.email) {
-            const { sendEmail } = await import('@/lib/email-templates')
+            const { sendEmail } = await import('@/lib/send-email')
             await sendEmail(String(user.email), {
               subject: doc.title,
               html: `<div style="font-family:sans-serif;padding:24px;max-width:480px">

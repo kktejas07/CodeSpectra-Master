@@ -180,6 +180,7 @@ export async function POST(request: Request) {
       duration: body.duration || 60,
       questions: numQuestions,
       questionList,
+      access_type: body.access_type || 'invite_only',
       published: body.published ?? false,
       attempts: 0,
       avgScore: 0,

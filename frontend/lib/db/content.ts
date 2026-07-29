@@ -49,6 +49,7 @@ export interface ExamDoc {
   passing_score?: number | null
   description?: string | null
   status: 'available' | 'archived' | 'draft'
+  access_type?: 'invite_only' | 'open'
   questions?: Array<{
     id: string
     text: string

@@ -4,6 +4,46 @@ import { candidateInvites } from '@/lib/db/admin'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+export async function PATCH(
+  req: NextRequest,
+  ctx: { params: Promise<{ token: string }> },
+) {
+  const { token } = await ctx.params
+  if (!token) {
+    return NextResponse.json({ error: 'Token required' }, { status: 400 })
+  }
+
+  try {
+    const col = await candidateInvites()
+    const invite = await col.findOne({ token })
+
+    if (!invite) {
+      return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
+    }
+
+    if (invite.status === 'used') {
+      return NextResponse.json({ error: 'This invitation has already been used.' }, { status: 409 })
+    }
+
+    if (new Date(invite.expires_at).getTime() < Date.now()) {
+      await col.updateOne({ token }, { $set: { status: 'expired' } })
+      return NextResponse.json({ error: 'This invitation has expired.' }, { status: 410 })
+    }
+
+    const body = await req.json().catch(() => ({}))
+    if (body.email && body.email.toLowerCase() !== invite.email.toLowerCase()) {
+      return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different candidate.' }, { status: 403 })
+    }
+
+    await col.updateOne({ token }, { $set: { status: 'used' } })
+
+    return NextResponse.json({ ok: true })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Failed to use invite token'
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
 export async function GET(
   req: NextRequest,
   ctx: { params: Promise<{ token: string }> },

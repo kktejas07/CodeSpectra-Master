@@ -1,11 +1,12 @@
 'use client'
 
 import { useEffect, useState, useRef } from 'react'
-import { useRouter, useParams } from 'next/navigation'
+import { useRouter, useParams, useSearchParams } from 'next/navigation'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft } from 'lucide-react'
+import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 
@@ -22,6 +23,7 @@ interface Exam {
   title: string
   level: string
   duration: number
+  access_type?: 'invite_only' | 'open'
   questionList: Question[]
 }
 
@@ -29,9 +31,11 @@ export default function CandidateAssessmentPage() {
   const addToast = useToast()
   const router = useRouter()
   const params = useParams()
+  const searchParams = useSearchParams()
   
   const [exam, setExam] = useState<Exam | null>(null)
   const [loading, setLoading] = useState(true)
+  const [accessError, setAccessError] = useState<string | null>(null)
   
   // Assessment State
   const [hasStarted, setHasStarted] = useState(false)
@@ -50,12 +54,39 @@ export default function CandidateAssessmentPage() {
         const res = await fetch(`/api/exams`, { credentials: 'include' })
         const json = await res.json()
         const found = json.data?.find((e: Exam) => e.id === params.id)
-        if (found && found.published) {
-          setExam(found)
-        } else {
+
+        if (!found || !found.published) {
           addToast({ type: 'error', title: 'Assessment unavailable or invalid.' })
           router.push('/')
+          return
         }
+
+        const accType = found.access_type || 'invite_only'
+        const inviteToken = searchParams.get('inviteToken')
+        const inviteEmail = searchParams.get('inviteEmail')
+
+        if (accType === 'invite_only') {
+          if (!inviteToken) {
+            setAccessError('This exam is invite-only. A valid invitation link is required.')
+            setLoading(false)
+            return
+          }
+          const verifyRes = await fetch(`/api/assessment/invite/${inviteToken}`, { credentials: 'include' })
+          if (!verifyRes.ok) {
+            const verifyErr = await verifyRes.json().catch(() => ({ error: 'Invalid or expired invitation' }))
+            setAccessError(verifyErr.error || 'Invalid or expired invitation link')
+            setLoading(false)
+            return
+          }
+          const verifyJson = await verifyRes.json()
+          if (inviteEmail && verifyJson.email?.toLowerCase() !== inviteEmail.toLowerCase()) {
+            setAccessError('Email mismatch — this invitation belongs to a different candidate.')
+            setLoading(false)
+            return
+          }
+        }
+
+        setExam(found)
       } catch {
         addToast({ type: 'error', title: 'Failed to load assessment' })
       } finally {
@@ -63,7 +94,7 @@ export default function CandidateAssessmentPage() {
       }
     }
     if (params.id) fetchExam()
-  }, [params.id, router])
+  }, [params.id, router, searchParams])
 
   // Timer Logic
   useEffect(() => {
@@ -126,6 +157,25 @@ export default function CandidateAssessmentPage() {
   }
 
   if (!exam) return null
+
+  if (accessError) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full p-8 text-center border-destructive/30 space-y-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 mx-auto text-destructive">
+            <ShieldX className="h-7 w-7" />
+          </div>
+          <h1 className="text-xl font-bold">Access Denied</h1>
+          <p className="text-sm text-muted-foreground">{accessError}</p>
+          <div className="pt-2">
+            <Link href="/">
+              <Button variant="outline" className="w-full">Return Home</Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   // Pre-Start Screen
   if (!hasStarted) {

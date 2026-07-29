@@ -55,6 +55,7 @@ export default function AdminExamsPage() {
   const [duration, setDuration] = useState(60)
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
+  const [accessType, setAccessType] = useState<'invite_only' | 'open'>('invite_only')
   const [saving, setSaving] = useState(false)
 
   const fetchExams = async () => {
@@ -86,6 +87,7 @@ export default function AdminExamsPage() {
     setDuration(60)
     setQuestions(0)
     setPublished(false)
+    setAccessType('invite_only')
     setIsModalOpen(true)
   }
 
@@ -108,14 +110,15 @@ export default function AdminExamsPage() {
     }
     
     setSaving(true)
-    const payload = { 
+    const       payload = { 
       title, 
       subject, 
       level, 
       techStack: techStack.split(',').map(s => s.trim()).filter(Boolean),
       duration, 
       questions, 
-      published 
+      published,
+      access_type: accessType,
     }
     
     try {
@@ -171,6 +174,7 @@ export default function AdminExamsPage() {
           full_name: candName.trim() || 'Candidate',
           role: 'user',
           target_url: `/assessment/${invitingExam.id}`,
+          exam_title: invitingExam.title,
         }),
       })
       const json = await res.json()
@@ -302,6 +306,38 @@ export default function AdminExamsPage() {
               <div className="grid gap-2">
                 <Label htmlFor="questions">Questions</Label>
                 <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
+              </div>
+            </div>
+            <div className="flex items-center justify-between mt-2">
+              <div className="space-y-0.5">
+                <Label>Access Type</Label>
+                <div className="text-sm text-muted-foreground">
+                  Who can take this exam
+                </div>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setAccessType('invite_only')}
+                  className={`px-3 py-1.5 text-xs rounded-md border font-medium transition-colors ${
+                    accessType === 'invite_only'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                  }`}
+                >
+                  Invite Only
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setAccessType('open')}
+                  className={`px-3 py-1.5 text-xs rounded-md border font-medium transition-colors ${
+                    accessType === 'open'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                  }`}
+                >
+                  Open to All
+                </button>
               </div>
             </div>
             <div className="flex items-center justify-between mt-2">

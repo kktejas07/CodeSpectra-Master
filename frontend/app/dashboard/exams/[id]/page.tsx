@@ -53,8 +53,16 @@ export default function ExamPage() {
       .then(r => r.json())
       .then(data => {
         if (data && !data.error) {
-          setExam(data)
-          setTimeRemaining((data.duration_minutes || 30) * 60)
+          const qList = Array.isArray(data.questionList) ? data.questionList : (Array.isArray(data.questions) ? data.questions : [])
+          const mappedQuestions = qList.map((q: any) => ({
+            ...q,
+            question: q.question || q.title || q.prompt,
+            type: q.type,
+            points: q.points || q.score || 10,
+            time_limit_seconds: q.time_limit_seconds || 120,
+          }))
+          setExam({ ...data, questions: mappedQuestions })
+          setTimeRemaining((data.duration_minutes || data.duration || 30) * 60)
         }
       })
       .catch(() => {})
@@ -177,8 +185,11 @@ export default function ExamPage() {
                 <Badge variant="outline">{question.time_limit_seconds}s limit</Badge>
               </div>
               <p className="text-lg">{question.question}</p>
+              {question.prompt && question.prompt !== question.question && (
+                <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{question.prompt}</div>
+              )}
 
-              {question.type === 'multiple-choice' && question.options && (
+              {['multiple-choice', 'mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(question.type) && question.options && (
                 <div className="space-y-2">
                   {question.options.map((opt, i) => (
                     <button
@@ -197,11 +208,11 @@ export default function ExamPage() {
                 </div>
               )}
 
-              {(question.type === 'short-answer' || question.type === 'code') && (
+              {(['short-answer', 'code', 'descriptive', 'coding'].includes(question.type)) && (
                 <Textarea
                   value={answers[question.id] || ''}
                   onChange={e => setAnswers(a => ({ ...a, [question.id]: e.target.value }))}
-                  placeholder={question.type === 'code' ? 'Write your code here...' : 'Type your answer...'}
+                  placeholder={['code', 'coding'].includes(question.type) ? 'Write your code here...' : 'Type your answer...'}
                   className="min-h-32 font-mono text-sm"
                 />
               )}
