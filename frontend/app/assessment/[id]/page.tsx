@@ -308,7 +308,7 @@ export default function CandidateAssessmentPage() {
   return (
     <>
       <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate">
-      <div className="min-h-screen bg-background flex flex-col">
+      <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 border-b border-border bg-card px-6 py-3 flex items-center justify-between shadow-xs">
         <div>
