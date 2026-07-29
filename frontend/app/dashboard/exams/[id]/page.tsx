@@ -55,7 +55,7 @@ export default function ExamPage() {
       .then(data => {
         if (data && !data.error) {
           const qList = Array.isArray(data.questionList) ? data.questionList : (Array.isArray(data.questions) ? data.questions : [])
-          const mappedQuestions = qList.map((q: any) => ({
+          const mappedQuestions: ExamQuestion[] = qList.map((q: any) => ({
             ...q,
             question: q.question || q.title || q.prompt,
             type: q.type,
@@ -186,8 +186,8 @@ export default function ExamPage() {
                 <Badge variant="outline">{question.time_limit_seconds}s limit</Badge>
               </div>
               <p className="text-lg">{question.question}</p>
-              {question.prompt && question.prompt !== question.question && (
-                <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{question.prompt}</div>
+              {(question as any).prompt && (question as any).prompt !== question.question && (
+                <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{(question as any).prompt}</div>
               )}
 
               {['multiple-choice', 'mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(question.type) && question.options && (
