@@ -63,7 +63,7 @@ export default function CouponsAdminPage() {
   const handleCreate = async () => {
     try {
       setSaving(true)
-      const res = await fetch('/api/admin/coupons', {
+      const res = await csrfFetch('/api/admin/coupons', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
