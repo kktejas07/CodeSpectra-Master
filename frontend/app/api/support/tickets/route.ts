@@ -14,11 +14,12 @@ export async function GET() {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const db = await getMongoDb()
+  const filter = user.role === 'superadmin' ? {} : { user_id: user.id }
   const tickets = await db
     .collection('support_tickets')
-    .find({ user_id: user.id })
+    .find(filter)
     .sort({ created_at: -1 })
-    .limit(50)
+    .limit(100)
     .toArray()
 
   return NextResponse.json({ tickets })

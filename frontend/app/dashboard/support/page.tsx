@@ -1,15 +1,23 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
-import Link from 'next/link'
-import { Loader2, Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2 } from 'lucide-react'
+import { Loader2, Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
+import { useToast } from '@/lib/toast-context'
 
-type Ticket = { id: string; subject: string; message: string; category: string; status: string; created_at: string; updated_at: string }
+type Ticket = { id: string; subject: string; message: string; category: string; status: string; user_email?: string; created_at: string; updated_at: string }
 
 export default function SupportPage() {
   const gate = usePageGuard('user')
+  const addToast = useToast()
 
   const [tickets, setTickets] = useState<Ticket[]>([])
   const [loading, setLoading] = useState(true)
@@ -17,8 +25,8 @@ export default function SupportPage() {
   const [replies, setReplies] = useState<{ id: string; message: string; user_email: string; created_at: string }[]>([])
   const [newMessage, setNewMessage] = useState('')
   const [sending, setSending] = useState(false)
+  const [isAdmin] = useState(typeof window !== 'undefined' && (document.cookie.includes('role=superadmin') || document.cookie.includes('role=tenant_admin')))
 
-  // New ticket form
   const [showForm, setShowForm] = useState(false)
   const [subject, setSubject] = useState('')
   const [message, setMessage] = useState('')
@@ -26,7 +34,7 @@ export default function SupportPage() {
 
   const fetchTickets = useCallback(async () => {
     try {
-      const res = await fetch('/api/support/tickets')
+      const res = await fetch('/api/support/tickets', { credentials: 'include' })
       const json = await res.json()
       setTickets(json.tickets || [])
     } catch { /* ignore */ }
@@ -39,7 +47,7 @@ export default function SupportPage() {
     setSelectedTicket(t)
     setNewMessage('')
     try {
-      const res = await fetch(`/api/support/tickets/${t.id}`)
+      const res = await fetch(`/api/support/tickets/${t.id}`, { credentials: 'include' })
       const json = await res.json()
       setReplies(json.replies || [])
     } catch { setReplies([]) }
@@ -50,69 +58,88 @@ export default function SupportPage() {
     setSending(true)
     try {
       const res = await csrfFetch(`/api/support/tickets/${selectedTicket.id}`, {
-        method: 'POST',
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ message: newMessage }),
       })
       if (res.ok) {
         setNewMessage('')
         const json = await res.json()
-        setReplies((p) => [...p, json.reply])
+        setReplies(prev => [...prev, json.reply])
+        addToast({ type: 'success', title: 'Reply sent' })
       }
-    } catch { /* ignore */ }
-    setSending(false)
+    } catch { addToast({ type: 'error', title: 'Failed to send' }) }
+    finally { setSending(false) }
   }
 
-  const createTicket = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const createTicket = async () => {
     if (!subject.trim() || !message.trim()) return
     try {
-      const res = await csrfFetch('/api/support/tickets', {
-        method: 'POST',
+      await csrfFetch('/api/support/tickets', {
+        method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ subject, message, category }),
       })
-      if (res.ok) {
-        setShowForm(false)
-        setSubject('')
-        setMessage('')
-        fetchTickets()
-      }
-    } catch { /* ignore */ }
+      setShowForm(false)
+      setSubject(''); setMessage(''); setCategory('general')
+      addToast({ type: 'success', title: 'Ticket created' })
+      fetchTickets()
+    } catch { addToast({ type: 'error', title: 'Failed to create ticket' }) }
   }
 
-  const statusBadge = (s: string) => {
-    if (s === 'open') return <span className="flex items-center gap-1 rounded-full bg-green-500/15 px-2 py-0.5 text-[10px] text-green-500"><Clock className="h-2.5 w-2.5" /> Open</span>
-    if (s === 'in_progress') return <span className="flex items-center gap-1 rounded-full bg-blue-500/15 px-2 py-0.5 text-[10px] text-blue-500">In Progress</span>
-    return <span className="flex items-center gap-1 rounded-full bg-muted px-2 py-0.5 text-[10px] text-muted-foreground"><CheckCircle2 className="h-2.5 w-2.5" /> Closed</span>
+  const closeTicket = async (ticketId: string) => {
+    await csrfFetch(`/api/support/tickets/${ticketId}`, {
+      method: 'PATCH', credentials: 'include',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ status: 'closed' }),
+    })
+    addToast({ type: 'success', title: 'Ticket closed' })
+    setTickets(prev => prev.map(t => t.id === ticketId ? { ...t, status: 'closed' } : t))
+    if (selectedTicket?.id === ticketId) setSelectedTicket(prev => prev ? { ...prev, status: 'closed' } : null)
   }
+
+  const statusColor = (s: string) => s === 'open' ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'
+
+  if (!gate.ready) return null
 
   if (selectedTicket) {
-if (!gate.ready) return null
-
-  return (
-      <div className="mx-auto max-w-3xl space-y-6 px-6 py-10">
-        <button onClick={() => setSelectedTicket(null)} className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground"><ArrowLeft className="h-3 w-3" /> Back</button>
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-xl font-bold">{selectedTicket.subject}</h2>
-            <p className="text-xs text-muted-foreground">{selectedTicket.category} · {new Date(selectedTicket.created_at).toLocaleDateString()}</p>
-          </div>
-          {statusBadge(selectedTicket.status)}
-        </div>
-        <div className="rounded-lg border border-border bg-card p-4 text-sm">{selectedTicket.message}</div>
-        <div className="space-y-3">
-          {replies.map((r) => (
-            <div key={r.id} className={`rounded-lg border p-3 text-sm ${(r as any).user_email === (selectedTicket as any).user_email ? 'border-border bg-card' : 'border-primary/20 bg-primary/5'}`}>
-              <p className="text-xs text-muted-foreground">{r.user_email} · {new Date(r.created_at).toLocaleString()}</p>
-              <p className="mt-1">{r.message}</p>
+    return (
+      <div className="max-w-3xl mx-auto space-y-6">
+        <button onClick={() => setSelectedTicket(null)} className="flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+          <ArrowLeft className="h-4 w-4" /> Back to tickets
+        </button>
+        <Card className="p-6">
+          <div className="flex items-start justify-between">
+            <div>
+              <h1 className="text-xl font-bold">{selectedTicket.subject}</h1>
+              <div className="flex items-center gap-2 mt-2">
+                <Badge className={statusColor(selectedTicket.status)}>{selectedTicket.status}</Badge>
+                <span className="text-xs text-muted-foreground">{selectedTicket.user_email}</span>
+              </div>
             </div>
+            {selectedTicket.status !== 'closed' && (
+              <Button variant="outline" size="sm" className="text-red-500" onClick={() => closeTicket(selectedTicket.id)}>
+                <XCircle className="h-3.5 w-3.5 mr-1" /> Close
+              </Button>
+            )}
+          </div>
+          <p className="mt-4 text-sm text-muted-foreground whitespace-pre-wrap">{selectedTicket.message}</p>
+        </Card>
+
+        <div className="space-y-3">
+          <h3 className="font-semibold text-foreground">Replies ({replies.length})</h3>
+          {replies.map(r => (
+            <Card key={r.id} className="p-4">
+              <p className="text-xs text-muted-foreground mb-1">{r.user_email} · {new Date(r.created_at).toLocaleString()}</p>
+              <p className="text-sm whitespace-pre-wrap">{r.message}</p>
+            </Card>
           ))}
         </div>
+
         {selectedTicket.status !== 'closed' && (
           <div className="flex gap-2">
-            <textarea value={newMessage} onChange={(e) => setNewMessage(e.target.value)} rows={2} className="flex-1 rounded-lg border border-border bg-background p-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Type your reply..." />
-            <button onClick={sendReply} disabled={sending || !newMessage.trim()} className="flex items-center gap-1.5 rounded-lg bg-primary px-4 text-sm font-medium text-primary-foreground hover:bg-primary/90 disabled:opacity-50"><Send className="h-3.5 w-3.5" /> {sending ? 'Sending...' : 'Send'}</button>
+            <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type your reply..." onKeyDown={e => e.key === 'Enter' && sendReply()} />
+            <Button onClick={sendReply} disabled={sending || !newMessage.trim()}><Send className="h-4 w-4" /></Button>
           </div>
         )}
       </div>
@@ -120,41 +147,65 @@ if (!gate.ready) return null
   }
 
   return (
-    <div className="mx-auto max-w-3xl space-y-6 px-6 py-10">
+    <div className="max-w-4xl mx-auto space-y-6">
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-card"><MessageSquare className="h-5 w-5 text-primary" /></div>
-          <div><h1 className="text-2xl font-bold">Support Tickets</h1><p className="text-sm text-muted-foreground">Get help from the team</p></div>
+        <div>
+          <h1 className="text-3xl font-bold text-foreground flex items-center gap-2"><MessageSquare className="h-8 w-8 text-primary" />Support Tickets</h1>
+          <p className="text-muted-foreground text-sm mt-1">{tickets.length} ticket{tickets.length !== 1 ? 's' : ''}</p>
         </div>
-        <button onClick={() => setShowForm(!showForm)} className="flex items-center gap-1.5 rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground"><Plus className="h-4 w-4" /> {showForm ? 'Cancel' : 'New Ticket'}</button>
+        <Button onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-2" />New Ticket</Button>
       </div>
 
       {showForm && (
-        <form onSubmit={createTicket} className="space-y-4 rounded-lg border border-border bg-card p-6">
-          <div><label className="text-sm font-medium">Subject</label><input value={subject} onChange={(e) => setSubject(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Brief description" /></div>
-          <div><label className="text-sm font-medium">Category</label><select value={category} onChange={(e) => setCategory(e.target.value)} className="mt-1 w-full rounded-lg border border-border bg-background px-3 py-2 text-sm"><option value="general">General</option><option value="billing">Billing</option><option value="technical">Technical</option><option value="feature">Feature Request</option></select></div>
-          <div><label className="text-sm font-medium">Message</label><textarea value={message} onChange={(e) => setMessage(e.target.value)} rows={4} className="mt-1 w-full rounded-lg border border-border bg-background p-3 text-sm focus:outline-none focus:ring-1 focus:ring-primary" placeholder="Describe your issue in detail..." /></div>
-          <button type="submit" className="rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90">Submit Ticket</button>
-        </form>
+        <Card className="p-6 space-y-4">
+          <div>
+            <Label>Subject</Label>
+            <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Brief summary of your issue" />
+          </div>
+          <div>
+            <Label>Category</Label>
+            <Select value={category} onValueChange={setCategory}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="general">General</SelectItem>
+                <SelectItem value="billing">Billing</SelectItem>
+                <SelectItem value="technical">Technical</SelectItem>
+                <SelectItem value="bug">Bug Report</SelectItem>
+                <SelectItem value="feature">Feature Request</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Message</Label>
+            <Textarea value={message} onChange={e => setMessage(e.target.value)} placeholder="Describe your issue in detail" rows={4} />
+          </div>
+          <div className="flex gap-2">
+            <Button onClick={createTicket} disabled={!subject.trim() || !message.trim()}>Submit</Button>
+            <Button variant="outline" onClick={() => setShowForm(false)}>Cancel</Button>
+          </div>
+        </Card>
       )}
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-      ) : tickets.length === 0 ? (
-        <div className="rounded-lg border border-dashed border-border p-12 text-center text-sm text-muted-foreground">No support tickets. Create one to get help.</div>
-      ) : (
-        <div className="space-y-2">
-          {tickets.map((t) => (
-            <button key={t.id} onClick={() => openTicket(t)} className="flex w-full items-center justify-between rounded-lg border border-border bg-card p-4 text-left hover:bg-muted/30">
-              <div className="min-w-0 space-y-0.5">
-                <p className="text-sm font-medium truncate">{t.subject}</p>
-                <p className="text-xs text-muted-foreground truncate">{t.category} · {new Date(t.created_at).toLocaleDateString()}</p>
+      {loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        : tickets.length === 0 ? <Card className="p-8 text-center text-muted-foreground">No tickets yet.</Card>
+        : <div className="space-y-3">
+          {tickets.map(t => (
+            <Card key={t.id} className="p-4 hover:bg-muted/30 cursor-pointer" onClick={() => openTicket(t)}>
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="font-medium">{t.subject}</p>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Badge variant="outline">{t.category}</Badge>
+                    {t.user_email && <span className="text-xs text-muted-foreground">{t.user_email}</span>}
+                    <span className="text-xs text-muted-foreground"><Clock className="h-3 w-3 inline mr-0.5" />{new Date(t.created_at).toLocaleDateString()}</span>
+                  </div>
+                </div>
+                <Badge className={statusColor(t.status)}>{t.status}</Badge>
               </div>
-              {statusBadge(t.status)}
-            </button>
+            </Card>
           ))}
         </div>
-      )}
+      }
     </div>
   )
 }
