@@ -132,48 +132,58 @@ export async function POST(request: Request) {
         ]
   const allowedLanguages = Array.isArray(body.allowed_languages) ? body.allowed_languages : []
 
-  const password =
-    (body.password && body.password.length >= 8 ? body.password : undefined) ||
-    `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
-
   if (!email || !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
     return NextResponse.json({ error: 'Valid email is required' }, { status: 400 })
   }
 
   try {
-    const userRecord = await adminAuth.createUser({
-      email,
-      password,
-      displayName: full_name,
-    })
-    const newUserId = userRecord.uid
+    let newUserId: string
+    let isExistingUser = false
 
-    const passwordHash = await bcrypt.hash(password, 10)
-    const db = await getMongoDb()
-    await db.collection('user').updateOne(
-      { email },
-      {
-        $set: {
-          id: newUserId,
-          email,
-          name: full_name,
-          fullName: full_name,
-          passwordHash,
-          role,
-          updatedAt: new Date(),
+    // Try to find existing Firebase user first
+    try {
+      const existingUser = await adminAuth.getUserByEmail(email)
+      newUserId = existingUser.uid
+      isExistingUser = true
+    } catch {
+      // User doesn't exist in Firebase — create them
+      const password =
+        (body.password && body.password.length >= 8 ? body.password : undefined) ||
+        `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`
+      const userRecord = await adminAuth.createUser({
+        email,
+        password,
+        displayName: full_name,
+      })
+      newUserId = userRecord.uid
+
+      const passwordHash = await bcrypt.hash(password, 10)
+      const db = await getMongoDb()
+      await db.collection('user').updateOne(
+        { email },
+        {
+          $set: {
+            id: newUserId,
+            email,
+            name: full_name,
+            fullName: full_name,
+            passwordHash,
+            role,
+            updatedAt: new Date(),
+          },
+          $setOnInsert: {
+            _id: newUserId,
+            createdAt: new Date(),
+          },
         },
-        $setOnInsert: {
-          _id: newUserId,
-          createdAt: new Date(),
-        },
-      },
-      { upsert: true },
-    )
+        { upsert: true },
+      )
 
-    const { updateUserById, candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
-    await updateUserById(newUserId, { role, fullName: full_name })
+      const { updateUserById } = await import('@/lib/db/admin')
+      await updateUserById(newUserId, { role, fullName: full_name })
+    }
 
-    const created = await getUserById(newUserId)
+    const { candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
 
     // Generate single-use secure candidate invite link
     const inviteToken = crypto.randomUUID()
@@ -195,6 +205,8 @@ export async function POST(request: Request) {
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       created_at: nowIso(),
     })
+
+    const created = isExistingUser ? await getUserById(newUserId) : null
 
     // Send welcome email if Postal or other provider is configured
     let welcomeEmailSent = false
@@ -220,16 +232,16 @@ export async function POST(request: Request) {
         email,
         full_name,
         role,
-        created_at:
-          created?.createdAt instanceof Date
-            ? created.createdAt.toISOString()
-            : (created?.createdAt as unknown as string) ?? new Date().toISOString(),
+        created_at: created?.createdAt instanceof Date
+          ? created.createdAt.toISOString()
+          : (created?.createdAt as unknown as string) ?? new Date().toISOString(),
       },
       invite_url: inviteUrl,
       invite_token: inviteToken,
       target_url: targetUrl,
       welcomeEmailSent,
       delivery,
+      is_existing_user: isExistingUser,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to create user'

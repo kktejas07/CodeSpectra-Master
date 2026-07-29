@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye } from 'lucide-react'
+import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal } from 'lucide-react'
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
@@ -197,19 +198,28 @@ export default function AdminExamsPage() {
       <span className="text-xs text-muted-foreground">{r.attempts} attempts · {r.avgScore}% avg</span>
     )},
     { key: 'actions', header: '', cell: (r) => (
-      <div className="flex justify-end gap-2">
-        <Button size="sm" variant="outline" onClick={() => openInviteModal(r)} className="text-primary hover:text-primary" disabled={!r.published}>
-          <Send className="w-3.5 h-3.5 mr-1" /> Invite
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/admin/exams/${r.id}/results`)}>
-          <Eye className="w-3.5 h-3.5 mr-1" /> View Results
-        </Button>
-        <Button size="sm" variant="outline" onClick={() => router.push(`/dashboard/admin/exams/${r.id}/edit`)}>
-          <Edit className="w-3.5 h-3.5 mr-1" /> Edit
-        </Button>
-        <Button size="sm" variant="ghost" className="text-destructive hover:bg-destructive/10" onClick={() => handleDelete([r.id])}>
-          <Trash2 className="w-3.5 h-3.5" />
-        </Button>
+      <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button size="sm" variant="ghost" className="h-8 w-8 p-0">
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-44">
+            <DropdownMenuItem onClick={() => openInviteModal(r)} disabled={!r.published} className="gap-2">
+              <Send className="h-4 w-4" /> Invite Candidate
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/exams/${r.id}/results`)} className="gap-2">
+              <Eye className="h-4 w-4" /> View Results
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/exams/${r.id}/edit`)} className="gap-2">
+              <Edit className="h-4 w-4" /> Edit Exam
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive focus:text-destructive">
+              <Trash2 className="h-4 w-4" /> Delete
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
     )}
   ]
@@ -264,8 +274,8 @@ export default function AdminExamsPage() {
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. JavaScript Fundamentals" />
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="subject">Subject</Label>
-              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. JavaScript" />
+              <Label htmlFor="subject">Target Role / Subject</Label>
+              <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. QA Engineer, Full Stack Developer" />
             </div>
             <div className="grid gap-2">
               <Label>Complexity Level</Label>
@@ -281,8 +291,8 @@ export default function AdminExamsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
-              <Label htmlFor="techStack">Tech Stack (comma separated)</Label>
-              <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder="e.g. Java, Spring Boot, SQL" />
+              <Label htmlFor="techStack">Topics / Skills (comma separated)</Label>
+              <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder="e.g. Selenium, TestNG, API Testing, SQL" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
