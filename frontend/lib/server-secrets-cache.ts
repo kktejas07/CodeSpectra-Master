@@ -14,20 +14,10 @@ import { getMongoDb } from '@/lib/mongodb'
 export const SERVER_SECRETS_PLATFORM_KEY = 'secrets'
 
 export type ServerSecretsRecord = {
-  resend_api_key?: string
-  resend_from_email?: string
-  sendgrid_api_key?: string
-  sendgrid_from_email?: string
   // --- Postal -----------------------------------------------------------
   postal_server?: string
   postal_api_key?: string
   postal_from_email?: string
-  // --- SMTP -------------------------------------------------------------
-  smtp_host?: string
-  smtp_port?: string
-  smtp_user?: string
-  smtp_pass?: string
-  smtp_from_email?: string
   // --- Razorpay -----------------------------------------------------------
   razorpay_key_id?: string
   razorpay_key_secret?: string

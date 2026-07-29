@@ -3,10 +3,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { readServerSecrets, type ServerSecretsRecord } from '@/lib/server-secrets-cache'
 
 const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
-  'resend_api_key',
-  'sendgrid_api_key',
   'postal_api_key',
-  'smtp_pass',
   'razorpay_key_id',
   'razorpay_key_secret',
   'razorpay_webhook_secret',

@@ -276,18 +276,9 @@ function SystemSettingsInner() {
   const [secretsMeta, setSecretsMeta] = useState<Record<string, unknown>>({})
   const [secretsDraft, setSecretsDraft] = useState<SecretsDraft>(() => emptySecretsDraft())
   const [mailSecretsDraft, setMailSecretsDraft] = useState({
-    resend_api_key: '',
-    resend_from_email: '',
-    sendgrid_api_key: '',
-    sendgrid_from_email: '',
     postal_server: '',
     postal_api_key: '',
     postal_from_email: '',
-    smtp_host: '',
-    smtp_port: '',
-    smtp_user: '',
-    smtp_pass: '',
-    smtp_from_email: '',
   })
 
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({})
@@ -404,9 +395,7 @@ function SystemSettingsInner() {
     setMailSecretsDraft((d) => {
       const next = { ...d }
       const mailFields = [
-        'resend_from_email', 'sendgrid_from_email',
         'postal_server', 'postal_from_email',
-        'smtp_host', 'smtp_port', 'smtp_user', 'smtp_from_email',
       ] as const
       for (const k of mailFields) {
         const v = secretsMeta[k]
@@ -531,23 +520,10 @@ function SystemSettingsInner() {
       setForm({ ...defaults, ...json.settings })
 
       const secBody: Record<string, string> = {}
-      if (mailSecretsDraft.resend_api_key.trim()) secBody.resend_api_key = mailSecretsDraft.resend_api_key.trim()
-      if (mailSecretsDraft.resend_from_email.trim())
-        secBody.resend_from_email = mailSecretsDraft.resend_from_email.trim()
-      if (mailSecretsDraft.sendgrid_api_key.trim())
-        secBody.sendgrid_api_key = mailSecretsDraft.sendgrid_api_key.trim()
-      if (mailSecretsDraft.sendgrid_from_email.trim())
-        secBody.sendgrid_from_email = mailSecretsDraft.sendgrid_from_email.trim()
       if (mailSecretsDraft.postal_server.trim()) secBody.postal_server = mailSecretsDraft.postal_server.trim()
       if (mailSecretsDraft.postal_api_key.trim()) secBody.postal_api_key = mailSecretsDraft.postal_api_key.trim()
       if (mailSecretsDraft.postal_from_email.trim())
         secBody.postal_from_email = mailSecretsDraft.postal_from_email.trim()
-      if (mailSecretsDraft.smtp_host.trim()) secBody.smtp_host = mailSecretsDraft.smtp_host.trim()
-      if (mailSecretsDraft.smtp_port.trim()) secBody.smtp_port = mailSecretsDraft.smtp_port.trim()
-      if (mailSecretsDraft.smtp_user.trim()) secBody.smtp_user = mailSecretsDraft.smtp_user.trim()
-      if (mailSecretsDraft.smtp_pass.trim()) secBody.smtp_pass = mailSecretsDraft.smtp_pass.trim()
-      if (mailSecretsDraft.smtp_from_email.trim())
-        secBody.smtp_from_email = mailSecretsDraft.smtp_from_email.trim()
       if (Object.keys(secBody).length > 0) {
         const sres = await csrfFetch('/api/admin/server-secrets', {
           method: 'PATCH',
@@ -914,118 +890,7 @@ function SystemSettingsInner() {
             </Alert>
 
             <div className="grid gap-6 md:grid-cols-2">
-              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">Resend</p>
-                  {secretsMeta.has_resend_api_key || secretsMeta.resend_from_email ? (
-                    <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
-                  ) : (
-                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  API key and default from address. Leave key blank to keep the current stored key.
-                </p>
-                {secretsMeta.has_resend_api_key ? (
-                  <p className="font-mono text-xs text-muted-foreground">
-                    Current key: {String(secretsMeta.resend_api_key_masked ?? '—')}
-                  </p>
-                ) : null}
-                <div>
-                  <Label htmlFor="mail_resend_key">Resend API key</Label>
-                  <div className="relative">
-                    <Input
-                      id="mail_resend_key"
-                      type={visibleFields.resend_api_key ? 'text' : 'password'}
-                      autoComplete="off"
-                      placeholder="re_…"
-                      value={visibleFields.resend_api_key ? (revealedValues.resend_api_key ?? '') : '••••••••'}
-                      onChange={(e) =>
-                        setMailSecretsDraft((d) => ({ ...d, resend_api_key: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => handleRevealToggle('resend_api_key')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {visibleFields.resend_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="mail_resend_from">From address</Label>
-                  <Input
-                    id="mail_resend_from"
-                    type="text"
-                    placeholder={String(secretsMeta.resend_from_email || 'App <onboarding@resend.dev>')}
-                    value={mailSecretsDraft.resend_from_email}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, resend_from_email: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">SendGrid</p>
-                  {secretsMeta.has_sendgrid_api_key || secretsMeta.sendgrid_from_email ? (
-                    <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
-                  ) : (
-                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  API key and verified sender email. Leave key blank to keep the current stored key.
-                </p>
-                {secretsMeta.has_sendgrid_api_key ? (
-                  <p className="font-mono text-xs text-muted-foreground">
-                    Current key: {String(secretsMeta.sendgrid_api_key_masked ?? '—')}
-                  </p>
-                ) : null}
-                <div>
-                  <Label htmlFor="mail_sg_key">SendGrid API key</Label>
-                  <div className="relative">
-                    <Input
-                      id="mail_sg_key"
-                      type={visibleFields.sendgrid_api_key ? 'text' : 'password'}
-                      autoComplete="off"
-                      value={visibleFields.sendgrid_api_key ? (revealedValues.sendgrid_api_key ?? '') : '••••••••'}
-                      onChange={(e) =>
-                        setMailSecretsDraft((d) => ({ ...d, sendgrid_api_key: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => handleRevealToggle('sendgrid_api_key')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {visibleFields.sendgrid_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="mail_sg_from">From email (verified sender)</Label>
-                  <Input
-                    id="mail_sg_from"
-                    type="email"
-                    placeholder={String(secretsMeta.sendgrid_from_email || 'noreply@yourdomain.com')}
-                    value={mailSecretsDraft.sendgrid_from_email}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, sendgrid_from_email: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background text-sm"
-                  />
-                </div>
-              </div>
-
-              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
+              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4 md:col-span-2">
                 <div className="flex items-center justify-between">
                   <p className="text-sm font-medium text-foreground">Postal</p>
                   {secretsMeta.has_postal_api_key || secretsMeta.postal_server ? (
@@ -1093,101 +958,6 @@ function SystemSettingsInner() {
                   />
                 </div>
               </div>
-
-              <div className="space-y-3 rounded-lg border border-border/60 bg-muted/15 p-4">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-foreground">SMTP</p>
-                  {secretsMeta.smtp_host ? (
-                    <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
-                  ) : (
-                    <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
-                  )}
-                </div>
-                <p className="text-xs text-muted-foreground">
-                  Generic SMTP server. Host, port, credentials, and from address.
-                </p>
-                {secretsMeta.has_smtp_pass ? (
-                  <p className="font-mono text-xs text-muted-foreground">
-                    SMTP configured
-                  </p>
-                ) : null}
-                <div>
-                  <Label htmlFor="mail_smtp_host">SMTP host</Label>
-                  <Input
-                    id="mail_smtp_host"
-                    type="text"
-                    placeholder={String(secretsMeta.smtp_host || 'smtp.example.com')}
-                    value={mailSecretsDraft.smtp_host}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, smtp_host: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="mail_smtp_port">SMTP port</Label>
-                  <Input
-                    id="mail_smtp_port"
-                    type="number"
-                    placeholder={String(secretsMeta.smtp_port || '587')}
-                    value={mailSecretsDraft.smtp_port}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, smtp_port: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="mail_smtp_user">SMTP username</Label>
-                  <Input
-                    id="mail_smtp_user"
-                    type="text"
-                    placeholder={String(secretsMeta.smtp_user || 'user@example.com')}
-                    value={mailSecretsDraft.smtp_user}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, smtp_user: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
-                  />
-                </div>
-                <div>
-                  <Label htmlFor="mail_smtp_pass">SMTP password</Label>
-                  <div className="relative">
-                    <Input
-                      id="mail_smtp_pass"
-                      type={visibleFields.smtp_pass ? 'text' : 'password'}
-                      autoComplete="off"
-                      value={visibleFields.smtp_pass ? (revealedValues.smtp_pass ?? '') : '••••••••'}
-                      onChange={(e) =>
-                        setMailSecretsDraft((d) => ({ ...d, smtp_pass: e.target.value }))
-                      }
-                      className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                    />
-                    <button
-                      type="button"
-                      tabIndex={-1}
-                      onClick={() => handleRevealToggle('smtp_pass')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-                    >
-                      {visibleFields.smtp_pass ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                    </button>
-                  </div>
-                </div>
-                <div>
-                  <Label htmlFor="mail_smtp_from">From address</Label>
-                  <Input
-                    id="mail_smtp_from"
-                    type="email"
-                    placeholder={String(secretsMeta.smtp_from_email || 'noreply@yourdomain.com')}
-                    value={mailSecretsDraft.smtp_from_email}
-                    onChange={(e) =>
-                      setMailSecretsDraft((d) => ({ ...d, smtp_from_email: e.target.value }))
-                    }
-                    className="mt-1.5 h-10 rounded-lg border-border/60 bg-background text-sm"
-                  />
-                </div>
-              </div>
-
             </div>
             <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
             <Button

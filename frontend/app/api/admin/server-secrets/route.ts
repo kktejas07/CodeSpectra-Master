@@ -9,10 +9,7 @@ import {
 } from '@/lib/server-secrets-cache'
 
 const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
-  'resend_api_key',
-  'sendgrid_api_key',
   'postal_api_key',
-  'smtp_pass',
   'razorpay_key_id',
   'razorpay_key_secret',
   'razorpay_webhook_secret',
@@ -33,14 +30,8 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
 ]
 
 const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
-  'resend_from_email',
-  'sendgrid_from_email',
   'postal_server',
   'postal_from_email',
-  'smtp_host',
-  'smtp_port',
-  'smtp_user',
-  'smtp_from_email',
   'trusted_origins_extra',
   'piston_url',
   'piston_run_timeout_ms',
