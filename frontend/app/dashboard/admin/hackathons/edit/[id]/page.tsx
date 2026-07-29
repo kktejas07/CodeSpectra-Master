@@ -9,6 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { toLocalDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
@@ -26,6 +27,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
   const { id } = use(params)
   const router = useRouter()
   const gate = usePageGuard('superadmin')
+  const tz = usePlatformTimezone()
   const [busy, setBusy] = useState(false)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
@@ -238,7 +240,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         num_teams: form.num_teams,
         max_per_team: form.max_per_team,
         timeout_minutes: form.timeout_minutes,
-        starts_at: fromZonedDatetimeString(form.starts_at, Intl.DateTimeFormat().resolvedOptions().timeZone),
+        starts_at: fromZonedDatetimeString(form.starts_at, tz),
         tasks: form.tasks.map((t) => ({
           problem_slug: t.slug,
           problem_title: t.title,

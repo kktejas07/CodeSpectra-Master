@@ -19,6 +19,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { toLocalDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
+import { usePlatformTimezone } from '@/lib/use-platform-timezone'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
@@ -39,6 +40,7 @@ interface ProblemOption { slug: string; title: string; difficulty: string; topic
 export default function HackathonsAdminPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
+  const tz = usePlatformTimezone()
   const [items, setItems] = useState<Hackathon[]>([])
   const [loading, setLoading] = useState(true)
   const [creating, setCreating] = useState(false)
@@ -229,7 +231,7 @@ export default function HackathonsAdminPage() {
           name: form.name, description: form.description,
           num_teams: form.num_teams, max_per_team: form.max_per_team,
           timeout_minutes: form.timeout_minutes,
-          starts_at: fromZonedDatetimeString(form.starts_at, Intl.DateTimeFormat().resolvedOptions().timeZone),
+          starts_at: fromZonedDatetimeString(form.starts_at, tz),
           event_type: form.event_type,
           per_problem_time_minutes: form.per_problem_time_minutes,
           tasks: form.tasks.map((t) => ({
@@ -264,7 +266,7 @@ export default function HackathonsAdminPage() {
           timeout_minutes: form.timeout_minutes,
           event_type: form.event_type,
           per_problem_time_minutes: form.per_problem_time_minutes,
-          starts_at: fromZonedDatetimeString(form.starts_at, Intl.DateTimeFormat().resolvedOptions().timeZone),
+          starts_at: fromZonedDatetimeString(form.starts_at, tz),
           tasks: form.tasks.map((t) => ({
             problem_slug: t.slug, problem_title: t.title,
             points: t.points, difficulty: t.difficulty, required: t.required,
