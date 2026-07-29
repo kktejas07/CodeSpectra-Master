@@ -102,7 +102,7 @@ const BRANDING_KEYS: GeneralKey[] = [
   'privacy_policy_url',
   'terms_of_service_url',
 ]
-const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode', 'enable_sso_login']
+const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode', 'enable_sso_login', 'enable_chatbot']
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
 
@@ -1260,6 +1260,19 @@ function SystemSettingsInner() {
                 id="enable_sso_login"
                 checked={form.enable_sso_login}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, enable_sso_login: v }))}
+              />
+            </div>
+            <div className="flex items-center justify-between gap-4 py-4">
+              <div className="space-y-0.5">
+                <Label htmlFor="enable_chatbot" className="text-foreground">
+                  Ask CodeSpectra Chatbot
+                </Label>
+                <p className="text-sm text-muted-foreground">Enable the global AI coding assistant for all users</p>
+              </div>
+              <Switch
+                id="enable_chatbot"
+                checked={form.enable_chatbot}
+                onCheckedChange={(v) => setForm((f) => ({ ...f, enable_chatbot: v }))}
               />
             </div>
           </div>

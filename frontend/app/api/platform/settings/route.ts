@@ -20,6 +20,7 @@ export async function GET() {
         favicon_url: merged.favicon_url,
         allow_registration: merged.allow_registration,
         maintenance_mode: merged.maintenance_mode,
+        enable_chatbot: merged.enable_chatbot,
         enable_sso_login: merged.enable_sso_login,
         company_name: merged.company_name,
         copyright_text: merged.copyright_text,

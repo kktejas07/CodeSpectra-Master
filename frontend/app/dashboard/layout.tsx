@@ -113,6 +113,7 @@ export default function DashboardLayout({
   const [allowedRoutes, setAllowedRoutes] = useState<Set<string>>(new Set())
   const [permsLoaded, setPermsLoaded] = useState(false)
   const [lockedPages, setLockedPages] = useState<string[]>([])
+  const [chatbotEnabled, setChatbotEnabled] = useState(false)
 
   const { user: fbUser, signOut } = useAuth()
 
@@ -136,6 +137,22 @@ export default function DashboardLayout({
     fetchLockedPages().then(pages => {
       if (!cancelled) setLockedPages(pages)
     })
+    return () => { cancelled = true }
+  }, [])
+
+  // Fetch public platform settings
+  useEffect(() => {
+    let cancelled = false
+    fetch('/api/platform/settings')
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!cancelled && data?.settings) {
+          if (typeof data.settings.enable_chatbot === 'boolean') {
+            setChatbotEnabled(data.settings.enable_chatbot)
+          }
+        }
+      })
+      .catch(() => {})
     return () => { cancelled = true }
   }, [])
 
@@ -835,8 +852,10 @@ export default function DashboardLayout({
           </div>
         </main>
       </div>
-      {/* Floating Ask CodeSpectra AI assistant — available across the dashboard */}
-      <AskCodeSpectra />
+      {/* Floating Chatbot */}
+      {chatbotEnabled && <AskCodeSpectra />}
+
+      {/* Global Modals */}
     </div>
   )
 }
