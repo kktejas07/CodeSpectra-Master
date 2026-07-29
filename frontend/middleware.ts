@@ -34,6 +34,7 @@ export function middleware(request: NextRequest) {
     '/api/billing/webhook',
     '/api/billing/stripe-webhook',
     '/api/billing/phonepe-webhook',
+    '/api/admin/llm-test',
   ]
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const csrf = checkCsrf(request)
