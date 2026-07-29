@@ -136,9 +136,9 @@ function BillingContent() {
         userEmail: '',
       })
     }
-    if (invRes.ok) setInvoices(await invRes.json())
-    if (planRes.ok) setPlans(await planRes.json())
-    if (pmRes.ok) setPaymentMethods(await pmRes.json())
+    if (invRes.ok) { const d = await invRes.json(); setInvoices(Array.isArray(d) ? d : []) }
+    if (planRes.ok) { const d = await planRes.json(); setPlans(Array.isArray(d) ? d : []) }
+    if (pmRes.ok) { const d = await pmRes.json(); setPaymentMethods(Array.isArray(d) ? d : []) }
   }, [])
 
   useEffect(() => {
