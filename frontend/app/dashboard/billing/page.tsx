@@ -118,7 +118,15 @@ function BillingContent() {
     ])
     if (subRes.ok) {
       const d = await subRes.json()
-      setSubscription(d.subscription || d)
+      const sub = d.subscription || d
+      const plan = findPlan((sub as any).plan_id || (sub as any).planId || 'free')
+      setSubscription({
+        ...sub,
+        planName: plan.name,
+        features: plan.features,
+        pricePerMonth: plan.monthlyUsd,
+        pricePerYear: plan.yearlyUsd,
+      })
     } else {
       const pf = findPlan('free')
       setSubscription({
