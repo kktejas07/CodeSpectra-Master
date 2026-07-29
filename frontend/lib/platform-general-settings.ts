@@ -4,14 +4,8 @@
  */
 
 export const ADMIN_NEW_USER_EMAIL_DELIVERIES = [
-  'resend_recovery',
-  'resend_magiclink',
-  'sendgrid_recovery',
-  'sendgrid_magiclink',
   'postal_recovery',
   'postal_magiclink',
-  'smtp_recovery',
-  'smtp_magiclink',
 ] as const
 
 export type AdminNewUserEmailDelivery = (typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number]
@@ -21,7 +15,7 @@ export function normalizeAdminNewUserEmailDelivery(v: unknown): AdminNewUserEmai
   if ((ADMIN_NEW_USER_EMAIL_DELIVERIES as readonly string[]).includes(s)) {
     return s as AdminNewUserEmailDelivery
   }
-  return 'resend_recovery'
+  return 'postal_recovery'
 }
 
 export type GeneralPlatformSettings = {
@@ -80,7 +74,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   show_public_leaderboard: true,
   enable_chatbot: true,
   platform_currency: 'USD',
-  admin_new_user_email_delivery: 'resend_recovery',
+  admin_new_user_email_delivery: 'postal_recovery',
   enable_sso_login: false,
   locked_pages: [],
   locked_features: [],

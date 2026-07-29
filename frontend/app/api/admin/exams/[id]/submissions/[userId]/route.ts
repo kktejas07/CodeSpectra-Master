@@ -34,7 +34,7 @@ export async function GET(
 
     return NextResponse.json({
       examTitle: exam.title,
-      questions: exam.questions || [],
+      questions: Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : []),
       submission: {
         answers: submission.answers || {},
         details: submission.details || [],

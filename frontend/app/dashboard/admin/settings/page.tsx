@@ -110,14 +110,8 @@ const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_l
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
-  resend_recovery: 'Resend — password reset link',
-  resend_magiclink: 'Resend — magic sign-in link',
-  sendgrid_recovery: 'SendGrid — password reset link',
-  sendgrid_magiclink: 'SendGrid — magic sign-in link',
   postal_recovery: 'Postal — password reset link',
   postal_magiclink: 'Postal — magic sign-in link',
-  smtp_recovery: 'SMTP — password reset link',
-  smtp_magiclink: 'SMTP — magic sign-in link',
 }
 
 type SecretsDraft = {
@@ -871,7 +865,7 @@ function SystemSettingsInner() {
                 </SelectContent>
               </Select>
               <p className="mt-2 text-xs text-muted-foreground">
-                Supabase invite uses your Auth SMTP. Resend / SendGrid send from this app. Server env vars override saved keys.
+                All transactional emails are sent through Postal. Server env vars override saved keys.
               </p>
             </div>
 

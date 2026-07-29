@@ -10,6 +10,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
 import type { DataTableColumn } from '@/components/ui/data-table'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 
 interface CandidateResult {
@@ -138,7 +139,7 @@ export default function ExamResultsPage() {
   const releaseScore = async (userId: string, name: string) => {
     setReleasing(userId)
     try {
-      const res = await fetch(`/api/admin/exams/${params.id}/submissions/${userId}/release`, {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${userId}/release`, {
         method: 'PATCH',
         credentials: 'include',
       })
@@ -157,7 +158,7 @@ export default function ExamResultsPage() {
   const releaseAll = async () => {
     setBulkReleasing(true)
     try {
-      const res = await fetch(`/api/admin/exams/${params.id}/release`, {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/release`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -181,7 +182,7 @@ export default function ExamResultsPage() {
   const resendInvite = async (inviteId: string, name: string) => {
     setResendingId(inviteId)
     try {
-      const res = await fetch(`/api/admin/exams/${params.id}/invites/${inviteId}/resend`, {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/invites/${inviteId}/resend`, {
         method: 'POST',
         credentials: 'include',
       })
@@ -199,7 +200,7 @@ export default function ExamResultsPage() {
     if (!confirm(`Delete invite for ${name}? This cannot be undone.`)) return
     setDeletingId(inviteId)
     try {
-      const res = await fetch(`/api/admin/exams/${params.id}/invites/${inviteId}`, {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/invites/${inviteId}`, {
         method: 'DELETE',
         credentials: 'include',
       })
