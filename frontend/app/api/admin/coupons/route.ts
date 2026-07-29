@@ -62,3 +62,42 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: (error as Error).message }, { status: 500 })
   }
 }
+
+export async function PATCH(req: NextRequest) {
+  try {
+    const user = await getAPIUser()
+    if (!user || user.role !== 'superadmin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    const body = await req.json()
+    const $set: Record<string, any> = {}
+    if (body.active !== undefined) $set.active = body.active
+    if (body.discount_value !== undefined) $set.discount_value = Number(body.discount_value)
+    if (body.max_uses !== undefined) $set.max_uses = Number(body.max_uses)
+    if (body.valid_until !== undefined) $set.valid_until = body.valid_until || null
+    if (body.trial_duration_days !== undefined) $set.trial_duration_days = Number(body.trial_duration_days)
+    if (body.discount_type) $set.discount_type = body.discount_type
+    if (Object.keys($set).length === 0) return NextResponse.json({ error: 'nothing to update' }, { status: 400 })
+    const couponsCol = await billingCoupons()
+    await couponsCol.updateOne({ id }, { $set })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+  }
+}
+
+export async function DELETE(req: NextRequest) {
+  try {
+    const user = await getAPIUser()
+    if (!user || user.role !== 'superadmin') return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    const { searchParams } = new URL(req.url)
+    const id = searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
+    const couponsCol = await billingCoupons()
+    await couponsCol.deleteOne({ id })
+    return NextResponse.json({ ok: true })
+  } catch (error) {
+    return NextResponse.json({ error: (error as Error).message }, { status: 500 })
+  }
+}
