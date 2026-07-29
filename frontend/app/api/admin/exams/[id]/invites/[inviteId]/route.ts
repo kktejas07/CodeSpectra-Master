@@ -10,14 +10,32 @@ export async function DELETE(
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
-  const { inviteId } = await params
+  const { id, inviteId } = await params
 
   try {
     const db = await getMongoDb()
+    
+    // Find the invite first to get user_id/email for deleting matching submissions
+    const invite = await db.collection('candidate_invites').findOne({ id: inviteId })
+    
     const result = await db.collection('candidate_invites').deleteOne({ id: inviteId })
     if (result.deletedCount === 0) {
-      return NextResponse.json({ error: 'Invite not found' }, { status: 404 })
+      // If invite wasn't found, maybe it's a submission-only row. Let's try to delete submission directly by id
+      const subResult = await db.collection('exam_submissions').deleteOne({ id: inviteId, exam_id: id })
+      if (subResult.deletedCount === 0) {
+        return NextResponse.json({ error: 'Invite or submission not found' }, { status: 404 })
+      }
+      return NextResponse.json({ success: true })
     }
+
+    // Delete associated exam submission if user_id exists
+    if (invite && invite.user_id) {
+      await db.collection('exam_submissions').deleteOne({
+        exam_id: id,
+        user_id: invite.user_id
+      })
+    }
+    
     return NextResponse.json({ success: true })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to delete invite'

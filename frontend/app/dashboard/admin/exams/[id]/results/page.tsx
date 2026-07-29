@@ -267,7 +267,7 @@ export default function ExamResultsPage() {
       key: 'deliveryStatus',
       header: 'Email',
       cell: (row: CandidateResult) => {
-        if (!row.deliveryStatus || row.deliveryStatus === 'sending') {
+        if (row.deliveryStatus === 'sending') {
           return <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> Sending</span>
         }
         if (row.deliveryStatus === 'delivered') {
@@ -275,6 +275,9 @@ export default function ExamResultsPage() {
         }
         if (row.deliveryStatus === 'failed' || row.deliveryStatus === 'bounced') {
           return <span className="text-xs text-rose-500 flex items-center gap-1"><XCircle className="w-3 h-3"/> {row.deliveryStatus === 'bounced' ? 'Bounced' : 'Failed'}</span>
+        }
+        if (row.status === 'completed') {
+          return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
         }
         return <span className="text-xs text-muted-foreground">--</span>
       },
@@ -318,17 +321,7 @@ export default function ExamResultsPage() {
       key: 'actions',
       header: '',
       cell: (row: CandidateResult) => (
-        <div className="flex items-center gap-1">
-          {row.status === 'completed' && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => openReview(row)}
-              className="text-xs h-8"
-            >
-              <Eye className="w-3.5 h-3.5 mr-1.5" /> Review
-            </Button>
-          )}
+        <div className="flex items-center gap-1 justify-end">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" size="sm" className="h-8 w-8 p-0"
@@ -344,6 +337,11 @@ export default function ExamResultsPage() {
               {row.status === 'completed' && (
                 <DropdownMenuItem onClick={() => openReview(row)} className="gap-2">
                   <Eye className="h-4 w-4" /> Review
+                </DropdownMenuItem>
+              )}
+              {row.status === 'completed' && !row.released && (
+                <DropdownMenuItem onClick={() => releaseScore(row.userId || row.id, row.name)} className="gap-2 text-emerald-500 focus:text-emerald-500">
+                  <Send className="h-4 w-4" /> Release Score
                 </DropdownMenuItem>
               )}
               {row.status !== 'completed' && (
