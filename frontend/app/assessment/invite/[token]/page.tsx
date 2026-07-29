@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Code2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useAuth } from '@/lib/auth-context'
 
 interface AssessmentStepData {
   id: string
@@ -18,6 +19,7 @@ interface AssessmentStepData {
 }
 
 export default function CandidateInviteLandingPage() {
+  const { user } = useAuth()
   const params = useParams()
   const router = useRouter()
   const token = params?.token as string
@@ -171,35 +173,48 @@ export default function CandidateInviteLandingPage() {
                     </div>
                   </div>
                   {candidateData.is_registered ? (
-                    <Button
-                      onClick={async () => {
-                        setStarting(step.id || 'start')
-                        try {
-                          const res = await csrfFetch(`/api/assessment/invite/${token}`, {
-                            method: 'PATCH',
-                            headers: { 'Content-Type': 'application/json' },
-                            body: JSON.stringify({ email: candidateData.email }),
-                          })
-                          const json = await res.json()
-                          if (!res.ok) throw new Error(json.error || 'Failed to activate invite')
-                          const url = `${step.target_url}?inviteEmail=${encodeURIComponent(candidateData.email)}&inviteToken=${token}`
-                          router.push(url)
-                        } catch (e: unknown) {
-                          const msg = e instanceof Error ? e.message : 'Failed to start'
-                          setError(msg)
-                          setStarting(null)
-                        }
-                      }}
-                      size="sm"
-                      disabled={starting !== null}
-                      className="gap-1.5 shrink-0 self-end sm:self-center"
-                    >
-                      {starting === (step.id || 'start') ? (
-                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Activating...</>
-                      ) : (
-                        <><Lock className="h-3.5 w-3.5" /> Start Stage <ArrowRight className="h-3.5 w-3.5" /></>
-                      )}
-                    </Button>
+                    user && user.email?.toLowerCase() === candidateData.email.toLowerCase() ? (
+                      <Button
+                        onClick={async () => {
+                          setStarting(step.id || 'start')
+                          try {
+                            const res = await csrfFetch(`/api/assessment/invite/${token}`, {
+                              method: 'PATCH',
+                              headers: { 'Content-Type': 'application/json' },
+                              body: JSON.stringify({ email: candidateData.email }),
+                            })
+                            const json = await res.json()
+                            if (!res.ok) throw new Error(json.error || 'Failed to activate invite')
+                            const url = `${step.target_url}?inviteEmail=${encodeURIComponent(candidateData.email)}&inviteToken=${token}`
+                            router.push(url)
+                          } catch (e: unknown) {
+                            const msg = e instanceof Error ? e.message : 'Failed to start'
+                            setError(msg)
+                            setStarting(null)
+                          }
+                        }}
+                        size="sm"
+                        disabled={starting !== null}
+                        className="gap-1.5 shrink-0 self-end sm:self-center"
+                      >
+                        {starting === (step.id || 'start') ? (
+                          <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Activating...</>
+                        ) : (
+                          <><Lock className="h-3.5 w-3.5" /> Start Stage <ArrowRight className="h-3.5 w-3.5" /></>
+                        )}
+                      </Button>
+                    ) : (
+                      <Button
+                        onClick={() => {
+                          const loginUrl = `/auth/login?email=${encodeURIComponent(candidateData.email)}&redirect=${encodeURIComponent(window.location.pathname)}`
+                          router.push(loginUrl)
+                        }}
+                        size="sm"
+                        className="gap-1.5 shrink-0 self-end sm:self-center bg-primary hover:bg-primary/95 text-primary-foreground font-semibold"
+                      >
+                        <User className="h-3.5 w-3.5" /> Sign In to Start <ArrowRight className="h-3.5 w-3.5" />
+                      </Button>
+                    )
                   ) : (
                     <Button
                       onClick={() => {
@@ -207,7 +222,7 @@ export default function CandidateInviteLandingPage() {
                         router.push(registerUrl)
                       }}
                       size="sm"
-                      className="gap-1.5 shrink-0 self-end sm:self-center bg-amber-600 hover:bg-amber-700 text-white"
+                      className="gap-1.5 shrink-0 self-end sm:self-center bg-amber-600 hover:bg-amber-700 text-white font-semibold"
                     >
                       <User className="h-3.5 w-3.5" /> Register to Start <ArrowRight className="h-3.5 w-3.5" />
                     </Button>
