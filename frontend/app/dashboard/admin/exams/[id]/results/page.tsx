@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, ExternalLink, X } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
 import type { DataTableColumn } from '@/components/ui/data-table'
+
 
 interface CandidateResult {
   id: string
@@ -20,6 +21,8 @@ interface CandidateResult {
   proctoringFlags: number
   idPhoto?: string | null
   facePhoto?: string | null
+  userId?: string
+  released?: boolean
 }
 
 interface Exam {
@@ -27,6 +30,51 @@ interface Exam {
   title: string
   level: string
   duration: number
+}
+
+interface QuestionDetail {
+  qId: string
+  correct: boolean
+  points: number
+  answer: string
+}
+
+interface ReviewData {
+  examTitle: string
+  questions: Array<{ id: string; title?: string; question?: string; type: string; options?: string[]; correct_answer?: string; points?: number }>
+  submission: {
+    answers: Record<string, string>
+    details: QuestionDetail[]
+    score: number
+    max_score: number
+    submitted_at: string
+    released_at: string | null
+    id_photo?: string | null
+    face_photo?: string | null
+  }
+  proctorEvents: Array<{ event_type: string; meta: Record<string, unknown>; created_at: string }>
+  candidate: { name: string; email: string }
+}
+
+const PROCTOR_LABELS: Record<string, string> = {
+  tab_blur: 'Tab Switch',
+  tab_focus: 'Tab Return',
+  copy: 'Copy',
+  paste: 'Paste',
+  fullscreen_exit: 'Fullscreen Exit',
+  fullscreen_enter: 'Fullscreen Enter',
+  right_click: 'Right Click',
+  visibility_change: 'Visibility Change',
+  window_blur: 'Window Blur',
+  window_focus: 'Window Focus',
+  screenshot: 'Screenshot',
+}
+
+const PROCTOR_ICONS: Record<string, React.ReactNode> = {
+  tab_blur: <Minimize2 className="w-3 h-3" />,
+  tab_focus: <Maximize2 className="w-3 h-3" />,
+  copy: <Copy className="w-3 h-3" />,
+  paste: <Copy className="w-3 h-3" />,
 }
 
 export default function ExamResultsPage() {
@@ -38,26 +86,99 @@ export default function ExamResultsPage() {
   const [exam, setExam] = useState<Exam | null>(null)
   const [results, setResults] = useState<CandidateResult[]>([])
   const [loading, setLoading] = useState(true)
-  const [selectedCandidate, setSelectedCandidate] = useState<CandidateResult | null>(null)
+  const [reviewCandidate, setReviewCandidate] = useState<CandidateResult | null>(null)
+  const [reviewData, setReviewData] = useState<ReviewData | null>(null)
+  const [reviewLoading, setReviewLoading] = useState(false)
+  const [releasing, setReleasing] = useState<string | null>(null)
+  const [bulkReleasing, setBulkReleasing] = useState(false)
 
-  useEffect(() => {
-    const fetchData = async () => {
-      setLoading(true)
-      try {
-        const res = await fetch(`/api/admin/exams/${params.id}/results`, { credentials: 'include' })
-        const json = await res.json()
-        if (!res.ok) throw new Error(json.error || 'Failed to load results')
-        setExam(json.exam)
-        setResults(json.results || [])
-      } catch {
-        addToast({ type: 'error', title: 'Failed to load results' })
-        router.push('/dashboard/admin/exams')
-      } finally {
-        setLoading(false)
-      }
+  const fetchData = useCallback(async () => {
+    if (!params.id) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/admin/exams/${params.id}/results`, { credentials: 'include' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to load results')
+      setExam(json.exam)
+      setResults((json.results || []).map((r: CandidateResult) => ({
+        ...r,
+        userId: r.id,
+      })))
+    } catch {
+      addToast({ type: 'error', title: 'Failed to load results' })
+      router.push('/dashboard/admin/exams')
+    } finally {
+      setLoading(false)
     }
-    if (params.id) fetchData()
   }, [params.id, router])
+
+  useEffect(() => { fetchData() }, [fetchData])
+
+  const openReview = async (row: CandidateResult) => {
+    setReviewCandidate(row)
+    setReviewData(null)
+    setReviewLoading(true)
+    try {
+      const uid = row.userId || row.id
+      const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to load review')
+      setReviewData(json)
+    } catch {
+      addToast({ type: 'error', title: 'Failed to load submission details' })
+      setReviewCandidate(null)
+    } finally {
+      setReviewLoading(false)
+    }
+  }
+
+  const releaseScore = async (userId: string, name: string) => {
+    setReleasing(userId)
+    try {
+      const res = await fetch(`/api/admin/exams/${params.id}/submissions/${userId}/release`, {
+        method: 'PATCH',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      addToast({ type: 'success', title: `Score released for ${name}` })
+      setReviewData(prev => prev ? { ...prev, submission: { ...prev.submission, released_at: json.released_at } } : null)
+      setResults(prev => prev.map(r => r.userId === userId ? { ...r, released: true } : r))
+    } catch {
+      addToast({ type: 'error', title: `Failed to release score for ${name}` })
+    } finally {
+      setReleasing(null)
+    }
+  }
+
+  const releaseAll = async () => {
+    setBulkReleasing(true)
+    try {
+      const res = await fetch(`/api/admin/exams/${params.id}/release`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      addToast({ type: 'success', title: `${json.released} scores released` })
+      setResults(prev => prev.map(r => r.status === 'completed' ? { ...r, released: true } : r))
+      if (reviewData) {
+        setReviewData(prev => prev ? { ...prev, submission: { ...prev.submission, released_at: new Date().toISOString() } } : null)
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Bulk release failed' })
+    } finally {
+      setBulkReleasing(false)
+    }
+  }
+
+  const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
+
+  const proctorColor = (type: string): string => {
+    if (['copy', 'paste', 'right_click'].includes(type)) return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
+    if (['tab_blur', 'fullscreen_exit', 'window_blur', 'visibility_change'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+    return 'text-muted-foreground border-border bg-muted/50'
+  }
 
   const columns: DataTableColumn<CandidateResult>[] = [
     {
@@ -108,23 +229,26 @@ export default function ExamResultsPage() {
       ),
     },
     {
+      key: 'released',
+      header: 'Released',
+      cell: (row: CandidateResult) => (
+        row.released ? (
+          <span className="text-emerald-500 text-xs flex items-center gap-1"><CheckCheck className="w-3 h-3" /> Released</span>
+        ) : row.status === 'completed' ? (
+          <span className="text-muted-foreground text-xs">Pending</span>
+        ) : null
+      ),
+    },
+    {
       key: 'actions',
-      header: 'Actions',
+      header: '',
       cell: (row: CandidateResult) => (
         <div className="flex items-center gap-2">
           <Button 
             variant="ghost" 
             size="sm" 
             disabled={row.status !== 'completed'}
-            onClick={() => setSelectedCandidate(row)}
-            className="text-xs h-8"
-          >
-            <User className="w-3.5 h-3.5 mr-1.5 text-primary" /> Verify ID
-          </Button>
-          <Button 
-            variant="ghost" 
-            size="sm" 
-            disabled={row.status !== 'completed'}
+            onClick={() => openReview(row)}
             className="text-xs h-8"
           >
             <Eye className="w-3.5 h-3.5 mr-1.5" /> Review
@@ -146,6 +270,9 @@ export default function ExamResultsPage() {
 
   if (!exam) return null
 
+  const completedCount = results.filter(r => r.status === 'completed').length
+  const unreleasedCount = results.filter(r => r.status === 'completed' && !r.released).length
+
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 p-6">
       <div className="flex items-center justify-between">
@@ -158,7 +285,7 @@ export default function ExamResultsPage() {
             <Badge variant="outline">{exam.level}</Badge>
             <Badge variant="outline">{exam.duration} mins</Badge>
             <Badge variant="secondary" className="bg-primary/10 text-primary">
-              {results.filter(r => r.status === 'completed').length} Submitted
+              {completedCount} Submitted
             </Badge>
             <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">
               {results.length} Total Invited
@@ -166,6 +293,17 @@ export default function ExamResultsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {unreleasedCount > 0 && (
+            <Button
+              variant="default"
+              className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={releaseAll}
+              disabled={bulkReleasing}
+            >
+              {bulkReleasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
+              Release All ({unreleasedCount})
+            </Button>
+          )}
           <Button variant="outline" className="gap-2">
             <Download className="w-4 h-4" /> Export CSV
           </Button>
@@ -181,55 +319,210 @@ export default function ExamResultsPage() {
         />
       </div>
 
-      {selectedCandidate && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/75 p-4 backdrop-blur-xs">
-          <div className="max-w-2xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4">
-            <div className="flex items-center justify-between border-b pb-3">
+      {reviewCandidate && (
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-xs pt-8 overflow-y-auto">
+          <div className="max-w-4xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 mb-8">
+            <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-card z-10">
               <div>
-                <h3 className="font-bold text-lg">Candidate Identity Verification</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{selectedCandidate.name} ({selectedCandidate.email})</p>
+                <h3 className="font-bold text-lg">Review: {reviewCandidate.name}</h3>
+                <p className="text-xs text-muted-foreground mt-0.5">{reviewCandidate.email}</p>
               </div>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedCandidate(null)}>
+              <Button variant="ghost" size="sm" onClick={() => { setReviewCandidate(null); setReviewData(null) }}>
                 <X className="h-4 w-4" />
               </Button>
             </div>
 
-            <div className="grid grid-cols-2 gap-6 py-2">
-              <div className="space-y-2">
-                <span className="text-xs font-semibold text-muted-foreground block text-center">Government ID Photo</span>
-                <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
-                  {selectedCandidate.idPhoto ? (
-                    <img src={selectedCandidate.idPhoto} alt="Government ID" className="w-full h-full object-cover" />
+            {reviewLoading ? (
+              <div className="flex items-center justify-center py-16 text-muted-foreground">
+                <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading review data...
+              </div>
+            ) : reviewData ? (
+              <>
+                {/* Candidate Info */}
+                <div className="grid grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Score</span>
+                    <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Percentage</span>
+                    <span className="text-xl font-bold">
+                      {reviewData.submission.max_score > 0
+                        ? `${Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)}%`
+                        : '--'}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-muted-foreground block text-xs">Submitted</span>
+                    <span className="text-sm font-medium">
+                      {reviewData.submission.submitted_at
+                        ? new Date(reviewData.submission.submitted_at).toLocaleString()
+                        : '--'}
+                    </span>
+                  </div>
+                </div>
+
+                {/* Answer Review */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Answer Review
+                  </h4>
+                  {reviewData.questions.length === 0 ? (
+                    <p className="text-xs text-muted-foreground py-4 text-center">No questions found</p>
                   ) : (
-                    <span className="text-xs text-muted-foreground">No ID photo captured</span>
+                    reviewData.questions.map((q, i) => {
+                      const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
+                      const userAnswer = reviewData.submission.answers[q.id] || ''
+                      const isMcq = ['multiple-choice', 'mcq', 'true_false'].includes(q.type)
+                      return (
+                        <div key={q.id} className="border rounded-lg p-4 space-y-2">
+                          <div className="flex items-start justify-between gap-4">
+                            <div className="flex-1">
+                              <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
+                              <p className="text-sm font-medium mt-0.5">{q.question || q.title}</p>
+                            </div>
+                            <Badge variant={detail?.correct ? 'default' : 'secondary'} className={detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}>
+                              {detail?.correct ? `+${detail.points}` : '0'}
+                            </Badge>
+                          </div>
+                          {isMcq && q.options && (
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {q.options.map((opt, oi) => {
+                                const isSelected = userAnswer.toLowerCase() === opt.toLowerCase()
+                                const isCorrectAnswer = q.correct_answer && opt.toLowerCase() === q.correct_answer.toLowerCase()
+                                return (
+                                  <Badge key={oi} variant="outline" className={`text-xs ${
+                                    isSelected && isCorrectAnswer ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40' :
+                                    isSelected && !isCorrectAnswer ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through' :
+                                    !isSelected && isCorrectAnswer ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20' :
+                                    'text-muted-foreground'
+                                  }`}>
+                                    {opt}
+                                    {isSelected ? ' (selected)' : ''}
+                                    {!isSelected && isCorrectAnswer ? ' (correct)' : ''}
+                                  </Badge>
+                                )
+                              })}
+                            </div>
+                          )}
+                          {!isMcq && (
+                            <div className="mt-1 space-y-1">
+                              {userAnswer ? (
+                                <div className="text-xs">
+                                  <span className="text-muted-foreground">Answer: </span>
+                                  <span className="font-mono bg-muted px-2 py-0.5 rounded text-xs">{userAnswer}</span>
+                                </div>
+                              ) : (
+                                <span className="text-xs text-muted-foreground italic">No answer provided</span>
+                              )}
+                              {q.correct_answer && (
+                                <div className="text-xs">
+                                  <span className="text-muted-foreground">Correct: </span>
+                                  <span className="font-mono bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded text-xs">{q.correct_answer}</span>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )
+                    })
                   )}
                 </div>
-              </div>
 
-              <div className="space-y-2">
-                <span className="text-xs font-semibold text-muted-foreground block text-center">Live Face Capture</span>
-                <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
-                  {selectedCandidate.facePhoto ? (
-                    <img src={selectedCandidate.facePhoto} alt="Face Selfie" className="w-full h-full object-cover" />
+                {/* Proctoring Events */}
+                <div className="space-y-3">
+                  <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <ShieldAlert className="w-4 h-4 text-amber-500" /> Proctoring Log
+                    <Badge variant="outline" className="text-xs">{reviewData.proctorEvents.length} events</Badge>
+                  </h4>
+                  {reviewData.proctorEvents.length === 0 ? (
+                    <div className="border rounded-lg p-6 text-center">
+                      <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
+                      <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
+                    </div>
                   ) : (
-                    <span className="text-xs text-muted-foreground">No face photo captured</span>
+                    <div className="border rounded-lg max-h-64 overflow-y-auto">
+                      {reviewData.proctorEvents.map((evt, i) => (
+                        <div key={i} className={`flex items-center gap-3 px-4 py-2 text-xs border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
+                          <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
+                          <span className="shrink-0 font-medium">{formatProctorType(evt.event_type)}</span>
+                          <span className="text-muted-foreground ml-auto shrink-0">
+                            {evt.created_at ? new Date(evt.created_at).toLocaleTimeString() : ''}
+                          </span>
+                          {evt.meta && Object.keys(evt.meta).length > 0 && (
+                            <span className="text-muted-foreground truncate max-w-[200px] hidden md:inline">
+                              {JSON.stringify(evt.meta)}
+                            </span>
+                          )}
+                        </div>
+                      ))}
+                    </div>
                   )}
                 </div>
-              </div>
-            </div>
 
-            <div className="flex justify-end gap-3 pt-3 border-t">
-              <Button variant="outline" onClick={() => setSelectedCandidate(null)}>Close</Button>
-              <Button 
-                onClick={() => {
-                  addToast({ type: 'success', title: 'Identity Verified', message: `Identity for ${selectedCandidate.name} has been verified.` })
-                  setSelectedCandidate(null)
-                }}
-                className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" /> Mark as Verified
-              </Button>
-            </div>
+                {/* Identity Photos */}
+                {(reviewData.submission.id_photo || reviewData.submission.face_photo) && (
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1">
+                      <span className="text-xs font-semibold text-muted-foreground block">ID Photo</span>
+                      <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
+                        {reviewData.submission.id_photo ? (
+                          <img src={reviewData.submission.id_photo} alt="ID" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Not captured</span>
+                        )}
+                      </div>
+                    </div>
+                    <div className="space-y-1">
+                      <span className="text-xs font-semibold text-muted-foreground block">Face Photo</span>
+                      <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
+                        {reviewData.submission.face_photo ? (
+                          <img src={reviewData.submission.face_photo} alt="Face" className="w-full h-full object-cover" />
+                        ) : (
+                          <span className="text-xs text-muted-foreground">Not captured</span>
+                        )}
+                      </div>
+                    </div>
+                  </div>
+                )}
+
+                {/* Release Actions */}
+                <div className="flex items-center justify-between pt-4 border-t">
+                  <div className="text-xs text-muted-foreground">
+                    {reviewData.submission.released_at ? (
+                      <span className="text-emerald-500 flex items-center gap-1">
+                        <CheckCheck className="w-3.5 h-3.5" /> Score released on {new Date(reviewData.submission.released_at).toLocaleString()}
+                      </span>
+                    ) : (
+                      'Score not yet released to candidate'
+                    )}
+                  </div>
+                  <div className="flex items-center gap-3">
+                    <Button variant="outline" onClick={() => { setReviewCandidate(null); setReviewData(null) }}>
+                      Close
+                    </Button>
+                    {!reviewData.submission.released_at && (
+                      <Button
+                        className="bg-emerald-600 hover:bg-emerald-700 text-white gap-2"
+                        onClick={() => releaseScore(reviewCandidate.userId || reviewCandidate.id, reviewCandidate.name)}
+                        disabled={releasing === (reviewCandidate.userId || reviewCandidate.id)}
+                      >
+                        {releasing === (reviewCandidate.userId || reviewCandidate.id) ? (
+                          <Loader2 className="w-4 h-4 animate-spin" />
+                        ) : (
+                          <Send className="w-4 h-4" />
+                        )}
+                        Release Score
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="py-8 text-center text-muted-foreground text-sm">
+                No submission data found for this candidate.
+              </div>
+            )}
           </div>
         </div>
       )}

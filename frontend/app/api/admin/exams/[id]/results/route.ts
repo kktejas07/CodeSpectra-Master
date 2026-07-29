@@ -54,12 +54,14 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
     interface CandidateResultRow {
       id: string
+      userId: string
       name: string
       email: string
       status: string
       score: number | null
       submittedAt: string | null
       proctoringFlags: number
+      released: boolean
     }
 
     const results: CandidateResultRow[] = []
@@ -79,12 +81,14 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
       results.push({
         id: inv.id,
+        userId: inv.user_id || '',
         name: inv.full_name || user.name || email.split('@')[0] || 'Candidate',
         email,
         status,
         score: sub ? Math.round(sub.score) : null,
         submittedAt: sub?.submitted_at || null,
         proctoringFlags: 0,
+        released: sub?.released_at ? true : false,
       })
     }
 
@@ -98,12 +102,14 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
       results.push({
         id: sub.id,
+        userId: sub.user_id || '',
         name: fetched.name || 'Unknown',
         email: fetched.email || '',
         status: 'completed',
         score: Math.round(sub.score),
         submittedAt: sub.submitted_at || null,
         proctoringFlags: 0,
+        released: sub.released_at ? true : false,
       })
       if (fetched.email) seenEmails.add(fetched.email.toLowerCase())
     }
