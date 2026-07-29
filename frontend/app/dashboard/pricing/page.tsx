@@ -43,7 +43,10 @@ export default function PricingPage() {
       fetch('/api/billing/plans', { credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => []),
       fetch('/api/admin/platform-settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([plansData, settingsData]) => {
-      if (Array.isArray(plansData)) setPlans(plansData)
+      if (Array.isArray(plansData)) setPlans(plansData.map((p: any) => ({
+      ...p,
+      price: p.price != null ? (typeof p.price === 'number' ? `$${p.price}` : p.price) : p.price,
+    })))
       else if (plansData?.plans) setPlans(plansData.plans)
       if (settingsData?.settings?.platform_currency) setCurrency(settingsData.settings.platform_currency)
     }).catch(() => {}).finally(() => setLoading(false))
