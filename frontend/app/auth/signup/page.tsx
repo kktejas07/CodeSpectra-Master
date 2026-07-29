@@ -29,7 +29,7 @@ function SignupInner() {
   const redirectTo = searchParams.get("redirect") || searchParams.get("redirectTo") || "/dashboard";
 
   const [name, setName] = useState("");
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState(searchParams.get("email") || "");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);

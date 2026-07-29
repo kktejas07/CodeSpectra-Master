@@ -5,7 +5,7 @@ import { useParams, useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Code2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Lock } from 'lucide-react'
+import { Code2, AlertCircle, Loader2, ArrowRight, ShieldCheck, Lock, User } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface AssessmentStepData {
@@ -29,6 +29,7 @@ export default function CandidateInviteLandingPage() {
     email: string
     full_name: string
     target_url: string
+    is_registered: boolean
     assigned_assessments?: AssessmentStepData[]
     allowed_languages?: string[]
   } | null>(null)
@@ -46,6 +47,7 @@ export default function CandidateInviteLandingPage() {
           email: json.email,
           full_name: json.full_name,
           target_url: json.target_url || '/assessment',
+          is_registered: !!json.is_registered,
           assigned_assessments: json.assigned_assessments,
           allowed_languages: json.allowed_languages,
         })
@@ -168,35 +170,48 @@ export default function CandidateInviteLandingPage() {
                       )}
                     </div>
                   </div>
-                  <Button
-                    onClick={async () => {
-                      setStarting(step.id || 'start')
-                      try {
-                        const res = await csrfFetch(`/api/assessment/invite/${token}`, {
-                          method: 'PATCH',
-                          headers: { 'Content-Type': 'application/json' },
-                          body: JSON.stringify({ email: candidateData.email }),
-                        })
-                        const json = await res.json()
-                        if (!res.ok) throw new Error(json.error || 'Failed to activate invite')
-                        const url = `${step.target_url}?inviteEmail=${encodeURIComponent(candidateData.email)}&inviteToken=${token}`
-                        router.push(url)
-                      } catch (e: unknown) {
-                        const msg = e instanceof Error ? e.message : 'Failed to start'
-                        setError(msg)
-                        setStarting(null)
-                      }
-                    }}
-                    size="sm"
-                    disabled={starting !== null}
-                    className="gap-1.5 shrink-0 self-end sm:self-center"
-                  >
-                    {starting === (step.id || 'start') ? (
-                      <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Activating...</>
-                    ) : (
-                      <><Lock className="h-3.5 w-3.5" /> Start Stage <ArrowRight className="h-3.5 w-3.5" /></>
-                    )}
-                  </Button>
+                  {candidateData.is_registered ? (
+                    <Button
+                      onClick={async () => {
+                        setStarting(step.id || 'start')
+                        try {
+                          const res = await csrfFetch(`/api/assessment/invite/${token}`, {
+                            method: 'PATCH',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ email: candidateData.email }),
+                          })
+                          const json = await res.json()
+                          if (!res.ok) throw new Error(json.error || 'Failed to activate invite')
+                          const url = `${step.target_url}?inviteEmail=${encodeURIComponent(candidateData.email)}&inviteToken=${token}`
+                          router.push(url)
+                        } catch (e: unknown) {
+                          const msg = e instanceof Error ? e.message : 'Failed to start'
+                          setError(msg)
+                          setStarting(null)
+                        }
+                      }}
+                      size="sm"
+                      disabled={starting !== null}
+                      className="gap-1.5 shrink-0 self-end sm:self-center"
+                    >
+                      {starting === (step.id || 'start') ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Activating...</>
+                      ) : (
+                        <><Lock className="h-3.5 w-3.5" /> Start Stage <ArrowRight className="h-3.5 w-3.5" /></>
+                      )}
+                    </Button>
+                  ) : (
+                    <Button
+                      onClick={() => {
+                        const registerUrl = `/auth/signup?email=${encodeURIComponent(candidateData.email)}&redirect=${encodeURIComponent(window.location.pathname)}`
+                        router.push(registerUrl)
+                      }}
+                      size="sm"
+                      className="gap-1.5 shrink-0 self-end sm:self-center bg-amber-600 hover:bg-amber-700 text-white"
+                    >
+                      <User className="h-3.5 w-3.5" /> Register to Start <ArrowRight className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
                 </div>
               )
             })}

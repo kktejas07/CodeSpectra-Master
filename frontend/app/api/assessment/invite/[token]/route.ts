@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { candidateInvites } from '@/lib/db/admin'
+import { getMongoDb } from '@/lib/mongodb'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -55,6 +56,7 @@ export async function GET(
 
   try {
     const col = await candidateInvites()
+    const db = await getMongoDb()
     const invite = await col.findOne({ token })
 
     if (!invite) {
@@ -66,11 +68,14 @@ export async function GET(
       return NextResponse.json({ error: 'This candidate assessment link has expired.' }, { status: 410 })
     }
 
+    const registeredUser = await db.collection('user').findOne({ email: invite.email })
+
     return NextResponse.json({
       ok: true,
       email: invite.email,
       full_name: invite.full_name,
       target_url: invite.target_url || '/assessment',
+      is_registered: !!registeredUser,
       assigned_assessments: invite.assigned_assessments || [
         {
           id: 'step-1',
