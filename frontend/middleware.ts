@@ -67,7 +67,7 @@ export function middleware(request: NextRequest) {
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set(
     'Permissions-Policy',
-    'camera=(), microphone=(), geolocation=(), interest-cohort=()',
+    'camera=(self), microphone=(), geolocation=(), interest-cohort=()',
   )
 
   // CORS — only allow known origins, never reflect arbitrary origins with credentials

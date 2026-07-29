@@ -221,23 +221,36 @@ export default function ExamPage() {
             </Card>
 
             {/* Navigation */}
-            <div className="flex items-center justify-between">
-              <Button
-                variant="outline"
-                disabled={currentQ === 0}
-                onClick={() => setCurrentQ(q => q - 1)}
-              >
-                Previous
-              </Button>
+            <div className="flex flex-col gap-4 items-center">
+              <div className="flex items-center justify-between w-full">
+                <Button
+                  variant="outline"
+                  disabled={currentQ === 0}
+                  onClick={() => setCurrentQ(q => q - 1)}
+                >
+                  Previous
+                </Button>
 
-              <div className="flex gap-1">
+                {currentQ < exam.questions.length - 1 ? (
+                  <Button onClick={() => setCurrentQ(q => q + 1)}>
+                    Next <ChevronRight className="h-4 w-4 ml-1" />
+                  </Button>
+                ) : (
+                  <Button onClick={() => handleSubmit(false)} disabled={submitting}>
+                    {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    Submit Exam
+                  </Button>
+                )}
+              </div>
+
+              <div className="flex flex-wrap gap-1.5 justify-center max-w-full py-1">
                 {exam.questions.map((_, i) => (
                   <button
                     key={i}
                     onClick={() => setCurrentQ(i)}
-                    className={`w-8 h-8 rounded text-xs font-medium transition-colors ${
-                      i === currentQ ? 'bg-primary text-primary-foreground' :
-                      answers[exam.questions[i].id] ? 'bg-primary/20 text-primary' :
+                    className={`w-8 h-8 rounded-lg text-xs font-semibold transition-all ${
+                      i === currentQ ? 'bg-primary text-primary-foreground shadow-sm scale-115' :
+                      answers[exam.questions[i].id] ? 'bg-primary/20 text-primary hover:bg-primary/30' :
                       'bg-muted text-muted-foreground hover:bg-muted/80'
                     }`}
                   >
@@ -245,17 +258,6 @@ export default function ExamPage() {
                   </button>
                 ))}
               </div>
-
-              {currentQ < exam.questions.length - 1 ? (
-                <Button onClick={() => setCurrentQ(q => q + 1)}>
-                  Next <ChevronRight className="h-4 w-4 ml-1" />
-                </Button>
-              ) : (
-                <Button onClick={() => handleSubmit(false)} disabled={submitting}>
-                  {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                  Submit Exam
-                </Button>
-              )}
             </div>
           </div>
         )}
