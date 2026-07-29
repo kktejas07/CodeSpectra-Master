@@ -10,6 +10,16 @@ import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, Chevro
 import { useToast } from '@/lib/toast-context'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface Question {
   id: string
@@ -45,6 +55,7 @@ export default function CandidateAssessmentPage() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
   const [answers, setAnswers] = useState<Record<string, string>>({})
   const [currentQIndex, setCurrentQIndex] = useState(0)
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   
   // Verification State
   const [showVerification, setShowVerification] = useState(false)
@@ -93,6 +104,16 @@ export default function CandidateAssessmentPage() {
         }
 
         setExam(found)
+        if (typeof window !== 'undefined') {
+          try {
+            const draft = localStorage.getItem(`codespectra_exam_draft_${params.id}`)
+            if (draft) {
+              setAnswers(JSON.parse(draft))
+            }
+          } catch (e) {
+            console.error('Failed to load draft:', e)
+          }
+        }
       } catch {
         addToast({ type: 'error', title: 'Failed to load assessment' })
       } finally {
@@ -115,6 +136,12 @@ export default function CandidateAssessmentPage() {
     }
   }, [hasStarted, timeLeft, isSubmitted, isSubmitting])
 
+  useEffect(() => {
+    if (exam && Object.keys(answers).length > 0) {
+      localStorage.setItem(`codespectra_exam_draft_${exam.id}`, JSON.stringify(answers))
+    }
+  }, [answers, exam])
+
   const handleStart = () => {
     if (!exam) return
     setHasStarted(true)
@@ -127,10 +154,8 @@ export default function CandidateAssessmentPage() {
     await submitAssessment(true)
   }
 
-  const handleManualSubmit = async () => {
-    if (confirm('Are you sure you want to submit? You cannot return to the assessment once submitted.')) {
-      await submitAssessment(false)
-    }
+  const handleManualSubmit = () => {
+    setShowSubmitConfirm(true)
   }
 
   const submitAssessment = async (autoSubmitted = false) => {
@@ -145,6 +170,7 @@ export default function CandidateAssessmentPage() {
           auto_submitted: autoSubmitted,
           idPhoto,
           facePhoto,
+          inviteToken: searchParams.get('inviteToken')
         }),
         credentials: 'include',
       })
@@ -153,6 +179,9 @@ export default function CandidateAssessmentPage() {
         throw new Error(err.error || 'Failed to submit')
       }
       setIsSubmitted(true)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`codespectra_exam_draft_${exam.id}`)
+      }
       addToast({ type: 'success', title: 'Assessment submitted successfully!' })
     } catch (e: any) {
       addToast({ type: 'error', title: 'Failed to submit', message: e.message || '' })
@@ -277,7 +306,8 @@ export default function CandidateAssessmentPage() {
   const currentQ = exam.questionList[currentQIndex]
 
   return (
-    <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate">
+    <>
+      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate">
       <div className="min-h-screen bg-background flex flex-col">
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 border-b border-border bg-card px-6 py-3 flex items-center justify-between shadow-xs">
@@ -364,7 +394,7 @@ export default function CandidateAssessmentPage() {
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
                     <label className="text-sm font-medium text-muted-foreground">Your Code Solution:</label>
-                    <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Auto-saving locally...</Badge>
+                    <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
                   </div>
                   <textarea 
                     value={answers[currentQ.id] || ''}
@@ -402,5 +432,26 @@ export default function CandidateAssessmentPage() {
       </main>
     </div>
     </ProctoringWrapper>
+
+    <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You cannot return to the assessment once submitted. Please verify all your answers before submitting.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={async () => {
+            setShowSubmitConfirm(false)
+            await submitAssessment(false)
+          }}>
+            Submit
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }

@@ -2,13 +2,35 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { exams } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
+import { getMongoDb } from '@/lib/mongodb'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
+  const gate = await requireAuth().catch(() => ({ error: 'Unauthorized' }))
   const { id } = await params
   try {
     const col = await exams()
     const doc = await col.findOne({ id })
     if (!doc) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+
+    if (gate && !('error' in gate)) {
+      const db = await getMongoDb()
+      const submission = await db.collection('exam_submissions').findOne({
+        exam_id: id,
+        user_id: gate.user.id
+      })
+      if (submission) {
+        return NextResponse.json({
+          ...doc,
+          submission: {
+            score: submission.score,
+            total: submission.max_score,
+            details: submission.details,
+            released: !!submission.score_released
+          }
+        })
+      }
+    }
+
     return NextResponse.json(doc)
   } catch (error) {
     console.error('[CodeSpectra] exams GET[id]:', error)

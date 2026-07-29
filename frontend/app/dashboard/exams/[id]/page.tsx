@@ -14,6 +14,16 @@ import {
   Clock, AlertTriangle, Send, ArrowLeft, Loader2,
   CheckCircle, XCircle, ChevronRight,
 } from 'lucide-react'
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog'
 
 interface ExamQuestion {
   id: string
@@ -48,6 +58,7 @@ export default function ExamPage() {
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
   const [results, setResults] = useState<{ score: number; total: number; details: Array<{ qId: string; correct: boolean; points: number }> } | null>(null)
+  const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
 
   useEffect(() => {
     fetch(`/api/exams/${examId}`)
@@ -64,11 +75,34 @@ export default function ExamPage() {
           }))
           setExam({ ...data, questions: mappedQuestions })
           setTimeRemaining((data.duration_minutes || data.duration || 30) * 60)
+          
+          if (data.submission) {
+            setResults(data.submission)
+            setSubmitted(true)
+          } else {
+            // Restore draft answers from local storage
+            if (typeof window !== 'undefined') {
+              try {
+                const draft = localStorage.getItem(`codespectra_exam_draft_${examId}`)
+                if (draft) {
+                  setAnswers(JSON.parse(draft))
+                }
+              } catch (e) {
+                console.error('Failed to load draft:', e)
+              }
+            }
+          }
         }
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [examId])
+
+  useEffect(() => {
+    if (exam && Object.keys(answers).length > 0 && !submitted) {
+      localStorage.setItem(`codespectra_exam_draft_${exam.id}`, JSON.stringify(answers))
+    }
+  }, [answers, exam, submitted])
 
   // Timer with auto-submit
   useEffect(() => {
@@ -99,6 +133,9 @@ export default function ExamPage() {
       if (!res.ok) throw new Error(data.error || 'Submit failed')
       setResults(data)
       setSubmitted(true)
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(`codespectra_exam_draft_${examId}`)
+      }
     } catch {
       setSubmitted(true)
     } finally {
@@ -121,31 +158,87 @@ export default function ExamPage() {
 
   // Results view
   if (submitted && results) {
+    const isReleased = (results as any).released ?? false;
+
+    if (!isReleased) {
+      return (
+        <div className="max-w-md mx-auto p-6 mt-10">
+          <Card className="p-8 text-center border-primary/20 space-y-6 shadow-xl bg-card/60 backdrop-blur">
+            <div className="flex h-16 w-16 items-center justify-center rounded-full bg-green-500/10 mx-auto text-green-500 animate-pulse">
+              <CheckCircle className="h-8 w-8" />
+            </div>
+            <div className="space-y-2">
+              <h1 className="text-2xl font-bold tracking-tight">Assessment Submitted</h1>
+              <p className="text-muted-foreground text-sm leading-relaxed">
+                Thank you for completing the assessment. Your answers have been successfully recorded and submitted.
+              </p>
+            </div>
+            <div className="border-t border-border/60 pt-4 text-xs text-muted-foreground">
+              Your results are currently under review. The administrator will release your scores shortly.
+            </div>
+            <Button onClick={() => router.push('/dashboard/exams')} className="w-full gap-2 mt-2">
+              <ArrowLeft className="h-4 w-4" /> Back to Exams
+            </Button>
+          </Card>
+        </div>
+      )
+    }
+
+    // If released, display premium, clean results list
     return (
-      <div className="max-w-3xl mx-auto p-6 space-y-6">
-        <Card className="p-8 text-center space-y-4">
-          <h1 className="text-3xl font-bold">Exam Complete</h1>
-          <div className="text-5xl font-bold text-primary">{results.score}/{results.total}</div>
-          <p className="text-muted-foreground">
-            {results.score / results.total >= 0.7 ? 'Great job!' : 'Keep practicing!'}
+      <div className="max-w-3xl mx-auto p-6 space-y-8">
+        <Card className="p-8 text-center space-y-4 bg-card/60 backdrop-blur border-primary/10 shadow-lg">
+          <h1 className="text-3xl font-bold tracking-tight">Exam Results</h1>
+          <div className="flex justify-center items-baseline gap-1">
+            <span className="text-6xl font-extrabold text-primary">{results.score}</span>
+            <span className="text-2xl text-muted-foreground">/ {results.total}</span>
+          </div>
+          <p className="text-sm font-medium text-muted-foreground">
+            {results.score / results.total >= 0.7 
+              ? '🎉 Outstanding! You passed the benchmark.' 
+              : 'Keep practicing to improve your score!'}
           </p>
         </Card>
+
         <div className="space-y-3">
-          {(results.details || []).map((d, i) => (
-            <Card key={d.qId} className="p-4 flex items-center gap-3">
-              {d.correct ? <CheckCircle className="h-5 w-5 text-green-500" /> : <XCircle className="h-5 w-5 text-red-500" />}
-              <span className="flex-1 text-sm">Question {i + 1}</span>
-              <Badge variant={d.correct ? 'default' : 'destructive'}>{d.points} pts</Badge>
-            </Card>
-          ))}
+          <h3 className="text-lg font-semibold px-1">Detailed Breakdown</h3>
+          {(results.details || []).map((d, i) => {
+            const questionData = exam.questions.find(q => q.id === d.qId)
+            const title = questionData?.question || `Question ${i + 1}`
+            return (
+              <div 
+                key={d.qId} 
+                className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/30 backdrop-blur hover:bg-card/50 transition-all duration-200"
+              >
+                <div className="flex items-center gap-3.5 min-w-0 flex-1">
+                  {d.correct ? (
+                    <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
+                  ) : (
+                    <XCircle className="h-5 w-5 text-red-500 shrink-0" />
+                  )}
+                  <div className="min-w-0 flex-1">
+                    <span className="text-sm font-semibold block text-muted-foreground mb-0.5">Question {i + 1}</span>
+                    <p className="text-sm text-foreground font-medium truncate pr-4">{title}</p>
+                  </div>
+                </div>
+                <Badge variant={d.correct ? 'default' : 'destructive'} className="shrink-0 font-mono text-xs">
+                  {d.correct ? `+${d.points}` : '0'} / {d.points} pts
+                </Badge>
+              </div>
+            )
+          })}
         </div>
-        <Button onClick={() => router.push('/dashboard/exams')} className="w-full">Back to Exams</Button>
+
+        <Button onClick={() => router.push('/dashboard/exams')} className="w-full gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back to Exams
+        </Button>
       </div>
     )
   }
 
   return (
-    <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
+    <>
+      <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
       <ProctorMonitor
         sessionKind="exam"
         sessionId={examId}
@@ -211,12 +304,20 @@ export default function ExamPage() {
               )}
 
               {(['short-answer', 'code', 'descriptive', 'coding'].includes(question.type)) && (
-                <Textarea
-                  value={answers[question.id] || ''}
-                  onChange={e => setAnswers(a => ({ ...a, [question.id]: e.target.value }))}
-                  placeholder={['code', 'coding'].includes(question.type) ? 'Write your code here...' : 'Type your answer...'}
-                  className="min-h-32 font-mono text-sm"
-                />
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-muted-foreground">
+                      {['code', 'coding'].includes(question.type) ? 'Your Code Solution:' : 'Your Answer:'}
+                    </label>
+                    <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
+                  </div>
+                  <Textarea
+                    value={answers[question.id] || ''}
+                    onChange={e => setAnswers(a => ({ ...a, [question.id]: e.target.value }))}
+                    placeholder={['code', 'coding'].includes(question.type) ? 'Write your code here...' : 'Type your answer...'}
+                    className="min-h-32 font-mono text-sm"
+                  />
+                </div>
               )}
             </Card>
 
@@ -236,7 +337,7 @@ export default function ExamPage() {
                     Next <ChevronRight className="h-4 w-4 ml-1" />
                   </Button>
                 ) : (
-                  <Button onClick={() => handleSubmit(false)} disabled={submitting}>
+                  <Button onClick={() => setShowSubmitConfirm(true)} disabled={submitting}>
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
                     Submit Exam
                   </Button>
@@ -263,5 +364,26 @@ export default function ExamPage() {
         )}
       </div>
     </div>
+
+    <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>
+      <AlertDialogContent>
+        <AlertDialogHeader>
+          <AlertDialogTitle>Are you sure you want to submit?</AlertDialogTitle>
+          <AlertDialogDescription>
+            You cannot return to the assessment once submitted. Please verify all your answers before submitting.
+          </AlertDialogDescription>
+        </AlertDialogHeader>
+        <AlertDialogFooter>
+          <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogAction onClick={async () => {
+            setShowSubmitConfirm(false)
+            await handleSubmit(false)
+          }}>
+            Submit
+          </AlertDialogAction>
+        </AlertDialogFooter>
+      </AlertDialogContent>
+    </AlertDialog>
+    </>
   )
 }
