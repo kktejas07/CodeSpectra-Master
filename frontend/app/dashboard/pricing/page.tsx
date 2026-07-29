@@ -15,7 +15,7 @@ import { Label } from '@/components/ui/label'
 
 interface PlanDef {
   plan: string; name: string; description: string; price?: string
-  features: Array<{ key: string; label: string; description: string; enabled: boolean; limit: number; type: string }>
+  features: string[]
 }
 
 const PLAN_COLORS: Record<string, string> = {
@@ -45,6 +45,7 @@ export default function PricingPage() {
     ]).then(([plansData, settingsData]) => {
       if (Array.isArray(plansData)) setPlans(plansData.map((p: any) => ({
       ...p,
+      plan: p.plan || p.id,
       price: p.price != null ? (typeof p.price === 'number' ? `$${p.price}` : p.price) : p.price,
     })))
       else if (plansData?.plans) setPlans(plansData.plans)
@@ -148,15 +149,10 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
               </div>
 
               <div className="space-y-3 mb-6">
-                {plan.features.filter(f => f.type !== 'pages').map(f => (
-                  <div key={f.key} className="flex items-center gap-3 text-sm">
-                    <CheckCircle2 className={`h-4 w-4 shrink-0 ${f.enabled ? 'text-green-500' : 'text-muted-foreground/30'}`} />
-                    <span className={f.enabled ? 'text-foreground' : 'text-muted-foreground/50 line-through'}>
-                      {f.label}
-                      {f.type === 'count' && f.enabled && (
-                        <span className="text-xs text-muted-foreground ml-1">({formatLimit(f.limit)}{getLimitSuffix(f.key)})</span>
-                      )}
-                    </span>
+                {plan.features.map(f => (
+                  <div key={f} className="flex items-start gap-3 text-sm">
+                    <CheckCircle2 className="h-4 w-4 shrink-0 text-green-500 mt-0.5" />
+                    <span className="text-foreground">{f}</span>
                   </div>
                 ))}
               </div>
@@ -180,14 +176,6 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
         })}
       </div>
 
-      <div className="text-center text-sm text-muted-foreground">
-        <p>All plans include access to problems, scanner, tracks, and leaderboard.</p>
-        <p className="mt-1">
-          <Link href="/dashboard/billing" className="text-primary underline">Manage billing</Link>
-          {' · '}
-          <Link href="/pricing" className="text-primary underline">Public pricing page</Link>
-        </p>
-      </div>
 
       <Dialog open={!!checkoutPlan} onOpenChange={(v) => { if (!v) { setCheckoutPlan(null); setCouponCode(''); setDiscountInfo(null) } }}>
         <DialogContent className="sm:max-w-[425px]">
