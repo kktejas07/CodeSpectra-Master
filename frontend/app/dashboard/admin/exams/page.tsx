@@ -1,9 +1,10 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy } from 'lucide-react'
+import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
@@ -20,6 +21,7 @@ interface Exam {
   title: string
   subject: string
   level: string
+  techStack?: string[]
   duration: number
   questions: number
   published: boolean
@@ -30,6 +32,7 @@ interface Exam {
 export default function AdminExamsPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
+  const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -47,6 +50,7 @@ export default function AdminExamsPage() {
   const [title, setTitle] = useState('')
   const [subject, setSubject] = useState('')
   const [level, setLevel] = useState('Beginner')
+  const [techStack, setTechStack] = useState('')
   const [duration, setDuration] = useState(60)
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
@@ -77,6 +81,7 @@ export default function AdminExamsPage() {
     setTitle('')
     setSubject('')
     setLevel('Beginner')
+    setTechStack('')
     setDuration(60)
     setQuestions(0)
     setPublished(false)
@@ -88,6 +93,7 @@ export default function AdminExamsPage() {
     setTitle(exam.title)
     setSubject(exam.subject)
     setLevel(exam.level)
+    setTechStack((exam.techStack || []).join(', '))
     setDuration(exam.duration)
     setQuestions(exam.questions)
     setPublished(exam.published)
@@ -101,7 +107,15 @@ export default function AdminExamsPage() {
     }
     
     setSaving(true)
-    const payload = { title, subject, level, duration, questions, published }
+    const payload = { 
+      title, 
+      subject, 
+      level, 
+      techStack: techStack.split(',').map(s => s.trim()).filter(Boolean),
+      duration, 
+      questions, 
+      published 
+    }
     
     try {
       if (editingExam) {
@@ -113,13 +127,17 @@ export default function AdminExamsPage() {
         })
         addToast({ type: 'success', title: 'Exam updated successfully' })
       } else {
-        await csrfFetch('/api/exams', {
+        const createRes = await csrfFetch('/api/exams', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           credentials: 'include',
           body: JSON.stringify(payload)
         })
-        addToast({ type: 'success', title: 'Exam created successfully' })
+        const newExam = await createRes.json()
+        addToast({ type: 'success', title: 'Draft generated! Redirecting to review...' })
+        setIsModalOpen(false)
+        router.push(`/dashboard/admin/exams/${newExam.id}/edit`)
+        return
       }
       setIsModalOpen(false)
       fetchExams()
@@ -244,17 +262,21 @@ export default function AdminExamsPage() {
               <Input id="subject" value={subject} onChange={(e) => setSubject(e.target.value)} placeholder="e.g. JavaScript" />
             </div>
             <div className="grid gap-2">
-              <Label>Level</Label>
+              <Label>Complexity Level</Label>
               <Select value={level} onValueChange={setLevel}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Beginner">Beginner</SelectItem>
-                  <SelectItem value="Intermediate">Intermediate</SelectItem>
-                  <SelectItem value="Advanced">Advanced</SelectItem>
+                  <SelectItem value="Beginner">Junior / Beginner</SelectItem>
+                  <SelectItem value="Intermediate">Mid-Level</SelectItem>
+                  <SelectItem value="Advanced">Senior / Advanced</SelectItem>
                 </SelectContent>
               </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="techStack">Tech Stack (comma separated)</Label>
+              <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder="e.g. Java, Spring Boot, SQL" />
             </div>
             <div className="grid grid-cols-2 gap-4">
               <div className="grid gap-2">
@@ -278,9 +300,10 @@ export default function AdminExamsPage() {
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsModalOpen(false)}>Cancel</Button>
-            <Button onClick={handleSaveExam} disabled={saving}>
+            <Button onClick={handleSaveExam} disabled={saving} className={!editingExam ? 'bg-purple-600 hover:bg-purple-700 text-white' : ''}>
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-              {editingExam ? 'Save Changes' : 'Create Exam'}
+              {!editingExam && !saving && <Wand2 className="mr-2 h-4 w-4" />}
+              {editingExam ? 'Save Changes' : 'Generate with AI'}
             </Button>
           </DialogFooter>
         </DialogContent>
