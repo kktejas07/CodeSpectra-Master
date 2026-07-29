@@ -429,6 +429,7 @@ export default function DashboardLayout({
 
   /** Avoid flashing `/dashboard` links for superadmin before profile hydrates (prevents redirect ping-pong + wrong prefetch). */
   const navReady = Boolean(userProfile?.role)
+  const sidebarReady = navReady && permsLoaded
 
   const handleLogout = async () => {
     await signOut()
@@ -585,6 +586,12 @@ export default function DashboardLayout({
                 {!navReady ? (
                   <div className="px-3 py-6 text-center text-xs text-muted-foreground">
                     Loading navigation…
+                  </div>
+                ) : !sidebarReady ? (
+                  <div className="space-y-1.5 px-1">
+                    {Array.from({ length: 8 }).map((_, i) => (
+                      <div key={i} className="h-8 rounded-md bg-muted/40 animate-pulse" />
+                    ))}
                   </div>
                 ) : (
                   navEntries.map((entry) => {
