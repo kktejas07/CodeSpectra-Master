@@ -141,7 +141,7 @@ export function AskCodeSpectra() {
       {/* Slide-out sidebar */}
       <aside
         className={cn(
-          'fixed right-0 top-0 z-40 h-dvh w-full max-w-md border-l border-border bg-card/95 backdrop-blur-md shadow-2xl',
+          'fixed right-0 top-0 z-40 flex flex-col h-dvh w-full max-w-md border-l border-border bg-card/95 backdrop-blur-md shadow-2xl',
           'transition-transform duration-200',
           open ? 'translate-x-0' : 'translate-x-full',
         )}
@@ -233,7 +233,7 @@ export function AskCodeSpectra() {
             e.preventDefault()
             void send()
           }}
-          className="absolute inset-x-0 bottom-0 border-t border-border bg-card/95 px-3 py-3"
+          className="border-t border-border bg-card/95 px-3 py-3"
         >
           <div className="flex items-end gap-2">
             <textarea
