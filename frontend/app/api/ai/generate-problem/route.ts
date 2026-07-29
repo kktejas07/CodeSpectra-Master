@@ -12,15 +12,23 @@ interface GenReq {
   difficulty?: 'easy' | 'medium' | 'hard'
   topics?: string[]
   language_hint?: string
-  publish?: boolean // if true, insert into `problems` collection
+  publish?: boolean
 }
+
+const FALLBACK_PROVIDERS = [
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', endpoint: 'https://api.groq.com/openai/v1' },
+  { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
+  { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
+  { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', endpoint: undefined },
+  { provider: 'opencode', model: 'deepseek-v4-pro', endpoint: undefined },
+]
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
   const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   const user = gate.user
 
-  const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'grade_model')
+  const { providerOverride, modelOverride, modelRole } = await resolveModel(user.id, 'grade_model')
 
   let body: GenReq
   try {
@@ -29,22 +37,36 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  let result: Record<string, unknown>
-  try {
-    result = (await backendPost<Record<string, unknown>>(
-      '/internal/ai/generate-problem',
-      {
-        role: body.role || 'Software Engineer',
-        difficulty: body.difficulty || 'medium',
-        topics: body.topics || [],
-        language_hint: body.language_hint || 'python',
-      },
-      { providerOverride, modelOverride, modelRole, endpointOverride: endpointOverride || undefined },
-    )) as Record<string, unknown>
-  } catch (e) {
-    const msg = e instanceof Error ? e.message : String(e)
-    console.error('[generate-problem] backend error:', msg)
-    return NextResponse.json({ error: `AI generation failed: ${msg}` }, { status: 502 })
+  let lastError = ''
+  const providers = [{ provider: providerOverride, model: modelOverride, modelRole }]
+  for (const fb of FALLBACK_PROVIDERS) {
+    if (!providers.find(p => p.provider === fb.provider)) {
+      providers.push({ provider: fb.provider, model: fb.model, modelRole })
+    }
+  }
+
+  let result: Record<string, unknown> | null = null
+  for (const p of providers) {
+    try {
+      result = (await backendPost<Record<string, unknown>>(
+        '/internal/ai/generate-problem',
+        {
+          role: body.role || 'Software Engineer',
+          difficulty: body.difficulty || 'medium',
+          topics: body.topics || [],
+          language_hint: body.language_hint || 'python',
+        },
+        { providerOverride: p.provider, modelOverride: p.model, modelRole: p.modelRole },
+      )) as Record<string, unknown>
+      break
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e)
+      console.error('[generate-problem] failed with', p.provider, ':', lastError)
+    }
+  }
+
+  if (!result) {
+    return NextResponse.json({ error: `AI generation failed for all providers. Last error: ${lastError}` }, { status: 502 })
   }
 
   const gens = await aiGeneratedProblems()

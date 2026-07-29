@@ -51,10 +51,12 @@ export async function GET(
   if (doc.status === 'draft' && !isAdmin(user.role)) {
     return NextResponse.json({ error: 'not found' }, { status: 404 })
   }
-  const computed = computeStatus(doc.starts_at, doc.ends_at, doc.status)
-  if (computed !== doc.status) {
-    await (await hackathons()).updateOne({ id: doc.id }, { $set: { status: computed, updated_at: nowIso() } })
-    doc.status = computed
+  // ponytail: auto-compute status only for auto-transitions (open→live when time hits,
+  // live→closed when ended). Don't override manually set statuses from PATCH.
+  const autoStatus = computeStatus(doc.starts_at, doc.ends_at, doc.status)
+  if (autoStatus !== doc.status && (autoStatus === 'closed' || (autoStatus === 'live' && doc.status === 'open'))) {
+    await (await hackathons()).updateOne({ id: doc.id }, { $set: { status: autoStatus, updated_at: nowIso() } })
+    doc.status = autoStatus
   }
   return NextResponse.json(doc)
 }
