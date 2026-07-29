@@ -27,7 +27,7 @@ export async function POST(
     const exam = await exams.findOne({ id: examId })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
-    const questions = exam.questions || []
+    const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
     const answers = body.answers || {}
     let totalScore = 0
     let maxScore = 0
