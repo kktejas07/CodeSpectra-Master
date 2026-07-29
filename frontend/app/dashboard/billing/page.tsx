@@ -117,7 +117,8 @@ function BillingContent() {
       fetch('/api/billing/payment-methods', { credentials: 'include' }),
     ])
     if (subRes.ok) {
-      setSubscription(await subRes.json())
+      const d = await subRes.json()
+      setSubscription(d.subscription || d)
     } else {
       const pf = findPlan('free')
       setSubscription({
