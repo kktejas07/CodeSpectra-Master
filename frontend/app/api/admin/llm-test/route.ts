@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
+import { getMongoDb } from '@/lib/mongodb'
 
 const TEST_URLS: Record<string, string> = {
   gemini: 'https://generativelanguage.googleapis.com/v1beta/models',
@@ -10,22 +11,37 @@ const TEST_URLS: Record<string, string> = {
   anthropic: 'https://api.anthropic.com/v1/models',
 }
 
+const KEY_FIELDS: Record<string, string> = {
+  gemini: 'gemini_api_key',
+  groq: 'groq_api_key',
+  openai: 'openai_api_key',
+  openrouter: 'openrouter_api_key',
+  opencode: 'opencode_api_key',
+  anthropic: 'anthropic_api_key',
+}
+
 export async function POST(request: Request) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   try {
-    const { provider, key } = await request.json()
+    const { provider } = await request.json()
+    if (!provider) return NextResponse.json({ error: 'provider required' }, { status: 400 })
+
+    const db = await getMongoDb()
+    const secretsDoc = await db.collection('platform_settings').findOne({ key: 'secrets' })
+    const keyField = KEY_FIELDS[provider]
+    const key = (secretsDoc?.value as any)?.[keyField]
+    if (!key) return NextResponse.json({ ok: false, error: 'No key configured' })
+
     const url = TEST_URLS[provider]
     if (!url) return NextResponse.json({ error: 'Unknown provider' }, { status: 400 })
 
-    const headers: Record<string, string> = {}
     if (provider === 'gemini') {
       const res = await fetch(`${url}?key=${key}`, { signal: AbortSignal.timeout(8000) })
       return NextResponse.json({ ok: res.ok, error: res.ok ? undefined : `HTTP ${res.status}` })
     } else {
-      headers['Authorization'] = `Bearer ${key}`
-      const res = await fetch(url, { headers, signal: AbortSignal.timeout(8000) })
+      const res = await fetch(url, { headers: { Authorization: `Bearer ${key}` }, signal: AbortSignal.timeout(8000) })
       return NextResponse.json({ ok: res.ok, error: res.ok ? undefined : `HTTP ${res.status}` })
     }
   } catch (e: any) {

@@ -2265,12 +2265,10 @@ function SystemSettingsInner() {
                     const providers = ['gemini','opencode','groq','openrouter','openai','anthropic']
                     const results: string[] = []
                     for (const p of providers) {
-                      const key = (secretsDraft as any)[(p === 'gemini' ? 'gemini_api_key' : p === 'opencode' ? 'opencode_api_key' : p === 'groq' ? 'groq_api_key' : p === 'openrouter' ? 'openrouter_api_key' : p === 'openai' ? 'openai_api_key' : 'anthropic_api_key')] || ''
-                      if (!key) { results.push(`⚠️ ${p}: no key`); continue }
                       try {
-                        const r = await fetch('/api/admin/llm-test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ provider: p, key }) })
+                        const r = await fetch('/api/admin/llm-test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ provider: p }) })
                         const d = await r.json()
-                        results.push(d.ok ? `✅ ${p}: working` : `❌ ${p}: ${d.error}`)
+                        results.push(d.ok ? `✅ ${p}` : `❌ ${p}: ${d.error}`)
                       } catch { results.push(`❌ ${p}: network error`) }
                     }
                     addToast({ type: 'info', title: 'Key Test Results', message: results.join(' · '), duration: 15000 })
