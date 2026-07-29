@@ -30,6 +30,8 @@ import {
   Hand,
   FileSearch,
   Zap,
+  CheckCircle2,
+  XCircle,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -2263,15 +2265,27 @@ function SystemSettingsInner() {
                 <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
                   <Button variant="outline" size="sm" onClick={async () => {
                     const providers = ['gemini','opencode','groq','openrouter','openai','anthropic']
-                    const results: string[] = []
+                    const results: React.ReactNode[] = []
                     for (const p of providers) {
                       try {
-                        const r = await fetch('/api/admin/llm-test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ provider: p }) })
+                        const r = await csrfFetch('/api/admin/llm-test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ provider: p }) })
                         const d = await r.json()
-                        results.push(d.ok ? `✅ ${p}` : `❌ ${p}: ${d.error}`)
-                      } catch { results.push(`❌ ${p}: network error`) }
+                        results.push(
+                          <span key={p} className="flex items-center gap-1">
+                            {d.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
+                            {p}{!d.ok ? `: ${d.error}` : ''}
+                          </span>
+                        )
+                      } catch { 
+                        results.push(
+                          <span key={p} className="flex items-center gap-1">
+                            <XCircle className="h-4 w-4 text-red-500" />
+                            {p}: network error
+                          </span>
+                        ) 
+                      }
                     }
-                    addToast({ type: 'info', title: 'Key Test Results', message: results.join(' · '), duration: 15000 })
+                    addToast({ type: 'info', title: 'Key Test Results', message: <div className="flex flex-col gap-1.5 mt-2">{results}</div>, duration: 15000 })
                   }}>
                     <Zap className="h-3 w-3 mr-1" />Test All Keys
                   </Button>

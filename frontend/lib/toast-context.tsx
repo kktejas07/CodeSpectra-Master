@@ -9,7 +9,7 @@ export interface Toast {
   id: string
   type: ToastType
   title: string
-  message?: string
+  message?: React.ReactNode
   duration?: number
 }
 
@@ -52,10 +52,10 @@ export function ToastProvider({ children }: { children: React.ReactNode }) {
 
 function ToastComponent({ toast, onClose }: { toast: Toast; onClose: () => void }) {
   const colors = {
-    success: 'bg-green-50 border-green-500 text-green-800 dark:bg-green-500/20 dark:border-green-500/50 dark:text-green-400',
-    error: 'bg-red-50 border-red-500 text-red-800 dark:bg-red-500/20 dark:border-red-500/50 dark:text-red-400',
-    info: 'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-500/20 dark:border-blue-500/50 dark:text-blue-400',
-    warning: 'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-500/20 dark:border-yellow-500/50 dark:text-yellow-400',
+    success: 'bg-green-50 border-green-500 text-green-800 dark:bg-green-950/95 dark:border-green-500/50 dark:text-green-400 backdrop-blur-md shadow-lg',
+    error: 'bg-red-50 border-red-500 text-red-800 dark:bg-red-950/95 dark:border-red-500/50 dark:text-red-400 backdrop-blur-md shadow-lg',
+    info: 'bg-blue-50 border-blue-500 text-blue-800 dark:bg-blue-950/95 dark:border-blue-500/50 dark:text-blue-400 backdrop-blur-md shadow-lg',
+    warning: 'bg-yellow-50 border-yellow-500 text-yellow-800 dark:bg-yellow-950/95 dark:border-yellow-500/50 dark:text-yellow-400 backdrop-blur-md shadow-lg',
   }
 
   const icons = {
@@ -70,7 +70,7 @@ function ToastComponent({ toast, onClose }: { toast: Toast; onClose: () => void 
       <div className="flex-shrink-0 mt-0.5">{icons[toast.type]}</div>
       <div className="flex-1">
         <p className="font-medium">{toast.title}</p>
-        {toast.message && <p className="text-sm opacity-90">{toast.message}</p>}
+        {toast.message && <div className="text-sm opacity-90 mt-1">{toast.message}</div>}
       </div>
       <button onClick={onClose} className="flex-shrink-0 ml-2 opacity-60 hover:opacity-100">
         <X className="w-4 h-4" />
