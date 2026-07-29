@@ -18,7 +18,8 @@ import {
 interface ExamQuestion {
   id: string
   question: string
-  type: 'multiple-choice' | 'short-answer' | 'code'
+  prompt?: string
+  type: string
   options?: string[]
   time_limit_seconds: number
   points: number
