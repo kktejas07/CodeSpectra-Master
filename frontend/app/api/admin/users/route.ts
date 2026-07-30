@@ -29,7 +29,7 @@ export async function GET(req: NextRequest) {
 
   const rows = filtered.map((u) => {
       const profile: ProfileRow = {
-        id: (u._id as unknown as string) || u.id || '',
+        id: (u.id || (u._id as unknown as string)) || '',
         email: u.email,
         full_name: u.fullName ?? u.name ?? null,
         role: normalizeUserRole(u.role),
