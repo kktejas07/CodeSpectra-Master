@@ -80,7 +80,28 @@ export async function GET() {
   try {
     const db = await getMongoDb()
     const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
-    const filter = isAdmin ? {} : { access_type: 'open' }
+
+    // Non-admin users see open exams + exams they were invited to or have submitted
+    let filter: Record<string, unknown> = {}
+    if (!isAdmin) {
+      const userId = gate.user.id
+      const [submissions, invites] = await Promise.all([
+        db.collection('exam_submissions').find({ user_id: userId }).project({ exam_id: 1 }).toArray(),
+        db.collection('candidate_invites').find({ user_id: userId }).project({ target_url: 1, assigned_assessments: 1 }).toArray(),
+      ])
+      const userExamIds = new Set<string>()
+      submissions.forEach((s: any) => { if (s.exam_id) userExamIds.add(s.exam_id) })
+      invites.forEach((inv: any) => {
+        const fromUrl = inv.target_url?.match(/\/assessment\/([^/?]+)/)?.[1]
+        if (fromUrl) userExamIds.add(fromUrl)
+        inv.assigned_assessments?.forEach((a: any) => { if (a.id) userExamIds.add(a.id) })
+      })
+      if (userExamIds.size > 0) {
+        filter = { $or: [{ access_type: 'open' }, { id: { $in: [...userExamIds] } }] }
+      } else {
+        filter = { access_type: 'open' }
+      }
+    }
     const data = await db.collection('exams').find(filter).toArray()
     
     // Aggregate attempts and average scores from submissions

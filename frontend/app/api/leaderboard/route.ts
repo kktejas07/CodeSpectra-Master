@@ -89,9 +89,15 @@ export async function GET(request: Request) {
     const userIds = xpAgg.map((r) => r._id)
     const db = await getMongoDb()
     const objectIds = toObjectIdArray(userIds)
+    const stringIds = userIds.filter((id) => !ObjectId.isValid(id))
     const userDocs = (await db
       .collection('user')
-      .find({ _id: { $in: objectIds } })
+      .find({
+        $or: [
+          { _id: { $in: objectIds } },
+          { _id: { $in: stringIds as any } },
+        ],
+      })
       .toArray()) as unknown as UserProfile[]
     const userById = new Map(userDocs.map((u) => [idToString(u), u]))
 
