@@ -118,6 +118,7 @@ export class ConsoleMonitor {
       });
     });
 
+    // @ts-expect-error Playwright Page type does not expose 'unhandledrejection' in Next.js build
     this.page.on('unhandledrejection', (promise) => {
       this.messages.push({
         type: 'error',
