@@ -26,6 +26,7 @@ export async function GET() {
         copyright_text: merged.copyright_text,
         privacy_policy_url: merged.privacy_policy_url,
         terms_of_service_url: merged.terms_of_service_url,
+        platform_currency: merged.platform_currency,
       }
     })
   } catch (e) {

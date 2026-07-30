@@ -41,7 +41,7 @@ export default function PricingPage() {
   useEffect(() => {
     Promise.all([
       fetch('/api/billing/plans', { credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => []),
-      fetch('/api/admin/platform-settings', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+      fetch('/api/platform/settings').then(r => r.ok ? r.json() : null).catch(() => null),
     ]).then(([plansData, settingsData]) => {
       if (Array.isArray(plansData)) setPlans(plansData.map((p: any) => ({
       ...p,

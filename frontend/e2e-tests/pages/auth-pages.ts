@@ -122,7 +122,9 @@ export class ResetPasswordPage extends BasePage {
 
   async resetPassword(password: string, confirmPassword?: string): Promise<void> {
     await this.passwordInput.fill(password);
-    await (confirmPassword || this.confirmPasswordInput).fill(confirmPassword || password);
+    const cpw = confirmPassword || password;
+    // @ts-expect-error - TypeScript resolves as string|Locator but this.confirmPasswordInput is always a Locator
+    await (confirmPassword ? cpw : this.confirmPasswordInput).fill(cpw);
     await this.submitButton.click();
     await this.page.waitForLoadState('networkidle');
   }
