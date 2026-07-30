@@ -36,6 +36,7 @@ export type XpReason =
   | 'daily_login'
   | 'admin_grant'
   | 'workflow_reward'
+  | 'hackathon_score'
 
 export interface XpEventDoc {
   id: string

@@ -3,6 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonSubmissions, newId, nowIso, xpToLevel } from '@/lib/db/qr-events'
 import { problems } from '@/lib/db/problems'
 import { executeOnce } from '@/lib/piston'
+import { awardXp } from '@/lib/db/leaderboard'
 import { parseUserAgent } from '@/lib/db/sessions'
 
 export const runtime = 'nodejs'
@@ -31,6 +32,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (!body.problem_slug) return NextResponse.json({ error: 'problem_slug required' }, { status: 400 })
   const task = (hk.tasks || []).find((t) => t.problem_slug === body.problem_slug)
   if (!task) return NextResponse.json({ error: 'problem not assigned to this event' }, { status: 400 })
+
+  // Enforce solve_limit if set
+  if (hk.solve_limit && hk.solve_limit > 0) {
+    const selected = team.selected_problems || []
+    if (!selected.includes(body.problem_slug)) {
+      return NextResponse.json({ error: `You have not selected this problem. You can only solve up to ${hk.solve_limit} problem(s).` }, { status: 403 })
+    }
+  }
 
   // Speed contest: enforce per-problem time limit
   if ((hk as any).event_type === 'speed_contest') {
@@ -124,6 +133,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
             { id: team.id },
             { $set: { xp: newXp, updated_at: nowIso() } },
           )
+        }
+        // Award individual XP to each team member for the global leaderboard
+        for (const m of team.members || []) {
+          await awardXp({
+            userId: m.user_id,
+            amount: xpEarned,
+            reason: 'hackathon_score',
+            problemId: body.problem_slug,
+            submissionId: subDoc.id,
+            metadata: { hackathon_id: hk.id, team_id: team.id },
+          }).catch(() => {})
         }
       }
     } catch { /* XP best-effort */ }

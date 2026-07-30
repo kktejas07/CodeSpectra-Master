@@ -146,6 +146,7 @@ export async function POST(req: NextRequest) {
     status: computeStatus(startsAt.toISOString(), endsAt.toISOString(), body.status || 'open'),
     event_type: body.event_type === 'speed_contest' ? 'speed_contest' : 'hackathon',
     per_problem_time_minutes: Math.min(1440, Math.max(1, Number(body.per_problem_time_minutes) || 30)),
+    solve_limit: body.solve_limit ? Number(body.solve_limit) : undefined,
     tasks,
     rules: rulesHackathon,
     scoring: {

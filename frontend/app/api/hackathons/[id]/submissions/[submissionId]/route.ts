@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
 import { hackathonSubmissions, hackathons, hackathonTeams, nowIso, xpToLevel } from '@/lib/db/qr-events'
+import { awardXp } from '@/lib/db/leaderboard'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -108,6 +109,17 @@ export async function PATCH(
           { id: team.id },
           { $set: { xp: newXp, level: xpToLevel(newXp), updated_at: now } },
         )
+        // Award individual XP to each team member for the global leaderboard
+        for (const m of team.members || []) {
+          await awardXp({
+            userId: m.user_id,
+            amount: xpEarned,
+            reason: 'hackathon_score',
+            problemId: sub.problem_slug,
+            submissionId: submissionId,
+            metadata: { hackathon_id: id, team_id: sub.team_id },
+          }).catch(() => {})
+        }
       }
     }
   } catch { /* XP grant is best-effort — don't fail scoring if XP update fails */ }
