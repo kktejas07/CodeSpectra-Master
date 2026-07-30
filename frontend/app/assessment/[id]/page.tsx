@@ -10,6 +10,9 @@ import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, Chevro
 import { useToast } from '@/lib/toast-context'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -413,8 +416,21 @@ export default function CandidateAssessmentPage() {
             <div className="space-y-4">
               <Badge variant="outline" className="uppercase tracking-widest">{typeLabel(currentQ.type)}</Badge>
               <h2 className="text-2xl font-bold">{currentQ.title}</h2>
-              <div className="prose prose-sm dark:prose-invert max-w-none p-4 rounded-lg bg-card border">
-                {currentQ.prompt}
+              <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg p-4 rounded-lg bg-card border">
+                <ReactMarkdown
+                  remarkPlugins={[remarkGfm]}
+                  rehypePlugins={[rehypeHighlight]}
+                  components={{
+                    code: ({ className, children, ...props }: any) => {
+                      const isInline = !className
+                      return isInline
+                        ? <code className="rounded bg-muted/60 px-1.5 py-0.5 text-sm font-normal" {...props}>{children}</code>
+                        : <code className={className} {...props}>{children}</code>
+                    },
+                  }}
+                >
+                  {currentQ.prompt}
+                </ReactMarkdown>
               </div>
             </div>
 
