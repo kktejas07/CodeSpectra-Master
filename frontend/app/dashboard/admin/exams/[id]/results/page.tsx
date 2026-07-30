@@ -51,16 +51,19 @@ interface QuestionDetail {
   correct: boolean
   points: number
   answer: string
+  pending_review?: boolean
+  awarded?: number
 }
 
 interface ReviewData {
   examTitle: string
-  questions: Array<{ id: string; title?: string; question?: string; type: string; options?: string[]; correct_answer?: string; points?: number }>
+  questions: Array<{ id: string; title?: string; question?: string; prompt?: string; type: string; options?: string[]; correct_answer?: string; answer?: string; points?: number; score?: number }>
   submission: {
     answers: Record<string, string>
     details: QuestionDetail[]
     score: number
     max_score: number
+    has_pending_review?: boolean
     submitted_at: string
     released_at: string | null
     id_photo?: string | null
@@ -105,6 +108,8 @@ export default function ExamResultsPage() {
   const [reviewLoading, setReviewLoading] = useState(false)
   const [releasing, setReleasing] = useState<string | null>(null)
   const [bulkReleasing, setBulkReleasing] = useState(false)
+  const [manualGrades, setManualGrades] = useState<Record<string, number>>({})
+  const [savingGrades, setSavingGrades] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!params.id) return
@@ -132,6 +137,7 @@ export default function ExamResultsPage() {
     setReviewCandidate(row)
     setReviewData(null)
     setReviewLoading(true)
+    setManualGrades({})
     try {
       const uid = row.userId || row.id
       const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
@@ -183,6 +189,45 @@ export default function ExamResultsPage() {
       addToast({ type: 'error', title: 'Bulk release failed' })
     } finally {
       setBulkReleasing(false)
+    }
+  }
+
+  const saveGrades = async () => {
+    if (!reviewCandidate || Object.keys(manualGrades).length === 0) return
+    setSavingGrades(true)
+    try {
+      const uid = reviewCandidate.userId || reviewCandidate.id
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ grades: manualGrades }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      addToast({ type: 'success', title: 'Grades saved successfully' })
+      // Update local state
+      if (reviewData) {
+        const updatedDetails = reviewData.submission.details.map(d => {
+          if (manualGrades[d.qId] !== undefined) {
+            return { ...d, awarded: manualGrades[d.qId], correct: manualGrades[d.qId] > 0, pending_review: false }
+          }
+          return d
+        })
+        setReviewData({
+          ...reviewData,
+          submission: { ...reviewData.submission, details: updatedDetails, score: json.score, has_pending_review: json.has_pending_review }
+        })
+      }
+      setResults(prev => prev.map(r => {
+        if ((r.userId || r.id) === uid) return { ...r, score: json.score }
+        return r
+      }))
+      setManualGrades({})
+    } catch {
+      addToast({ type: 'error', title: 'Failed to save grades' })
+    } finally {
+      setSavingGrades(false)
     }
   }
 
@@ -448,6 +493,9 @@ export default function ExamResultsPage() {
                     <div>
                       <span className="text-muted-foreground block text-xs">Score</span>
                       <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
+                      {reviewData.submission.has_pending_review && (
+                        <span className="block text-xs text-amber-500 mt-0.5">⚠ Partial — pending review</span>
+                      )}
                     </div>
                     <div>
                       <span className="text-muted-foreground block text-xs">Percentage</span>
@@ -471,6 +519,11 @@ export default function ExamResultsPage() {
                   <div className="space-y-3">
                     <h4 className="font-semibold text-sm flex items-center gap-2">
                       <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Answer Review
+                      {reviewData.submission.has_pending_review && (
+                        <Badge variant="outline" className="text-xs text-amber-500 border-amber-500/30 bg-amber-500/10">
+                          <Clock className="w-3 h-3 mr-1" /> Pending Manual Grading
+                        </Badge>
+                      )}
                     </h4>
                     {reviewData.questions.length === 0 ? (
                       <p className="text-xs text-muted-foreground py-4 text-center">No questions found</p>
@@ -478,23 +531,37 @@ export default function ExamResultsPage() {
                       reviewData.questions.map((q, i) => {
                         const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
                         const userAnswer = reviewData.submission.answers[q.id] || ''
-                        const isMcq = ['multiple-choice', 'mcq', 'true_false'].includes(q.type)
+                        const isMcq = ['multiple-choice', 'mcq', 'true_false', 'multiple_response'].includes(q.type)
+                        const isPendingReview = detail?.pending_review === true
+                        const isManuallyGraded = detail?.awarded !== undefined && !isPendingReview
+                        const modelAnswer = q.answer || q.correct_answer || ''
+                        const maxPoints = q.points || q.score || detail?.points || 10
+
                         return (
-                          <div key={q.id} className="border rounded-lg p-4 space-y-2">
+                          <div key={q.id} className={`border rounded-lg p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
-                                <p className="text-sm font-medium mt-0.5">{q.question || q.title}</p>
+                                <p className="text-sm font-medium mt-0.5">{q.prompt || q.question || q.title}</p>
                               </div>
-                              <Badge variant={detail?.correct ? 'default' : 'secondary'} className={detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}>
-                                {detail?.correct ? `+${detail.points}` : '0'}
-                              </Badge>
+                              {isPendingReview ? (
+                                <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 shrink-0">
+                                  <Clock className="w-3 h-3 mr-1" /> Pending
+                                </Badge>
+                              ) : (
+                                <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
+                                  {isManuallyGraded ? `+${detail.awarded}/${maxPoints}` : detail?.correct ? `+${detail.points}` : '0'}
+                                </Badge>
+                              )}
                             </div>
+
+                            {/* MCQ-type options display */}
                             {isMcq && q.options && (
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 {q.options.map((opt, oi) => {
                                   const isSelected = userAnswer.toLowerCase() === opt.toLowerCase()
-                                  const isCorrectAnswer = q.correct_answer && opt.toLowerCase() === q.correct_answer.toLowerCase()
+                                  const correctAns = q.correct_answer || q.answer || ''
+                                  const isCorrectAnswer = correctAns && opt.toLowerCase() === correctAns.toLowerCase()
                                   return (
                                     <Badge key={oi} variant="outline" className={`text-xs ${
                                       isSelected && isCorrectAnswer ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40' :
@@ -510,20 +577,39 @@ export default function ExamResultsPage() {
                                 })}
                               </div>
                             )}
+
+                            {/* Non-MCQ: show candidate answer + model answer side by side */}
                             {!isMcq && (
-                              <div className="mt-1 space-y-1">
-                                {userAnswer ? (
-                                  <div className="text-xs">
-                                    <span className="text-muted-foreground">Answer: </span>
-                                    <span className="font-mono bg-muted px-2 py-0.5 rounded text-xs">{userAnswer}</span>
+                              <div className="mt-2 space-y-2">
+                                <div>
+                                  <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
+                                  {userAnswer ? (
+                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border">{userAnswer}</pre>
+                                  ) : (
+                                    <span className="text-xs text-muted-foreground italic">No answer provided</span>
+                                  )}
+                                </div>
+                                {modelAnswer && (
+                                  <div>
+                                    <span className="text-xs font-medium text-emerald-500 block mb-1">Model Answer / Rubric:</span>
+                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">{modelAnswer}</pre>
                                   </div>
-                                ) : (
-                                  <span className="text-xs text-muted-foreground italic">No answer provided</span>
                                 )}
-                                {q.correct_answer && (
-                                  <div className="text-xs">
-                                    <span className="text-muted-foreground">Correct: </span>
-                                    <span className="font-mono bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded text-xs">{q.correct_answer}</span>
+
+                                {/* Manual grading input for pending review questions */}
+                                {(isPendingReview || isManuallyGraded) && (
+                                  <div className="flex items-center gap-3 pt-2 border-t border-dashed">
+                                    <label className="text-xs font-medium text-muted-foreground shrink-0">Award Points:</label>
+                                    <input
+                                      type="number"
+                                      min={0}
+                                      max={maxPoints}
+                                      value={manualGrades[q.id] ?? detail?.awarded ?? ''}
+                                      onChange={(e) => setManualGrades(prev => ({ ...prev, [q.id]: Math.min(maxPoints, Math.max(0, parseInt(e.target.value) || 0)) }))}
+                                      className="w-20 h-8 px-2 text-sm border rounded-md bg-background"
+                                      placeholder="0"
+                                    />
+                                    <span className="text-xs text-muted-foreground">/ {maxPoints}</span>
                                   </div>
                                 )}
                               </div>
@@ -531,6 +617,18 @@ export default function ExamResultsPage() {
                           </div>
                         )
                       })
+                    )}
+                    {/* Save Grades button */}
+                    {Object.keys(manualGrades).length > 0 && (
+                      <Button
+                        size="sm"
+                        className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                        onClick={saveGrades}
+                        disabled={savingGrades}
+                      >
+                        {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                        Save Manual Grades
+                      </Button>
                     )}
                   </div>
 

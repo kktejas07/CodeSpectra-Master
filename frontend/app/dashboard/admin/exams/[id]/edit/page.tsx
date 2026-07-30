@@ -749,6 +749,25 @@ export default function ExamReviewPage() {
                   </p>
                 </div>
               )}
+              {/* Model Answer for coding/descriptive types */}
+              {['coding', 'descriptive'].includes(editingQuestion.type) && (
+                <div className="grid gap-2">
+                  <Label htmlFor="q-model-answer">Model Answer / Rubric</Label>
+                  <Textarea
+                    id="q-model-answer"
+                    value={editingQuestion.answer || ''}
+                    onChange={(e) => setEditingQuestion({ ...editingQuestion, answer: e.target.value })}
+                    rows={5}
+                    placeholder={editingQuestion.type === 'coding'
+                      ? 'Paste the expected code solution or key patterns to look for...'
+                      : 'Write the ideal answer or grading rubric / key points...'}
+                    className="font-mono text-xs"
+                  />
+                  <p className="text-xs text-muted-foreground">
+                    This will be shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.
+                  </p>
+                </div>
+              )}
               <div className="grid gap-2">
                 <Label htmlFor="q-score">Score (points)</Label>
                 <Input id="q-score" type="number" min="0" value={editingQuestion.score} onChange={(e) => setEditingQuestion({ ...editingQuestion, score: parseInt(e.target.value) || 0 })} />

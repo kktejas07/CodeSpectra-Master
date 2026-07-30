@@ -63,9 +63,13 @@ export async function GET(
       return NextResponse.json({ error: 'Candidate invitation link invalid or expired.' }, { status: 404 })
     }
 
-    if (new Date(invite.expires_at).getTime() < Date.now()) {
+  if (new Date(invite.expires_at).getTime() < Date.now()) {
       await col.updateOne({ token }, { $set: { status: 'expired' } })
       return NextResponse.json({ error: 'This candidate assessment link has expired.', is_expired: true }, { status: 410 })
+    }
+
+    if (invite.status === 'used') {
+      return NextResponse.json({ error: 'This invitation has already been used.', is_expired: true, is_used: true }, { status: 410 })
     }
 
     const registeredUser = await db.collection('user').findOne({ email: invite.email })

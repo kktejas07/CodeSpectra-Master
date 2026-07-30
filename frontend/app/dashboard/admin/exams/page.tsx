@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal } from 'lucide-react'
+import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
@@ -13,6 +13,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
@@ -46,6 +47,13 @@ export default function AdminExamsPage() {
   const [candEmail, setCandEmail] = useState('')
   const [generatedLink, setGeneratedLink] = useState<string | null>(null)
   const [sendingInvite, setSendingInvite] = useState(false)
+
+  const [isBulkInviteOpen, setIsBulkInviteOpen] = useState(false)
+  const [bulkInviteExam, setBulkInviteExam] = useState<Exam | null>(null)
+  const [bulkCsvText, setBulkCsvText] = useState('')
+  const [bulkPreview, setBulkPreview] = useState<{ name: string; email: string }[] | null>(null)
+  const [bulkSending, setBulkSending] = useState(false)
+  const [bulkResults, setBulkResults] = useState<{ sent: number; failed: number; errors: string[] } | null>(null)
   
   // Form state
   const [title, setTitle] = useState('')
@@ -187,6 +195,52 @@ export default function AdminExamsPage() {
     }
   }
 
+  const parseBulkCsv = (text: string): { name: string; email: string }[] => {
+    const lines = text.trim().split('\n').map(l => l.trim()).filter(Boolean)
+    if (lines.length === 0) return []
+    const firstLine = lines[0].toLowerCase()
+    const hasHeader = firstLine.includes('email') || firstLine.includes('name')
+    const startIdx = hasHeader ? 1 : 0
+    const candidates: { name: string; email: string }[] = []
+    for (let i = startIdx; i < lines.length; i++) {
+      const parts = lines[i].split(',').map(s => s.trim().replace(/^"(.*)"$/, '$1'))
+      if (parts.length < 2) {
+        candidates.push({ name: 'Candidate', email: parts[0] })
+      } else {
+        const maybeEmail = parts[0].includes('@') ? parts[0] : parts[1]
+        const maybeName = parts[0].includes('@') ? parts[1] : parts[0]
+        candidates.push({ name: maybeName || 'Candidate', email: maybeEmail })
+      }
+    }
+    return candidates.filter(c => c.email.includes('@'))
+  }
+
+  const handleBulkInvite = async () => {
+    if (!bulkPreview || !bulkInviteExam) return
+    setBulkSending(true)
+    let sent = 0; let failed = 0; const errors: string[] = []
+    for (const c of bulkPreview) {
+      try {
+        const res = await csrfFetch('/api/admin/users', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          credentials: 'include',
+          body: JSON.stringify({
+            email: c.email,
+            full_name: c.name || 'Candidate',
+            role: 'user',
+            target_url: `/assessment/${bulkInviteExam.id}`,
+            exam_title: bulkInviteExam.title,
+          }),
+        })
+        if (res.ok) { sent++ } else { failed++; errors.push(`${c.email}: ${(await res.json()).error || 'Failed'}`) }
+      } catch { failed++; errors.push(`${c.email}: Network error`) }
+    }
+    setBulkResults({ sent, failed, errors })
+    setBulkSending(false)
+    addToast({ type: sent > 0 ? 'success' : 'error', title: `${sent} sent, ${failed} failed` })
+  }
+
   const columns: DataTableColumn<Exam>[] = [
     { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
     { key: 'subject', header: 'Subject', cell: (r) => r.subject },
@@ -212,6 +266,9 @@ export default function AdminExamsPage() {
           <DropdownMenuContent align="end" className="w-44">
             <DropdownMenuItem onClick={() => openInviteModal(r)} disabled={!r.published} className="gap-2">
               <Send className="h-4 w-4" /> Invite Candidate
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }} disabled={!r.published} className="gap-2">
+              <Users className="h-4 w-4" /> Bulk Invite
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/exams/${r.id}/results`)} className="gap-2">
               <Eye className="h-4 w-4" /> View Results
@@ -415,6 +472,110 @@ export default function AdminExamsPage() {
               </div>
             )}
           </div>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isBulkInviteOpen} onOpenChange={setIsBulkInviteOpen}>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Bulk Invite Candidates — {bulkInviteExam?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-4">
+            {bulkResults ? (
+              <div className="space-y-4">
+                <div className={`rounded-lg border p-4 ${bulkResults.failed === 0 ? 'border-green-500/20 bg-green-500/10' : 'border-amber-500/20 bg-amber-500/10'}`}>
+                  <div className="flex items-center gap-2 mb-2">
+                    <CheckCircle2 className="h-5 w-5 text-green-500" />
+                    <p className="font-medium">{bulkResults.sent} invite(s) sent, {bulkResults.failed} failed</p>
+                  </div>
+                  {bulkResults.errors.length > 0 && (
+                    <div className="text-xs text-muted-foreground space-y-1 max-h-32 overflow-y-auto">
+                      {bulkResults.errors.map((e, i) => <p key={i} className="text-red-500">{e}</p>)}
+                    </div>
+                  )}
+                </div>
+                <div className="flex justify-end">
+                  <Button onClick={() => setIsBulkInviteOpen(false)}>Done</Button>
+                </div>
+              </div>
+            ) : (
+              <>
+                <div className="grid gap-2">
+                  <Label>Paste CSV (email, name)</Label>
+                  <p className="text-xs text-muted-foreground">
+                    <strong>CSV:</strong> One candidate per line — <code>email,name</code> or <code>jane@example.com,Jane</code>
+                    <br />Names are optional. Header row is detected automatically.
+                  </p>
+                  <div className="max-h-[250px] overflow-y-auto border rounded-md">
+                    <Textarea
+                      value={bulkCsvText}
+                      onChange={(e) => { setBulkCsvText(e.target.value); setBulkPreview(null) }}
+                      rows={8}
+                      placeholder={'email,name\njohn@example.com,John\njane@example.com,Jane'}
+                      className="font-mono text-sm min-h-[150px] border-0 focus-visible:ring-0 rounded-none"
+                    />
+                  </div>
+                </div>
+                <div className="flex gap-2 flex-wrap">
+                  <Button variant="outline" size="sm" onClick={() => {
+                    const sample = 'email,name\njohn.doe@example.com,John Doe\njane.smith@example.com,Jane Smith\nalex@example.com,Alex'
+                    setBulkCsvText(sample)
+                    setBulkPreview(null)
+                  }} className="gap-2">
+                    <Download className="h-3.5 w-3.5" /> Sample CSV
+                  </Button>
+                  <input
+                    id="bulk-file-input"
+                    type="file"
+                    accept=".csv,.txt"
+                    className="hidden"
+                    onChange={async (e) => {
+                      const file = e.target.files?.[0]
+                      if (!file) return
+                      setBulkCsvText(await file.text())
+                      setBulkPreview(null)
+                    }}
+                  />
+                  <Button variant="outline" size="sm" onClick={() => document.getElementById('bulk-file-input')?.click()} className="gap-2">
+                    <Upload className="h-3.5 w-3.5" /> Upload File
+                  </Button>
+                  <Button onClick={() => {
+                    const candidates = parseBulkCsv(bulkCsvText)
+                    if (candidates.length === 0) {
+                      addToast({ type: 'error', title: 'No valid emails found in the CSV' })
+                      return
+                    }
+                    setBulkPreview(candidates)
+                  }} disabled={!bulkCsvText.trim()} className="gap-2">
+                    Preview
+                  </Button>
+                </div>
+                {bulkPreview && (
+                  <div className="border rounded-md p-3 bg-muted/20 space-y-2">
+                    <p className="text-sm font-medium">{bulkPreview.length} candidate(s) found</p>
+                    <div className="max-h-48 overflow-y-auto space-y-1 text-xs">
+                      {bulkPreview.map((c, i) => (
+                        <div key={i} className="flex items-center gap-2 py-1 border-b border-border/40 last:border-0">
+                          <span className="font-mono text-primary shrink-0 w-6">{i + 1}.</span>
+                          <span className="font-medium text-foreground truncate">{c.name}</span>
+                          <span className="text-muted-foreground truncate ml-auto">{c.email}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
+          </div>
+          {!bulkResults && (
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setIsBulkInviteOpen(false)}>Cancel</Button>
+              <Button onClick={handleBulkInvite} disabled={bulkSending || !bulkPreview || bulkPreview.length === 0}>
+                {bulkSending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                Send {bulkPreview?.length || 0} Invites
+              </Button>
+            </DialogFooter>
+          )}
         </DialogContent>
       </Dialog>
     </div>

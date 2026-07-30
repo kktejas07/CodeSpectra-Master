@@ -59,21 +59,46 @@ export async function POST(
     const answers = body.answers || {}
     let totalScore = 0
     let maxScore = 0
-    const details: Array<{ qId: string; correct: boolean; points: number; answer: string }> = []
+    const details: Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review: boolean }> = []
+
+    let hasPendingReview = false
 
     for (const q of questions) {
       const points = q.points || q.score || 10
       maxScore += points
-      const userAnswer = (answers[q.id] || '').trim()
+      const userAnswer = String(answers[q.id] || '').trim()
+      const correctAns = String(q.answer || q.correct_answer || '').trim()
 
       let correct = false
-      if ((q.type === 'mcq' || q.type === 'multiple-choice') && (q.answer || q.correct_answer)) {
-        const correctAns = q.answer || q.correct_answer
-        correct = userAnswer.toLowerCase() === String(correctAns).toLowerCase()
+      let pendingReview = false
+
+      const qType = (q.type || '').toLowerCase().replace(/[-_]/g, '')
+
+      if (['mcq', 'multiplechoice', 'truefalse'].includes(qType)) {
+        // Exact match (case-insensitive)
+        if (correctAns) {
+          correct = userAnswer.toLowerCase() === correctAns.toLowerCase()
+        }
+      } else if (qType === 'multipleresponse') {
+        // Compare sets of comma-separated answers
+        if (correctAns) {
+          const expected = new Set(correctAns.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean))
+          const given = new Set(userAnswer.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean))
+          correct = expected.size === given.size && [...expected].every(v => given.has(v))
+        }
+      } else if (qType === 'fillblanks' || qType === 'fillinthe blanks' || qType === 'fillintheblanks') {
+        // Case-insensitive match against answer key
+        if (correctAns) {
+          correct = userAnswer.toLowerCase() === correctAns.toLowerCase()
+        }
+      } else if (['coding', 'descriptive'].includes(qType)) {
+        // These require manual grading by admin
+        pendingReview = true
+        hasPendingReview = true
       }
 
       if (correct) totalScore += points
-      details.push({ qId: q.id, correct, points, answer: userAnswer })
+      details.push({ qId: q.id, correct, points, answer: userAnswer, pending_review: pendingReview })
     }
 
     // Save submission
@@ -86,6 +111,7 @@ export async function POST(
       answers,
       score: totalScore,
       max_score: maxScore,
+      has_pending_review: hasPendingReview,
       auto_submitted: body.auto_submitted || false,
       id_photo: body.idPhoto || null,
       face_photo: body.facePhoto || null,
@@ -97,6 +123,7 @@ export async function POST(
     return NextResponse.json({
       score: totalScore,
       total: maxScore,
+      has_pending_review: hasPendingReview,
       details,
       submission_id: submission.id,
     })
