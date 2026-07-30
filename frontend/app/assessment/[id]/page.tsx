@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -23,10 +23,40 @@ import {
 
 interface Question {
   id: string
-  type: 'mcq' | 'coding'
+  type: 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
   title: string
   prompt: string
   options?: string[]
+}
+
+// ponytail: Fisher-Yates shuffle with optional seed for reproducibility.
+// Deterministic seed ensures same user sees same order on re-visit.
+function shuffleArray<T>(arr: T[], seed?: number): T[] {
+  const copy = [...arr]
+  let rng = seed ?? Math.random()
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor((typeof seed === 'number' ? pseudoRandom(rng + i) : Math.random()) * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]]
+  }
+  return copy
+}
+
+// ponytail: Simple LCG for seeded shuffle — not cryptographically secure, good enough for anti-copy
+function pseudoRandom(n: number): number {
+  const x = Math.sin(n * 9301 + 49297) * 49297
+  return x - Math.floor(x)
+}
+
+function typeLabel(type: string): string {
+  const labels: Record<string, string> = {
+    mcq: 'Multiple Choice',
+    multiple_response: 'Multiple Response',
+    true_false: 'True / False',
+    coding: 'Coding Challenge',
+    descriptive: 'Written Response',
+    fill_blanks: 'Fill in the Blanks',
+  }
+  return labels[type] || 'Knowledge Check'
 }
 
 interface Exam {
@@ -57,6 +87,9 @@ export default function CandidateAssessmentPage() {
   const [currentQIndex, setCurrentQIndex] = useState(0)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   
+  // Shuffle: map of question id -> shuffled options (stable per session)
+  const [shuffledOpts, setShuffledOpts] = useState<Record<string, string[]>>({})
+
   // Verification State
   const [showVerification, setShowVerification] = useState(false)
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
@@ -64,6 +97,21 @@ export default function CandidateAssessmentPage() {
   
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Shuffle options once when exam loads or starts
+  const sessionSeed = useRef(Math.floor(Math.random() * 2147483647))
+  useEffect(() => {
+    if (!exam) return
+    const map: Record<string, string[]> = {}
+    for (const q of exam.questionList) {
+      if (q.options && q.options.length > 0 && ['mcq', 'multiple_response', 'true_false'].includes(q.type)) {
+        // ponytail: seed = question id hash + session seed => unique order per user, stable for same user
+        const qSeed = q.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) + sessionSeed.current
+        map[q.id] = shuffleArray(q.options, qSeed)
+      }
+    }
+    setShuffledOpts(map)
+  }, [exam])
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -359,7 +407,7 @@ export default function CandidateAssessmentPage() {
         <div className="flex-1 overflow-y-auto p-6 md:p-10 bg-background/50">
           <div className="max-w-4xl mx-auto space-y-8">
             <div className="space-y-4">
-              <Badge variant="outline" className="uppercase tracking-widest">{currentQ.type === 'mcq' ? 'Knowledge Check' : 'Implementation Task'}</Badge>
+              <Badge variant="outline" className="uppercase tracking-widest">{typeLabel(currentQ.type)}</Badge>
               <h2 className="text-2xl font-bold">{currentQ.title}</h2>
               <div className="prose prose-sm dark:prose-invert max-w-none p-4 rounded-lg bg-card border">
                 {currentQ.prompt}
@@ -367,39 +415,54 @@ export default function CandidateAssessmentPage() {
             </div>
 
             <div className="pt-4">
-              {currentQ.type === 'mcq' ? (
+              {['mcq', 'multiple_response', 'true_false'].includes(currentQ.type) ? (
                 <div className="space-y-3">
-                  {currentQ.options?.map((opt, i) => (
-                    <label 
-                      key={i} 
-                      className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
-                        answers[currentQ.id] === opt 
-                          ? 'bg-primary/10 border-primary shadow-xs' 
-                          : 'bg-card hover:border-primary/50'
-                      }`}
-                    >
-                      <input 
-                        type="radio" 
-                        name={`q-${currentQ.id}`}
-                        value={opt}
-                        checked={answers[currentQ.id] === opt}
-                        onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
-                        className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
-                      />
-                      <span className="text-sm font-medium">{opt}</span>
-                    </label>
-                  ))}
+                  {(shuffledOpts[currentQ.id] || currentQ.options || []).map((opt, i) => {
+                    const isMulti = currentQ.type === 'multiple_response'
+                    const selectedOpts = (answers[currentQ.id] || '').split(',').map(s => s.trim()).filter(Boolean)
+                    const checked = isMulti ? selectedOpts.includes(opt) : answers[currentQ.id] === opt
+                    return (
+                      <label 
+                        key={i} 
+                        className={`flex items-center gap-3 p-4 rounded-lg border cursor-pointer transition-all ${
+                          checked 
+                            ? 'bg-primary/10 border-primary shadow-xs' 
+                            : 'bg-card hover:border-primary/50'
+                        }`}
+                      >
+                        <input 
+                          type={isMulti ? 'checkbox' : 'radio'}
+                          name={`q-${currentQ.id}`}
+                          value={opt}
+                          checked={checked}
+                          onChange={() => {
+                            if (isMulti) {
+                              const current = (answers[currentQ.id] || '').split(',').map(s => s.trim()).filter(Boolean)
+                              const next = current.includes(opt)
+                                ? current.filter(a => a !== opt)
+                                : [...current, opt]
+                              setAnswers(prev => ({ ...prev, [currentQ.id]: next.join(', ') }))
+                            } else {
+                              setAnswers(prev => ({ ...prev, [currentQ.id]: opt }))
+                            }
+                          }}
+                          className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
+                        />
+                        <span className="text-sm font-medium">{opt}</span>
+                      </label>
+                    )
+                  })}
                 </div>
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-muted-foreground">Your Code Solution:</label>
+                    <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
                     <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
                   </div>
                   <textarea 
                     value={answers[currentQ.id] || ''}
                     onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
-                    placeholder="// Write your implementation here..."
+                    placeholder={currentQ.type === 'fill_blanks' ? 'Type your answer...' : '// Write your solution here...'}
                     className="w-full h-96 p-4 font-mono text-sm bg-zinc-950 text-zinc-50 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                     spellCheck={false}
                   />

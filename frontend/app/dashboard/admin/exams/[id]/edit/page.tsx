@@ -665,7 +665,7 @@ export default function ExamReviewPage() {
       </Dialog>
 
       <Dialog open={questionModal} onOpenChange={setQuestionModal}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{exam.questionList.find(q => q.id === editingQuestion?.id) ? 'Edit Question' : 'Add Question'}</DialogTitle>
           </DialogHeader>

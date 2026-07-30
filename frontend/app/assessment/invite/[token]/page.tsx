@@ -28,8 +28,10 @@ export default function CandidateInviteLandingPage() {
   const [error, setError] = useState<string | null>(null)
   const [starting, setStarting] = useState<string | null>(null)
   const [isExpired, setIsExpired] = useState(false)
+  const [isUsed, setIsUsed] = useState(false)
   const [renewing, setRenewing] = useState(false)
   const [renewedMsg, setRenewedMsg] = useState<string | null>(null)
+  const [renewedEmail, setRenewedEmail] = useState('')
   const [candidateData, setCandidateData] = useState<{
     email: string
     full_name: string
@@ -46,9 +48,8 @@ export default function CandidateInviteLandingPage() {
         const res = await csrfFetch(`/api/assessment/invite/${token}`)
         const json = await res.json()
         if (!res.ok) {
-          if (json.is_expired) {
-            setIsExpired(true)
-          }
+          if (json.is_used) setIsUsed(true)
+          if (json.is_expired) setIsExpired(true)
           throw new Error(json.error || 'Invalid or expired invitation link.')
         }
         setCandidateData({
@@ -78,6 +79,7 @@ export default function CandidateInviteLandingPage() {
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to request new link')
       setRenewedMsg(json.message || 'A new invitation link has been sent to your email.')
+      setRenewedEmail(candidateData?.email || '')
     } catch (e: unknown) {
       setError(e instanceof Error ? e.message : 'Failed to request new link')
     } finally {
@@ -109,8 +111,42 @@ export default function CandidateInviteLandingPage() {
               <p className="text-sm text-muted-foreground leading-relaxed">
                 {renewedMsg}
               </p>
+              <div className="bg-muted/50 border rounded-lg p-4 text-left space-y-2">
+                <p className="text-sm font-medium">What happens next?</p>
+                <ol className="text-xs text-muted-foreground space-y-1.5 list-decimal list-inside">
+                  <li>Open your email inbox (<span className="font-mono text-foreground">{renewedEmail}</span>)</li>
+                  <li>Click the new invitation link from the email</li>
+                  <li>Sign in or create your account to start the assessment</li>
+                </ol>
+              </div>
+              <div className="pt-2 flex flex-col gap-2">
+                <a
+                  href={`https://mail.google.com/mail/u/0/#inbox`}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="w-full"
+                >
+                  <Button className="w-full gap-2">
+                    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="currentColor"><path d="M20 4H4c-1.1 0-2 .9-2 2v12c0 1.1.9 2 2 2h16c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm0 4l-8 5-8-5V6l8 5 8-5v2z"/></svg>
+                    Open Gmail
+                  </Button>
+                </a>
+                <Link href="/auth/login" className="block">
+                  <Button variant="outline" className="w-full">Go to Sign In</Button>
+                </Link>
+              </div>
+            </>
+          ) : isUsed ? (
+            <>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-blue-500/10 text-blue-500 mx-auto">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">Assessment Already Completed</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                This invitation has already been used to complete the assessment. If you need to retake the exam, please contact your administrator.
+              </p>
               <div className="pt-2">
-                <Link href="/auth/login">
+                <Link href="/auth/login" className="block">
                   <Button className="w-full">Go to Sign In</Button>
                 </Link>
               </div>
@@ -122,7 +158,7 @@ export default function CandidateInviteLandingPage() {
               </div>
               <h1 className="text-xl font-bold text-foreground">Invitation Link Expired</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This candidate assessment link has expired. You can request a fresh assessment invitation link to be sent to your email.
+                This candidate assessment link has expired. Request a fresh link and check your email to start the exam.
               </p>
               <div className="pt-2 space-y-2">
                 <Button 
