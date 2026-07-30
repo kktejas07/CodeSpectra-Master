@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Clock, User, Loader2 } from 'lucide-react'
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 
 interface AuditLog {
   id: string
@@ -55,6 +56,48 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
     return action.replace(/_/g, ' ').split(' ').map(word => word.charAt(0) + word.slice(1).toLowerCase()).join(' ')
   }
 
+  const columns: DataTableColumn<AuditLog>[] = [
+    {
+      key: 'action',
+      header: 'Action',
+      cell: (row) => (
+        <div>
+          <span className="font-semibold">{getActionLabel(row.action)}</span>
+          {row.details && <p className="text-xs text-muted-foreground mt-0.5">{row.details}</p>}
+        </div>
+      ),
+    },
+    {
+      key: 'user',
+      header: 'User',
+      cell: (row) => (
+        <span className="flex items-center gap-1.5 text-xs text-muted-foreground whitespace-nowrap">
+          <User className="w-3.5 h-3.5" />
+          {row.user}
+        </span>
+      ),
+    },
+    {
+      key: 'resource',
+      header: 'Resource',
+      cell: (row) => <span className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded text-muted-foreground">{row.resource}</span>,
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (row) => (
+        <Badge className={getStatusColor(row.status)} variant="outline">
+          {row.status}
+        </Badge>
+      ),
+    },
+    {
+      key: 'timestamp',
+      header: 'Time',
+      cell: (row) => <span className="text-xs text-muted-foreground whitespace-nowrap">{row.timestamp}</span>,
+    },
+  ]
+
   return (
     <div className="space-y-4">
       <h2 className="text-2xl font-bold text-foreground flex items-center gap-2">
@@ -62,62 +105,14 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
         Audit Logs
       </h2>
 
-      {loading ? (
-        <Card className="p-8 text-center text-muted-foreground flex items-center justify-center gap-2">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading audit logs...
-        </Card>
-      ) : (
-        <Card className="overflow-hidden">
-          <div className="space-y-0">
-            {logs.length === 0 ? (
-              <div className="p-8 text-center text-muted-foreground">
-                No audit logs yet
-              </div>
-            ) : (
-              logs.slice(0, 10).map((log, index) => (
-                <div
-                  key={log.id || index}
-                  className={`p-4 border-b border-border/50 hover:bg-muted/50 transition-colors ${
-                    index === logs.length - 1 ? 'border-b-0' : ''
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 mb-2">
-                        <span className="font-semibold text-foreground">
-                          {getActionLabel(log.action)}
-                        </span>
-                        <Badge className={getStatusColor(log.status)}>
-                          {log.status}
-                        </Badge>
-                        <span className="text-xs text-muted-foreground ml-auto">
-                          {log.timestamp}
-                        </span>
-                      </div>
-                      {log.details && (
-                        <p className="text-sm text-muted-foreground mb-2">{log.details}</p>
-                      )}
-                      <div className="flex gap-4 text-xs text-muted-foreground">
-                        <span className="flex items-center gap-1">
-                          <User className="w-3 h-3" />
-                          {log.user}
-                        </span>
-                        <span>Resource: {log.resource}</span>
-                      </div>
-                    </div>
-                  </div>
-                </div>
-              ))
-            )}
-          </div>
-        </Card>
-      )}
-
-      {logs.length > 0 && (
-        <div className="text-sm text-muted-foreground">
-          Showing {Math.min(logs.length, 10)} of {logs.length} logs
-        </div>
-      )}
+      <DataTable
+        columns={columns}
+        data={logs}
+        loading={loading}
+        searchPlaceholder="Search audit logs..."
+        searchKeys={['action', 'user', 'resource']}
+        emptyMessage="No audit logs available."
+      />
     </div>
   )
 }

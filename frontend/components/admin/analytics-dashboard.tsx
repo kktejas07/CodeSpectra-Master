@@ -78,13 +78,13 @@ export function AnalyticsDashboard({
         {hasGrowth ? (
           <ResponsiveContainer width="100%" height={300}>
             <LineChart data={userGrowth}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)' }} />
-              <YAxis stroke="var(--muted-foreground)" allowDecimals={false} tick={{ fill: 'var(--muted-foreground)' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip
-                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }} labelStyle={{ color: 'var(--foreground)' }}
+                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Line type="monotone" dataKey="users" stroke="var(--primary)" strokeWidth={2} />
+              <Line type="monotone" dataKey="users" stroke="hsl(var(--primary))" strokeWidth={2} />
             </LineChart>
           </ResponsiveContainer>
         ) : (
@@ -117,7 +117,7 @@ export function AnalyticsDashboard({
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }} labelStyle={{ color: 'var(--foreground)' }}
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -155,13 +155,14 @@ export function AnalyticsDashboard({
         {hasActivity ? (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={activityTrend}>
-              <CartesianGrid strokeDasharray="3 3" stroke="var(--border)" />
-              <XAxis dataKey="date" stroke="var(--muted-foreground)" tick={{ fill: 'var(--muted-foreground)' }} />
-              <YAxis stroke="var(--muted-foreground)" allowDecimals={false} tick={{ fill: 'var(--muted-foreground)' }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
+              <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip
-                contentStyle={{ backgroundColor: 'var(--card)', border: '1px solid var(--border)', color: 'var(--foreground)' }} labelStyle={{ color: 'var(--foreground)' }}
+                cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }}
+                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Legend wrapperStyle={{ color: 'var(--foreground)' }} />
+              <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
               <Bar dataKey="challenges" name="Submissions" fill="#3b82f6" />
             </BarChart>
           </ResponsiveContainer>
