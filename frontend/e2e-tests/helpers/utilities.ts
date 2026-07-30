@@ -126,16 +126,15 @@ export class PageHelper {
     forms: number;
     inputs: number;
   }> {
-    const [title, url, h1, links, buttons, forms, inputs] = await Promise.all([
+    const [title, h1, links, buttons, forms, inputs] = await Promise.all([
       page.title(),
-      page.url(),
       page.locator('h1').first().textContent().catch(() => ''),
       PageHelper.getAllLinks(page),
       PageHelper.getAllButtons(page),
       PageHelper.getAllForms(page),
       PageHelper.getAllInputs(page),
     ]);
-    return { title, url, h1, links: links.length, buttons: buttons.length, forms: forms.length, inputs: inputs.length };
+    return { title, url: page.url(), h1: h1 || '', links: links.length, buttons: buttons.length, forms: forms.length, inputs: inputs.length };
   }
 }
 
