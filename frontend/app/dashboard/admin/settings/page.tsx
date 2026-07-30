@@ -106,7 +106,7 @@ const BRANDING_KEYS: GeneralKey[] = [
   'terms_of_service_url',
 ]
 const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode', 'enable_sso_login', 'enable_chatbot']
-const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
+const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard', 'certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
@@ -1093,6 +1093,26 @@ function SystemSettingsInner() {
                 checked={form.show_public_leaderboard}
                 onCheckedChange={(v) => setForm((f) => ({ ...f, show_public_leaderboard: v }))}
               />
+            </div>
+            <div className="space-y-3 p-6 border-t border-border/60">
+              <div className="flex items-center justify-between gap-4">
+                <div className="min-w-0 space-y-0.5">
+                  <Label htmlFor="certificate_template" className="text-foreground">
+                    Certificate Template
+                  </Label>
+                  <p className="text-sm text-muted-foreground">Default template for all event certificates</p>
+                </div>
+                <select
+                  id="certificate_template"
+                  value={form.certificate_template}
+                  onChange={(e) => setForm((f) => ({ ...f, certificate_template: e.target.value as 'classic' | 'modern' | 'minimal' }))}
+                  className="h-10 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm w-48"
+                >
+                  <option value="classic">Classic (Gold/Serif)</option>
+                  <option value="modern">Modern (Dark Gradient)</option>
+                  <option value="minimal">Minimal (Monochrome)</option>
+                </select>
+              </div>
             </div>
           </div>
           <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">

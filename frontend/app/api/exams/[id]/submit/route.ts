@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ai'
+import { parseUserAgent } from '@/lib/db/sessions'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -117,6 +118,7 @@ export async function POST(
       id_photo: body.idPhoto || null,
       face_photo: body.facePhoto || null,
       details,
+      device_info: { ua: req.headers.get('user-agent') || '', ...parseUserAgent(req.headers.get('user-agent') || ''), ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '' },
       created_at: nowIso(),
     }
     await submissions.insertOne(submission)

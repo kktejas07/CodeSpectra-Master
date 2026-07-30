@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 
 export async function GET() {
   const gate = await requireAuth()
@@ -28,7 +29,7 @@ export async function POST(request: Request) {
       status: body.status || 'upcoming',
       participants: 0,
       prizePool: body.prizePool || '',
-      cert_template: body.cert_template || 'classic',
+      cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
       createdAt: now,
       updatedAt: now,
     }

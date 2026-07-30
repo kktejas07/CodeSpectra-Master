@@ -10,6 +10,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
 
 interface Codeathon {
   id: string
@@ -31,6 +32,8 @@ export default function AdminCodeathonsPage() {
   const [editing, setEditing] = useState<Codeathon | null>(null)
   const [editForm, setEditForm] = useState({ title: '', startDate: '', endDate: '', cert_template: 'classic' })
   const [saving, setSaving] = useState(false)
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [newCodeathon, setNewCodeathon] = useState({ title: '', startDate: '', endDate: '' })
 
   const fetchData = async () => {
     setLoading(true)
@@ -108,15 +111,8 @@ export default function AdminCodeathonsPage() {
           </div>
         </div>
         <Button className="gap-2" onClick={() => {
-          const title = prompt('Codeathon title:')
-          if (!title) return
-          const startDate = prompt('Start date (YYYY-MM-DD):') || ''
-          const endDate = prompt('End date (YYYY-MM-DD):') || ''
-          csrfFetch('/api/codeathons', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-            body: JSON.stringify({ title, startDate, endDate, status: 'upcoming', cert_template: 'classic' }),
-          }).then(() => { fetchData(); addToast({ type: 'success', title: 'Codeathon created' }) })
-            .catch(() => addToast({ type: 'error', title: 'Failed to create codeathon' }))
+          setNewCodeathon({ title: '', startDate: '', endDate: '' })
+          setAddModalOpen(true)
         }}>
           <Plus className="w-4 h-4" />Add Codeathon
         </Button>
@@ -146,30 +142,32 @@ export default function AdminCodeathonsPage() {
         />
       )}
 
-      {/* Edit modal */}
+      {/* Edit Modal (Existing) */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setEditing(null)}>
-          <div className="w-full max-w-lg rounded-lg border bg-card p-6 shadow-lg" onClick={(e) => e.stopPropagation()}>
-            <h2 className="text-lg font-semibold mb-4">Edit Codeathon</h2>
-            <div className="space-y-4">
-              <div className="space-y-1.5">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="bg-background rounded-xl shadow-lg border w-full max-w-md overflow-hidden">
+            <div className="p-4 border-b bg-muted/30">
+              <h3 className="font-semibold">Edit Codeathon</h3>
+            </div>
+            <div className="p-4 space-y-4">
+              <div className="space-y-2">
                 <Label>Title</Label>
-                <Input value={editForm.title} onChange={(e) => setEditForm(f => ({ ...f, title: e.target.value }))} />
+                <Input value={editForm.title} onChange={e => setEditForm({...editForm, title: e.target.value})} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label>Start Date</Label>
-                <Input type="date" value={editForm.startDate} onChange={(e) => setEditForm(f => ({ ...f, startDate: e.target.value }))} />
+                <Input value={editForm.startDate} onChange={e => setEditForm({...editForm, startDate: e.target.value})} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label>End Date</Label>
-                <Input type="date" value={editForm.endDate} onChange={(e) => setEditForm(f => ({ ...f, endDate: e.target.value }))} />
+                <Input value={editForm.endDate} onChange={e => setEditForm({...editForm, endDate: e.target.value})} />
               </div>
-              <div className="space-y-1.5">
+              <div className="space-y-2">
                 <Label>Certificate Template</Label>
-                <select
-                  value={editForm.cert_template}
-                  onChange={(e) => setEditForm(f => ({ ...f, cert_template: e.target.value }))}
-                  className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
+                <select 
+                  className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                  value={editForm.cert_template} 
+                  onChange={e => setEditForm({...editForm, cert_template: e.target.value})}
                 >
                   <option value="classic">Classic (Gold/Serif)</option>
                   <option value="modern">Modern (Dark Gradient)</option>
@@ -177,16 +175,69 @@ export default function AdminCodeathonsPage() {
                 </select>
               </div>
             </div>
-            <div className="flex justify-end gap-2 mt-6">
+            <div className="p-4 border-t bg-muted/30 flex justify-end gap-2">
               <Button variant="outline" onClick={() => setEditing(null)}>Cancel</Button>
               <Button onClick={saveEdit} disabled={saving}>
-                {saving ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                Save
+                {saving ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : null} Save Changes
               </Button>
             </div>
           </div>
         </div>
       )}
+
+      {/* Add Modal */}
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Codeathon</DialogTitle>
+            <DialogDescription>Create a new codeathon event.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Title</Label>
+              <Input 
+                value={newCodeathon.title} 
+                onChange={e => setNewCodeathon({...newCodeathon, title: e.target.value})} 
+                placeholder="Enter title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Start Date</Label>
+              <Input 
+                value={newCodeathon.startDate} 
+                onChange={e => setNewCodeathon({...newCodeathon, startDate: e.target.value})} 
+                placeholder="YYYY-MM-DD"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>End Date</Label>
+              <Input 
+                value={newCodeathon.endDate} 
+                onChange={e => setNewCodeathon({...newCodeathon, endDate: e.target.value})} 
+                placeholder="YYYY-MM-DD"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!newCodeathon.title) {
+                addToast({ type: 'error', title: 'Title is required' })
+                return
+              }
+              csrfFetch('/api/codeathons', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify({ ...newCodeathon, status: 'upcoming', cert_template: 'classic' }),
+              }).then(() => { 
+                fetchData(); 
+                addToast({ type: 'success', title: 'Codeathon created' });
+                setAddModalOpen(false)
+              })
+              .catch(() => addToast({ type: 'error', title: 'Failed to create codeathon' }))
+            }}>Save Codeathon</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

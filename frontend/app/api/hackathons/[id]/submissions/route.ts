@@ -3,6 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams, hackathonSubmissions, newId, nowIso, xpToLevel } from '@/lib/db/qr-events'
 import { problems } from '@/lib/db/problems'
 import { executeOnce } from '@/lib/piston'
+import { parseUserAgent } from '@/lib/db/sessions'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -97,6 +98,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     status,
     submitted_at: nowIso(),
     created_at: nowIso(),
+    device_info: { ua: req.headers.get('user-agent') || '', ...parseUserAgent(req.headers.get('user-agent') || ''), ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '' },
   }
 
   await (await hackathonSubmissions()).insertOne(subDoc)

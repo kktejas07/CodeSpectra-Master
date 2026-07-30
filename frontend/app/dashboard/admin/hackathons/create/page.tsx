@@ -1,6 +1,6 @@
 'use client'
 
-import { useCallback, useState } from 'react'
+import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -43,6 +43,7 @@ export default function HackathonCreatePage() {
       { type: 'conduct' as const, title: 'Code of Conduct', description: 'Plagiarism or collusion with other teams will result in disqualification.' },
     ],
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
+    cert_template: 'classic' as 'classic' | 'modern' | 'minimal',
     banner_url: '',
   })
 
@@ -78,6 +79,17 @@ export default function HackathonCreatePage() {
   ])
   const [creatingOwn, setCreatingOwn] = useState(false)
   const [creatingOwnError, setCreatingOwnError] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/admin/platform-settings', { credentials: 'include' })
+      .then(r => r.json())
+      .then(j => {
+        if (j.settings?.certificate_template) {
+          setForm(f => ({ ...f, cert_template: j.settings.certificate_template }))
+        }
+      })
+      .catch(() => {})
+  }, [])
 
   const searchProblems = useCallback(async (q: string) => {
     if (!q.trim()) { setProblemResults([]); return }
@@ -203,6 +215,7 @@ export default function HackathonCreatePage() {
           rules: form.rules,
           scoring: form.scoring,
           banner_url: form.banner_url,
+          cert_template: form.cert_template,
         }),
       })
       const j = await res.json()

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { hackathons, hackathonTeams } from '@/lib/db/qr-events'
+import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -109,7 +110,8 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   if (!myTeam) return NextResponse.json({ error: 'you did not participate in this event' }, { status: 404 })
 
   const rank = allTeams.findIndex((t) => t.id === myTeam.id) + 1
-  const tplKey = template || hk.cert_template || 'classic'
+  const settings = await getGeneralSettings()
+  const tplKey = template || hk.cert_template || settings.certificate_template || 'classic'
   const render = TEMPLATES[tplKey] || renderClassic
   const certSvg = render(myTeam.name, rank, allTeams.length, hk.name, hk.slug, myTeam.slug)
 

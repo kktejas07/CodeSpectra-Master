@@ -70,6 +70,7 @@ export async function PATCH(request: Request) {
     'website_url',
     'privacy_policy_url',
     'terms_of_service_url',
+    'certificate_template',
   ] as const
 
   try {
@@ -99,6 +100,10 @@ export async function PATCH(request: Request) {
       }
       if (k === 'locked_pages' || k === 'locked_features') {
         next[k] = Array.isArray(v) ? (v as unknown[]).filter((x): x is string => typeof x === 'string') : []
+        continue
+      }
+      if (k === 'certificate_template') {
+        if (['classic', 'modern', 'minimal'].includes(v as string)) next[k] = v
         continue
       }
       if (typeof v === 'string') next[k] = v

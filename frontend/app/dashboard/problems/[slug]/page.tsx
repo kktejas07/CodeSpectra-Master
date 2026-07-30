@@ -331,7 +331,6 @@ export default function ProblemDetailPage() {
       <ProctorMonitor
         sessionKind="problem"
         sessionId={problem.slug}
-        enforceFullscreen
         captureInterval={30000}
         blockKeyboardShortcuts
         lockdownBrowser

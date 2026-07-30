@@ -146,6 +146,15 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   proctor_events: [
     { key: { user_id: 1, session_id: 1 } },
   ],
+  security_settings: [
+    { key: { name: 1 }, unique: true },
+  ],
+  user_sessions: [
+    { key: { user_id: 1, last_seen: -1 } },
+    { key: { user_id: 1, is_active: 1 } },
+    { key: { last_seen: -1 } },
+    { key: { created_at: -1 } },
+  ],
   admin_audit_logs: [
     { key: { ts: -1 } },
     { key: { actor: 1, ts: -1 } },

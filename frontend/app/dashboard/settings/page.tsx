@@ -19,7 +19,7 @@ import { Settings, Moon, Sun, Palette, Bell, Shield, ChevronRight, Loader2, Chec
 import { useTheme } from 'next-themes'
 import { useToast } from '@/lib/toast-context'
 import {
-  Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -71,8 +71,13 @@ export default function SettingsPage() {
   const [pwDialogOpen, setPwDialogOpen] = useState(false)
   const [pwCurrent, setPwCurrent] = useState('')
   const [pwNew, setPwNew] = useState('')
-  const [pwSaving, setPwSaving] = useState(false)
+  const [pwConfirm, setPwConfirm] = useState('')
   const [pwError, setPwError] = useState('')
+  const [pwSaving, setPwSaving] = useState(false)
+
+  const [deleteModalOpen, setDeleteModalOpen] = useState(false)
+  const [deletePassword, setDeletePassword] = useState('')
+  const [deletingAccount, setDeletingAccount] = useState(false)
 
   useEffect(() => {
     try {
@@ -167,22 +172,33 @@ export default function SettingsPage() {
     } catch { addToast({ type: 'error', title: 'Export failed', message: 'Network error.' }) }
   }
 
-const handleDeleteAccount = async () => {
+  const handleDeleteAccount = async () => {
     if (!await confirmDialog({ title: 'Confirmation', description: 'Are you sure you want to delete your account? This action is irreversible.' })) return
-    const pw = prompt('Enter your password to confirm deletion:')
-    if (!pw) return
+    setDeletePassword('')
+    setDeleteModalOpen(true)
+  }
+
+  const confirmDeleteAccount = async () => {
+    if (!deletePassword) {
+      addToast({ type: 'error', title: 'Password required', message: 'Enter your password to confirm deletion.' })
+      return
+    }
+    setDeletingAccount(true)
     try {
       const res = await csrfFetch('/api/user/delete-account', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw }),
+        body: JSON.stringify({ password: deletePassword }),
       })
       const json = await res.json()
 
-      if (!res.ok) { addToast({ type: 'error', title: 'Delete failed', message: json.error || 'Failed' }); return }
+      if (!res.ok) { addToast({ type: 'error', title: 'Delete failed', message: json.error || 'Failed' }); setDeletingAccount(false); return }
       addToast({ type: 'success', title: 'Account deleted', message: 'We are sorry to see you go.' })
       window.location.href = '/auth/logout'
-    } catch { addToast({ type: 'error', title: 'Network error', message: 'Could not reach server.' }) }
+    } catch { 
+      addToast({ type: 'error', title: 'Network error', message: 'Could not reach server.' }) 
+      setDeletingAccount(false)
+    }
   }
 
   if (!gate.ready) return null
@@ -428,6 +444,34 @@ const handleDeleteAccount = async () => {
             <Button variant="outline" onClick={() => setPwDialogOpen(false)} disabled={pwSaving}>Cancel</Button>
             <Button onClick={handleChangePassword} disabled={pwSaving}>
               {pwSaving ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Change password'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Dialog open={deleteModalOpen} onOpenChange={setDeleteModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Confirm Account Deletion</DialogTitle>
+            <DialogDescription>
+              Are you absolutely sure you want to delete your account? This action cannot be undone. Enter your password to confirm.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Password</Label>
+              <Input 
+                type="password"
+                value={deletePassword} 
+                onChange={e => setDeletePassword(e.target.value)} 
+                placeholder="Enter your password"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDeleteModalOpen(false)} disabled={deletingAccount}>Cancel</Button>
+            <Button variant="destructive" onClick={confirmDeleteAccount} disabled={deletingAccount}>
+              {deletingAccount ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Trash2 className="w-4 h-4 mr-2" />} Delete Account
             </Button>
           </DialogFooter>
         </DialogContent>

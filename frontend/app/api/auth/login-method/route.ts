@@ -3,6 +3,8 @@ import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { verifySessionToken } from '@/lib/session'
 import { cookies } from 'next/headers'
 import { updateUserLastLogin } from '@/lib/db/admin'
+import { createUserSession } from '@/lib/db/sessions'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
 
@@ -41,6 +43,10 @@ export async function POST(request: NextRequest) {
     }
 
     await updateUserLastLogin(uid, method)
+
+    const ip = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
+    const ua = request.headers.get('user-agent') || 'Unknown device'
+    createUserSession({ user_id: uid, email: '', ip, user_agent: ua }).catch(() => {})
 
     return NextResponse.json({ ok: true })
   } catch (e) {

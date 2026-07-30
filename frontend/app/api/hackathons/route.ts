@@ -23,6 +23,7 @@ import {
   type HackathonTask,
   type HackathonRule,
 } from '@/lib/db/qr-events'
+import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 
 function computeStatus(startsAt: string, endsAt: string, currentStatus?: string): 'draft' | 'open' | 'live' | 'closed' {
   if (currentStatus === 'draft') return 'draft'
@@ -155,6 +156,7 @@ export async function POST(req: NextRequest) {
     },
     results_released: false,
     banner_url: body.banner_url || '',
+    cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
     created_by: user.id,
     created_at: nowIso(),
     updated_at: nowIso(),

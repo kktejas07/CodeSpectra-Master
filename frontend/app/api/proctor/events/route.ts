@@ -1,13 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { proctorEvents, newId, nowIso } from '@/lib/db/ai'
+import { parseUserAgent } from '@/lib/db/sessions'
 
 export const runtime = 'nodejs'
 
 interface EventReq {
   session_kind: 'exam' | 'problem' | 'interview'
   session_id: string
-  event_type: string // 'tab_blur' | 'tab_focus' | 'copy' | 'paste' | 'right_click' | 'fullscreen_exit' | 'multi_face' | 'no_face'
+  event_type: string
   meta?: Record<string, unknown>
 }
 
@@ -24,6 +25,10 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'session_id + event_type required' }, { status: 400 })
   }
 
+  const ua = req.headers.get('user-agent') || ''
+  const parsed = parseUserAgent(ua)
+  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+
   const col = await proctorEvents()
   const doc = {
     id: newId(),
@@ -31,7 +36,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     session_kind: body.session_kind || 'problem',
     session_id: body.session_id,
     event_type: body.event_type.slice(0, 64),
-    meta: body.meta || {},
+    meta: { ...(body.meta || {}), ua, browser: parsed.browser, os: parsed.os, device: parsed.device, ip },
     created_at: nowIso(),
   }
   await col.insertOne(doc)

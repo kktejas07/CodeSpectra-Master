@@ -145,9 +145,14 @@ async function seed() {
   const secCol = db.collection('security_settings')
   if ((await secCol.countDocuments()) === 0) {
     await secCol.insertMany([
-      { name: 'Two-Factor Authentication', status: 'enabled', icon: 'Lock', created_at: now() },
-      { name: 'IP Whitelist', status: 'disabled', icon: 'Shield', created_at: now() },
-      { name: 'API Rate Limiting', status: 'enabled', icon: 'alert-triangle', created_at: now() },
+      { name: 'Two-Factor Authentication (2FA)', status: 'enabled', icon: 'Lock', description: 'Require OTP from authenticator app on login', created_at: now() },
+      { name: 'IP Whitelist', status: 'disabled', icon: 'Shield', description: 'Restrict dashboard access to approved IP ranges', created_at: now() },
+      { name: 'API Rate Limiting', status: 'enabled', icon: 'alert-triangle', description: 'Throttle API requests to prevent abuse', created_at: now() },
+      { name: 'Session Timeout', status: 'enabled', icon: 'Timer', description: 'Auto-logout inactive sessions after 60 minutes', created_at: now() },
+      { name: 'Brute Force Protection', status: 'enabled', icon: 'AlertTriangle', description: 'Lock account after repeated failed login attempts', created_at: now() },
+      { name: 'New Device Notification', status: 'enabled', icon: 'Bell', description: 'Email user when login is detected from an unknown device or location', created_at: now() },
+      { name: 'Concurrent Session Limit', status: 'disabled', icon: 'Users', description: 'Limit to 3 active sessions per user', created_at: now() },
+      { name: 'Password Policy', status: 'enabled', icon: 'Key', description: 'Enforce minimum length, complexity, and rotation rules', created_at: now() },
     ])
     console.log('✓ security_settings seeded')
   }
@@ -155,15 +160,38 @@ async function seed() {
   // ── Audit Logs ──
   const auditCol = db.collection('admin_audit_logs')
   if ((await auditCol.countDocuments()) === 0) {
+    const daysAgo = (d: number) => new Date(Date.now() - d * 86400_000).toISOString()
     await auditCol.insertMany([
-      { id: 'a1', ts: '2026-06-29T14:22:01Z', actor: 'superadmin@codespectra.com', actorIp: '203.0.113.10', action: 'platform_settings.update', resource: 'general', resourceType: 'settings', severity: 'info', outcome: 'success', detail: 'maintenance_mode toggled', user_id: 'system', created_at: now() },
-      { id: 'a2', ts: '2026-06-29T13:05:44Z', actor: 'admin@codespectra.com', actorIp: '198.51.100.2', action: 'team.member.invite', resource: 'team/8f2a', resourceType: 'organization', severity: 'info', outcome: 'success', user_id: 'system', created_at: now() },
-      { id: 'a3', ts: '2026-06-29T11:40:12Z', actor: 'demo@codespectra.com', actorIp: '192.0.2.45', action: 'github.oauth.start', resource: 'oauth/state', resourceType: 'integration', severity: 'info', outcome: 'success', user_id: 'system', created_at: now() },
-      { id: 'a4', ts: '2026-06-28T22:18:33Z', actor: 'unknown', actorIp: '185.220.101.4', action: 'api.admin.users', resource: 'GET denied', resourceType: 'api', severity: 'warning', outcome: 'denied', detail: 'Missing superadmin role', user_id: 'system', created_at: now() },
-      { id: 'a5', ts: '2026-06-28T09:02:00Z', actor: 'system', actorIp: '—', action: 'db.migration.applied', resource: '20260628_platform', resourceType: 'database', severity: 'info', outcome: 'success', user_id: 'system', created_at: now() },
-      { id: 'a6', ts: '2026-06-27T16:55:21Z', actor: 'superadmin@codespectra.com', actorIp: '203.0.113.10', action: 'user.role.change', resource: 'user/u_9b3', resourceType: 'identity', severity: 'critical', outcome: 'success', detail: 'role → tenant_admin', user_id: 'system', created_at: now() },
+      { id: 'a1', ts: daysAgo(0.1), actor: 'superadmin@codespectra.com', actorIp: '203.0.113.10', action: 'auth.login', resource: 'user/u_admin', resourceType: 'auth', severity: 'info', outcome: 'success', user_id: 'u_admin', created_at: now() },
+      { id: 'a2', ts: daysAgo(0.2), actor: 'admin@codespectra.com', actorIp: '198.51.100.2', action: 'auth.login', resource: 'user/u_admin2', resourceType: 'auth', severity: 'info', outcome: 'success', user_id: 'u_admin2', created_at: now() },
+      { id: 'a3', ts: daysAgo(0.3), actor: 'demo@codespectra.com', actorIp: '192.0.2.45', action: 'auth.login', resource: 'user/u_demo', resourceType: 'auth', severity: 'info', outcome: 'success', user_id: 'u_demo', created_at: now() },
+      { id: 'a4', ts: daysAgo(0.5), actor: 'unknown@malicious.com', actorIp: '185.220.101.4', action: 'auth.login', resource: 'email/unknown@malicious.com', resourceType: 'auth', severity: 'warning', outcome: 'denied', detail: 'wrong password (3 attempts)', user_id: 'unknown', created_at: now() },
+      { id: 'a5', ts: daysAgo(0.6), actor: 'test@bruteforce.com', actorIp: '45.33.32.156', action: 'auth.login', resource: 'email/test@bruteforce.com', resourceType: 'auth', severity: 'warning', outcome: 'denied', detail: 'rate limited', user_id: 'unknown', created_at: now() },
+      { id: 'a6', ts: daysAgo(1), actor: 'superadmin@codespectra.com', actorIp: '203.0.113.10', action: 'platform_settings.update', resource: 'general', resourceType: 'settings', severity: 'info', outcome: 'success', detail: 'maintenance_mode toggled', user_id: 'system', created_at: now() },
+      { id: 'a7', ts: daysAgo(1.5), actor: 'admin@codespectra.com', actorIp: '198.51.100.2', action: 'team.member.invite', resource: 'team/8f2a', resourceType: 'organization', severity: 'info', outcome: 'success', user_id: 'system', created_at: now() },
+      { id: 'a8', ts: daysAgo(2), actor: 'demo@codespectra.com', actorIp: '192.0.2.45', action: 'github.oauth.start', resource: 'oauth/state', resourceType: 'integration', severity: 'info', outcome: 'success', user_id: 'system', created_at: now() },
+      { id: 'a9', ts: daysAgo(3), actor: 'unknown', actorIp: '185.220.101.4', action: 'api.admin.users', resource: 'GET denied', resourceType: 'api', severity: 'warning', outcome: 'denied', detail: 'Missing superadmin role', user_id: 'system', created_at: now() },
+      { id: 'a10', ts: daysAgo(5), actor: 'system', actorIp: '—', action: 'db.migration.applied', resource: '20260628_platform', resourceType: 'database', severity: 'info', outcome: 'success', user_id: 'system', created_at: now() },
+      { id: 'a11', ts: daysAgo(7), actor: 'superadmin@codespectra.com', actorIp: '203.0.113.10', action: 'user.role.change', resource: 'user/u_9b3', resourceType: 'identity', severity: 'critical', outcome: 'success', detail: 'role → tenant_admin', user_id: 'system', created_at: now() },
+      { id: 'a12', ts: daysAgo(0.05), actor: 'candidate@example.com', actorIp: '78.46.89.12', action: 'auth.login', resource: 'user/u_candidate', resourceType: 'auth', severity: 'info', outcome: 'success', user_id: 'u_candidate', created_at: now() },
     ])
     console.log('✓ admin_audit_logs seeded')
+  }
+
+  // ── User Sessions (demo) ──
+  const sessionsCol = db.collection('user_sessions')
+  if ((await sessionsCol.countDocuments()) === 0) {
+    const daysAgo = (d: number) => new Date(Date.now() - d * 86400_000).toISOString()
+    const sessions = [
+      { id: 's1', user_id: 'u_admin', email: 'superadmin@codespectra.com', ip: '203.0.113.10', user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', browser: 'Chrome 120', os: 'macOS 10.15.7', device: 'desktop', country: 'United States', city: 'San Francisco', isp: 'DigitalOcean LLC', lat: 37.7749, lon: -122.4194, last_seen: daysAgo(0.01), created_at: daysAgo(1), is_active: true },
+      { id: 's2', user_id: 'u_admin', email: 'superadmin@codespectra.com', ip: '203.0.113.10', user_agent: 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_1 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Mobile/15E148 Safari/604.1', browser: 'Safari 17.1', os: 'iOS 17.1', device: 'mobile', country: 'United States', city: 'San Francisco', isp: 'AT&T Wireless', lat: 37.7749, lon: -122.4194, last_seen: daysAgo(0.5), created_at: daysAgo(2), is_active: true },
+      { id: 's3', user_id: 'u_admin2', email: 'admin@codespectra.com', ip: '198.51.100.2', user_agent: 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36 Edg/119.0.0.0', browser: 'Edge 119', os: 'Windows 10.0', device: 'desktop', country: 'India', city: 'Mumbai', isp: 'Reliance Jio', lat: 19.076, lon: 72.8777, last_seen: daysAgo(0.2), created_at: daysAgo(3), is_active: true },
+      { id: 's4', user_id: 'u_demo', email: 'demo@codespectra.com', ip: '192.0.2.45', user_agent: 'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36', browser: 'Chrome 120', os: 'Linux', device: 'desktop', country: 'Germany', city: 'Berlin', isp: 'Hetzner Online GmbH', lat: 52.52, lon: 13.405, last_seen: daysAgo(0.3), created_at: daysAgo(4), is_active: true },
+      { id: 's5', user_id: 'u_candidate', email: 'candidate@example.com', ip: '78.46.89.12', user_agent: 'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.1 Safari/605.1.15', browser: 'Safari 17.1', os: 'macOS 10.15.7', device: 'desktop', country: 'United Kingdom', city: 'London', isp: 'Hetzner Online GmbH', lat: 51.5074, lon: -0.1278, last_seen: daysAgo(0.05), created_at: daysAgo(0.5), is_active: true },
+      { id: 's6', user_id: 'u_old', email: 'olduser@example.com', ip: '103.235.46.88', user_agent: 'Mozilla/5.0 (iPad; CPU OS 16_6 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/16.6 Mobile/15E148 Safari/604.1', browser: 'Safari 16.6', os: 'iOS 16.6', device: 'tablet', country: 'Japan', city: 'Tokyo', isp: 'NTT Communications', lat: 35.6762, lon: 139.6503, last_seen: daysAgo(10), created_at: daysAgo(30), is_active: false },
+    ]
+    await sessionsCol.insertMany(sessions)
+    console.log('✓ user_sessions seeded')
   }
 
   // ── Skill Analytics (demo for admin user) ──

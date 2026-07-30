@@ -8,6 +8,9 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface Resume {
   id: string
@@ -23,6 +26,8 @@ export default function MyResumesPage() {
   const addToast = useToast()
   const [resumes, setResumes] = useState<Resume[]>([])
   const [loading, setLoading] = useState(true)
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [newResumeName, setNewResumeName] = useState('')
 
   const fetchData = async () => {
     setLoading(true)
@@ -45,13 +50,8 @@ export default function MyResumesPage() {
   }
 
   const handleUpload = () => {
-    const name = prompt('File name:')
-    if (!name) return
-    csrfFetch('/api/resumes', {
-      method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-      body: JSON.stringify({ file_name: name, file_size: 0, storage_url: '' }),
-    }).then(() => { fetchData(); addToast({ type: 'success', title: 'Resume uploaded' }) })
-      .catch(() => addToast({ type: 'error', title: 'Upload failed' }))
+    setNewResumeName('')
+    setAddModalOpen(true)
   }
 
   const formatSize = (bytes: number) => bytes < 1024 ? `${bytes}B` : bytes < 1048576 ? `${(bytes/1024).toFixed(1)}KB` : `${(bytes/1048576).toFixed(1)}MB`
@@ -105,6 +105,44 @@ export default function MyResumesPage() {
           emptyMessage="No resumes. Upload one to get started."
         />
       )}
+
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Upload Resume</DialogTitle>
+            <DialogDescription>Enter a name for your resume file.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>File Name</Label>
+              <Input 
+                value={newResumeName} 
+                onChange={e => setNewResumeName(e.target.value)} 
+                placeholder="e.g., John_Doe_Resume.pdf"
+                autoFocus
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!newResumeName) {
+                addToast({ type: 'error', title: 'File name is required' })
+                return
+              }
+              csrfFetch('/api/resumes', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify({ file_name: newResumeName, file_size: 0, storage_url: '' }),
+              }).then(() => { 
+                fetchData(); 
+                addToast({ type: 'success', title: 'Resume uploaded' });
+                setAddModalOpen(false)
+              })
+              .catch(() => addToast({ type: 'error', title: 'Upload failed' }))
+            }}>Save Resume</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

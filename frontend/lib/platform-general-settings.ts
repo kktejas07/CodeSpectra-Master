@@ -2,7 +2,6 @@
  * Defaults and types for `platform_settings` row `key = 'general'`.
  * Shared by GET/PATCH `/api/admin/platform-settings` and admin user provisioning.
  */
-
 export const ADMIN_NEW_USER_EMAIL_DELIVERIES = [
   'postal_recovery',
   'postal_magiclink',
@@ -56,6 +55,8 @@ export type GeneralPlatformSettings = {
   privacy_policy_url: string
   /** Terms of service URL */
   terms_of_service_url: string
+  /** Default certificate template used across all events */
+  certificate_template: 'classic' | 'modern' | 'minimal'
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -84,6 +85,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   website_url: '',
   privacy_policy_url: '',
   terms_of_service_url: '',
+  certificate_template: 'classic',
 }
 
 export function mergeGeneralPlatformSettings(

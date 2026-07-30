@@ -9,6 +9,7 @@ import { notify } from '@/lib/notifications'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 import { updateUserLastLogin } from '@/lib/db/admin'
+import { createUserSession } from '@/lib/db/sessions'
 
 export const runtime = 'nodejs'
 
@@ -81,8 +82,10 @@ export async function POST(request: Request) {
     await writeAuditLog({ action: 'auth.login', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
     notify({ user_id: uid, type: 'auth.login', title: 'New sign-in', message: `Signed in as ${user.email}`, icon: 'log-in' }).catch(() => {})
 
-    // Send login notification email
     const userAgent = request.headers.get('user-agent') || 'Unknown device'
+    createUserSession({ user_id: uid, email: user.email, ip: actorIp, user_agent: userAgent }).catch(() => {})
+
+    // Send login notification email
     const deviceInfo = userAgent.includes('Mobile') ? 'Mobile device' : 'Desktop browser'
     const location = actorIp || 'Unknown location'
     const time = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })

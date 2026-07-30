@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 import { backendComplete } from '@/lib/ai/backend'
 
 export const runtime = 'nodejs'
@@ -225,6 +226,7 @@ export async function POST(request: Request) {
       questionList,
       access_type: body.access_type || 'invite_only',
       published: body.published ?? false,
+      cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
       attempts: 0,
       avgScore: 0,
       createdAt: now,

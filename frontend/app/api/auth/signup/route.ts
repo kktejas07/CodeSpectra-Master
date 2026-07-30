@@ -8,6 +8,7 @@ import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-me
 import { writeAuditLog } from '@/lib/db/misc'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
+import { createUserSession } from '@/lib/db/sessions'
 
 export const runtime = 'nodejs'
 
@@ -58,6 +59,9 @@ export async function POST(request: Request) {
     await setSessionCookie({ uid, email: normalizedEmail, role })
 
     await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
+
+    const userAgent = request.headers.get('user-agent') || 'Unknown device'
+    createUserSession({ user_id: uid, email: normalizedEmail, ip: actorIp, user_agent: userAgent }).catch(() => {})
 
     // Send welcome email
     const displayName = name || normalizedEmail.split('@')[0]

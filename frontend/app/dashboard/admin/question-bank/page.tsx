@@ -8,6 +8,9 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
 
 interface Question {
   id: string
@@ -23,6 +26,8 @@ export default function QuestionBankPage() {
   const addToast = useToast()
   const [questions, setQuestions] = useState<Question[]>([])
   const [loading, setLoading] = useState(true)
+  const [addModalOpen, setAddModalOpen] = useState(false)
+  const [newQuestion, setNewQuestion] = useState({ title: '', domain: '', difficulty: 'Medium' })
 
   const fetchData = async () => {
     setLoading(true)
@@ -80,15 +85,8 @@ export default function QuestionBankPage() {
           </div>
         </div>
         <Button className="gap-2" onClick={() => {
-          const title = prompt('Question title:')
-          if (!title) return
-          const domain = prompt('Domain (e.g., Mechanical, Civil):') || ''
-          const difficulty = prompt('Difficulty (Easy/Medium/Hard):') || 'Medium'
-          csrfFetch('/api/question-bank', {
-            method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
-            body: JSON.stringify({ title, domain, difficulty, type: 'MCQ' }),
-          }).then(() => { fetchData(); addToast({ type: 'success', title: 'Question added' }) })
-            .catch(() => addToast({ type: 'error', title: 'Failed' }))
+          setNewQuestion({ title: '', domain: '', difficulty: 'Medium' })
+          setAddModalOpen(true)
         }}>
           <Plus className="w-4 h-4" />Add Question
         </Button>
@@ -113,6 +111,63 @@ export default function QuestionBankPage() {
           emptyMessage="No questions. Add one to get started."
         />
       )}
+
+      <Dialog open={addModalOpen} onOpenChange={setAddModalOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Question</DialogTitle>
+            <DialogDescription>Create a new engineering question.</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Question Title</Label>
+              <Input 
+                value={newQuestion.title} 
+                onChange={e => setNewQuestion({...newQuestion, title: e.target.value})} 
+                placeholder="Enter question title"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Domain</Label>
+              <Input 
+                value={newQuestion.domain} 
+                onChange={e => setNewQuestion({...newQuestion, domain: e.target.value})} 
+                placeholder="e.g., Mechanical, Civil"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Difficulty</Label>
+              <select 
+                className="flex h-9 w-full rounded-md border border-input bg-transparent px-3 py-1 text-sm shadow-sm transition-colors focus-visible:outline-none focus-visible:ring-1 focus-visible:ring-ring disabled:cursor-not-allowed disabled:opacity-50"
+                value={newQuestion.difficulty}
+                onChange={e => setNewQuestion({...newQuestion, difficulty: e.target.value})}
+              >
+                <option value="Easy">Easy</option>
+                <option value="Medium">Medium</option>
+                <option value="Hard">Hard</option>
+              </select>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setAddModalOpen(false)}>Cancel</Button>
+            <Button onClick={() => {
+              if (!newQuestion.title) {
+                addToast({ type: 'error', title: 'Title is required' })
+                return
+              }
+              csrfFetch('/api/question-bank', {
+                method: 'POST', headers: { 'Content-Type': 'application/json' }, credentials: 'include',
+                body: JSON.stringify({ ...newQuestion, type: 'MCQ' }),
+              }).then(() => { 
+                fetchData(); 
+                addToast({ type: 'success', title: 'Question added' });
+                setAddModalOpen(false)
+              })
+              .catch(() => addToast({ type: 'error', title: 'Failed to add question' }))
+            }}>Save Question</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
