@@ -89,6 +89,7 @@ export const SUPERADMIN_PAGES: string[] = [
 export const TENANT_ADMIN_PAGES: string[] = [
   DASHBOARD_ROUTES.userHome,
   ...TENANT_ADMIN_ROUTES,
+  ...JUDGE_ROUTES,
   ...ALL_USER_ROUTES,
 ]
 

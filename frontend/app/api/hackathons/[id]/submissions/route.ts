@@ -146,7 +146,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ id: string 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'event not found' }, { status: 404 })
 
-  const isAdmin = ['superadmin', 'admin', 'tenant_admin'].includes((user.role || '').toLowerCase())
+  const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
 
   if (!isAdmin && !team) {

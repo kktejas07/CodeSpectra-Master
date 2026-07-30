@@ -17,9 +17,9 @@ export async function GET(
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  const isSuperadmin = (user.role || '').toLowerCase() === 'superadmin'
+  const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const isJudge = (hk.judges || []).includes(user.id)
-  if (!isSuperadmin && !isJudge) {
+  if (!isAdmin && !isJudge) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

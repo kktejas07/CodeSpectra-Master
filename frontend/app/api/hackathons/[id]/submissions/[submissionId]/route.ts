@@ -22,7 +22,7 @@ export async function GET(
   const sub = await subsCol.findOne({ id: submissionId, hackathon_id: hk.id })
   if (!sub) return NextResponse.json({ error: 'submission not found' }, { status: 404 })
 
-  const isAdmin = ['superadmin', 'admin', 'tenant_admin'].includes((user.role || '').toLowerCase())
+  const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const isJudge = (hk.judges || []).includes(user.id)
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, id: sub.team_id, 'members.user_id': user.id })
 
@@ -49,9 +49,9 @@ export async function PATCH(
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
-  const isSuperadmin = (user.role || '').toLowerCase() === 'superadmin'
+  const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const isJudge = (hk.judges || []).includes(user.id)
-  if (!isSuperadmin && !isJudge) {
+  if (!isAdmin && !isJudge) {
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 

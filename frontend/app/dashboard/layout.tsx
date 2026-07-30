@@ -387,11 +387,9 @@ export default function DashboardLayout({
       leaves = allLeaves
     } else if (isTenantAdmin(role)) {
       const tenantAdminSet = new Set(TENANT_ADMIN_ROUTES)
-      const judgeOnlySet = new Set(JUDGE_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
       leaves = allLeaves.filter(leaf => {
         const route = leaf.href.split('?')[0]
-        return (!route.startsWith('/dashboard/admin/') || tenantAdminSet.has(route)) &&
-          !judgeOnlySet.has(route)
+        return !route.startsWith('/dashboard/admin/') || tenantAdminSet.has(route)
       })
     } else if (isJudge(role)) {
       const judgeSet = new Set([...JUDGE_ROUTES, ...ALL_USER_ROUTES])

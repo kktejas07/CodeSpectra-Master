@@ -62,7 +62,7 @@ export function usePageGuard(
     if (requiredRole === 'user') return true
     if (requiredRole === 'superadmin') return isSuperAdmin(gate.user.role)
     if (requiredRole === 'tenant_admin') return isAdmin(gate.user.role)
-    if (requiredRole === 'judge') return isJudge(gate.user.role)
+    if (requiredRole === 'judge') return isJudge(gate.user.role) || isAdmin(gate.user.role)
     return false
   })()
 
