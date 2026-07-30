@@ -9,6 +9,7 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-07-30 | v0.19.5 | Hackathon team creation/joining now allowed during live event (was blocked when `status=live`). Removed `live`-gated guards from team create, QR join, email invite, and accept-invite APIs. Frontend detail page now shows registration panel during live, join pages allow joining during live. Also fixed leaderboard user lookups (Firebase UIDs rejected by `toObjectIdArray`) and invited exams not showing in user dashboard. | CodeSpectra-Master |
 | 2026-07-30 | v0.19.4 | Fixed leaderboard user lookups (Firebase UIDs rejected by `toObjectIdArray` — added `$or` query for both ObjectId and string `_id` values) and fixed invited exams not showing in user dashboard (`GET /api/exams` only returned `access_type:'open'` — now also includes exams the user has submissions or invites for). | CodeSpectra-Master |
 | 2026-07-30 | v0.19.3 | Created a public-facing User Handbook (docs/public/13-user-handbook.md) explaining features, challenges, certifications, and AI tools. Removed sensitive internal architectural details. | CodeSpectra-Master |
 | 2026-07-29 | v0.19.2 | Stripped Resend/SendGrid/SMTP email providers — only Postal remains. Removed `sendEmailViaResend`, `sendEmailViaSendGrid`, `sendEmailViaSMTP` from `transactional-mail.ts`, simplified `sendEmail()` to call Postal directly with log fallback, removed resend/sendgrid/smtp fields from `ServerSecretsRecord`, server-secrets API routes, and settings UI. | CodeSpectra-Master |

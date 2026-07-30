@@ -247,7 +247,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
         </section>
 
         {/* Registration / My Team Panel */}
-        {!isLive && !isClosed && (
+        {!isClosed && (
           <Card className="space-y-4 p-5">
             {myTeam ? (
               <div>

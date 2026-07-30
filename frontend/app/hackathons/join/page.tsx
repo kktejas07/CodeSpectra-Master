@@ -135,12 +135,6 @@ function JoinPage() {
           </div>
         )}
 
-        {invite?.eventStatus === 'live' && (
-          <div className="bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 rounded-lg p-3 mb-4 text-center">
-            <p className="text-sm font-medium text-amber-700 dark:text-amber-400">Event in Progress</p>
-            <p className="text-xs text-amber-600 dark:text-amber-500 mt-1">Cannot join — the event is already running.</p>
-          </div>
-        )}
         {invite?.eventStatus === 'closed' && (
           <div className="bg-red-50 dark:bg-red-950/20 border border-red-200 dark:border-red-800 rounded-lg p-3 mb-4 text-center">
             <p className="text-sm font-medium text-red-700 dark:text-red-400">Event Ended</p>
@@ -148,7 +142,7 @@ function JoinPage() {
           </div>
         )}
 
-        {(invite?.eventStatus !== 'live' && invite?.eventStatus !== 'closed') ? (
+        {invite?.eventStatus !== 'closed' ? (
         <div className="space-y-2">
           <Button onClick={handleJoin} disabled={joining || !user} className="w-full gap-1">
             {joining ? <Loader2 className="h-4 w-4 animate-spin" /> : <ArrowRight className="h-4 w-4" />}

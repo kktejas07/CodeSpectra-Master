@@ -41,7 +41,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
           }
         } else if (data.error?.includes('Team is full') || data.error?.includes('full')) {
           setErrorMeta('team_full')
-        } else if (data.error?.includes('in progress') || data.error?.includes('closed')) {
+        } else if (data.error?.includes('closed')) {
           setErrorMeta('event_in_progress')
         } else {
           setErrorMeta('other')

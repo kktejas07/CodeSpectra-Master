@@ -35,7 +35,7 @@ export class LoginPage extends BasePage {
   }
 
   async getErrorMessage(): Promise<string> {
-    return this.errorMessage.textContent() || '';
+    return (await this.errorMessage.textContent()) || '';
   }
 
   async isLoginSuccessful(): Promise<boolean> {
