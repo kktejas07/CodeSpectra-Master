@@ -34,7 +34,7 @@ export class BasePage {
     return this.page.locator(selector);
   }
 
-  async waitForSelector(selector: string, timeout = 10000): Promise<Locator> {
+  async waitForSelector(selector: string, timeout = 10000): Promise<void> {
     return this.page.locator(selector).first().waitFor({ timeout });
   }
 
