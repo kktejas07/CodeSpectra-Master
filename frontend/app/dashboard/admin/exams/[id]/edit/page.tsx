@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload, Download } from 'lucide-react'
+import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload, Download, Pencil } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -161,6 +161,12 @@ export default function ExamReviewPage() {
   const [importedPreview, setImportedPreview] = useState<Question[] | null>(null)
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deletingSelected, setDeletingSelected] = useState(false)
+  const [editingMeta, setEditingMeta] = useState(false)
+  const [metaTitle, setMetaTitle] = useState('')
+  const [metaSubject, setMetaSubject] = useState('')
+  const [metaLevel, setMetaLevel] = useState('')
+  const [metaDuration, setMetaDuration] = useState(30)
+  const [savingMeta, setSavingMeta] = useState(false)
 
   const fetchExam = async () => {
     setLoading(true)
@@ -171,6 +177,10 @@ export default function ExamReviewPage() {
       if (found) {
         found.questionList = found.questionList || []
         setExam(found)
+        setMetaTitle(found.title || '')
+        setMetaSubject(found.subject || '')
+        setMetaLevel(found.level || found.difficulty_level || '')
+        setMetaDuration(found.duration || 30)
       } else {
         addToast({ type: 'error', title: 'Exam not found' })
         router.push('/dashboard/admin/exams')
@@ -193,10 +203,37 @@ export default function ExamReviewPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ id: exam.id, questionList: updatedList, questions: updatedList.length })
+        body: JSON.stringify({ id: exam.id, questionList: updatedList, questions: updatedList.length, title: exam.title, subject: exam.subject, level: exam.level, duration: exam.duration })
       })
     } catch {
       addToast({ type: 'error', title: 'Failed to save exam' })
+    }
+  }
+
+  const saveExamMeta = async () => {
+    if (!exam) return
+    setSavingMeta(true)
+    try {
+      await csrfFetch('/api/exams', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          id: exam.id,
+          title: metaTitle,
+          subject: metaSubject,
+          level: metaLevel,
+          difficulty_level: metaLevel,
+          duration: metaDuration,
+        })
+      })
+      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration })
+      setEditingMeta(false)
+      addToast({ type: 'success', title: 'Exam details updated' })
+    } catch {
+      addToast({ type: 'error', title: 'Failed to update exam details' })
+    } finally {
+      setSavingMeta(false)
     }
   }
 
@@ -296,6 +333,10 @@ export default function ExamReviewPage() {
         credentials: 'include',
         body: JSON.stringify({ 
           id: exam.id, 
+          title: exam.title,
+          subject: exam.subject,
+          level: exam.level,
+          duration: exam.duration,
           questionList: exam.questionList,
           questions: exam.questionList.length,
           published: true 
@@ -329,14 +370,77 @@ export default function ExamReviewPage() {
           <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/exams')}>
             <ArrowLeft className="h-4 w-4" /> Back to Exams
           </div>
-          <h1 className="text-3xl font-bold tracking-tight">Review Exam: {exam.title}</h1>
-          <div className="flex items-center gap-2 mt-2">
-            <Badge variant="outline">{exam.level}</Badge>
-            <Badge variant="outline">{exam.duration} mins</Badge>
-            <Badge variant={exam.published ? 'default' : 'secondary'}>
-              {exam.published ? 'Published' : 'Draft'}
-            </Badge>
-          </div>
+          {editingMeta ? (
+            <div className="space-y-3">
+              <div className="flex items-center gap-2 flex-wrap">
+                <Input
+                  value={metaTitle}
+                  onChange={(e) => setMetaTitle(e.target.value)}
+                  className="text-2xl font-bold h-auto py-1 min-w-[200px] max-w-[400px]"
+                  placeholder="Exam Title"
+                />
+                <Button size="sm" onClick={saveExamMeta} disabled={savingMeta}>
+                  {savingMeta ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}
+                  Save
+                </Button>
+                <Button size="sm" variant="ghost" onClick={() => setEditingMeta(false)}>
+                  <X className="h-4 w-4 mr-1" /> Cancel
+                </Button>
+              </div>
+              <div className="flex items-center gap-3 flex-wrap">
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Role:</Label>
+                  <Input
+                    value={metaSubject}
+                    onChange={(e) => setMetaSubject(e.target.value)}
+                    className="h-8 w-32 text-sm"
+                    placeholder="e.g. Frontend"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Level:</Label>
+                  <Select value={metaLevel} onValueChange={setMetaLevel}>
+                    <SelectTrigger className="h-8 w-32 text-sm">
+                      <SelectValue placeholder="Select" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="Beginner">Beginner</SelectItem>
+                      <SelectItem value="Intermediate">Intermediate</SelectItem>
+                      <SelectItem value="Advanced">Advanced</SelectItem>
+                      <SelectItem value="Expert">Expert</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Duration (mins):</Label>
+                  <Input
+                    type="number"
+                    value={metaDuration}
+                    onChange={(e) => setMetaDuration(parseInt(e.target.value) || 30)}
+                    className="h-8 w-20 text-sm"
+                    min="1"
+                  />
+                </div>
+              </div>
+            </div>
+          ) : (
+            <>
+              <h1 className="text-3xl font-bold tracking-tight">
+                {exam.title}
+                <Button variant="ghost" size="sm" className="ml-2 h-7 w-7 p-0" onClick={() => setEditingMeta(true)} title="Edit exam details">
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              </h1>
+              <div className="flex items-center gap-2 mt-2">
+                {exam.subject && <Badge variant="outline">{exam.subject}</Badge>}
+                <Badge variant="outline">{exam.level || 'N/A'}</Badge>
+                <Badge variant="outline">{exam.duration} mins</Badge>
+                <Badge variant={exam.published ? 'default' : 'secondary'}>
+                  {exam.published ? 'Published' : 'Draft'}
+                </Badge>
+              </div>
+            </>
+          )}
         </div>
         <div className="flex items-center gap-3">
           <Button variant="outline" onClick={() => router.push('/dashboard/admin/exams')}>Save as Draft</Button>
@@ -455,7 +559,7 @@ export default function ExamReviewPage() {
       </div>
 
       <Dialog open={importModal} onOpenChange={setImportModal}>
-        <DialogContent className="sm:max-w-[600px]">
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Import Questions</DialogTitle>
           </DialogHeader>
