@@ -53,7 +53,7 @@ export default function ExamPage() {
   const [exam, setExam] = useState<ExamDoc | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentQ, setCurrentQ] = useState(0)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
@@ -120,14 +120,27 @@ export default function ExamPage() {
     return () => clearInterval(timer)
   }, [exam, submitted, timeRemaining])
 
+  const toggleMultiOption = (qId: string, opt: string) => {
+    setAnswers(a => {
+      const prev = a[qId]
+      const current = Array.isArray(prev) ? prev : prev ? [prev] : []
+      if (current.includes(opt)) return { ...a, [qId]: current.filter(o => o !== opt) }
+      return { ...a, [qId]: [...current, opt] }
+    })
+  }
+
   const handleSubmit = useCallback(async (autoSubmitted = false) => {
     if (submitted || submitting) return
     setSubmitting(true)
     try {
+      const serialized: Record<string, string> = {}
+      for (const [k, v] of Object.entries(answers)) {
+        serialized[k] = Array.isArray(v) ? v.join(',') : v
+      }
       const res = await csrfFetch(`/api/exams/${examId}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ answers, auto_submitted: autoSubmitted }),
+        body: JSON.stringify({ answers: serialized, auto_submitted: autoSubmitted }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Submit failed')
@@ -351,20 +364,40 @@ export default function ExamPage() {
 
               {['multiple-choice', 'mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(question.type) && question.options && (
                 <div className="space-y-2">
-                  {question.options.map((opt, i) => (
-                    <button
-                      key={i}
-                      onClick={() => setAnswers(a => ({ ...a, [question.id]: opt }))}
-                      className={`w-full text-left p-3 rounded-lg border transition-colors ${
-                        answers[question.id] === opt
-                          ? 'border-primary bg-primary/10'
-                          : 'border-border hover:border-primary/50'
-                      }`}
-                    >
-                      <span className="font-medium mr-2">{String.fromCharCode(65 + i)}.</span>
-                      {opt}
-                    </button>
-                  ))}
+                  {question.options.map((opt, i) =>
+                    question.type === 'multiple_response' ? (
+                      <label
+                        key={i}
+                        className={`flex items-center gap-3 w-full p-3 rounded-lg border cursor-pointer transition-colors ${
+                          Array.isArray(answers[question.id]) && (answers[question.id] as string[]).includes(opt)
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <input
+                          type="checkbox"
+                          className="accent-primary h-4 w-4 rounded"
+                          checked={Array.isArray(answers[question.id]) && (answers[question.id] as string[]).includes(opt)}
+                          onChange={() => toggleMultiOption(question.id, opt)}
+                        />
+                        <span className="font-medium mr-1">{String.fromCharCode(65 + i)}.</span>
+                        {opt}
+                      </label>
+                    ) : (
+                      <button
+                        key={i}
+                        onClick={() => setAnswers(a => ({ ...a, [question.id]: opt }))}
+                        className={`w-full text-left p-3 rounded-lg border transition-colors ${
+                          answers[question.id] === opt
+                            ? 'border-primary bg-primary/10'
+                            : 'border-border hover:border-primary/50'
+                        }`}
+                      >
+                        <span className="font-medium mr-2">{String.fromCharCode(65 + i)}.</span>
+                        {opt}
+                      </button>
+                    )
+                  )}
                 </div>
               )}
 

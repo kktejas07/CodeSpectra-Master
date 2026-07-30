@@ -30,6 +30,7 @@ export default function PricingPage() {
   const addToast = useToast()
   const [plans, setPlans] = useState<PlanDef[]>([])
   const [currency, setCurrency] = useState('USD')
+  const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
 
   const [checkoutPlan, setCheckoutPlan] = useState<PlanDef | null>(null)
@@ -42,7 +43,8 @@ export default function PricingPage() {
     Promise.all([
       fetch('/api/billing/plans', { credentials: 'include' }).then(r => r.ok ? r.json() : []).catch(() => []),
       fetch('/api/platform/settings').then(r => r.ok ? r.json() : null).catch(() => null),
-    ]).then(([plansData, settingsData]) => {
+      fetch('/api/billing/me', { credentials: 'include' }).then(r => r.ok ? r.json() : null).catch(() => null),
+    ]).then(([plansData, settingsData, billingData]) => {
       if (Array.isArray(plansData)) setPlans(plansData.map((p: any) => ({
       ...p,
       plan: p.plan || p.id,
@@ -50,6 +52,12 @@ export default function PricingPage() {
     })))
       else if (plansData?.plans) setPlans(plansData.plans)
       if (settingsData?.settings?.platform_currency) setCurrency(settingsData.settings.platform_currency)
+      if (billingData?.subscription) {
+        const raw = billingData.subscription.plan_id || ''
+        if (raw.startsWith('pro')) setCurrentPlanId('pro')
+        else if (raw === 'problem_pack_50' || raw === 'enterprise') setCurrentPlanId('enterprise')
+        else setCurrentPlanId('free')
+      }
     }).catch(() => {}).finally(() => setLoading(false))
   }, [])
 

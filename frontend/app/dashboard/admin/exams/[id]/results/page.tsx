@@ -9,7 +9,7 @@ import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, 
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
-import type { DataTableColumn } from '@/components/ui/data-table'
+import type { DataTableColumn, BulkAction } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   AlertDialog,
@@ -512,6 +512,34 @@ export default function ExamResultsPage() {
           columns={columns} 
           searchKeys={['name', 'email']}
           searchPlaceholder="Search candidates..."
+          bulkActions={[
+            {
+              label: 'Release Scores',
+              variant: 'default',
+              icon: <Send className="w-3.5 h-3.5 mr-1" />,
+              onClick: async (ids) => {
+                for (const id of ids) {
+                  const r = results.find(c => c.id === id)
+                  if (r && r.status === 'completed' && !r.released) {
+                    await releaseScore(r.userId || r.id, r.name)
+                  }
+                }
+              },
+            },
+            {
+              label: 'Send Reminder',
+              variant: 'outline',
+              icon: <Bell className="w-3.5 h-3.5 mr-1" />,
+              onClick: async (ids) => {
+                for (const id of ids) {
+                  const r = results.find(c => c.id === id)
+                  if (r && r.status !== 'completed') {
+                    await sendReminder(r.inviteId, r.name)
+                  }
+                }
+              },
+            },
+          ]}
         />
       </div>
 

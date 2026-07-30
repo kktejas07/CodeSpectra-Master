@@ -236,8 +236,8 @@ export default function CouponsAdminPage() {
               <table className="w-full text-sm">
                 <thead>
                   <tr className="border-b text-left text-xs text-muted-foreground">
-                    <th className="py-2 pr-2">User ID</th>
-                    <th className="py-2 pr-2">Order</th>
+                    <th className="py-2 pr-2">User</th>
+                    <th className="py-2 pr-2">Email</th>
                     <th className="py-2 pr-2">Plan</th>
                     <th className="py-2">Date</th>
                   </tr>
@@ -245,9 +245,9 @@ export default function CouponsAdminPage() {
                 <tbody>
                   {(viewRedemptions as any).redemptions.map((r: any, i: number) => (
                     <tr key={i} className="border-b last:border-0">
-                      <td className="py-2 pr-2 font-mono text-xs text-muted-foreground max-w-[120px] truncate" title={r.user_id}>{r.user_id?.slice(0, 12)}…</td>
-                      <td className="py-2 pr-2 text-xs text-muted-foreground">{r.order_id ? r.order_id.slice(0, 8) + '…' : '—'}</td>
-                      <td className="py-2 pr-2 text-xs">{r.plan_id || '—'}</td>
+                      <td className="py-2 pr-2 font-medium">{r.user_name || r.user_id?.slice(0, 12) + '…'}</td>
+                      <td className="py-2 pr-2 text-xs text-muted-foreground">{r.user_email || '—'}</td>
+                      <td className="py-2 text-xs">{r.plan_id || '—'}</td>
                       <td className="py-2 text-xs text-muted-foreground">{r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : '—'}</td>
                     </tr>
                   ))}

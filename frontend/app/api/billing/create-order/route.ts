@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { PaymentService } from '@/lib/payment-service'
+import { hasUserUsedCoupon } from '@/lib/db/billing'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -16,10 +17,13 @@ export async function POST(req: NextRequest) {
     
     let validCouponId: string | undefined = undefined
     if (coupon_code) {
-      const { validateCoupon, calculateDiscount } = await import('@/lib/coupon-service')
+      const { validateCoupon } = await import('@/lib/coupon-service')
       const validation = await validateCoupon(coupon_code)
       if (!validation.valid || !validation.coupon) {
         return NextResponse.json({ error: validation.error || 'Invalid coupon' }, { status: 400 })
+      }
+      if (await hasUserUsedCoupon(validation.coupon.id, user.id)) {
+        return NextResponse.json({ error: 'You have already used this coupon code.' }, { status: 400 })
       }
       validCouponId = validation.coupon.id
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { validateCoupon } from '@/lib/coupon-service'
+import { hasUserUsedCoupon } from '@/lib/db/billing'
 import { rateLimitAI } from '@/lib/in-memory-rate-limit'
 
 export const runtime = 'nodejs'
@@ -24,6 +25,10 @@ export async function POST(req: NextRequest) {
     const result = await validateCoupon(code)
     if (!result.valid) {
       return NextResponse.json({ error: result.error }, { status: 400 })
+    }
+
+    if (result.coupon && await hasUserUsedCoupon(result.coupon.id, user.id)) {
+      return NextResponse.json({ error: 'You have already used this coupon code.' }, { status: 400 })
     }
 
     return NextResponse.json({ coupon: {

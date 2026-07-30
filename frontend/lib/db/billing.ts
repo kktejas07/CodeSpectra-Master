@@ -67,7 +67,7 @@ export interface BillingCouponDoc {
   trial_duration_days?: number
   created_at: string
   created_by?: string
-  redemptions?: Array<{ user_id: string; order_id?: string | null; plan_id?: string | null; redeemed_at: string }>
+  redemptions?: Array<{ user_id: string; user_name?: string; user_email?: string; order_id?: string | null; plan_id?: string | null; redeemed_at: string }>
 }
 
 export async function billingOrders(): Promise<Collection<BillingOrderDoc>> {
@@ -88,12 +88,31 @@ export async function recordCouponRedemption(
 ): Promise<void> {
   const col = await billingCoupons()
   const redemption: any = { user_id: userId, redeemed_at: nowIso() }
+
+  try {
+    const db = await getMongoDb()
+    const u = await db.collection('user').findOne(
+      { _id: userId } as any,
+      { projection: { name: 1, fullName: 1, email: 1 } },
+    ) as { name?: string; fullName?: string; email?: string } | null
+    if (u) {
+      redemption.user_name = u.fullName || u.name || ''
+      redemption.user_email = u.email || ''
+    }
+  } catch { /* best effort */ }
+
   if (orderId) redemption.order_id = orderId
   if (planId) redemption.plan_id = planId
   await col.updateOne(
     { id: couponId },
     { $inc: { current_uses: 1 }, $push: { redemptions: redemption } },
   )
+}
+
+export async function hasUserUsedCoupon(couponId: string, userId: string): Promise<boolean> {
+  const col = await billingCoupons()
+  const doc = await col.findOne({ id: couponId }, { projection: { redemptions: 1 } })
+  return !!(doc?.redemptions?.some((r) => r.user_id === userId))
 }
 
 /** Catalog of buyable plans. Amounts in paise. */
