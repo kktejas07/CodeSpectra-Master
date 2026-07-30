@@ -170,6 +170,57 @@ export class PaymentService {
       }
     }
 
+    if (plan.amount_paise === 0) {
+      // 100% discount, bypass gateway and immediately activate subscription
+      const { billingSubscriptions, billingOrders, nowIso, newId } = await import('@/lib/db/billing')
+      const subs = await billingSubscriptions()
+      const existing = await subs.findOne({ user_id: userId, status: 'active' })
+      const startsAt = nowIso()
+      const endsAt = new Date(Date.now() + (plan.duration_days || 30) * 86400000).toISOString()
+
+      const orders = await billingOrders()
+      const receipt = `${userId}_${resolvedPlanId}_${Date.now()}`
+      await orders.insertOne({
+        id: newId(),
+        user_id: userId,
+        amount_paise: 0,
+        currency: plan.currency,
+        plan_id: resolvedPlanId,
+        receipt,
+        coupon_id: couponId,
+        status: 'paid', // immediately paid
+        created_at: nowIso(),
+        updated_at: nowIso(),
+      })
+
+      if (existing) {
+        await subs.updateOne(
+          { _id: existing._id },
+          { $set: { plan_id: resolvedPlanId, ends_at: endsAt, updated_at: nowIso() } }
+        )
+      } else {
+        await subs.insertOne({
+          id: newId(),
+          user_id: userId,
+          plan_id: resolvedPlanId,
+          status: 'active',
+          started_at: startsAt,
+          ends_at: endsAt,
+          created_at: nowIso(),
+          updated_at: nowIso(),
+        } as any)
+      }
+
+      return {
+        provider: 'stripe', // Placeholder
+        gateway_id: 'free_' + Date.now(),
+        redirect_url: '/dashboard/pricing?payment=free&status=success',
+        amount_paise: 0,
+        currency: plan.currency,
+        plan
+      }
+    }
+
     const adapter = await this.getAdapterForCountry(countryCode)
     return adapter.createCheckout(userId, email, resolvedPlanId, plan, couponId)
   }

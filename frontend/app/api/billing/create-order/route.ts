@@ -26,16 +26,7 @@ export async function POST(req: NextRequest) {
 
     const result = await ps.createCheckout(user.id, user.email, plan_id || 'pro_monthly', null, validCouponId)
     
-    if (validCouponId) {
-      const { validateCoupon, calculateDiscount } = await import('@/lib/coupon-service')
-      const validation = await validateCoupon(coupon_code!)
-      if (validation.coupon) {
-        result.amount_paise = calculateDiscount(result.amount_paise, validation.coupon)
-        
-        // Wait, the order has already been created in PaymentService with the OLD amount_paise!
-        // The coupon discount must be applied BEFORE passing the plan to `createCheckout`.
-      }
-    }
+    // Coupon is already applied inside PaymentService.createCheckout
     
     return NextResponse.json(result)
   } catch (error) {

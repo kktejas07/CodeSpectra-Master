@@ -272,12 +272,11 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                     <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned Problems</p>
                     {hackathon.tasks.map((task) => (
                       <div key={task.problem_slug}
-                        className="flex items-center justify-between p-2 rounded hover:bg-muted/50 text-sm">
+                        className="flex items-center justify-between p-2 rounded text-sm">
                         <span>{task.problem_title}</span>
                         <div className="flex items-center gap-2">
                           <Badge variant="outline" className="text-[10px]">{task.difficulty}</Badge>
                           <span className="text-xs text-muted-foreground">{task.points} pts</span>
-                          <ArrowRight className="h-3 w-3" />
                         </div>
                       </div>
                     ))}

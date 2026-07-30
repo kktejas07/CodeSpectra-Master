@@ -547,7 +547,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           <div>
             <div className="flex items-center gap-2 mb-3">
               <ListChecks className="h-4 w-4 text-primary" />
-              <h3 className="text-sm font-semibold">Problems ({solvedCount}/{hackathon.tasks.length} solved)</h3>
+              <h3 className="text-sm font-semibold">Problems ({solvedCount}/{hackathon.solve_limit && hackathon.solve_limit > 0 ? hackathon.solve_limit : hackathon.tasks.length} solved)</h3>
             </div>
             <div className="space-y-2">
               {hackathon.tasks.map((task, i) => {
@@ -736,25 +736,6 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           </DialogContent>
         </Dialog>
 
-        <Card className="p-5">
-          <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-primary" /> Leaderboard
-          </h3>
-          {teams.length === 0 ? (
-            <p className="text-xs text-muted-foreground text-center py-4">No teams yet</p>
-          ) : (
-            <div className="space-y-2">
-              {teams.sort((a, b) => b.xp - a.xp).map((t, i) => (
-                <div key={t.id} className="flex items-center gap-3 text-sm">
-                  <span className="w-5 font-bold text-muted-foreground text-right">#{i + 1}</span>
-                  <span className="flex-1 font-medium">{t.name}</span>
-                  <span className="text-xs text-muted-foreground">{t.members.length} members</span>
-                  <span className="text-xs font-mono">{t.xp} XP</span>
-                </div>
-              ))}
-            </div>
-          )}
-        </Card>
       </main>
 
       <Dialog open={!!submittingFor} onOpenChange={(o) => { if (!o) closeSubmitModal() }}>

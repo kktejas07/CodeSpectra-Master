@@ -64,6 +64,30 @@ import { isStripePriceId } from '@/lib/pricing-catalog'
 import { PricingCatalogStripeHint } from '@/components/dashboard/pricing-catalog-stripe-hint'
 import { emailTemplates, hackathonEmailTemplates } from '@/lib/email-templates'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import {
+  CertificateRenderer,
+  TEMPLATES,
+  type CertificateData,
+  type TemplateKey,
+} from '@/components/cert/CertificateTemplates'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
+
+const CERT_PREVIEW_DATA: CertificateData = {
+  candidateName: 'Alex Johnson',
+  certificationTitle: 'Full-Stack Web Development',
+  level: 'Advanced',
+  source: 'CodeSpectra Open Curriculum',
+  score: 92,
+  issuedAt: new Date().toISOString(),
+  verifyUrl: 'https://codespectra.ai/verify/abc123',
+  verifyToken: 'CERT-ABC123',
+}
 
 type General = GeneralPlatformSettings
 type GeneralKey = keyof General
@@ -277,6 +301,7 @@ function SystemSettingsInner() {
 
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({})
   const [revealedValues, setRevealedValues] = useState<Record<string, string>>({})
+  const [previewTemplate, setPreviewTemplate] = useState<TemplateKey | null>(null)
   const timers = useRef<Record<string, ReturnType<typeof setTimeout>>>({})
 
   const handleRevealToggle = useCallback(async (key: string) => {
@@ -1094,26 +1119,80 @@ function SystemSettingsInner() {
                 onCheckedChange={(v) => setForm((f) => ({ ...f, show_public_leaderboard: v }))}
               />
             </div>
-            <div className="space-y-3 p-6 border-t border-border/60">
-              <div className="flex items-center justify-between gap-4">
-                <div className="min-w-0 space-y-0.5">
-                  <Label htmlFor="certificate_template" className="text-foreground">
-                    Certificate Template
-                  </Label>
-                  <p className="text-sm text-muted-foreground">Default template for all event certificates</p>
-                </div>
-                <select
-                  id="certificate_template"
-                  value={form.certificate_template}
-                  onChange={(e) => setForm((f) => ({ ...f, certificate_template: e.target.value as 'classic' | 'modern' | 'minimal' }))}
-                  className="h-10 rounded-lg border border-border/60 bg-background px-3 py-2 text-sm w-48"
+            <div className="space-y-4 p-6 border-t border-border/60">
+              <div className="min-w-0 space-y-0.5">
+                <Label className="text-foreground">
+                  Certificate Template
+                </Label>
+                <p className="text-sm text-muted-foreground">Default template for all event certificates. Click a card to select, then preview before saving.</p>
+              </div>
+              <div className="grid grid-cols-3 gap-3">
+                {TEMPLATES.map((t) => {
+                  const selected = form.certificate_template === t.key
+                  const previewData = { ...CERT_PREVIEW_DATA, template: t.key as TemplateKey }
+                  return (
+                    <button
+                      key={t.key}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, certificate_template: t.key }))}
+                      className={`relative rounded-lg border-2 p-4 text-left transition-all ${
+                        selected
+                          ? 'border-primary bg-primary/5 shadow-sm'
+                          : 'border-border/60 bg-card hover:border-primary/50 hover:bg-muted/30'
+                      }`}
+                    >
+                      <div className="flex items-center gap-2 mb-2">
+                        <div
+                          className={`h-3 w-3 rounded-full ${
+                            t.key === 'classic' ? 'bg-amber-600' :
+                            t.key === 'modern' ? 'bg-emerald-500' : 'bg-neutral-800'
+                          }`}
+                        />
+                        <span className="text-sm font-medium">{t.label}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground leading-relaxed">{t.description}</p>
+                      {selected && (
+                        <div className="absolute top-2 right-2 h-5 w-5 rounded-full bg-primary flex items-center justify-center">
+                          <CheckCircle2 className="h-3 w-3 text-primary-foreground" />
+                        </div>
+                      )}
+                    </button>
+                  )
+                })}
+              </div>
+              <div className="flex items-center gap-3 pt-1">
+                <p className="text-xs text-muted-foreground">
+                  Selected: <span className="font-medium text-foreground">{TEMPLATES.find((t) => t.key === form.certificate_template)?.label || form.certificate_template}</span>
+                </p>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => setPreviewTemplate(form.certificate_template as TemplateKey)}
+                  className="ml-auto"
                 >
-                  <option value="classic">Classic (Gold/Serif)</option>
-                  <option value="modern">Modern (Dark Gradient)</option>
-                  <option value="minimal">Minimal (Monochrome)</option>
-                </select>
+                  <Eye className="mr-1.5 h-3.5 w-3.5" />
+                  Preview
+                </Button>
               </div>
             </div>
+            <Dialog open={!!previewTemplate} onOpenChange={(o) => { if (!o) setPreviewTemplate(null) }}>
+              <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto">
+                <DialogHeader>
+                  <DialogTitle>Certificate Preview — {TEMPLATES.find((t) => t.key === previewTemplate)?.label || previewTemplate}</DialogTitle>
+                  <DialogDescription>
+                    This is how the certificate will look with sample data. The actual certificate will use real participant details.
+                  </DialogDescription>
+                </DialogHeader>
+                {previewTemplate && (
+                  <div className="w-full overflow-hidden rounded-lg border shadow-sm" style={{ aspectRatio: '1.414 / 1' }}>
+                    <div className="w-full h-full [&_.cert-sheet]:!w-full [&_.cert-sheet]:!h-full [&_.cert-sheet]:!min-h-0 [&_.cert-sheet]:!min-w-0">
+                      <CertificateRenderer data={CERT_PREVIEW_DATA} template={previewTemplate} />
+                    </div>
+                  </div>
+                )}
+              </DialogContent>
+            </Dialog>
           </div>
           <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
             <Button
