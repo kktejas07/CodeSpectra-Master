@@ -27,6 +27,9 @@ export default function CandidateInviteLandingPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [starting, setStarting] = useState<string | null>(null)
+  const [isExpired, setIsExpired] = useState(false)
+  const [renewing, setRenewing] = useState(false)
+  const [renewedMsg, setRenewedMsg] = useState<string | null>(null)
   const [candidateData, setCandidateData] = useState<{
     email: string
     full_name: string
@@ -43,6 +46,9 @@ export default function CandidateInviteLandingPage() {
         const res = await csrfFetch(`/api/assessment/invite/${token}`)
         const json = await res.json()
         if (!res.ok) {
+          if (json.is_expired) {
+            setIsExpired(true)
+          }
           throw new Error(json.error || 'Invalid or expired invitation link.')
         }
         setCandidateData({
@@ -62,6 +68,23 @@ export default function CandidateInviteLandingPage() {
     verifyToken()
   }, [token])
 
+  const handleRequestNewLink = async () => {
+    setRenewing(true)
+    setError(null)
+    try {
+      const res = await csrfFetch(`/api/assessment/invite/${token}/renew`, {
+        method: 'POST',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to request new link')
+      setRenewedMsg(json.message || 'A new invitation link has been sent to your email.')
+    } catch (e: unknown) {
+      setError(e instanceof Error ? e.message : 'Failed to request new link')
+    } finally {
+      setRenewing(false)
+    }
+  }
+
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
@@ -76,19 +99,64 @@ export default function CandidateInviteLandingPage() {
   if (error || !candidateData) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
-        <Card className="max-w-md w-full p-6 text-center border-destructive/30 space-y-4">
-          <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mx-auto">
-            <AlertCircle className="h-6 w-6" />
-          </div>
-          <h1 className="text-xl font-bold text-foreground">Invitation Link Invalid</h1>
-          <p className="text-sm text-muted-foreground">
-            {error || 'This candidate assessment link is invalid, expired, or has already been used.'}
-          </p>
-          <div className="pt-2">
-            <Link href="/auth/login">
-              <Button variant="outline" className="w-full">Go to Sign In</Button>
-            </Link>
-          </div>
+        <Card className="max-w-md w-full p-6 text-center border-destructive/30 space-y-4 shadow-xl">
+          {renewedMsg ? (
+            <>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-emerald-500/10 text-emerald-500 mx-auto">
+                <ShieldCheck className="h-6 w-6" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">New Link Requested</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {renewedMsg}
+              </p>
+              <div className="pt-2">
+                <Link href="/auth/login">
+                  <Button className="w-full">Go to Sign In</Button>
+                </Link>
+              </div>
+            </>
+          ) : isExpired ? (
+            <>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-amber-500/10 text-amber-500 mx-auto">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">Invitation Link Expired</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                This candidate assessment link has expired. You can request a fresh assessment invitation link to be sent to your email.
+              </p>
+              <div className="pt-2 space-y-2">
+                <Button 
+                  onClick={handleRequestNewLink} 
+                  disabled={renewing}
+                  className="w-full font-semibold"
+                >
+                  {renewing ? (
+                    <><Loader2 className="h-4 w-4 animate-spin mr-2" /> Requesting...</>
+                  ) : (
+                    'Request New Link'
+                  )}
+                </Button>
+                <Link href="/auth/login" className="block">
+                  <Button variant="outline" className="w-full">Go to Sign In</Button>
+                </Link>
+              </div>
+            </>
+          ) : (
+            <>
+              <div className="flex h-12 w-12 items-center justify-center rounded-full bg-destructive/10 text-destructive mx-auto">
+                <AlertCircle className="h-6 w-6" />
+              </div>
+              <h1 className="text-xl font-bold text-foreground">Invitation Link Invalid</h1>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                {error || 'This candidate assessment link is invalid or has already been used.'}
+              </p>
+              <div className="pt-2">
+                <Link href="/auth/login">
+                  <Button variant="outline" className="w-full">Go to Sign In</Button>
+                </Link>
+              </div>
+            </>
+          )}
         </Card>
       </div>
     )

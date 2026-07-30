@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, BookOpen, Play, Loader, Loader2 } from 'lucide-react'
+import { Clock, BookOpen, Play, Loader, Loader2, CheckCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Exam {
@@ -85,14 +85,29 @@ export default function ExamsPage() {
                 <span>Pass: {exam.passingScore}%</span>
               </div>
               {exam.status === 'completed' ? (
-                <div className="mb-3 p-2 rounded bg-green-500/10 text-xs text-green-700">
-                  Score: {exam.score}% - Completed
-                </div>
-              ) : null}
-              <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => router.push(`/dashboard/exams/${exam.id}`)}>
-                <Play className="h-3.5 w-3.5" />
-                {exam.status === 'completed' ? 'Retake' : 'Start'} Exam
-              </Button>
+                <>
+                  <div className="mb-3 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5 justify-center">
+                    <CheckCircle className="h-3.5 w-3.5" /> Score: {exam.score}% - Completed
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-2 border-green-500/30 hover:bg-green-500/10 text-green-600 dark:text-green-400 font-semibold" 
+                    onClick={() => router.push(`/dashboard/exams/${exam.id}`)}
+                  >
+                    <BookOpen className="h-3.5 w-3.5" /> View Results
+                  </Button>
+                </>
+              ) : (
+                <Button 
+                  variant="default" 
+                  size="sm" 
+                  className="w-full gap-2 font-semibold" 
+                  onClick={() => router.push(`/dashboard/exams/${exam.id}`)}
+                >
+                  <Play className="h-3.5 w-3.5" /> Start Exam
+                </Button>
+              )}
             </Card>
           ))}
         </div>

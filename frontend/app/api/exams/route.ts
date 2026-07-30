@@ -79,8 +79,46 @@ export async function GET() {
   try {
     const db = await getMongoDb()
     const data = await db.collection('exams').find({}).toArray()
-    return NextResponse.json({ data })
-  } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
+    
+    // Aggregate attempts and average scores from submissions
+    const stats = await db.collection('exam_submissions').aggregate([
+      {
+        $group: {
+          _id: '$exam_id',
+          attempts: { $sum: 1 },
+          totalScore: { $sum: '$score' },
+          totalMaxScore: { $sum: '$max_score' },
+        }
+      }
+    ]).toArray()
+    const statsMap = new Map(stats.map(s => [s._id, s]))
+
+    // Get current user's submissions to set completed/pending status
+    const userSubmissions = await db.collection('exam_submissions').find({ user_id: gate.user.id }).toArray()
+    const submissionMap = new Map(userSubmissions.map(s => [s.exam_id, s]))
+
+    const examsList = data.map(exam => {
+      const examStats = statsMap.get(exam.id) || { attempts: 0, totalScore: 0, totalMaxScore: 0 }
+      const userSub = submissionMap.get(exam.id)
+      const avgPercent = examStats.totalMaxScore > 0 
+        ? Math.round((examStats.totalScore / examStats.totalMaxScore) * 100)
+        : 0
+
+      return {
+        ...exam,
+        attempts: examStats.attempts,
+        avgScore: avgPercent,
+        status: userSub ? 'completed' : 'pending',
+        score: userSub ? Math.round((userSub.score / (userSub.max_score || 1)) * 100) : undefined,
+      }
+    })
+
+    return NextResponse.json({ data: examsList })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Failed to fetch exams'
+    console.error('[CodeSpectra] GET /api/exams error:', e)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
 }
 
 export async function POST(request: Request) {

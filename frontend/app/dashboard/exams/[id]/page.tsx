@@ -57,7 +57,7 @@ export default function ExamPage() {
   const [timeRemaining, setTimeRemaining] = useState(0)
   const [submitted, setSubmitted] = useState(false)
   const [submitting, setSubmitting] = useState(false)
-  const [results, setResults] = useState<{ score: number; total: number; details: Array<{ qId: string; correct: boolean; points: number }> } | null>(null)
+  const [results, setResults] = useState<{ score: number; total: number; details: Array<{ qId: string; correct: boolean; points: number; answer?: string }> } | null>(null)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
 
   useEffect(() => {
@@ -200,31 +200,96 @@ export default function ExamPage() {
           </p>
         </Card>
 
-        <div className="space-y-3">
-          <h3 className="text-lg font-semibold px-1">Detailed Breakdown</h3>
+        <div className="space-y-4">
+          <h3 className="text-xl font-bold tracking-tight px-1 flex items-center gap-2">
+            Detailed Breakdown & Learning
+          </h3>
           {(results.details || []).map((d, i) => {
             const questionData = exam.questions.find(q => q.id === d.qId)
             const title = questionData?.question || `Question ${i + 1}`
+            const typeLabel = questionData?.type || 'multiple-choice'
+            const maxPoints = questionData?.points || 10
+            
+            // Get correct answer value
+            const correctAnswer = questionData ? ((questionData as any).answer || (questionData as any).correct_answer || 'N/A') : 'N/A'
+            const selectedAnswer = d.answer || '(No answer provided)'
+
             return (
-              <div 
+              <Card 
                 key={d.qId} 
-                className="flex items-center justify-between p-4 rounded-xl border border-border/50 bg-card/30 backdrop-blur hover:bg-card/50 transition-all duration-200"
+                className={`p-5 rounded-2xl border transition-all duration-300 bg-card/40 backdrop-blur hover:bg-card/60 shadow-sm ${
+                  d.correct ? 'border-green-500/20 hover:border-green-500/40' : 'border-red-500/20 hover:border-red-500/40'
+                }`}
               >
-                <div className="flex items-center gap-3.5 min-w-0 flex-1">
-                  {d.correct ? (
-                    <CheckCircle className="h-5 w-5 text-green-500 shrink-0" />
-                  ) : (
-                    <XCircle className="h-5 w-5 text-red-500 shrink-0" />
-                  )}
-                  <div className="min-w-0 flex-1">
-                    <span className="text-sm font-semibold block text-muted-foreground mb-0.5">Question {i + 1}</span>
-                    <p className="text-sm text-foreground font-medium truncate pr-4">{title}</p>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  {/* Column 1: Question details */}
+                  <div className="space-y-2">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                        Question {i + 1}
+                      </span>
+                      <Badge variant="secondary" className="text-[10px] py-0.5 px-2">
+                        {typeLabel}
+                      </Badge>
+                      <Badge variant={d.correct ? 'default' : 'destructive'} className="text-[10px] py-0.5 px-2 font-mono">
+                        {d.correct ? `+${d.points}` : '0'} / {maxPoints} pts
+                      </Badge>
+                    </div>
+                    <p className="text-sm font-semibold text-foreground leading-relaxed">
+                      {title}
+                    </p>
+                    {questionData?.prompt && questionData.prompt !== questionData.question && (
+                      <p className="text-xs text-muted-foreground line-clamp-3">
+                        {questionData.prompt}
+                      </p>
+                    )}
+                  </div>
+
+                  {/* Column 2: Your Answer */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-semibold text-muted-foreground block">
+                      Your Selected Answer:
+                    </span>
+                    <div className={`p-3 rounded-xl border text-sm font-medium ${
+                      d.correct 
+                        ? 'bg-green-500/5 border-green-500/20 text-green-600 dark:text-green-400' 
+                        : 'bg-red-500/5 border-red-500/20 text-red-600 dark:text-red-400'
+                    }`}>
+                      <div className="flex items-center gap-2 mb-1">
+                        {d.correct ? (
+                          <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                        ) : (
+                          <XCircle className="h-4 w-4 text-red-500 shrink-0" />
+                        )}
+                        <span className="text-xs uppercase font-bold tracking-wider">
+                          {d.correct ? 'Correct' : 'Incorrect'}
+                        </span>
+                      </div>
+                      <div className="font-mono text-xs break-words whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg">
+                        {selectedAnswer}
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Column 3: Correct Answer */}
+                  <div className="space-y-1.5">
+                    <span className="text-xs font-semibold text-muted-foreground block">
+                      Correct Answer / Solution:
+                    </span>
+                    <div className="p-3 rounded-xl border border-green-500/20 bg-green-500/5 text-green-600 dark:text-green-400 text-sm font-medium">
+                      <div className="flex items-center gap-2 mb-1">
+                        <CheckCircle className="h-4 w-4 text-green-500 shrink-0" />
+                        <span className="text-xs uppercase font-bold tracking-wider">
+                          Official Answer
+                        </span>
+                      </div>
+                      <div className="font-mono text-xs break-words whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg text-green-600 dark:text-green-300 font-semibold">
+                        {correctAnswer}
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <Badge variant={d.correct ? 'default' : 'destructive'} className="shrink-0 font-mono text-xs">
-                  {d.correct ? `+${d.points}` : '0'} / {d.points} pts
-                </Badge>
-              </div>
+              </Card>
             )
           })}
         </div>

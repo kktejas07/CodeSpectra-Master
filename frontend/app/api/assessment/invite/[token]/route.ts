@@ -65,7 +65,7 @@ export async function GET(
 
     if (new Date(invite.expires_at).getTime() < Date.now()) {
       await col.updateOne({ token }, { $set: { status: 'expired' } })
-      return NextResponse.json({ error: 'This candidate assessment link has expired.' }, { status: 410 })
+      return NextResponse.json({ error: 'This candidate assessment link has expired.', is_expired: true }, { status: 410 })
     }
 
     const registeredUser = await db.collection('user').findOne({ email: invite.email })
