@@ -453,6 +453,21 @@ export default function CandidateAssessmentPage() {
                     )
                   })}
                 </div>
+              ) : currentQ.type === 'fill_blanks' ? (
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
+                    <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
+                  </div>
+                  <input
+                    type="text"
+                    value={answers[currentQ.id] || ''}
+                    onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
+                    placeholder="Type your answer..."
+                    className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                    autoComplete="off"
+                  />
+                </div>
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -462,7 +477,7 @@ export default function CandidateAssessmentPage() {
                   <textarea 
                     value={answers[currentQ.id] || ''}
                     onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
-                    placeholder={currentQ.type === 'fill_blanks' ? 'Type your answer...' : '// Write your solution here...'}
+                    placeholder="// Write your solution here..."
                     className="w-full h-96 p-4 font-mono text-sm bg-zinc-950 text-zinc-50 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                     spellCheck={false}
                   />
