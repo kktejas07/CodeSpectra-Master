@@ -154,7 +154,7 @@ export async function GET(request: Request) {
         (email ? email.split('@')[0] : 'Developer')
       const name = me?.id === row._id ? `${baseName} (You)` : baseName
       const xp = row.total
-      const lang = languageLabel(u?.preferredLanguage || 'javascript')
+      const lang = languageLabel(u?.preferredLanguage)
       return {
         rank: i + 1,
         userId: row._id,

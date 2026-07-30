@@ -16,7 +16,8 @@ export function rankTitle(rank: number): string {
 }
 
 export function languageLabel(raw: string | null | undefined): string {
-  const s = (raw || 'javascript').toLowerCase()
+  if (!raw) return '—'
+  const s = raw.toLowerCase()
   const map: Record<string, string> = {
     javascript: 'JavaScript',
     typescript: 'TypeScript',
