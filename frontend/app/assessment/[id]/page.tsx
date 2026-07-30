@@ -86,7 +86,7 @@ export default function CandidateAssessmentPage() {
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
   const [timeLeft, setTimeLeft] = useState<number | null>(null)
-  const [answers, setAnswers] = useState<Record<string, string>>({})
+  const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [currentQIndex, setCurrentQIndex] = useState(0)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
   
@@ -163,7 +163,15 @@ export default function CandidateAssessmentPage() {
           try {
             const draft = localStorage.getItem(`codespectra_exam_draft_${params.id}`)
             if (draft) {
-              setAnswers(JSON.parse(draft))
+              const parsed = JSON.parse(draft)
+              if (exam?.questionList) {
+                for (const q of exam.questionList) {
+                  if (q.type === 'multiple_response' && typeof parsed[q.id] === 'string') {
+                    parsed[q.id] = parsed[q.id].split(',').map((s: string) => s.trim()).filter(Boolean)
+                  }
+                }
+              }
+              setAnswers(parsed)
             }
           } catch (e) {
             console.error('Failed to load draft:', e)
@@ -217,11 +225,15 @@ export default function CandidateAssessmentPage() {
     if (!exam) return
     setIsSubmitting(true)
     try {
+      const serialized: Record<string, string> = {}
+      for (const [k, v] of Object.entries(answers)) {
+        serialized[k] = Array.isArray(v) ? v.join(', ') : v
+      }
       const res = await fetch(`/api/exams/${exam.id}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          answers,
+          answers: serialized,
           auto_submitted: autoSubmitted,
           idPhoto,
           facePhoto,
@@ -391,7 +403,7 @@ export default function CandidateAssessmentPage() {
           <h3 className="text-sm font-semibold text-muted-foreground mb-4 uppercase tracking-wider">Overview</h3>
           <div className="space-y-2">
             {exam.questionList.map((q, idx) => {
-              const isAnswered = !!answers[q.id]
+              const isAnswered = Array.isArray(answers[q.id]) ? (answers[q.id] as string[]).length > 0 : !!answers[q.id]
               const isActive = idx === currentQIndex
               return (
                 <button
@@ -439,8 +451,8 @@ export default function CandidateAssessmentPage() {
                 <div className="space-y-3">
                   {(shuffledOpts[currentQ.id] || currentQ.options || []).map((opt, i) => {
                     const isMulti = currentQ.type === 'multiple_response'
-                    const selectedOpts = (answers[currentQ.id] || '').split(',').map(s => s.trim()).filter(Boolean)
-                    const checked = isMulti ? selectedOpts.includes(opt) : answers[currentQ.id] === opt
+                    const selectedArr = isMulti ? (Array.isArray(answers[currentQ.id]) ? answers[currentQ.id] as string[] : []) : []
+                    const checked = isMulti ? selectedArr.includes(opt) : answers[currentQ.id] === opt
                     return (
                       <label 
                         key={i} 
@@ -457,11 +469,9 @@ export default function CandidateAssessmentPage() {
                           checked={checked}
                           onChange={() => {
                             if (isMulti) {
-                              const current = (answers[currentQ.id] || '').split(',').map(s => s.trim()).filter(Boolean)
-                              const next = current.includes(opt)
-                                ? current.filter(a => a !== opt)
-                                : [...current, opt]
-                              setAnswers(prev => ({ ...prev, [currentQ.id]: next.join(', ') }))
+                              const arr: string[] = Array.isArray(answers[currentQ.id]) ? [...answers[currentQ.id] as string[]] : []
+                              const next = arr.includes(opt) ? arr.filter(a => a !== opt) : [...arr, opt]
+                              setAnswers(prev => ({ ...prev, [currentQ.id]: next }))
                             } else {
                               setAnswers(prev => ({ ...prev, [currentQ.id]: opt }))
                             }
@@ -474,20 +484,55 @@ export default function CandidateAssessmentPage() {
                   })}
                 </div>
               ) : currentQ.type === 'fill_blanks' ? (
-                <div className="space-y-2">
-                  <div className="flex items-center justify-between">
-                    <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
-                    <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
-                  </div>
-                  <input
-                    type="text"
-                    value={answers[currentQ.id] || ''}
-                    onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
-                    placeholder="Type your answer..."
-                    className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
-                    autoComplete="off"
-                  />
-                </div>
+                (() => {
+                  const blankCount = (currentQ.prompt.match(/___/g) || []).length
+                  if (blankCount > 1) {
+                    const fillAnswers = typeof answers[currentQ.id] === 'string'
+                      ? (answers[currentQ.id] as string).split(',').map(s => s.trim())
+                      : []
+                    return (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <label className="text-sm font-medium text-muted-foreground">Fill in {blankCount} blank(s):</label>
+                          <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
+                        </div>
+                        {Array.from({ length: blankCount }, (_, idx) => (
+                          <div key={idx} className="space-y-1.5">
+                            <label className="text-xs text-muted-foreground font-medium">Blank {idx + 1}</label>
+                            <input
+                              type="text"
+                              value={fillAnswers[idx] || ''}
+                              onChange={(e) => {
+                                const arr = [...fillAnswers]
+                                arr[idx] = e.target.value
+                                setAnswers(prev => ({ ...prev, [currentQ.id]: arr.map(s => s.trim()).join(', ') }))
+                              }}
+                              placeholder={`Answer for blank ${idx + 1}...`}
+                              className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                              autoComplete="off"
+                            />
+                          </div>
+                        ))}
+                      </div>
+                    )
+                  }
+                  return (
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <label className="text-sm font-medium text-muted-foreground">Your Answer:</label>
+                        <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
+                      </div>
+                      <input
+                        type="text"
+                        value={typeof answers[currentQ.id] === 'string' ? answers[currentQ.id] as string : ''}
+                        onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
+                        placeholder="Type your answer..."
+                        className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
+                        autoComplete="off"
+                      />
+                    </div>
+                  )
+                })()
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
