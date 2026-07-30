@@ -3,6 +3,9 @@
 import { useEffect, useState, useCallback } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell } from 'lucide-react'
@@ -617,7 +620,14 @@ export default function ExamResultsPage() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
-                                <p className="text-sm font-medium mt-0.5">{q.prompt || q.question || q.title}</p>
+                                <div className="text-sm font-medium mt-0.5 prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-pre:text-xs prose-code:text-xs">
+                                  <ReactMarkdown
+                                    remarkPlugins={[remarkGfm]}
+                                    rehypePlugins={[rehypeHighlight]}
+                                  >
+                                    {q.prompt || q.question || q.title || ''}
+                                  </ReactMarkdown>
+                                </div>
                               </div>
                               {isPendingReview ? (
                                 <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 shrink-0">

@@ -10,6 +10,9 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
+import rehypeHighlight from 'rehype-highlight'
 import {
   Clock, AlertTriangle, Send, ArrowLeft, Loader2,
   CheckCircle, XCircle, ChevronRight,
@@ -248,13 +251,26 @@ export default function ExamPage() {
                         {d.correct ? `+${d.points}` : '0'} / {maxPoints} pts
                       </Badge>
                     </div>
-                    <p className="text-sm font-semibold text-foreground leading-relaxed">
+                    <h3 className="text-sm font-semibold text-foreground leading-relaxed">
                       {title}
-                    </p>
+                    </h3>
                     {questionData?.prompt && questionData.prompt !== questionData.question && (
-                      <p className="text-xs text-muted-foreground line-clamp-3">
-                        {questionData.prompt}
-                      </p>
+                      <div className="prose prose-sm dark:prose-invert max-w-none prose-p:text-xs prose-pre:text-xs prose-code:text-xs text-xs text-muted-foreground line-clamp-4 leading-relaxed">
+                        <ReactMarkdown
+                          remarkPlugins={[remarkGfm]}
+                          rehypePlugins={[rehypeHighlight]}
+                          components={{
+                            code: ({ className, children, ...props }: any) => {
+                              const isInline = !className
+                              return isInline
+                                ? <code className="rounded bg-muted/60 px-1 py-0.5 text-xs font-normal" {...props}>{children}</code>
+                                : <code className={className} {...props}>{children}</code>
+                            },
+                          }}
+                        >
+                          {questionData.prompt}
+                        </ReactMarkdown>
+                      </div>
                     )}
                   </div>
 
@@ -350,17 +366,32 @@ export default function ExamPage() {
 
       <div className="flex-1 overflow-auto p-6">
         {question && (
-          <div className="max-w-3xl mx-auto space-y-6">
+          <div className="max-w-4xl mx-auto space-y-6">
             <Card className="p-6 space-y-4">
               <div className="flex items-center gap-2">
                 <Badge>{question.type}</Badge>
                 <Badge variant="outline">{question.points} pts</Badge>
                 <Badge variant="outline">{question.time_limit_seconds}s limit</Badge>
               </div>
-              <p className="text-lg">{question.question}</p>
-              {(question as any).prompt && (question as any).prompt !== question.question && (
-                <div className="prose prose-sm dark:prose-invert max-w-none mt-2">{(question as any).prompt}</div>
-              )}
+              <div className="prose prose-zinc dark:prose-invert max-w-none prose-headings:font-bold prose-headings:tracking-tight prose-h2:text-xl prose-h2:mt-6 prose-h2:mb-3 prose-h3:text-lg prose-h3:mt-5 prose-h3:mb-2 prose-p:text-[15px] prose-p:leading-relaxed prose-p:mb-4 prose-code:before:content-none prose-code:after:content-none prose-code:rounded prose-code:bg-muted/60 prose-code:px-1.5 prose-code:py-0.5 prose-code:text-sm prose-code:font-normal prose-pre:bg-zinc-950 prose-pre:border prose-pre:border-border/40 prose-pre:rounded-lg prose-a:text-primary prose-a:no-underline hover:prose-a:underline prose-li:text-[15px] prose-strong:text-foreground prose-blockquote:border-l-4 prose-blockquote:border-primary/30 prose-blockquote:bg-primary/5 prose-blockquote:rounded-r-lg prose-blockquote:px-4 prose-blockquote:py-3 prose-table:border prose-table:border-border/40 prose-th:bg-muted/30 prose-th:px-3 prose-th:py-2 prose-th:text-xs prose-td:border-t prose-td:border-border/20 prose-td:px-3 prose-td:py-2 prose-td:text-sm prose-img:rounded-lg">
+                <h2 className="text-xl font-bold mb-3">{question.question}</h2>
+                {(question as any).prompt && (question as any).prompt !== question.question && (
+                  <ReactMarkdown
+                    remarkPlugins={[remarkGfm]}
+                    rehypePlugins={[rehypeHighlight]}
+                    components={{
+                      code: ({ className, children, ...props }: any) => {
+                        const isInline = !className
+                        return isInline
+                          ? <code className="rounded bg-muted/60 px-1.5 py-0.5 text-sm font-normal" {...props}>{children}</code>
+                          : <code className={className} {...props}>{children}</code>
+                      },
+                    }}
+                  >
+                    {(question as any).prompt}
+                  </ReactMarkdown>
+                )}
+              </div>
 
               {['multiple-choice', 'mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(question.type) && question.options && (
                 <div className="space-y-2">
