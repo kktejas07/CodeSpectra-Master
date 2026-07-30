@@ -71,6 +71,13 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
     void join()
   }, [authLoading, authUser?.uid, join])
 
+  useEffect(() => {
+    if (status === 'success' || (status === 'error' && (errorMeta === 'already_this_team' || errorMeta === 'already_other_team'))) {
+      const t = setTimeout(() => router.push(`/hackathons/${slug}/workspace`), 2000)
+      return () => clearTimeout(t)
+    }
+  }, [status, errorMeta, slug, router])
+
   const loginUrl = `/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}/join/${token}`)}`
 
   if (authLoading) {
@@ -148,7 +155,7 @@ export default function JoinHackathonPage({ params }: { params: Promise<{ slug: 
               <Button variant="outline" onClick={() => router.push(`/hackathons/${slug}`)} className="flex-1">
                 Event Details
               </Button>
-              <Button onClick={() => router.push(`/hackathons/${otherTeamSlug || slug}/workspace`)} className="flex-1 gap-2">
+              <Button onClick={() => router.push(`/hackathons/${slug}/workspace`)} className="flex-1 gap-2">
                 Your Workspace <ArrowRight className="h-4 w-4" />
               </Button>
             </div>
