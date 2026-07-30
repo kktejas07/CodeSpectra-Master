@@ -442,153 +442,155 @@ export default function ExamResultsPage() {
               </div>
             ) : reviewData ? (
               <>
-                {/* Candidate Info */}
-                <div className="grid grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Score</span>
-                    <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
+                <div className="overflow-y-auto max-h-[60vh] pr-2 space-y-6">
+                  {/* Candidate Info */}
+                  <div className="grid grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Score</span>
+                      <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Percentage</span>
+                      <span className="text-xl font-bold">
+                        {reviewData.submission.max_score > 0
+                          ? `${Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)}%`
+                          : '--'}
+                      </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Submitted</span>
+                      <span className="text-sm font-medium">
+                        {reviewData.submission.submitted_at
+                          ? new Date(reviewData.submission.submitted_at).toLocaleString()
+                          : '--'}
+                      </span>
+                    </div>
                   </div>
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Percentage</span>
-                    <span className="text-xl font-bold">
-                      {reviewData.submission.max_score > 0
-                        ? `${Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)}%`
-                        : '--'}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-muted-foreground block text-xs">Submitted</span>
-                    <span className="text-sm font-medium">
-                      {reviewData.submission.submitted_at
-                        ? new Date(reviewData.submission.submitted_at).toLocaleString()
-                        : '--'}
-                    </span>
-                  </div>
-                </div>
 
-                {/* Answer Review */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                    <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Answer Review
-                  </h4>
-                  {reviewData.questions.length === 0 ? (
-                    <p className="text-xs text-muted-foreground py-4 text-center">No questions found</p>
-                  ) : (
-                    reviewData.questions.map((q, i) => {
-                      const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
-                      const userAnswer = reviewData.submission.answers[q.id] || ''
-                      const isMcq = ['multiple-choice', 'mcq', 'true_false'].includes(q.type)
-                      return (
-                        <div key={q.id} className="border rounded-lg p-4 space-y-2">
-                          <div className="flex items-start justify-between gap-4">
-                            <div className="flex-1">
-                              <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
-                              <p className="text-sm font-medium mt-0.5">{q.question || q.title}</p>
+                  {/* Answer Review */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <CheckCircle2 className="w-4 h-4 text-emerald-500" /> Answer Review
+                    </h4>
+                    {reviewData.questions.length === 0 ? (
+                      <p className="text-xs text-muted-foreground py-4 text-center">No questions found</p>
+                    ) : (
+                      reviewData.questions.map((q, i) => {
+                        const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
+                        const userAnswer = reviewData.submission.answers[q.id] || ''
+                        const isMcq = ['multiple-choice', 'mcq', 'true_false'].includes(q.type)
+                        return (
+                          <div key={q.id} className="border rounded-lg p-4 space-y-2">
+                            <div className="flex items-start justify-between gap-4">
+                              <div className="flex-1">
+                                <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
+                                <p className="text-sm font-medium mt-0.5">{q.question || q.title}</p>
+                              </div>
+                              <Badge variant={detail?.correct ? 'default' : 'secondary'} className={detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}>
+                                {detail?.correct ? `+${detail.points}` : '0'}
+                              </Badge>
                             </div>
-                            <Badge variant={detail?.correct ? 'default' : 'secondary'} className={detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}>
-                              {detail?.correct ? `+${detail.points}` : '0'}
-                            </Badge>
+                            {isMcq && q.options && (
+                              <div className="flex flex-wrap gap-1.5 mt-1">
+                                {q.options.map((opt, oi) => {
+                                  const isSelected = userAnswer.toLowerCase() === opt.toLowerCase()
+                                  const isCorrectAnswer = q.correct_answer && opt.toLowerCase() === q.correct_answer.toLowerCase()
+                                  return (
+                                    <Badge key={oi} variant="outline" className={`text-xs ${
+                                      isSelected && isCorrectAnswer ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40' :
+                                      isSelected && !isCorrectAnswer ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through' :
+                                      !isSelected && isCorrectAnswer ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20' :
+                                      'text-muted-foreground'
+                                    }`}>
+                                      {opt}
+                                      {isSelected ? ' (selected)' : ''}
+                                      {!isSelected && isCorrectAnswer ? ' (correct)' : ''}
+                                    </Badge>
+                                  )
+                                })}
+                              </div>
+                            )}
+                            {!isMcq && (
+                              <div className="mt-1 space-y-1">
+                                {userAnswer ? (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Answer: </span>
+                                    <span className="font-mono bg-muted px-2 py-0.5 rounded text-xs">{userAnswer}</span>
+                                  </div>
+                                ) : (
+                                  <span className="text-xs text-muted-foreground italic">No answer provided</span>
+                                )}
+                                {q.correct_answer && (
+                                  <div className="text-xs">
+                                    <span className="text-muted-foreground">Correct: </span>
+                                    <span className="font-mono bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded text-xs">{q.correct_answer}</span>
+                                  </div>
+                                )}
+                              </div>
+                            )}
                           </div>
-                          {isMcq && q.options && (
-                            <div className="flex flex-wrap gap-1.5 mt-1">
-                              {q.options.map((opt, oi) => {
-                                const isSelected = userAnswer.toLowerCase() === opt.toLowerCase()
-                                const isCorrectAnswer = q.correct_answer && opt.toLowerCase() === q.correct_answer.toLowerCase()
-                                return (
-                                  <Badge key={oi} variant="outline" className={`text-xs ${
-                                    isSelected && isCorrectAnswer ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40' :
-                                    isSelected && !isCorrectAnswer ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through' :
-                                    !isSelected && isCorrectAnswer ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20' :
-                                    'text-muted-foreground'
-                                  }`}>
-                                    {opt}
-                                    {isSelected ? ' (selected)' : ''}
-                                    {!isSelected && isCorrectAnswer ? ' (correct)' : ''}
-                                  </Badge>
-                                )
-                              })}
-                            </div>
-                          )}
-                          {!isMcq && (
-                            <div className="mt-1 space-y-1">
-                              {userAnswer ? (
-                                <div className="text-xs">
-                                  <span className="text-muted-foreground">Answer: </span>
-                                  <span className="font-mono bg-muted px-2 py-0.5 rounded text-xs">{userAnswer}</span>
-                                </div>
-                              ) : (
-                                <span className="text-xs text-muted-foreground italic">No answer provided</span>
-                              )}
-                              {q.correct_answer && (
-                                <div className="text-xs">
-                                  <span className="text-muted-foreground">Correct: </span>
-                                  <span className="font-mono bg-emerald-500/10 text-emerald-500 px-2 py-0.5 rounded text-xs">{q.correct_answer}</span>
-                                </div>
-                              )}
-                            </div>
-                          )}
-                        </div>
-                      )
-                    })
-                  )}
-                </div>
-
-                {/* Proctoring Events */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold text-sm flex items-center gap-2">
-                    <ShieldAlert className="w-4 h-4 text-amber-500" /> Proctoring Log
-                    <Badge variant="outline" className="text-xs">{reviewData.proctorEvents.length} events</Badge>
-                  </h4>
-                  {reviewData.proctorEvents.length === 0 ? (
-                    <div className="border rounded-lg p-6 text-center">
-                      <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
-                      <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
-                    </div>
-                  ) : (
-                    <div className="border rounded-lg max-h-64 overflow-y-auto">
-                      {reviewData.proctorEvents.map((evt, i) => (
-                        <div key={i} className={`flex items-center gap-3 px-4 py-2 text-xs border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
-                          <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
-                          <span className="shrink-0 font-medium">{formatProctorType(evt.event_type)}</span>
-                          <span className="text-muted-foreground ml-auto shrink-0">
-                            {evt.created_at ? new Date(evt.created_at).toLocaleTimeString() : ''}
-                          </span>
-                          {evt.meta && Object.keys(evt.meta).length > 0 && (
-                            <span className="text-muted-foreground truncate max-w-[200px] hidden md:inline">
-                              {JSON.stringify(evt.meta)}
-                            </span>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  )}
-                </div>
-
-                {/* Identity Photos */}
-                {(reviewData.submission.id_photo || reviewData.submission.face_photo) && (
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1">
-                      <span className="text-xs font-semibold text-muted-foreground block">ID Photo</span>
-                      <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
-                        {reviewData.submission.id_photo ? (
-                          <img src={reviewData.submission.id_photo} alt="ID" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Not captured</span>
-                        )}
-                      </div>
-                    </div>
-                    <div className="space-y-1">
-                      <span className="text-xs font-semibold text-muted-foreground block">Face Photo</span>
-                      <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
-                        {reviewData.submission.face_photo ? (
-                          <img src={reviewData.submission.face_photo} alt="Face" className="w-full h-full object-cover" />
-                        ) : (
-                          <span className="text-xs text-muted-foreground">Not captured</span>
-                        )}
-                      </div>
-                    </div>
+                        )
+                      })
+                    )}
                   </div>
-                )}
+
+                  {/* Proctoring Events */}
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <ShieldAlert className="w-4 h-4 text-amber-500" /> Proctoring Log
+                      <Badge variant="outline" className="text-xs">{reviewData.proctorEvents.length} events</Badge>
+                    </h4>
+                    {reviewData.proctorEvents.length === 0 ? (
+                      <div className="border rounded-lg p-6 text-center">
+                        <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
+                        <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
+                      </div>
+                    ) : (
+                      <div className="border rounded-lg max-h-64 overflow-y-auto">
+                        {reviewData.proctorEvents.map((evt, i) => (
+                          <div key={i} className={`flex items-center gap-3 px-4 py-2 text-xs border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
+                            <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
+                            <span className="shrink-0 font-medium">{formatProctorType(evt.event_type)}</span>
+                            <span className="text-muted-foreground ml-auto shrink-0">
+                              {evt.created_at ? new Date(evt.created_at).toLocaleTimeString() : ''}
+                            </span>
+                            {evt.meta && Object.keys(evt.meta).length > 0 && (
+                              <span className="text-muted-foreground truncate max-w-[200px] hidden md:inline">
+                                {JSON.stringify(evt.meta)}
+                              </span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Identity Photos */}
+                  {(reviewData.submission.id_photo || reviewData.submission.face_photo) && (
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-1">
+                        <span className="text-xs font-semibold text-muted-foreground block">ID Photo</span>
+                        <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
+                          {reviewData.submission.id_photo ? (
+                            <img src={reviewData.submission.id_photo} alt="ID" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Not captured</span>
+                          )}
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <span className="text-xs font-semibold text-muted-foreground block">Face Photo</span>
+                        <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
+                          {reviewData.submission.face_photo ? (
+                            <img src={reviewData.submission.face_photo} alt="Face" className="w-full h-full object-cover" />
+                          ) : (
+                            <span className="text-xs text-muted-foreground">Not captured</span>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
 
                 {/* Release Actions */}
                 <div className="flex items-center justify-between pt-4 border-t">

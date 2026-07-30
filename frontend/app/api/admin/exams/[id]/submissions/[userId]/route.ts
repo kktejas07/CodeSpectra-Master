@@ -15,7 +15,7 @@ export async function GET(
   try {
     const db = await getMongoDb()
 
-    const exam = await db.collection('exams').findOne({ id: examId }, { projection: { questions: 1, title: 1 } })
+    const exam = await db.collection('exams').findOne({ id: examId }, { projection: { questionList: 1, questions: 1, title: 1 } })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
     const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId })
