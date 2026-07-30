@@ -125,7 +125,12 @@ export class PaymentService {
     countryCode?: string | null,
     couponId?: string,
   ): Promise<CheckoutResult> {
-    let plan = BILLING_PLANS[planId]
+    // Map pricing-catalog plan IDs (free/pro/enterprise) to billing-plan keys
+    const PLAN_ID_MAP: Record<string, string> = {
+      free: 'pro_monthly', pro: 'pro_monthly', enterprise: 'pro_monthly',
+    }
+    const resolvedPlanId = PLAN_ID_MAP[planId] || planId
+    let plan = BILLING_PLANS[resolvedPlanId]
     if (!plan) {
       try {
         const { getMongoDb } = await import('@/lib/mongodb')
@@ -153,7 +158,7 @@ export class PaymentService {
         console.warn('[CodeSpectra] Could not look up dynamic plan from DB:', e)
       }
     }
-    if (!plan) throw new Error(`Unknown plan: ${planId}`)
+    if (!plan) throw new Error(`Unknown plan: ${resolvedPlanId}`)
 
     if (couponId) {
       const { billingCoupons } = await import('@/lib/db/billing')
@@ -166,7 +171,7 @@ export class PaymentService {
     }
 
     const adapter = await this.getAdapterForCountry(countryCode)
-    return adapter.createCheckout(userId, email, planId, plan, couponId)
+    return adapter.createCheckout(userId, email, resolvedPlanId, plan, couponId)
   }
 
   async getSubscription(userId: string): Promise<SubscriptionResult | null> {
