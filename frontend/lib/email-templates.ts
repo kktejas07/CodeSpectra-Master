@@ -328,6 +328,30 @@ export const emailTemplates = {
       <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">If you were not expecting this invitation, you can safely ignore this email.</p>
     ${baseStyles.footer}`,
   }),
+
+  assessmentScoreReleased: (params: {
+    candidateName: string
+    examTitle: string
+    score: number
+    maxScore: number
+    resultsUrl: string
+  }) => ({
+    subject: `Your results are ready: "${params.examTitle}" — CodeSpectra Assessment`,
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Assessment Results Ready</h1>
+      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.candidateName}</strong>,</p>
+      <p style="margin:0 0 16px;color:${BRAND.muted};font-size:14px">Your assessment results for <strong>${params.examTitle}</strong> have been released by the evaluator.</p>
+      ${baseStyles.card(`
+        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
+          ${statRow('Assessment', params.examTitle)}
+          ${statRow('Your Score', `${params.score} / ${params.maxScore}`)}
+          ${statRow('Percentage', `${Math.round((params.score / (params.maxScore || 1)) * 100)}%`)}
+        </table>
+      `)}
+      ${baseStyles.button(params.resultsUrl, 'View Feedback & Details')}
+      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">Log in to your candidate dashboard to view detailed feedback for each question.</p>
+    ${baseStyles.footer}`,
+  }),
 }
 
 export const hackathonEmailTemplates = {
