@@ -5,7 +5,7 @@ import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -232,6 +232,8 @@ export default function ExamResultsPage() {
   }
 
   const [resendingId, setResendingId] = useState<string | null>(null)
+  const [remindingId, setRemindingId] = useState<string | null>(null)
+  const [bulkReminding, setBulkReminding] = useState(false)
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [confirmDeleteInvite, setConfirmDeleteInvite] = useState<{ id: string; name: string } | null>(null)
 
@@ -249,6 +251,42 @@ export default function ExamResultsPage() {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Failed to resend invite' })
     } finally {
       setResendingId(null)
+    }
+  }
+
+  const sendReminder = async (inviteId: string, name: string) => {
+    setRemindingId(inviteId)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/invites/${inviteId}/resend`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ type: 'reminder' }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to send reminder')
+      addToast({ type: 'success', title: `Reminder sent to ${name}` })
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Failed to send reminder' })
+    } finally {
+      setRemindingId(null)
+    }
+  }
+
+  const remindAllPending = async () => {
+    setBulkReminding(true)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/invites/remind`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      addToast({ type: 'success', title: `Reminders sent to ${json.sent} of ${json.total} pending candidates` })
+    } catch {
+      addToast({ type: 'error', title: 'Failed to send reminders' })
+    } finally {
+      setBulkReminding(false)
     }
   }
 
@@ -390,9 +428,14 @@ export default function ExamResultsPage() {
                 </DropdownMenuItem>
               )}
               {row.status !== 'completed' && (
-                <DropdownMenuItem onClick={() => resendInvite(row.inviteId, row.name)} className="gap-2">
-                  <Mail className="h-4 w-4" /> Resend Invite
-                </DropdownMenuItem>
+                <>
+                  <DropdownMenuItem onClick={() => resendInvite(row.inviteId, row.name)} className="gap-2">
+                    <Mail className="h-4 w-4" /> Resend Invite
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => sendReminder(row.inviteId, row.name)} className="gap-2">
+                    <Bell className="h-4 w-4" /> Send Reminder
+                  </DropdownMenuItem>
+                </>
               )}
               <DropdownMenuItem onClick={() => copyInviteLink(row)} className="gap-2">
                 <Link className="h-4 w-4" /> Copy Link
@@ -453,6 +496,10 @@ export default function ExamResultsPage() {
               Release All ({unreleasedCount})
             </Button>
           )}
+          <Button variant="outline" className="gap-2" onClick={remindAllPending} disabled={bulkReminding}>
+            {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
+            Remind All Pending
+          </Button>
           <Button variant="outline" className="gap-2">
             <Download className="w-4 h-4" /> Export CSV
           </Button>

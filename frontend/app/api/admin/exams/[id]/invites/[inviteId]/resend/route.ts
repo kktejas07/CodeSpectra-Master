@@ -5,7 +5,7 @@ import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 
 export async function POST(
-  _request: Request,
+  request: Request,
   { params }: { params: Promise<{ id: string; inviteId: string }> }
 ) {
   const gate = await requireAdmin()
@@ -15,6 +15,9 @@ export async function POST(
   const { id: examId, inviteId } = await params
 
   try {
+    const body = await request.json().catch(() => ({}))
+    const isReminder = body.type === 'reminder'
+
     const db = await getMongoDb()
 
     const exam = await db.collection('exams').findOne({ id: examId })
@@ -33,12 +36,19 @@ export async function POST(
     const expiresAt = new Date(invite.expires_at)
     const expiresStr = expiresAt.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
 
-    const template = emailTemplates.assessmentInvite({
-      candidateName: invite.full_name || invite.email,
-      examTitle: exam.title || 'Technical Assessment',
-      inviteUrl,
-      expiresIn: expiresStr,
-    })
+    const template = isReminder
+      ? emailTemplates.assessmentReminder({
+          candidateName: invite.full_name || invite.email,
+          examTitle: exam.title || 'Technical Assessment',
+          inviteUrl,
+          expiresIn: expiresStr,
+        })
+      : emailTemplates.assessmentInvite({
+          candidateName: invite.full_name || invite.email,
+          examTitle: exam.title || 'Technical Assessment',
+          inviteUrl,
+          expiresIn: expiresStr,
+        })
 
     const result = await sendEmail(invite.email, template)
 
@@ -53,6 +63,7 @@ export async function POST(
     return NextResponse.json({
       success: result.success,
       provider: result.provider,
+      type: isReminder ? 'reminder' : 'resend',
       postalMessageId: result.postalMessageId,
     })
   } catch (e: unknown) {

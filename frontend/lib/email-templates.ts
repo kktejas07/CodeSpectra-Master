@@ -352,6 +352,35 @@ export const emailTemplates = {
       <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">Log in to your candidate dashboard to view detailed feedback for each question.</p>
     ${baseStyles.footer}`,
   }),
+
+  assessmentReminder: (params: {
+    candidateName: string
+    examTitle: string
+    inviteUrl: string
+    expiresIn: string
+  }) => ({
+    subject: `Reminder: "${params.examTitle}" assessment awaits — CodeSpectra`,
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Assessment Reminder</h1>
+      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Hi <strong>${params.candidateName}</strong>,</p>
+      <p style="margin:0 0 16px;color:${BRAND.muted};font-size:14px">This is a friendly reminder that you have a pending assessment <strong>${params.examTitle}</strong> on CodeSpectra.</p>
+      ${baseStyles.card(`
+        <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
+          ${statRow('Assessment', params.examTitle)}
+          ${statRow('Invite expires', params.expiresIn)}
+          ${statRow('Status', 'Pending')}
+        </table>
+      `)}
+      <p style="margin:16px 0 4px;font-size:14px;color:${BRAND.text};font-weight:500">Quick tips:</p>
+      <ul style="margin:4px 0 20px;padding-left:18px;color:${BRAND.muted};font-size:14px;line-height:1.8">
+        <li>Timed assessment — make sure you have uninterrupted time</li>
+        <li>Stable internet connection recommended</li>
+        <li>Camera access required for proctoring</li>
+      </ul>
+      ${baseStyles.button(params.inviteUrl, 'Continue Your Assessment')}
+      ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">This invite link expires on ${params.expiresIn}. Complete your assessment before then.</p>`, BRAND.amberBg, `${BRAND.amber}`)}
+    ${baseStyles.footer}`,
+  }),
 }
 
 export const hackathonEmailTemplates = {
