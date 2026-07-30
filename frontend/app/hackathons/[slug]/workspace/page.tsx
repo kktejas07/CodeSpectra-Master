@@ -61,6 +61,7 @@ interface Hackathon {
   num_teams: number; max_per_team: number; timeout_minutes: number
   starts_at: string; ends_at: string; status: string
   event_type?: string; per_problem_time_minutes?: number
+  solve_limit?: number
   tasks: { problem_slug: string; problem_title: string; points: number; difficulty: string; required: boolean; time_limit_minutes?: number }[]
   rules: { type: string; title: string; description: string }[]
   scoring: { auto_grade: boolean; points_per_problem: number }
@@ -72,6 +73,7 @@ interface Team {
   xp: number; level: number; submissions: number
   members: Array<{ user_id: string; name: string; role: string }>
   achievements: Array<{ id: string; name: string }>
+  selected_problems?: string[]
 }
 
 interface Submission {
@@ -366,6 +368,33 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       await refreshSubmissions()
     } catch { setSubmitError('Network error') }
     finally { setSubmitting(false) }
+  }
+
+  const [lockingProblem, setLockingProblem] = useState(false)
+  const handleLockProblem = async (problemSlug: string) => {
+    if (!hackathon || !hasSession) return
+    const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+    if (!team) return
+    
+    setLockingProblem(true)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${hackathon.id}/teams/${team.id}/select-problem`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ problem_slug: problemSlug })
+      })
+      const data = await res.json()
+      if (!res.ok) {
+        addToast({ type: 'error', title: data.error || 'Failed to select problem' })
+        return
+      }
+      addToast({ type: 'success', title: 'Problem Selected!', message: 'You can now submit solutions for this problem.' })
+      await refreshAll() // to update team.selected_problems
+    } catch {
+      addToast({ type: 'error', title: 'Network error' })
+    } finally {
+      setLockingProblem(false)
+    }
   }
 
   const myClaim = (problemSlug: string) => claims[problemSlug]?.user_id === hasSession
@@ -979,15 +1008,46 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     <span className="font-medium text-foreground">{selectedProblem.points}</span> pts
                   </div>
                   <Button variant="outline" size="sm" onClick={closeProblemPanel}>Close</Button>
-                  <Button
-                    size="sm"
-                    className="gap-2"
-                    onClick={() => void handleSheetSubmit()}
-                    disabled={submitting || !sheetCode.trim()}
-                  >
-                    {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
-                    {submitting ? 'Submitting...' : 'Submit Solution'}
-                  </Button>
+                  
+                  {(() => {
+                    const solveLimit = hackathon.solve_limit || 0
+                    const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+                    const selected = team?.selected_problems || []
+                    const isSelected = selected.includes(selectedProblem.problem_slug)
+                    
+                    if (solveLimit > 0 && !isSelected) {
+                      if (selected.length >= solveLimit) {
+                        return (
+                          <div className="text-xs text-destructive flex items-center gap-1.5">
+                            <AlertCircle className="h-4 w-4" /> Limit Reached
+                          </div>
+                        )
+                      }
+                      return (
+                        <Button
+                          size="sm"
+                          className="gap-2"
+                          onClick={() => void handleLockProblem(selectedProblem.problem_slug)}
+                          disabled={lockingProblem}
+                        >
+                          {lockingProblem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
+                          {lockingProblem ? 'Selecting...' : 'Select Problem to Solve'}
+                        </Button>
+                      )
+                    }
+
+                    return (
+                      <Button
+                        size="sm"
+                        className="gap-2"
+                        onClick={() => void handleSheetSubmit()}
+                        disabled={submitting || !sheetCode.trim()}
+                      >
+                        {submitting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                        {submitting ? 'Submitting...' : 'Submit Solution'}
+                      </Button>
+                    )
+                  })()}
                 </div>
               )}
             </>

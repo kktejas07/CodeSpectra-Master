@@ -5,6 +5,16 @@ import { AlertTriangle, Package, Shield, ExternalLink, Upload } from 'lucide-rea
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogFooter,
+} from '@/components/ui/dialog'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Textarea } from '@/components/ui/textarea'
 import type { DepIssue } from '@/lib/dependency-scanner'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -53,12 +63,16 @@ export function DependencyScannerPanel() {
     }
   }
 
-  const addFile = () => {
-    const path = window.prompt('File path (e.g., package.json):')
-    if (!path) return
-    const content = window.prompt('File content:')
-    if (content === null) return
-    setFiles((prev) => [...prev.filter((x) => x.path !== path), { path, content }])
+  const [showAddModal, setShowAddModal] = useState(false)
+  const [newFilePath, setNewFilePath] = useState('')
+  const [newFileContent, setNewFileContent] = useState('')
+
+  const handleAddSubmit = () => {
+    if (!newFilePath.trim()) return
+    setFiles((prev) => [...prev.filter((x) => x.path !== newFilePath), { path: newFilePath, content: newFileContent }])
+    setShowAddModal(false)
+    setNewFilePath('')
+    setNewFileContent('')
   }
 
   return (
@@ -81,7 +95,7 @@ export function DependencyScannerPanel() {
             <div className="flex items-center justify-between">
               <span className="text-sm font-medium">Manifest Files ({files.length})</span>
               <div className="flex gap-2">
-                <Button variant="outline" size="sm" onClick={addFile}>
+                <Button variant="outline" size="sm" onClick={() => setShowAddModal(true)}>
                   <Upload className="h-3.5 w-3.5 mr-1" /> Add File
                 </Button>
                 {DEMO_FILES.map((f) => (
@@ -177,6 +191,40 @@ export function DependencyScannerPanel() {
           </CardContent>
         </Card>
       )}
+
+      <Dialog open={showAddModal} onOpenChange={setShowAddModal}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Add Manifest File</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label htmlFor="filePath">File Path (e.g., package.json)</Label>
+              <Input
+                id="filePath"
+                value={newFilePath}
+                onChange={(e) => setNewFilePath(e.target.value)}
+                placeholder="package.json"
+              />
+            </div>
+            <div className="space-y-2">
+              <Label htmlFor="fileContent">File Content</Label>
+              <Textarea
+                id="fileContent"
+                value={newFileContent}
+                onChange={(e) => setNewFileContent(e.target.value)}
+                placeholder='{\n  "dependencies": {\n    "lodash": "^4.17.19"\n  }\n}'
+                rows={10}
+                className="font-mono text-xs"
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddModal(false)}>Cancel</Button>
+            <Button onClick={handleAddSubmit} disabled={!newFilePath.trim()}>Add</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

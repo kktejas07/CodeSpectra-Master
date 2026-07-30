@@ -48,6 +48,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       { type: 'conduct' as const, title: 'Code of Conduct', description: 'Plagiarism or collusion with other teams will result in disqualification.' },
     ],
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
+    solve_limit: 0,
     cert_template: 'classic' as 'classic' | 'modern' | 'minimal',
     banner_url: '',
   })
@@ -88,6 +89,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 penalty_per_attempt: Number(doc.scoring.penalty_per_attempt) || 0,
               }
             : form.scoring,
+          solve_limit: Number(doc.solve_limit) || 0,
           banner_url: typeof doc.banner_url === 'string' ? doc.banner_url : '',
           cert_template: (doc.cert_template as 'classic' | 'modern' | 'minimal') || 'classic',
         })
@@ -248,6 +250,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         starts_at: fromZonedDatetimeString(form.starts_at, tz),
         banner_url: form.banner_url,
         cert_template: form.cert_template,
+        solve_limit: form.solve_limit || undefined,
       }
       if (!isLocked) {
         body.tasks = form.tasks.map((t) => ({
@@ -714,14 +717,14 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
 
             <div className="rounded border p-4 space-y-3">
               <h4 className="text-sm font-semibold">Scoring Configuration</h4>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <Label>Points per problem</Label>
                   <Input type="number" value={form.scoring.points_per_problem}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, points_per_problem: Number(e.target.value) } }))} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Bonus time (early submit bonus)</Label>
+                  <Label>Bonus time (early submit)</Label>
                   <Input type="number" value={form.scoring.bonus_time}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, bonus_time: Number(e.target.value) } }))} />
                 </div>
@@ -729,6 +732,11 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                   <Label>Penalty per attempt</Label>
                   <Input type="number" value={form.scoring.penalty_per_attempt}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, penalty_per_attempt: Number(e.target.value) } }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Solve Limit (0 = All)</Label>
+                  <Input type="number" value={form.solve_limit} min={0}
+                    onChange={(e) => setForm((f) => ({ ...f, solve_limit: Number(e.target.value) }))} />
                 </div>
               </div>
               <div className="flex items-center gap-2">

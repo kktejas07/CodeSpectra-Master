@@ -43,6 +43,7 @@ export default function HackathonCreatePage() {
       { type: 'conduct' as const, title: 'Code of Conduct', description: 'Plagiarism or collusion with other teams will result in disqualification.' },
     ],
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
+    solve_limit: 0,
     cert_template: 'classic' as 'classic' | 'modern' | 'minimal',
     banner_url: '',
   })
@@ -212,6 +213,7 @@ export default function HackathonCreatePage() {
             problem_slug: t.slug, problem_title: t.title,
             points: t.points, difficulty: t.difficulty, required: t.required,
           })),
+          solve_limit: form.solve_limit || undefined,
           rules: form.rules,
           scoring: form.scoring,
           banner_url: form.banner_url,
@@ -653,14 +655,14 @@ export default function HackathonCreatePage() {
 
             <div className="rounded border p-4 space-y-3">
               <h4 className="text-sm font-semibold">Scoring Configuration</h4>
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-4 md:grid-cols-4">
                 <div className="space-y-2">
                   <Label>Points per problem</Label>
                   <Input type="number" value={form.scoring.points_per_problem}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, points_per_problem: Number(e.target.value) } }))} />
                 </div>
                 <div className="space-y-2">
-                  <Label>Bonus time (early submit bonus)</Label>
+                  <Label>Bonus time (early submit)</Label>
                   <Input type="number" value={form.scoring.bonus_time}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, bonus_time: Number(e.target.value) } }))} />
                 </div>
@@ -668,6 +670,11 @@ export default function HackathonCreatePage() {
                   <Label>Penalty per attempt</Label>
                   <Input type="number" value={form.scoring.penalty_per_attempt}
                     onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, penalty_per_attempt: Number(e.target.value) } }))} />
+                </div>
+                <div className="space-y-2">
+                  <Label>Solve Limit (0 = All)</Label>
+                  <Input type="number" value={form.solve_limit} min={0}
+                    onChange={(e) => setForm((f) => ({ ...f, solve_limit: Number(e.target.value) }))} />
                 </div>
               </div>
               <div className="flex items-center gap-2">

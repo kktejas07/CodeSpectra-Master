@@ -82,7 +82,7 @@ export function AnalyticsDashboard({
               <XAxis dataKey="date" stroke="hsl(var(--muted-foreground))" tick={{ fill: 'hsl(var(--muted-foreground))' }} />
               <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip
-                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }}
+                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} itemStyle={{ color: 'hsl(var(--foreground))' }}
               />
               <Line type="monotone" dataKey="users" stroke="hsl(var(--primary))" strokeWidth={2} />
             </LineChart>
@@ -117,7 +117,7 @@ export function AnalyticsDashboard({
                   ))}
                 </Pie>
                 <Tooltip
-                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} itemStyle={{ color: 'hsl(var(--foreground))' }}
                 />
               </PieChart>
             </ResponsiveContainer>
@@ -160,7 +160,7 @@ export function AnalyticsDashboard({
               <YAxis stroke="hsl(var(--muted-foreground))" allowDecimals={false} tick={{ fill: 'hsl(var(--muted-foreground))' }} />
               <Tooltip
                 cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }}
-                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }}
+                contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} itemStyle={{ color: 'hsl(var(--foreground))' }}
               />
               <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
               <Bar dataKey="challenges" name="Submissions" fill="#3b82f6" />

@@ -79,6 +79,8 @@ export interface HackathonDoc {
   event_type?: 'hackathon' | 'speed_contest'
   /** Default per-problem time limit in minutes for speed_contests. Default: 30. */
   per_problem_time_minutes?: number
+  /** Limit the number of problems a team is allowed to solve. If undefined, no limit. */
+  solve_limit?: number
   /** Assigned problems for this event */
   tasks: HackathonTask[]
   /** Event-specific rules */
@@ -121,6 +123,8 @@ export interface HackathonTeamDoc {
   xp: number
   level: number
   achievements: HackathonAchievement[]
+  /** Slugs of problems the team has explicitly locked in for solving, up to the solve_limit */
+  selected_problems?: string[]
   submissions: number
   created_at: string
   updated_at: string
