@@ -114,7 +114,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
     // If the order used a trial coupon, mark the subscription
     if (order.coupon_id) {
-      const { billingCoupons } = await import('@/lib/db/billing')
+      const { billingCoupons, recordCouponRedemption } = await import('@/lib/db/billing')
       const couponsCol = await billingCoupons()
       const coupon = await couponsCol.findOne({ id: order.coupon_id })
       if (coupon?.discount_type === 'trial' && coupon?.trial_duration_days) {
@@ -125,6 +125,8 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         )
         subscription = { ...subscription, trial_ends_at: trialEnds } as any
       }
+      // Track redemption
+      await recordCouponRedemption(order.coupon_id, user.id, order.id, order.plan_id).catch(() => {})
     }
   }
 

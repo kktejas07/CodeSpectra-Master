@@ -6,7 +6,7 @@
  * integration, so both payment providers share a common data model.
  */
 import type Stripe from 'stripe'
-import { billingOrders, billingPayments, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
+import { billingOrders, billingPayments, billingSubscriptions, recordCouponRedemption, newId, nowIso } from '@/lib/db/billing'
 
 /** Sync a checkout.session.completed event from Stripe */
 export async function syncCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
@@ -61,6 +61,11 @@ export async function syncCheckoutSessionCompleted(session: Stripe.Checkout.Sess
         created_at: nowIso(),
       })
     }
+  }
+
+  const couponId = String(session.metadata?.coupon_id || '')
+  if (couponId) {
+    await recordCouponRedemption(couponId, userId, orderId, planId).catch(() => {})
   }
 }
 

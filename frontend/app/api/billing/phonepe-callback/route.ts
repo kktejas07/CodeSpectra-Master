@@ -148,4 +148,10 @@ async function processSuccessfulPayment(merchantTransactionId: string, amount: n
       })
     }
   }
+
+  // Record coupon redemption if applicable
+  if (order.coupon_id) {
+    const { recordCouponRedemption } = await import('@/lib/db/billing')
+    await recordCouponRedemption(order.coupon_id, order.user_id, order.id, order.plan_id).catch(() => {})
+  }
 }

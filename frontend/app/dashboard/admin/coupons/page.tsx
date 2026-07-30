@@ -9,7 +9,7 @@ import { DataTable, type DataTableColumn, type BulkAction } from '@/components/u
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Loader2, Plus, Tag, Trash2, Pencil, Power, PowerOff } from 'lucide-react'
+import { Loader2, Plus, Tag, Trash2, Pencil, Power, PowerOff, Users } from 'lucide-react'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog'
 import { Label } from '@/components/ui/label'
 import {
@@ -46,6 +46,7 @@ export default function CouponsAdminPage() {
   const [saving, setSaving] = useState(false)
   const [editCoupon, setEditCoupon] = useState<Coupon | null>(null)
   const [confirmDeleteCoupon, setConfirmDeleteCoupon] = useState<{ id: string; code: string } | null>(null)
+  const [viewRedemptions, setViewRedemptions] = useState<Coupon | null>(null)
 
   const [code, setCode] = useState('')
   const [type, setType] = useState<'percentage' | 'flat' | 'trial'>('percentage')
@@ -53,6 +54,8 @@ export default function CouponsAdminPage() {
   const [trialDays, setTrialDays] = useState('')
   const [maxUses, setMaxUses] = useState('')
   const [validUntil, setValidUntil] = useState('')
+  const [currency, setCurrency] = useState('USD')
+  const CURRENCY_MAP: Record<string, string> = { USD: '$', INR: '₹', EUR: '€', GBP: '£' }
 
   const openCreate = () => {
     setEditCoupon(null)
@@ -80,7 +83,15 @@ export default function CouponsAdminPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { if (gate.ready) fetchCoupons() }, [gate.ready])
+  useEffect(() => { if (gate.ready) { fetchCoupons(); loadCurrency() } }, [gate.ready])
+
+  const loadCurrency = async () => {
+    try {
+      const res = await fetch('/api/admin/platform-settings', { credentials: 'include' })
+      const data = await res.json()
+      if (data?.platform_currency) setCurrency(data.platform_currency)
+    } catch { /* ignore */ }
+  }
 
   const handleSave = async () => {
     try { setSaving(true)
@@ -126,13 +137,14 @@ export default function CouponsAdminPage() {
   const columns: DataTableColumn<Coupon>[] = [
     { key: 'code', header: 'Code', cell: (r) => <span className="font-mono font-bold">{r.code}</span> },
     { key: 'discount', header: 'Discount',
-      cell: (r) => r.discount_type === 'trial' ? `Free ${r.trial_duration_days || '?'}d` : r.discount_type === 'percentage' ? `${r.discount_value}%` : `₹${r.discount_value}` },
+      cell: (r) => r.discount_type === 'trial' ? `Free ${r.trial_duration_days || '?'}d` : r.discount_type === 'percentage' ? `${r.discount_value}%` : `${CURRENCY_MAP[currency] || currency}${r.discount_value}` },
     { key: 'usage', header: 'Usage', cell: (r) => <span>{r.current_uses} / {r.max_uses > 0 ? r.max_uses : '∞'}</span> },
     { key: 'status', header: 'Status',
       cell: (r) => r.active ? <Badge className="bg-green-500/10 text-green-600">Active</Badge> : <Badge variant="secondary">Inactive</Badge> },
     { key: 'expiry', header: 'Expiry', cell: (r) => <span className="text-muted-foreground text-xs">{r.valid_until ? new Date(r.valid_until).toLocaleDateString() : 'Never'}</span> },
     { key: 'actions', header: 'Actions', cell: (r) => (
       <div className="flex items-center gap-1">
+        <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => setViewRedemptions(r)} title="View users"><Users className="h-3 w-3" /></Button>
         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => openEdit(r)}><Pencil className="h-3 w-3" /></Button>
         <Button variant="ghost" size="sm" className="h-7 text-xs" onClick={() => toggleActive(r)} title={r.active ? 'Deactivate' : 'Activate'}>
           {r.active ? <PowerOff className="h-3 w-3" /> : <Power className="h-3 w-3" />}
@@ -175,7 +187,7 @@ export default function CouponsAdminPage() {
                 <SelectTrigger className="col-span-3"><SelectValue /></SelectTrigger>
                 <SelectContent>
                   <SelectItem value="percentage">Percentage (%)</SelectItem>
-                  <SelectItem value="flat">Flat Amount (INR)</SelectItem>
+                  <SelectItem value="flat">Flat Amount ({currency})</SelectItem>
                   <SelectItem value="trial">Free Trial (Days)</SelectItem>
                 </SelectContent>
               </Select>
@@ -210,6 +222,43 @@ export default function CouponsAdminPage() {
       </Dialog>
 
       <DataTable columns={columns} data={coupons} searchPlaceholder="Search coupons..." searchKeys={['code'] as any} bulkActions={bulkActions} loading={loading} emptyMessage="No coupons yet." pageSize={20} />
+
+      <Dialog open={!!viewRedemptions} onOpenChange={(o) => { if (!o) setViewRedemptions(null) }}>
+        <DialogContent className="sm:max-w-[550px]">
+          <DialogHeader>
+            <DialogTitle>Redemptions — {viewRedemptions?.code}</DialogTitle>
+            <DialogDescription>
+              Users who have used this coupon. {viewRedemptions?.current_uses} total uses.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="max-h-[400px] overflow-y-auto">
+            {(viewRedemptions as any)?.redemptions && (viewRedemptions as any).redemptions.length > 0 ? (
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b text-left text-xs text-muted-foreground">
+                    <th className="py-2 pr-2">User ID</th>
+                    <th className="py-2 pr-2">Order</th>
+                    <th className="py-2 pr-2">Plan</th>
+                    <th className="py-2">Date</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {(viewRedemptions as any).redemptions.map((r: any, i: number) => (
+                    <tr key={i} className="border-b last:border-0">
+                      <td className="py-2 pr-2 font-mono text-xs text-muted-foreground max-w-[120px] truncate" title={r.user_id}>{r.user_id?.slice(0, 12)}…</td>
+                      <td className="py-2 pr-2 text-xs text-muted-foreground">{r.order_id ? r.order_id.slice(0, 8) + '…' : '—'}</td>
+                      <td className="py-2 pr-2 text-xs">{r.plan_id || '—'}</td>
+                      <td className="py-2 text-xs text-muted-foreground">{r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : '—'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            ) : (
+              <p className="text-sm text-muted-foreground py-4 text-center">No redemptions recorded yet. Redemptions from new payments will appear here.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={!!confirmDeleteCoupon} onOpenChange={(open) => !open && setConfirmDeleteCoupon(null)}>
         <AlertDialogContent>

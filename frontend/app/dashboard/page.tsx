@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle, ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users, ExternalLink, Loader2 } from 'lucide-react'
+import { TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle, ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users, ExternalLink, Loader2, Crown } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
@@ -30,6 +30,7 @@ export default function DashboardPage() {
   const addToast = useToast()
   const [role, setRole] = useState<string | null>(null)
   const [stats, setStats] = useState({ scans: 0, reviews: 0, fixes: 0, challenges: 0, dailyChallenges: 0, streak: 0, xp: 0 })
+  const [plan, setPlan] = useState<string | null>(null)
   const [activities, setActivities] = useState<ActivityItem[]>([])
   const [myTeams, setMyTeams] = useState<any[]>([])
   const [heatmap, setHeatmap] = useState<{
@@ -61,7 +62,8 @@ export default function DashboardPage() {
       fetch('/api/user/activity?limit=10', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/user/heatmap?weeks=52', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch('/api/hackathons/my-teams', { credentials: 'include' }).then(r => r.json()).catch(() => null),
-    ]).then(([statsData, activityData, heatmapData, teamsData]) => {
+      fetch('/api/billing/me', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([statsData, activityData, heatmapData, teamsData, billingData]) => {
       if (statsData && !statsData.error) {
         setStats({
           scans: statsData.scans ?? 0,
@@ -85,6 +87,9 @@ export default function DashboardPage() {
         })
       }
       if (teamsData?.teams) setMyTeams(teamsData.teams)
+      if (billingData?.subscription) {
+        setPlan(billingData.subscription.plan_id || null)
+      }
     })
   }, [])
 
@@ -101,6 +106,12 @@ export default function DashboardPage() {
           <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
             <Flame className="h-4 w-4 text-orange-500" />
             <span className="text-sm font-medium">{stats.streak} day streak</span>
+          </Badge>
+        )}
+        {plan && (
+          <Badge variant="default" className="gap-1.5 px-3 py-1.5">
+            <Crown className="h-3.5 w-3.5" />
+            <span className="text-sm font-medium">{plan.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
           </Badge>
         )}
       </div>

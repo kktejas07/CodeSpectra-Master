@@ -32,6 +32,7 @@ import {
   Zap,
   CheckCircle2,
   XCircle,
+  ScrollText,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -130,7 +131,8 @@ const BRANDING_KEYS: GeneralKey[] = [
   'terms_of_service_url',
 ]
 const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'maintenance_mode', 'enable_sso_login', 'enable_chatbot']
-const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard', 'certificate_template']
+const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
+const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
@@ -287,7 +289,7 @@ function SystemSettingsInner() {
   const addToast = useToast()
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState<
-    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | null
+    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | null
   >(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [form, setForm] = useState<General>(defaults)
@@ -430,7 +432,7 @@ function SystemSettingsInner() {
   }, [loading, secretsMeta])
 
   const saveKeys = useCallback(
-    async (keys: GeneralKey[], section: 'branding' | 'ops' | 'product') => {
+    async (keys: GeneralKey[], section: 'branding' | 'ops' | 'product' | 'certificates') => {
       setSavingKey(section)
       try {
         const body: Record<string, unknown> = {}
@@ -1119,17 +1121,41 @@ function SystemSettingsInner() {
                 onCheckedChange={(v) => setForm((f) => ({ ...f, show_public_leaderboard: v }))}
               />
             </div>
-            <div className="space-y-4 p-6 border-t border-border/60">
+
+          </div>
+          <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
+            <Button
+              className="gap-2 rounded-lg"
+              onClick={() => void saveKeys(PRODUCT_KEYS, 'product')}
+              disabled={savingKey !== null}
+            >
+              {savingKey === 'product' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save product & access
+            </Button>
+          </div>
+        </Card>
+          ) : null}
+
+          {section === 'certificates' ? (
+        <Card className="rounded-xl border-border/60 shadow-sm">
+          <div className="border-b border-border/60 px-6 py-4">
+            <div className="flex items-center gap-2">
+              <ScrollText className="h-5 w-5 text-primary" />
+              <h3 className="font-semibold text-foreground">Certificates</h3>
+            </div>
+            <p className="mt-1 text-sm text-muted-foreground">
+              Choose the default certificate template for all events. Preview each design before saving.
+            </p>
+          </div>
+          <div className="space-y-6 p-6">
+            <div className="space-y-4">
               <div className="min-w-0 space-y-0.5">
-                <Label className="text-foreground">
-                  Certificate Template
-                </Label>
-                <p className="text-sm text-muted-foreground">Default template for all event certificates. Click a card to select, then preview before saving.</p>
+                <Label className="text-foreground">Default Template</Label>
+                <p className="text-sm text-muted-foreground">This template is used when issuing certificates after event completion.</p>
               </div>
               <div className="grid grid-cols-3 gap-3">
                 {TEMPLATES.map((t) => {
                   const selected = form.certificate_template === t.key
-                  const previewData = { ...CERT_PREVIEW_DATA, template: t.key as TemplateKey }
                   return (
                     <button
                       key={t.key}
@@ -1176,17 +1202,26 @@ function SystemSettingsInner() {
                 </Button>
               </div>
             </div>
+
+            <style jsx global>{`
+              .cert-sheet {
+                aspect-ratio: 1123 / 794;
+                width: 100%;
+                min-height: 70vh;
+              }
+            `}</style>
+
             <Dialog open={!!previewTemplate} onOpenChange={(o) => { if (!o) setPreviewTemplate(null) }}>
-              <DialogContent className="max-w-5xl w-[95vw] max-h-[90vh] overflow-y-auto">
+              <DialogContent className="!max-w-[95vw] !w-[1400px] max-h-[95vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Certificate Preview — {TEMPLATES.find((t) => t.key === previewTemplate)?.label || previewTemplate}</DialogTitle>
                   <DialogDescription>
-                    This is how the certificate will look with sample data. The actual certificate will use real participant details.
+                    This is how the certificate will render with sample data. Actual certificates use real participant details.
                   </DialogDescription>
                 </DialogHeader>
                 {previewTemplate && (
-                  <div className="w-full overflow-hidden rounded-lg border shadow-sm" style={{ aspectRatio: '1.414 / 1' }}>
-                    <div className="w-full h-full [&_.cert-sheet]:!w-full [&_.cert-sheet]:!h-full [&_.cert-sheet]:!min-h-0 [&_.cert-sheet]:!min-w-0">
+                  <div className="w-full max-w-[1100px] mx-auto">
+                    <div className="overflow-hidden rounded-lg border shadow-sm">
                       <CertificateRenderer data={CERT_PREVIEW_DATA} template={previewTemplate} />
                     </div>
                   </div>
@@ -1197,11 +1232,11 @@ function SystemSettingsInner() {
           <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
             <Button
               className="gap-2 rounded-lg"
-              onClick={() => void saveKeys(PRODUCT_KEYS, 'product')}
+              onClick={() => void saveKeys(CERTIFICATE_KEYS, 'certificates')}
               disabled={savingKey !== null}
             >
-              {savingKey === 'product' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-              Save product & access
+              {savingKey === 'certificates' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save certificate settings
             </Button>
           </div>
         </Card>

@@ -23,6 +23,10 @@ const PLAN_COLORS: Record<string, string> = {
   enterprise: 'bg-purple-500/20 text-purple-700',
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', INR: '₹', EUR: '€', GBP: '£', AUD: 'A$', CAD: 'C$',
+}
+
 export default function PlansPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
@@ -30,6 +34,7 @@ export default function PlansPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState('free')
+  const [currency, setCurrency] = useState('USD')
 
   const fetchPlans = async () => {
     setLoading(true)
@@ -41,7 +46,15 @@ export default function PlansPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchPlans() }, [])
+  useEffect(() => { fetchPlans(); loadCurrency() }, [])
+
+  const loadCurrency = async () => {
+    try {
+      const res = await fetch('/api/admin/platform-settings', { credentials: 'include' })
+      const data = await res.json()
+      if (data?.platform_currency) setCurrency(data.platform_currency)
+    } catch { /* ignore */ }
+  }
 
   const currentPlan = plans.find(p => p.plan === selectedPlan)
 
@@ -64,6 +77,12 @@ export default function PlansPage() {
         f.key === featureKey ? { ...f, limit } : f
       )
     }
+    setPlans(plans.map(p => p.plan === selectedPlan ? updated : p))
+  }
+
+  const updatePrice = (price: string) => {
+    if (!currentPlan) return
+    const updated = { ...currentPlan, price }
     setPlans(plans.map(p => p.plan === selectedPlan ? updated : p))
   }
 
@@ -125,7 +144,7 @@ export default function PlansPage() {
                 : 'bg-muted text-muted-foreground hover:bg-muted/80'
             }`}
           >
-            {p.name} {p.price && <span className="text-xs opacity-70 ml-1">{p.price}</span>}
+            {p.name} {p.price ? <span className="text-xs opacity-70 ml-1">{CURRENCY_SYMBOLS[currency] || ''}{p.price.replace(/[^0-9.]/g, '')}/mo</span> : null}
           </button>
         ))}
       </div>
@@ -155,7 +174,15 @@ export default function PlansPage() {
                 </div>
                 <div>
                   <label className="text-[10px] uppercase tracking-wider text-muted-foreground">Price</label>
-                  <Input value={currentPlan.price || ''} disabled className="mt-1 h-8 text-xs" />
+                  <div className="relative mt-1">
+                    <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-xs text-muted-foreground font-mono">{CURRENCY_SYMBOLS[currency] || currency}</span>
+                    <Input
+                      value={currentPlan.price || ''}
+                      onChange={e => updatePrice(e.target.value)}
+                      className="pl-7 h-8 text-xs"
+                      placeholder="29/month"
+                    />
+                  </div>
                 </div>
               </div>
             </div>

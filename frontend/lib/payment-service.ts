@@ -172,7 +172,7 @@ export class PaymentService {
 
     if (plan.amount_paise === 0) {
       // 100% discount, bypass gateway and immediately activate subscription
-      const { billingSubscriptions, billingOrders, nowIso, newId } = await import('@/lib/db/billing')
+      const { billingSubscriptions, billingOrders, nowIso, newId, recordCouponRedemption } = await import('@/lib/db/billing')
       const subs = await billingSubscriptions()
       const existing = await subs.findOne({ user_id: userId, status: 'active' })
       const startsAt = nowIso()
@@ -209,6 +209,10 @@ export class PaymentService {
           created_at: nowIso(),
           updated_at: nowIso(),
         } as any)
+      }
+
+      if (couponId) {
+        await recordCouponRedemption(couponId, userId, undefined, resolvedPlanId).catch(() => {})
       }
 
       return {

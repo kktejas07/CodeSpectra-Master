@@ -13,6 +13,7 @@ import {
   FileText,
   Globe2,
   Smartphone,
+  ScrollText,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -33,6 +34,7 @@ const ITEMS: {
   { id: 'mail', label: 'Mail & email APIs', icon: Mail },
   { id: 'ops', label: 'Operations', icon: Sliders },
   { id: 'product', label: 'Product & access', icon: Users },
+  { id: 'certificates', label: 'Certificates', icon: ScrollText },
   { id: 'integrations', label: 'Integrations', icon: KeyRound },
   { id: 'payments', label: 'Payments & billing', icon: CreditCard },
   { id: 'email-templates', label: 'Email templates', icon: FileText },
