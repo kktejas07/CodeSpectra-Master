@@ -78,7 +78,9 @@ export async function GET() {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()
-    const data = await db.collection('exams').find({}).toArray()
+    const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
+    const filter = isAdmin ? {} : { access_type: 'open' }
+    const data = await db.collection('exams').find(filter).toArray()
     
     // Aggregate attempts and average scores from submissions
     const stats = await db.collection('exam_submissions').aggregate([
