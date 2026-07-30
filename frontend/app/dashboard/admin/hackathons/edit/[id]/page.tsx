@@ -32,6 +32,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [step, setStep] = useState(1)
+  const [eventStatus, setEventStatus] = useState<string>('')
 
   const [form, setForm] = useState({
     name: '',
@@ -55,6 +56,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       .then(r => r.json())
       .then(doc => {
         if (doc.error) { setError(doc.error); return }
+        setEventStatus(doc.status || '')
         const startsAt = new Date(doc.starts_at || Date.now())
         setForm({
           name: String(doc.name || ''),
@@ -234,6 +236,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     if (!form.name.trim()) return
     setBusy(true); setError(null)
     try {
+      const isLocked = eventStatus === 'live' || eventStatus === 'closed'
       const body: Record<string, unknown> = {
         name: form.name,
         description: form.description,
@@ -241,16 +244,18 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         max_per_team: form.max_per_team,
         timeout_minutes: form.timeout_minutes,
         starts_at: fromZonedDatetimeString(form.starts_at, tz),
-        tasks: form.tasks.map((t) => ({
+        banner_url: form.banner_url,
+      }
+      if (!isLocked) {
+        body.tasks = form.tasks.map((t) => ({
           problem_slug: t.slug,
           problem_title: t.title,
           points: t.points,
           difficulty: t.difficulty,
           required: t.required,
-        })),
-        rules: form.rules,
-        scoring: form.scoring,
-        banner_url: form.banner_url,
+        }))
+        body.rules = form.rules
+        body.scoring = form.scoring
       }
       const res = await csrfFetch(`/api/hackathons/${encodeURIComponent(id)}`, {
         method: 'PATCH',
@@ -292,16 +297,20 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         {/* Step indicator */}
         <div className="flex items-center justify-between">
           <div className="flex gap-3 text-sm">
-            {[
-              { n: 1, label: 'Basics' },
-              { n: 2, label: 'Problems' },
-              { n: 3, label: 'Rules & Scoring' },
-            ].map((s) => (
-              <button key={s.n} onClick={() => setStep(s.n)}
-                className={`px-4 py-2 rounded-lg transition-colors ${step === s.n ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
-                {s.n}. {s.label}
-              </button>
-            ))}
+              {[
+                  { n: 1, label: 'Basics' },
+                  { n: 2, label: 'Problems' },
+                  { n: 3, label: 'Rules & Scoring' },
+                ].map((s) => {
+                  const locked = (eventStatus === 'live' || eventStatus === 'closed') && s.n >= 2
+                  return (
+                    <button key={s.n} onClick={() => setStep(s.n)}
+                      disabled={locked}
+                      className={`px-4 py-2 rounded-lg transition-colors ${step === s.n ? 'bg-primary text-primary-foreground font-medium' : locked ? 'bg-muted text-muted-foreground/40 cursor-not-allowed' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
+                      {s.n}. {s.label} {locked ? '🔒' : ''}
+                    </button>
+                  )
+                })}
           </div>
           <span className="text-xs text-muted-foreground">
             {step < 3 ? `${3 - step} step${step < 2 ? 's' : ''} remaining` : 'Ready to update'}
@@ -379,7 +388,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               />
             </div>
             </div>
-            <Button onClick={() => setStep(2)}>Next: Problems →</Button>
+            <Button onClick={() => setStep(2)} disabled={eventStatus === 'live' || eventStatus === 'closed'}>Next: Problems →</Button>
           </div>
         )}
 
@@ -387,6 +396,11 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         {step === 2 && (
           <div className="space-y-6">
             <h3 className="font-semibold text-lg">Assign Problems</h3>
+            {(eventStatus === 'live' || eventStatus === 'closed') && (
+              <Card className="border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>⚠ Locked</strong> — Problems cannot be modified while the event is {eventStatus}. Go back to Basics to update other settings.
+              </Card>
+            )}
             <p className="text-sm text-muted-foreground">
               Choose how to add problems — pick from your library, write your own, or generate with AI.
             </p>
@@ -653,7 +667,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>← Back</Button>
-              <Button onClick={() => setStep(3)}>Next: Rules →</Button>
+              <Button onClick={() => setStep(3)} disabled={eventStatus === 'live' || eventStatus === 'closed'}>Next: Rules →</Button>
             </div>
           </div>
         )}
@@ -662,6 +676,11 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         {step === 3 && (
           <div className="space-y-6">
             <h3 className="font-semibold text-lg">Rules & Scoring</h3>
+            {(eventStatus === 'live' || eventStatus === 'closed') && (
+              <Card className="border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>⚠ Locked</strong> — Rules & Scoring cannot be modified while the event is {eventStatus}. Go back to Basics to update other settings.
+              </Card>
+            )}
 
             <div className="space-y-4">
               {form.rules.map((r, i) => (

@@ -216,7 +216,11 @@ export default function HackathonDetailPage({
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ judges: judgeIds }),
       })
-      if (!res.ok) throw new Error('failed to save judges')
+      if (!res.ok) {
+        let msg = 'failed to save judges'
+        try { const errBody = await res.clone().json(); if (errBody.error) msg += `: ${errBody.error}` } catch {}
+        throw new Error(msg)
+      }
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -351,7 +355,7 @@ export default function HackathonDetailPage({
             </Badge>
           ))}
         </div>
-        <div className="flex gap-2">
+        <div className="relative flex gap-2">
           <Input
             placeholder="Search by name or email..."
             value={judgeInput}
@@ -361,7 +365,7 @@ export default function HackathonDetailPage({
           <Button size="sm" variant="outline" onClick={() => searchJudges()} disabled={judgeInput.trim().length < 2}>Search</Button>
           <Button size="sm" onClick={saveJudges}>Save Judges</Button>
           {judgeSearchResults.length > 0 && (
-            <div className="border rounded-md mt-1 max-h-36 overflow-y-auto bg-card">
+            <div className="absolute left-0 top-full z-50 w-full border rounded-md mt-1 max-h-36 overflow-y-auto bg-card shadow-lg">
               {judgeSearchResults.map((u) => (
                 <button
                   key={u.id}

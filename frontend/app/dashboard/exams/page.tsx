@@ -98,6 +98,20 @@ export default function ExamsPage() {
                     <BookOpen className="h-3.5 w-3.5" /> View Results
                   </Button>
                 </>
+              ) : exam.status === 'submitted' ? (
+                <>
+                  <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5 justify-center">
+                    <Clock className="h-3.5 w-3.5" /> Submitted — Awaiting Review
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm" 
+                    className="w-full gap-2 border-amber-500/30 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
+                    onClick={() => router.push(`/dashboard/exams/${exam.id}`)}
+                  >
+                    <Clock className="h-3.5 w-3.5" /> View Status
+                  </Button>
+                </>
               ) : (
                 <Button 
                   variant="default" 

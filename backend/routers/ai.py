@@ -77,9 +77,9 @@ import traceback
 
 def safe_ai_endpoint(fn):
     @functools.wraps(fn)
-    async def wrapper(request_or_req, *args, **kwargs):
+    async def wrapper(*args, **kwargs):
         try:
-            return await fn(request_or_req, *args, **kwargs)
+            return await fn(*args, **kwargs)
         except Exception:
             traceback.print_exc()
             return JSONResponse(

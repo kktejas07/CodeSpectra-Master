@@ -119,7 +119,8 @@ export async function PATCH(
   const col = await hackathons()
   const cur = await col.findOne({ id })
   if (!cur) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  if ((cur.status === 'live' || cur.status === 'closed') && (body.tasks || body.rules || body.scoring)) {
+  const hasProtectedFields = body.tasks !== undefined || body.rules !== undefined || body.scoring !== undefined
+  if ((cur.status === 'live' || cur.status === 'closed') && hasProtectedFields) {
     return NextResponse.json({ error: 'cannot modify tasks, rules, or scoring during or after the event' }, { status: 409 })
   }
   const newTimeout = body.timeout_minutes ?? cur.timeout_minutes

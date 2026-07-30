@@ -106,12 +106,13 @@ export async function GET() {
         ? Math.round((examStats.totalScore / examStats.totalMaxScore) * 100)
         : 0
 
+      const isReleased = userSub?.score_released === true
       return {
         ...exam,
         attempts: examStats.attempts,
         avgScore: avgPercent,
-        status: userSub ? 'completed' : 'pending',
-        score: userSub ? Math.round((userSub.score / (userSub.max_score || 1)) * 100) : undefined,
+        status: userSub ? (isReleased ? 'completed' : 'submitted') : 'pending',
+        ...(isReleased && { score: Math.round((userSub.score / (userSub.max_score || 1)) * 100) }),
       }
     })
 
