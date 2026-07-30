@@ -308,7 +308,7 @@ export default function ExamPage() {
         sessionKind="exam"
         sessionId={examId}
         enabled
-        enforceFullscreen
+        enforceFullscreen={false}
         captureInterval={30000}
         kickoutThreshold={5}
         blockKeyboardShortcuts

@@ -26,29 +26,30 @@ export async function POST(
   try {
     const db = await getMongoDb()
 
+    const inviteToken = body.inviteToken || req.headers.get('x-invite-token')
+
     if (gate && !('error' in gate)) {
       userId = gate.user.id
       email = gate.user.email
-    } else {
-      const token = body.inviteToken || req.headers.get('x-invite-token')
-      if (!token) {
-        return NextResponse.json({ error: 'Authentication or invitation token required' }, { status: 401 })
-      }
-      const invite = await db.collection('candidate_invites').findOne({ token })
+    }
+
+    // If an invite token is provided, validate it and mark as used on submission
+    if (inviteToken) {
+      const invite = await db.collection('candidate_invites').findOne({ token: inviteToken })
       if (!invite) {
         return NextResponse.json({ error: 'Invalid invitation token' }, { status: 403 })
       }
       if (invite.status === 'used') {
         return NextResponse.json({ error: 'This invitation has already been used' }, { status: 403 })
       }
-      userId = `candidate_${invite.email}`
-      email = invite.email
-
-      // Mark the invitation as used
+      if (!userId) userId = `candidate_${invite.email}`
+      if (!email) email = invite.email
       await db.collection('candidate_invites').updateOne(
-        { token },
+        { token: inviteToken },
         { $set: { status: 'used', updatedAt: nowIso() } }
       )
+    } else if (!gate || 'error' in gate) {
+      return NextResponse.json({ error: 'Authentication or invitation token required' }, { status: 401 })
     }
 
     const exams = db.collection('exams')

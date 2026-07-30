@@ -116,9 +116,13 @@ export default function CandidateAssessmentPage() {
   useEffect(() => {
     const fetchExam = async () => {
       try {
-        const res = await fetch(`/api/exams`, { credentials: 'include' })
-        const json = await res.json()
-        const found = json.data?.find((e: Exam) => e.id === params.id)
+        const res = await fetch(`/api/exams/${params.id}`, { credentials: 'include' })
+        if (!res.ok) {
+          addToast({ type: 'error', title: 'Assessment unavailable or invalid.' })
+          router.push('/')
+          return
+        }
+        const found = await res.json()
 
         if (!found || !found.published) {
           addToast({ type: 'error', title: 'Assessment unavailable or invalid.' })

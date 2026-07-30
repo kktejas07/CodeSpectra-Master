@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { candidateInvites } from '@/lib/db/admin'
 import { getMongoDb } from '@/lib/mongodb'
+import { nowIso } from '@/lib/db/ai'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -36,7 +37,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different candidate.' }, { status: 403 })
     }
 
-    await col.updateOne({ token }, { $set: { status: 'used' } })
+    await col.updateOne({ token }, { $set: { status: 'active', updatedAt: nowIso() } })
 
     return NextResponse.json({ ok: true })
   } catch (e: unknown) {

@@ -25,7 +25,7 @@ export async function POST(
       return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
     }
 
-    if (invite.status === 'used') {
+    if (invite.status === 'used' || invite.status === 'active') {
       return NextResponse.json({ error: 'This invitation has already been used to complete the assessment.' }, { status: 409 })
     }
 

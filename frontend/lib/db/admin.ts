@@ -64,7 +64,7 @@ export interface CandidateInviteDoc {
   assigned_assessments?: AssessmentStep[]
   allowed_languages?: string[]
   invited_by: string
-  status: 'pending' | 'used' | 'expired'
+  status: 'pending' | 'active' | 'used' | 'expired'
   expires_at: string
   created_at: string
   updated_at?: string | null
