@@ -80,7 +80,7 @@ export async function PATCH(
     reviewed_at: now,
   }
   if (sub.status === 'pending') {
-    $set.status = 'under_review'
+    $set.status = isAdmin ? 'released' : 'under_review'
   }
 
   const scoreEntry = {

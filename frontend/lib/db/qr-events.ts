@@ -98,6 +98,8 @@ export interface HackathonDoc {
   /** Branding */
   banner_url?: string
   color_theme?: string
+  /** Certificate template */
+  cert_template?: 'classic' | 'modern' | 'minimal'
   created_by: string
   created_at: string
   updated_at: string

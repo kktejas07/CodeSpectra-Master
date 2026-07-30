@@ -79,7 +79,7 @@ export async function PATCH(
   }
 
   const $set: Record<string, unknown> = { updated_at: nowIso() }
-  for (const k of ['name', 'description', 'num_teams', 'max_per_team', 'status', 'event_type', 'per_problem_time_minutes'] as const) {
+  for (const k of ['name', 'description', 'num_teams', 'max_per_team', 'status', 'event_type', 'per_problem_time_minutes', 'cert_template'] as const) {
     if (k in body) $set[k] = body[k]
   }
   if (Array.isArray(body.judges)) {

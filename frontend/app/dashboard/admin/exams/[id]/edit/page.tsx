@@ -45,6 +45,7 @@ interface Exam {
   questions: number
   questionList: Question[]
   published: boolean
+  cert_template?: string
 }
 
 function parseQuestions(raw: string): { questions: Question[]; errors: string[] } {
@@ -166,6 +167,7 @@ export default function ExamReviewPage() {
   const [metaSubject, setMetaSubject] = useState('')
   const [metaLevel, setMetaLevel] = useState('')
   const [metaDuration, setMetaDuration] = useState(30)
+  const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
   const [savingMeta, setSavingMeta] = useState(false)
 
   const fetchExam = async () => {
@@ -181,6 +183,7 @@ export default function ExamReviewPage() {
         setMetaSubject(found.subject || '')
         setMetaLevel(found.level || found.difficulty_level || '')
         setMetaDuration(found.duration || 30)
+        setMetaCertTemplate(found.cert_template || 'classic')
       } else {
         addToast({ type: 'error', title: 'Exam not found' })
         router.push('/dashboard/admin/exams')
@@ -225,9 +228,10 @@ export default function ExamReviewPage() {
           level: metaLevel,
           difficulty_level: metaLevel,
           duration: metaDuration,
+          cert_template: metaCertTemplate,
         })
       })
-      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration })
+      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, cert_template: metaCertTemplate })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Exam details updated' })
     } catch {
@@ -420,6 +424,18 @@ export default function ExamReviewPage() {
                     className="h-8 w-20 text-sm"
                     min="1"
                   />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Cert Template:</Label>
+                  <select
+                    value={metaCertTemplate}
+                    onChange={(e) => setMetaCertTemplate(e.target.value)}
+                    className="h-8 rounded-md border border-border/60 bg-background px-2 py-1 text-xs"
+                  >
+                    <option value="classic">Classic</option>
+                    <option value="modern">Modern</option>
+                    <option value="minimal">Minimal</option>
+                  </select>
                 </div>
               </div>
             </div>

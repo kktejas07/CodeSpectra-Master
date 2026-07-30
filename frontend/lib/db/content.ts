@@ -27,6 +27,7 @@ export interface CodeathonDoc {
   status: 'upcoming' | 'live' | 'completed' | 'archived'
   rules?: string | null
   tracks?: string[]
+  cert_template?: 'classic' | 'modern' | 'minimal'
   created_by?: string | null
   created_at: string
   updated_at: string
@@ -50,6 +51,7 @@ export interface ExamDoc {
   description?: string | null
   status: 'available' | 'archived' | 'draft'
   access_type?: 'invite_only' | 'open'
+  cert_template?: 'classic' | 'modern' | 'minimal'
   questions?: Array<{
     id: string
     text: string

@@ -28,6 +28,7 @@ export async function POST(request: Request) {
       status: body.status || 'upcoming',
       participants: 0,
       prizePool: body.prizePool || '',
+      cert_template: body.cert_template || 'classic',
       createdAt: now,
       updatedAt: now,
     }

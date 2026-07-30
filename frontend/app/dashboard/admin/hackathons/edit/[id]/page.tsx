@@ -48,6 +48,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       { type: 'conduct' as const, title: 'Code of Conduct', description: 'Plagiarism or collusion with other teams will result in disqualification.' },
     ],
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
+    cert_template: 'classic' as 'classic' | 'modern' | 'minimal',
     banner_url: '',
   })
 
@@ -88,6 +89,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               }
             : form.scoring,
           banner_url: typeof doc.banner_url === 'string' ? doc.banner_url : '',
+          cert_template: (doc.cert_template as 'classic' | 'modern' | 'minimal') || 'classic',
         })
       })
       .catch(e => setError(e instanceof Error ? e.message : String(e)))
@@ -245,6 +247,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         timeout_minutes: form.timeout_minutes,
         starts_at: fromZonedDatetimeString(form.starts_at, tz),
         banner_url: form.banner_url,
+        cert_template: form.cert_template,
       }
       if (!isLocked) {
         body.tasks = form.tasks.map((t) => ({
@@ -732,6 +735,23 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 <input type="checkbox" id="auto_grade" checked={form.scoring.auto_grade}
                   onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, auto_grade: e.target.checked } }))} />
                 <Label htmlFor="auto_grade">Auto-grade submissions on submit</Label>
+              </div>
+            </div>
+
+            <div className="rounded border p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Certificate</h4>
+              <div className="space-y-1.5">
+                <Label>Certificate Template</Label>
+                <select
+                  value={form.cert_template}
+                  onChange={(e) => setForm((f) => ({ ...f, cert_template: e.target.value as 'classic' | 'modern' | 'minimal' }))}
+                  className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
+                >
+                  <option value="classic">Classic (Gold/Serif)</option>
+                  <option value="modern">Modern (Dark Gradient)</option>
+                  <option value="minimal">Minimal (Monochrome)</option>
+                </select>
+                <p className="text-xs text-muted-foreground">Template used for participant certificates on the results page.</p>
               </div>
             </div>
 

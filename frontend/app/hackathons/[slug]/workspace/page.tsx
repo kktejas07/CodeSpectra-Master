@@ -413,7 +413,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const ends = new Date(hackathon.ends_at)
   const starts = new Date(hackathon.starts_at)
   const nowDate = Date.now()
-  const isLive = nowDate >= starts.getTime() && nowDate <= ends.getTime()
+  const isLive = hackathon.status === 'live' && nowDate >= starts.getTime() && nowDate <= ends.getTime()
   const isClosed = nowDate > ends.getTime() || hackathon.status === 'closed'
 
   const solvedCount = submissions.filter(s => s.status === 'released').length
