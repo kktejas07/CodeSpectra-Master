@@ -30,7 +30,7 @@ export class ApiMonitor {
   private setupMonitoring(): void {
     this.page.on('request', (request) => {
       const startTime = Date.now();
-      
+      // @ts-expect-error Playwright Request type conflicts with web Request in Next.js build
       request.on('response', (response) => {
         const duration = Date.now() - startTime;
         this.calls.push({
@@ -44,7 +44,7 @@ export class ApiMonitor {
           timestamp: startTime,
         });
       });
-
+      // @ts-expect-error Playwright Request type conflicts with web Request in Next.js build
       request.on('requestfailed', (request) => {
         const duration = Date.now() - startTime;
         this.calls.push({
