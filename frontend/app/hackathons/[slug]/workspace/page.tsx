@@ -79,6 +79,7 @@ interface Team {
 interface Submission {
   id: string; problem_slug: string; status: 'pending' | 'under_review' | 'released'; score: number | null
   max_score: number; submitted_at: string; repo_url?: string; code?: string; commit_sha?: string
+  video_url?: string; live_url?: string; comment?: string
 }
 
 interface Claim {
@@ -118,7 +119,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [problemDetail, setProblemDetail] = useState<ProblemDetail | null>(null)
   const [problemDetailLoading, setProblemDetailLoading] = useState(false)
 
-  const [submitForm, setSubmitForm] = useState({ repo_url: '', commit_sha: '', code: '' });
+  const [submitForm, setSubmitForm] = useState({ repo_url: '', commit_sha: '', code: '', video_url: '', live_url: '', comment: '' });
   const [editorLanguage, setEditorLanguage] = useState("python")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -281,7 +282,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     const sub = submissions.find(s => s.problem_slug === task.problem_slug)
     if (sub && sub.status === 'released') return
     setSubmittingFor({ problem_slug: task.problem_slug, problem_title: task.problem_title, points: task.points })
-    setSubmitForm({ repo_url: '', commit_sha: '', code: '' })
+    setSubmitForm({ repo_url: '', commit_sha: '', code: '', video_url: '', live_url: '', comment: '' })
     setSubmitError(null)
   }
 
@@ -291,7 +292,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
   const closeSubmitModal = () => {
     setSubmittingFor(null)
-    setSubmitForm({ repo_url: '', commit_sha: '', code: '' })
+    setSubmitForm({ repo_url: '', commit_sha: '', code: '', video_url: '', live_url: '', comment: '' })
     setSubmitError(null)
   }
 
@@ -305,13 +306,16 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       const res = await csrfFetch(`/api/hackathons/${hackathon.id}/submissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          problem_slug: submittingFor.problem_slug,
-          repo_url: submitForm.repo_url || undefined,
-          commit_sha: submitForm.commit_sha || undefined,
-          code: submitForm.code || undefined,
-          language: editorLanguage,
-        }),
+      body: JSON.stringify({
+        problem_slug: submittingFor.problem_slug,
+        repo_url: submitForm.repo_url || undefined,
+        commit_sha: submitForm.commit_sha || undefined,
+        code: submitForm.code || undefined,
+        language: editorLanguage,
+        video_url: submitForm.video_url || undefined,
+        live_url: submitForm.live_url || undefined,
+        comment: submitForm.comment || undefined,
+      }),
       })
       const data = await res.json()
       if (!res.ok) {
@@ -780,9 +784,38 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     className="w-full rounded-md border border-border bg-background px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
                   >
                     {TOP_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
-                  </select>
-                </div>
-                <div className="space-y-2">
+                </select>
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="video_url">Video Demo URL (optional)</Label>
+                <Input
+                  id="video_url"
+                  type="url"
+                  placeholder="https://youtube.com/... or https://drive.google.com/..."
+                  value={submitForm.video_url}
+                  onChange={(e) => setSubmitForm(f => ({ ...f, video_url: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="live_url">Live Website URL (optional)</Label>
+                <Input
+                  id="live_url"
+                  type="url"
+                  placeholder="https://your-project.vercel.app"
+                  value={submitForm.live_url}
+                  onChange={(e) => setSubmitForm(f => ({ ...f, live_url: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="comment">Comment (optional)</Label>
+                <Input
+                  id="comment"
+                  placeholder="Any notes about your submission..."
+                  value={submitForm.comment}
+                  onChange={(e) => setSubmitForm(f => ({ ...f, comment: e.target.value }))}
+                />
+              </div>
+              <div className="space-y-2">
                   <Label htmlFor="code">Code</Label>
                   <div className="h-[300px] rounded-md border border-border overflow-hidden">
                     <Editor

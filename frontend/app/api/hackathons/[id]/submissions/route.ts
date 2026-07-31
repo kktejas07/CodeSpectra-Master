@@ -27,6 +27,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     commit_sha?: string
     code?: string
     language?: string
+    video_url?: string
+    live_url?: string
+    comment?: string
   }
 
   if (!body.problem_slug) return NextResponse.json({ error: 'problem_slug required' }, { status: 400 })
@@ -102,6 +105,9 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     repo_url: body.repo_url?.trim(),
     commit_sha: body.commit_sha?.trim(),
     code: body.code?.trim(),
+    video_url: body.video_url?.trim(),
+    live_url: body.live_url?.trim(),
+    comment: body.comment?.trim(),
     score,
     max_score: task.points,
     status,

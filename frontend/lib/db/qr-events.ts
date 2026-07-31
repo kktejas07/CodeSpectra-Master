@@ -152,6 +152,9 @@ export interface HackathonSubmissionDoc {
   repo_url?: string
   commit_sha?: string
   code?: string
+  video_url?: string
+  live_url?: string
+  comment?: string
   score: number | null
   max_score: number
   status: 'pending' | 'under_review' | 'released'
