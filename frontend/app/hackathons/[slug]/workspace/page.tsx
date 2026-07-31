@@ -104,6 +104,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [claims, setClaims] = useState<Record<string, Claim>>({})
   const [claiming, setClaiming] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [teamsLoaded, setTeamsLoaded] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [copied, setCopied] = useState(false)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
@@ -141,6 +142,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         const j = await tRes.json() as { items: Team[] }
         setTeams(j.items)
       }
+      setTeamsLoaded(true)
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     finally { setLoading(false) }
   }, [slug])
@@ -174,7 +176,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const refreshAll = useCallback(async () => {
     if (!hackathon || !hasSession) return
     const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
-    if (!team) { router.replace(`/hackathons/${slug}`); return }
+    if (!team && teamsLoaded) { router.replace(`/hackathons/${slug}`); return }
+    if (!team) return
 
     try {
       const [subRes] = await Promise.all([
@@ -198,7 +201,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       const base = typeof window !== 'undefined' ? window.location.origin : ''
       setInviteUrl(`${base}/hackathons/${slug}/join/${team.qr_token}`)
     } catch { /* ignore polling errors */ }
-  }, [hackathon?.id, hasSession, teams, slug, router, addToast])
+  }, [hackathon?.id, hasSession, teams, teamsLoaded, slug, router, addToast])
 
   // Initial load + 10s polling for submissions + hackathon state
   useEffect(() => {
