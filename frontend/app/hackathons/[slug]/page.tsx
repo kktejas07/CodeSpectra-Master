@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
-  Loader2, Trophy, Users, Clock, CalendarDays, ScanLine,
+  Loader2, Trophy, Users, Clock, CalendarDays, QrCode,
   Sparkles, CheckCircle, ListChecks, Shield,
-  Copy, ExternalLink, Timer, LogIn, Send,
+  Copy, ExternalLink, Timer, LogIn, Send, ArrowRightCircle,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -389,7 +389,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                   )}
                   <Badge className="gap-1"><Trophy className="h-3 w-3" /> {t.xp} XP · Lv {t.level}</Badge>
                   <Link href={`/qr/${t.qr_token}`} className="text-muted-foreground hover:text-foreground" title="Open team QR">
-                    <ScanLine className="h-4 w-4" />
+                    <ArrowRightCircle className="h-4 w-4" />
                   </Link>
                 </div>
               ))}
