@@ -310,6 +310,54 @@ export default function ExamResultsPage() {
     }
   }
 
+  const exportCsv = () => {
+    if (!results || results.length === 0) {
+      addToast({ type: 'error', title: 'No results to export' })
+      return
+    }
+
+    const headers = [
+      'Candidate Name',
+      'Email',
+      'Status',
+      'Delivery Status',
+      'Proctoring Flags',
+      'Score (%)',
+      'Submitted At',
+      'Score Released',
+    ]
+
+    const rows = results.map(r => [
+      r.name || '',
+      r.email || '',
+      r.status || '',
+      r.deliveryStatus || '',
+      r.proctoringFlags ?? 0,
+      r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
+      r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
+      r.released ? 'Yes' : 'No',
+    ])
+
+    const csvContent = [headers, ...rows]
+      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const link = document.createElement('a')
+    const sanitizeTitle = (exam?.title || 'exam_results')
+      .toLowerCase()
+      .replace(/[^a-z0-9]/g, '_')
+      .replace(/_+/g, '_')
+    link.setAttribute('href', url)
+    link.setAttribute('download', `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`)
+    document.body.appendChild(link)
+    link.click()
+    document.body.removeChild(link)
+    URL.revokeObjectURL(url)
+    addToast({ type: 'success', title: 'Exported CSV successfully' })
+  }
+
   const copyInviteLink = (row: CandidateResult) => {
     const link = `${window.location.origin}/assessment/invite/${row.id}`
     navigator.clipboard.writeText(link).then(() => {
@@ -503,7 +551,7 @@ export default function ExamResultsPage() {
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
             Remind All Pending
           </Button>
-          <Button variant="outline" className="gap-2">
+          <Button variant="outline" className="gap-2" onClick={exportCsv} disabled={results.length === 0}>
             <Download className="w-4 h-4" /> Export CSV
           </Button>
         </div>
