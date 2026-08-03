@@ -1,0 +1,11 @@
+{
+  "assessment_id": "vnr-vjiet-sdet-baseline-001",
+  "name": "VNR VJIET Senior SDET Baseline Assessment",
+  "domain_keys": ["code_exec", "mcq"],
+  "fixture_file": "senior-sdet-assessment.json",
+  "expected_baseline_score": 100.0,
+  "criteria_results": {
+    "correctness": 1.0,
+    "quality": 1.0
+  }
+}
