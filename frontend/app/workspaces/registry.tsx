@@ -32,11 +32,11 @@ export interface WorkspaceProps {
 }
 
 const StubWorkspace: React.FC<WorkspaceProps> = ({ descriptor }) => {
-  return React.createElement(
-    "div",
-    { className: "p-4 border rounded bg-slate-900 text-slate-100 font-mono" },
-    React.createElement("h3", { className: "font-semibold mb-2" }, "Workspace Descriptor"),
-    React.createElement("pre", { className: "text-xs" }, JSON.stringify(descriptor, null, 2))
+  return (
+    <div className="p-4 border rounded bg-slate-900 text-slate-100 font-mono">
+      <h3 className="font-semibold mb-2">Workspace Descriptor</h3>
+      <pre className="text-xs">{JSON.stringify(descriptor, null, 2)}</pre>
+    </div>
   );
 };
 
