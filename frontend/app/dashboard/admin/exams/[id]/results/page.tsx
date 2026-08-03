@@ -311,21 +311,12 @@ export default function ExamResultsPage() {
   }
 
   const exportCsv = () => {
-    const examId = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : ''
-
-    // Strategy 1: Direct HTTP download from API endpoint (triggers browser native file save)
-    if (examId) {
-      try {
-        window.location.href = `/api/admin/exams/${examId}/results/export`
-        addToast({ type: 'success', title: 'Exporting CSV file...' })
-        return
-      } catch (e) {
-        console.warn('Native navigation download failed, falling back to client generator:', e)
-      }
-    }
-
-    // Strategy 2: Client-side Blob download fallback
     try {
+      if (!results) {
+        addToast({ type: 'error', title: 'No results available to export' })
+        return
+      }
+
       const headers = [
         'Candidate Name',
         'Email',
@@ -337,24 +328,24 @@ export default function ExamResultsPage() {
         'Score Released',
       ]
 
-      const candidateRows = (results && results.length > 0)
-        ? results.map(r => [
-            r.name || '',
-            r.email || '',
-            r.status || '',
-            r.deliveryStatus || '',
-            r.proctoringFlags ?? 0,
-            r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
-            r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
-            r.released ? 'Yes' : 'No',
-          ])
-        : []
+      const candidateRows = results.map(r => [
+        r.name || '',
+        r.email || '',
+        r.status || '',
+        r.deliveryStatus || '',
+        r.proctoringFlags ?? 0,
+        r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
+        r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
+        r.released ? 'Yes' : 'No',
+      ])
 
-      const csvString = [headers, ...candidateRows]
+      const csvRows = [headers, ...candidateRows]
+      const csvString = csvRows
         .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
         .join('\r\n')
 
       const csvContent = '\uFEFF' + csvString
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
 
       const sanitizeTitle = (exam?.title || 'exam_results')
         .toLowerCase()
@@ -362,17 +353,30 @@ export default function ExamResultsPage() {
         .replace(/_+/g, '_')
       const filename = `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
-      const url = URL.createObjectURL(blob)
-      const a = document.createElement('a')
-      a.href = url
-      a.download = filename
-      a.click()
-      setTimeout(() => URL.revokeObjectURL(url), 2000)
+      if (typeof window !== 'undefined' && (window.navigator as any).msSaveOrOpenBlob) {
+        ;(window.navigator as any).msSaveOrOpenBlob(blob, filename)
+        addToast({ type: 'success', title: 'Exported CSV successfully' })
+        return
+      }
 
-      addToast({ type: 'success', title: candidateRows.length > 0 ? 'Exported CSV successfully' : 'Exported CSV template' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link)
+        }
+        URL.revokeObjectURL(url)
+      }, 1000)
+
+      addToast({ type: 'success', title: 'Exported CSV successfully' })
     } catch (err) {
-      console.error('CSV Export Error:', err)
+      console.error('[CodeSpectra] CSV Export Error:', err)
       addToast({ type: 'error', title: 'Failed to export CSV file' })
     }
   }
