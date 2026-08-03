@@ -311,11 +311,6 @@ export default function ExamResultsPage() {
   }
 
   const exportCsv = () => {
-    if (!results || results.length === 0) {
-      addToast({ type: 'error', title: 'No candidate results to export' })
-      return
-    }
-
     try {
       const headers = [
         'Candidate Name',
@@ -328,38 +323,63 @@ export default function ExamResultsPage() {
         'Score Released',
       ]
 
-      const rows = results.map(r => [
-        r.name || '',
-        r.email || '',
-        r.status || '',
-        r.deliveryStatus || '',
-        r.proctoringFlags ?? 0,
-        r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
-        r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
-        r.released ? 'Yes' : 'No',
-      ])
+      const candidateRows = (results && results.length > 0)
+        ? results.map(r => [
+            r.name || '',
+            r.email || '',
+            r.status || '',
+            r.deliveryStatus || '',
+            r.proctoringFlags ?? 0,
+            r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
+            r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
+            r.released ? 'Yes' : 'No',
+          ])
+        : []
 
-      const csvContent = '\uFEFF' + [headers, ...rows]
+      const csvString = [headers, ...candidateRows]
         .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
         .join('\r\n')
 
-      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-      const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
+      const csvContent = '\uFEFF' + csvString
+
       const sanitizeTitle = (exam?.title || 'exam_results')
         .toLowerCase()
         .replace(/[^a-z0-9]/g, '_')
         .replace(/_+/g, '_')
+      const filename = `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`
 
-      link.href = url
-      link.download = `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`
-      link.style.visibility = 'hidden'
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
-      setTimeout(() => URL.revokeObjectURL(url), 1000)
+      let downloaded = false
 
-      addToast({ type: 'success', title: 'Exported CSV successfully' })
+      if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
+        try {
+          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+          const url = URL.createObjectURL(blob)
+          const link = document.createElement('a')
+          link.href = url
+          link.download = filename
+          link.style.display = 'none'
+          document.body.appendChild(link)
+          link.click()
+          document.body.removeChild(link)
+          setTimeout(() => URL.revokeObjectURL(url), 2000)
+          downloaded = true
+        } catch (e) {
+          console.warn('Blob download failed, falling back to data URI:', e)
+        }
+      }
+
+      if (!downloaded) {
+        const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent)
+        const link = document.createElement('a')
+        link.href = encodedUri
+        link.download = filename
+        link.style.display = 'none'
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+      }
+
+      addToast({ type: 'success', title: candidateRows.length > 0 ? 'Exported CSV successfully' : 'Exported CSV template' })
     } catch (err) {
       console.error('CSV Export Error:', err)
       addToast({ type: 'error', title: 'Failed to export CSV file' })
