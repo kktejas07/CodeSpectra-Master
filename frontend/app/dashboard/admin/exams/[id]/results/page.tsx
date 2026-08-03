@@ -312,6 +312,21 @@ export default function ExamResultsPage() {
 
   const exportCsv = () => {
     try {
+      if (params.id) {
+        const link = document.createElement('a')
+        link.href = `/api/admin/exams/${params.id}/results/export`
+        link.download = ''
+        document.body.appendChild(link)
+        link.click()
+        document.body.removeChild(link)
+        addToast({ type: 'success', title: 'Exporting CSV file...' })
+        return
+      }
+    } catch {
+      /* Fallback to client generation below */
+    }
+
+    try {
       const headers = [
         'Candidate Name',
         'Email',
@@ -348,36 +363,15 @@ export default function ExamResultsPage() {
         .replace(/_+/g, '_')
       const filename = `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`
 
-      let downloaded = false
-
-      if (typeof Blob !== 'undefined' && typeof URL !== 'undefined' && URL.createObjectURL) {
-        try {
-          const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
-          const url = URL.createObjectURL(blob)
-          const link = document.createElement('a')
-          link.href = url
-          link.download = filename
-          link.style.display = 'none'
-          document.body.appendChild(link)
-          link.click()
-          document.body.removeChild(link)
-          setTimeout(() => URL.revokeObjectURL(url), 2000)
-          downloaded = true
-        } catch (e) {
-          console.warn('Blob download failed, falling back to data URI:', e)
-        }
-      }
-
-      if (!downloaded) {
-        const encodedUri = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csvContent)
-        const link = document.createElement('a')
-        link.href = encodedUri
-        link.download = filename
-        link.style.display = 'none'
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
-      }
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(url), 2000)
 
       addToast({ type: 'success', title: candidateRows.length > 0 ? 'Exported CSV successfully' : 'Exported CSV template' })
     } catch (err) {
