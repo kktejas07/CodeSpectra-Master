@@ -725,3 +725,49 @@
   }
 }
 
+
+/* ============================================================================
+   Print — PDF export of the exam review modal.
+   Prints ONLY the review modal exactly as rendered (markdown, code, badges).
+   ============================================================================ */
+@media print {
+  body { background: #fff !important; }
+  body * { visibility: hidden !important; }
+  .print-review-overlay,
+  .print-review-overlay * { visibility: visible !important; }
+
+  /* Detach the modal from its fixed/overlay positioning so it flows page to page */
+  .print-review-overlay {
+    position: static !important;
+    inset: auto !important;
+    overflow: visible !important;
+    background: #fff !important;
+    backdrop-filter: none !important;
+    padding: 0 !important;
+    display: block !important;
+    width: 100% !important;
+  }
+  .print-review-card {
+    max-width: 100% !important;
+    width: 100% !important;
+    border: none !important;
+    box-shadow: none !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+  .print-review-body {
+    max-height: none !important;
+    overflow: visible !important;
+    padding-right: 0 !important;
+  }
+  /* Force full content out of collapsed scroll areas */
+  .print-review-body, .print-review-body .overflow-y-auto, .print-review-body *[class*="max-h"], .print-review-body *[class*="overflow-y-auto"] {
+    max-height: none !important;
+    overflow: visible !important;
+  }
+  .print-review-card .sticky { position: static !important; }
+  .print-review-card button { display: none !important; }
+  /* Avoid splitting individual question blocks across pages */
+  .print-review-card .space-y-3 > div { break-inside: avoid; }
+  pre { white-space: pre-wrap !important; word-wrap: break-word !important; }
+}

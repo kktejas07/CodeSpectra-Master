@@ -187,6 +187,87 @@ export default function ExamResultsPage() {
     }
   }
 
+  const [bulkGrading, setBulkGrading] = useState<{ running: boolean; done: number; total: number; failed: string[] }>({ running: false, done: 0, total: 0, failed: [] })
+
+  const aiGradeAll = async () => {
+    if (!reviewData || !reviewCandidate || bulkGrading.running) return
+    const uid = reviewCandidate.userId || reviewCandidate.id
+    const pending = reviewData.questions.filter(q => {
+      const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
+      const needReview = detail?.pending_review === true || (detail?.awarded === undefined && typeof detail?.correct === 'boolean' ? detail.correct === false : true)
+      return needReview && !!reviewData.submission.answers[q.id]
+    })
+    const questions = pending.length > 0 ? pending : reviewData.questions.filter(q => !!reviewData.submission.answers[q.id])
+    if (questions.length === 0) {
+      addToast({ type: 'error', title: 'No answered questions to grade' })
+      return
+    }
+    setBulkGrading({ running: true, done: 0, total: questions.length, failed: [] })
+    const failed: string[] = []
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      try {
+        const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}/ai-grade`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qId: q.id }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'd')
+        setManualGrades(prev => ({ ...prev, [q.id]: json.recommended }))
+        if (json.feedback) {
+          setAiFeedback(prev => ({ ...prev, [q.id]: json.feedback }))
+          setRemarks(prev => ({ ...prev, [q.id]: json.feedback }))
+        }
+      } catch {
+        failed.push(q.id)
+      }
+      setBulkGrading(prev => ({ ...prev, done: prev.done + 1 }))
+    }
+    setBulkGrading(prev => ({ ...prev, running: false, failed }))
+    if (failed.length > 0) {
+      addToast({ type: 'error', title: `Graded ${questions.length - failed.length}/${questions.length}`, message: `${failed.length} question(s) could not be graded — check them manually.` })
+    } else {
+      addToast({ type: 'success', title: `AI graded ${questions.length} question(s)`, message: 'Review the suggestions, then click Save Manual Grades.' })
+    }
+  }
+
+    const [bulkGradeIds, setBulkGradeIds] = useState<string[] | null>(null)
+
+  const gradeCandidates = async (ids: string[]) => {
+    if (!ids.length || bulkGradeIds) return
+    setBulkGradeIds(ids)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/ai-grade-all`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: ids }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Bulk grading failed')
+      addToast({
+        type: json.failed > 0 ? 'warning' : 'success',
+        title: `AI graded ${json.graded} question(s) across ${json.candidates} candidate(s)`,
+        message: json.failed > 0
+          ? `${json.failed} question(s) were rate-limited or failed — click Grade again and it will pick up the rest.`
+          : 'Grades saved. Refresh the list to see updated scores.',
+      })
+      const failedIds = new Set(json.results.filter((r: { failed: string[] }) => r.failed.length > 0).map((r: { userId: string }) => r.userId))
+      setResults(prev => prev.map(r => {
+        if (ids.includes(r.userId || r.id)) {
+          return { ...r, graded: !failedIds.has(r.userId || '') ? true : r.graded }
+        }
+        return r
+      }))
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Bulk grading failed' })
+    } finally {
+      setBulkGradeIds(null)
+    }
+  }
+
   const releaseScore = async (userId: string, name: string) => {
     setReleasing(userId)
     try {
@@ -445,117 +526,13 @@ setManualGrades({})
     })
   }
 
-  const downloadReviewPdf = async () => {
+  const downloadReviewPdf = () => {
     if (!reviewData || !reviewCandidate) return
-    try {
-      const { default: jsPDF } = await import('jspdf')
-      const doc = new jsPDF()
-      const pw = doc.internal.pageSize.getWidth()
-      let y = 20
-
-      doc.setFontSize(18)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Assessment Review Report', pw / 2, y, { align: 'center' })
-      y += 10
-
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'normal')
-      doc.text(`Assessment: ${reviewData.examTitle}`, pw / 2, y, { align: 'center' })
-      y += 6
-      doc.text(`Candidate: ${reviewData.candidate.name || reviewCandidate.name}  (${reviewData.candidate.email || reviewCandidate.email})`, pw / 2, y, { align: 'center' })
-      y += 6
-      const pct = reviewData.submission.max_score > 0
-        ? Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)
-        : 0
-      doc.text(`Score: ${reviewData.submission.score} / ${reviewData.submission.max_score}  (${pct}%)`, pw / 2, y, { align: 'center' })
-      y += 6
-      if (reviewData.submission.submitted_at) {
-        doc.text(`Submitted: ${new Date(reviewData.submission.submitted_at).toLocaleString()}`, pw / 2, y, { align: 'center' })
-        y += 6
-      }
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, y, pw - 20, y)
-      y += 8
-
-      // Per-question breakdown
-      doc.setFontSize(13)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Question Breakdown', 20, y)
-      y += 8
-
-      for (let i = 0; i < reviewData.questions.length; i++) {
-        const q = reviewData.questions[i]
-        const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
-        const userAnswer = reviewData.submission.answers[q.id] || ''
-        const modelAnswer = q.answer || q.correct_answer || ''
-        const maxPoints = q.points || q.score || detail?.points || 10
-        const verdict = detail?.pending_review
-          ? 'PENDING REVIEW'
-          : detail?.correct
-            ? `CORRECT (${detail.awarded ?? detail.points}/${maxPoints})`
-            : `INCORRECT (${detail?.awarded ?? 0}/${maxPoints})`
-
-        if (y > 230) { doc.addPage(); y = 20 }
-        doc.setFontSize(10)
-        doc.setFont('helvetica', 'bold')
-        const qText = (q.prompt || q.question || q.title || `Question ${i + 1}`).replace(/\s+/g, ' ').trim()
-        const qLines = doc.splitTextToSize(`Q${i + 1} [${q.type}] — ${verdict}: ${qText}`, pw - 40)
-        doc.text(qLines, 20, y)
-        y += qLines.length * 4.5 + 2
-
-        doc.setFontSize(9)
-        doc.setFont('helvetica', 'normal')
-        if (userAnswer) {
-          const aLines = doc.splitTextToSize(`Candidate: ${userAnswer.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
-          if (y + aLines.length * 4 > 275) { doc.addPage(); y = 20 }
-          doc.text(aLines, 24, y)
-          y += aLines.length * 4 + 1
-        }
-        if (modelAnswer && !detail?.correct) {
-          const mLines = doc.splitTextToSize(`Expected: ${modelAnswer.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
-          if (y + mLines.length * 4 > 275) { doc.addPage(); y = 20 }
-          doc.text(mLines, 24, y)
-          y += mLines.length * 4 + 1
-        }
-        if (detail?.remarks) {
-          const rLines = doc.splitTextToSize(`Remarks: ${detail.remarks.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
-          if (y + rLines.length * 4 > 275) { doc.addPage(); y = 20 }
-          doc.text(rLines, 24, y)
-          y += rLines.length * 4 + 1
-        }
-        y += 4
-      }
-
-      // Proctoring log
-      if (reviewData.proctorEvents.length > 0) {
-        if (y > 220) { doc.addPage(); y = 20 }
-        doc.setFontSize(13)
-        doc.setFont('helvetica', 'bold')
-        doc.text(`Proctoring Log (${reviewData.proctorEvents.length} events)`, 20, y)
-        y += 7
-
-        doc.setFontSize(9)
-        doc.setFont('helvetica', 'normal')
-        for (const evt of reviewData.proctorEvents) {
-          if (y > 275) { doc.addPage(); y = 20 }
-          const time = evt.created_at ? new Date(evt.created_at).toLocaleString() : ''
-          const label = formatProctorType(evt.event_type)
-          const meta = evt.meta && Object.keys(evt.meta).length > 0 ? ` ${JSON.stringify(evt.meta)}` : ''
-          const lines = doc.splitTextToSize(`${time} — ${label}${meta.slice(0, 300)}`, pw - 40)
-          doc.text(lines, 20, y)
-          y += lines.length * 4 + 1
-        }
-      }
-
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'italic')
-      doc.text('Generated by CodeSpectra Assessment Review', pw / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' })
-
-      doc.save(`review-${reviewData.candidate.name || reviewCandidate.name || 'candidate'}-${Date.now()}.pdf`)
-      addToast({ type: 'success', title: 'Review report downloaded' })
-    } catch {
-      addToast({ type: 'error', title: 'Failed to generate PDF report' })
-    }
+    // Print the live review modal via a dedicated print stylesheet. This keeps
+    // markdown, syntax-highlighted code, badges, and verdicts pixel-identical
+    // to what the admin sees on screen (jsPDF cannot reproduce them).
+    window.print()
+    addToast({ type: 'info', title: 'Choose "Save as PDF" in the print dialog' })
   }
 
   const exportCSV = () => {
@@ -749,13 +726,13 @@ setManualGrades({})
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 p-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/exams')}>
             <ArrowLeft className="h-4 w-4" /> Back to Exams
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Results: {exam.title}</h1>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             <Badge variant="outline">{exam.level}</Badge>
             <Badge variant="outline">{exam.duration} mins</Badge>
             <Badge variant="secondary" className="bg-primary/10 text-primary">
@@ -766,11 +743,22 @@ setManualGrades({})
             </Badge>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {pendingGradingCount > 0 && (
             <Badge variant="secondary" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
               <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} awaiting grading
             </Badge>
+          )}
+          {pendingGradingCount > 0 && (
+            <Button
+              variant="outline"
+              className="gap-2 text-blue-600 border-blue-500/40 hover:bg-blue-500/10 dark:text-blue-400"
+              onClick={() => gradeCandidates(results.filter(r => r.status === 'completed' && r.graded === false).map(r => r.userId || r.id))}
+              disabled={!!bulkGradeIds}
+            >
+              {bulkGradeIds ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : `Grade All Pending (${pendingGradingCount})`}
+            </Button>
           )}
           {unreleasedCount > 0 && (
             <Button
@@ -800,6 +788,19 @@ setManualGrades({})
           searchKeys={['name', 'email']}
           searchPlaceholder="Search candidates..."
           bulkActions={[
+            {
+              label: bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : 'Grade with AI',
+              variant: 'default',
+              icon: bulkGradeIds ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />,
+              onClick: async (rowIds) => {
+                const ids = rowIds.map(id => {
+                  const r = results.find(c => c.id === id)
+                  return r?.userId || r?.id || id
+                })
+                const gradeIds = ids.filter((uid, i, arr) => arr.indexOf(uid) === i)
+                await gradeCandidates(gradeIds)
+              },
+            },
             {
               label: 'Release Scores',
               variant: 'default',
@@ -831,8 +832,8 @@ setManualGrades({})
       </div>
 
       {reviewCandidate && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-xs pt-8 overflow-y-auto">
-          <div className="max-w-4xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 mb-8">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-xs pt-8 overflow-y-auto print-review-overlay">
+          <div className="max-w-4xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 mb-8 print-review-card">
             <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-card z-10">
               <div>
                 <h3 className="font-bold text-lg">Review: {reviewCandidate.name}</h3>
@@ -849,7 +850,7 @@ setManualGrades({})
               </div>
             ) : reviewData ? (
               <>
-                <div className="overflow-y-auto max-h-[60vh] pr-2 space-y-6">
+                <div className="overflow-y-auto max-h-[60vh] pr-2 space-y-6 print-review-body">
                   {/* Candidate Info */}
                   <div className="grid grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
@@ -1034,18 +1035,39 @@ setManualGrades({})
                         )
                       })
                     )}
-                    {/* Save Grades button */}
-                    {Object.keys(manualGrades).length > 0 && (
+                    {/* AI Grade All + Save Grades buttons */}
+                    <div className="space-y-2 pt-1">
                       <Button
                         size="sm"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                        onClick={saveGrades}
-                        disabled={savingGrades}
+                        variant="outline"
+                        className="w-full gap-2 text-blue-600 border-blue-500/40 hover:bg-blue-500/10 dark:text-blue-400"
+                        onClick={aiGradeAll}
+                        disabled={bulkGrading.running || reviewData.questions.length === 0}
                       >
-                        {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                        Save Manual Grades
+                        {bulkGrading.running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                        {bulkGrading.running
+                          ? `Grading… ${bulkGrading.done}/${bulkGrading.total}`
+                          : bulkGrading.failed.length > 0
+                            ? `Grade All (${bulkGrading.total - bulkGrading.failed.length}/${bulkGrading.total} graded)`
+                            : 'Grade All with AI'}
                       </Button>
-                    )}
+                      {bulkGrading.running && (
+                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-500 transition-all" style={{ width: `${bulkGrading.total > 0 ? (bulkGrading.done / bulkGrading.total) * 100 : 0}%` }} />
+                        </div>
+                      )}
+                      {Object.keys(manualGrades).length > 0 && (
+                        <Button
+                          size="sm"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                          onClick={saveGrades}
+                          disabled={savingGrades}
+                        >
+                          {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                          Save Manual Grades
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Proctoring Events */}

@@ -1,15 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { backendComplete } from '@/lib/ai/backend'
+import { gradeAnswer } from '@/lib/ai/grade-question'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 /**
- * POST — AI-grade a coding/descriptive answer for one question.
- * Realtime assist for the admin reviewer: suggests a verdict, awarded points,
- * and remarks that will be shown to the candidate when the score is released.
+ * POST — AI-grade one question for the admin reviewer.
+ * Objective questions are graded deterministically (no LLM round-trip, so never
+ * a 502); free-text answers (code/descriptive) use the configured LLM.
  */
 export async function POST(
   req: NextRequest,
@@ -47,59 +47,21 @@ export async function POST(
       return NextResponse.json({ error: 'Candidate provided no answer for this question' }, { status: 400 })
     }
 
-    const isCoding = (q.type || '').toLowerCase().replace(/[-_]/g, '') === 'coding'
-
-    const prompt = `You are a strict, fair technical examiner. Grade the candidate's ${isCoding ? 'code' : 'written'} answer against the model answer and the question.
-
-QUESTION:
-${questionText}
-
-MODEL ANSWER / RUBRIC:
-${modelAnswer || '(No model answer provided — judge based on the question and general correctness.)'}
-
-MAX POINTS: ${maxPoints}
-
-CANDIDATE'S ANSWER:
-${candidateAnswer}
-
-Respond ONLY as JSON with this exact shape:
-{
-  "awarded": <integer 0..${maxPoints}>,  // points justified by the answer
-  "verdict": "correct" | "partial" | "incorrect",
-  "feedback": "<2-4 sentences explaining where the answer went right/wrong, what is missing, and how to improve>"
-}
-
-Be strict but fair. Grade what is actually there, not potential. If it is code, check it actually compiles/runs and solves the task — note errors, edge cases missed, and correctness.`
-
-    const res = await backendComplete({
-      systemMessage: 'You are a strict, accurate technical examiner that grades candidate answers. Return only valid JSON.',
-      userMessage: prompt,
-      responseFormat: 'json',
+    const result = await gradeAnswer({
+      questionText,
+      candidateAnswer,
+      modelAnswer,
+      type: q.type || '',
+      maxPoints,
     })
-
-    if (!res.ok || !res.json) {
-      return NextResponse.json({ error: 'AI grading failed. Try the manual grade input below.' }, { status: 502 })
-    }
-
-    const parsed = res.json as { awarded?: number; verdict?: string; feedback?: string }
-    const awarded = Number(parsed.awarded)
-    const recommended = Number.isFinite(awarded) ? Math.max(0, Math.min(maxPoints, Math.round(awarded))) : 0
-    const feedback = String(parsed.feedback || '').trim()
-    const verdict = ['correct', 'partial', 'incorrect'].includes(String(parsed.verdict)) ? parsed.verdict : (recommended >= maxPoints ? 'correct' : recommended > 0 ? 'partial' : 'incorrect')
-
-    if (!feedback) {
-      // The backend is configured as a non-reasoning gateway; if it omitted a
-      // JSON object, report the raw text so the admin can still work.
-      return NextResponse.json({ error: 'AI returned no structured feedback.' }, { status: 502 })
-    }
 
     return NextResponse.json({
       qId: body.qId,
-      awarded,
-      recommended: awarded,
+      awarded: result.recommended,
+      recommended: result.recommended,
       max_points: maxPoints,
-      verdict,
-      feedback,
+      verdict: result.verdict,
+      feedback: result.feedback,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'AI grading failed'
