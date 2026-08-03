@@ -312,50 +312,58 @@ export default function ExamResultsPage() {
 
   const exportCsv = () => {
     if (!results || results.length === 0) {
-      addToast({ type: 'error', title: 'No results to export' })
+      addToast({ type: 'error', title: 'No candidate results to export' })
       return
     }
 
-    const headers = [
-      'Candidate Name',
-      'Email',
-      'Status',
-      'Delivery Status',
-      'Proctoring Flags',
-      'Score (%)',
-      'Submitted At',
-      'Score Released',
-    ]
+    try {
+      const headers = [
+        'Candidate Name',
+        'Email',
+        'Status',
+        'Delivery Status',
+        'Proctoring Flags',
+        'Score (%)',
+        'Submitted At',
+        'Score Released',
+      ]
 
-    const rows = results.map(r => [
-      r.name || '',
-      r.email || '',
-      r.status || '',
-      r.deliveryStatus || '',
-      r.proctoringFlags ?? 0,
-      r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
-      r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
-      r.released ? 'Yes' : 'No',
-    ])
+      const rows = results.map(r => [
+        r.name || '',
+        r.email || '',
+        r.status || '',
+        r.deliveryStatus || '',
+        r.proctoringFlags ?? 0,
+        r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
+        r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
+        r.released ? 'Yes' : 'No',
+      ])
 
-    const csvContent = [headers, ...rows]
-      .map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
-      .join('\n')
+      const csvContent = '\uFEFF' + [headers, ...rows]
+        .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+        .join('\r\n')
 
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const link = document.createElement('a')
-    const sanitizeTitle = (exam?.title || 'exam_results')
-      .toLowerCase()
-      .replace(/[^a-z0-9]/g, '_')
-      .replace(/_+/g, '_')
-    link.setAttribute('href', url)
-    link.setAttribute('download', `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`)
-    document.body.appendChild(link)
-    link.click()
-    document.body.removeChild(link)
-    URL.revokeObjectURL(url)
-    addToast({ type: 'success', title: 'Exported CSV successfully' })
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      const sanitizeTitle = (exam?.title || 'exam_results')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+
+      link.href = url
+      link.download = `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`
+      link.style.visibility = 'hidden'
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      setTimeout(() => URL.revokeObjectURL(url), 1000)
+
+      addToast({ type: 'success', title: 'Exported CSV successfully' })
+    } catch (err) {
+      console.error('CSV Export Error:', err)
+      addToast({ type: 'error', title: 'Failed to export CSV file' })
+    }
   }
 
   const copyInviteLink = (row: CandidateResult) => {
@@ -551,7 +559,7 @@ export default function ExamResultsPage() {
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
             Remind All Pending
           </Button>
-          <Button variant="outline" className="gap-2" onClick={exportCsv} disabled={results.length === 0}>
+          <Button variant="outline" className="gap-2" onClick={exportCsv}>
             <Download className="w-4 h-4" /> Export CSV
           </Button>
         </div>
