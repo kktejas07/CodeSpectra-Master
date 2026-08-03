@@ -187,6 +187,85 @@ export default function ExamResultsPage() {
     }
   }
 
+  const [bulkGrading, setBulkGrading] = useState<{ running: boolean; done: number; total: number; failed: string[] }>({ running: false, done: 0, total: 0, failed: [] })
+
+  const aiGradeAll = async () => {
+    if (!reviewData || !reviewCandidate || bulkGrading.running) return
+    const uid = reviewCandidate.userId || reviewCandidate.id
+    const pending = reviewData.questions.filter(q => {
+      const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
+      const needReview = detail?.pending_review === true || (detail?.awarded === undefined && typeof detail?.correct === 'boolean' ? detail.correct === false : true)
+      return needReview && !!reviewData.submission.answers[q.id]
+    })
+    const questions = pending.length > 0 ? pending : reviewData.questions.filter(q => !!reviewData.submission.answers[q.id])
+    if (questions.length === 0) {
+      addToast({ type: 'error', title: 'No answered questions to grade' })
+      return
+    }
+    setBulkGrading({ running: true, done: 0, total: questions.length, failed: [] })
+    const failed: string[] = []
+    for (let i = 0; i < questions.length; i++) {
+      const q = questions[i]
+      try {
+        const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}/ai-grade`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ qId: q.id }),
+        })
+        const json = await res.json()
+        if (!res.ok) throw new Error(json.error || 'd')
+        setManualGrades(prev => ({ ...prev, [q.id]: json.recommended }))
+        if (json.feedback) {
+          setAiFeedback(prev => ({ ...prev, [q.id]: json.feedback }))
+          setRemarks(prev => ({ ...prev, [q.id]: json.feedback }))
+        }
+      } catch {
+        failed.push(q.id)
+      }
+      setBulkGrading(prev => ({ ...prev, done: prev.done + 1 }))
+    }
+    setBulkGrading(prev => ({ ...prev, running: false, failed }))
+    if (failed.length > 0) {
+      addToast({ type: 'error', title: `Graded ${questions.length - failed.length}/${questions.length}`, message: `${failed.length} question(s) could not be graded — check them manually.` })
+    } else {
+      addToast({ type: 'success', title: `AI graded ${questions.length} question(s)`, message: 'Review the suggestions, then click Save Manual Grades.' })
+    }
+  }
+
+    const [bulkGradeIds, setBulkGradeIds] = useState<string[] | null>(null)
+
+  const gradeCandidates = async (ids: string[]) => {
+    if (!ids.length || bulkGradeIds) return
+    setBulkGradeIds(ids)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/ai-grade-all`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userIds: ids }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Bulk grading failed')
+      addToast({
+        type: json.failed > 0 ? 'warning' : 'success',
+        title: `AI graded ${json.graded} question(s) across ${json.candidates} candidate(s)`,
+        message: json.failed > 0 ? `${json.failed} question(s) could not be graded — review them manually.` : 'Grades saved. Refresh the list to see updated scores.',
+      })
+      const failedIds = new Set(json.results.filter((r: { failed: string[] }) => r.failed.length > 0).map((r: { userId: string }) => r.userId))
+      setResults(prev => prev.map(r => {
+        if (ids.includes(r.userId || r.id)) {
+          return { ...r, graded: !failedIds.has(r.userId || '') ? true : r.graded }
+        }
+        return r
+      }))
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Bulk grading failed' })
+    } finally {
+      setBulkGradeIds(null)
+    }
+  }
+
   const releaseScore = async (userId: string, name: string) => {
     setReleasing(userId)
     try {
@@ -456,21 +535,33 @@ setManualGrades({})
       doc.setFontSize(18)
       doc.setFont('helvetica', 'bold')
       doc.text('Assessment Review Report', pw / 2, y, { align: 'center' })
-      y += 10
+      y += 12
 
+      // Left-aligned meta block
       doc.setFontSize(11)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Assessment', 20, y)
       doc.setFont('helvetica', 'normal')
-      doc.text(`Assessment: ${reviewData.examTitle}`, pw / 2, y, { align: 'center' })
+      doc.text(reviewData.examTitle, 60, y)
       y += 6
-      doc.text(`Candidate: ${reviewData.candidate.name || reviewCandidate.name}  (${reviewData.candidate.email || reviewCandidate.email})`, pw / 2, y, { align: 'center' })
+      doc.setFont('helvetica', 'bold')
+      doc.text('Candidate', 20, y)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`${reviewData.candidate.name || reviewCandidate.name}  (${reviewData.candidate.email || reviewCandidate.email})`, 60, y)
       y += 6
       const pct = reviewData.submission.max_score > 0
         ? Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)
         : 0
-      doc.text(`Score: ${reviewData.submission.score} / ${reviewData.submission.max_score}  (${pct}%)`, pw / 2, y, { align: 'center' })
+      doc.setFont('helvetica', 'bold')
+      doc.text('Score', 20, y)
+      doc.setFont('helvetica', 'normal')
+      doc.text(` ${reviewData.submission.score} / ${reviewData.submission.max_score}  (${pct}%)${reviewData.submission.has_pending_review ? '  —  PENDING REVIEW' : ''}`, 60, y)
       y += 6
       if (reviewData.submission.submitted_at) {
-        doc.text(`Submitted: ${new Date(reviewData.submission.submitted_at).toLocaleString()}`, pw / 2, y, { align: 'center' })
+        doc.setFont('helvetica', 'bold')
+        doc.text('Submitted', 20, y)
+        doc.setFont('helvetica', 'normal')
+        doc.text(new Date(reviewData.submission.submitted_at).toLocaleString(), 60, y)
         y += 6
       }
       doc.setDrawColor(200, 200, 200)
@@ -494,12 +585,17 @@ setManualGrades({})
           : detail?.correct
             ? `CORRECT (${detail.awarded ?? detail.points}/${maxPoints})`
             : `INCORRECT (${detail?.awarded ?? 0}/${maxPoints})`
+        const draftRemark = remarks[q.id] ?? aiFeedback[q.id] ?? (detail?.awarded !== undefined ? detail?.remarks : '')
+        const draftAwarded = manualGrades[q.id] ?? detail?.awarded
+        const shownVerdict = detail?.pending_review && draftAwarded !== undefined && draftRemark
+          ? `${draftAwarded}/${maxPoints} (DRAFT)`
+          : verdict
 
         if (y > 230) { doc.addPage(); y = 20 }
         doc.setFontSize(10)
         doc.setFont('helvetica', 'bold')
         const qText = (q.prompt || q.question || q.title || `Question ${i + 1}`).replace(/\s+/g, ' ').trim()
-        const qLines = doc.splitTextToSize(`Q${i + 1} [${q.type}] — ${verdict}: ${qText}`, pw - 40)
+        const qLines = doc.splitTextToSize(`Q${i + 1} [${q.type}] — ${shownVerdict}: ${qText}`, pw - 40)
         doc.text(qLines, 20, y)
         y += qLines.length * 4.5 + 2
 
@@ -517,8 +613,8 @@ setManualGrades({})
           doc.text(mLines, 24, y)
           y += mLines.length * 4 + 1
         }
-        if (detail?.remarks) {
-          const rLines = doc.splitTextToSize(`Remarks: ${detail.remarks.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
+        if (draftRemark) {
+          const rLines = doc.splitTextToSize(`Remarks: ${draftRemark.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
           if (y + rLines.length * 4 > 275) { doc.addPage(); y = 20 }
           doc.text(rLines, 24, y)
           y += rLines.length * 4 + 1
@@ -772,6 +868,17 @@ setManualGrades({})
               <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} awaiting grading
             </Badge>
           )}
+          {pendingGradingCount > 0 && (
+            <Button
+              variant="outline"
+              className="gap-2 text-blue-600 border-blue-500/40 hover:bg-blue-500/10 dark:text-blue-400"
+              onClick={() => gradeCandidates(results.filter(r => r.status === 'completed' && r.graded === false).map(r => r.userId || r.id))}
+              disabled={!!bulkGradeIds}
+            >
+              {bulkGradeIds ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+              {bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : `Grade All Pending (${pendingGradingCount})`}
+            </Button>
+          )}
           {unreleasedCount > 0 && (
             <Button
               variant="default"
@@ -800,6 +907,19 @@ setManualGrades({})
           searchKeys={['name', 'email']}
           searchPlaceholder="Search candidates..."
           bulkActions={[
+            {
+              label: bulkGradeIds ? `Grading ${bulkGradeIds.length}…` : 'Grade with AI',
+              variant: 'default',
+              icon: bulkGradeIds ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5 mr-1" />,
+              onClick: async (rowIds) => {
+                const ids = rowIds.map(id => {
+                  const r = results.find(c => c.id === id)
+                  return r?.userId || r?.id || id
+                })
+                const gradeIds = ids.filter((uid, i, arr) => arr.indexOf(uid) === i)
+                await gradeCandidates(gradeIds)
+              },
+            },
             {
               label: 'Release Scores',
               variant: 'default',
@@ -1034,18 +1154,39 @@ setManualGrades({})
                         )
                       })
                     )}
-                    {/* Save Grades button */}
-                    {Object.keys(manualGrades).length > 0 && (
+                    {/* AI Grade All + Save Grades buttons */}
+                    <div className="space-y-2 pt-1">
                       <Button
                         size="sm"
-                        className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                        onClick={saveGrades}
-                        disabled={savingGrades}
+                        variant="outline"
+                        className="w-full gap-2 text-blue-600 border-blue-500/40 hover:bg-blue-500/10 dark:text-blue-400"
+                        onClick={aiGradeAll}
+                        disabled={bulkGrading.running || reviewData.questions.length === 0}
                       >
-                        {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                        Save Manual Grades
+                        {bulkGrading.running ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                        {bulkGrading.running
+                          ? `Grading… ${bulkGrading.done}/${bulkGrading.total}`
+                          : bulkGrading.failed.length > 0
+                            ? `Grade All (${bulkGrading.total - bulkGrading.failed.length}/${bulkGrading.total} graded)`
+                            : 'Grade All with AI'}
                       </Button>
-                    )}
+                      {bulkGrading.running && (
+                        <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
+                          <div className="h-full bg-blue-500 transition-all" style={{ width: `${bulkGrading.total > 0 ? (bulkGrading.done / bulkGrading.total) * 100 : 0}%` }} />
+                        </div>
+                      )}
+                      {Object.keys(manualGrades).length > 0 && (
+                        <Button
+                          size="sm"
+                          className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
+                          onClick={saveGrades}
+                          disabled={savingGrades}
+                        >
+                          {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
+                          Save Manual Grades
+                        </Button>
+                      )}
+                    </div>
                   </div>
 
                   {/* Proctoring Events */}
