@@ -59,11 +59,28 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       email: string
       status: string
       score: number | null
+      maxScore: number | null
       submittedAt: string | null
       proctoringFlags: number
       released: boolean
       deliveryStatus: string | null
+      graded: boolean
     }
+
+    // Score is stored as raw points (e.g. 121/166). The admin UI displays it
+    // as a percentage, so normalize to 0-100 here — this is what prevents
+    // "scores over 100%" when an exam's max points != 100.
+    const toPercent = (score: number | undefined, max: number | undefined) => {
+      if (score == null || !max) return null
+      return Math.min(100, Math.round((score / max) * 100))
+    }
+
+    // Fetch proctor event counts for all users
+    const proctorCounts = await db.collection('proctor_events').aggregate([
+      { $match: { session_kind: 'exam', session_id: id } },
+      { $group: { _id: '$user_id', count: { $sum: 1 } } },
+    ]).toArray()
+    const proctorMap = new Map(proctorCounts.map((p: any) => [p._id, p.count]))
 
     // Deduplicate invites by email — keep the most recent one
     const latestInviteByEmail = new Map<string, typeof invites[0]>()
@@ -96,11 +113,13 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         name: inv.full_name || user.name || email.split('@')[0] || 'Candidate',
         email,
         status,
-        score: sub ? Math.round(sub.score) : null,
+        score: sub ? toPercent(sub.score, sub.max_score) : null,
+        maxScore: sub ? sub.max_score : null,
         submittedAt: sub?.submitted_at || null,
-        proctoringFlags: 0,
+        proctoringFlags: proctorMap.get(inv.user_id) || 0,
         released: sub?.released_at ? true : false,
-        deliveryStatus: inv.delivery_status || null,
+        deliveryStatus: sub && inv.delivery_status === 'sending' ? 'delivered' : (inv.delivery_status || null),
+        graded: sub ? (sub.has_pending_review === false) : false,
       })
     }
 
@@ -118,11 +137,13 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         name: fetched.name || 'Unknown',
         email: fetched.email || '',
         status: 'completed',
-        score: Math.round(sub.score),
+        score: toPercent(sub.score, sub.max_score),
+        maxScore: sub.max_score || null,
         submittedAt: sub.submitted_at || null,
-        proctoringFlags: 0,
+        proctoringFlags: proctorMap.get(sub.user_id) || 0,
         released: sub.released_at ? true : false,
-        deliveryStatus: null,
+        deliveryStatus: 'delivered',
+        graded: sub.has_pending_review === false,
       })
       if (fetched.email) seenEmails.add(fetched.email.toLowerCase())
     }

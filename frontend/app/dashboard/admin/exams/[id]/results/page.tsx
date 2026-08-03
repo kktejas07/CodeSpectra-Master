@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -33,6 +33,7 @@ interface CandidateResult {
   email: string
   status: string
   score: number | null
+  maxScore: number | null
   submittedAt: string | null
   proctoringFlags: number
   idPhoto?: string | null
@@ -40,6 +41,7 @@ interface CandidateResult {
   userId?: string
   released?: boolean
   deliveryStatus?: string | null
+  graded?: boolean
 }
 
 interface Exam {
@@ -56,6 +58,7 @@ interface QuestionDetail {
   answer: string
   pending_review?: boolean
   awarded?: number
+  remarks?: string
 }
 
 interface ReviewData {
@@ -113,6 +116,9 @@ export default function ExamResultsPage() {
   const [bulkReleasing, setBulkReleasing] = useState(false)
   const [manualGrades, setManualGrades] = useState<Record<string, number>>({})
   const [savingGrades, setSavingGrades] = useState(false)
+  const [aiGrading, setAiGrading] = useState<Record<string, boolean>>({})
+  const [aiFeedback, setAiFeedback] = useState<Record<string, string>>({})
+  const [remarks, setRemarks] = useState<Record<string, string>>({})
 
   const fetchData = useCallback(async () => {
     if (!params.id) return
@@ -141,6 +147,9 @@ export default function ExamResultsPage() {
     setReviewData(null)
     setReviewLoading(true)
     setManualGrades({})
+    setRemarks({})
+    setAiFeedback({})
+    setAiGrading({})
     try {
       const uid = row.userId || row.id
       const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
@@ -155,6 +164,29 @@ export default function ExamResultsPage() {
     }
   }
 
+  const aiGradeQuestion = async (qId: string) => {
+    if (!reviewCandidate) return
+    setAiGrading(prev => ({ ...prev, [qId]: true }))
+    try {
+      const uid = reviewCandidate.userId || reviewCandidate.id
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}/ai-grade`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ qId }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'AI grading failed')
+      setManualGrades(prev => ({ ...prev, [qId]: json.recommended }))
+      if (json.feedback) setAiFeedback(prev => ({ ...prev, [qId]: json.feedback }))
+      addToast({ type: 'success', title: `AI suggested ${json.recommended}/${json.max_points} (${json.verdict})` })
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'AI grading failed' })
+    } finally {
+      setAiGrading(prev => ({ ...prev, [qId]: false }))
+    }
+  }
+
   const releaseScore = async (userId: string, name: string) => {
     setReleasing(userId)
     try {
@@ -163,7 +195,14 @@ export default function ExamResultsPage() {
         credentials: 'include',
       })
       const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
+      if (!res.ok) {
+        if (json?.blocked) {
+          addToast({ type: 'error', title: 'Grading pending', message: `Score for ${name} cannot be released until manual grading is complete.` })
+        } else {
+          addToast({ type: 'error', title: json?.error || 'Failed to release score' })
+        }
+        return
+      }
       addToast({ type: 'success', title: `Score released for ${name}` })
       setReviewData(prev => prev ? { ...prev, submission: { ...prev.submission, released_at: json.released_at } } : null)
       setResults(prev => prev.map(r => r.userId === userId ? { ...r, released: true } : r))
@@ -183,7 +222,11 @@ export default function ExamResultsPage() {
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
-      addToast({ type: 'success', title: `${json.released} scores released` })
+      addToast({
+        type: json.skipped_pending > 0 ? 'warning' : 'success',
+        title: `${json.released} scores released`,
+        message: json.skipped_pending > 0 ? `${json.skipped_pending} skipped — grading still pending` : undefined,
+      })
       setResults(prev => prev.map(r => r.status === 'completed' ? { ...r, released: true } : r))
       if (reviewData) {
         setReviewData(prev => prev ? { ...prev, submission: { ...prev.submission, released_at: new Date().toISOString() } } : null)
@@ -204,7 +247,7 @@ export default function ExamResultsPage() {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ grades: manualGrades }),
+        body: JSON.stringify({ grades: manualGrades, remarks }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
@@ -213,7 +256,14 @@ export default function ExamResultsPage() {
       if (reviewData) {
         const updatedDetails = reviewData.submission.details.map(d => {
           if (manualGrades[d.qId] !== undefined) {
-            return { ...d, awarded: manualGrades[d.qId], correct: manualGrades[d.qId] > 0, pending_review: false }
+            const remark = remarks[d.qId]
+            return {
+              ...d,
+              awarded: manualGrades[d.qId],
+              correct: manualGrades[d.qId] > 0,
+              pending_review: false,
+              ...(remark && remark.trim() ? { remarks: remark.trim() } : {}),
+            }
           }
           return d
         })
@@ -222,11 +272,18 @@ export default function ExamResultsPage() {
           submission: { ...reviewData.submission, details: updatedDetails, score: json.score, has_pending_review: json.has_pending_review }
         })
       }
+      const savedMax = reviewData?.submission.max_score || 0
       setResults(prev => prev.map(r => {
-        if ((r.userId || r.id) === uid) return { ...r, score: json.score }
+        if ((r.userId || r.id) === uid) {
+          const max = r.maxScore || savedMax
+          const pct = max > 0 ? Math.min(100, Math.round((json.score / max) * 100)) : json.score
+          return { ...r, score: pct }
+        }
         return r
       }))
-      setManualGrades({})
+setManualGrades({})
+      setRemarks({})
+      setAiFeedback({})
     } catch {
       addToast({ type: 'error', title: 'Failed to save grades' })
     } finally {
@@ -388,6 +445,142 @@ export default function ExamResultsPage() {
     })
   }
 
+  const downloadReviewPdf = async () => {
+    if (!reviewData || !reviewCandidate) return
+    try {
+      const { default: jsPDF } = await import('jspdf')
+      const doc = new jsPDF()
+      const pw = doc.internal.pageSize.getWidth()
+      let y = 20
+
+      doc.setFontSize(18)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Assessment Review Report', pw / 2, y, { align: 'center' })
+      y += 10
+
+      doc.setFontSize(11)
+      doc.setFont('helvetica', 'normal')
+      doc.text(`Assessment: ${reviewData.examTitle}`, pw / 2, y, { align: 'center' })
+      y += 6
+      doc.text(`Candidate: ${reviewData.candidate.name || reviewCandidate.name}  (${reviewData.candidate.email || reviewCandidate.email})`, pw / 2, y, { align: 'center' })
+      y += 6
+      const pct = reviewData.submission.max_score > 0
+        ? Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)
+        : 0
+      doc.text(`Score: ${reviewData.submission.score} / ${reviewData.submission.max_score}  (${pct}%)`, pw / 2, y, { align: 'center' })
+      y += 6
+      if (reviewData.submission.submitted_at) {
+        doc.text(`Submitted: ${new Date(reviewData.submission.submitted_at).toLocaleString()}`, pw / 2, y, { align: 'center' })
+        y += 6
+      }
+      doc.setDrawColor(200, 200, 200)
+      doc.line(20, y, pw - 20, y)
+      y += 8
+
+      // Per-question breakdown
+      doc.setFontSize(13)
+      doc.setFont('helvetica', 'bold')
+      doc.text('Question Breakdown', 20, y)
+      y += 8
+
+      for (let i = 0; i < reviewData.questions.length; i++) {
+        const q = reviewData.questions[i]
+        const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
+        const userAnswer = reviewData.submission.answers[q.id] || ''
+        const modelAnswer = q.answer || q.correct_answer || ''
+        const maxPoints = q.points || q.score || detail?.points || 10
+        const verdict = detail?.pending_review
+          ? 'PENDING REVIEW'
+          : detail?.correct
+            ? `CORRECT (${detail.awarded ?? detail.points}/${maxPoints})`
+            : `INCORRECT (${detail?.awarded ?? 0}/${maxPoints})`
+
+        if (y > 230) { doc.addPage(); y = 20 }
+        doc.setFontSize(10)
+        doc.setFont('helvetica', 'bold')
+        const qText = (q.prompt || q.question || q.title || `Question ${i + 1}`).replace(/\s+/g, ' ').trim()
+        const qLines = doc.splitTextToSize(`Q${i + 1} [${q.type}] — ${verdict}: ${qText}`, pw - 40)
+        doc.text(qLines, 20, y)
+        y += qLines.length * 4.5 + 2
+
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        if (userAnswer) {
+          const aLines = doc.splitTextToSize(`Candidate: ${userAnswer.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
+          if (y + aLines.length * 4 > 275) { doc.addPage(); y = 20 }
+          doc.text(aLines, 24, y)
+          y += aLines.length * 4 + 1
+        }
+        if (modelAnswer && !detail?.correct) {
+          const mLines = doc.splitTextToSize(`Expected: ${modelAnswer.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
+          if (y + mLines.length * 4 > 275) { doc.addPage(); y = 20 }
+          doc.text(mLines, 24, y)
+          y += mLines.length * 4 + 1
+        }
+        if (detail?.remarks) {
+          const rLines = doc.splitTextToSize(`Remarks: ${detail.remarks.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
+          if (y + rLines.length * 4 > 275) { doc.addPage(); y = 20 }
+          doc.text(rLines, 24, y)
+          y += rLines.length * 4 + 1
+        }
+        y += 4
+      }
+
+      // Proctoring log
+      if (reviewData.proctorEvents.length > 0) {
+        if (y > 220) { doc.addPage(); y = 20 }
+        doc.setFontSize(13)
+        doc.setFont('helvetica', 'bold')
+        doc.text(`Proctoring Log (${reviewData.proctorEvents.length} events)`, 20, y)
+        y += 7
+
+        doc.setFontSize(9)
+        doc.setFont('helvetica', 'normal')
+        for (const evt of reviewData.proctorEvents) {
+          if (y > 275) { doc.addPage(); y = 20 }
+          const time = evt.created_at ? new Date(evt.created_at).toLocaleString() : ''
+          const label = formatProctorType(evt.event_type)
+          const meta = evt.meta && Object.keys(evt.meta).length > 0 ? ` ${JSON.stringify(evt.meta)}` : ''
+          const lines = doc.splitTextToSize(`${time} — ${label}${meta.slice(0, 300)}`, pw - 40)
+          doc.text(lines, 20, y)
+          y += lines.length * 4 + 1
+        }
+      }
+
+      doc.setFontSize(7)
+      doc.setFont('helvetica', 'italic')
+      doc.text('Generated by CodeSpectra Assessment Review', pw / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' })
+
+      doc.save(`review-${reviewData.candidate.name || reviewCandidate.name || 'candidate'}-${Date.now()}.pdf`)
+      addToast({ type: 'success', title: 'Review report downloaded' })
+    } catch {
+      addToast({ type: 'error', title: 'Failed to generate PDF report' })
+    }
+  }
+
+  const exportCSV = () => {
+    const headers = ['Candidate', 'Email', 'Status', 'Score (%)', 'Submitted At', 'Integrity Flags', 'Graded', 'Released']
+    const rows = results.map((r: CandidateResult) => [
+      r.name || '',
+      r.email || '',
+      r.status || '',
+      r.score !== null ? String(r.score) : '',
+      r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '',
+      String(r.proctoringFlags || 0),
+      r.graded ? 'Yes' : 'No',
+      r.released ? 'Yes' : 'No',
+    ])
+    const csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const blob = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(blob)
+    a.download = `${(exam?.title || 'exam').replace(/[^a-z0-9]+/gi, '_')}_results_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
+    URL.revokeObjectURL(a.href)
+  }
+
   const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 
   const proctorColor = (type: string): string => {
@@ -418,6 +611,15 @@ export default function ExamResultsPage() {
           expired: <Badge variant="secondary" className="text-amber-500">Expired</Badge>,
         }
         return badges[row.status] || <Badge variant="outline">{row.status}</Badge>
+      },
+    },
+    {
+      key: 'graded',
+      header: 'Graded',
+      cell: (row: CandidateResult) => {
+        if (row.status !== 'completed') return <span className="text-xs text-muted-foreground">--</span>
+        if (row.graded) return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Graded</span>
+        return <span className="text-xs text-amber-500 flex items-center gap-1"><Clock className="w-3 h-3"/> Not Graded</span>
       },
     },
     {
@@ -496,7 +698,12 @@ export default function ExamResultsPage() {
                   <Eye className="h-4 w-4" /> Review
                 </DropdownMenuItem>
               )}
-              {row.status === 'completed' && !row.released && (
+              {row.status === 'completed' && row.graded === false && (
+                <DropdownMenuItem disabled className="gap-2 text-amber-500">
+                  <Clock className="h-4 w-4" /> Grading Pending
+                </DropdownMenuItem>
+              )}
+              {row.status === 'completed' && row.graded && !row.released && (
                 <DropdownMenuItem onClick={() => releaseScore(row.userId || row.id, row.name)} className="gap-2 text-emerald-500 focus:text-emerald-500">
                   <Send className="h-4 w-4" /> Release Score
                 </DropdownMenuItem>
@@ -538,6 +745,7 @@ export default function ExamResultsPage() {
 
   const completedCount = results.filter(r => r.status === 'completed').length
   const unreleasedCount = results.filter(r => r.status === 'completed' && !r.released).length
+  const pendingGradingCount = results.filter(r => r.status === 'completed' && r.graded === false).length
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 p-6">
@@ -559,6 +767,11 @@ export default function ExamResultsPage() {
           </div>
         </div>
         <div className="flex items-center gap-3">
+          {pendingGradingCount > 0 && (
+            <Badge variant="secondary" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
+              <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} awaiting grading
+            </Badge>
+          )}
           {unreleasedCount > 0 && (
             <Button
               variant="default"
@@ -574,7 +787,7 @@ export default function ExamResultsPage() {
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
             Remind All Pending
           </Button>
-          <Button variant="outline" className="gap-2" onClick={exportCsv}>
+          <Button variant="outline" className="gap-2" onClick={exportCSV}>
             <Download className="w-4 h-4" /> Export CSV
           </Button>
         </div>
@@ -594,7 +807,7 @@ export default function ExamResultsPage() {
               onClick: async (ids) => {
                 for (const id of ids) {
                   const r = results.find(c => c.id === id)
-                  if (r && r.status === 'completed' && !r.released) {
+                  if (r && r.status === 'completed' && r.graded && !r.released) {
                     await releaseScore(r.userId || r.id, r.name)
                   }
                 }
@@ -715,9 +928,17 @@ export default function ExamResultsPage() {
                             {isMcq && q.options && (
                               <div className="flex flex-wrap gap-1.5 mt-1">
                                 {q.options.map((opt, oi) => {
-                                  const isSelected = userAnswer.toLowerCase() === opt.toLowerCase()
+                                  const optLower = opt.toLowerCase()
+                                  // multiple_response stores a comma-separated set; compare as sets
+                                  const userSet = q.type === 'multiple_response'
+                                    ? userAnswer.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+                                    : [userAnswer.toLowerCase()]
                                   const correctAns = q.correct_answer || q.answer || ''
-                                  const isCorrectAnswer = correctAns && opt.toLowerCase() === correctAns.toLowerCase()
+                                  const correctSet = q.type === 'multiple_response'
+                                    ? correctAns.split(',').map(s => s.trim().toLowerCase()).filter(Boolean)
+                                    : [correctAns.toLowerCase()]
+                                  const isSelected = userSet.includes(optLower)
+                                  const isCorrectAnswer = correctSet.includes(optLower)
                                   return (
                                     <Badge key={oi} variant="outline" className={`text-xs ${
                                       isSelected && isCorrectAnswer ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40' :
@@ -754,18 +975,57 @@ export default function ExamResultsPage() {
 
                                 {/* Manual grading input for pending review questions */}
                                 {(isPendingReview || isManuallyGraded) && (
-                                  <div className="flex items-center gap-3 pt-2 border-t border-dashed">
-                                    <label className="text-xs font-medium text-muted-foreground shrink-0">Award Points:</label>
-                                    <input
-                                      type="number"
-                                      min={0}
-                                      max={maxPoints}
-                                      value={manualGrades[q.id] ?? detail?.awarded ?? ''}
-                                      onChange={(e) => setManualGrades(prev => ({ ...prev, [q.id]: Math.min(maxPoints, Math.max(0, parseInt(e.target.value) || 0)) }))}
-                                      className="w-20 h-8 px-2 text-sm border rounded-md bg-background"
-                                      placeholder="0"
-                                    />
-                                    <span className="text-xs text-muted-foreground">/ {maxPoints}</span>
+                                  <div className="pt-3 border-t border-dashed space-y-3">
+                                    <div className="flex flex-wrap items-center gap-3">
+                                      <label className="text-xs font-medium text-muted-foreground shrink-0">Award Points:</label>
+                                      <input
+                                        type="number"
+                                        min={0}
+                                        max={maxPoints}
+                                        value={manualGrades[q.id] ?? detail?.awarded ?? ''}
+                                        onChange={(e) => setManualGrades(prev => ({ ...prev, [q.id]: Math.min(maxPoints, Math.max(0, parseInt(e.target.value) || 0)) }))}
+                                        className="w-20 h-8 px-2 text-sm border rounded-md bg-background"
+                                        placeholder="0"
+                                      />
+                                      <span className="text-xs text-muted-foreground">/ {maxPoints}</span>
+                                      <Button
+                                        size="sm"
+                                        variant="outline"
+                                        className="gap-1.5 text-xs h-8"
+                                        onClick={() => aiGradeQuestion(q.id)}
+                                        disabled={aiGrading[q.id] || !userAnswer}
+                                      >
+                                        {aiGrading[q.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
+                                        {aiGrading[q.id] ? 'Grading…' : 'AI Grade'}
+                                      </Button>
+                                    </div>
+
+                                    {aiFeedback[q.id] && (
+                                      <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-2">
+                                        <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
+                                          <Sparkles className="w-3.5 h-3.5" /> AI Feedback — review & edit before saving
+                                        </span>
+                                        <textarea
+                                          value={aiFeedback[q.id]}
+                                          onChange={(e) => setAiFeedback(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                          className="w-full min-h-20 px-3 py-2 text-xs border rounded-md bg-background"
+                                          placeholder="Feedback shown to the candidate on release…"
+                                        />
+                                      </div>
+                                    )}
+
+                                    {/* Persisted remarks shown to candidate on release */}
+                                    <div className="space-y-1">
+                                      <label className="text-xs font-medium text-muted-foreground flex items-center gap-1.5">
+                                        <MessageSquare className="w-3.5 h-3.5" /> Remarks / Feedback for Candidate
+                                      </label>
+                                      <textarea
+                                        value={remarks[q.id] ?? detail?.remarks ?? (detail?.awarded !== undefined ? aiFeedback[q.id] ?? '' : '')}
+                                        onChange={(e) => setRemarks(prev => ({ ...prev, [q.id]: e.target.value }))}
+                                        className="w-full min-h-16 px-3 py-2 text-xs border rounded-md bg-background"
+                                        placeholder="Where they went wrong, what's missing, how to improve…"
+                                      />
+                                    </div>
                                   </div>
                                 )}
                               </div>
@@ -858,6 +1118,9 @@ export default function ExamResultsPage() {
                     )}
                   </div>
                   <div className="flex items-center gap-3">
+                    <Button variant="outline" onClick={downloadReviewPdf} className="gap-2">
+                      <Download className="w-4 h-4" /> Download Report
+                    </Button>
                     <Button variant="outline" onClick={() => { setReviewCandidate(null); setReviewData(null) }}>
                       Close
                     </Button>

@@ -237,8 +237,7 @@ export default function ExamPage() {
                   d.correct ? 'border-green-500/20 hover:border-green-500/40' : 'border-red-500/20 hover:border-red-500/40'
                 }`}
               >
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {/* Column 1: Question details */}
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">                  {/* Column 1: Question details */}
                   <div className="space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
@@ -318,6 +317,15 @@ export default function ExamPage() {
                     </div>
                   </div>
                 </div>
+
+                {(d as any).remarks ? (
+                  <div className="mt-4 p-3 rounded-xl border border-amber-500/20 bg-amber-500/5">
+                    <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 block mb-1 flex items-center gap-1.5">
+                      <AlertTriangle className="h-3.5 w-3.5" /> Evaluator Feedback
+                    </span>
+                    <div className="text-sm text-foreground whitespace-pre-wrap break-words">{String((d as any).remarks)}</div>
+                  </div>
+                ) : null}
               </Card>
             )
           })}

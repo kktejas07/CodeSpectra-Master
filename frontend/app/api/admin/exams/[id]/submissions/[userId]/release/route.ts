@@ -25,6 +25,14 @@ export async function PATCH(
       return NextResponse.json({ error: 'Submission not found' }, { status: 404 })
     }
 
+    // Never release before manual grading completes (coding/descriptive pending)
+    if (submission.has_pending_review === true) {
+      return NextResponse.json({
+        error: 'Grading is still pending — this candidate has coding/descriptive answers that must be reviewed before the score can be released.',
+        blocked: true,
+      }, { status: 400 })
+    }
+
     const exam = await db.collection('exams').findOne({ id: examId })
     const examTitle = exam?.title || 'Technical Assessment'
 

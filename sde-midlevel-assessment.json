@@ -1,0 +1,356 @@
+{
+  "title": "SDE Mid-Level Assessment",
+  "subject": "Software Engineering",
+  "target": "Mid-level Software Development Engineers with 2-5 years of experience. Covers data structures, algorithms, system design, databases, concurrency, and software architecture.",
+  "complexity": "Intermediate",
+  "topics": [
+    "Data Structures (Arrays, Trees, Graphs, HashMaps)",
+    "Algorithms (Sorting, Searching, Dynamic Programming)",
+    "Object-Oriented Design",
+    "Database Design & Query Optimization",
+    "System Design & Architecture",
+    "Concurrency & Multithreading",
+    "Design Patterns",
+    "Operating Systems Basics",
+    "Networking Fundamentals",
+    "Code Quality & Best Practices"
+  ],
+  "techStack": ["Java", "Python", "SQL", "System Design", "Algorithms"],
+  "duration": 60,
+  "passingScore": 60,
+  "access_type": "open",
+  "published": true,
+  "questionList": [
+    {
+      "id": "sde1",
+      "type": "mcq",
+      "title": "HashMap vs TreeMap",
+      "prompt": "What is the key difference between HashMap and TreeMap in Java?\n\n```java\nMap<String, Integer> map1 = new HashMap<>();\nMap<String, Integer> map2 = new TreeMap<>();\nmap1.put(\"b\", 1); map1.put(\"a\", 2);\nmap2.put(\"b\", 1); map2.put(\"a\", 2);\n```",
+      "options": [
+        "HashMap gives O(1) access but unordered; TreeMap gives O(log n) but sorted by keys",
+        "TreeMap gives O(1) access; HashMap gives O(log n)",
+        "Both provide identical performance and ordering",
+        "HashMap stores sorted keys; TreeMap is unordered"
+      ],
+      "answer": "HashMap gives O(1) access but unordered; TreeMap gives O(log n) but sorted by keys",
+      "score": 5
+    },
+    {
+      "id": "sde2",
+      "type": "mcq",
+      "title": "Time Complexity of QuickSort",
+      "prompt": "What is the average-case time complexity of QuickSort?\n\n```python\ndef quicksort(arr):\n    if len(arr) <= 1: return arr\n    pivot = arr[len(arr)//2]\n    left = [x for x in arr if x < pivot]\n    middle = [x for x in arr if x == pivot]\n    right = [x for x in arr if x > pivot]\n    return quicksort(left) + middle + quicksort(right)\n```",
+      "options": [
+        "O(n log n) — divide-and-conquer with balanced partitions",
+        "O(n²) — always quadratic regardless of pivot choice",
+        "O(n) — linear scan through the array once",
+        "O(log n) — only the recursive depth matters"
+      ],
+      "answer": "O(n log n) — divide-and-conquer with balanced partitions",
+      "score": 5
+    },
+    {
+      "id": "sde3",
+      "type": "mcq",
+      "title": "SQL vs NoSQL Decision",
+      "prompt": "For a financial trading system requiring strict ACID compliance with complex JOINs across orders, accounts, and transactions, which database type would you choose?\n\n```sql\n-- Requires multi-table transactions\nBEGIN;\nUPDATE accounts SET balance = balance - 100 WHERE id = 1;\nUPDATE accounts SET balance = balance + 100 WHERE id = 2;\nINSERT INTO transactions VALUES (...);\nCOMMIT;\n```",
+      "options": [
+        "Relational DB (PostgreSQL/MySQL) — provides ACID, JOINs, and strong consistency",
+        "Document DB (MongoDB) — flexible schema for financial data",
+        "Key-Value store (Redis) — fastest for all operations",
+        "Graph DB (Neo4j) — required for financial transactions"
+      ],
+      "answer": "Relational DB (PostgreSQL/MySQL) — provides ACID, JOINs, and strong consistency",
+      "score": 5
+    },
+    {
+      "id": "sde4",
+      "type": "mcq",
+      "title": "Deadlock Conditions",
+      "prompt": "Which of the following is NOT one of the four necessary conditions for deadlock?\n\n```\nConditions for deadlock:\n1. Mutual Exclusion\n2. Hold and Wait\n3. No Preemption\n4. ???\n```",
+      "options": [
+        "Circular Wait — all four conditions must be present for deadlock",
+        "Starvation — one process never gets resources",
+        "Race condition — concurrent access to shared data",
+        "Priority inversion — low priority blocks high priority"
+      ],
+      "answer": "Circular Wait — all four conditions must be present for deadlock",
+      "score": 5
+    },
+    {
+      "id": "sde5",
+      "type": "mcq",
+      "title": "Stack vs Heap Memory",
+      "prompt": "Where are local primitive variables and object references stored in Java?\n\n```java\npublic void method() {\n    int x = 5;              // Where?\n    String s = \"hello\";    // Reference where? Object where?\n    List<Integer> list = new ArrayList<>(); // Reference where?\n}\n```",
+      "options": [
+        "Stack stores primitives and references; Heap stores the actual objects",
+        "Heap stores everything including primitives",
+        "Stack stores objects; Heap stores references",
+        "All variables go to the Heap in modern JVMs"
+      ],
+      "answer": "Stack stores primitives and references; Heap stores the actual objects",
+      "score": 5
+    },
+    {
+      "id": "sde6",
+      "type": "mcq",
+      "title": "BFS vs DFS Applications",
+      "prompt": "Which algorithm is better for finding the shortest path in an unweighted graph?\n\n```python\ndef shortest_path(graph, start, end):\n    # Which approach?\n    queue = deque([start])\n    visited = set()\n    while queue:\n        node = queue.popleft()\n        for neighbor in graph[node]:\n            if neighbor not in visited:\n                queue.append(neighbor)\n```",
+      "options": [
+        "BFS — explores level by level, guaranteeing shortest path in unweighted graphs",
+        "DFS — explores deeper first, always finds shortest path",
+        "Both BFS and DFS find shortest paths equally well",
+        "Dijkstra's algorithm — required even for unweighted graphs"
+      ],
+      "answer": "BFS — explores level by level, guaranteeing shortest path in unweighted graphs",
+      "score": 5
+    },
+    {
+      "id": "sde7",
+      "type": "mcq",
+      "title": "Polymorphism: Runtime vs Compile-time",
+      "prompt": "What type of polymorphism does method overriding represent?\n\n```java\nclass Animal {\n    void sound() { System.out.println(\"Animal sound\"); }\n}\nclass Dog extends Animal {\n    @Override\n    void sound() { System.out.println(\"Bark\"); }\n}\nAnimal a = new Dog();\na.sound();  // Output?\n```",
+      "options": [
+        "Runtime polymorphism — method called depends on actual object type at runtime",
+        "Compile-time polymorphism — decided by compiler based on reference type",
+        "Static polymorphism — determined at class loading time",
+        "No polymorphism — method overriding doesn't use polymorphism"
+      ],
+      "answer": "Runtime polymorphism — method called depends on actual object type at runtime",
+      "score": 5
+    },
+    {
+      "id": "sde8",
+      "type": "true_false",
+      "title": "TCP vs UDP",
+      "prompt": "True or False: TCP guarantees in-order delivery and retransmission of lost packets, while UDP does not.",
+      "options": ["True", "False"],
+      "answer": "True",
+      "score": 3
+    },
+    {
+      "id": "sde9",
+      "type": "mcq",
+      "title": "Database Index: B-Tree vs Hash",
+      "prompt": "When would a B-Tree index be preferred over a Hash index?\n\n```sql\n-- Query 1: Range scan\nSELECT * FROM orders WHERE created_at BETWEEN '2024-01-01' AND '2024-12-31';\n\n-- Query 2: Exact match\nSELECT * FROM orders WHERE order_id = 12345;\n```",
+      "options": [
+        "B-Tree for range queries and ordered scans; Hash only for exact equality lookups",
+        "Hash for range queries; B-Tree for exact equality only",
+        "Both are identical for all query types",
+        "B-Tree is always better; Hash is deprecated"
+      ],
+      "answer": "B-Tree for range queries and ordered scans; Hash only for exact equality lookups",
+      "score": 5
+    },
+    {
+      "id": "sde10",
+      "type": "mcq",
+      "title": "Race Condition Prevention",
+      "prompt": "What happens when two threads increment a shared counter without synchronization?\n\n```java\nclass Counter {\n    private int count = 0;\n    // No synchronized keyword\n    public void increment() { count++; }\n    public int get() { return count; }\n}\n// Thread A: increment() x 1000\n// Thread B: increment() x 1000\n// Final count expected: 2000, Actual result: varies (< 2000)\n```",
+      "options": [
+        "Race condition — count++ is not atomic (read-modify-write), causing lost updates",
+        "Both threads run perfectly; count will always be 2000",
+        "Java automatically synchronizes all field access",
+        "The JVM detects the conflict and throws an exception"
+      ],
+      "answer": "Race condition — count++ is not atomic (read-modify-write), causing lost updates",
+      "score": 5
+    },
+    {
+      "id": "sde11",
+      "type": "mcq",
+      "title": "Thread Pool Benefits",
+      "prompt": "Why use a thread pool instead of creating new threads for each task?\n\n```java\n// Approach A: New thread per task\nnew Thread(() -> handleRequest()).start();\n\n// Approach B: Thread pool\nExecutorService pool = Executors.newFixedThreadPool(10);\npool.execute(() -> handleRequest());\n```",
+      "options": [
+        "Thread creation is expensive — pools reuse threads and control resource usage",
+        "Thread pools are always faster regardless of task type",
+        "Creating new threads is deprecated in Java",
+        "Thread pools guarantee thread safety automatically"
+      ],
+      "answer": "Thread creation is expensive — pools reuse threads and control resource usage",
+      "score": 5
+    },
+    {
+      "id": "sde12",
+      "type": "true_false",
+      "title": "REST API Statelessness",
+      "prompt": "True or False: A RESTful API should be stateless — each request should contain all the information needed to process it, without relying on server-side session state.",
+      "options": ["True", "False"],
+      "answer": "True",
+      "score": 3
+    },
+    {
+      "id": "sde13",
+      "type": "mcq",
+      "title": "Binary Search Tree Property",
+      "prompt": "Which traversal of a Binary Search Tree yields sorted elements in ascending order?\n\n```\n    5\n   / \\\n  3   7\n / \\ / \\\n1  4 6  8\n```",
+      "options": [
+        "Inorder — Left → Root → Right gives sorted ascending order",
+        "Preorder — Root → Left → Right",
+        "Postorder — Left → Right → Root",
+        "Level order — BFS gives sorted order"
+      ],
+      "answer": "Inorder — Left → Root → Right gives sorted ascending order",
+      "score": 5
+    },
+    {
+      "id": "sde14",
+      "type": "mcq",
+      "title": "Idempotency of HTTP Methods",
+      "prompt": "Which HTTP methods are idempotent by the HTTP specification?\n\n```http\nGET /api/users/123     # Option A\nPUT /api/users/123     # Option B\nPOST /api/users        # Option C\nDELETE /api/users/123  # Option D\n```",
+      "options": [
+        "GET, PUT, DELETE are idempotent; POST is not",
+        "Only GET is idempotent",
+        "All HTTP methods are idempotent",
+        "POST and PUT are idempotent; GET and DELETE are not"
+      ],
+      "answer": "GET, PUT, DELETE are idempotent; POST is not",
+      "score": 5
+    },
+    {
+      "id": "sde15",
+      "type": "mcq",
+      "title": "Singleton Pattern: Thread Safety",
+      "prompt": "Which singleton implementation is guaranteed thread-safe without explicit synchronization?\n\n```java\n// A\nclass A { private static final A INST = new A(); private A() {} public static A get() { return INST; } }\n\n// B\nclass B { private static B inst; private B() {} public static B get() { if(inst==null) inst=new B(); return inst; } }\n\n// C\nenum C { INSTANCE; }\n```",
+      "options": [
+        "A and C — eager initialization uses JVM class loading; enum uses JVM guarantee",
+        "B only — lazy initialization is always thread-safe",
+        "None — all singletons need external synchronization",
+        "All three are equally thread-safe"
+      ],
+      "answer": "A and C — eager initialization uses JVM class loading; enum uses JVM guarantee",
+      "score": 5
+    },
+    {
+      "id": "sde16",
+      "type": "mcq",
+      "title": "CAP Theorem: Network Partition",
+      "prompt": "During a network partition in a distributed database, you must choose between:\n\n```\n[Client] ──X── [Node A]    [Node B]\n                Write?       Stale?\n```",
+      "options": [
+        "Consistency or Availability — you cannot have both during a partition",
+        "Performance or Security — partition affects these properties",
+        "Latency or Throughput — primary tradeoff during partitions",
+        "Compression or Encryption — network partitions require these"
+      ],
+      "answer": "Consistency or Availability — you cannot have both during a partition",
+      "score": 5
+    },
+    {
+      "id": "sde17",
+      "type": "mcq",
+      "title": "Merge Sort Space Complexity",
+      "prompt": "What is the space complexity of Merge Sort?\n\n```python\ndef merge_sort(arr):\n    if len(arr) <= 1: return arr\n    mid = len(arr) // 2\n    left = merge_sort(arr[:mid])\n    right = merge_sort(arr[mid:])\n    return merge(left, right)\n```",
+      "options": [
+        "O(n) — requires additional arrays for merging at each level",
+        "O(1) — merges in place without extra memory",
+        "O(log n) — only the recursion stack matters",
+        "O(n²) — each merge creates n² temporary arrays"
+      ],
+      "answer": "O(n) — requires additional arrays for merging at each level",
+      "score": 5
+    },
+    {
+      "id": "sde18",
+      "type": "fill_blanks",
+      "title": "ACID Properties",
+      "prompt": "The ACID properties in database transactions are: ___ (all-or-nothing), ___ (valid state transition), ___ (concurrent transactions appear sequential), and ___ (committed data survives failures).",
+      "options": ["Atomicity", "Consistency", "Isolation", "Durability", "Integrity", "Performance"],
+      "answer": "Atomicity, Consistency, Isolation, Durability",
+      "score": 5
+    },
+    {
+      "id": "sde19",
+      "type": "mcq",
+      "title": "Load Balancer: Layer 4 vs Layer 7",
+      "prompt": "What is the key difference between Layer 4 (transport) and Layer 7 (application) load balancers?\n\n```\nLayer 4: Routes based on IP and TCP/UDP port\nLayer 7: Routes based on HTTP headers, URL path, cookies\n```",
+      "options": [
+        "Layer 7 can route based on URL path and headers; Layer 4 only by IP/port",
+        "Layer 4 is more intelligent because it reads HTTP data",
+        "There is no difference — they work identically",
+        "Layer 7 only works with HTTPS; Layer 4 works with everything"
+      ],
+      "answer": "Layer 7 can route based on URL path and headers; Layer 4 only by IP/port",
+      "score": 5
+    },
+    {
+      "id": "sde20",
+      "type": "mcq",
+      "title": "HashSet Internal Implementation",
+      "prompt": "What data structure does Java's HashSet use internally?\n\n```java\nSet<String> set = new HashSet<>();\nset.add(\"apple\");\nset.add(\"banana\");\n// How is this stored?\n```",
+      "options": [
+        "HashMap — HashSet is backed by a HashMap where elements are keys, value is a dummy PRESENT object",
+        "ArrayList — stores elements in a resizable array",
+        "LinkedList — stores elements in a doubly-linked list",
+        "TreeSet — always stores in red-black tree"
+      ],
+      "answer": "HashMap — HashSet is backed by a HashMap where elements are keys, value is a dummy PRESENT object",
+      "score": 5
+    },
+    {
+      "id": "sde21",
+      "type": "mcq",
+      "title": "WebSocket vs HTTP Polling",
+      "prompt": "Why use WebSockets instead of HTTP polling for a real-time chat application?\n\n```javascript\n// HTTP Polling (every 3s)\nsetInterval(() => fetch('/messages').then(r => r.json()), 3000);\n\n// WebSocket\nconst ws = new WebSocket('wss://chat.app/ws');\nws.onmessage = (event) => displayMessage(event.data);\n```",
+      "options": [
+        "WebSocket enables full-duplex, low-latency communication without constant polling overhead",
+        "HTTP polling always delivers messages faster than WebSocket",
+        "WebSocket is preferred because it uses less JavaScript code",
+        "HTTP is the only protocol that supports real-time messaging"
+      ],
+      "answer": "WebSocket enables full-duplex, low-latency communication without constant polling overhead",
+      "score": 5
+    },
+    {
+      "id": "sde22",
+      "type": "multiple_response",
+      "title": "SOLID Principles",
+      "prompt": "Which of the following correctly describe SOLID principles? (Select all that apply)",
+      "options": [
+        "Single Responsibility: A class should have only one reason to change",
+        "Open/Closed: Classes should be open for extension but closed for modification",
+        "Liskov Substitution: Subtypes must be substitutable for their base types",
+        "Interface Segregation: Many specific interfaces are better than one general interface",
+        "Dependency Inversion: Depend on abstractions, not concrete implementations"
+      ],
+      "answer": "Single Responsibility: A class should have only one reason to change, Open/Closed: Classes should be open for extension but closed for modification, Liskov Substitution: Subtypes must be substitutable for their base types, Interface Segregation: Many specific interfaces are better than one general interface, Dependency Inversion: Depend on abstractions, not concrete implementations",
+      "score": 10
+    },
+    {
+      "id": "sde23",
+      "type": "multiple_response",
+      "title": "Horizontal vs Vertical Scaling",
+      "prompt": "Which statements about scaling strategies are correct? (Select all that apply)",
+      "options": [
+        "Horizontal scaling adds more machines/servers; vertical scaling adds more resources (CPU/RAM) to existing machines",
+        "Horizontal scaling requires load balancing; vertical scaling has inherent hardware limits",
+        "Vertical scaling is always cheaper than horizontal scaling at any scale",
+        "Horizontal scaling provides better fault tolerance through redundancy",
+        "Cloud-native applications typically favor horizontal scaling for elasticity"
+      ],
+      "answer": "Horizontal scaling adds more machines/servers; vertical scaling adds more resources (CPU/RAM) to existing machines, Horizontal scaling requires load balancing; vertical scaling has inherent hardware limits, Horizontal scaling provides better fault tolerance through redundancy, Cloud-native applications typically favor horizontal scaling for elasticity",
+      "score": 10
+    },
+    {
+      "id": "sde24",
+      "type": "coding",
+      "title": "Two Sum Problem",
+      "prompt": "## Two Sum — Find Pair with Target Sum\n\nGiven an array of integers and a target sum, return indices of two numbers that add up to the target.\n\n```java\npublic class TwoSum {\n    public int[] findPair(int[] nums, int target) {\n        // Your code here\n    }\n}\n```\n\n**Examples:**\n```\nInput: nums = [2, 7, 11, 15], target = 9\nOutput: [0, 1]  (2 + 7 = 9)\n\nInput: nums = [3, 2, 4], target = 6\nOutput: [1, 2]  (2 + 4 = 6)\n\nInput: nums = [3, 3], target = 6\nOutput: [0, 1]\n```\n\n**Constraints:**\n- Exactly one valid solution exists\n- Return any valid pair\n- O(n) time with HashMap, O(n²) brute force also accepted",
+      "score": 15
+    },
+    {
+      "id": "sde25",
+      "type": "coding",
+      "title": "Validate Balanced Parentheses",
+      "prompt": "## Validate Balanced Parentheses\n\nGiven a string containing only '(', ')', '{', '}', '[', ']', determine if all brackets are properly closed and nested.\n\n```python\ndef is_valid(s: str) -> bool:\n    \"\"\"Return True if parentheses are balanced.\"\"\"\n    pass\n```\n\n**Examples:**\n```\nInput: \"()\"          → True\nInput: \"()[]{}\"      → True\nInput: \"(]\"          → False\nInput: \"([)]\"        → False (improper nesting)\nInput: \"{[]}\"        → True\nInput: \"(((\"         → False (unclosed)\n```\n\n**Constraints:**\n- String length: 1 to 10^4\n- Characters: only '()[]{}'\n- Use a stack for O(n) time and space",
+      "score": 15
+    },
+    {
+      "id": "sde26",
+      "type": "descriptive",
+      "title": "Design a Scalable Notification System",
+      "prompt": "## System Design: Notification System\n\nDesign a notification system that can send push notifications, emails, and SMS to millions of users.\n\n**Describe your approach covering:**\n\n1. Overall architecture — what components are needed?\n2. How do you handle different notification channels (push, email, SMS)?\n3. How do you ensure delivery reliability and handle failures?\n4. How do you prevent overwhelming users with too many notifications?\n5. How would you scale this to handle 1M notifications per minute?\n\nProvide concrete design decisions with reasoning.",
+      "answer": "1. Event-driven architecture: Kafka for ingestion, worker pools per channel, template engine, user preference service. API gateway for admin/internal calls.\n\n2. Strategy pattern: each channel (APNs/FCM for push, SES/SendGrid for email, Twilio for SMS) as a separate service. Message queue per channel for isolation.\n\n3. Retry with exponential backoff, dead letter queue for permanent failures, idempotency keys to prevent duplicates, delivery status tracking.\n\n4. User preference service (opt-in/out per channel), rate limiting per user, priority tiers (transactional > marketing), quiet hours support.\n\n5. Kafka partitions scale with users, auto-scaling workers based on queue depth, database sharding by user_id for preferences, CDN for push certificate management, Redis for rate limit counters.",
+      "score": 15
+    }
+  ]
+}

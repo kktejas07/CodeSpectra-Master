@@ -33,6 +33,7 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   }
 
   if (!body.problem_slug) return NextResponse.json({ error: 'problem_slug required' }, { status: 400 })
+  if (!body.repo_url || !body.repo_url.trim()) return NextResponse.json({ error: 'GitHub repo URL is required' }, { status: 400 })
   const task = (hk.tasks || []).find((t) => t.problem_slug === body.problem_slug)
   if (!task) return NextResponse.json({ error: 'problem not assigned to this event' }, { status: 400 })
 

@@ -38,8 +38,10 @@ import {
   X,
   AlertTriangle,
   Eye,
+  Download,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -74,6 +76,9 @@ interface Submission {
   team_name: string
   problem_slug: string
   repo_url?: string
+  video_url?: string
+  live_url?: string
+  comment?: string
   code?: string
   score: number | null
   max_score: number
@@ -174,6 +179,7 @@ export default function JudgeReviewPage() {
   const hackathonId = params.id
 
   const gate = usePageGuard('judge')
+  const addToast = useToast()
   const [hackathon, setHackathon] = useState<Hackathon | null>(null)
   const [submissions, setSubmissions] = useState<Submission[]>([])
   const [loading, setLoading] = useState(true)
@@ -184,6 +190,9 @@ export default function JudgeReviewPage() {
   const [submitSuccess, setSubmitSuccess] = useState(false)
   const [rejectReason, setRejectReason] = useState('')
   const [rejecting, setRejecting] = useState(false)
+  const [statusUpdating, setStatusUpdating] = useState(false)
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
+  const [bulkUpdating, setBulkUpdating] = useState(false)
   const [rubricScores, setRubricScores] = useState<RubricScores>({
     correctness: '',
     quality: '',
@@ -308,6 +317,24 @@ export default function JudgeReviewPage() {
     finally { setRejecting(false) }
   }
 
+  async function updateStatus(newStatus: string) {
+    if (!selected) return
+    setStatusUpdating(true)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${hackathonId}/submissions/${selected.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ status: newStatus }),
+      })
+      if (res.ok) {
+        setSubmissions((prev) => prev.map((s) => s.id === selected.id ? { ...s, status: newStatus } : s))
+        setSelected((prev) => prev ? { ...prev, status: newStatus } : null)
+      }
+    } catch { /* ignore */ }
+    finally { setStatusUpdating(false) }
+  }
+
   function problemTitle(slug: string): string {
     return hackathon?.tasks?.find((t) => t.problem_slug === slug)?.problem_title || slug
   }
@@ -321,6 +348,62 @@ export default function JudgeReviewPage() {
     pending: submissions.filter((s) => s.status === 'pending').length,
     underReview: submissions.filter((s) => s.status === 'under_review').length,
     released: submissions.filter((s) => s.status === 'released').length,
+  }
+
+  function toggleSelect(id: string) {
+    setSelectedIds((prev) => {
+      const next = new Set(prev)
+      next.has(id) ? next.delete(id) : next.add(id)
+      return next
+    })
+  }
+
+  function toggleAll() {
+    const all = filtered.map((s) => s.id)
+    setSelectedIds((prev) => prev.size === all.length ? new Set() : new Set(all))
+  }
+
+  async function bulkUpdateStatus(newStatus: string) {
+    setBulkUpdating(true)
+    let count = 0
+    for (const id of selectedIds) {
+      try {
+        await csrfFetch(`/api/hackathons/${hackathonId}/submissions/${id}`, {
+          method: 'PATCH', headers: { 'Content-Type': 'application/json' },
+          credentials: 'include', body: JSON.stringify({ status: newStatus }),
+        })
+        count++
+      } catch { /* continue */ }
+    }
+    setSubmissions((prev) => prev.map((s) => selectedIds.has(s.id) ? { ...s, status: newStatus } : s))
+    setSelectedIds(new Set())
+    setBulkUpdating(false)
+    addToast({ type: 'success', title: `Updated ${count} submission${count !== 1 ? 's' : ''}` })
+  }
+
+  function exportCSV() {
+    const headers = ['Team', 'Problem', 'Repo URL', 'Video URL', 'Live URL', 'Comment', 'Status', 'Score', 'Max Score', 'Submitted At', 'Feedback']
+    const rows = submissions.map((s) => [
+      s.team_name,
+      problemTitle(s.problem_slug),
+      s.repo_url || '',
+      (s as any).video_url || '',
+      (s as any).live_url || '',
+      (s as any).comment || '',
+      s.status,
+      s.score != null ? String(s.score) : '',
+      s.max_score,
+      s.submitted_at ? new Date(s.submitted_at).toLocaleString() : '',
+      s.feedback || '',
+    ])
+    const csv = [headers, ...rows]
+      .map((r) => r.map((c) => `"${String(c).replace(/"/g, '""')}"`).join(','))
+      .join('\n')
+    const b = new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' })
+    const a = document.createElement('a')
+    a.href = URL.createObjectURL(b)
+    a.download = `${hackathon?.name || 'hackathon'}_submissions_${new Date().toISOString().slice(0, 10)}.csv`
+    a.click()
   }
 
   if (!gate.ready || loading) {
@@ -367,13 +450,36 @@ export default function JudgeReviewPage() {
         <span>Under Review: <strong>{stats.underReview}</strong></span>
         <span className="text-muted-foreground">|</span>
         <span>Released: <strong>{stats.released}</strong></span>
+        <Button variant="outline" size="sm" className="ml-auto gap-1.5" onClick={exportCSV}>
+          <Download className="h-3.5 w-3.5" /> Export CSV
+        </Button>
       </div>
 
       <div className="flex gap-6 flex-col lg:flex-row">
         <div className="flex-1 overflow-x-auto">
+          {selectedIds.size > 0 && (
+            <div className="flex items-center gap-2 mb-3 p-2 rounded-lg bg-primary/10 border border-primary/20">
+              <span className="text-sm font-medium">{selectedIds.size} selected</span>
+              <select
+                onChange={(e) => { if (e.target.value) bulkUpdateStatus(e.target.value); e.target.value = '' }}
+                disabled={bulkUpdating}
+                className="rounded border border-border bg-background px-2 py-1 text-xs"
+              >
+                <option value="">Bulk update status...</option>
+                <option value="pending">Pending</option>
+                <option value="under_review">Under Review</option>
+                <option value="released">Released</option>
+              </select>
+              {bulkUpdating && <Loader2 className="h-3.5 w-3.5 animate-spin" />}
+              <Button variant="ghost" size="sm" className="ml-auto text-xs" onClick={() => setSelectedIds(new Set())}>Clear</Button>
+            </div>
+          )}
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-8">
+                  <input type="checkbox" checked={filtered.length > 0 && selectedIds.size === filtered.length} onChange={toggleAll} className="h-3.5 w-3.5" />
+                </TableHead>
                 <TableHead>Team</TableHead>
                 <TableHead>Problem</TableHead>
                 <TableHead>Status</TableHead>
@@ -384,7 +490,7 @@ export default function JudgeReviewPage() {
             <TableBody>
               {filtered.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center text-sm text-muted-foreground py-8">
+                  <TableCell colSpan={6} className="text-center text-sm text-muted-foreground py-8">
                     No submissions match this filter.
                   </TableCell>
                 </TableRow>
@@ -393,9 +499,11 @@ export default function JudgeReviewPage() {
                   <TableRow
                     key={s.id}
                     className={`cursor-pointer transition-colors ${selected?.id === s.id ? 'bg-primary/10' : 'hover:bg-muted/50'}`}
-                    onClick={() => selectRow(s)}
                   >
-                    <TableCell className="font-medium">{s.team_name}</TableCell>
+                    <TableCell className="p-2" onClick={(e) => e.stopPropagation()}>
+                      <input type="checkbox" checked={selectedIds.has(s.id)} onChange={() => toggleSelect(s.id)} className="h-3.5 w-3.5" />
+                    </TableCell>
+                    <TableCell className="font-medium" onClick={() => selectRow(s)}>{s.team_name}</TableCell>
                     <TableCell>{problemTitle(s.problem_slug)}</TableCell>
                     <TableCell>
                       <Badge variant={s.status === 'pending' ? 'destructive' : s.status === 'released' ? 'default' : 'secondary'}>
@@ -447,18 +555,46 @@ export default function JudgeReviewPage() {
               >
                 <Eye className="h-3 w-3" /> View Problem <ExternalLink className="h-2.5 w-2.5" />
               </a>
+              <div className="flex items-center gap-2 pt-1">
+                <Label className="text-xs font-semibold shrink-0">Status:</Label>
+                <select
+                  value={selected.status}
+                  onChange={(e) => updateStatus(e.target.value)}
+                  disabled={statusUpdating}
+                  className="flex-1 rounded border border-border bg-background px-2 py-1 text-xs"
+                >
+                  <option value="pending">Pending</option>
+                  <option value="under_review">Under Review</option>
+                  <option value="released">Released</option>
+                </select>
+                {statusUpdating && <Loader2 className="h-3 w-3 animate-spin shrink-0" />}
+              </div>
               {selected.repo_url && (
                 <p>
                   <strong>Repo:</strong>{' '}
-                  <a
-                    href={selected.repo_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-primary hover:underline inline-flex items-center gap-1"
-                  >
+                  <a href={selected.repo_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1">
                     {selected.repo_url.length > 40 ? selected.repo_url.slice(0, 40) + '…' : selected.repo_url} <ExternalLink className="h-3 w-3" />
                   </a>
                 </p>
+              )}
+              {(selected as any).video_url && (
+                <p>
+                  <strong>Video:</strong>{' '}
+                  <a href={(selected as any).video_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
+                    {(selected as any).video_url.length > 40 ? (selected as any).video_url.slice(0, 40) + '…' : (selected as any).video_url} <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                </p>
+              )}
+              {(selected as any).live_url && (
+                <p>
+                  <strong>Live Site:</strong>{' '}
+                  <a href={(selected as any).live_url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline inline-flex items-center gap-1 text-xs">
+                    {(selected as any).live_url.length > 40 ? (selected as any).live_url.slice(0, 40) + '…' : (selected as any).live_url} <ExternalLink className="h-2.5 w-2.5" />
+                  </a>
+                </p>
+              )}
+              {(selected as any).comment && (
+                <p className="text-xs text-muted-foreground"><strong>Comment:</strong> {(selected as any).comment}</p>
               )}
             </div>
 

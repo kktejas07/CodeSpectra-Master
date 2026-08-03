@@ -25,7 +25,7 @@ import {
 import {
   Loader2, Trophy, Users, Clock, CalendarDays, Timer,
   CheckCircle, AlertCircle, ArrowRight, Copy, Sparkles, Shield, ListChecks,
-  Hand, Eye, Send, X, Code, FileText, ChevronDown, ChevronUp,
+  Hand, Eye, Send, X, Code, FileText, ChevronDown, ChevronUp, RefreshCw,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
@@ -119,7 +119,10 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [problemDetail, setProblemDetail] = useState<ProblemDetail | null>(null)
   const [problemDetailLoading, setProblemDetailLoading] = useState(false)
 
-  const [submitForm, setSubmitForm] = useState({ repo_url: '', commit_sha: '', code: '', video_url: '', live_url: '', comment: '' });
+  const [submitForm, setSubmitForm] = useState({ repo_url: '', code: '', video_url: '', live_url: '', comment: '' });
+  const [isResubmit, setIsResubmit] = useState(false)
+  const [resubmitForId, setResubmitForId] = useState<string | null>(null)
+  const [resubmitReason, setResubmitReason] = useState('')
   const [editorLanguage, setEditorLanguage] = useState("python")
   const [submitting, setSubmitting] = useState(false)
   const [submitError, setSubmitError] = useState<string | null>(null)
@@ -282,7 +285,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     const sub = submissions.find(s => s.problem_slug === task.problem_slug)
     if (sub && sub.status === 'released') return
     setSubmittingFor({ problem_slug: task.problem_slug, problem_title: task.problem_title, points: task.points })
-    setSubmitForm({ repo_url: '', commit_sha: '', code: '', video_url: '', live_url: '', comment: '' })
+    setSubmitForm({ repo_url: '', code: '', video_url: '', live_url: '', comment: '' })
     setSubmitError(null)
   }
 
@@ -292,7 +295,25 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
 
   const closeSubmitModal = () => {
     setSubmittingFor(null)
-    setSubmitForm({ repo_url: '', commit_sha: '', code: '', video_url: '', live_url: '', comment: '' })
+    setSubmitForm({ repo_url: '', code: '', video_url: '', live_url: '', comment: '' })
+    setSubmitError(null)
+    setIsResubmit(false)
+    setResubmitForId(null)
+    setResubmitReason('')
+  }
+
+  const openResubmit = (sub: Submission, task: HackathonTask) => {
+    setSubmittingFor({ problem_slug: task.problem_slug, problem_title: task.problem_title, points: task.points })
+    setSubmitForm({
+      repo_url: (sub as any).repo_url || '',
+      code: (sub as any).code || '',
+      video_url: (sub as any).video_url || '',
+      live_url: (sub as any).live_url || '',
+      comment: (sub as any).comment || '',
+    })
+    setIsResubmit(true)
+    setResubmitForId(sub.id)
+    setResubmitReason('')
     setSubmitError(null)
   }
 
@@ -300,16 +321,49 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
     if (!submittingFor || !hackathon) return
     setSubmitting(true)
     setSubmitError(null)
+    const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+    if (!team) { setSubmitting(false); return }
+    if (!submitForm.repo_url || !submitForm.repo_url.trim()) {
+      setSubmitError('GitHub repo URL is required')
+      setSubmitting(false)
+      return
+    }
+
+    if (isResubmit && resubmitForId) {
+      const body: Record<string, any> = {
+        repo_url: submitForm.repo_url,
+        video_url: submitForm.video_url || undefined,
+        live_url: submitForm.live_url || undefined,
+        comment: submitForm.comment || undefined,
+        resubmit_reason: resubmitReason.trim() || 'Resubmitted by team',
+      }
+      if (submitForm.code) {
+        body.code = submitForm.code
+        body.language = editorLanguage
+      }
+      const res = await csrfFetch(`/api/hackathons/${hackathon.id}/submissions/${resubmitForId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Resubmitted!', message: 'Your updated details have been saved.' })
+        closeSubmitModal()
+        await refreshSubmissions()
+      } else {
+        const data = await res.json().catch(() => ({}))
+        setSubmitError(data.error || 'Resubmit failed')
+      }
+      setSubmitting(false)
+      return
+    }
     try {
-      const team = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
-      if (!team) return
       const res = await csrfFetch(`/api/hackathons/${hackathon.id}/submissions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
         problem_slug: submittingFor.problem_slug,
         repo_url: submitForm.repo_url || undefined,
-        commit_sha: submitForm.commit_sha || undefined,
         code: submitForm.code || undefined,
         language: editorLanguage,
         video_url: submitForm.video_url || undefined,
@@ -555,8 +609,19 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             <div className="flex items-center gap-2 mb-3">
               <ListChecks className="h-4 w-4 text-primary" />
               <h3 className="text-sm font-semibold">Problems ({solvedCount}/{hackathon.solve_limit && hackathon.solve_limit > 0 ? hackathon.solve_limit : hackathon.tasks.length} solved)</h3>
-            </div>
-            <div className="space-y-2">
+              </div>
+              {isResubmit && (
+                <div className="space-y-2 rounded-lg border border-amber-500/30 bg-amber-500/5 p-3">
+                  <Label htmlFor="resubmit_reason">Reason for resubmission <span className="text-destructive">*</span></Label>
+                  <Input
+                    id="resubmit_reason"
+                    placeholder="Explain why you're updating the submission..."
+                    value={resubmitReason}
+                    onChange={(e) => setResubmitReason(e.target.value)}
+                  />
+                </div>
+              )}
+              <div className="space-y-2">
               {hackathon.tasks.map((task, i) => {
                 const status = getProblemStatus(task.problem_slug)
                 const claim = claims[task.problem_slug]
@@ -566,13 +631,16 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 const canClaim = status === 'pending' && !isClaimed
                 const canRelease = isMyClaim
                 const claimer = claimerName(task.problem_slug)
+                const isSelected = team?.selected_problems?.includes(task.problem_slug)
 
                 return (
-                  <Card key={task.problem_slug} className="p-4">
+                  <Card key={task.problem_slug} className={`p-4 ${isSelected ? 'border-primary/50 bg-primary/5' : ''}`}>
                     <div className="flex items-center justify-between">
                       <div className="flex items-center gap-3">
                         <span className="text-xs font-mono text-muted-foreground w-5">#{i + 1}</span>
-                        {status === 'accepted' ? (
+                        {isSelected ? (
+                          <CheckCircle className="h-4 w-4 text-primary" />
+                        ) : status === 'accepted' ? (
                           <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : status === 'under_review' ? (
                           <AlertCircle className="h-4 w-4 text-yellow-500" />
@@ -669,6 +737,17 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             View Submission
                           </Button>
                         )}
+                        {sub && status !== 'accepted' && isLive && (
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="gap-1.5 text-amber-500"
+                            onClick={() => openResubmit(sub, task)}
+                          >
+                            <RefreshCw className="h-3 w-3" />
+                            Resubmit
+                          </Button>
+                        )}
                         {status !== 'accepted' && isLive && (
                           <Button
                             size="sm"
@@ -746,11 +825,11 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       </main>
 
       <Dialog open={!!submittingFor} onOpenChange={(o) => { if (!o) closeSubmitModal() }}>
-        <DialogContent>
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[550px]">
           {submittingFor && (
             <>
               <DialogHeader>
-                <DialogTitle>Submit: {submittingFor.problem_title}</DialogTitle>
+                <DialogTitle>{isResubmit ? 'Resubmit' : 'Submit'}: {submittingFor.problem_title}</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
                 <div className="flex items-center gap-2">
@@ -758,22 +837,14 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                   <span className="text-xs text-muted-foreground">{submittingFor.points} points</span>
                 </div>
                 <div className="space-y-2">
-                  <Label htmlFor="repo_url">Repo URL (optional)</Label>
+                  <Label htmlFor="repo_url">GitHub Repo URL <span className="text-destructive">*</span></Label>
                   <Input
                     id="repo_url"
                     type="url"
-                    placeholder="https://github.com/..."
+                    placeholder="https://github.com/your-org/your-repo"
                     value={submitForm.repo_url}
                     onChange={(e) => setSubmitForm(f => ({ ...f, repo_url: e.target.value }))}
-                  />
-                </div>
-                <div className="space-y-2">
-                  <Label htmlFor="commit_sha">Commit SHA (optional)</Label>
-                  <Input
-                    id="commit_sha"
-                    placeholder="abc1234 or full URL"
-                    value={submitForm.commit_sha}
-                    onChange={(e) => setSubmitForm(f => ({ ...f, commit_sha: e.target.value }))}
+                    required
                   />
                 </div>
                 <div className="space-y-2">
@@ -816,8 +887,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 />
               </div>
               <div className="space-y-2">
-                  <Label htmlFor="code">Code</Label>
-                  <div className="h-[300px] rounded-md border border-border overflow-hidden">
+                  <Label htmlFor="code">Code (optional)</Label>
+                  <div className="h-[200px] rounded-md border border-border overflow-hidden">
                     <Editor
                       height="100%"
                       language={TOP_LANGUAGES.find(l => l.id === editorLanguage)?.monaco || "plaintext"}
@@ -836,7 +907,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                 <Button variant="outline" onClick={closeSubmitModal}>Cancel</Button>
                 <Button onClick={() => void handleSubmit()} disabled={submitting}>
                   {submitting && <Loader2 className="h-3 w-3 animate-spin mr-2" />}
-                  Submit
+                  {isResubmit ? 'Update Submission' : 'Submit'}
                 </Button>
               </DialogFooter>
             </>
@@ -1034,9 +1105,13 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     
                     if (solveLimit > 0 && !isSelected) {
                       if (selected.length >= solveLimit) {
+                        const selectedTitle = hackathon.tasks.find(t => t.problem_slug === selected[0])?.problem_title || selected[0]
                         return (
-                          <div className="text-xs text-destructive flex items-center gap-1.5">
-                            <AlertCircle className="h-4 w-4" /> Limit Reached
+                          <div className="text-xs space-y-1">
+                            <div className="text-destructive flex items-center gap-1.5">
+                              <AlertCircle className="h-4 w-4" /> Limit Reached
+                            </div>
+                            <p className="text-muted-foreground">You selected: <span className="font-medium text-foreground">{selectedTitle}</span></p>
                           </div>
                         )
                       }
