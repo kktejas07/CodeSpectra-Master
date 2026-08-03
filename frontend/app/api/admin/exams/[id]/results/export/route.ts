@@ -13,10 +13,10 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
   try {
     const db = await getMongoDb()
 
-    const exam = await db.collection('exams').findOne({ id })
-    if (!exam) {
-      return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
-    }
+    const exam = await db.collection('exams').findOne({
+      $or: [{ id }, { _id: id as any }],
+    })
+    const examTitle = exam?.title || 'Exam'
 
     const invites = await db.collection('candidate_invites').find({
       $or: [
@@ -31,7 +31,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
     const submissionsByUser: Record<string, typeof submissions[0]> = {}
     for (const sub of submissions) {
-      submissionsByUser[sub.user_id] = sub
+      if (sub.user_id) submissionsByUser[sub.user_id] = sub
     }
 
     const userMap: Record<string, { name?: string; email?: string }> = {}
@@ -78,20 +78,20 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     for (const [, inv] of latestInviteByEmail) {
       const sub = submissionsByUser[inv.user_id]
       const user = userMap[inv.user_id] || {}
-      let status = inv.status === 'used' ? 'completed' : inv.status
+      let status = inv.status === 'used' ? 'completed' : inv.status || 'pending'
 
       if (status !== 'completed' && sub) {
         status = 'completed'
       }
 
       const email = inv.email || user.email || ''
-      seenEmails.add(email.toLowerCase())
+      if (email) seenEmails.add(email.toLowerCase())
 
       results.push({
-        name: inv.full_name || user.name || email.split('@')[0] || 'Candidate',
+        name: inv.full_name || user.name || (email ? email.split('@')[0] : 'Candidate'),
         email,
         status,
-        score: sub ? `${Math.round(sub.score)}%` : '--',
+        score: sub && sub.score !== undefined && sub.score !== null ? `${Math.round(sub.score)}%` : '--',
         submittedAt: sub?.submitted_at ? new Date(sub.submitted_at).toLocaleString() : '--',
         proctoringFlags: 0,
         released: sub?.released_at ? 'Yes' : 'No',
@@ -108,10 +108,10 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       const fetched = userMap[sub.user_id] || {}
 
       results.push({
-        name: fetched.name || 'Unknown',
-        email: fetched.email || '',
+        name: fetched.name || 'Candidate',
+        email: fetched.email || email,
         status: 'completed',
-        score: `${Math.round(sub.score)}%`,
+        score: sub.score !== undefined && sub.score !== null ? `${Math.round(sub.score)}%` : '--',
         submittedAt: sub.submitted_at ? new Date(sub.submitted_at).toLocaleString() : '--',
         proctoringFlags: 0,
         released: sub.released_at ? 'Yes' : 'No',
@@ -148,7 +148,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
     const csvContent = '\uFEFF' + csvString
 
-    const sanitizeTitle = (exam.title || 'exam_results')
+    const sanitizeTitle = examTitle
       .toLowerCase()
       .replace(/[^a-z0-9]/g, '_')
       .replace(/_+/g, '_')

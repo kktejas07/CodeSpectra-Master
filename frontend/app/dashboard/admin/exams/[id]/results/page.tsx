@@ -311,21 +311,20 @@ export default function ExamResultsPage() {
   }
 
   const exportCsv = () => {
-    try {
-      if (params.id) {
-        const link = document.createElement('a')
-        link.href = `/api/admin/exams/${params.id}/results/export`
-        link.download = ''
-        document.body.appendChild(link)
-        link.click()
-        document.body.removeChild(link)
+    const examId = typeof params?.id === 'string' ? params.id : Array.isArray(params?.id) ? params.id[0] : ''
+
+    // Strategy 1: Direct HTTP download from API endpoint (triggers browser native file save)
+    if (examId) {
+      try {
+        window.location.href = `/api/admin/exams/${examId}/results/export`
         addToast({ type: 'success', title: 'Exporting CSV file...' })
         return
+      } catch (e) {
+        console.warn('Native navigation download failed, falling back to client generator:', e)
       }
-    } catch {
-      /* Fallback to client generation below */
     }
 
+    // Strategy 2: Client-side Blob download fallback
     try {
       const headers = [
         'Candidate Name',
@@ -365,12 +364,10 @@ export default function ExamResultsPage() {
 
       const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8' })
       const url = URL.createObjectURL(blob)
-      const link = document.createElement('a')
-      link.href = url
-      link.download = filename
-      document.body.appendChild(link)
-      link.click()
-      document.body.removeChild(link)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
       setTimeout(() => URL.revokeObjectURL(url), 2000)
 
       addToast({ type: 'success', title: candidateRows.length > 0 ? 'Exported CSV successfully' : 'Exported CSV template' })
