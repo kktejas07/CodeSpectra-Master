@@ -367,6 +367,77 @@ setManualGrades({})
     }
   }
 
+  const exportCsv = () => {
+    try {
+      if (!results) {
+        addToast({ type: 'error', title: 'No results available to export' })
+        return
+      }
+
+      const headers = [
+        'Candidate Name',
+        'Email',
+        'Status',
+        'Delivery Status',
+        'Proctoring Flags',
+        'Score (%)',
+        'Submitted At',
+        'Score Released',
+      ]
+
+      const candidateRows = results.map(r => [
+        r.name || '',
+        r.email || '',
+        r.status || '',
+        r.deliveryStatus || '',
+        r.proctoringFlags ?? 0,
+        r.score !== null && r.score !== undefined ? `${r.score}%` : '--',
+        r.submittedAt ? new Date(r.submittedAt).toLocaleString() : '--',
+        r.released ? 'Yes' : 'No',
+      ])
+
+      const csvRows = [headers, ...candidateRows]
+      const csvString = csvRows
+        .map(row => row.map(cell => `"${String(cell ?? '').replace(/"/g, '""')}"`).join(','))
+        .join('\r\n')
+
+      const csvContent = '\uFEFF' + csvString
+      const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+
+      const sanitizeTitle = (exam?.title || 'exam_results')
+        .toLowerCase()
+        .replace(/[^a-z0-9]/g, '_')
+        .replace(/_+/g, '_')
+      const filename = `${sanitizeTitle}_results_${new Date().toISOString().slice(0, 10)}.csv`
+
+      if (typeof window !== 'undefined' && (window.navigator as any).msSaveOrOpenBlob) {
+        ;(window.navigator as any).msSaveOrOpenBlob(blob, filename)
+        addToast({ type: 'success', title: 'Exported CSV successfully' })
+        return
+      }
+
+      const url = URL.createObjectURL(blob)
+      const link = document.createElement('a')
+      link.href = url
+      link.download = filename
+      link.style.display = 'none'
+      document.body.appendChild(link)
+      link.click()
+
+      setTimeout(() => {
+        if (document.body.contains(link)) {
+          document.body.removeChild(link)
+        }
+        URL.revokeObjectURL(url)
+      }, 1000)
+
+      addToast({ type: 'success', title: 'Exported CSV successfully' })
+    } catch (err) {
+      console.error('[CodeSpectra] CSV Export Error:', err)
+      addToast({ type: 'error', title: 'Failed to export CSV file' })
+    }
+  }
+
   const copyInviteLink = (row: CandidateResult) => {
     const link = `${window.location.origin}/assessment/invite/${row.id}`
     navigator.clipboard.writeText(link).then(() => {
