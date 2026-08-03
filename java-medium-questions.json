@@ -1,0 +1,161 @@
+[
+  {
+    "type": "mcq",
+    "title": "OOP: Method Overriding vs Overloading",
+    "prompt": "Which of the following statements correctly describes the difference between method overriding and method overloading in Java?\n\n```java\nclass Parent {\n    void display(int x) { System.out.println(\"Parent: \" + x); }\n}\nclass Child extends Parent {\n    void display(int x) { System.out.println(\"Child: \" + x); }\n    void display(String s) { System.out.println(\"Child: \" + s); }\n}\n```\n\nIn the code above:",
+    "options": [
+      "display(int) in Child is overriding, display(String) in Child is overloading",
+      "Both display(int) and display(String) are overriding",
+      "display(int) in Child is overloading, display(String) is overriding",
+      "Neither is overriding because Parent only has one method"
+    ],
+    "answer": "display(int) in Child is overriding, display(String) in Child is overloading",
+    "score": 10
+  },
+  {
+    "type": "mcq",
+    "title": "Collections: HashMap Internal Working",
+    "prompt": "What happens when two different keys produce the same hash code in a Java HashMap?\n\n```java\nHashMap<String, Integer> map = new HashMap<>();\nmap.put(\"FB\", 1);\nmap.put(\"Ea\", 2); // \"FB\" and \"Ea\" have the same hash code\nSystem.out.println(map.get(\"FB\"));\n```\n\nWhat will be the output and why?",
+    "options": [
+      "1 — HashMap uses equals() to distinguish keys in the same bucket",
+      "2 — The second put() overwrites the first since hashes are equal",
+      "Runtime exception due to hash collision",
+      "1 — HashMap rejects keys with duplicate hash codes"
+    ],
+    "answer": "1 — HashMap uses equals() to distinguish keys in the same bucket",
+    "score": 10
+  },
+  {
+    "type": "mcq",
+    "title": "Exception Handling: Finally Block",
+    "prompt": "Consider the following code. What will be the output?\n\n```java\npublic class Test {\n    public static int method() {\n        try {\n            return 1;\n        } catch (Exception e) {\n            return 2;\n        } finally {\n            return 3;\n        }\n    }\n    public static void main(String[] args) {\n        System.out.println(method());\n    }\n}\n```",
+    "options": [
+      "3 — finally block's return overrides the try block's return",
+      "1 — The try block returns before finally executes",
+      "2 — Since no exception, catch is skipped",
+      "Compilation error — cannot have return in finally"
+    ],
+    "answer": "3 — finally block's return overrides the try block's return",
+    "score": 10
+  },
+  {
+    "type": "mcq",
+    "title": "Multithreading: Thread Safety with volatile",
+    "prompt": "In Java concurrency, what does the `volatile` keyword guarantee?\n\n```java\npublic class SharedResource {\n    private volatile boolean flag = false;\n    \n    public void writer() {\n        flag = true; // Thread A\n    }\n    \n    public void reader() {\n        while (!flag) { } // Thread B\n    }\n}\n```",
+    "options": [
+      "Visibility — changes to flag by Thread A are immediately visible to Thread B",
+      "Atomicity — the flag = true operation is atomic and cannot be interrupted",
+      "Both visibility and mutual exclusion like synchronized",
+      "Prevents the variable from being cached in CPU registers only"
+    ],
+    "answer": "Visibility — changes to flag by Thread A are immediately visible to Thread B",
+    "score": 10
+  },
+  {
+    "type": "mcq",
+    "title": "Streams API: Parallel Stream Behavior",
+    "prompt": "What will the following code output? Select the most accurate answer.\n\n```java\nList<Integer> list = Arrays.asList(1, 2, 3, 4, 5);\nint sum = list.parallelStream()\n    .reduce(0, (a, b) -> a + b);\nSystem.out.println(sum);\n```",
+    "options": [
+      "15 — the identity value 0 combined with all elements",
+      "The result may vary because parallelStream is non-deterministic",
+      "A ConcurrentModificationException is thrown",
+      "The result is 0 because parallel reduce needs a combiner"
+    ],
+    "answer": "15 — the identity value 0 combined with all elements",
+    "score": 10
+  },
+  {
+    "type": "multiple_response",
+    "title": "Design Patterns: Singleton Implementation",
+    "prompt": "Which of the following are valid ways to implement a thread-safe Singleton pattern in Java? (Select all that apply)\n\n```java\n// Implementation A: Eager Initialization\npublic class SingletonA {\n    private static final SingletonA INSTANCE = new SingletonA();\n    private SingletonA() {}\n    public static SingletonA getInstance() { return INSTANCE; }\n}\n\n// Implementation B: Double-Checked Locking\npublic class SingletonB {\n    private static volatile SingletonB instance;\n    private SingletonB() {}\n    public static SingletonB getInstance() {\n        if (instance == null) {\n            synchronized (SingletonB.class) {\n                if (instance == null) instance = new SingletonB();\n            }\n        }\n        return instance;\n    }\n}\n\n// Implementation C: Enum\npublic enum SingletonC {\n    INSTANCE;\n    public void doSomething() {}\n}\n\n// Implementation D: No synchronization\npublic class SingletonD {\n    private static SingletonD instance;\n    private SingletonD() {}\n    public static SingletonD getInstance() {\n        if (instance == null) instance = new SingletonD();\n        return instance;\n    }\n}\n```",
+    "options": [
+      "Implementation A — Eager Initialization (thread-safe by class loading)",
+      "Implementation B — Double-Checked Locking with volatile",
+      "Implementation C — Enum-based singleton (thread-safe by JVM guarantee)",
+      "Implementation D — Lazy initialization without synchronization"
+    ],
+    "answer": "Implementation A — Eager Initialization (thread-safe by class loading), Implementation B — Double-Checked Locking with volatile, Implementation C — Enum-based singleton (thread-safe by JVM guarantee)",
+    "score": 15
+  },
+  {
+    "type": "coding",
+    "title": "LinkedList Reversal",
+    "prompt": "## Problem: Reverse a Singly Linked List\n\nImplement a method that reverses a singly linked list in-place and returns the new head.\n\n**Requirements:**\n\n- Write a `reverse()` method in the provided `LinkedList` class\n- The reversal must be done iteratively (not recursively)\n- Time complexity: O(n)\n- Space complexity: O(1) (in-place)\n\n**Node class:**\n```java\nclass Node {\n    int data;\n    Node next;\n    Node(int data) { this.data = data; }\n}\n```\n\n**LinkedList class skeleton:**\n```java\nclass LinkedList {\n    Node head;\n    \n    void add(int data) {\n        Node node = new Node(data);\n        if (head == null) { head = node; return; }\n        Node temp = head;\n        while (temp.next != null) temp = temp.next;\n        temp.next = node;\n    }\n    \n    // IMPLEMENT THIS METHOD\n    void reverse() {\n        // Your code here\n    }\n    \n    void print() {\n        Node temp = head;\n        while (temp != null) {\n            System.out.print(temp.data + \" \");\n            temp = temp.next;\n        }\n        System.out.println();\n    }\n}\n```\n\n**Example:**\n```\nInput:  1 -> 2 -> 3 -> 4 -> 5\nOutput: 5 -> 4 -> 3 -> 2 -> 1\n```",
+    "score": 20
+  },
+  {
+    "type": "coding",
+    "title": "Custom Thread Pool Implementation",
+    "prompt": "## Problem: Implement a Simple Fixed Thread Pool\n\nDesign and implement a basic fixed-size thread pool executor that can execute Runnable tasks.\n\n**Requirements:**\n\n- Create a `SimpleThreadPool` class with a constructor that takes `int poolSize`\n- Implement `void execute(Runnable task)` — adds a task to the queue\n- Implement `void shutdown()` — gracefully shuts down workers after queued tasks finish\n- Workers should block when the queue is empty (wait for new tasks)\n- Use proper synchronization (wait/notify or BlockingQueue)\n\n**Skeleton:**\n```java\nimport java.util.LinkedList;\nimport java.util.Queue;\n\nclass SimpleThreadPool {\n    private final WorkerThread[] workers;\n    private final Queue<Runnable> taskQueue = new LinkedList<>();\n    private boolean isShutdown = false;\n    \n    public SimpleThreadPool(int poolSize) {\n        // Initialize workers\n    }\n    \n    public synchronized void execute(Runnable task) {\n        // Add task and notify a worker\n    }\n    \n    public synchronized void shutdown() {\n        // Set flag and interrupt all workers\n    }\n    \n    private class WorkerThread extends Thread {\n        public void run() {\n            // Poll tasks and execute until shutdown\n        }\n    }\n}\n```\n\n**Edge cases to handle:**\n- Multiple threads calling execute() concurrently\n- Tasks submitted after shutdown() should be rejected\n- Workers must not busy-wait when queue is empty",
+    "score": 25
+  },
+  {
+    "type": "true_false",
+    "title": "String Immutability",
+    "prompt": "In Java, the `String` class is immutable. This means that once a String object is created, its value cannot be changed. Any operation that appears to modify a String (such as concatenation or `toUpperCase()`) actually creates a new String object.\n\n**True or False:** The following code creates exactly 3 String objects:\n\n```java\nString s1 = \"Hello\";\nString s2 = s1.concat(\" World\");\nString s3 = s2.toUpperCase();\n```",
+    "options": ["True", "False"],
+    "answer": "True",
+    "score": 5
+  },
+  {
+    "type": "fill_blanks",
+    "title": "Generics: Type Erasure",
+    "prompt": "In Java, generics are implemented through ___ which means the generic type information is removed at ___. This is why you cannot do `new T()` inside a generic class, and why `List<String>` and `List<Integer>` are considered the same type at runtime — this is called a ___ type.",
+    "options": ["type erasure", "compile time", "runtime", "raw", "reified", "polymorphic"],
+    "answer": "type erasure, compile time, raw",
+    "score": 10
+  },
+  {
+    "type": "mcq",
+    "title": "Memory Management: Garbage Collection",
+    "prompt": "In Java, which of the following objects is eligible for garbage collection at line // MARK?\n\n```java\npublic class GCDemo {\n    public static void main(String[] args) {\n        Object a = new Object();  // obj1\n        Object b = new Object();  // obj2\n        Object c = new Object();  // obj3\n        a = b;\n        b = c;\n        c = null;\n        // MARK\n    }\n}\n```",
+    "options": [
+      "obj1 only — it has no reference pointing to it",
+      "obj1 and obj2 — neither has a live reference",
+      "obj3 only — because c is set to null",
+      "All three objects are eligible for GC"
+    ],
+    "answer": "obj1 only — it has no reference pointing to it",
+    "score": 10
+  },
+  {
+    "type": "mcq",
+    "title": "Functional Interfaces and Lambdas",
+    "prompt": "Consider the following Java code. What will be printed?\n\n```java\nimport java.util.function.Function;\n\npublic class LambdaTest {\n    public static void main(String[] args) {\n        Function<Integer, Integer> doubleIt = x -> x * 2;\n        Function<Integer, Integer> addThree = x -> x + 3;\n        Function<Integer, Integer> composed = doubleIt.compose(addThree);\n        System.out.println(composed.apply(5));\n    }\n}\n```",
+    "options": [
+      "16 — compose applies addThree first (5+3=8), then doubleIt (8*2=16)",
+      "13 — compose applies doubleIt first (5*2=10), then addThree (10+3=13)",
+      "10 — functions are applied in parallel",
+      "Compilation error — compose does not exist on Function"
+    ],
+    "answer": "16 — compose applies addThree first (5+3=8), then doubleIt (8*2=16)",
+    "score": 10
+  },
+  {
+    "type": "coding",
+    "title": "Binary Search Tree Validation",
+    "prompt": "## Problem: Validate Binary Search Tree\n\nGiven the root of a binary tree, determine if it is a valid Binary Search Tree (BST).\n\n**A valid BST is defined as:**\n- The left subtree of a node contains only nodes with keys **less than** the node's key\n- The right subtree of a node contains only nodes with keys **greater than** the node's key\n- Both the left and right subtrees must also be BSTs\n\n**Node class:**\n```java\nclass TreeNode {\n    int val;\n    TreeNode left;\n    TreeNode right;\n    TreeNode(int val) { this.val = val; }\n}\n```\n\n**Implement:**\n```java\npublic boolean isValidBST(TreeNode root) {\n    // Your code here\n}\n```\n\n**Examples:**\n```\nValid BST:      Invalid BST:\n    2               5\n   / \\             / \\\n  1   3           1   4\n                     / \\\n                    3   6\n```\n\n**Constraints:**\n- Number of nodes: [0, 10^4]\n- Node values: [-2^31, 2^31 - 1]",
+    "score": 20
+  },
+  {
+    "type": "descriptive",
+    "title": "Microservices Architecture in Java",
+    "prompt": "## Question: Monolith to Microservices Migration\n\nYou are tasked with migrating a large monolithic Java application to a microservices architecture.\n\n**Describe your approach covering the following points:**\n\n1. How would you identify service boundaries in the existing monolith?\n2. What patterns would you use for inter-service communication (sync vs async)?\n3. How would you handle distributed transactions and data consistency?\n4. What monitoring and observability tools would you implement?\n5. How would you manage service discovery and configuration at scale?\n\n**Expected answer should include:**\n- Domain-Driven Design (DDD) bounded contexts\n- Event-driven architecture with message queues (Kafka/RabbitMQ)\n- Saga pattern for distributed transactions\n- Circuit breaker pattern (Resilience4j)\n- Service mesh or Spring Cloud for discovery\n- Centralized logging with ELK stack\n\nProvide concrete examples and reasoning for each decision.",
+    "answer": "1. Use Domain-Driven Design: Analyze the codebase to identify bounded contexts. Look at package structure, database tables, and API endpoints. Use the 'strangler fig' pattern to gradually extract services.\n\n2. Synchronous: REST/gRPC for request-response patterns. Asynchronous: Kafka/RabbitMQ for event-driven flows. Use CQRS pattern to separate read/write models.\n\n3. Use Saga pattern (choreography or orchestration). Implement compensating transactions for rollback. Use outbox pattern to ensure reliable message delivery.\n\n4. Prometheus + Grafana for metrics. Jaeger/Zipkin for distributed tracing. ELK stack for centralized logging. Micrometer for application metrics.\n\n5. Spring Cloud Netflix (Eureka) or Kubernetes service discovery. Spring Cloud Config or Consul for centralized configuration. Feature flags with LaunchDarkly or custom implementation.",
+    "score": 25
+  },
+  {
+    "type": "multiple_response",
+    "title": "Java Memory Model: Synchronization",
+    "prompt": "Which of the following statements about Java's memory model and synchronization are correct? (Select all that apply)",
+    "options": [
+      "The synchronized keyword provides both mutual exclusion and visibility guarantees",
+      "A thread entering a synchronized block always sees the latest values of all shared variables",
+      "The volatile keyword ensures atomicity for compound operations like i++",
+      "The happens-before relationship guarantees that changes made in one synchronized block are visible to the next thread entering the same lock",
+      "Static synchronized methods lock on the Class object, not the instance"
+    ],
+    "answer": "The synchronized keyword provides both mutual exclusion and visibility guarantees, A thread entering a synchronized block always sees the latest values of all shared variables, The happens-before relationship guarantees that changes made in one synchronized block are visible to the next thread entering the same lock, Static synchronized methods lock on the Class object, not the instance",
+    "score": 15
+  }
+]

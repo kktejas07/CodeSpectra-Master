@@ -75,6 +75,7 @@ export async function PATCH(
   const { id: examId, userId } = await params
   const body = await request.json().catch(() => ({})) as {
     grades?: Record<string, number> // qId -> awarded points
+    remarks?: Record<string, string> // qId -> feedback shown to candidate
   }
 
   if (!body.grades || typeof body.grades !== 'object') {
@@ -93,7 +94,18 @@ export async function PATCH(
     const updatedDetails = details.map(d => {
       if (body.grades![d.qId] !== undefined) {
         const awarded = Math.max(0, Math.min(d.points, Number(body.grades![d.qId]) || 0))
-        return { ...d, awarded, correct: awarded > 0, pending_review: false }
+        const remark = body.remarks?.[d.qId]
+        const base = {
+          ...d,
+          awarded,
+          correct: awarded > 0,
+          pending_review: false,
+        }
+        // Persist AI/admin feedback so it is shown to the candidate on release
+        if (remark != null && String(remark).trim() !== '') {
+          return { ...base, remarks: String(remark).trim() }
+        }
+        return base
       }
       if (d.pending_review) stillPending = true
       return d

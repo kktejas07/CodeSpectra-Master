@@ -1,0 +1,355 @@
+{
+  "title": "Data Science & Machine Learning Assessment",
+  "subject": "Data Science",
+  "target": "Aspiring and mid-level Data Scientists with 1-4 years of experience. Covers Python, statistics, ML algorithms, feature engineering, and model evaluation.",
+  "complexity": "Intermediate",
+  "topics": [
+    "Python & NumPy/Pandas",
+    "Statistics & Probability",
+    "Exploratory Data Analysis",
+    "Supervised Learning",
+    "Unsupervised Learning",
+    "Feature Engineering",
+    "Model Evaluation & Metrics",
+    "Overfitting & Regularization",
+    "Decision Trees & Ensemble Methods",
+    "Deep Learning Basics"
+  ],
+  "techStack": ["Python", "Pandas", "Scikit-learn", "TensorFlow"],
+  "duration": 60,
+  "passingScore": 60,
+  "access_type": "open",
+  "published": true,
+  "questionList": [
+    {
+      "id": "ds1",
+      "type": "mcq",
+      "title": "Pandas: DataFrame vs Series",
+      "prompt": "What is the key difference between a Pandas DataFrame and a Series?\n\n```python\nimport pandas as pd\ns = pd.Series([1, 2, 3])\ndf = pd.DataFrame({'A': [1, 2, 3], 'B': [4, 5, 6]})\n```",
+      "options": [
+        "Series is 1-dimensional; DataFrame is 2-dimensional (tabular)",
+        "DataFrame cannot hold numeric data; Series does",
+        "Series supports only integer index; DataFrame supports any index",
+        "They are aliases — no practical difference"
+      ],
+      "answer": "Series is 1-dimensional; DataFrame is 2-dimensional (tabular)",
+      "score": 5
+    },
+    {
+      "id": "ds2",
+      "type": "mcq",
+      "title": "Mean vs Median for Skewed Data",
+      "prompt": "For a right-skewed income dataset (most people earn 30K-80K, few earn millions), which measure of central tendency is more representative?\n\n```python\nimport numpy as np\nincomes = [30000, 35000, 40000, 42000, 45000, 50000, 55000, 60000, 2000000]\n```",
+      "options": [
+        "Median — robust to outliers and skewed distributions",
+        "Mean — always the most representative measure",
+        "Mode — most frequent value is always best",
+        "All are equally representative for any distribution"
+      ],
+      "answer": "Median — robust to outliers and skewed distributions",
+      "score": 5
+    },
+    {
+      "id": "ds3",
+      "type": "mcq",
+      "title": "p-value Interpretation",
+      "prompt": "In hypothesis testing, a p-value of 0.03 at α = 0.05 means:\n\n```python\nfrom scipy import stats\nt_stat, p_value = stats.ttest_ind(group_a, group_b)\n# p_value = 0.03\n```",
+      "options": [
+        "Reject null hypothesis — result is statistically significant",
+        "Accept null hypothesis — result is not significant",
+        "The alternative hypothesis has a 3% chance of being true",
+        "The test has 3% accuracy"
+      ],
+      "answer": "Reject null hypothesis — result is statistically significant",
+      "score": 5
+    },
+    {
+      "id": "ds4",
+      "type": "mcq",
+      "title": "Overfitting Detection",
+      "prompt": "How do you detect overfitting in a machine learning model?\n\n```python\nfrom sklearn.tree import DecisionTreeClassifier\nmodel = DecisionTreeClassifier(max_depth=50)\nmodel.fit(X_train, y_train)\ntrain_acc = model.score(X_train, y_train)  # 0.99\nval_acc = model.score(X_val, y_val)        # 0.72\n```",
+      "options": [
+        "Large gap between training and validation accuracy indicates overfitting",
+        "High training accuracy alone means the model is perfect",
+        "Low validation accuracy always means underfitting",
+        "DecisionTreeClassifier cannot overfit by design"
+      ],
+      "answer": "Large gap between training and validation accuracy indicates overfitting",
+      "score": 5
+    },
+    {
+      "id": "ds5",
+      "type": "mcq",
+      "title": "Precision vs Recall Trade-off",
+      "prompt": "In fraud detection (rare positive class), which metric should you prioritize?\n\n```python\nfrom sklearn.metrics import precision_score, recall_score\n# 1000 transactions, 5 fraudulent\n```",
+      "options": [
+        "Recall — missing a fraud case (false negative) is more costly",
+        "Precision — false positives are the biggest concern",
+        "Accuracy — it's always the best metric",
+        "All metrics are equally important in any scenario"
+      ],
+      "answer": "Recall — missing a fraud case (false negative) is more costly",
+      "score": 5
+    },
+    {
+      "id": "ds6",
+      "type": "true_false",
+      "title": "Correlation vs Causation",
+      "prompt": "True or False: A correlation coefficient of 0.9 between ice cream sales and drowning incidents proves that ice cream causes drowning.",
+      "options": ["True", "False"],
+      "answer": "False",
+      "score": 3
+    },
+    {
+      "id": "ds7",
+      "type": "mcq",
+      "title": "Train-Test Split Purpose",
+      "prompt": "Why do we split data into training and testing sets?\n\n```python\nfrom sklearn.model_selection import train_test_split\nX_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2)\n```",
+      "options": [
+        "To evaluate model performance on unseen data and detect overfitting",
+        "To increase the size of the dataset for training",
+        "Because all algorithms require exactly 80-20 split",
+        "To remove outliers from the training data"
+      ],
+      "answer": "To evaluate model performance on unseen data and detect overfitting",
+      "score": 5
+    },
+    {
+      "id": "ds8",
+      "type": "mcq",
+      "title": "NumPy Broadcasting",
+      "prompt": "What is the result?\n\n```python\nimport numpy as np\na = np.array([[1, 2, 3], [4, 5, 6]])\nb = np.array([10, 20, 30])\nprint(a + b)\n```",
+      "options": [
+        "[[11 22 33]\\n [14 25 36]] — b is broadcast across each row",
+        "Shape mismatch error — arrays have different dimensions",
+        "[[11 12 13]\\n [14 15 16]]",
+        "The arrays are concatenated vertically"
+      ],
+      "answer": "[[11 22 33]\\n [14 25 36]] — b is broadcast across each row",
+      "score": 5
+    },
+    {
+      "id": "ds9",
+      "type": "mcq",
+      "title": "Decision Tree: Information Gain",
+      "prompt": "What does a Decision Tree use to decide the best feature to split on?\n\n```python\nfrom sklearn.tree import DecisionTreeClassifier\nmodel = DecisionTreeClassifier(criterion='gini')\n```",
+      "options": [
+        "Gini impurity or entropy (information gain) — measures how well a split separates classes",
+        "The feature with the highest numeric value",
+        "Random selection of features at each node",
+        "The feature with the fewest unique values"
+      ],
+      "answer": "Gini impurity or entropy (information gain) — measures how well a split separates classes",
+      "score": 5
+    },
+    {
+      "id": "ds10",
+      "type": "mcq",
+      "title": "L1 vs L2 Regularization",
+      "prompt": "What is the key difference between L1 (Lasso) and L2 (Ridge) regularization?\n\n```python\nfrom sklearn.linear_model import Lasso, Ridge\nl1 = Lasso(alpha=0.1)   # L1\nl2 = Ridge(alpha=0.1)   # L2\n```",
+      "options": [
+        "L1 can produce sparse models (zero coefficients); L2 shrinks coefficients toward zero but keeps all",
+        "L2 produces sparse models; L1 keeps all features",
+        "L1 is only for regression; L2 is only for classification",
+        "L1 and L2 are identical in behavior"
+      ],
+      "answer": "L1 can produce sparse models (zero coefficients); L2 shrinks coefficients toward zero but keeps all",
+      "score": 5
+    },
+    {
+      "id": "ds11",
+      "type": "mcq",
+      "title": "Random Forest vs Single Decision Tree",
+      "prompt": "Why does a Random Forest typically outperform a single Decision Tree?\n\n```python\nfrom sklearn.ensemble import RandomForestClassifier\nrf = RandomForestClassifier(n_estimators=100)\nrf.fit(X_train, y_train)\n```",
+      "options": [
+        "Ensemble of multiple trees trained on random subsets reduces variance and overfitting",
+        "Random Forest uses a completely different algorithm",
+        "Single trees are always more accurate than ensembles",
+        "Random Forest eliminates the need for feature selection"
+      ],
+      "answer": "Ensemble of multiple trees trained on random subsets reduces variance and overfitting",
+      "score": 5
+    },
+    {
+      "id": "ds12",
+      "type": "mcq",
+      "title": "K-Means: Choosing K",
+      "prompt": "Which method is commonly used to choose the optimal number of clusters in K-Means?\n\n```python\nfrom sklearn.cluster import KMeans\n# How to choose the best n_clusters?\n```",
+      "options": [
+        "Elbow method — plot inertia vs K and find the inflection point",
+        "Always use K=3 regardless of the dataset",
+        "Use K = number of features in the dataset",
+        "Randomly choose any K value"
+      ],
+      "answer": "Elbow method — plot inertia vs K and find the inflection point",
+      "score": 5
+    },
+    {
+      "id": "ds13",
+      "type": "mcq",
+      "title": "Missing Data: Imputation Strategy",
+      "prompt": "What is the correct approach for handling missing values in a numerical column?\n\n```python\nimport pandas as pd\ndf['age'] = [25, 30, np.nan, 35, np.nan, 40]\n# Which strategy is appropriate?\n```",
+      "options": [
+        "Use mean/median imputation — simple and preserves data distribution reasonably",
+        "Always drop all rows with any missing values",
+        "Replace NaN with 0 — simplest universal approach",
+        "Missing values can be ignored; models handle them automatically"
+      ],
+      "answer": "Use mean/median imputation — simple and preserves data distribution reasonably",
+      "score": 5
+    },
+    {
+      "id": "ds14",
+      "type": "true_false",
+      "title": "StandardScaler and Normalization",
+      "prompt": "True or False: Feature scaling (e.g., StandardScaler) should be fitted on the training data only, then applied to both training and test data.",
+      "options": ["True", "False"],
+      "answer": "True",
+      "score": 3
+    },
+    {
+      "id": "ds15",
+      "type": "mcq",
+      "title": "Confusion Matrix Understanding",
+      "prompt": "In a confusion matrix, where are True Positives located?\n\n```\nPredicted:  P    N\nActual P: [ TP , FN ]\nActual N: [ FP , TN ]\n```\n\nFor a model that predicts Positive class 80 times, Actual Positive is 70:",
+      "options": [
+        "TP = top-left — where Actual Positive meets Predicted Positive",
+        "TP = bottom-right — Actual Negative and Predicted Negative",
+        "TP = top-right — Actual Positive and Predicted Negative",
+        "TP = bottom-left — Actual Negative and Predicted Positive"
+      ],
+      "answer": "TP = top-left — where Actual Positive meets Predicted Positive",
+      "score": 5
+    },
+    {
+      "id": "ds16",
+      "type": "mcq",
+      "title": "Gradient Descent: Learning Rate",
+      "prompt": "What happens if the learning rate is set too high during gradient descent?\n\n```python\n# Gradient Descent update rule\nw = w - learning_rate * gradient\n```",
+      "options": [
+        "The model may overshoot and diverge — loss may increase instead of decrease",
+        "Training becomes faster and more accurate",
+        "The learning rate adjusts automatically",
+        "It forces the model to use a different optimizer"
+      ],
+      "answer": "The model may overshoot and diverge — loss may increase instead of decrease",
+      "score": 5
+    },
+    {
+      "id": "ds17",
+      "type": "fill_blanks",
+      "title": "Bias-Variance Tradeoff",
+      "prompt": "In machine learning, high ___ leads to underfitting (model too simple), while high ___ leads to overfitting (model too complex). The goal is to find the optimal balance, known as the ___ tradeoff.",
+      "options": ["bias", "variance", "bias-variance", "accuracy", "precision", "learning curve"],
+      "answer": "bias, variance, bias-variance",
+      "score": 5
+    },
+    {
+      "id": "ds18",
+      "type": "mcq",
+      "title": "One-Hot Encoding Purpose",
+      "prompt": "Why is One-Hot Encoding applied to categorical variables before feeding into ML models?\n\n```python\nfrom sklearn.preprocessing import OneHotEncoder\ndf['color'] = ['red', 'blue', 'green', 'red']\nencoder = OneHotEncoder()\nencoded = encoder.fit_transform(df[['color']])\n```",
+      "options": [
+        "Converts categories to numeric form without implying ordinal relationships",
+        "Reduces the total number of features",
+        "Categorical data can't be processed at all without encoding",
+        "Merges similar categories together"
+      ],
+      "answer": "Converts categories to numeric form without implying ordinal relationships",
+      "score": 5
+    },
+    {
+      "id": "ds19",
+      "type": "mcq",
+      "title": "Cross-Validation Benefits",
+      "prompt": "What is the main advantage of k-fold cross-validation over a single train-test split?\n\n```python\nfrom sklearn.model_selection import cross_val_score\nscores = cross_val_score(model, X, y, cv=5)\n```",
+      "options": [
+        "More robust performance estimate — reduces variance from a single split",
+        "Eliminates the need for a test set entirely",
+        "Automatically tunes hyperparameters",
+        "Always produces higher accuracy than a single split"
+      ],
+      "answer": "More robust performance estimate — reduces variance from a single split",
+      "score": 5
+    },
+    {
+      "id": "ds20",
+      "type": "mcq",
+      "title": "ReLU Activation Function",
+      "prompt": "What is the formula for the ReLU activation function?\n\n```python\ndef relu(x):\n    return ___  # Fill in\n```",
+      "options": [
+        "max(0, x) — returns 0 for negative inputs, x for positive inputs",
+        "1 / (1 + exp(-x)) — sigmoid function",
+        "x — linear identity function",
+        "tanh(x) — hyperbolic tangent"
+      ],
+      "answer": "max(0, x) — returns 0 for negative inputs, x for positive inputs",
+      "score": 5
+    },
+    {
+      "id": "ds21",
+      "type": "mcq",
+      "title": "ROC-AUC Score Interpretation",
+      "prompt": "An AUC-ROC score of 0.50 means:\n\n```python\nfrom sklearn.metrics import roc_auc_score\nauc = roc_auc_score(y_true, y_pred_proba)\n# auc = 0.50\n```",
+      "options": [
+        "Model performs no better than random guessing",
+        "Model has perfect classification performance",
+        "Model is overfitting severely",
+        "Half the data was classified correctly"
+      ],
+      "answer": "Model performs no better than random guessing",
+      "score": 5
+    },
+    {
+      "id": "ds22",
+      "type": "multiple_response",
+      "title": "Feature Selection Techniques",
+      "prompt": "Which of the following are valid feature selection methods? (Select all that apply)\n\n```python\n# A: Filter Method\nfrom sklearn.feature_selection import SelectKBest, f_classif\nselector = SelectKBest(f_classif, k=10)\n\n# B: Wrapper Method\nfrom sklearn.feature_selection import RFE\nselector = RFE(estimator, n_features_to_select=10)\n\n# C: Embedded Method\nfrom sklearn.ensemble import RandomForestClassifier\nmodel = RandomForestClassifier()\nmodel.fit(X, y)\nimportances = model.feature_importances_\n\n# D: Random Selection\nselected = np.random.choice(features, 10)\n```",
+      "options": [
+        "A: Filter methods — statistical tests to rank features",
+        "B: Wrapper methods — recursively evaluate feature subsets",
+        "C: Embedded methods — feature importance from model training",
+        "D: Random selection — scientifically valid approach"
+      ],
+      "answer": "A: Filter methods — statistical tests to rank features, B: Wrapper methods — recursively evaluate feature subsets, C: Embedded methods — feature importance from model training",
+      "score": 10
+    },
+    {
+      "id": "ds23",
+      "type": "multiple_response",
+      "title": "Data Cleaning Best Practices",
+      "prompt": "Which of the following are proper data cleaning/preprocessing steps? (Select all that apply)\n\n```python\nimport pandas as pd\ndf = pd.read_csv('raw_data.csv')\n# Which actions are appropriate?\n```",
+      "options": [
+        "Remove duplicate rows — they can bias model training",
+        "Handle missing values via imputation or removal based on the context",
+        "Remove all outliers unconditionally — they are always errors",
+        "Convert categorical variables to numeric using one-hot or label encoding",
+        "Normalize/standardize numerical features to comparable scales"
+      ],
+      "answer": "Remove duplicate rows — they can bias model training, Handle missing values via imputation or removal based on the context, Convert categorical variables to numeric using one-hot or label encoding, Normalize/standardize numerical features to comparable scales",
+      "score": 10
+    },
+    {
+      "id": "ds24",
+      "type": "coding",
+      "title": "Custom Train-Test Split Function",
+      "prompt": "## Write a Custom Train-Test Split Function\n\nImplement a function that splits data without using sklearn.\n\n```python\nimport numpy as np\n\ndef custom_train_test_split(X, y, test_size=0.2, random_state=None):\n    \"\"\"\n    Split arrays into random train and test subsets.\n    \n    Parameters:\n    X: feature array (2D numpy array)\n    y: target array (1D numpy array)\n    test_size: proportion of data for testing (0.0 to 1.0)\n    random_state: seed for reproducibility\n    \n    Returns:\n    X_train, X_test, y_train, y_test\n    \"\"\"\n    # Your code here\n    pass\n```\n\n**Requirements:**\n- Shuffle indices deterministically using random_state\n- Calculate split point based on test_size\n- Return proper numpy arrays\n\n**Example:**\n```python\nX = np.array([[1, 2], [3, 4], [5, 6], [7, 8]])\ny = np.array([0, 1, 0, 1])\nX_train, X_test, y_train, y_test = custom_train_test_split(X, y, test_size=0.5, random_state=42)\n# Should return 2 samples each\n```",
+      "score": 15
+    },
+    {
+      "id": "ds25",
+      "type": "descriptive",
+      "title": "End-to-End ML Project Workflow",
+      "prompt": "## Describe a Complete Machine Learning Project Workflow\n\nYou are given a raw dataset to build a predictive model for customer churn. Describe your end-to-end approach covering:\n\n1. Data exploration and understanding — how would you start?\n2. Data preprocessing and feature engineering — key steps\n3. Model selection strategy — which algorithms and why\n4. Evaluation and validation approach\n5. Deployment considerations\n\nProvide concrete reasoning for each stage.",
+      "answer": "1. EDA: Check data types, missing values, distributions, correlations, class balance. Visualize with histograms, boxplots, heatmaps. Identify target leakage.\n\n2. Handle missing values (imputation), encode categoricals (one-hot/label), scale numericals (StandardScaler). Feature engineering: create interaction features, aggregate behavioral metrics, temporal features from timestamps.\n\n3. Start with Logistic Regression (baseline), then try Random Forest (handles non-linearity), XGBoost (state-of-art for tabular). Use cross-validation for comparison.\n\n4. ROC-AUC for imbalanced data if applicable. Confusion matrix, precision/recall based on business cost. 5-fold CV for robust estimates.\n\n5. Serialize model with joblib/pickle. Create REST API with Flask/FastAPI. Monitor data drift and model performance in production.",
+      "score": 15
+    },
+    {
+      "id": "ds26",
+      "type": "coding",
+      "title": "Implement K-Nearest Neighbors from Scratch",
+      "prompt": "## Implement K-Nearest Neighbors (KNN) Classifier from Scratch\n\nBuild a KNN classifier without using sklearn or any ML library.\n\n```python\nimport numpy as np\nfrom collections import Counter\n\nclass KNNClassifier:\n    def __init__(self, k: int = 3):\n        self.k = k\n    \n    def fit(self, X: np.ndarray, y: np.ndarray):\n        \"\"\"Store training data.\"\"\"\n        pass\n    \n    def predict(self, X: np.ndarray) -> np.ndarray:\n        \"\"\"Predict class labels for each sample in X.\"\"\"\n        pass\n    \n    def _euclidean_distance(self, a, b):\n        \"\"\"Calculate Euclidean distance between two points.\"\"\"\n        pass\n```\n\n**Example:**\n```python\nX_train = np.array([[1, 2], [2, 3], [3, 1], [6, 5], [7, 7], [8, 6]])\ny_train = np.array([0, 0, 0, 1, 1, 1])\nX_test = np.array([[2, 2], [7, 6]])\n\nknn = KNNClassifier(k=3)\nknn.fit(X_train, y_train)\npredictions = knn.predict(X_test)\n# Expected: [0, 1]\n```\n\n**Constraints:** Use only numpy. O(n*m*k) where n=test samples, m=train samples.",
+      "score": 15
+    }
+  ]
+}

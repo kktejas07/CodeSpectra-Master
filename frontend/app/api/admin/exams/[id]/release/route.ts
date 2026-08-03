@@ -28,8 +28,12 @@ export async function POST(
       released_at: { $exists: false }
     }).toArray()
 
+    // Only release submissions that have finished grading (no pending review)
+    const releasedNow = unreleasedSubmissions.filter(s => s.has_pending_review !== true)
+    const skippedPending = unreleasedSubmissions.length - releasedNow.length
+
     const result = await db.collection('exam_submissions').updateMany(
-      { exam_id: examId, released_at: { $exists: false } },
+      { exam_id: examId, released_at: { $exists: false }, has_pending_review: { $ne: true } },
       { $set: { released_at: nowIso(), score_released: true } },
     )
 
@@ -37,7 +41,7 @@ export async function POST(
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
     const resultsUrl = `${appUrl}/dashboard/exams`
     
-    for (const sub of unreleasedSubmissions) {
+    for (const sub of releasedNow) {
       if (sub.email) {
         let candidateName = sub.email.split('@')[0]
         const userDoc = await db.collection('user').findOne({ $or: [{ _id: sub.user_id as any }, { id: sub.user_id }] })
@@ -64,6 +68,7 @@ export async function POST(
     return NextResponse.json({
       success: true,
       released: result.modifiedCount,
+      skipped_pending: skippedPending,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to bulk release'
