@@ -1,0 +1,49 @@
+version: "1.0"
+description: "Code Spectra Controlled Skill Taxonomy (Three-level namespace: discipline.area.skill)"
+
+skills:
+  - mech.drawing.orthographic_views
+  - mech.drawing.section_views
+  - mech.gdt.feature_control_frame
+  - mech.gdt.datum_identification
+  - mech.tolerance.stack_up
+  - mech.tolerance.fits_limits
+  - mech.design.pump_sizing
+  - mech.design.valve_selection
+  - mech.design.bearing_life
+  - mech.materials.selection
+  - mech.failure.mode_identification
+
+  - mfg.process.selection
+  - mfg.spc.cp_cpk
+  - mfg.spc.control_chart
+  - mfg.inspection.cmm_judgment
+  - mfg.welding.symbol_interpretation
+  - mfg.cnc.setup_sequence
+  - mfg.quality.ncr_writing
+  - mfg.quality.eight_d
+  - mfg.safety.loto
+  - mfg.safety.ppe_hazard
+
+  - elec.schematic.reading
+  - elec.load.calculation
+  - elec.ladder.reading
+  - elec.fault.diagnosis
+  - elec.instrument.calibration
+
+  - civil.load.calculation
+  - civil.takeoff.quantity
+  - civil.code.compliance
+  - civil.drawing.markup
+
+  - edu.literacy.comprehension
+  - edu.numeracy.basic
+  - edu.interpersonal.sjt
+  - edu.admin.office_management
+
+  - gen.english.cefr
+  - gen.communication.written
+  - gen.aptitude.numerical
+  - gen.aptitude.logical
+  - gen.attention.detail
+  - gen.sjt.job_fit

@@ -1,0 +1,213 @@
+[
+  {
+    "id": "item-mech-001",
+    "title": "GD&T Datum Selection & Feature Control Frame",
+    "domain_key": "mcq",
+    "difficulty": "medium",
+    "points": 4.0,
+    "skill_tags": [
+      "mech.gdt.feature_control_frame",
+      "mech.gdt.datum_identification"
+    ],
+    "payload": {
+      "prompt": "When specifying a positional tolerance for a pattern of 4 mounting holes relative to a planar primary datum A, which modifier is required to enforce maximum material condition on the hole size?",
+      "options": [
+        "MMC modifier (circled M) placed in the tolerance compartment following the tolerance value.",
+        "LMC modifier (circled L) placed in the primary datum compartment.",
+        "RFS condition by default without any symbol compartment modifier.",
+        "Tangential plane modifier (circled T) following the datum target."
+      ],
+      "correct_option_index": 0,
+      "rationale": "Per ASME Y14.5-2018 Section 7.3.3, the MMC symbol (circled M) placed after the geometric tolerance value allows additional positional tolerance (bonus tolerance) as the feature departs from MMC toward LMC."
+    }
+  },
+  {
+    "id": "item-mech-002",
+    "title": "Tolerance Stack-up Calculation for Centrifugal Pump Shaft",
+    "domain_key": "numeric_response",
+    "difficulty": "hard",
+    "points": 5.0,
+    "skill_tags": [
+      "mech.tolerance.stack_up",
+      "mech.design.pump_sizing"
+    ],
+    "payload": {
+      "prompt": "Calculate the worst-case maximum clearance (in mm) between a shaft shoulder and housing face given: Shaft Length = 120.00 \u00b1 0.05 mm, Housing Depth = 120.50 \u00b1 0.08 mm, Bearing Inner Ring Thickness = 12.00 \u00b1 0.02 mm, Retaining Ring Thickness = 1.50 \u00b1 0.01 mm.",
+      "unit": "mm",
+      "expected_value": 0.66,
+      "tolerance_mode": "abs",
+      "tolerance": 0.01,
+      "sig_figs": 2,
+      "show_unit_hint": true,
+      "rationale": "Worst-case Max Clearance = Max Housing Depth (120.58) - Min Shaft Length (119.95) - Min Retaining Ring (1.49) - Min Bearing Ring (11.98) = 120.58 - 119.92 = 0.66 mm."
+    }
+  },
+  {
+    "id": "item-mech-003",
+    "title": "CAD STEP Geometric Conformance & Mass Properties Check",
+    "domain_key": "cad_step",
+    "difficulty": "medium",
+    "points": 4.0,
+    "skill_tags": [
+      "mech.design.pump_sizing",
+      "mech.materials.selection"
+    ],
+    "payload": {
+      "prompt": "Model the centrifugal pump impeller housing per the technical brief.",
+      "cad_brief": "Create parametric solid model of pump impeller housing with outer diameter 50.0mm, wall thickness 3.0mm, and total mass 1.25kg.",
+      "constraints": [
+        {
+          "name": "Outer Diameter",
+          "target_value": 50.0,
+          "tolerance": 0.05,
+          "unit": "mm"
+        },
+        {
+          "name": "Total Mass",
+          "target_value": 1.25,
+          "tolerance": 0.05,
+          "unit": "kg"
+        },
+        {
+          "name": "Wall Thickness",
+          "target_value": 3.0,
+          "tolerance": 0.05,
+          "unit": "mm"
+        }
+      ],
+      "viva_required": true,
+      "region_standard": "ISO",
+      "unit_system": "metric"
+    }
+  },
+  {
+    "id": "item-mfg-001",
+    "title": "Process Capability Cpk Index Calculation",
+    "domain_key": "numeric_response",
+    "difficulty": "easy",
+    "points": 3.0,
+    "skill_tags": [
+      "mfg.spc.cp_cpk",
+      "mfg.quality.eight_d"
+    ],
+    "payload": {
+      "prompt": "A CNC lathe turning process has an Upper Specification Limit (USL) = 25.10 mm, Lower Specification Limit (LSL) = 24.90 mm, process mean = 25.02 mm, and standard deviation (sigma) = 0.02 mm. Calculate the Cpk index.",
+      "unit": "Cpk",
+      "expected_value": 1.33,
+      "tolerance_mode": "abs",
+      "tolerance": 0.02,
+      "sig_figs": 3,
+      "rationale": "Cpu = (25.10 - 25.02)/(3*0.02) = 0.08/0.06 = 1.333. Cpl = (25.02 - 24.90)/(3*0.02) = 0.12/0.06 = 2.00. Cpk = min(1.333, 2.00) = 1.33."
+    }
+  },
+  {
+    "id": "item-mfg-002",
+    "title": "PPE Hazard Spotting & LOTO Verification",
+    "domain_key": "hotspot",
+    "difficulty": "medium",
+    "points": 4.0,
+    "skill_tags": [
+      "mfg.safety.loto",
+      "mfg.safety.ppe_hazard"
+    ],
+    "payload": {
+      "prompt": "Identify the uninsulated electrical terminal and missing lockout tag in the panel workstation image.",
+      "image": {
+        "uri": "mfg/panel_safety_station.png",
+        "alt_text": "Electrical control panel workstation with uninsulated wires and LOTO station"
+      },
+      "mode": "multi",
+      "regions": [
+        {
+          "label": "Uninsulated Wire Terminal",
+          "points": [
+            [
+              0.2,
+              0.3
+            ],
+            [
+              0.35,
+              0.3
+            ],
+            [
+              0.35,
+              0.45
+            ],
+            [
+              0.2,
+              0.45
+            ]
+          ]
+        },
+        {
+          "label": "Unclasped LOTO Hasp",
+          "points": [
+            [
+              0.7,
+              0.6
+            ],
+            [
+              0.85,
+              0.6
+            ],
+            [
+              0.85,
+              0.75
+            ],
+            [
+              0.7,
+              0.75
+            ]
+          ]
+        }
+      ],
+      "distractor_penalty": true,
+      "max_clicks": 3,
+      "rationale": "OSHA 1910.147 requires energy isolation verification and uninsulated live conductor shielding before entry."
+    }
+  },
+  {
+    "id": "item-data-001",
+    "title": "SQL Production Defect Rate Query",
+    "domain_key": "sql",
+    "difficulty": "medium",
+    "points": 4.0,
+    "skill_tags": [
+      "mfg.quality.ncr_writing",
+      "mfg.spc.control_chart"
+    ],
+    "payload": {
+      "prompt": "Write a SQL query to calculate the daily defect count and pass rate percentage per manufacturing line for lines with at least 100 inspections.",
+      "seed_sql": "CREATE TABLE inspections (id SERIAL PRIMARY KEY, line_id INT, status TEXT, inspected_at DATE); INSERT INTO inspections (line_id, status, inspected_at) VALUES (1, 'PASS', '2026-08-01'), (1, 'FAIL', '2026-08-01');",
+      "expected_sql": "SELECT line_id, inspected_at, COUNT(*) FILTER (WHERE status = 'FAIL') AS defect_count, ROUND(100.0 * COUNT(*) FILTER (WHERE status = 'PASS') / COUNT(*), 2) AS pass_rate FROM inspections GROUP BY line_id, inspected_at HAVING COUNT(*) >= 100 ORDER BY line_id, inspected_at;",
+      "ordered": true,
+      "forbid": [
+        "DROP",
+        "TRUNCATE",
+        "DELETE"
+      ],
+      "efficiency_check": true
+    }
+  },
+  {
+    "id": "item-lang-001",
+    "title": "Spoken English Workstation Incident Report (CEFR B2)",
+    "domain_key": "video_response",
+    "difficulty": "medium",
+    "points": 4.0,
+    "skill_tags": [
+      "gen.english.cefr",
+      "gen.communication.written"
+    ],
+    "payload": {
+      "prompt": "Record a 60-second spoken summary explaining a near-miss safety incident on an assembly line and recommending immediate corrective action.",
+      "prep_seconds": 30,
+      "max_duration_seconds": 120,
+      "retakes_allowed": 1,
+      "rubric": "cefr",
+      "transcript_required": true,
+      "text_alternative_allowed": true,
+      "rationale": "Assesses CEFR B2 professional oral fluency, coherence, and hazard mitigation vocabulary."
+    }
+  }
+]

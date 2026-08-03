@@ -46,6 +46,9 @@ from routers.features import (
 )
 from routers.assessment_platform import router as assessment_platform_rtr
 from routers.identity_verify import router as identity_verify_rtr
+from routers.item_bank_router import router as item_bank_rtr
+from routers.webhooks_router import router as webhooks_rtr
+from routers.integrity_router import router as integrity_rtr
 
 app.include_router(ai_rtr)
 app.include_router(challenges_rtr)
@@ -59,6 +62,9 @@ app.include_router(scanner_router)
 app.include_router(integration_router)
 app.include_router(assessment_platform_rtr)
 app.include_router(identity_verify_rtr)
+app.include_router(item_bank_rtr)
+app.include_router(webhooks_rtr)
+app.include_router(integrity_rtr)
 
 # ── Proxy to Next.js (for all /api/* requests NOT handled above) ──
 
