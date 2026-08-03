@@ -1,6 +1,42 @@
 import { backendComplete } from '@/lib/ai/backend'
+import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 
 export const OBJECTIVE_TYPES = ['multiple-choice', 'mcq', 'true_false', 'multiple_response', 'fill_blanks']
+
+/**
+ * Honor the Superadmin LLM config (Settings → AI & LLM Provider) for grading so
+ * the configured model/provider is used instead of the backend's hard-coded
+ * default (`fast` → gemini). Empty values fall back to backend defaults.
+ */
+async function platformModelOverrides(): Promise<{
+  providerOverride?: string
+  modelOverride?: string
+  endpointOverride?: string
+  apiKeyOverride?: string
+}> {
+  try {
+    const cfg = await readPlatformLlmConfig()
+    if (!cfg) return {}
+    const p = (cfg.provider || '').toLowerCase()
+    let provider = p
+    if (p === 'opencode' || p === 'omnirouter') provider = 'opencode'
+    else if (p === 'openrouter') provider = 'openrouter'
+    else if (p === 'gemini') provider = 'gemini'
+    else if (p === 'anthropic') provider = 'anthropic'
+    else if (p === 'openai') provider = 'openai'
+    else if (p === 'groq') provider = 'groq'
+    else return {}
+    const apiKey = cfg.api_key && typeof cfg.api_key === 'string' && !cfg.api_key.includes('•') ? cfg.api_key.trim() : ''
+    return {
+      providerOverride: provider,
+      modelOverride: cfg.model,
+      ...(cfg.endpoint ? { endpointOverride: cfg.endpoint } : {}),
+      ...(apiKey ? { apiKeyOverride: apiKey } : {}),
+    }
+  } catch {
+    return {}
+  }
+}
 
 export class GradeRateLimitedError extends Error {
   retryAfterSec: number
@@ -129,7 +165,9 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
   const res = await backendComplete({
     systemMessage: 'You are a strict, accurate technical examiner that grades candidate answers. Return only valid JSON.',
     userMessage: prompt,
+    modelRole: 'reasoning',
     responseFormat: 'json',
+    ...(await platformModelOverrides()),
   })
 
   if (!res.ok) {
