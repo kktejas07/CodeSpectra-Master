@@ -2,6 +2,15 @@ import { backendComplete } from '@/lib/ai/backend'
 
 export const OBJECTIVE_TYPES = ['multiple-choice', 'mcq', 'true_false', 'multiple_response', 'fill_blanks']
 
+export class GradeRateLimitedError extends Error {
+  retryAfterSec: number
+  constructor(retryAfterSec: number) {
+    super('Rate limit exceeded on AI grading')
+    this.name = 'GradeRateLimitedError'
+    this.retryAfterSec = retryAfterSec
+  }
+}
+
 export interface GradeResult {
   recommended: number
   verdict: 'correct' | 'partial' | 'incorrect'
@@ -122,6 +131,15 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
     userMessage: prompt,
     responseFormat: 'json',
   })
+
+  if (!res.ok) {
+    const raw = res.text || ''
+    if (raw.includes('429') || /rate limit/i.test(raw)) {
+      const m = raw.match(/in (\d+)s/)
+      throw new GradeRateLimitedError(m ? Number(m[1]) : 60)
+    }
+    throw new Error('AI grading backend error')
+  }
 
   const parsed = (res.ok && res.json ? res.json as Record<string, unknown> : null) || extractJson(res.raw || res.text || '')
   const awarded = Number((parsed as any)?.awarded)

@@ -1,10 +1,15 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAdmin } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { gradeAnswer } from '@/lib/ai/grade-question'
+import { gradeAnswer, GradeRateLimitedError, OBJECTIVE_TYPES } from '@/lib/ai/grade-question'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
+
+const sleep = (ms: number) => new Promise(r => setTimeout(r, ms))
+
+/** Pace = one LLM call per >1s so we stay under the backend 60 req/min cap. */
+const LLM_PACE_MS = 1100
 
 /**
  * POST — Bulk AI-grade all pending questions for one or many candidates.
@@ -63,14 +68,44 @@ export async function POST(
         const answer = String(answers[d.qId] || '').trim()
 
         if (needsGrade && q && answer) {
+          // Objective questions are deterministic (no LLM) so only pace the free-text ones.
+          const isObjective = OBJECTIVE_TYPES.includes((q.type || '').toLowerCase())
+          let res: Awaited<ReturnType<typeof gradeAnswer>> | null = null
           try {
-            const res = await gradeAnswer({
+            res = await gradeAnswer({
               questionText: q.prompt || q.question || q.title || 'Question',
               candidateAnswer: answer,
               modelAnswer: String(q.answer || q.correct_answer || '').trim(),
               type: q.type || '',
               maxPoints: q.points || q.score || d.points || 10,
             })
+          } catch (e: unknown) {
+            // Wait out a rate limit (60 req/min) then retry once; otherwise fail this question.
+            if (e instanceof GradeRateLimitedError) {
+              const backoff = Math.max(1, Math.min(60, (e as any).retryAfterSec || 60))
+              await sleep(backoff * 1000 + 500)
+              try {
+                res = await gradeAnswer({
+                  questionText: q.prompt || q.question || q.title || 'Question',
+                  candidateAnswer: answer,
+                  modelAnswer: String(q.answer || q.correct_answer || '').trim(),
+                  type: q.type || '',
+                  maxPoints: q.points || q.score || d.points || 10,
+                })
+              } catch (e2) {
+                failList.push(d.qId)
+                totalFailed++
+                updatedDetails.push(d)
+                continue
+              }
+            } else {
+              failList.push(d.qId)
+              totalFailed++
+              updatedDetails.push(d)
+              continue
+            }
+          }
+          if (res) {
             updatedDetails.push({
               ...d,
               awarded: res.recommended,
@@ -80,11 +115,8 @@ export async function POST(
             })
             totalGraded++
             gradedInSub++
-          } catch {
-            failList.push(d.qId)
-            totalFailed++
-            updatedDetails.push(d)
           }
+          if (!isObjective) await sleep(LLM_PACE_MS)
         } else {
           updatedDetails.push(d)
         }

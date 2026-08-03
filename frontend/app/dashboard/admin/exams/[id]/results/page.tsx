@@ -250,7 +250,9 @@ export default function ExamResultsPage() {
       addToast({
         type: json.failed > 0 ? 'warning' : 'success',
         title: `AI graded ${json.graded} question(s) across ${json.candidates} candidate(s)`,
-        message: json.failed > 0 ? `${json.failed} question(s) could not be graded — review them manually.` : 'Grades saved. Refresh the list to see updated scores.',
+        message: json.failed > 0
+          ? `${json.failed} question(s) were rate-limited or failed — click Grade again and it will pick up the rest.`
+          : 'Grades saved. Refresh the list to see updated scores.',
       })
       const failedIds = new Set(json.results.filter((r: { failed: string[] }) => r.failed.length > 0).map((r: { userId: string }) => r.userId))
       setResults(prev => prev.map(r => {
@@ -524,134 +526,13 @@ setManualGrades({})
     })
   }
 
-  const downloadReviewPdf = async () => {
+  const downloadReviewPdf = () => {
     if (!reviewData || !reviewCandidate) return
-    try {
-      const { default: jsPDF } = await import('jspdf')
-      const doc = new jsPDF()
-      const pw = doc.internal.pageSize.getWidth()
-      let y = 20
-
-      doc.setFontSize(18)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Assessment Review Report', pw / 2, y, { align: 'center' })
-      y += 12
-
-      // Left-aligned meta block
-      doc.setFontSize(11)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Assessment', 20, y)
-      doc.setFont('helvetica', 'normal')
-      doc.text(reviewData.examTitle, 60, y)
-      y += 6
-      doc.setFont('helvetica', 'bold')
-      doc.text('Candidate', 20, y)
-      doc.setFont('helvetica', 'normal')
-      doc.text(`${reviewData.candidate.name || reviewCandidate.name}  (${reviewData.candidate.email || reviewCandidate.email})`, 60, y)
-      y += 6
-      const pct = reviewData.submission.max_score > 0
-        ? Math.round((reviewData.submission.score / reviewData.submission.max_score) * 100)
-        : 0
-      doc.setFont('helvetica', 'bold')
-      doc.text('Score', 20, y)
-      doc.setFont('helvetica', 'normal')
-      doc.text(` ${reviewData.submission.score} / ${reviewData.submission.max_score}  (${pct}%)${reviewData.submission.has_pending_review ? '  —  PENDING REVIEW' : ''}`, 60, y)
-      y += 6
-      if (reviewData.submission.submitted_at) {
-        doc.setFont('helvetica', 'bold')
-        doc.text('Submitted', 20, y)
-        doc.setFont('helvetica', 'normal')
-        doc.text(new Date(reviewData.submission.submitted_at).toLocaleString(), 60, y)
-        y += 6
-      }
-      doc.setDrawColor(200, 200, 200)
-      doc.line(20, y, pw - 20, y)
-      y += 8
-
-      // Per-question breakdown
-      doc.setFontSize(13)
-      doc.setFont('helvetica', 'bold')
-      doc.text('Question Breakdown', 20, y)
-      y += 8
-
-      for (let i = 0; i < reviewData.questions.length; i++) {
-        const q = reviewData.questions[i]
-        const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
-        const userAnswer = reviewData.submission.answers[q.id] || ''
-        const modelAnswer = q.answer || q.correct_answer || ''
-        const maxPoints = q.points || q.score || detail?.points || 10
-        const verdict = detail?.pending_review
-          ? 'PENDING REVIEW'
-          : detail?.correct
-            ? `CORRECT (${detail.awarded ?? detail.points}/${maxPoints})`
-            : `INCORRECT (${detail?.awarded ?? 0}/${maxPoints})`
-        const draftRemark = remarks[q.id] ?? aiFeedback[q.id] ?? (detail?.awarded !== undefined ? detail?.remarks : '')
-        const draftAwarded = manualGrades[q.id] ?? detail?.awarded
-        const shownVerdict = detail?.pending_review && draftAwarded !== undefined && draftRemark
-          ? `${draftAwarded}/${maxPoints} (DRAFT)`
-          : verdict
-
-        if (y > 230) { doc.addPage(); y = 20 }
-        doc.setFontSize(10)
-        doc.setFont('helvetica', 'bold')
-        const qText = (q.prompt || q.question || q.title || `Question ${i + 1}`).replace(/\s+/g, ' ').trim()
-        const qLines = doc.splitTextToSize(`Q${i + 1} [${q.type}] — ${shownVerdict}: ${qText}`, pw - 40)
-        doc.text(qLines, 20, y)
-        y += qLines.length * 4.5 + 2
-
-        doc.setFontSize(9)
-        doc.setFont('helvetica', 'normal')
-        if (userAnswer) {
-          const aLines = doc.splitTextToSize(`Candidate: ${userAnswer.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
-          if (y + aLines.length * 4 > 275) { doc.addPage(); y = 20 }
-          doc.text(aLines, 24, y)
-          y += aLines.length * 4 + 1
-        }
-        if (modelAnswer && !detail?.correct) {
-          const mLines = doc.splitTextToSize(`Expected: ${modelAnswer.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
-          if (y + mLines.length * 4 > 275) { doc.addPage(); y = 20 }
-          doc.text(mLines, 24, y)
-          y += mLines.length * 4 + 1
-        }
-        if (draftRemark) {
-          const rLines = doc.splitTextToSize(`Remarks: ${draftRemark.replace(/\s+/g, ' ').slice(0, 600)}`, pw - 44)
-          if (y + rLines.length * 4 > 275) { doc.addPage(); y = 20 }
-          doc.text(rLines, 24, y)
-          y += rLines.length * 4 + 1
-        }
-        y += 4
-      }
-
-      // Proctoring log
-      if (reviewData.proctorEvents.length > 0) {
-        if (y > 220) { doc.addPage(); y = 20 }
-        doc.setFontSize(13)
-        doc.setFont('helvetica', 'bold')
-        doc.text(`Proctoring Log (${reviewData.proctorEvents.length} events)`, 20, y)
-        y += 7
-
-        doc.setFontSize(9)
-        doc.setFont('helvetica', 'normal')
-        for (const evt of reviewData.proctorEvents) {
-          if (y > 275) { doc.addPage(); y = 20 }
-          const time = evt.created_at ? new Date(evt.created_at).toLocaleString() : ''
-          const label = formatProctorType(evt.event_type)
-          const meta = evt.meta && Object.keys(evt.meta).length > 0 ? ` ${JSON.stringify(evt.meta)}` : ''
-          const lines = doc.splitTextToSize(`${time} — ${label}${meta.slice(0, 300)}`, pw - 40)
-          doc.text(lines, 20, y)
-          y += lines.length * 4 + 1
-        }
-      }
-
-      doc.setFontSize(7)
-      doc.setFont('helvetica', 'italic')
-      doc.text('Generated by CodeSpectra Assessment Review', pw / 2, doc.internal.pageSize.getHeight() - 10, { align: 'center' })
-
-      doc.save(`review-${reviewData.candidate.name || reviewCandidate.name || 'candidate'}-${Date.now()}.pdf`)
-      addToast({ type: 'success', title: 'Review report downloaded' })
-    } catch {
-      addToast({ type: 'error', title: 'Failed to generate PDF report' })
-    }
+    // Print the live review modal via a dedicated print stylesheet. This keeps
+    // markdown, syntax-highlighted code, badges, and verdicts pixel-identical
+    // to what the admin sees on screen (jsPDF cannot reproduce them).
+    window.print()
+    addToast({ type: 'info', title: 'Choose "Save as PDF" in the print dialog' })
   }
 
   const exportCSV = () => {
@@ -845,13 +726,13 @@ setManualGrades({})
 
   return (
     <div className="space-y-6 max-w-7xl mx-auto pb-12 p-6">
-      <div className="flex items-center justify-between">
-        <div className="space-y-1">
+      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+        <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/exams')}>
             <ArrowLeft className="h-4 w-4" /> Back to Exams
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Results: {exam.title}</h1>
-          <div className="flex items-center gap-2 mt-2">
+          <div className="flex flex-wrap items-center gap-2 mt-2">
             <Badge variant="outline">{exam.level}</Badge>
             <Badge variant="outline">{exam.duration} mins</Badge>
             <Badge variant="secondary" className="bg-primary/10 text-primary">
@@ -862,7 +743,7 @@ setManualGrades({})
             </Badge>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex flex-wrap items-center gap-2 lg:justify-end">
           {pendingGradingCount > 0 && (
             <Badge variant="secondary" className="gap-1 bg-amber-500/10 text-amber-600 border-amber-500/20">
               <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} awaiting grading
@@ -951,8 +832,8 @@ setManualGrades({})
       </div>
 
       {reviewCandidate && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-xs pt-8 overflow-y-auto">
-          <div className="max-w-4xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 mb-8">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-xs pt-8 overflow-y-auto print-review-overlay">
+          <div className="max-w-4xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 mb-8 print-review-card">
             <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-card z-10">
               <div>
                 <h3 className="font-bold text-lg">Review: {reviewCandidate.name}</h3>
@@ -969,7 +850,7 @@ setManualGrades({})
               </div>
             ) : reviewData ? (
               <>
-                <div className="overflow-y-auto max-h-[60vh] pr-2 space-y-6">
+                <div className="overflow-y-auto max-h-[60vh] pr-2 space-y-6 print-review-body">
                   {/* Candidate Info */}
                   <div className="grid grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
