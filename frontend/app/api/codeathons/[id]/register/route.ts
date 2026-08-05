@@ -43,6 +43,21 @@ export async function POST(request: Request, { params }: IdRouteContext) {
     const codeCol = await codeathons()
     await codeCol.updateOne({ id }, { $inc: { participants: 1 } })
 
+    // Attendance XP (idempotent per registration).
+    try {
+      const { awardXpWithLevelUp } = await import('@/lib/xp-service')
+      const { CODEATHON_ATTEND_XP } = await import('@/lib/db/leaderboard')
+      await awardXpWithLevelUp({
+        userId: gate.user.id,
+        amount: CODEATHON_ATTEND_XP,
+        reason: 'codeathon_attended',
+        submissionId: doc.id,
+        metadata: { codeathon_id: id },
+      })
+    } catch (e) {
+      console.error('[CodeSpectra] codeathon XP award failed:', e)
+    }
+
     return NextResponse.json({
       success: true,
       registrationId: doc.id,

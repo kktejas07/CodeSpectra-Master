@@ -16,6 +16,7 @@ import { PipelineFlow } from '@/components/landing/pipeline-flow'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { PublicPageWrapper, DASHBOARD_HREF } from '@/app/public-layout'
 import { FloatingCodeParticles } from '@/components/landing/floating-code-particles'
+import { NewsletterSubscribe } from '@/components/landing/newsletter-subscribe'
 import { TiltCard } from '@/components/ui/tilt-card'
 import { useScrollReveal } from '@/hooks/use-scroll-reveal'
 
@@ -438,6 +439,15 @@ export async function bootstrap() {
           <p data-reveal className="text-sm text-muted-foreground mt-6">
             Your account unlocks the scanners, lessons, interview trainers, and certificate flows described above.
           </p>
+
+          {/* Newsletter signup */}
+          <div data-reveal className="mx-auto mt-12 max-w-md rounded-2xl border border-border/40 bg-muted/10 p-6 text-left">
+            <h3 className="text-sm font-semibold text-foreground">Get product updates</h3>
+            <p className="mb-4 text-xs text-muted-foreground">
+              New challenges, exams, hackathons and features — straight to your inbox. Unsubscribe anytime.
+            </p>
+            <NewsletterSubscribe source="landing-page" />
+          </div>
         </div>
       </section>
 

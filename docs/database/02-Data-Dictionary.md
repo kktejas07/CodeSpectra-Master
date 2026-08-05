@@ -724,3 +724,19 @@ These are seeded by `seed-all.ts` with static data. Schemas vary but all include
 - `pricing_tiers`: `{id, name, price, interval, description}`
 - `pricing_features`: `{id, name, description}`
 - `tier_features`: `{id, tier_id, feature_id, included, limit_value}`
+
+### `newsletter_subscribers` — Email newsletter signups
+| Field | Type | Required | Indexed | Description |
+|-------|------|----------|---------|-------------|
+| `email` | string | ✓ | ✓ (unique) | Subscriber email (lowercased) |
+| `status` | string | ✓ | | `subscribed` \| `unsubscribed` |
+| `source` | string | | | Where the signup came from (e.g. `web`) |
+| `created_at` | string | ✓ | | ISO timestamp |
+| `unsubscribed_at` | string | | | ISO timestamp when opted out |
+
+### `push_tokens` — FCM web push tokens
+| Field | Type | Required | Indexed | Description |
+|-------|------|----------|---------|-------------|
+| `user_id` | string | ✓ | ✓ | → `user._id` |
+| `token` | string | ✓ | ✓ (unique) | FCM registration token |
+| `created_at` | string | ✓ | | ISO timestamp |

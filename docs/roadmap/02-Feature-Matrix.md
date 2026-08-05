@@ -219,6 +219,8 @@
 | Settings | ✅ | P1 | `/dashboard/settings` |
 | Notifications | ✅ | P1 | `/dashboard/notifications` |
 | Notification preferences | ✅ | P2 | `/dashboard/notifications/preferences` |
+| Real-time push notifications | ✅ | P2 | FCM web push + in-app XP/level-up toasts |
+| Newsletter subscription | ✅ | P2 | Landing page signup + `/dashboard/admin/newsletter` |
 | Leaderboard | ✅ | P1 | `/dashboard/leaderboard` |
 | Achievements | ✅ | P2 | `/dashboard/achievements` |
 | XP tracking | ✅ | P1 | `xp_events` collection |

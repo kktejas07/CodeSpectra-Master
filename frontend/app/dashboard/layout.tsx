@@ -65,10 +65,12 @@ import {
   Database,
   Briefcase,
   Flame,
+  Mail,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { PushNotifications } from '@/components/push-notifications'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
@@ -256,9 +258,12 @@ export default function DashboardLayout({
     }
     void loadUnread()
     const t = window.setInterval(() => void loadUnread(), 30_000)
+    const onPush = () => void loadUnread()
+    window.addEventListener('codespectra:notification', onPush)
     return () => {
       cancelled = true
       window.clearInterval(t)
+      window.removeEventListener('codespectra:notification', onPush)
     }
   }, [userProfile?.id, pathname])
 
@@ -308,6 +313,7 @@ export default function DashboardLayout({
       [p.pricing]: FileText,
       '/dashboard/admin/coupons': CreditCardIcon,
       '/dashboard/admin/announcements': Bell,
+      '/dashboard/admin/newsletter': Mail,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/rag': Database,
       '/dashboard/admin/ai-inventory': Sparkles,
@@ -943,6 +949,9 @@ export default function DashboardLayout({
       </div>
       {/* Floating Chatbot */}
       {chatbotEnabled && <AskCodeSpectra />}
+
+      {/* Real-time FCM push → XP toasts / notification popups */}
+      <PushNotifications userId={userProfile?.id} />
 
       {/* Global Modals */}
     </div>

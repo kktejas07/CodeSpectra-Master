@@ -69,6 +69,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/cdn',
   '/dashboard/admin/speed-insights',
   '/dashboard/admin/announcements',
+  '/dashboard/admin/newsletter',
 ]
 
 export const ROUTE_TO_SECTION_MAP: Record<string, string> = {
@@ -316,6 +317,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/hackathons/edit': 'Edit Hackathon',
   '/dashboard/admin/hackathons': 'Manage Hackathons',
   '/dashboard/admin/announcements': 'Announcements',
+  '/dashboard/admin/newsletter': 'Newsletter',
   '/dashboard/admin/rag': 'RAG & Embeddings',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
   '/dashboard/admin/permissions': 'Role & Permissions',

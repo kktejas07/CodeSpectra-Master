@@ -30,6 +30,12 @@ export const DIFFICULTY_XP: Record<Difficulty, number> = {
 }
 export const FIRST_BLOOD_BONUS = 25
 
+// XP rewards for non-problem activities (kept in code for easy tuning).
+export const EXAM_PASS_XP = 50
+export const CERT_PASS_XP = 100
+export const CODEATHON_ATTEND_XP = 20
+export const CHALLENGE_COMPLETE_XP = 15
+
 export type XpReason =
   | 'submission_accepted'
   | 'first_blood'
@@ -37,6 +43,10 @@ export type XpReason =
   | 'admin_grant'
   | 'workflow_reward'
   | 'hackathon_score'
+  | 'exam_passed'
+  | 'certification_passed'
+  | 'codeathon_attended'
+  | 'challenge_completed'
 
 export interface XpEventDoc {
   id: string
@@ -170,6 +180,16 @@ export async function awardXp(args: {
     const existing = await col.findOne({
       user_id: args.userId,
       problem_id: args.problemId,
+      reason: args.reason,
+    })
+    if (existing) return null
+  }
+
+  // Idempotency for per-submission awards (exams, certifications, hackathons…)
+  if (args.submissionId) {
+    const existing = await col.findOne({
+      user_id: args.userId,
+      submission_id: args.submissionId,
       reason: args.reason,
     })
     if (existing) return null

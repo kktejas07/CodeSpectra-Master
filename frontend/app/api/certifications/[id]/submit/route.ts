@@ -66,6 +66,39 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     { $set: { score, passed, submitted_at: submittedAt } },
   )
 
+  // Award XP for passing + notify the user of the new certificate.
+  if (passed) {
+    try {
+      const { awardXpWithLevelUp } = await import('@/lib/xp-service')
+      const { CERT_PASS_XP } = await import('@/lib/db/leaderboard')
+      await awardXpWithLevelUp({
+        userId: user.id,
+        amount: CERT_PASS_XP,
+        reason: 'certification_passed',
+        submissionId: attempt.id,
+        metadata: { certification_id: cert.id, score: String(score) },
+      })
+    } catch (e) {
+      console.error('[certifications] XP award failed:', e)
+    }
+
+    try {
+      const { notify } = await import('@/lib/notifications')
+      const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const link = `/cert/verify/${attempt.verify_token}`
+      await notify({
+        user_id: user.id,
+        type: 'certification.earned',
+        title: `You earned the ${cert.title} certificate!`,
+        message: `You passed with a verified score of ${score}%. View and download it now.`,
+        link,
+        icon: 'award',
+        metadata: { score: String(score), verify_token: attempt.verify_token },
+        send_email: true,
+      })
+    } catch { /* notify is optional */ }
+  }
+
   return NextResponse.json({
     score,
     passed,

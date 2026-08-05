@@ -159,6 +159,8 @@ export default function ProfilePage() {
 
   const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string } | null>(null)
   const [stats, setStats] = useState<Record<string, number | string> | null>(null)
+  const [xp, setXp] = useState(0)
+  const [level, setLevel] = useState(1)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [heatmapData, setHeatmapData] = useState<{
     cells: number[][] | null
@@ -200,15 +202,18 @@ export default function ProfilePage() {
 
   const load = useCallback(async () => {
     try {
-      const [userRes, statsRes, activityRes, heatmapRes] = await Promise.all([
+      const [userRes, statsRes, activityRes, heatmapRes, achRes] = await Promise.all([
         fetch('/api/auth/me').then(r => r.json()).catch(() => null),
         fetch('/api/user/stats').then(r => r.json()).catch(() => null),
         fetch('/api/user/activity?limit=20').then(r => r.json()).catch(() => null),
         fetch('/api/user/heatmap?weeks=52').then(r => r.json()).catch(() => null),
+        fetch('/api/achievements').then(r => r.json()).catch(() => null),
       ])
 
       if (userRes?.user) setUser(userRes.user)
       if (statsRes && !statsRes.error) setStats(statsRes)
+      if (typeof achRes?.xp === 'number') setXp(achRes.xp)
+      if (typeof achRes?.level === 'number') setLevel(achRes.level)
       if (activityRes?.data) setActivity(activityRes.data)
       if (heatmapRes?.cells) {
         setHeatmapData({
@@ -307,7 +312,17 @@ export default function ProfilePage() {
 
       {/* Main */}
       <div className="min-w-0 space-y-8">
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
+          <Card className="border-border/60 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Level</p>
+            <p className="mt-1 text-2xl font-bold text-foreground">Lvl {level}</p>
+            <p className="text-xs text-muted-foreground">XP progression</p>
+          </Card>
+          <Card className="border-border/60 p-4">
+            <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">XP earned</p>
+            <p className="mt-1 text-2xl font-bold text-foreground">{xp} XP</p>
+            <p className="text-xs text-muted-foreground">From challenges, exams & events</p>
+          </Card>
           <Card className="border-border/60 p-4">
             <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Code scans</p>
             <p className="mt-1 text-2xl font-bold text-foreground">{stats?.scans ?? 0}</p>

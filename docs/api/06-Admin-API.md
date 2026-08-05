@@ -222,6 +222,16 @@ Set a server secret.
 ### POST /api/admin/test-emails
 Test email delivery configuration.
 
+## Admin Newsletter
+
+### GET /api/newsletter/subscribers
+List newsletter subscribers (superadmin). Query: `?limit=&offset=`. Returns `{ subscribers, total, subscribed, limit, offset }`.
+
+### POST /api/newsletter/subscribers
+Broadcast a newsletter to all active subscribers (superadmin). Body: `{ subject, content }` (content supports simple HTML). Emails each subscriber via Postal with the branded `newsletter` template and a per-recipient unsubscribe link. Returns `{ ok, sent, failed, total }`.
+
+> Public (no auth): `POST /api/newsletter/subscribe` (signup), `GET|POST /api/newsletter/unsubscribe?email=` (opt-out). Collection: `newsletter_subscribers`.
+
 ## List of All Admin Routes
 
 | Route | Methods | Auth | Collection(s) |
@@ -246,3 +256,4 @@ Test email delivery configuration.
 | `/api/admin/metrics` | GET | superadmin | multiple |
 | `/api/admin/server-secrets` | GET, POST | superadmin | `server_secrets` |
 | `/api/admin/test-emails` | POST | superadmin | N/A (Postal) |
+| `/api/newsletter/subscribers` | GET, POST | superadmin | `newsletter_subscribers` |

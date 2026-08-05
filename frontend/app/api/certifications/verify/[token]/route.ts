@@ -26,6 +26,7 @@ export async function GET(_req: Request, ctx: { params: Promise<{ token: string 
     candidate: { name: attempt.snapshot.name || 'Anonymous' },
     certification: attempt.cert_snapshot,
     score: attempt.score,
+    score_label: attempt.score_label,
     issued_at: attempt.submitted_at,
   })
 }

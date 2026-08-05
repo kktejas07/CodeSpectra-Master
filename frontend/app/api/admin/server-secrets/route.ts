@@ -49,6 +49,7 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'firebase_storage_bucket',
   'firebase_messaging_sender_id',
   'firebase_app_id',
+  'firebase_vapid_key',
   'phonepe_merchant_id',
   'phonepe_salt_index',
 ]
