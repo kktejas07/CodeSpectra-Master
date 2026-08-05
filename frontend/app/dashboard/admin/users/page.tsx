@@ -4,8 +4,7 @@ import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
-import { Users, Plus, Loader2, HelpCircle, KeyRound, Download } from 'lucide-react'
-import { exportUsersToXLS } from '@/lib/export-excel'
+import { Users, Plus, Loader2, HelpCircle, KeyRound } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { UserManagementTable } from '@/components/admin/user-management-table'
 import {
@@ -348,15 +347,6 @@ export default function UsersManagement() {
           </h1>
         </div>
         <div className="flex items-center gap-2 shrink-0">
-          <Button
-            variant="outline"
-            className="gap-2 shrink-0 border-primary/30 hover:bg-primary/5 font-medium"
-            onClick={() => exportUsersToXLS(displayUsers, `user_management_${new Date().toISOString().split('T')[0]}.xlsx`)}
-            disabled={loading || displayUsers.length === 0}
-          >
-            <Download className="w-4 h-4 text-primary" />
-            Export XLS
-          </Button>
           <Button className="gap-2 shrink-0" onClick={() => setAddOpen(true)} disabled={loading}>
             <Plus className="w-4 h-4" />
             Add User
