@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Users, Search, Edit2, Trash2, MoreVertical, Shield, KeyRound, Mail, CheckSquare, Square } from 'lucide-react'
+import { Users, Search, Edit2, Trash2, MoreVertical, Shield, KeyRound, Mail, CheckSquare, Square, Download } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -20,6 +20,7 @@ import {
   SelectValue,
 } from '@/components/ui/select'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
+import { exportUsersToXLS } from '@/lib/export-excel'
 
 interface User {
   id: string
@@ -29,6 +30,7 @@ interface User {
   status: 'active' | 'inactive'
   joinedAt: string
   lastActive: string
+  plan?: string
 }
 
 interface UserManagementTableProps {
@@ -40,6 +42,7 @@ interface UserManagementTableProps {
   onSendResetEmail?: (userId: string) => void
   onBulkDelete?: (userIds: string[]) => void
   onBulkRoleChange?: (userIds: string[], role: string) => void
+  onExportXLS?: (selectedUsers?: User[]) => void
 }
 
 export function UserManagementTable({ 
@@ -51,6 +54,7 @@ export function UserManagementTable({
   onSendResetEmail,
   onBulkDelete,
   onBulkRoleChange,
+  onExportXLS,
 }: UserManagementTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
@@ -100,9 +104,26 @@ export function UserManagementTable({
     }
   }
 
+  const handleExportAllOrFiltered = () => {
+    if (onExportXLS) {
+      onExportXLS(filteredUsers)
+    } else {
+      exportUsersToXLS(filteredUsers, `user_management_${new Date().toISOString().split('T')[0]}.xlsx`)
+    }
+  }
+
+  const handleExportSelected = () => {
+    const selectedUsers = users.filter((u) => selected.has(u.id))
+    if (onExportXLS) {
+      onExportXLS(selectedUsers)
+    } else {
+      exportUsersToXLS(selectedUsers, `user_management_selected_${new Date().toISOString().split('T')[0]}.xlsx`)
+    }
+  }
+
   return (
     <div className="space-y-4">
-      <div className="flex gap-4 items-center">
+      <div className="flex flex-col sm:flex-row gap-4 items-stretch sm:items-center">
         <div className="flex-1 relative">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
           <Input
@@ -123,12 +144,26 @@ export function UserManagementTable({
             <SelectItem value="user">User</SelectItem>
           </SelectContent>
         </Select>
+        <Button
+          variant="outline"
+          className="gap-2 shrink-0 border-primary/20 hover:bg-primary/5"
+          onClick={handleExportAllOrFiltered}
+          disabled={filteredUsers.length === 0}
+
+        >
+          <Download className="w-4 h-4 text-primary" />
+          Export XLS
+        </Button>
       </div>
 
       {someSelected && (
         <div className="flex items-center gap-2 rounded-lg border border-primary/30 bg-primary/5 px-4 py-2">
           <span className="text-sm font-medium">{selected.size} selected</span>
           <div className="flex-1" />
+          <Button variant="outline" size="sm" onClick={handleExportSelected}>
+            <Download className="w-3.5 h-3.5 mr-1" />
+            Export Selected (XLS)
+          </Button>
           {onBulkRoleChange && (
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
