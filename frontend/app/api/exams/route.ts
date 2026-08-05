@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 import { backendComplete } from '@/lib/ai/backend'
+import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 
 export const runtime = 'nodejs'
 
@@ -46,15 +47,6 @@ function tryParseJsonArray(s: string): unknown[] | null {
     } catch { /* ignore */ }
   }
   return null
-}
-
-const QUESTION_TYPE_LABELS: Record<QuestionType, string> = {
-  mcq: 'Multiple Choice',
-  multiple_response: 'Multiple Response',
-  true_false: 'True / False',
-  coding: 'Coding Challenge',
-  descriptive: 'Descriptive',
-  fill_blanks: 'Fill in the Blanks',
 }
 
 const VALID_TYPES: QuestionType[] = ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks']
@@ -155,16 +147,45 @@ export async function POST(request: Request) {
     const now = new Date().toISOString()
     const numQuestions = body.questions || 5
     const stacks = body.techStack || ['General']
+    const degreeType = String(body.degree_type || '').toLowerCase() || undefined
+    const branch = String(body.branch || '').toLowerCase() || undefined
+    const screeningType = ['aptitude', 'technical', 'coding', 'mixed'].includes(String(body.screening_type))
+      ? String(body.screening_type)
+      : 'mixed'
+    const typePoolByScreening: Record<string, QuestionType[]> = {
+      aptitude: ['mcq', 'true_false'],
+      technical: ['mcq', 'multiple_response', 'fill_blanks', 'true_false'],
+      coding: ['coding', 'mcq'],
+      mixed: ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks'],
+    }
+    const allowedTypes = typePoolByScreening[screeningType]
     let questionList: QuestionDoc[] = []
 
-    if (numQuestions > 0) {
+    // 1) Prefer auto-picking from the question bank (branch/degree aware).
+    if (numQuestions > 0 && body.auto_pick !== false) {
       try {
-        const typesStr = Object.keys(QUESTION_TYPE_LABELS).join('|')
+        const picked = await sampleFromBank({
+          branch,
+          degree_type: degreeType,
+          types: allowedTypes,
+          count: numQuestions,
+        })
+        questionList = picked.map((b) => bankToExamQuestion(b) as unknown as QuestionDoc)
+      } catch (e) {
+        console.error('[exams] bank auto-pick failed:', e)
+      }
+    }
+
+    // 2) Top up any shortfall with AI generation.
+    const remaining = numQuestions - questionList.length
+    if (remaining > 0) {
+      try {
+        const typesStr = allowedTypes.join('|')
         const topicsList = stacks.join(', ')
         const aiPrompt = 'Generate a ' + body.level + ' level assessment for: ' + (body.subject || 'General') + '.\n' +
           'Topics/skills to assess: ' + topicsList + '.\n' +
           'Duration: ' + (body.duration || 60) + ' minutes.\n' +
-          'Number of questions: ' + numQuestions + '.\n\n' +
+          'Number of questions: ' + remaining + '.\n\n' +
           'REQUIREMENTS:\n' +
           '- Each question must test a DIFFERENT specific concept or skill\n' +
           '- Questions must be realistic, practical, and job-relevant — like a real screening test\n' +
@@ -178,7 +199,7 @@ export async function POST(request: Request) {
           '- For descriptive: omit options, answer should be key points or a model answer\n' +
           '- For fill_blanks: use ___ in prompt for blanks, answer is the missing word(s)\n\n' +
           'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number }.\n' +
-          'Never repeat content. Return exactly ' + numQuestions + ' items.'
+          'Never repeat content. Return exactly ' + remaining + ' items.'
         const aiRes = await backendComplete({
           systemMessage: 'You are a senior technical assessor who creates realistic job screening questions. Each question must test a distinct skill with realistic distractors. Return ONLY valid JSON.',
           userMessage: aiPrompt,
@@ -186,7 +207,8 @@ export async function POST(request: Request) {
         })
         const rawJson = aiRes.ok ? (aiRes.json || (aiRes.text ? tryParseJsonArray(aiRes.text) : null)) : null
         if (rawJson && Array.isArray(rawJson) && rawJson.length > 0) {
-          questionList = (rawJson as Array<Record<string, unknown>>).map((q: Record<string, unknown>) => normalizeQuestion(q as Record<string, unknown>))
+          const aiQuestions = (rawJson as Array<Record<string, unknown>>).map((q: Record<string, unknown>) => normalizeQuestion(q as Record<string, unknown>))
+          questionList = [...questionList, ...aiQuestions].slice(0, numQuestions)
         }
       } catch {
         // AI fallback
@@ -194,7 +216,7 @@ export async function POST(request: Request) {
     }
 
     if (questionList.length === 0 && numQuestions > 0) {
-      const typesPool: QuestionType[] = ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks']
+      const typesPool: QuestionType[] = allowedTypes
       for (let i = 0; i < numQuestions; i++) {
         const stack = stacks[i % stacks.length]
         const type = typesPool[i % typesPool.length]
@@ -241,6 +263,9 @@ export async function POST(request: Request) {
       title: body.title,
       subject: body.subject || '',
       level: body.level || 'Beginner',
+      degree_type: degreeType,
+      branch,
+      screening_type: screeningType,
       techStack: stacks,
       duration: body.duration || 60,
       questions: numQuestions,
@@ -255,7 +280,10 @@ export async function POST(request: Request) {
     }
     await db.collection('exams').insertOne(doc)
     return NextResponse.json(doc, { status: 201 })
-  } catch { return NextResponse.json({ error: 'Failed to create' }, { status: 500 }) }
+  } catch (e) {
+    console.error('[exams] POST error:', e)
+    return NextResponse.json({ error: 'Failed to create' }, { status: 500 })
+  }
 }
 
 export async function PATCH(request: Request) {

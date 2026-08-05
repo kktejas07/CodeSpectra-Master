@@ -115,6 +115,12 @@
 | Feature | Status | Priority | Notes |
 |---------|--------|----------|-------|
 | Exam CRUD | ✅ | P2 | `db/content.ts` — `ExamDoc`, `ExamSubmissionDoc` |
+| Exam degree/branch/screening metadata | ✅ | P2 | `degree_type`/`branch`/`screening_type` on exams + create/editor UI |
+| Exam auto-pick from question bank | ✅ | P2 | `POST /api/exams` samples from `question_bank` before AI top-up |
+| Question bank CRUD (filters, pagination, edit) | ✅ | P2 | `/dashboard/admin/question-bank` + `/api/question-bank` |
+| Question bank AI bulk generation | ✅ | P2 | `/api/question-bank/generate` — backend `/internal/ai/complete` |
+| Question bank import/export | ✅ | P2 | `/api/question-bank/import` (JSON/CSV) + client-side JSON export |
+| Question bank seed | ✅ | P2 | `scripts/seed-question-bank.ts` — 44 curated aptitude + branch questions |
 | Exam taking flow | 🟡 | P2 | Routes exist, full flow not verified |
 | Certification management | 🟡 | P2 | `/dashboard/certifications` route exists |
 | Certificate generation | ❌ | P3 | Placeholder — no PDF/integration |

@@ -443,15 +443,45 @@
 |-------|------|----------|---------|-------------|
 | `id` | string | ✓ | PK | UUID |
 | `title` | string | ✓ | | |
-| `subject` | string | | | |
+| `subject` | string | | | Target role / subject |
+| `level` | string | | | `Beginner`, `Intermediate`, `Advanced`, `Expert` |
 | `difficulty_level` | string | | | |
+| `degree_type` | string | | | `btech`, `mtech`, `mca`, `diploma`, `other` — see `lib/engineering-catalog.ts` |
+| `branch` | string | | | `cse`, `it`, `ece`, `eee`, `mech`, `civil`, `chem`, `ai_ds` |
+| `screening_type` | string | | | `aptitude`, `technical`, `coding`, `mixed` |
+| `techStack` | array | | | Topics / skills assessed |
 | `duration` | number | | | minutes |
 | `passing_score` | number | | | 0–100 |
 | `description` | string | | | |
 | `status` | string | ✓ | | `available`, `archived`, `draft` |
-| `questions` | array | | | `[{id, text, type, options, correctAnswer}]` |
+| `questionList` | array | | | Embedded `[{id, type, title, prompt, options?, answer?, score}]` |
+| `questions` | number | | | Question count |
+| `access_type` | string | | | `invite_only` / `open` |
+| `published` | bool | | | |
 | `created_by` | string | | | |
 | `created_at` | string | ✓ | | |
+
+### `question_bank` — Reusable engineering questions
+| Field | Type | Required | Indexed | Description |
+|-------|------|----------|---------|-------------|
+| `id` | string | ✓ | PK | UUID |
+| `title` | string | ✓ | | Short question label |
+| `question` | string | ✓ | | Full question prompt |
+| `type` | string | ✓ | | `mcq`, `multiple_response`, `true_false`, `coding`, `descriptive`, `fill_blanks` |
+| `options` | array | | | Only for choice types |
+| `answer` | string | | | Correct answer / explanation for coding-descriptive |
+| `explanation` | string | | | Optional post-answer explanation |
+| `difficulty` | string | ✓ | | `Easy`, `Medium`, `Hard` |
+| `marks` | number | ✓ | | Default 10 |
+| `degree_type` | string | | | `btech`, `mtech`, `mca`, `diploma`, `other` |
+| `branch` | string | | | `cse`, `it`, `ece`, `eee`, `mech`, `civil`, `chem`, `ai_ds` |
+| `subject` | string | | | Topic / subject tag |
+| `tech_stack` | array | | | |
+| `tags` | array | | | |
+| `source` | string | | | `seed`, `ai`, `import`, `manual` |
+| `is_active` | bool | | | Default true |
+| `createdAt` | string | ✓ | | |
+| `updatedAt` | string | ✓ | | |
 
 ### `exam_submissions`
 | Field | Type | Required | Indexed | Description |

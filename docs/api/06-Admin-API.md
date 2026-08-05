@@ -232,6 +232,40 @@ Broadcast a newsletter to all active subscribers (superadmin). Body: `{ subject,
 
 > Public (no auth): `POST /api/newsletter/subscribe` (signup), `GET|POST /api/newsletter/unsubscribe?email=` (opt-out). Collection: `newsletter_subscribers`.
 
+## Question Bank API
+
+Backing collection: `question_bank` (see `lib/question-bank.ts` for schema + normalization).
+
+### GET /api/question-bank
+List questions with server-side filtering + pagination.
+**Auth**: `requireAuth()`
+
+Query params: `q` (search title/question/subject/tags), `branch`, `degree_type`, `difficulty`, `type`, `subject`, `page` (default 1), `limit` (default 25, max 100).
+
+**Response (200):** `{ data: BankQuestionDoc[], total, page, limit }`
+
+### POST /api/question-bank
+Create a single question. **Auth**: `requireSuperAdmin()`
+Body: `BankQuestionDoc` fields (`question` required; legacy `title`/`domain`/uppercase `type` tolerated). Returns the normalized doc (201).
+
+### PATCH /api/question-bank?id=<id>
+Update an existing question. **Auth**: `requireSuperAdmin()`
+
+### DELETE /api/question-bank?id=<id>
+Delete a question. **Auth**: `requireSuperAdmin()`
+
+### GET /api/question-bank/stats
+Aggregate totals. **Auth**: `requireAuth()`
+Optional `?branch=` scopes counts. Returns `{ total, byDifficulty, byType, byBranch, byDegree, branchCatalog, degreeCatalog }`.
+
+### POST /api/question-bank/import
+Bulk import. **Auth**: `requireSuperAdmin()`
+Accepts either `application/json` (array of question objects or `{questions: []}`) or `text/plain` CSV with header `type,title,question,options,answer,explanation,difficulty,degree_type,branch,subject,tags,marks` (options pipe-delimited). Dedupes by content hash (skips existing). Max 5000 items. Returns `{ inserted, skipped, errors }`.
+
+### POST /api/question-bank/generate
+AI bulk generation. **Auth**: `requireSuperAdmin()`
+Body: `{ branch?, subject?, difficulty?: 'Easy'|'Medium'|'Hard'|'mixed', types?: string[], count? }`. Streams through the backend `/internal/ai/complete` with provider fallbacks. Inserts into the bank, deduping by content hash. Returns `{ inserted, requested, skipped, errors }`.
+
 ## List of All Admin Routes
 
 | Route | Methods | Auth | Collection(s) |
@@ -257,3 +291,7 @@ Broadcast a newsletter to all active subscribers (superadmin). Body: `{ subject,
 | `/api/admin/server-secrets` | GET, POST | superadmin | `server_secrets` |
 | `/api/admin/test-emails` | POST | superadmin | N/A (Postal) |
 | `/api/newsletter/subscribers` | GET, POST | superadmin | `newsletter_subscribers` |
+| `/api/question-bank` | GET, POST, PATCH, DELETE | GET auth, rest superadmin | `question_bank` |
+| `/api/question-bank/stats` | GET | auth | `question_bank` |
+| `/api/question-bank/import` | POST | superadmin | `question_bank` |
+| `/api/question-bank/generate` | POST | superadmin | `question_bank` |
