@@ -53,6 +53,9 @@ export const SCREENING_TYPES: ScreeningTypeDef[] = [
 
 export type QuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
 
+/** Question types usable by the question bank and exams. Kept here (pure constants, no server deps) so client pages can import it safely. */
+export const BANK_QUESTION_TYPES: QuestionType[] = ['mcq', 'multiple_response', 'true_false', 'coding', 'descriptive', 'fill_blanks']
+
 export const QUESTION_TYPES: { id: string; label: string }[] = [
   { id: 'mcq', label: 'Multiple Choice' },
   { id: 'multiple_response', label: 'Multiple Response' },

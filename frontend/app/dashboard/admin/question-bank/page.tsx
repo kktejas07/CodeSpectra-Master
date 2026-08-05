@@ -13,8 +13,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { BRANCHES, DEGREE_TYPES, type QuestionType } from '@/lib/engineering-catalog'
-import { BANK_QUESTION_TYPES } from '@/lib/question-bank'
+import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/engineering-catalog'
 
 interface BankQuestion {
   id: string
