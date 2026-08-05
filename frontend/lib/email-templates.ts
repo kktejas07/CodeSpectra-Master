@@ -381,6 +381,54 @@ export const emailTemplates = {
       ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">This invite link expires on ${params.expiresIn}. Complete your assessment before then.</p>`, BRAND.amberBg, `${BRAND.amber}`)}
     ${baseStyles.footer}`,
   }),
+
+  levelUp: (params: { name: string; newLevel: number; totalXp: number; certUrl: string }) => {
+    const base = getBaseUrl()
+    return {
+      subject: `Level up! You're now Level ${params.newLevel} 🎉`,
+      html: `${baseStyles.wrapper}
+        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Congratulations, ${params.name}!</h1>
+        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">You just reached <strong>Level ${params.newLevel}</strong> with a total of <strong>${params.totalXp} XP</strong>. Keep learning, practicing and competing to climb even higher.</p>
+        ${baseStyles.card(`
+          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
+            ${statRow('Level', `Level ${params.newLevel}`)}
+            ${statRow('Total XP', `${params.totalXp} XP`)}
+            ${statRow('Certificate', 'Issued ✓')}
+          </table>
+        `)}
+        ${baseStyles.button(`${base}${params.certUrl}`, 'View Your Level-Up Certificate')}
+        <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">Your certificate is verified on the public verify page — share it anywhere.</p>
+      ${baseStyles.footer}`,
+    }
+  },
+
+  certificateEarned: (params: { name: string; title: string; certUrl: string }) => {
+    const base = getBaseUrl()
+    return {
+      subject: `Your ${params.title} certificate is ready 🎓`,
+      html: `${baseStyles.wrapper}
+        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Certificate issued, ${params.name}!</h1>
+        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">You've been issued the <strong>${params.title}</strong> certificate. It's verifiable, downloadable and ready to share.</p>
+        ${baseStyles.button(`${base}${params.certUrl}`, 'View Certificate')}
+      ${baseStyles.footer}`,
+    }
+  },
+
+  newsletter: (params: { subject: string; body: string }) => {
+    const base = getBaseUrl()
+    return {
+      subject: params.subject,
+      html: `${baseStyles.wrapper}
+        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">${params.subject}</h1>
+        <div style="margin:12px 0 16px;font-size:15px;line-height:1.7;color:${BRAND.text}">${params.body}</div>
+        ${baseStyles.button(`${base}/dashboard`, 'Go to Dashboard')}
+        <p style="margin:8px 0 0;font-size:12px;color:${BRAND.muted}">
+          You're receiving this because you subscribed to CodeSpectra updates.
+          <a href="${base}/api/newsletter/unsubscribe?email=__EMAIL__" style="color:${BRAND.green};text-decoration:underline">Unsubscribe</a>.
+        </p>
+      ${baseStyles.footer}`,
+    }
+  },
 }
 
 export const hackathonEmailTemplates = {

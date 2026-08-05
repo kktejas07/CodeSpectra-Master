@@ -9,6 +9,8 @@ export interface FirebaseConfig {
   storageBucket: string
   messagingSenderId: string
   appId: string
+  /** Web push VAPID key for FCM browser notifications. */
+  vapidKey?: string
 }
 
 let _dynamicConfig: FirebaseConfig | null = null
@@ -30,6 +32,7 @@ function buildConfig(): FirebaseConfig | null {
     storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET || '',
     messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID || '',
     appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID || '',
+    vapidKey: process.env.NEXT_PUBLIC_FIREBASE_VAPID_KEY || '',
   }
 }
 
@@ -52,6 +55,7 @@ export function prefetchFirebaseConfig(): Promise<FirebaseConfig | null> {
           storageBucket: data.storageBucket || '',
           messagingSenderId: data.messagingSenderId || '',
           appId: data.appId || '',
+          vapidKey: data.vapidKey || '',
         }
         if (!config.appId && buildConfig()) {
           const envCfg = buildConfig()

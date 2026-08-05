@@ -123,6 +123,25 @@ export async function POST(
     }
     await submissions.insertOne(submission)
 
+    // Award XP + real-time notification for real platform users (invite-only
+    // candidates are not platform accounts). Idempotent per submission.
+    if (userId && !userId.startsWith('candidate_') && maxScore > 0 && totalScore > 0) {
+      try {
+        const { awardXpWithLevelUp } = await import('@/lib/xp-service')
+        const { EXAM_PASS_XP } = await import('@/lib/db/leaderboard')
+        const amount = Math.max(5, Math.round((totalScore / maxScore) * EXAM_PASS_XP))
+        await awardXpWithLevelUp({
+          userId,
+          amount,
+          reason: 'exam_passed',
+          submissionId: submission.id,
+          metadata: { exam_id: examId, score: String(totalScore), max_score: String(maxScore) },
+        })
+      } catch (e) {
+        console.error('[CodeSpectra] exam XP award failed:', e)
+      }
+    }
+
     return NextResponse.json({
       score: totalScore,
       total: maxScore,

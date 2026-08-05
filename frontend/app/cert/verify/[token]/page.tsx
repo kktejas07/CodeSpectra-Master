@@ -22,6 +22,7 @@ interface VerifyResponse {
   candidate?: { name: string }
   certification?: { title: string; level: string; source: string }
   score?: number
+  score_label?: string
   issued_at?: string
 }
 
@@ -153,6 +154,7 @@ export default function CertVerifyPage() {
     level: data.certification?.level || 'Basic',
     source: data.certification?.source || 'Open-source curriculum',
     score: data.score ?? 0,
+    scoreLabel: data.score_label,
     issuedAt: data.issued_at || new Date().toISOString(),
     verifyUrl,
     verifyToken: token,

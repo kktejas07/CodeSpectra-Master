@@ -65,10 +65,12 @@ import {
   Database,
   Briefcase,
   Flame,
+  Mail,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
 import { Breadcrumbs } from '@/components/breadcrumbs'
+import { PushNotifications } from '@/components/push-notifications'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
@@ -256,9 +258,12 @@ export default function DashboardLayout({
     }
     void loadUnread()
     const t = window.setInterval(() => void loadUnread(), 30_000)
+    const onPush = () => void loadUnread()
+    window.addEventListener('codespectra:notification', onPush)
     return () => {
       cancelled = true
       window.clearInterval(t)
+      window.removeEventListener('codespectra:notification', onPush)
     }
   }, [userProfile?.id, pathname])
 
@@ -268,21 +273,21 @@ export default function DashboardLayout({
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
 
   const SECTION_ICON_MAP: Record<string, LucideIcon> = useMemo(() => ({
-    'System & Core': Shield,
-    'Hackathons, Problems & Proctoring': Trophy,
-    'Billing & Plans': CreditCardIcon,
-    'Hiring & ATS': Briefcase,
-    'AI & Generation Tools': Sparkles,
-    'Infrastructure & Settings': Settings,
-    'Organization & Evaluation': Users,
-    'Dashboard & AI': Home,
-    'Practice & Coding': CodeIcon,
-    'Hackathons & Competitions': Trophy,
-    'Learning & Prep': BookOpen,
-    'Career & Credentials': Briefcase,
-    'Stats & Progress': BarChart3,
-    'User & Account': User,
-    'Misc': LifeBuoy,
+    'System': Shield,
+    'Hackathons': Trophy,
+    'Billing': CreditCardIcon,
+    'Hiring': Briefcase,
+    'AI Tools': Sparkles,
+    'Settings': Settings,
+    'Organization': Users,
+    'Home': Home,
+    'Practice': CodeIcon,
+    'Events': Trophy,
+    'Learn': BookOpen,
+    'Career': Briefcase,
+    'Progress': BarChart3,
+    'Account': User,
+    'More': LifeBuoy,
   }), [])
 
   const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? [] : lockedPages
@@ -308,6 +313,7 @@ export default function DashboardLayout({
       [p.pricing]: FileText,
       '/dashboard/admin/coupons': CreditCardIcon,
       '/dashboard/admin/announcements': Bell,
+      '/dashboard/admin/newsletter': Mail,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/rag': Database,
       '/dashboard/admin/ai-inventory': Sparkles,
@@ -943,6 +949,9 @@ export default function DashboardLayout({
       </div>
       {/* Floating Chatbot */}
       {chatbotEnabled && <AskCodeSpectra />}
+
+      {/* Real-time FCM push → XP toasts / notification popups */}
+      <PushNotifications userId={userProfile?.id} />
 
       {/* Global Modals */}
     </div>

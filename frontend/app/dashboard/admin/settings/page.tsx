@@ -163,6 +163,7 @@ type SecretsDraft = {
   firebase_storage_bucket: string
   firebase_messaging_sender_id: string
   firebase_app_id: string
+  firebase_vapid_key: string
   cloudflare_zone_id: string
   cloudflare_api_token: string
   phonepe_merchant_id: string
@@ -201,6 +202,7 @@ const emptySecretsDraft = (): SecretsDraft => ({
   firebase_storage_bucket: '',
   firebase_messaging_sender_id: '',
   firebase_app_id: '',
+  firebase_vapid_key: '',
   cloudflare_zone_id: '',
   cloudflare_api_token: '',
   phonepe_merchant_id: '',
@@ -401,7 +403,7 @@ function SystemSettingsInner() {
         'stripe_price_enterprise_monthly', 'stripe_price_enterprise_yearly',
         'trusted_origins_extra', 'github_client_id',
         'firebase_api_key', 'firebase_auth_domain', 'firebase_project_id',
-        'firebase_storage_bucket', 'firebase_messaging_sender_id', 'firebase_app_id',
+        'firebase_storage_bucket', 'firebase_messaging_sender_id', 'firebase_app_id', 'firebase_vapid_key',
         'phonepe_salt_index', 'phonepe_merchant_id',
       ] as const
       for (const k of plainFields) {
@@ -1561,6 +1563,7 @@ function SystemSettingsInner() {
                       { key: 'firebase_storage_bucket', label: 'Storage Bucket', ph: 'your-project.appspot.com' },
                       { key: 'firebase_messaging_sender_id', label: 'Messaging Sender ID', ph: '123456789012' },
                       { key: 'firebase_app_id', label: 'App ID', ph: '1:123456789012:web:abc123' },
+                      { key: 'firebase_vapid_key', label: 'Web Push VAPID Key', ph: 'BL…' },
                     ].map(({ key, label, ph }) => (
                           <div key={key} className="space-y-1.5">
                         <Label className="text-foreground">{label}</Label>

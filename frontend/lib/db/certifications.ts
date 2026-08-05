@@ -67,7 +67,9 @@ export interface CertificationAttemptDoc {
   passed: boolean
   /** snapshot of the user (so verify still works if the user is deleted). */
   snapshot: { name?: string; email?: string }
-  cert_snapshot: { title: string; level: CertLevel; source: string }
+  cert_snapshot: { title: string; level: string; source: string }
+  /** Optional override for the score line (e.g. "+420 XP earned" on level-up certs). */
+  score_label?: string
 }
 
 async function db() {

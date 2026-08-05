@@ -19,7 +19,7 @@
  * resources, no licensed fonts beyond system / open Google fonts.
  */
 
-import { Award, CheckCircle2, Sparkles, Hash } from 'lucide-react'
+import { Award, CheckCircle2, Hash } from 'lucide-react'
 
 export type TemplateKey = 'classic' | 'modern' | 'minimal'
 
@@ -34,6 +34,8 @@ export interface CertificateData {
   verifyToken: string
   /** PNG/SVG data URL of the verify QR. */
   qrDataUrl?: string
+  /** Optional override for the score line (e.g. "+420 XP earned" on level-up certs). */
+  scoreLabel?: string
 }
 
 const dateFmt = (iso: string) =>
@@ -42,6 +44,9 @@ const dateFmt = (iso: string) =>
     month: 'long',
     day: 'numeric',
   })
+
+/** Score line shown on certs — `scoreLabel` wins so level-up certs say "+X XP" instead of "92%". */
+const scoreText = (data: CertificateData) => data.scoreLabel || `${data.score}%`
 
 /* -------------------- CLASSIC -------------------- */
 
@@ -69,8 +74,9 @@ export function ClassicCertificate({ data }: { data: CertificateData }) {
 
       <div className="relative h-full flex flex-col items-center justify-center px-24 py-16 text-center">
         <div className="flex items-center gap-3 text-[#b08d57]">
-          <Award className="w-10 h-10" />
-          <span className="font-serif tracking-[0.4em] text-sm uppercase">CodeSpectra Open Academy</span>
+          <img src="/icon.svg" alt="CodeSpectra logo" className="h-10 w-10 rounded-lg" />
+          <Award className="w-8 h-8" />
+          <span className="font-serif tracking-[0.4em] text-sm uppercase">CodeSpectra</span>
         </div>
 
         <h1 className="font-serif text-5xl font-bold mt-10 tracking-tight">Certificate of Achievement</h1>
@@ -88,7 +94,7 @@ export function ClassicCertificate({ data }: { data: CertificateData }) {
           {data.certificationTitle}
         </p>
         <p className="text-sm mt-2 text-[#1c2c4c]/70">
-          {data.level} level · scoring <strong>{data.score}%</strong> on {dateFmt(data.issuedAt)}
+          <strong>Verified level: {data.level}</strong> · {scoreText(data)} on {dateFmt(data.issuedAt)}
         </p>
 
         <div className="mt-10 grid grid-cols-3 gap-12 items-end w-full max-w-2xl">
@@ -137,7 +143,7 @@ export function ModernCertificate({ data }: { data: CertificateData }) {
         <div className="flex flex-col justify-between">
           <div>
             <div className="flex items-center gap-3 text-emerald-300">
-              <Sparkles className="w-6 h-6" />
+              <img src="/icon.svg" alt="CodeSpectra logo" className="h-7 w-7 rounded-md" />
               <span className="text-xs uppercase tracking-[0.5em]">CodeSpectra</span>
             </div>
             <h1 className="text-5xl font-black mt-12 leading-none tracking-tight">
@@ -163,10 +169,10 @@ export function ModernCertificate({ data }: { data: CertificateData }) {
           <div className="bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-6 w-full">
             <div className="flex items-center justify-end gap-2 text-emerald-300 text-xs uppercase tracking-widest">
               <CheckCircle2 className="w-4 h-4" />
-              Verified score
+              Verified level
             </div>
-            <p className="text-6xl font-black mt-2 tracking-tight">{data.score}%</p>
-            <p className="text-xs text-white/50 mt-1">{data.level} level</p>
+            <p className="text-6xl font-black mt-2 tracking-tight break-words" data-testid="cert-level">{data.level}</p>
+            <p className="text-xs text-white/50 mt-1">{scoreText(data)} · verified</p>
           </div>
 
           <div className="w-full bg-white/5 backdrop-blur border border-white/10 rounded-2xl p-4 flex items-center gap-3">
@@ -201,13 +207,16 @@ export function MinimalCertificate({ data }: { data: CertificateData }) {
 
       <div className="h-full grid grid-cols-[1fr_auto] gap-16 px-24 py-16 items-center">
         <div>
-          <p className="text-[10px] uppercase tracking-[0.5em] text-neutral-500">CodeSpectra · Open Curriculum</p>
+          <p className="text-[10px] uppercase tracking-[0.5em] text-neutral-500">
+            <img src="/icon.svg" alt="CodeSpectra logo" className="inline-block h-5 w-5 rounded-md mr-2 align-middle" />
+            CodeSpectra
+          </p>
           <h1 className="text-2xl font-light mt-12 tracking-wide text-neutral-500">Certificate of Completion</h1>
           <p className="text-6xl font-bold mt-6 tracking-tight" data-testid="cert-name">{data.candidateName}</p>
           <div className="h-px w-24 bg-neutral-900 mt-6" />
           <p className="text-lg mt-8 font-light max-w-xl leading-snug">
             has completed the <strong className="font-semibold">{data.certificationTitle}</strong> assessment,
-            achieving a verified score of <strong className="font-semibold">{data.score}%</strong>.
+            achieving a verified level of <strong className="font-semibold">{data.level}</strong> ({scoreText(data)}).
           </p>
           <div className="mt-12 flex items-center gap-8 text-xs uppercase tracking-widest text-neutral-500">
             <div>

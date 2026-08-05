@@ -27,6 +27,9 @@ export default function AchievementsPage() {
   const gate = usePageGuard('user')
 
   const [achievements, setAchievements] = useState<Achievement[]>([])
+  const [xp, setXp] = useState(0)
+  const [level, setLevel] = useState(1)
+  const [solved, setSolved] = useState(0)
   const [loading, setLoading] = useState(true)
   const { lockedFeatures } = useLockedFeatures()
   const badgesLocked = lockedFeatures.includes('achievements:badges')
@@ -34,7 +37,12 @@ export default function AchievementsPage() {
   useEffect(() => {
     fetch('/api/achievements')
       .then(r => r.json())
-      .then(json => { if (json.data) setAchievements(json.data) })
+      .then(json => {
+        if (json.data) setAchievements(json.data)
+        if (typeof json.xp === 'number') setXp(json.xp)
+        if (typeof json.level === 'number') setLevel(json.level)
+        if (json.stats && typeof json.stats.solved === 'number') setSolved(json.stats.solved)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
@@ -72,14 +80,22 @@ export default function AchievementsPage() {
         </Card>
       ) : (
         <>
-          <div className="grid sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="border-border/60 p-6 text-center">
+              <p className="text-3xl font-bold text-foreground">Lvl {level}</p>
+              <p className="text-xs text-muted-foreground">Your level</p>
+            </Card>
+            <Card className="border-border/60 p-6 text-center">
+              <p className="text-3xl font-bold text-foreground">{xp} XP</p>
+              <p className="text-xs text-muted-foreground">Total XP earned</p>
+            </Card>
             <Card className="border-border/60 p-6 text-center">
               <p className="text-3xl font-bold text-foreground">{earnedCount}/{achievements.length}</p>
               <p className="text-xs text-muted-foreground">Achievements earned</p>
             </Card>
             <Card className="border-border/60 p-6 text-center">
-              <p className="text-3xl font-bold text-foreground">{userBadges.length}</p>
-              <p className="text-xs text-muted-foreground">Badges earned</p>
+              <p className="text-3xl font-bold text-foreground">{solved}</p>
+              <p className="text-xs text-muted-foreground">Problems solved</p>
             </Card>
           </div>
 

@@ -48,6 +48,7 @@ export type ServerSecretsRecord = {
   firebase_storage_bucket?: string
   firebase_messaging_sender_id?: string
   firebase_app_id?: string
+  firebase_vapid_key?: string
   // --- AI / LLM providers ------------------------------------------------
   anthropic_api_key?: string    // Direct Anthropic key (Claude)
   gemini_api_key?: string       // Direct Google key (Gemini — has free tier)

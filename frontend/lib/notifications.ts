@@ -70,6 +70,11 @@ export const NOTIFICATION_TYPES = {
   'certification.earned': { category: 'learning', icon: 'award', default_title: 'Certification Earned' },
   'certification.expiring': { category: 'learning', icon: 'clock', default_title: 'Certification Expiring' },
 
+  // XP / Gamification
+  'xp.awarded': { category: 'learning', icon: 'star', default_title: 'XP Earned!' },
+  'xp.level_up': { category: 'learning', icon: 'trophy', default_title: 'Level Up!' },
+  'certificate.issued': { category: 'learning', icon: 'award', default_title: 'Certificate Issued' },
+
   // General
   'system.announcement': { category: 'system', icon: 'megaphone', default_title: 'Announcement' },
   'system.maintenance': { category: 'system', icon: 'tool', default_title: 'Maintenance Notice' },
@@ -87,6 +92,8 @@ interface NotifyInput {
   metadata?: Record<string, unknown>
   /** Send email too (if the user has email notifications enabled) */
   send_email?: boolean
+  /** Skip the FCM push fan-out for this notification. */
+  skip_push?: boolean
 }
 
 /**
@@ -111,6 +118,26 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
       created_at: nowIso(),
     }
     await col.insertOne(doc)
+
+    // Real-time FCM push (fire-and-forget, best effort)
+    if (!input.skip_push) {
+      try {
+        const { sendPushToUser } = await import('@/lib/push-notifications')
+        void sendPushToUser(input.user_id, {
+          title: doc.title,
+          body: doc.message,
+          link: doc.link || undefined,
+          data: {
+            type: doc.type,
+            category: String(doc.category),
+            icon: String(doc.icon),
+            ...Object.fromEntries(
+              Object.entries(doc.metadata || {}).map(([k, v]) => [k, String(v)]),
+            ),
+          },
+        })
+      } catch { /* push is optional */ }
+    }
 
     // Optional email delivery
     if (input.send_email) {

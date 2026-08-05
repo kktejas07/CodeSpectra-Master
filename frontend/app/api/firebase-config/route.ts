@@ -10,6 +10,7 @@ export async function GET() {
     storageBucket: secrets.firebase_storage_bucket,
     messagingSenderId: secrets.firebase_messaging_sender_id,
     appId: secrets.firebase_app_id,
+    vapidKey: secrets.firebase_vapid_key,
   }
   const missing = Object.entries(config).filter(([, v]) => !v)
   if (missing.length === 6) {
