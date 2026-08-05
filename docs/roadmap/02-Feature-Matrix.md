@@ -120,7 +120,8 @@
 | Question bank CRUD (filters, pagination, edit) | ✅ | P2 | `/dashboard/admin/question-bank` + `/api/question-bank` |
 | Question bank AI bulk generation | ✅ | P2 | `/api/question-bank/generate` — backend `/internal/ai/complete` |
 | Question bank import/export | ✅ | P2 | `/api/question-bank/import` (JSON/CSV) + client-side JSON export |
-| Question bank seed | ✅ | P2 | `scripts/seed-question-bank.ts` — 44 curated aptitude + branch questions |
+| Question bank seed | ✅ | P2 | `scripts/seed-question-bank.ts` + `seed-question-bank-large.ts` — 253 curated questions in prod |
+| eSkill-style catalog (industries, levels, categories) | ✅ | P2 | `LEVELS`/`INDUSTRIES`/`ASSESSMENT_CATEGORIES` in `engineering-catalog.ts`; filters + form fields on `/dashboard/admin/question-bank` |
 | Exam taking flow | 🟡 | P2 | Routes exist, full flow not verified |
 | Certification management | 🟡 | P2 | `/dashboard/certifications` route exists |
 | Certificate generation | ❌ | P3 | Placeholder — no PDF/integration |
