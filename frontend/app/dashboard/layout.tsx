@@ -273,21 +273,21 @@ export default function DashboardLayout({
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
 
   const SECTION_ICON_MAP: Record<string, LucideIcon> = useMemo(() => ({
-    'System': Shield,
-    'Hackathons': Trophy,
-    'Billing': CreditCardIcon,
-    'Hiring': Briefcase,
-    'AI Tools': Sparkles,
-    'Settings': Settings,
-    'Organization': Users,
-    'Home': Home,
-    'Practice': CodeIcon,
-    'Events': Trophy,
-    'Learn': BookOpen,
-    'Career': Briefcase,
-    'Progress': BarChart3,
-    'Account': User,
-    'More': LifeBuoy,
+    'System & Core': Shield,
+    'Hackathons, Problems & Proctoring': Trophy,
+    'Billing & Plans': CreditCardIcon,
+    'Hiring & ATS': Briefcase,
+    'AI & Generation Tools': Sparkles,
+    'Infrastructure & Settings': Settings,
+    'Organization & Evaluation': Users,
+    'Dashboard & AI': Home,
+    'Practice & Coding': CodeIcon,
+    'Hackathons & Competitions': Trophy,
+    'Learning & Prep': BookOpen,
+    'Career & Credentials': Briefcase,
+    'Stats & Progress': BarChart3,
+    'User & Account': User,
+    'Misc': LifeBuoy,
   }), [])
 
   const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? [] : lockedPages

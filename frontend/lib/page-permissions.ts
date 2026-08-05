@@ -73,109 +73,108 @@ export const ADMIN_ONLY_ROUTES: string[] = [
 ]
 
 export const ROUTE_TO_SECTION_MAP: Record<string, string> = {
-  // System
-  '/dashboard/admin/system': 'System',
-  '/dashboard/admin/analytics': 'System',
-  '/dashboard/admin/users': 'System',
-  '/dashboard/admin/teams': 'System',
-  '/dashboard/admin/roles': 'System',
-  '/dashboard/admin/permissions': 'System',
-  '/dashboard/admin/security': 'System',
-  '/dashboard/admin/audit-logs': 'System',
+  // System & Core
+  '/dashboard/admin/system': 'System & Core',
+  '/dashboard/admin/analytics': 'System & Core',
+  '/dashboard/admin/users': 'System & Core',
+  '/dashboard/admin/teams': 'System & Core',
+  '/dashboard/admin/roles': 'System & Core',
+  '/dashboard/admin/permissions': 'System & Core',
+  '/dashboard/admin/security': 'System & Core',
+  '/dashboard/admin/audit-logs': 'System & Core',
 
-  // Hackathons
-  '/dashboard/admin/hackathons': 'Hackathons',
-  '/dashboard/admin/codeathons': 'Hackathons',
-  '/dashboard/admin/question-bank': 'Hackathons',
-  '/dashboard/admin/exams': 'Hackathons',
-  '/dashboard/admin/proctor': 'Hackathons',
+  // Hackathons, Problems & Proctoring
+  '/dashboard/admin/hackathons': 'Hackathons, Problems & Proctoring',
+  '/dashboard/admin/codeathons': 'Hackathons, Problems & Proctoring',
+  '/dashboard/admin/question-bank': 'Hackathons, Problems & Proctoring',
+  '/dashboard/admin/exams': 'Hackathons, Problems & Proctoring',
+  '/dashboard/admin/proctor': 'Hackathons, Problems & Proctoring',
 
-  // Billing
-  '/dashboard/admin/pricing': 'Billing',
-  '/dashboard/admin/plans': 'Billing',
-  '/dashboard/admin/coupons': 'Billing',
+  // Billing & Plans
+  '/dashboard/admin/pricing': 'Billing & Plans',
+  '/dashboard/admin/plans': 'Billing & Plans',
+  '/dashboard/admin/coupons': 'Billing & Plans',
 
-  // Hiring
-  '/dashboard/admin/jobs': 'Hiring',
-  '/dashboard/admin/resumes': 'Hiring',
-  '/dashboard/admin/predictive-validity': 'Hiring',
+  // Hiring & ATS
+  '/dashboard/admin/jobs': 'Hiring & ATS',
+  '/dashboard/admin/resumes': 'Hiring & ATS',
+  '/dashboard/admin/predictive-validity': 'Hiring & ATS',
 
-  // AI Tools
-  '/dashboard/admin/rag': 'AI Tools',
-  '/dashboard/admin/ai-inventory': 'AI Tools',
-  '/dashboard/admin/question-generator': 'AI Tools',
-  '/dashboard/admin/workflows': 'AI Tools',
+  // AI & Generation Tools
+  '/dashboard/admin/rag': 'AI & Generation Tools',
+  '/dashboard/admin/ai-inventory': 'AI & Generation Tools',
+  '/dashboard/admin/question-generator': 'AI & Generation Tools',
+  '/dashboard/admin/workflows': 'AI & Generation Tools',
 
-  // Settings
-  '/dashboard/admin/settings': 'Settings',
-  '/dashboard/admin/integrations': 'Settings',
-  '/dashboard/admin/cdn': 'Settings',
-  '/dashboard/admin/speed-insights': 'Settings',
-  '/dashboard/admin/announcements': 'Settings',
-  '/dashboard/admin/newsletter': 'Settings',
+  // Infrastructure & Settings
+  '/dashboard/admin/settings': 'Infrastructure & Settings',
+  '/dashboard/admin/integrations': 'Infrastructure & Settings',
+  '/dashboard/admin/cdn': 'Infrastructure & Settings',
+  '/dashboard/admin/speed-insights': 'Infrastructure & Settings',
+  '/dashboard/admin/announcements': 'Infrastructure & Settings',
 
-  // Organization
-  '/dashboard/recruiter-analytics': 'Organization',
-  '/dashboard/admin/hiring-manager-report': 'Organization',
-  '/dashboard/admin/sme-review': 'Organization',
-  '/dashboard/admin/requisitions': 'Organization',
-  '/dashboard/judge': 'Organization',
+  // Organization & Evaluation
+  '/dashboard/recruiter-analytics': 'Organization & Evaluation',
+  '/dashboard/admin/hiring-manager-report': 'Organization & Evaluation',
+  '/dashboard/admin/sme-review': 'Organization & Evaluation',
+  '/dashboard/admin/requisitions': 'Organization & Evaluation',
+  '/dashboard/judge': 'Organization & Evaluation',
 
   // User Sections
-  '/dashboard': 'Home',
-  '/dashboard/agent': 'Home',
+  '/dashboard': 'Dashboard & AI',
+  '/dashboard/agent': 'Dashboard & AI',
 
-  '/dashboard/arena': 'Practice',
-  '/dashboard/problems': 'Practice',
-  '/dashboard/challenges': 'Practice',
-  '/dashboard/tracks': 'Practice',
-  '/dashboard/100-days': 'Practice',
+  '/dashboard/arena': 'Practice & Coding',
+  '/dashboard/problems': 'Practice & Coding',
+  '/dashboard/challenges': 'Practice & Coding',
+  '/dashboard/tracks': 'Practice & Coding',
+  '/dashboard/100-days': 'Practice & Coding',
 
-  '/dashboard/codeathons': 'Events',
-  '/dashboard/hackathons': 'Events',
+  '/dashboard/codeathons': 'Hackathons & Competitions',
+  '/dashboard/hackathons': 'Hackathons & Competitions',
 
-  '/dashboard/learning': 'Learn',
-  '/dashboard/interview-prep': 'Learn',
+  '/dashboard/learning': 'Learning & Prep',
+  '/dashboard/interview-prep': 'Learning & Prep',
 
-  '/dashboard/jobs': 'Career',
-  '/dashboard/interviews': 'Career',
-  '/dashboard/resumes': 'Career',
-  '/dashboard/exams': 'Career',
-  '/dashboard/certifications': 'Career',
-  '/dashboard/cad': 'Career',
+  '/dashboard/jobs': 'Career & Credentials',
+  '/dashboard/interviews': 'Career & Credentials',
+  '/dashboard/resumes': 'Career & Credentials',
+  '/dashboard/exams': 'Career & Credentials',
+  '/dashboard/certifications': 'Career & Credentials',
+  '/dashboard/cad': 'Career & Credentials',
 
-  '/dashboard/leaderboard': 'Progress',
-  '/dashboard/achievements': 'Progress',
-  '/dashboard/analytics': 'Progress',
-  '/dashboard/skill-analytics': 'Progress',
+  '/dashboard/leaderboard': 'Stats & Progress',
+  '/dashboard/achievements': 'Stats & Progress',
+  '/dashboard/analytics': 'Stats & Progress',
+  '/dashboard/skill-analytics': 'Stats & Progress',
 
-  '/dashboard/pricing': 'Account',
-  '/dashboard/identity-verify': 'Account',
-  '/dashboard/settings/ai': 'Account',
+  '/dashboard/pricing': 'User & Account',
+  '/dashboard/identity-verify': 'User & Account',
+  '/dashboard/settings/ai': 'User & Account',
 
-  '/dashboard/support': 'More',
-  '/dashboard/status': 'More',
+  '/dashboard/support': 'Misc',
+  '/dashboard/status': 'Misc',
 }
 
 export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
-  { label: 'System', firstRoute: '/dashboard/admin/system' },
-  { label: 'Hackathons', firstRoute: '/dashboard/admin/hackathons' },
-  { label: 'Billing', firstRoute: '/dashboard/admin/pricing' },
-  { label: 'Hiring', firstRoute: '/dashboard/admin/jobs' },
-  { label: 'AI Tools', firstRoute: '/dashboard/admin/rag' },
-  { label: 'Settings', firstRoute: '/dashboard/admin/settings' },
-  { label: 'Organization', firstRoute: '/dashboard/recruiter-analytics' },
+  { label: 'System & Core', firstRoute: '/dashboard/admin/system' },
+  { label: 'Hackathons, Problems & Proctoring', firstRoute: '/dashboard/admin/hackathons' },
+  { label: 'Billing & Plans', firstRoute: '/dashboard/admin/pricing' },
+  { label: 'Hiring & ATS', firstRoute: '/dashboard/admin/jobs' },
+  { label: 'AI & Generation Tools', firstRoute: '/dashboard/admin/rag' },
+  { label: 'Infrastructure & Settings', firstRoute: '/dashboard/admin/settings' },
+  { label: 'Organization & Evaluation', firstRoute: '/dashboard/recruiter-analytics' },
 ]
 
 export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
-  { label: 'Home', firstRoute: '/dashboard' },
-  { label: 'Practice', firstRoute: '/dashboard/arena' },
-  { label: 'Events', firstRoute: '/dashboard/codeathons' },
-  { label: 'Learn', firstRoute: '/dashboard/learning' },
-  { label: 'Career', firstRoute: '/dashboard/jobs' },
-  { label: 'Progress', firstRoute: '/dashboard/leaderboard' },
-  { label: 'Account', firstRoute: '/dashboard/pricing' },
-  { label: 'More', firstRoute: '/dashboard/support' },
+  { label: 'Dashboard & AI', firstRoute: '/dashboard' },
+  { label: 'Practice & Coding', firstRoute: '/dashboard/arena' },
+  { label: 'Hackathons & Competitions', firstRoute: '/dashboard/codeathons' },
+  { label: 'Learning & Prep', firstRoute: '/dashboard/learning' },
+  { label: 'Career & Credentials', firstRoute: '/dashboard/jobs' },
+  { label: 'Stats & Progress', firstRoute: '/dashboard/leaderboard' },
+  { label: 'User & Account', firstRoute: '/dashboard/pricing' },
+  { label: 'Misc', firstRoute: '/dashboard/support' },
 ]
 
 /**
