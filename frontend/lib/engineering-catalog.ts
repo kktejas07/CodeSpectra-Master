@@ -68,6 +68,42 @@ export const QUESTION_TYPES: { id: string; label: string }[] = [
 export const DIFFICULTIES = ['Easy', 'Medium', 'Hard'] as const
 export type Difficulty = (typeof DIFFICULTIES)[number]
 
+/** Role seniority levels, inspired by eSkill's tiered role assessments. */
+export interface LevelDef { id: string; label: string; short: string }
+export const LEVELS: LevelDef[] = [
+  { id: 'entry', label: 'Entry Level', short: 'Entry' },
+  { id: 'mid', label: 'Mid Level', short: 'Mid' },
+  { id: 'senior', label: 'Senior Level', short: 'Senior' },
+]
+
+/** Industry verticals, mirroring eSkill's industry coverage grid. */
+export interface IndustryDef { id: string; label: string }
+export const INDUSTRIES: IndustryDef[] = [
+  { id: 'software', label: 'Software & IT Services' },
+  { id: 'manufacturing', label: 'Manufacturing' },
+  { id: 'government', label: 'Government' },
+  { id: 'healthcare', label: 'Healthcare' },
+  { id: 'engineering', label: 'Engineering' },
+  { id: 'construction', label: 'Construction' },
+  { id: 'utilities_energy', label: 'Utilities / Energy' },
+  { id: 'financial_services', label: 'Financial Services' },
+  { id: 'transportation_logistics', label: 'Transportation & Logistics' },
+  { id: 'education', label: 'Education' },
+  { id: 'staffing', label: 'Staffing' },
+  { id: 'call_centers', label: 'Call Centers' },
+  { id: 'hospitality', label: 'Hospitality' },
+  { id: 'retail', label: 'Retail' },
+  { id: 'legal_services', label: 'Legal Services' },
+]
+
+/** Assessment categories, mirroring eSkill's Skills / Cognitive / Behavioral split. */
+export interface AssessmentCategoryDef { id: string; label: string; short: string }
+export const ASSESSMENT_CATEGORIES: AssessmentCategoryDef[] = [
+  { id: 'skills', label: 'Hard Skills', short: 'Skills' },
+  { id: 'cognitive', label: 'Cognitive Aptitude', short: 'Cognitive' },
+  { id: 'behavioral', label: 'Behavioral', short: 'Behavioral' },
+]
+
 export const branchLabel = (id?: string | null): string =>
   BRANCHES.find((b) => b.id === id)?.short || id || 'General'
 

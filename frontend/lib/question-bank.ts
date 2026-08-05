@@ -28,6 +28,12 @@ export interface BankQuestionDoc {
   subject?: string
   tech_stack?: string[]
   tags?: string[]
+  /** Industry vertical (e.g. 'software', 'manufacturing'). */
+  industry?: string
+  /** Role seniority level (e.g. 'entry', 'mid', 'senior'). */
+  level?: string
+  /** Assessment category (e.g. 'skills', 'cognitive', 'behavioral'). */
+  assessment_category?: string
   source: 'seed' | 'ai' | 'import' | 'manual'
   is_active: boolean
   createdAt: string
@@ -99,6 +105,9 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
   const branch = normString(raw.branch || raw.domain, 60).toLowerCase()
   const degreeType = normString(raw.degree_type, 40).toLowerCase()
   const subject = normString(raw.subject || raw.topic, 120)
+  const industry = normString(raw.industry, 40).toLowerCase()
+  const level = normString(raw.level || raw.seniority, 30).toLowerCase()
+  const assessmentCategory = normString(raw.assessment_category || raw.category, 30).toLowerCase()
 
   const marks = Number(raw.marks || raw.score) > 0 ? Number(raw.marks || raw.score) : 10
   const sourceRaw = normString(raw.source, 20).toLowerCase()
@@ -118,6 +127,9 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     subject: subject || undefined,
     tech_stack: techStack.length ? techStack : undefined,
     tags: tags.length ? tags : undefined,
+    industry: industry || undefined,
+    level: level || undefined,
+    assessment_category: assessmentCategory || undefined,
     source: sourceRaw === 'ai' || sourceRaw === 'seed' || sourceRaw === 'import' ? (sourceRaw as BankQuestionDoc['source']) : 'manual',
     is_active: raw.is_active !== false,
     createdAt: normString(raw.createdAt, 40) || nowIso(),
@@ -141,6 +153,9 @@ export function bankToExamQuestion(b: BankQuestionDoc): Record<string, unknown> 
     ...(b.branch ? { branch: b.branch } : {}),
     ...(b.subject ? { subject: b.subject } : {}),
     ...(b.difficulty ? { difficulty: b.difficulty } : {}),
+    ...(b.industry ? { industry: b.industry } : {}),
+    ...(b.level ? { level: b.level } : {}),
+    ...(b.assessment_category ? { assessment_category: b.assessment_category } : {}),
   }
 }
 
@@ -154,6 +169,9 @@ export async function sampleFromBank(params: {
   degree_type?: string
   subjects?: string[]
   types?: string[]
+  industry?: string
+  level?: string
+  assessment_category?: string
   count: number
   difficultySplit?: { Easy: number; Medium: number; Hard: number }
 }): Promise<BankQuestionDoc[]> {
@@ -164,15 +182,22 @@ export async function sampleFromBank(params: {
 
   const split = params.difficultySplit || { Easy: Math.ceil(params.count / 3), Medium: Math.ceil(params.count / 3), Hard: params.count - 2 * Math.ceil(params.count / 3) }
 
-  for (const difficulty of ['Easy', 'Medium', 'Hard'] as const) {
-    const want = Math.max(0, Math.round(split[difficulty]) || 0)
-    if (want === 0) continue
+  const baseMatch = (difficulty: string): Record<string, unknown> => {
     const match: Record<string, unknown> = { is_active: true, difficulty }
     if (params.branch) match.branch = params.branch
     if (params.degree_type) match.degree_type = params.degree_type
     if (params.types?.length) match.type = { $in: params.types }
     if (params.subjects?.length) match.subject = { $in: params.subjects }
-    const docs = await col.aggregate<BankQuestionDoc>([{ $match: match }, { $sample: { size: want } }]).toArray()
+    if (params.industry) match.industry = params.industry
+    if (params.level) match.level = params.level
+    if (params.assessment_category) match.assessment_category = params.assessment_category
+    return match
+  }
+
+  for (const difficulty of ['Easy', 'Medium', 'Hard'] as const) {
+    const want = Math.max(0, Math.round(split[difficulty]) || 0)
+    if (want === 0) continue
+    const docs = await col.aggregate<BankQuestionDoc>([{ $match: baseMatch(difficulty) }, { $sample: { size: want } }]).toArray()
     for (const d of docs) {
       if (already.has(d.id)) continue
       already.add(d.id)
@@ -187,6 +212,9 @@ export async function sampleFromBank(params: {
     if (params.branch) match.branch = params.branch
     if (params.degree_type) match.degree_type = params.degree_type
     if (params.types?.length) match.type = { $in: params.types }
+    if (params.industry) match.industry = params.industry
+    if (params.level) match.level = params.level
+    if (params.assessment_category) match.assessment_category = params.assessment_category
     const docs = await col.aggregate<BankQuestionDoc>([{ $match: match }, { $sample: { size: want * 2 } }]).toArray()
     for (const d of docs) {
       if (picked.length >= params.count) break

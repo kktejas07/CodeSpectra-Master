@@ -19,6 +19,9 @@ export async function GET(request: NextRequest) {
     const difficulty = searchParams.get('difficulty')?.trim() || ''
     const type = searchParams.get('type')?.trim() || ''
     const subject = searchParams.get('subject')?.trim() || ''
+    const industry = searchParams.get('industry')?.trim() || ''
+    const level = searchParams.get('level')?.trim() || ''
+    const category = searchParams.get('category')?.trim() || ''
 
     const filter: Filter<BankQuestionDoc> = {}
     if (branch) filter.branch = branch.toLowerCase()
@@ -26,6 +29,9 @@ export async function GET(request: NextRequest) {
     if (difficulty) filter.difficulty = difficulty as BankQuestionDoc['difficulty']
     if (type) filter.type = type.toLowerCase() as BankQuestionDoc['type']
     if (subject) filter.subject = { $regex: subject, $options: 'i' } as unknown as string
+    if (industry) filter.industry = industry.toLowerCase()
+    if (level) filter.level = level.toLowerCase()
+    if (category) filter.assessment_category = category.toLowerCase()
     if (q) {
       filter.$or = [
         { title: { $regex: q, $options: 'i' } } as never,

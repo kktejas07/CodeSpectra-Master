@@ -16,6 +16,9 @@ type SeedRow = {
   branch?: string
   subject?: string
   tags?: string[]
+  industry?: string
+  level?: string
+  assessment_category?: string
   source?: string
 }
 
