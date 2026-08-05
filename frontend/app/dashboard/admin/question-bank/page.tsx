@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X } from 'lucide-react'
+import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react'
 import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
 
 interface BankQuestion {
@@ -73,6 +73,9 @@ export default function QuestionBankPage() {
   const [editOpen, setEditOpen] = useState(false)
   const [editing, setEditing] = useState<BankQuestion | null>(null)
   const [form, setForm] = useState({ ...EMPTY_FORM })
+
+  const [viewOpen, setViewOpen] = useState(false)
+  const [viewing, setViewing] = useState<BankQuestion | null>(null)
 
   const [aiOpen, setAiOpen] = useState(false)
   const [aiForm, setAiForm] = useState({ branch: '', subject: '', difficulty: 'mixed', types: 'mcq', count: 25 })
@@ -374,6 +377,7 @@ export default function QuestionBankPage() {
                   <td className="py-3 px-4 text-xs uppercase text-muted-foreground">{r.source || 'manual'}</td>
                   <td className="py-3 px-4 text-right">
                     <div className="inline-flex items-center gap-1">
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setViewing(r); setViewOpen(true) }} title="View"><Eye className="w-3.5 h-3.5" /></Button>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => openEdit(r)} title="Edit"><Pencil className="w-3.5 h-3.5" /></Button>
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive" onClick={() => handleDelete(r)} title="Delete"><Trash2 className="w-3.5 h-3.5" /></Button>
                     </div>
@@ -526,6 +530,63 @@ export default function QuestionBankPage() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setEditOpen(false)}>Cancel</Button>
             <Button onClick={handleSave}>{editing ? 'Save Changes' : 'Add Question'}</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* View modal */}
+      <Dialog open={viewOpen} onOpenChange={setViewOpen}>
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Eye className="w-4 h-4 text-primary" />
+              {viewing?.title || 'Question'}
+              {viewing && (
+                <span className="ml-auto flex items-center gap-1.5">
+                  {viewing.branch && <Badge variant="outline">{branchLabel(viewing.branch)}</Badge>}
+                  {viewing.level && <Badge variant="outline">{levelLabel(viewing.level)}</Badge>}
+                  <Badge className={diffColor(viewing.difficulty)}>{viewing.difficulty}</Badge>
+                  <Badge variant="outline">{viewing.type}</Badge>
+                </span>
+              )}
+            </DialogTitle>
+            <DialogDescription>Read-only view of the question and its answer.</DialogDescription>
+          </DialogHeader>
+          {viewing && (
+            <div className="space-y-4 py-2 text-sm">
+              <div className="rounded-lg border border-border bg-muted/40 p-4">
+                <p className="text-sm font-medium leading-relaxed">{viewing.question}</p>
+                {viewing.subject && <p className="mt-2 text-xs text-muted-foreground">Subject: {viewing.subject}</p>}
+                {viewing.industry && <p className="text-xs text-muted-foreground">Industry: {industryLabel(viewing.industry)}</p>}
+              </div>
+              {viewing.options && viewing.options.length > 0 && (
+                <div className="space-y-1.5">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Options</p>
+                  {viewing.options.map((opt, i) => (
+                    <p key={i} className="rounded-md border border-border px-3 py-1.5">{opt}</p>
+                  ))}
+                </div>
+              )}
+              <div className="rounded-lg border border-green-500/30 bg-green-500/5 p-4">
+                <p className="text-xs font-semibold text-green-700 uppercase tracking-wide">Answer</p>
+                <p className="mt-1 leading-relaxed">{viewing.answer || '—'}</p>
+              </div>
+              {viewing.explanation && (
+                <div className="rounded-lg border border-border p-4">
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Explanation</p>
+                  <p className="mt-1 leading-relaxed">{viewing.explanation}</p>
+                </div>
+              )}
+              {viewing.tags && viewing.tags.length > 0 && (
+                <div className="flex flex-wrap gap-1.5">
+                  {viewing.tags.map((t, i) => <Badge key={i} variant="outline" className="text-xs">#{t}</Badge>)}
+                </div>
+              )}
+              <p className="text-xs text-muted-foreground">Marks: {viewing.marks} · Source: {viewing.source || 'manual'}</p>
+            </div>
+          )}
+          <DialogFooter>
+            <Button onClick={() => setViewOpen(false)}>Close</Button>
           </DialogFooter>
         </DialogContent>
       </Dialog>
