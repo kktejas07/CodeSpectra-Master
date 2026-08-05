@@ -13,7 +13,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X } from 'lucide-react'
-import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, type QuestionType } from '@/lib/engineering-catalog'
+import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
 
 interface BankQuestion {
   id: string
@@ -30,6 +30,9 @@ interface BankQuestion {
   subject?: string
   tech_stack?: string[]
   tags?: string[]
+  industry?: string
+  level?: string
+  assessment_category?: string
   source: string
 }
 
@@ -44,6 +47,7 @@ interface Stats {
 const EMPTY_FORM = {
   title: '', question: '', type: 'mcq' as QuestionType, options: '', answer: '', explanation: '',
   difficulty: 'Medium' as 'Easy' | 'Medium' | 'Hard', marks: 10, degree_type: '', branch: '', subject: '', tech_stack: '', tags: '',
+  industry: '', level: '', assessment_category: '',
 }
 
 export default function QuestionBankPage() {
@@ -61,6 +65,9 @@ export default function QuestionBankPage() {
   const [degreeFilter, setDegreeFilter] = useState('')
   const [difficultyFilter, setDifficultyFilter] = useState('')
   const [typeFilter, setTypeFilter] = useState('')
+  const [industryFilter, setIndustryFilter] = useState('')
+  const [levelFilter, setLevelFilter] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState('')
   const [search, setSearch] = useState('')
 
   const [editOpen, setEditOpen] = useState(false)
@@ -90,6 +97,9 @@ export default function QuestionBankPage() {
       if (degreeFilter) params.set('degree_type', degreeFilter)
       if (difficultyFilter) params.set('difficulty', difficultyFilter)
       if (typeFilter) params.set('type', typeFilter)
+      if (industryFilter) params.set('industry', industryFilter)
+      if (levelFilter) params.set('level', levelFilter)
+      if (categoryFilter) params.set('category', categoryFilter)
       if (search.trim()) params.set('q', search.trim())
       const res = await fetch(`/api/question-bank?${params}`, { credentials: 'include' })
       const json = await res.json()
@@ -97,13 +107,16 @@ export default function QuestionBankPage() {
       setTotal(json.total || 0)
     } catch { /* ignore */ }
     finally { setLoading(false) }
-  }, [page, limit, branchFilter, degreeFilter, difficultyFilter, typeFilter, search])
+  }, [page, limit, branchFilter, degreeFilter, difficultyFilter, typeFilter, industryFilter, levelFilter, categoryFilter, search])
 
   useEffect(() => { fetchStats() }, [fetchStats])
   useEffect(() => { fetchRows() }, [fetchRows])
 
   const branchLabel = (id: string) => BRANCHES.find(b => b.id === id)?.short || id
   const degreeLabel = (id: string) => DEGREE_TYPES.find(d => d.id === id)?.label || id
+  const industryLabel = (id: string) => INDUSTRIES.find(i => i.id === id)?.label || id
+  const levelLabel = (id: string) => LEVELS.find(l => l.id === id)?.label || id
+  const categoryLabel = (id: string) => ASSESSMENT_CATEGORIES.find(c => c.id === id)?.label || id
 
   const handleDelete = async (q: BankQuestion) => {
     await csrfFetch(`/api/question-bank?id=${q.id}`, { method: 'DELETE', credentials: 'include' })
@@ -117,6 +130,7 @@ export default function QuestionBankPage() {
       title: q.title, question: q.question, type: q.type, options: (q.options || []).join('\n'), answer: q.answer || '',
       explanation: q.explanation || '', difficulty: q.difficulty, marks: q.marks || 10, degree_type: q.degree_type || '',
       branch: q.branch || '', subject: q.subject || '', tech_stack: (q.tech_stack || []).join(', '), tags: (q.tags || []).join(', '),
+      industry: q.industry || '', level: q.level || '', assessment_category: q.assessment_category || '',
     } : { ...EMPTY_FORM })
     setEditOpen(true)
   }
@@ -133,6 +147,7 @@ export default function QuestionBankPage() {
       marks: Number(form.marks) || 10, degree_type: form.degree_type, branch: form.branch,
       subject: form.subject.trim(), tech_stack: form.tech_stack.split(',').map(s => s.trim()).filter(Boolean),
       tags: form.tags.split(',').map(s => s.trim().replace(/^#/, '')).filter(Boolean),
+      industry: form.industry || undefined, level: form.level || undefined, assessment_category: form.assessment_category || undefined,
     }
     const method = editing ? 'PATCH' : 'POST'
     const url = editing ? `/api/question-bank?id=${editing.id}` : '/api/question-bank'
@@ -286,6 +301,27 @@ export default function QuestionBankPage() {
             {BANK_QUESTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
           </SelectContent>
         </Select>
+        <Select value={levelFilter || 'all'} onValueChange={v => { setLevelFilter(v === 'all' ? '' : v); setPage(1) }}>
+          <SelectTrigger className="h-9 w-[120px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All levels</SelectItem>
+            {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={industryFilter || 'all'} onValueChange={v => { setIndustryFilter(v === 'all' ? '' : v); setPage(1) }}>
+          <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All industries</SelectItem>
+            {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={categoryFilter || 'all'} onValueChange={v => { setCategoryFilter(v === 'all' ? '' : v); setPage(1) }}>
+          <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All categories" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All categories</SelectItem>
+            {ASSESSMENT_CATEGORIES.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
+          </SelectContent>
+        </Select>
         <Input
           placeholder="Search questions, subjects, tags..."
           className="h-9 flex-1 min-w-[200px] max-w-sm text-sm"
@@ -303,9 +339,11 @@ export default function QuestionBankPage() {
               <tr>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Question</th>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Branch</th>
+                <th className="text-left py-3 px-4 font-semibold text-xs">Level</th>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Subject</th>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Difficulty</th>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Type</th>
+                <th className="text-left py-3 px-4 font-semibold text-xs">Industry</th>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Marks</th>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Source</th>
                 <th className="text-right py-3 px-4 font-semibold text-xs">Actions</th>
@@ -313,11 +351,11 @@ export default function QuestionBankPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={8} className="py-12 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
+                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />Loading...
                 </td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={8} className="py-12 text-center text-muted-foreground text-sm">
+                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground text-sm">
                   No questions found. Add one, import a CSV/JSON, or generate with AI.
                 </td></tr>
               ) : rows.map(r => (
@@ -327,9 +365,11 @@ export default function QuestionBankPage() {
                     <p className="text-xs text-muted-foreground truncate">{r.question}</p>
                   </td>
                   <td className="py-3 px-4">{r.branch ? <Badge variant="outline">{branchLabel(r.branch)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
+                  <td className="py-3 px-4 text-xs">{r.level ? <Badge variant="outline">{levelLabel(r.level)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
                   <td className="py-3 px-4 max-w-[140px] truncate text-xs">{r.subject || '—'}</td>
                   <td className="py-3 px-4"><Badge className={diffColor(r.difficulty)}>{r.difficulty}</Badge></td>
                   <td className="py-3 px-4 text-xs">{r.type}</td>
+                  <td className="py-3 px-4 text-xs truncate max-w-[130px]">{r.industry ? industryLabel(r.industry) : <span className="text-muted-foreground text-xs">—</span>}</td>
                   <td className="py-3 px-4 text-xs">{r.marks}</td>
                   <td className="py-3 px-4 text-xs uppercase text-muted-foreground">{r.source || 'manual'}</td>
                   <td className="py-3 px-4 text-right">
@@ -432,6 +472,38 @@ export default function QuestionBankPage() {
                   <SelectContent>
                     <SelectItem value="all">Any degree</SelectItem>
                     {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="space-y-2">
+                <Label>Industry</Label>
+                <Select value={form.industry || 'none'} onValueChange={v => setForm({ ...form, industry: v === 'none' ? '' : v })}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Level</Label>
+                <Select value={form.level || 'none'} onValueChange={v => setForm({ ...form, level: v === 'none' ? '' : v })}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={form.assessment_category || 'none'} onValueChange={v => setForm({ ...form, assessment_category: v === 'none' ? '' : v })}>
+                  <SelectTrigger className="h-9 text-sm"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">None</SelectItem>
+                    {ASSESSMENT_CATEGORIES.map(c => <SelectItem key={c.id} value={c.id}>{c.label}</SelectItem>)}
                   </SelectContent>
                 </Select>
               </div>
