@@ -22,7 +22,6 @@ import {
   ROUTE_LABELS,
   ADMIN_SECTIONS,
   USER_SECTIONS,
-  ROUTE_TO_SECTION_MAP,
 } from '@/lib/page-permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -52,8 +51,6 @@ import {
   Globe2,
   SlidersHorizontal,
   ChevronRight,
-  ChevronDown,
-  Folder,
   Bot,
   Sparkles,
   Sparkles as SparklesIcon,
@@ -268,31 +265,11 @@ export default function DashboardLayout({
   }, [userProfile?.id, pathname])
 
   type NavLeaf = { href: string; label: string; icon: LucideIcon; route: string }
-  type NavSectionGroup = { label: string; icon: LucideIcon; items: NavLeaf[] }
-
-  const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({})
-
-  const SECTION_ICON_MAP: Record<string, LucideIcon> = useMemo(() => ({
-    'System & Core': Shield,
-    'Hackathons, Problems & Proctoring': Trophy,
-    'Billing & Plans': CreditCardIcon,
-    'Hiring & ATS': Briefcase,
-    'AI & Generation Tools': Sparkles,
-    'Infrastructure & Settings': Settings,
-    'Organization & Evaluation': Users,
-    'Dashboard & AI': Home,
-    'Practice & Coding': CodeIcon,
-    'Hackathons & Competitions': Trophy,
-    'Learning & Prep': BookOpen,
-    'Career & Credentials': Briefcase,
-    'Stats & Progress': BarChart3,
-    'User & Account': User,
-    'Misc': LifeBuoy,
-  }), [])
+  type NavEntry = { type: 'link'; item: NavLeaf } | { type: 'section'; label: string }
 
   const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? [] : lockedPages
 
-  const navSections = useMemo((): NavSectionGroup[] => {
+  const navEntries = useMemo((): NavEntry[] => {
     if (!userProfile?.role) return []
 
     const role = normalizeUserRole(userProfile.role)
@@ -367,6 +344,23 @@ export default function DashboardLayout({
       '/dashboard/learning': LEARNING_HUB_DEFAULT,
     }
 
+    const addSectionHeaders = (leaves: NavLeaf[]): NavEntry[] => {
+      const sectionByRoute = new Map<string, string>()
+      for (const s of ADMIN_SECTIONS) sectionByRoute.set(s.firstRoute, s.label)
+      for (const s of USER_SECTIONS) sectionByRoute.set(s.firstRoute, s.label)
+      const seenSections = new Set<string>()
+      const result: NavEntry[] = []
+      for (const leaf of leaves) {
+        const label = sectionByRoute.get(leaf.route)
+        if (label && !seenSections.has(label)) {
+          seenSections.add(label)
+          result.push({ type: 'section', label })
+        }
+        result.push({ type: 'link', item: leaf })
+      }
+      return result
+    }
+
     const allRouteGroups = [ADMIN_ONLY_ROUTES, TENANT_ADMIN_ROUTES, JUDGE_ROUTES, ALL_USER_ROUTES] as const
     const seen = new Set<string>()
     const allLeaves: NavLeaf[] = []
@@ -423,54 +417,8 @@ export default function DashboardLayout({
       leaves = leaves.filter(leaf => !deniedRoutes.has(leaf.route))
     }
 
-    // Group leaves into sections
-    const sectionMap = new Map<string, NavLeaf[]>()
-    for (const leaf of leaves) {
-      const secLabel = ROUTE_TO_SECTION_MAP[leaf.route] || 'Other'
-      if (!sectionMap.has(secLabel)) sectionMap.set(secLabel, [])
-      sectionMap.get(secLabel)!.push(leaf)
-    }
-
-    const allOrderedSections = [...ADMIN_SECTIONS, ...USER_SECTIONS]
-    const result: NavSectionGroup[] = []
-
-    for (const secConfig of allOrderedSections) {
-      const items = sectionMap.get(secConfig.label)
-      if (items && items.length > 0) {
-        result.push({
-          label: secConfig.label,
-          icon: SECTION_ICON_MAP[secConfig.label] || Folder,
-          items,
-        })
-        sectionMap.delete(secConfig.label)
-      }
-    }
-
-    for (const [label, items] of sectionMap.entries()) {
-      if (items.length > 0) {
-        result.push({
-          label,
-          icon: SECTION_ICON_MAP[label] || Folder,
-          items,
-        })
-      }
-    }
-
-    return result
-  }, [userProfile?.role, userPlan, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages, SECTION_ICON_MAP])
-
-  useEffect(() => {
-    if (!pathname || navSections.length === 0) return
-    for (const sec of navSections) {
-      const hasActive = sec.items.some(item => {
-        const path = item.href.split('?')[0]
-        return path === pathname || (path !== '/dashboard' && pathname.startsWith(path + '/'))
-      })
-      if (hasActive) {
-        setExpandedSections(prev => ({ ...prev, [sec.label]: true }))
-      }
-    }
-  }, [pathname, navSections])
+    return addSectionHeaders(leaves)
+  }, [userProfile?.role, userPlan, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages])
 
   const toggleSidebarCollapsed = () => {
     setSidebarCollapsed((prev) => {
@@ -655,118 +603,67 @@ export default function DashboardLayout({
                     ))}
                   </div>
                 ) : (
-                  navSections.map((sec) => {
-                    const isExpanded = Boolean(expandedSections[sec.label])
-                    const SectionIcon = sec.icon
-                    const hasActiveChild = sec.items.some((item) => isActive(item.href))
-
+                  navEntries.map((entry) => {
+                    if (entry.type === 'section') {
+                      return (
+                        <div key={entry.label} className={cn(
+                          'px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60',
+                          sidebarCollapsed && 'lg:sr-only'
+                        )}>
+                          {entry.label}
+                        </div>
+                      )
+                    }
+                    const { href, label, icon: IconComponent } = entry.item
+                    const active = isActive(href)
+                    const nestedShell = mainNavHasNestedShell(href)
+                    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+                    const basePath = href.split('?')[0]
+                    const isLocked = effectiveLockedPages.some(r => basePath === r || basePath.startsWith(r + '/'))
+                    const showLock = isLocked && (userProfile?.role ? !isSuperAdmin(userProfile.role) : true)
+                    const chevron = nestedShell ? (
+                      <ChevronRight
+                        className={cn(
+                          'h-4 w-4 shrink-0 text-muted-foreground/70',
+                          active && 'text-primary/80',
+                          sidebarCollapsed && 'lg:sr-only'
+                        )}
+                        aria-hidden
+                      />
+                    ) : null
                     return (
-                      <div key={sec.label} className="space-y-1 my-1">
-                        {/* Main Parent Menu Item */}
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setExpandedSections((prev) => ({
-                              ...prev,
-                              [sec.label]: !prev[sec.label],
-                            }))
-                          }
+                      <Link
+                        key={href}
+                        href={href}
+                        title={label}
+                        prefetch={false}
+                        onClick={() => setSidebarOpen(false)}
+                        data-testid={`sidebar-nav-${slug}`}
+                      >
+                        <div
                           className={cn(
-                            'flex w-full items-center gap-2 rounded-lg px-2.5 py-1.5 text-xs font-semibold uppercase tracking-wider transition-colors',
-                            sidebarCollapsed ? 'lg:justify-center lg:px-2' : 'justify-between',
-                            hasActiveChild
-                              ? 'bg-primary/10 text-primary font-bold'
-                              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground'
+                            'flex min-w-0 w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+                            sidebarCollapsed && 'lg:justify-center lg:px-2',
+                            active
+                              ? 'bg-primary/10 font-medium text-primary'
+                              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
                           )}
-                          title={sec.label}
                         >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <SectionIcon className="h-3.5 w-3.5 shrink-0 opacity-80" />
-                            <span className={cn('truncate text-[11px]', sidebarCollapsed && 'lg:sr-only')}>
-                              {sec.label}
-                            </span>
-                          </div>
-                          <div className={cn('flex items-center gap-1.5', sidebarCollapsed && 'lg:sr-only')}>
-                            <span className="rounded-full bg-muted/80 px-1.5 py-0.2 text-[10px] font-medium text-muted-foreground">
-                              {sec.items.length}
-                            </span>
-                            {isExpanded ? (
-                              <ChevronDown className="h-3.5 w-3.5 text-muted-foreground/70" />
-                            ) : (
-                              <ChevronRight className="h-3.5 w-3.5 text-muted-foreground/70" />
-                            )}
-                          </div>
-                        </button>
-
-                        {/* Sub Items under Parent */}
-                        {(isExpanded || sidebarCollapsed) && (
-                          <div
+                          <IconComponent className="h-4 w-4 shrink-0 opacity-90" />
+                          <span
                             className={cn(
-                              'space-y-0.5',
-                              !sidebarCollapsed && 'ml-3 border-l border-border/40 pl-2.5 py-0.5'
+                              'min-w-0 flex-1 truncate',
+                              sidebarCollapsed && 'lg:sr-only'
                             )}
                           >
-                            {sec.items.map((item) => {
-                              const { href, label, icon: IconComponent } = item
-                              const active = isActive(href)
-                              const nestedShell = mainNavHasNestedShell(href)
-                              const slug = label
-                                .toLowerCase()
-                                .replace(/[^a-z0-9]+/g, '-')
-                                .replace(/^-|-$/g, '')
-                              const basePath = href.split('?')[0]
-                              const isLocked = effectiveLockedPages.some(
-                                (r) => basePath === r || basePath.startsWith(r + '/')
-                              )
-                              const showLock =
-                                isLocked &&
-                                (userProfile?.role ? !isSuperAdmin(userProfile.role) : true)
-
-                              return (
-                                <Link
-                                  key={href}
-                                  href={href}
-                                  title={label}
-                                  prefetch={false}
-                                  onClick={() => setSidebarOpen(false)}
-                                  data-testid={`sidebar-nav-${slug}`}
-                                >
-                                  <div
-                                    className={cn(
-                                      'flex min-w-0 w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-xs transition-all',
-                                      sidebarCollapsed && 'lg:justify-center lg:px-2',
-                                      active
-                                        ? 'bg-primary/15 font-semibold text-primary shadow-xs'
-                                        : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                                    )}
-                                  >
-                                    <IconComponent className="h-3.5 w-3.5 shrink-0 opacity-85" />
-                                    <span
-                                      className={cn(
-                                        'min-w-0 flex-1 truncate',
-                                        sidebarCollapsed && 'lg:sr-only'
-                                      )}
-                                    >
-                                      {label}
-                                    </span>
-                                    {showLock && (
-                                      <Lock className="h-3 w-3 shrink-0 text-muted-foreground/50" />
-                                    )}
-                                    {nestedShell && (
-                                      <ChevronRight
-                                        className={cn(
-                                          'h-3 w-3 shrink-0 text-muted-foreground/60',
-                                          sidebarCollapsed && 'lg:sr-only'
-                                        )}
-                                      />
-                                    )}
-                                  </div>
-                                </Link>
-                              )
-                            })}
-                          </div>
-                        )}
-                      </div>
+                            {label}
+                          </span>
+                          {showLock && (
+                            <Lock className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                          )}
+                          {chevron}
+                        </div>
+                      </Link>
                     )
                   })
                 )}
