@@ -8,6 +8,7 @@
     "start": "next dev --webpack -p 3000 -H 0.0.0.0",
     "postinstall": "patch-package",
     "lint": "eslint .",
+    "seed:question-bank": "npx tsx scripts/seed-question-bank.ts",
     "stripe:bootstrap": "node scripts/stripe-billing-bootstrap.mjs",
     "stripe:listen": "node scripts/run-stripe-listen.mjs"
   },

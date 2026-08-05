@@ -13,6 +13,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES } from '@/lib/engineering-catalog'
 
 type QuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
 
@@ -46,6 +47,9 @@ interface Exam {
   questionList: Question[]
   published: boolean
   cert_template?: string
+  degree_type?: string
+  branch?: string
+  screening_type?: string
 }
 
 function parseQuestions(raw: string): { questions: Question[]; errors: string[] } {
@@ -168,6 +172,9 @@ export default function ExamReviewPage() {
   const [metaLevel, setMetaLevel] = useState('')
   const [metaDuration, setMetaDuration] = useState(30)
   const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
+  const [metaDegreeType, setMetaDegreeType] = useState('')
+  const [metaBranch, setMetaBranch] = useState('')
+  const [metaScreeningType, setMetaScreeningType] = useState('mixed')
   const [savingMeta, setSavingMeta] = useState(false)
 
   const fetchExam = async () => {
@@ -184,6 +191,9 @@ export default function ExamReviewPage() {
         setMetaLevel(found.level || found.difficulty_level || '')
         setMetaDuration(found.duration || 30)
         setMetaCertTemplate(found.cert_template || 'classic')
+        setMetaDegreeType(found.degree_type || '')
+        setMetaBranch(found.branch || '')
+        setMetaScreeningType(found.screening_type || 'mixed')
       } else {
         addToast({ type: 'error', title: 'Exam not found' })
         router.push('/dashboard/admin/exams')
@@ -229,9 +239,12 @@ export default function ExamReviewPage() {
           difficulty_level: metaLevel,
           duration: metaDuration,
           cert_template: metaCertTemplate,
+          degree_type: metaDegreeType,
+          branch: metaBranch,
+          screening_type: metaScreeningType,
         })
       })
-      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, cert_template: metaCertTemplate })
+      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Exam details updated' })
     } catch {
@@ -437,6 +450,41 @@ export default function ExamReviewPage() {
                     <option value="minimal">Minimal</option>
                   </select>
                 </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Degree:</Label>
+                  <Select value={metaDegreeType || 'any'} onValueChange={v => setMetaDegreeType(v === 'any' ? '' : v)}>
+                    <SelectTrigger className="h-8 w-32 text-sm">
+                      <SelectValue placeholder="Any degree" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">Any degree</SelectItem>
+                      {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Branch:</Label>
+                  <Select value={metaBranch || 'any'} onValueChange={v => setMetaBranch(v === 'any' ? '' : v)}>
+                    <SelectTrigger className="h-8 w-36 text-sm">
+                      <SelectValue placeholder="General" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="any">General / all</SelectItem>
+                      {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Screening:</Label>
+                  <Select value={metaScreeningType} onValueChange={setMetaScreeningType}>
+                    <SelectTrigger className="h-8 w-36 text-sm">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {SCREENING_TYPES.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           ) : (
@@ -449,6 +497,9 @@ export default function ExamReviewPage() {
               </h1>
               <div className="flex items-center gap-2 mt-2">
                 {exam.subject && <Badge variant="outline">{exam.subject}</Badge>}
+                {exam.degree_type && <Badge variant="outline">{DEGREE_TYPES.find(d => d.id === exam.degree_type)?.label || exam.degree_type}</Badge>}
+                {exam.branch && <Badge variant="outline">{BRANCHES.find(b => b.id === exam.branch)?.short || exam.branch}</Badge>}
+                {exam.screening_type && <Badge variant="outline">{SCREENING_TYPES.find(s => s.id === exam.screening_type)?.short || exam.screening_type}</Badge>}
                 <Badge variant="outline">{exam.level || 'N/A'}</Badge>
                 <Badge variant="outline">{exam.duration} mins</Badge>
                 <Badge variant={exam.published ? 'default' : 'secondary'}>

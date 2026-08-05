@@ -17,6 +17,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Switch } from '@/components/ui/switch'
+import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES } from '@/lib/engineering-catalog'
 
 interface Exam {
   id: string
@@ -29,6 +30,9 @@ interface Exam {
   published: boolean
   attempts: number
   avgScore: number
+  degree_type?: string
+  branch?: string
+  screening_type?: string
 }
 
 export default function AdminExamsPage() {
@@ -64,6 +68,9 @@ export default function AdminExamsPage() {
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
   const [accessType, setAccessType] = useState<'invite_only' | 'open'>('invite_only')
+  const [degreeType, setDegreeType] = useState('')
+  const [branch, setBranch] = useState('')
+  const [screeningType, setScreeningType] = useState('mixed')
   const [saving, setSaving] = useState(false)
 
   const fetchExams = async () => {
@@ -96,6 +103,9 @@ export default function AdminExamsPage() {
     setQuestions(0)
     setPublished(false)
     setAccessType('invite_only')
+    setDegreeType('')
+    setBranch('')
+    setScreeningType('mixed')
     setIsModalOpen(true)
   }
 
@@ -108,6 +118,9 @@ export default function AdminExamsPage() {
     setDuration(exam.duration)
     setQuestions(exam.questions)
     setPublished(exam.published)
+    setDegreeType(exam.degree_type || '')
+    setBranch(exam.branch || '')
+    setScreeningType(exam.screening_type || 'mixed')
     setIsModalOpen(true)
   }
 
@@ -127,6 +140,9 @@ export default function AdminExamsPage() {
       questions, 
       published,
       access_type: accessType,
+      degree_type: degreeType,
+      branch,
+      screening_type: screeningType,
     }
     
     try {
@@ -244,6 +260,9 @@ export default function AdminExamsPage() {
   const columns: DataTableColumn<Exam>[] = [
     { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
     { key: 'subject', header: 'Subject', cell: (r) => r.subject },
+    { key: 'degree', header: 'Degree', cell: (r) => r.degree_type ? DEGREE_TYPES.find(d => d.id === r.degree_type)?.label || r.degree_type : '—' },
+    { key: 'branch', header: 'Branch', cell: (r) => r.branch ? BRANCHES.find(b => b.id === r.branch)?.short || r.branch : 'General' },
+    { key: 'screening', header: 'Screening', cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
     { key: 'level', header: 'Level', cell: (r) => r.level },
     { key: 'duration', header: 'Duration', cell: (r) => `${r.duration} min` },
     { key: 'questions', header: 'Questions', cell: (r) => r.questions },
@@ -348,6 +367,41 @@ export default function AdminExamsPage() {
                   <SelectItem value="Beginner">Junior / Beginner</SelectItem>
                   <SelectItem value="Intermediate">Mid-Level</SelectItem>
                   <SelectItem value="Advanced">Senior / Advanced</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Degree (optional)</Label>
+              <Select value={degreeType || 'any'} onValueChange={v => setDegreeType(v === 'any' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Any degree" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">Any degree</SelectItem>
+                  {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Branch (optional)</Label>
+              <Select value={branch || 'any'} onValueChange={v => setBranch(v === 'any' ? '' : v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="General / all branches" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="any">General / all branches</SelectItem>
+                  {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <Label>Screening Type</Label>
+              <Select value={screeningType} onValueChange={setScreeningType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {SCREENING_TYPES.map(s => <SelectItem key={s.id} value={s.id}>{s.label}</SelectItem>)}
                 </SelectContent>
               </Select>
             </div>
