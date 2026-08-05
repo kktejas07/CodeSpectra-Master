@@ -7,13 +7,13 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload, Download, Pencil } from 'lucide-react'
+import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload, Download, Pencil, Database } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES } from '@/lib/engineering-catalog'
+import { BRANCHES, DEGREE_TYPES, SCREENING_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES } from '@/lib/engineering-catalog'
 
 type QuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
 
@@ -34,6 +34,24 @@ interface Question {
   options?: string[]
   answer?: string
   score: number
+}
+
+interface BankQuestionRow {
+  id: string
+  title: string
+  question: string
+  type: QuestionType
+  options?: string[]
+  answer?: string
+  explanation?: string
+  difficulty: string
+  marks: number
+  branch?: string
+  subject?: string
+  level?: string
+  industry?: string
+  tags?: string[]
+  source: string
 }
 
 interface Exam {
@@ -164,6 +182,17 @@ export default function ExamReviewPage() {
   const [importModal, setImportModal] = useState(false)
   const [importText, setImportText] = useState('')
   const [importedPreview, setImportedPreview] = useState<Question[] | null>(null)
+  const [bankModal, setBankModal] = useState(false)
+  const [bankLoading, setBankLoading] = useState(false)
+  const [bankRows, setBankRows] = useState<BankQuestionRow[]>([])
+  const [bankTotal, setBankTotal] = useState(0)
+  const [bankPage, setBankPage] = useState(1)
+  const [bankBranch, setBankBranch] = useState('')
+  const [bankLevel, setBankLevel] = useState('')
+  const [bankType, setBankType] = useState('')
+  const [bankIndustry, setBankIndustry] = useState('')
+  const [bankQ, setBankQ] = useState('')
+  const [bankSelected, setBankSelected] = useState<Set<string>>(new Set())
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set())
   const [deletingSelected, setDeletingSelected] = useState(false)
   const [editingMeta, setEditingMeta] = useState(false)
@@ -311,6 +340,63 @@ export default function ExamReviewPage() {
   const openEditQuestion = (q: Question) => {
     setEditingQuestion({ ...q })
     setQuestionModal(true)
+  }
+
+  const fetchBankRows = async () => {
+    if (!bankModal) return
+    setBankLoading(true)
+    try {
+      const params = new URLSearchParams({ page: String(bankPage), limit: '20' })
+      if (bankBranch) params.set('branch', bankBranch)
+      if (bankLevel) params.set('level', bankLevel)
+      if (bankType) params.set('type', bankType)
+      if (bankIndustry) params.set('industry', bankIndustry)
+      if (bankQ.trim()) params.set('q', bankQ.trim())
+      const res = await fetch(`/api/question-bank?${params}`, { credentials: 'include' })
+      const json = await res.json()
+      setBankRows(json.data || [])
+      setBankTotal(json.total || 0)
+    } catch { /* ignore */ }
+    finally { setBankLoading(false) }
+  }
+
+  const openBankModal = () => {
+    setBankModal(true)
+    setBankPage(1)
+    setBankSelected(new Set())
+    fetchBankRows()
+  }
+
+  useEffect(() => {
+    if (bankModal) fetchBankRows()
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [bankModal, bankPage, bankBranch, bankLevel, bankType, bankIndustry, bankQ])
+
+  const addSelectedFromBank = async () => {
+    if (!exam || bankSelected.size === 0) return
+    const picked = bankRows.filter(r => bankSelected.has(r.id))
+    const existingIds = new Set(exam.questionList.map(q => q.id))
+    const newQuestions: Question[] = picked
+      .filter(r => !existingIds.has(r.id))
+      .map(r => ({
+        id: r.id,
+        type: r.type,
+        title: r.title || r.question.slice(0, 60),
+        prompt: r.question,
+        options: r.options || [],
+        answer: r.answer,
+        score: r.marks || 10,
+      }))
+    if (newQuestions.length === 0) {
+      addToast({ type: 'error', title: 'All selected questions are already in this exam' })
+      return
+    }
+    const updated = [...exam.questionList, ...newQuestions]
+    setExam({ ...exam, questionList: updated })
+    await saveExam(updated)
+    setBankSelected(new Set())
+    setBankModal(false)
+    addToast({ type: 'success', title: `Added ${newQuestions.length} question${newQuestions.length !== 1 ? 's' : ''} from bank` })
   }
 
   const saveQuestion = () => {
@@ -554,6 +640,9 @@ export default function ExamReviewPage() {
             <Button variant="outline" onClick={() => { setImportText(''); setImportedPreview(null); setImportModal(true) }} className="gap-2">
               <Upload className="h-4 w-4" /> Import
             </Button>
+            <Button variant="outline" onClick={openBankModal} className="gap-2">
+              <Database className="h-4 w-4" /> Pull from Bank
+            </Button>
             <Button onClick={openAddQuestion} className="gap-2">
               <Plus className="h-4 w-4" /> Add Question
             </Button>
@@ -726,6 +815,129 @@ export default function ExamReviewPage() {
               addToast({ type: 'success', title: `${importedPreview.length} questions imported` })
             }}>
               <Upload className="h-4 w-4 mr-2" /> Import {importedPreview?.length || 0} Questions
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Pull from Question Bank modal */}
+      <Dialog open={bankModal} onOpenChange={setBankModal}>
+        <DialogContent className="sm:max-w-[800px] max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Database className="h-4 w-4 text-primary" /> Pull from Question Bank
+            </DialogTitle>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="flex flex-wrap items-center gap-2">
+              <Input
+                placeholder="Search bank questions..."
+                value={bankQ}
+                onChange={(e) => setBankQ(e.target.value)}
+                className="h-9 flex-1 min-w-[180px] text-sm"
+              />
+              <Select value={bankBranch || 'all'} onValueChange={v => { setBankBranch(v === 'all' ? '' : v); setBankPage(1) }}>
+                <SelectTrigger className="h-9 w-[150px] text-sm"><SelectValue placeholder="All branches" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All branches</SelectItem>
+                  {BRANCHES.map(b => <SelectItem key={b.id} value={b.id}>{b.short}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={bankLevel || 'all'} onValueChange={v => { setBankLevel(v === 'all' ? '' : v); setBankPage(1) }}>
+                <SelectTrigger className="h-9 w-[110px] text-sm"><SelectValue placeholder="All levels" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All levels</SelectItem>
+                  {LEVELS.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={bankType || 'all'} onValueChange={v => { setBankType(v === 'all' ? '' : v); setBankPage(1) }}>
+                <SelectTrigger className="h-9 w-[120px] text-sm"><SelectValue placeholder="All types" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All types</SelectItem>
+                  {BANK_QUESTION_TYPES.map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                </SelectContent>
+              </Select>
+              <Select value={bankIndustry || 'all'} onValueChange={v => { setBankIndustry(v === 'all' ? '' : v); setBankPage(1) }}>
+                <SelectTrigger className="h-9 w-[130px] text-sm"><SelectValue placeholder="All industries" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">All industries</SelectItem>
+                  {INDUSTRIES.map(i => <SelectItem key={i.id} value={i.id}>{i.label}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {bankLoading ? (
+              <div className="flex items-center justify-center gap-2 py-12 text-muted-foreground text-sm">
+                <Loader2 className="h-4 w-4 animate-spin" /> Loading bank questions...
+              </div>
+            ) : bankRows.length === 0 ? (
+              <div className="text-center py-12 text-muted-foreground text-sm border border-dashed rounded-lg">
+                No bank questions match. Try clearing filters.
+              </div>
+            ) : (
+              <div className="max-h-[400px] overflow-y-auto border rounded-md">
+                <table className="w-full text-sm">
+                  <thead className="bg-muted/50 border-b border-border sticky top-0">
+                    <tr>
+                      <th className="py-2 px-3 w-10">
+                        <input
+                          type="checkbox"
+                          checked={bankRows.length > 0 && bankRows.every(r => bankSelected.has(r.id))}
+                          onChange={(e) => {
+                            const next = new Set(bankSelected)
+                            if (e.target.checked) bankRows.forEach(r => next.add(r.id))
+                            else bankRows.forEach(r => next.delete(r.id))
+                            setBankSelected(next)
+                          }}
+                          className="h-4 w-4"
+                        />
+                      </th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">Question</th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">Type</th>
+                      <th className="text-left py-2 px-3 font-semibold text-xs">Difficulty</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {bankRows.map(r => (
+                      <tr key={r.id} className="border-b border-border hover:bg-muted/40">
+                        <td className="py-2 px-3">
+                          <input
+                            type="checkbox"
+                            checked={bankSelected.has(r.id)}
+                            onChange={(e) => {
+                              const next = new Set(bankSelected)
+                              if (e.target.checked) next.add(r.id)
+                              else next.delete(r.id)
+                              setBankSelected(next)
+                            }}
+                            className="h-4 w-4"
+                          />
+                        </td>
+                        <td className="py-2 px-3 max-w-[380px]">
+                          <p className="font-medium truncate">{r.title || r.question}</p>
+                          <p className="text-xs text-muted-foreground truncate">{r.question}</p>
+                        </td>
+                        <td className="py-2 px-3 text-xs">{r.type}</td>
+                        <td className="py-2 px-3 text-xs">{r.difficulty}</td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            <div className="flex items-center justify-between text-xs text-muted-foreground">
+              <span>{bankTotal} question{bankTotal !== 1 ? 's' : ''} · {bankSelected.size} selected</span>
+              <div className="flex items-center gap-1">
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage <= 1} onClick={() => setBankPage(p => p - 1)}>Prev</Button>
+                <Button variant="outline" size="sm" className="h-8 text-xs" disabled={bankPage * 20 >= bankTotal} onClick={() => setBankPage(p => p + 1)}>Next</Button>
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setBankModal(false)}>Cancel</Button>
+            <Button disabled={bankSelected.size === 0} onClick={addSelectedFromBank} className="gap-2">
+              <Database className="h-4 w-4" /> Add {bankSelected.size || 0} Selected
             </Button>
           </DialogFooter>
         </DialogContent>
