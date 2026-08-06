@@ -42,6 +42,7 @@ export async function GET(req: NextRequest) {
           typeof u.updatedAt === 'string'
             ? u.updatedAt
             : u.updatedAt?.toISOString?.() ?? new Date().toISOString(),
+        organization_id: (u as any).tenantId ?? (u as any).organizationId ?? null,
       }
 
       // buildAdminUserRow expects a Supabase User-like object as 1st arg.
@@ -61,8 +62,21 @@ export async function GET(req: NextRequest) {
         app_metadata: {},
       } as unknown as Parameters<typeof buildAdminUserRow>[0]
 
-      return buildAdminUserRow(fakeAuthUser, profile)
+      const row = buildAdminUserRow(fakeAuthUser, profile)
+      ;(row as any).tenant_id = profile.organization_id
+      return row
     })
+
+    // Enrich with tenant names
+    const { tenants } = await import('@/lib/db/admin')
+    const tenantCol = await tenants()
+    const tenantList = await tenantCol.find({}).toArray()
+    const tenantNameById = new Map(tenantList.map((t) => [t.id, t.name]))
+
+    for (const row of rows) {
+      const tid = (row as any).tenant_id
+      if (tid) (row as any).tenant_name = tenantNameById.get(tid) || tid
+    }
 
     return NextResponse.json({ users: rows })
   } catch (e: unknown) {
@@ -97,6 +111,7 @@ export async function POST(request: Request) {
     password?: string
     full_name?: string
     role?: string
+    tenantId?: string | null
     target_url?: string
     exam_title?: string
     assigned_assessments?: import('@/lib/db/admin').AssessmentStep[]
@@ -111,6 +126,7 @@ export async function POST(request: Request) {
   const email = (body.email || '').trim().toLowerCase()
   const full_name = (body.full_name || '').trim() || email.split('@')[0] || 'User'
   const role = normalizeUserRole(body.role)
+  const tenantId = body.tenantId && body.tenantId !== '' ? body.tenantId : null
   const targetUrl = (body.target_url || '/assessment').trim()
   const assignedAssessments: import('@/lib/db/admin').AssessmentStep[] =
     Array.isArray(body.assigned_assessments) && body.assigned_assessments.length > 0
@@ -170,6 +186,7 @@ export async function POST(request: Request) {
             fullName: full_name,
             passwordHash,
             role,
+            tenantId,
             updatedAt: new Date(),
           },
           $setOnInsert: {
@@ -181,7 +198,7 @@ export async function POST(request: Request) {
       )
 
       const { updateUserById } = await import('@/lib/db/admin')
-      await updateUserById(newUserId, { role, fullName: full_name })
+      await updateUserById(newUserId, { role, fullName: full_name, tenantId })
     }
 
     const { candidateInvites, newId, nowIso } = await import('@/lib/db/admin')
@@ -252,6 +269,7 @@ export async function POST(request: Request) {
         email,
         full_name,
         role,
+        tenant_id: tenantId,
         created_at: created?.createdAt instanceof Date
           ? created.createdAt.toISOString()
           : (created?.createdAt as unknown as string) ?? new Date().toISOString(),

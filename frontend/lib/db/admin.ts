@@ -45,6 +45,19 @@ export interface OrganizationInvitationDoc {
   created_at: string
 }
 
+export interface TenantDoc {
+  id: string
+  name: string
+  /** Optional unique short code (auto-generated slug when omitted). */
+  slug?: string
+  /** Plan label attached to the tenant (e.g. enterprise). */
+  plan?: string
+  is_active: boolean
+  created_at: string
+  created_by: string
+  member_count?: number
+}
+
 export interface AssessmentStep {
   id: string
   title: string
@@ -134,6 +147,11 @@ export async function users(): Promise<Collection<BetterAuthUserDoc>> {
 export async function orgInvitations(): Promise<Collection<OrganizationInvitationDoc>> {
   const db = await getMongoDb()
   return db.collection<OrganizationInvitationDoc>('organization_invitations')
+}
+
+export async function tenants(): Promise<Collection<TenantDoc>> {
+  const db = await getMongoDb()
+  return db.collection<TenantDoc>('tenants')
 }
 
 export async function userRoles(): Promise<Collection<UserRoleDoc>> {

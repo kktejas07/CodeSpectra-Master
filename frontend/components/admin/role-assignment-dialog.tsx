@@ -24,8 +24,10 @@ interface RoleAssignmentDialogProps {
   currentRole?: string
   currentStatus?: string
   currentPlan?: string
+  currentTenantId?: string | null
+  tenants?: { id: string; name: string }[]
   onOpenChange: (open: boolean) => void
-  onConfirm: (payload: { role?: UserRole; full_name?: string; status?: string; plan?: string }) => void | Promise<void>
+  onConfirm: (payload: { role?: UserRole; full_name?: string; status?: string; plan?: string; tenantId?: string | null }) => void | Promise<void>
 }
 
 const ROLES: Array<{ id: UserRole; name: string; description: string; icon: typeof Shield; color: string; permissions: string[] }> = [
@@ -40,12 +42,13 @@ const PLANS = [
   { id: 'enterprise', label: 'Enterprise' },
 ]
 
-export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFullName = '', currentRole = 'user', currentStatus = 'active', currentPlan = 'free', onOpenChange, onConfirm }: RoleAssignmentDialogProps) {
+export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFullName = '', currentRole = 'user', currentStatus = 'active', currentPlan = 'free', currentTenantId = null, tenants = [], onOpenChange, onConfirm }: RoleAssignmentDialogProps) {
   const canon = normalizeUserRole(currentRole)
   const [selectedRole, setSelectedRole] = useState<UserRole>(canon)
   const [fullName, setFullName] = useState(initialFullName)
   const [status, setStatus] = useState(currentStatus === 'active')
   const [plan, setPlan] = useState(currentPlan || 'free')
+  const [tenantId, setTenantId] = useState<string | null>(currentTenantId ?? null)
 
   useEffect(() => {
     if (open) {
@@ -53,12 +56,13 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
       setFullName(initialFullName.trim() || userName.trim() || '')
       setStatus(currentStatus === 'active')
       setPlan(currentPlan || 'free')
+      setTenantId(currentTenantId ?? null)
     }
-  }, [open, currentRole, initialFullName, userName, currentStatus, currentPlan])
+  }, [open, currentRole, initialFullName, userName, currentStatus, currentPlan, currentTenantId])
 
   const hasChanges = mode === 'edit-profile'
     ? (fullName.trim() !== (initialFullName || '').trim() || status !== (currentStatus === 'active') || plan !== (currentPlan || 'free'))
-    : normalizeUserRole(selectedRole) !== normalizeUserRole(currentRole)
+    : normalizeUserRole(selectedRole) !== normalizeUserRole(currentRole) || (selectedRole === 'tenant_admin' && tenantId !== (currentTenantId ?? null))
 
   const handleConfirm = async () => {
     if (!hasChanges) return
@@ -70,6 +74,7 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
         if (plan !== (currentPlan || 'free')) payload.plan = plan
       } else {
         payload.role = selectedRole
+        if (selectedRole === 'tenant_admin') payload.tenantId = tenantId || null
       }
       await onConfirm(payload)
       onOpenChange(false)
@@ -143,6 +148,19 @@ export function RoleAssignmentDialog({ open, mode, userName = 'User', initialFul
                   </Card>
                 )
               })}
+              {selectedRole === 'tenant_admin' && (
+                <div className="space-y-2 pt-1">
+                  <Label>Organization</Label>
+                  <Select value={tenantId || '__none__'} onValueChange={(v) => setTenantId(v === '__none__' ? null : v)}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Select organization" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="__none__">No organization</SelectItem>
+                      {tenants.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                  {tenantId == null && <p className="text-xs text-muted-foreground">Pick an organization so this admin has a tenant to manage.</p>}
+                </div>
+              )}
             </>
           )}
         </div>

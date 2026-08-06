@@ -14,7 +14,10 @@ export async function POST(request: NextRequest) {
     const me = await userCol.findOne({
       $or: [{ _id: gate.user.id }, { id: gate.user.id }],
     } as any)
-    const orgId = (me?.organizationId as string | undefined) ?? null
+    const orgId =
+      (me?.tenantId as string | null) ??
+      (me?.organizationId as string | null) ??
+      null
     if (!orgId) {
       return NextResponse.json(
         { error: 'You must belong to an organization to invite members.' },

@@ -69,6 +69,19 @@
 | `token` | string | ✓ | | Invite token |
 | `expires_at` | string | ✓ | | ISO timestamp |
 | `status` | string | ✓ | | `pending`, `accepted`, `revoked` |
+| `created_at` | string | ✓ | | ISO timestamp |
+
+### `tenants` — Organizations (multi-tenant)
+| Field | Type | Required | Indexed | Description |
+|-------|------|----------|---------|-------------|
+| `id` | string | ✓ | PK | UUID |
+| `name` | string | ✓ | | Organization name |
+| `slug` | string | | ✓ | Unique short code (auto-generated when omitted) |
+| `plan` | string | | | Plan label (default `enterprise`) |
+| `is_active` | bool | ✓ | | |
+| `created_at` | string | ✓ | | ISO timestamp |
+| `created_by` | string | ✓ | → `user._id` |
+| `member_count` | number | | | Computed at read time via `user.countDocuments({tenantId})` |
 
 ---
 

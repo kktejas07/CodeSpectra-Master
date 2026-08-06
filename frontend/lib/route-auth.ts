@@ -22,6 +22,8 @@ export interface APIUser {
   lastLoginMethod?: string | null
   /** Last login timestamp. */
   lastLoginAt?: Date | null
+  /** Tenant/organization the user belongs to (from the user doc). */
+  tenantId?: string | null
 }
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
@@ -57,7 +59,7 @@ async function lookupRole(uid: string): Promise<UserRole> {
   return 'user'
 }
 
-async function getUserProfile(uid: string): Promise<{ role: UserRole; lastLoginMethod?: string | null; lastLoginAt?: Date | null }> {
+async function getUserProfile(uid: string): Promise<{ role: UserRole; lastLoginMethod?: string | null; lastLoginAt?: Date | null; tenantId?: string | null }> {
   try {
     const userCol = await getUsersCollection()
     const profile = await userCol.findOne({ id: uid })
@@ -66,10 +68,11 @@ async function getUserProfile(uid: string): Promise<{ role: UserRole; lastLoginM
         role: profile.role ? normalizeUserRole(profile.role as string) : 'user',
         lastLoginMethod: profile.lastLoginMethod ?? null,
         lastLoginAt: profile.lastLoginAt ?? null,
+        tenantId: (profile.tenantId as string | null) ?? (profile.organizationId as string | null) ?? null,
       }
     }
   } catch { /* fall through */ }
-  return { role: 'user' }
+  return { role: 'user', tenantId: null }
 }
 
 function fromSessionPayload(p: SessionPayload): APIUser {
@@ -89,14 +92,14 @@ export async function getAPIUser(): Promise<APIUser | null> {
           const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
           if (decoded) {
             const profile = await getUserProfile(decoded.uid)
-            return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? undefined, fullName: decoded.name ?? undefined, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt }
+            return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? undefined, fullName: decoded.name ?? undefined, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
           }
         } catch { /* fallback */ }
       }
       const payload = await verifySessionToken(sessionCookie)
       if (payload) {
         const profile = await getUserProfile(payload.uid)
-        return { id: payload.uid, email: payload.email, role: profile.role, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt }
+        return { id: payload.uid, email: payload.email, role: profile.role, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
       }
     }
 
@@ -108,7 +111,7 @@ export async function getAPIUser(): Promise<APIUser | null> {
           const decoded = await adminAuth.verifyIdToken(authHeader.slice(7))
           if (decoded) {
             const profile = await getUserProfile(decoded.uid)
-            return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? undefined, fullName: decoded.name ?? undefined, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt }
+            return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? undefined, fullName: decoded.name ?? undefined, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
           }
         } catch { /* invalid */ }
       }

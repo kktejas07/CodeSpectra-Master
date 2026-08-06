@@ -21,7 +21,7 @@ export async function PATCH(
 
   const { userId } = await params
 
-  let body: { role?: string; full_name?: string; status?: string; plan?: string; password?: string }
+  let body: { role?: string; full_name?: string; status?: string; plan?: string; password?: string; tenantId?: string | null }
   try {
     body = await request.json()
   } catch {
@@ -33,6 +33,19 @@ export async function PATCH(
   if (body.full_name !== undefined) updates.fullName = body.full_name.trim()
   if (body.status !== undefined) updates.status = body.status === 'active' ? 'active' : 'inactive'
   if (body.plan !== undefined) updates.plan = body.plan
+  if (body.tenantId !== undefined) {
+    if (body.tenantId === null || body.tenantId === '') {
+      updates.tenantId = null
+    } else {
+      const { tenants } = await import('@/lib/db/admin')
+      const tenantCol = await tenants()
+      const tenant = await tenantCol.findOne({ id: body.tenantId })
+      if (!tenant) {
+        return NextResponse.json({ error: 'Tenant not found' }, { status: 400 })
+      }
+      updates.tenantId = tenant.id
+    }
+  }
 
   if (body.password !== undefined) {
     if (body.password.length < 8) {

@@ -71,10 +71,54 @@ Get single user details.
 **Auth**: `requireSuperAdmin()`
 
 ### PATCH /api/admin/users/[userId]
-Update user (role, name, isActive).
+Update user (role, name, status, plan, password, tenantId).
+
+**Auth**: `requireSuperAdmin()`
+
+**Request Body:**
+```json
+{
+  "role": "tenant_admin",
+  "tenantId": "tenant-uuid"
+}
+```
+`tenantId: null` clears the user's organization membership.
 
 ### DELETE /api/admin/users/[userId]
 Delete user.
+
+## Admin Tenants (Organizations)
+
+### GET /api/admin/tenants
+List all organizations with live `member_count`.
+
+**Auth**: `requireSuperAdmin()`
+
+**Response (200):**
+```json
+{
+  "data": [
+    { "id": "uuid", "name": "Acme Corp", "slug": "acme", "plan": "enterprise", "is_active": true, "created_at": "...", "created_by": "uuid", "member_count": 12 }
+  ]
+}
+```
+
+### POST /api/admin/tenants
+Create an organization.
+
+**Auth**: `requireSuperAdmin()`
+
+**Request Body:**
+```json
+{ "name": "Acme Corp", "slug": "acme", "plan": "enterprise" }
+```
+Slug is auto-generated (lowercase, dashed) when omitted and deduped with a suffix on collision.
+
+### PATCH /api/admin/tenants/[id]
+Update organization (name, slug, plan, is_active).
+
+### DELETE /api/admin/tenants/[id]
+Delete organization. Members are detached (`tenantId` set to null) but their accounts remain.
 
 ## Admin Teams
 
@@ -84,9 +128,24 @@ List all teams.
 **Auth**: `requireSuperAdmin()`
 
 ### GET /api/admin/teams/members
-List all team members.
+List team members for the caller's organization (`tenant_admin`) or all users (`superadmin`; filter via `?tenantId=`).
 
-**Auth**: `requireSuperAdmin()`
+**Auth**: `requireSuperAdmin()` or `tenant_admin`
+
+**Query Params:**
+- `?tenantId=<id>` — superadmin: filter to one org
+- `?tenantId=all` — superadmin: all users
+- `?stats=true` — include `{ total, active }` counts
+
+### POST /api/admin/teams/members
+Create a member inside the caller's organization (always role `user`, scoped to the caller's tenant).
+
+**Auth**: `requireSuperAdmin()` or `tenant_admin`
+
+**Request Body:**
+```json
+{ "email": "member@company.com", "name": "Jane Doe", "password": "optional" }
+```
 
 ### GET /api/admin/teams/activity
 Team activity report — aggregates scan counts, review counts, submissions per team member.
@@ -272,8 +331,10 @@ Body: `{ branch?, subject?, difficulty?: 'Easy'|'Medium'|'Hard'|'mixed', types?:
 |-------|---------|------|---------------|
 | `/api/admin/users` | GET, POST | superadmin | `user` |
 | `/api/admin/users/[userId]` | GET, PATCH, DELETE | superadmin | `user` |
+| `/api/admin/tenants` | GET, POST | superadmin | `tenants` |
+| `/api/admin/tenants/[id]` | PATCH, DELETE | superadmin | `tenants` |
 | `/api/admin/teams` | GET | superadmin | `teams` |
-| `/api/admin/teams/members` | GET | superadmin | `team_members` |
+| `/api/admin/teams/members` | GET, POST | superadmin, tenant_admin | `user` |
 | `/api/admin/teams/activity` | GET | superadmin | multiple |
 | `/api/admin/permissions/roles` | GET, POST, PUT | superadmin | `roles` |
 | `/api/admin/permissions/seed` | POST | superadmin | `roles` |

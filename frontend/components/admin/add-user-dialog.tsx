@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import {
   Dialog,
   DialogContent,
@@ -23,6 +23,7 @@ export interface AddUserDialogProps {
     full_name: string
     password: string
     role: UserRole
+    tenantId?: string | null
     target_url?: string
     assigned_assessments?: import('@/lib/db/admin').AssessmentStep[]
     allowed_languages?: string[]
@@ -35,7 +36,17 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
   const [password, setPassword] = useState('')
   const [showPassword, setShowPassword] = useState(false)
   const [role, setRole] = useState<UserRole>('user')
+  const [tenantId, setTenantId] = useState<string>('')
+  const [tenants, setTenants] = useState<{ id: string; name: string }[]>([])
   const [loading, setLoading] = useState(false)
+
+  useEffect(() => {
+    if (!open) return
+    fetch('/api/admin/tenants', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => setTenants(d.data || []))
+      .catch(() => setTenants([]))
+  }, [open])
 
   const reset = () => {
     setEmail('')
@@ -43,6 +54,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
     setPassword('')
     setShowPassword(false)
     setRole('user')
+    setTenantId('')
     setLoading(false)
   }
 
@@ -55,6 +67,7 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
         full_name: fullName.trim() || email.trim().split('@')[0] || 'User',
         password: password.trim(),
         role,
+        tenantId: tenantId || null,
         target_url: '/dashboard',
         allowed_languages: role === 'user' ? ['python','javascript','typescript','cpp','java','go','rust'] : undefined,
       })
@@ -135,6 +148,22 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
                 <option value="superadmin">Platform admin</option>
               </select>
             </div>
+            {tenants.length > 0 && (
+              <div className="grid gap-2">
+                <Label htmlFor="add-user-tenant">Organization (optional)</Label>
+                <select
+                  id="add-user-tenant"
+                  value={tenantId}
+                  onChange={(e) => setTenantId(e.target.value)}
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+                >
+                  <option value="">— No org —</option>
+                  {tenants.map(t => (
+                    <option key={t.id} value={t.id}>{t.name}</option>
+                  ))}
+                </select>
+              </div>
+            )}
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
             <Button type="button" variant="outline" onClick={() => { reset(); onOpenChange(false) }}>
