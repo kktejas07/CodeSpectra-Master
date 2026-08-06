@@ -4,6 +4,8 @@ import { tenants, newId, nowIso } from '@/lib/db/admin'
 import { getMongoDb } from '@/lib/mongodb'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import bcrypt from 'bcryptjs'
+import { sendEmail } from '@/lib/send-email'
+import { emailTemplates } from '@/lib/email-templates'
 
 export async function GET() {
   const gate = await requireSuperAdmin()
@@ -129,6 +131,22 @@ export async function POST(request: Request) {
       }
 
       admin = { id: adminId, email: adminEmail, role: 'tenant_admin' }
+
+      // Send welcome email with credentials
+      const displayName = adminName || adminEmail.split('@')[0] || 'User'
+      const emailPassword = adminPassword && adminPassword.length >= 8 ? adminPassword : 'your temporary password'
+      try {
+        await sendEmail(
+          adminEmail,
+          emailTemplates.orgAccountProvisioned({
+            name: displayName,
+            email: adminEmail,
+            password: emailPassword,
+            orgName: name,
+            role: 'Organization Admin',
+          }),
+        )
+      } catch { /* email delivery best-effort */ }
     }
 
     return NextResponse.json({ data: { ...doc, member_count: admin ? 1 : 0 }, admin }, { status: 201 })

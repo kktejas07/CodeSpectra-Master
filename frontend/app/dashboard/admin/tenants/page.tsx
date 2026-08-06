@@ -239,6 +239,26 @@ export default function TenantsPage() {
     }
   }
 
+  const handleUpdateMemberRole = async (member: TenantMember, newRole: string) => {
+    try {
+      const res = await csrfFetch(`/api/admin/users/${member.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Role updated', message: `${member.name || member.email} is now ${getRoleLabel(normalizeUserRole(newRole))}` })
+        if (membersOf) await openMembers(membersOf)
+      } else {
+        const json = await res.json().catch(() => ({}))
+        addToast({ type: 'error', title: 'Failed', message: json.error })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to update role' })
+    }
+  }
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!membersOf || addingMember) return
@@ -540,9 +560,24 @@ export default function TenantsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground flex items-center gap-2">
                         {m.name}
-                        <Badge variant="outline" className="text-[10px] capitalize shrink-0">
-                          {getRoleLabel(normalizeUserRole(m.role))}
-                        </Badge>
+                        {normalizeUserRole(m.role) === 'superadmin' ? (
+                          <Badge variant="outline" className="text-[10px] capitalize shrink-0">
+                            {getRoleLabel(normalizeUserRole(m.role))}
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={normalizeUserRole(m.role)}
+                            onValueChange={(v) => void handleUpdateMemberRole(m, v)}
+                          >
+                            <SelectTrigger className="h-6 w-auto min-w-[100px] text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                     </div>

@@ -440,6 +440,27 @@ export const emailTemplates = {
       ${baseStyles.footer}`,
     }
   },
+
+  orgAccountProvisioned: (params: { name: string; email: string; password: string; orgName: string; role: string }) => {
+    const base = getBaseUrl()
+    return {
+      subject: `Your ${params.orgName} account is ready — CodeSpectra`,
+      html: `${baseStyles.wrapper}
+        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Welcome to CodeSpectra, ${params.name}!</h1>
+        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">An account has been created for you on <strong>${params.orgName}</strong>.</p>
+        ${baseStyles.card(`
+          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
+            ${statRow('Organization', params.orgName)}
+            ${statRow('Role', params.role)}
+            ${statRow('Email', params.email)}
+            ${statRow('Password', params.password)}
+          </table>
+        `)}
+        ${alertBox(`<p style="margin:0;font-size:13px;color:${BRAND.text}">Please sign in and change your password immediately. Do not share these credentials.</p>`, BRAND.amberBg, BRAND.amber)}
+        ${baseStyles.button(`${base}/login`, 'Sign In Now')}
+      ${baseStyles.footer}`,
+    }
+  },
 }
 
 export const hackathonEmailTemplates = {

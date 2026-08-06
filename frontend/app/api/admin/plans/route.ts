@@ -57,8 +57,9 @@ export async function POST(request: Request) {
     const db = await getMongoDb()
     const col = db.collection('plans')
 
+    const { _id: _mongoId, ...rest } = body
     const doc = {
-      ...body,
+      ...rest,
       updatedAt: new Date().toISOString(),
     }
 
