@@ -1,7 +1,6 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { LogIn, ShieldX } from 'lucide-react'
@@ -12,7 +11,6 @@ import { LogIn, ShieldX } from 'lucide-react'
  * original session cookie.
  */
 export function ImpersonationBanner() {
-  const router = useRouter()
   const [active, setActive] = useState(false)
   const [exiting, setExiting] = useState(false)
 
@@ -33,9 +31,11 @@ export function ImpersonationBanner() {
         credentials: 'include',
       })
       if (res.ok) {
-        router.replace('/dashboard/admin/tenants')
-        router.refresh()
-        setTimeout(() => window.location.reload(), 250)
+        // Single hard navigation back to the tenant list. Full reload is required
+        // to re-read the restored session cookie (router.replace+refresh+reload
+        // triple-fired duplicate TTFB/navigation records and could re-trigger the
+        // banner's impersonation check mid-loop).
+        window.location.href = '/dashboard/admin/tenants'
       }
     } catch {
       setExiting(false)

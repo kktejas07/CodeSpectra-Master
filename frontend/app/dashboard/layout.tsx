@@ -94,6 +94,12 @@ import {
 
 const SIDEBAR_COLLAPSED_KEY = 'codespectra-sidebar-collapsed'
 
+// Stable empty array — superadmin bypasses locked pages. MUST be a module-level
+// constant, not `[]` inline: a fresh array literal changes identity every render,
+// which flows into the navEntries useMemo deps below and causes an infinite
+// re-render loop (setCollapsedSections(new Set) → re-render → new [] → ...).
+const EMPTY_LOCKED_PAGES: string[] = []
+
 /** Main nav targets that swap the sidebar for a section sub-nav (fixed nested shell). */
 function mainNavHasNestedShell(href: string): boolean {
   const path = (href.split('?')[0] || href).replace(/\/$/, '')
@@ -274,7 +280,7 @@ export default function DashboardLayout({
     | { type: 'link'; item: NavLeaf }
     | { type: 'group'; label: string; items: NavLeaf[] }
 
-  const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? [] : lockedPages
+  const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? EMPTY_LOCKED_PAGES : lockedPages
 
   const navEntries = useMemo((): NavEntry[] => {
     if (!userProfile?.role) return []
