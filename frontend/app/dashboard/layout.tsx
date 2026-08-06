@@ -311,6 +311,7 @@ export default function DashboardLayout({
       [p.settings]: Settings,
       [p.security]: Shield,
       '/dashboard/admin/proctor': Shield,
+      '/dashboard/admin/certificates': Award,
       [p.teams]: Users,
       [p.jobs]: Briefcase,
       [p.resumes]: FileText,

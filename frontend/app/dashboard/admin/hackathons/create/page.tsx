@@ -44,7 +44,7 @@ export default function HackathonCreatePage() {
     ],
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
     solve_limit: 0,
-    cert_template: 'classic' as 'classic' | 'modern' | 'minimal',
+    cert_template: 'classic' as 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic',
     banner_url: '',
   })
 

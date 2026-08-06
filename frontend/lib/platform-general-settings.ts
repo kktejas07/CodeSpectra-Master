@@ -56,7 +56,7 @@ export type GeneralPlatformSettings = {
   /** Terms of service URL */
   terms_of_service_url: string
   /** Default certificate template used across all events */
-  certificate_template: 'classic' | 'modern' | 'minimal'
+  certificate_template: 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {

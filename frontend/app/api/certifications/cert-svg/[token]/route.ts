@@ -24,7 +24,7 @@ import { certificationAttempts } from '@/lib/db/certifications'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-type Template = 'classic' | 'modern' | 'minimal'
+type Template = 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
 
 interface CertData {
   candidateName: string
@@ -210,10 +210,148 @@ async function renderMinimal(d: CertData): Promise<string> {
 </svg>`
 }
 
+async function renderProfessional(d: CertData): Promise<string> {
+  const qr = await qrSvg(d.verifyUrl, 100)
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1123" height="794" viewBox="0 0 1123 794" font-family="Inter, system-ui, sans-serif">
+  <defs>
+    <linearGradient id="bgGrad" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%" stop-color="#f0f4ff"/>
+      <stop offset="100%" stop-color="#e8eeff"/>
+    </linearGradient>
+  </defs>
+  <rect width="1123" height="794" fill="url(#bgGrad)"/>
+  <rect x="0" y="0" width="1123" height="12" fill="#2563eb"/>
+  <rect x="0" y="782" width="1123" height="12" fill="#2563eb"/>
+  <rect x="0" y="0" width="96" height="794" fill="#2563eb" opacity="0.9"/>
+
+  <g transform="translate(120, 100)">
+    <g transform="translate(0, 14)">${LOGO}</g>
+    <text x="44" y="30" font-size="13" fill="#2563eb" font-weight="600" letter-spacing="4">CODESPECTRA</text>
+    <text y="120" font-size="13" fill="#2563eb" letter-spacing="5" font-weight="600" text-anchor="middle" transform="translate(-60, 0)">PROFESSIONAL CERTIFICATE</text>
+    <text y="120" font-size="11" fill="#1a2744" letter-spacing="4" text-anchor="middle" transform="translate(400, -60)">CERTIFICATE OF COMPLETION</text>
+    <text y="180" font-size="14" fill="#1a274499" text-anchor="middle" transform="translate(400, 0)">This is to certify that</text>
+    <text y="260" font-size="48" font-weight="700" fill="#1a2744" text-anchor="middle" transform="translate(400, 0)">${escapeXml(d.candidateName)}</text>
+    <line x1="200" y1="280" x2="600" y2="280" stroke="#2563eb" stroke-opacity="0.3" stroke-width="1"/>
+    <text y="320" font-size="14" fill="#1a274499" text-anchor="middle" transform="translate(400, 0)">has successfully completed the professional assessment for</text>
+    <text y="370" font-size="22" font-weight="700" fill="#2563eb" text-anchor="middle" transform="translate(400, 0)">${escapeXml(d.certificationTitle)}</text>
+    <text y="400" font-size="13" fill="#1a274499" text-anchor="middle" transform="translate(400, 0)">Verified Level: ${escapeXml(d.level)} · Score: ${escapeXml(scoreText(d))}</text>
+
+    <g transform="translate(100, 560)">
+      <line x1="0" y1="0" x2="200" y2="0" stroke="#1a2744" stroke-opacity="0.3"/>
+      <text y="20" font-size="9" fill="#1a274466" letter-spacing="2">ISSUED BY</text>
+      <text y="38" font-size="13" fill="#1a2744">${escapeXml(d.source)}</text>
+    </g>
+    <g transform="translate(450, 540)">
+      <rect width="100" height="100" fill="#fff" rx="6" stroke="#2563eb" stroke-opacity="0.2"/>
+      ${qr.replace('<svg ', '<svg x="4" y="4" width="92" height="92" ')}
+      <text y="118" font-size="8" fill="#1a274466" font-family="monospace" text-anchor="middle" transform="translate(50, 0)">SCAN TO VERIFY</text>
+    </g>
+    <g transform="translate(700, 560)">
+      <line x1="0" y1="0" x2="200" y2="0" stroke="#1a2744" stroke-opacity="0.3"/>
+      <text y="20" font-size="9" fill="#1a274466" letter-spacing="2">DATE</text>
+      <text y="38" font-size="13" fill="#1a2744">${escapeXml(dateFmt(d.issuedAt))}</text>
+    </g>
+  </g>
+  <text x="561" y="770" text-anchor="middle" font-size="9" fill="#1a274466" font-family="monospace">ID: ${escapeXml(d.verifyToken)}</text>
+</svg>`
+}
+
+async function renderCorporate(d: CertData): Promise<string> {
+  const qr = await qrSvg(d.verifyUrl, 100)
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1123" height="794" viewBox="0 0 1123 794" font-family="Inter, system-ui, sans-serif">
+  <rect width="1123" height="794" fill="#0c1829"/>
+  <rect x="0" y="0" width="1123" height="4" fill="#c9a84c" opacity="0.6"/>
+  <rect x="0" y="790" width="1123" height="4" fill="#c9a84c" opacity="0.6"/>
+  <rect x="32" y="32" width="1059" height="730" fill="none" stroke="#c9a84c" stroke-opacity="0.15" stroke-width="1"/>
+  <line x1="32" y1="32" x2="72" y2="32" stroke="#c9a84c" stroke-opacity="0.5" stroke-width="2"/>
+  <line x1="32" y1="32" x2="32" y2="72" stroke="#c9a84c" stroke-opacity="0.5" stroke-width="2"/>
+  <line x1="1051" y1="32" x2="1091" y2="32" stroke="#c9a84c" stroke-opacity="0.5" stroke-width="2"/>
+  <line x1="1091" y1="32" x2="1091" y2="72" stroke="#c9a84c" stroke-opacity="0.5" stroke-width="2"/>
+  <line x1="32" y1="762" x2="72" y2="762" stroke="#c9a84c" stroke-opacity="0.5" stroke-width="2"/>
+  <line x1="32" y1="762" x2="32" y2="722" stroke="#c9a84c" stroke-opacity="0.5" stroke-width="2"/>
+  <line x1="1051" y1="762" x2="1091" y2="762" stroke="#c9a84c" stroke-opacity="0.5" stroke-width="2"/>
+  <line x1="1091" y1="762" x2="1091" y2="722" stroke="#c9a84c" stroke-opacity="0.5" stroke-width="2"/>
+
+  <g transform="translate(561, 100)">
+    <g transform="translate(-36, -18) scale(1.05)">${LOGO}</g>
+    <text x="40" y="4" text-anchor="middle" font-size="12" fill="#c9a84c" letter-spacing="6" font-weight="700">CODESPECTRA</text>
+  </g>
+  <text x="561" y="220" text-anchor="middle" font-size="38" font-weight="300" fill="#ffffff" letter-spacing="2">Corporate Achievement</text>
+  <line x1="511" y1="245" x2="611" y2="245" stroke="#c9a84c"/>
+  <text x="561" y="280" text-anchor="middle" font-size="12" fill="#ffffff80" letter-spacing="4">PRESENTED TO</text>
+  <text x="561" y="360" text-anchor="middle" font-size="48" font-weight="700" fill="#ffffff">${escapeXml(d.candidateName)}</text>
+  <line x1="280" y1="385" x2="842" y2="385" stroke="#c9a84c" stroke-opacity="0.3"/>
+  <text x="561" y="430" text-anchor="middle" font-size="14" fill="#ffffff99">In recognition of successful completion of the</text>
+  <text x="561" y="470" text-anchor="middle" font-size="22" font-weight="600" fill="#ffffff">${escapeXml(d.certificationTitle)}</text>
+  <text x="561" y="500" text-anchor="middle" font-size="13" fill="#c9a84c">Level: ${escapeXml(d.level)} · Score: ${escapeXml(scoreText(d))}</text>
+
+  <g transform="translate(120, 640)">
+    <line x1="0" y1="0" x2="200" y2="0" stroke="#c9a84c" stroke-opacity="0.3"/>
+    <text y="18" font-size="9" fill="#ffffff66" letter-spacing="2">ISSUING AUTHORITY</text>
+    <text y="34" font-size="13" fill="#ffffffcc">${escapeXml(d.source)}</text>
+  </g>
+  <g transform="translate(511, 620)">
+    <rect width="100" height="100" fill="#fff" rx="6"/>
+    ${qr.replace('<svg ', '<svg x="4" y="4" width="92" height="92" ')}
+    <text y="118" font-size="8" fill="#ffffff66" font-family="monospace" text-anchor="middle" transform="translate(50, 0)">VERIFY</text>
+  </g>
+  <g transform="translate(800, 640)">
+    <line x1="0" y1="0" x2="200" y2="0" stroke="#c9a84c" stroke-opacity="0.3"/>
+    <text y="18" font-size="9" fill="#ffffff66" letter-spacing="2">DATE OF ISSUE</text>
+    <text y="34" font-size="13" fill="#ffffffcc">${escapeXml(dateFmt(d.issuedAt))}</text>
+  </g>
+  <text x="561" y="770" text-anchor="middle" font-size="9" fill="#ffffff4d" font-family="monospace">Certificate ID: ${escapeXml(d.verifyToken)}</text>
+</svg>`
+}
+
+async function renderAcademic(d: CertData): Promise<string> {
+  const qr = await qrSvg(d.verifyUrl, 100)
+  return `<svg xmlns="http://www.w3.org/2000/svg" width="1123" height="794" viewBox="0 0 1123 794" font-family="Georgia, 'Times New Roman', serif">
+  <rect width="1123" height="794" fill="#f7f3eb"/>
+  <rect x="0" y="0" width="1123" height="8" fill="#2d5a3d"/>
+  <rect x="0" y="786" width="1123" height="8" fill="#2d5a3d"/>
+  <rect x="0" y="0" width="112" height="794" fill="#2d5a3d"/>
+  <circle cx="56" cy="397" r="36" fill="none" stroke="#c9a84c" stroke-width="2"/>
+  <text x="56" y="405" text-anchor="middle" font-size="32" fill="#c9a84c">★</text>
+
+  <g transform="translate(200, 100)">
+    <g transform="translate(0, 14)">${LOGO}</g>
+    <text x="44" y="30" font-size="13" fill="#2d5a3d" letter-spacing="4">CODESPECTRA</text>
+    <text y="100" font-size="36" font-weight="700" fill="#2d5a3d" text-anchor="middle" transform="translate(360, 0)">Certificate of Distinction</text>
+    <text y="140" font-size="14" fill="#2d3b2d99" font-style="italic" text-anchor="middle" transform="translate(360, 0)">This document certifies that</text>
+    <text y="230" font-size="48" font-weight="700" fill="#2d3b2d" text-anchor="middle" transform="translate(360, 0)">${escapeXml(d.candidateName)}</text>
+    <line x1="160" y1="250" x2="560" y2="250" stroke="#2d5a3d" stroke-opacity="0.3"/>
+    <text y="290" font-size="14" fill="#2d3b2d99" text-anchor="middle" transform="translate(360, 0)">has demonstrated academic excellence by successfully completing</text>
+    <text y="340" font-size="22" font-weight="700" fill="#2d5a3d" text-anchor="middle" transform="translate(360, 0)">${escapeXml(d.certificationTitle)}</text>
+    <text y="370" font-size="13" fill="#2d3b2d99" text-anchor="middle" transform="translate(360, 0)">Verified Level: ${escapeXml(d.level)} · Score: ${escapeXml(scoreText(d))}</text>
+
+    <g transform="translate(60, 520)">
+      <line x1="0" y1="0" x2="200" y2="0" stroke="#2d5a3d" stroke-opacity="0.3"/>
+      <text y="18" font-size="9" fill="#2d3b2d66" letter-spacing="2">CURRICULUM SOURCE</text>
+      <text y="34" font-size="13" fill="#2d3b2d">${escapeXml(d.source)}</text>
+    </g>
+    <g transform="translate(430, 500)">
+      <rect width="100" height="100" fill="#fff" rx="6" stroke="#2d5a3d" stroke-opacity="0.2"/>
+      ${qr.replace('<svg ', '<svg x="4" y="4" width="92" height="92" ')}
+      <text y="118" font-size="8" fill="#2d3b2d66" font-family="monospace" text-anchor="middle" transform="translate(50, 0)">SCAN TO VERIFY</text>
+    </g>
+    <g transform="translate(680, 520)">
+      <line x1="0" y1="0" x2="200" y2="0" stroke="#2d5a3d" stroke-opacity="0.3"/>
+      <text y="18" font-size="9" fill="#2d3b2d66" letter-spacing="2">DATE CONFERRED</text>
+      <text y="34" font-size="13" fill="#2d3b2d">${escapeXml(dateFmt(d.issuedAt))}</text>
+    </g>
+  </g>
+  <text x="561" y="770" text-anchor="middle" font-size="9" fill="#2d3b2d66" font-family="monospace">Academic Record ID: ${escapeXml(d.verifyToken)}</text>
+</svg>`
+}
+
 const RENDERERS: Record<Template, (d: CertData) => Promise<string>> = {
   classic: renderClassic,
   modern: renderModern,
   minimal: renderMinimal,
+  professional: renderProfessional,
+  corporate: renderCorporate,
+  academic: renderAcademic,
 }
 
 export async function GET(req: NextRequest, ctx: { params: Promise<{ token: string }> }) {

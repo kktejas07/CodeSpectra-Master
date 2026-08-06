@@ -44,6 +44,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/question-bank',
   '/dashboard/admin/exams',
   '/dashboard/admin/proctor',
+  '/dashboard/admin/certificates',
 
   // Billing & Plans
   '/dashboard/admin/pricing',
@@ -210,6 +211,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin': 'Admin Overview',
   '/dashboard/admin/system': 'Operations',
   '/dashboard/admin/proctor': 'Proctor',
+  '/dashboard/admin/certificates': 'Certificates',
   '/dashboard/admin/users': 'Users',
   '/dashboard/admin/roles': 'Roles',
   '/dashboard/admin/tenants': 'Organizations',

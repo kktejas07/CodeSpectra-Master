@@ -103,7 +103,7 @@ export async function PATCH(request: Request) {
         continue
       }
       if (k === 'certificate_template') {
-        if (['classic', 'modern', 'minimal'].includes(v as string)) next[k] = v
+        if (['classic', 'modern', 'minimal', 'professional', 'corporate', 'academic'].includes(v as string)) next[k] = v
         continue
       }
       if (typeof v === 'string') next[k] = v
