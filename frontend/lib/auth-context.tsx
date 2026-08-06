@@ -41,6 +41,17 @@ export function getLastLogin(): LastLoginInfo | null {
   } catch { return null }
 }
 
+/**
+ * True while a superadmin is viewing the app as another user
+ * (impersonation). While active we must NOT re-sync the Firebase session
+ * cookie, otherwise the admin's own idToken would overwrite the
+ * impersonated session.
+ */
+function isImpersonating(): boolean {
+  if (typeof document === 'undefined') return false
+  return document.cookie.split('; ').some((c) => c.startsWith('codespectra_impersonating=1'))
+}
+
 function setLastLogin(method: LastLoginInfo['method']) {
   if (typeof window === 'undefined') return
   localStorage.setItem(LAST_LOGIN_KEY, JSON.stringify({ method, at: new Date().toISOString() }))
@@ -116,6 +127,25 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         // Listen for token changes (fires on every token refresh — keeps session alive)
         unsub = a.onIdTokenChanged(async (fbUser) => {
           if (cancelled) return
+          // While impersonating, never overwrite the impersonated session
+          // with the admin's Firebase idToken.
+          if (isImpersonating()) {
+            try {
+              const res = await fetch('/api/auth/session', { credentials: 'include' })
+              const data = await res.json()
+              if (data?.user) {
+                setUser(toAuthUser({
+                  uid: data.user.uid,
+                  email: data.user.email,
+                  displayName: data.user.fullName,
+                  lastLoginMethod: data.user.lastLoginMethod,
+                  lastLoginAt: data.user.lastLoginAt,
+                }))
+              }
+            } catch { /* keep current user */ }
+            if (!cancelled) setLoading(false)
+            return
+          }
           if (fbUser) {
             setUser(toAuthUser(fbUser))
             try {
@@ -164,6 +194,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   useEffect(() => {
     if (loading || !user) return
     const interval = setInterval(async () => {
+      if (isImpersonating()) return
       try {
         const a = getFirebaseAuth()
         if (!a?.currentUser) return

@@ -3,6 +3,43 @@ import { requireAuth } from '@/lib/route-auth'
 import { orgInvitations, users, tenants, nowIso } from '@/lib/db/admin'
 
 /**
+ * GET /api/team/invitations/accept?token=... — public invite lookup used by the
+ * landing page to render the org name + expiry before accepting.
+ */
+export async function GET(request: NextRequest) {
+  const token = (request.nextUrl.searchParams.get('token') || '').trim()
+  if (!token) {
+    return NextResponse.json({ error: 'Invitation token is required' }, { status: 400 })
+  }
+
+  try {
+    const invCol = await orgInvitations()
+    const inv = await invCol.findOne({ token })
+    if (!inv || inv.status !== 'pending') {
+      return NextResponse.json({ error: 'Invitation not found or already used' }, { status: 404 })
+    }
+    const expired = new Date(inv.expires_at).getTime() < Date.now()
+
+    const tenantCol = await tenants()
+    const tenant = await tenantCol.findOne({ id: inv.organization_id })
+
+    return NextResponse.json({
+      org_name: tenant?.name || null,
+      org_active: tenant?.is_active ?? false,
+      email: inv.email,
+      invited_by: inv.invited_by,
+      role: inv.role,
+      expires_at: inv.expires_at,
+      expired,
+    })
+  } catch (e: unknown) {
+    const msg = e instanceof Error ? e.message : 'Failed to load invitation'
+    console.error('[CodeSpectra] team/invitations/accept GET:', e)
+    return NextResponse.json({ error: msg }, { status: 500 })
+  }
+}
+
+/**
  * POST /api/team/invitations/accept — accept a pending org invitation.
  * Body: { token }. On success the caller's user doc gets tenantId set to the
  * invitation's organization, and the invitation is marked accepted.

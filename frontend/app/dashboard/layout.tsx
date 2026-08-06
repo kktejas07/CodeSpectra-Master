@@ -4,6 +4,7 @@ import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 import {
   DASHBOARD_ROUTES,
   getDefaultDashboard,
@@ -915,6 +916,9 @@ export default function DashboardLayout({
           sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
         )}
       >
+        {/* Impersonation notice — superadmin acting as another user */}
+        <ImpersonationBanner />
+
         {/* Breadcrumbs + mobile menu (no top profile — account lives in sidebar footer) */}
         <div className="sticky top-0 z-20 flex h-12 items-center justify-between gap-3 border-b border-border/20 bg-background/80 px-4 backdrop-blur-xl lg:px-6">
           <Breadcrumbs homeHref={homeHref} className="min-w-0" />

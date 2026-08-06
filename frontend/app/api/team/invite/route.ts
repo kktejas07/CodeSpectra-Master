@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
-import { orgInvitations, users, newId, nowIso } from '@/lib/db/admin'
+import { orgInvitations, users, tenants, newId, nowIso } from '@/lib/db/admin'
+import { sendEmail } from '@/lib/send-email'
+import { emailTemplates } from '@/lib/email-templates'
 import type { Filter } from 'mongodb'
 
 export async function POST(request: NextRequest) {
@@ -30,6 +32,10 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ error: 'Email is required' }, { status: 400 })
     }
 
+    const tenantCol = await tenants()
+    const tenant = await tenantCol.findOne({ id: orgId })
+
+    const token = crypto.randomUUID()
     const invCol = await orgInvitations()
     await invCol.insertOne({
       id: newId(),
@@ -37,11 +43,24 @@ export async function POST(request: NextRequest) {
       email: email.trim().toLowerCase(),
       invited_by: gate.user.id,
       role: role || 'user',
-      token: crypto.randomUUID(),
+      token,
       expires_at: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000).toISOString(),
       status: 'pending',
       created_at: nowIso(),
     })
+
+    // Notify the invitee with the tenant/company name in the subject + body.
+    try {
+      const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+      const template = emailTemplates.orgInvite({
+        orgName: tenant?.name || 'your organization',
+        invitedByName: me?.fullName || me?.name || gate.user.email || 'Your organization admin',
+        acceptUrl: `${base}/dashboard/team/invites/${token}`,
+      })
+      await sendEmail(email.trim().toLowerCase(), template)
+    } catch (e) {
+      console.error('[Team Invite] Email send failed (invite still created):', e)
+    }
 
     return NextResponse.json({ success: true })
   } catch (error) {

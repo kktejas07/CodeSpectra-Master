@@ -31,9 +31,10 @@
 |---------|--------|----------|-------|
 | Organization model | ✅ | P2 | `TenantDoc` in `lib/db/admin.ts`, `tenants` collection |
 | Team management | ✅ | P2 | `/dashboard/admin/team` real tenant-scoped members + add-member |
-| Organization invitations | 🟡 | P2 | `organization_invitations` collection + invite + accept API |
+| Organization invitations | ✅ | P2 | `organization_invitations` collection + invite + accept API + landing page + branded email |
 | User role assignments | ✅ | P2 | Roles page + org picker + `normalizeUserRole()` |
-| Tenant CRUD | ✅ | P2 | `/dashboard/admin/tenants` page, CRUD API |
+| Tenant CRUD | ✅ | P2 | `/dashboard/admin/tenants` page, CRUD API, edit dialog, active toggle |
+| Tenant member list + impersonation | ✅ | P2 | Per-member dialog, `POST /api/admin/impersonate` (superadmin) + exit banner |
 | Tenant membership on users | ✅ | P2 | `tenantId` field on `user` collection, `route-auth` resolution |
 | Tenant isolation | 🟡 | P3 | Query-level filtering in progress (team members scoped; platform-wide pending) |
 

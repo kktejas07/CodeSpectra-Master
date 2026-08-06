@@ -120,6 +120,24 @@ Update organization (name, slug, plan, is_active).
 ### DELETE /api/admin/tenants/[id]
 Delete organization. Members are detached (`tenantId` set to null) but their accounts remain.
 
+### POST /api/admin/impersonate
+Superadmin signs in as another user to debug their experience.
+
+**Auth**: `requireSuperAdmin()`
+
+**Request Body:**
+```json
+{ "userId": "target-user-id" }
+```
+
+Saves the admin's real session cookie to `codespectra_impersonator` and swaps the session to the target user. Fellow superadmins cannot be impersonated (403). Restore with `POST /api/admin/impersonate/stop`.
+
+### POST /api/admin/impersonate/stop
+Restore the admin's original session after impersonation.
+
+### GET /api/admin/impersonate
+Returns `{ "impersonating": true }` when the current session is an impersonation.
+
 ## Admin Teams
 
 ### GET /api/admin/teams
@@ -333,6 +351,8 @@ Body: `{ branch?, subject?, difficulty?: 'Easy'|'Medium'|'Hard'|'mixed', types?:
 | `/api/admin/users/[userId]` | GET, PATCH, DELETE | superadmin | `user` |
 | `/api/admin/tenants` | GET, POST | superadmin | `tenants` |
 | `/api/admin/tenants/[id]` | PATCH, DELETE | superadmin | `tenants` |
+| `/api/admin/impersonate` | GET, POST | superadmin | `user`, session |
+| `/api/admin/impersonate/stop` | POST | session cookie | `user`, session |
 | `/api/admin/teams` | GET | superadmin | `teams` |
 | `/api/admin/teams/members` | GET, POST | superadmin, tenant_admin | `user` |
 | `/api/admin/teams/activity` | GET | superadmin | multiple |
