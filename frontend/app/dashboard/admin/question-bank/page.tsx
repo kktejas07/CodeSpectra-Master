@@ -348,17 +348,16 @@ export default function QuestionBankPage() {
                 <th className="text-left py-3 px-4 font-semibold text-xs">Type</th>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Industry</th>
                 <th className="text-left py-3 px-4 font-semibold text-xs">Marks</th>
-                <th className="text-left py-3 px-4 font-semibold text-xs">Source</th>
                 <th className="text-right py-3 px-4 font-semibold text-xs">Actions</th>
               </tr>
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
+                <tr><td colSpan={9} className="py-12 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />Loading...
                 </td></tr>
               ) : rows.length === 0 ? (
-                <tr><td colSpan={10} className="py-12 text-center text-muted-foreground text-sm">
+                <tr><td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
                   No questions found. Add one, import a CSV/JSON, or generate with AI.
                 </td></tr>
               ) : rows.map(r => (
@@ -374,7 +373,6 @@ export default function QuestionBankPage() {
                   <td className="py-3 px-4 text-xs">{r.type}</td>
                   <td className="py-3 px-4 text-xs truncate max-w-[130px]">{r.industry ? industryLabel(r.industry) : <span className="text-muted-foreground text-xs">—</span>}</td>
                   <td className="py-3 px-4 text-xs">{r.marks}</td>
-                  <td className="py-3 px-4 text-xs uppercase text-muted-foreground">{r.source || 'manual'}</td>
                   <td className="py-3 px-4 text-right">
                     <div className="inline-flex items-center gap-1">
                       <Button variant="ghost" size="sm" className="h-8 w-8 p-0" onClick={() => { setViewing(r); setViewOpen(true) }} title="View"><Eye className="w-3.5 h-3.5" /></Button>

@@ -16,6 +16,7 @@ erDiagram
     user ||--o{ notifications : "receives"
     user ||--o{ notification_preferences : "configures"
     user ||--o{ organization_invitations : "sent to"
+    user ||--o{ tenants : "belongs to (tenantId)"
     user ||--o{ permissions : "assigned"
     user ||--o{ xp_events : "earns"
     user ||--o{ code_scans : "initiates"
@@ -667,6 +668,16 @@ erDiagram
         string created_at
     }
 
+    tenants {
+        string id PK "UUID"
+        string name
+        string slug "unique"
+        string plan "enterprise"
+        bool is_active
+        string created_at
+        string created_by FK
+    }
+
     user_roles {
         string id PK "UUID"
         string user_id FK
@@ -950,7 +961,7 @@ erDiagram
 
 | Domain | Collections |
 |--------|-------------|
-| **Auth** | `user`, `account`, `session`, `verification`, `user_roles`, `organization_invitations` |
+| **Auth** | `user`, `account`, `session`, `verification`, `user_roles`, `organization_invitations`, `tenants` |
 | **Scanner** | `code_scans`, `code_metrics`, `code_issues`, `suggested_fixes`, `quality_gates`, `scan_activities`, `file_metrics`, `quality_ratings`, `code_review_comments`, `scan_comments` |
 | **AI** | `ai_chat_sessions`, `ai_chat_messages`, `ai_code_reviews`, `ai_grades`, `ai_generated_problems`, `proctor_events`, `identity_verifications`, `skill_insights_cache` |
 | **Content** | `problems`, `submissions`, `problem_languages`, `courses`, `challenges`, `tracks`, `exams`, `exam_submissions` |

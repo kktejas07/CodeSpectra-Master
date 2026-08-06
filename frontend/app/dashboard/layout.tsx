@@ -1,9 +1,10 @@
 'use client'
 
-import { useState, useEffect, useMemo, Suspense } from 'react'
+import { useState, useEffect, useMemo, useRef, Suspense } from 'react'
 import { useRouter, usePathname } from 'next/navigation'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
+import { ImpersonationBanner } from '@/components/admin/impersonation-banner'
 import {
   DASHBOARD_ROUTES,
   getDefaultDashboard,
@@ -51,18 +52,21 @@ import {
   Globe2,
   SlidersHorizontal,
   ChevronRight,
+  ChevronDown,
   Bot,
   Sparkles,
   Sparkles as SparklesIcon,
   Camera as CameraIcon,
   Layers as LayersIcon,
   CreditCard as CreditCardIcon,
+  Building2,
   Shield,
   MessageSquare,
   Database,
   Briefcase,
   Flame,
   Mail,
+  ScanSearch,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -116,6 +120,7 @@ export default function DashboardLayout({
   const [permsLoaded, setPermsLoaded] = useState(false)
   const [lockedPages, setLockedPages] = useState<string[]>([])
   const [chatbotEnabled, setChatbotEnabled] = useState(false)
+  const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
 
   const { user: fbUser, signOut } = useAuth()
 
@@ -265,7 +270,9 @@ export default function DashboardLayout({
   }, [userProfile?.id, pathname])
 
   type NavLeaf = { href: string; label: string; icon: LucideIcon; route: string }
-  type NavEntry = { type: 'link'; item: NavLeaf } | { type: 'section'; label: string }
+  type NavEntry =
+    | { type: 'link'; item: NavLeaf }
+    | { type: 'group'; label: string; items: NavLeaf[] }
 
   const effectiveLockedPages = userProfile?.role && isSuperAdmin(userProfile.role) ? [] : lockedPages
 
@@ -288,6 +295,7 @@ export default function DashboardLayout({
       [p.permissions]: Shield,
       [p.plans]: FileText,
       [p.pricing]: FileText,
+      '/dashboard/admin/tenants': Building2,
       '/dashboard/admin/coupons': CreditCardIcon,
       '/dashboard/admin/announcements': Bell,
       '/dashboard/admin/newsletter': Mail,
@@ -337,6 +345,7 @@ export default function DashboardLayout({
       '/dashboard/100-days': Flame,
       '/dashboard/cad': LayersIcon,
       '/dashboard/recruiter-analytics': BarChart3,
+      '/dashboard/scanner': ScanSearch,
     }
 
     const HREF_OVERRIDES: Record<string, string> = {
@@ -350,14 +359,20 @@ export default function DashboardLayout({
       for (const s of USER_SECTIONS) sectionByRoute.set(s.firstRoute, s.label)
       const seenSections = new Set<string>()
       const result: NavEntry[] = []
+      let current: { label: string; items: NavLeaf[] } | null = null
       for (const leaf of leaves) {
         const label = sectionByRoute.get(leaf.route)
         if (label && !seenSections.has(label)) {
           seenSections.add(label)
-          result.push({ type: 'section', label })
+          if (current) result.push({ type: 'group', label: current.label, items: current.items })
+          current = { label, items: [leaf] }
+        } else if (current) {
+          current.items.push(leaf)
+        } else {
+          result.push({ type: 'link', item: leaf })
         }
-        result.push({ type: 'link', item: leaf })
       }
+      if (current) result.push({ type: 'group', label: current.label, items: current.items })
       return result
     }
 
@@ -472,6 +487,115 @@ export default function DashboardLayout({
       return pathname === href || pathname.startsWith(`${href}/`)
     }
     return pathname.startsWith(`${href}/`)
+  }
+
+  // Auto-expand the section containing the current route (keeps the active page visible after nav)
+  const activeSection = useMemo(() => {
+    for (const entry of navEntries) {
+      if (entry.type === 'group' && entry.items.some(item => isActive(item.href))) {
+        return entry.label
+      }
+    }
+    return null
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pathname, navEntries])
+
+  const sectionsInitialized = useRef(false)
+
+  // First time nav is ready: collapse every section except the active one (dropdown default state)
+  useEffect(() => {
+    if (sectionsInitialized.current || navEntries.length === 0) return
+    sectionsInitialized.current = true
+    const allLabels = navEntries
+      .filter((e): e is Extract<typeof e, { type: 'group' }> => e.type === 'group')
+      .map(e => e.label)
+    setCollapsedSections(prev => {
+      const next = new Set(prev)
+      for (const label of allLabels) {
+        if (label !== activeSection) next.add(label)
+      }
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [navEntries.length, activeSection])
+
+  // Accordion: navigating into a section keeps it open and auto-collapses every other section
+  useEffect(() => {
+    if (!activeSection) return
+    setCollapsedSections(prev => {
+      const next = new Set(prev)
+      for (const entry of navEntries) {
+        if (entry.type === 'group' && entry.label !== activeSection) {
+          next.add(entry.label)
+        }
+      }
+      next.delete(activeSection)
+      return next
+    })
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, navEntries])
+
+  const toggleSection = (label: string) => {
+    setCollapsedSections(prev => {
+      const next = new Set(prev)
+      if (next.has(label)) next.delete(label)
+      else next.add(label)
+      return next
+    })
+  }
+
+  const renderLeaf = (leaf: NavLeaf) => {
+    const { href, label, icon: IconComponent } = leaf
+    const active = isActive(href)
+    const nestedShell = mainNavHasNestedShell(href)
+    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+    const basePath = href.split('?')[0]
+    const isLocked = effectiveLockedPages.some(r => basePath === r || basePath.startsWith(r + '/'))
+    const showLock = isLocked && (userProfile?.role ? !isSuperAdmin(userProfile.role) : true)
+    const chevron = nestedShell ? (
+      <ChevronRight
+        className={cn(
+          'h-4 w-4 shrink-0 text-muted-foreground/70',
+          active && 'text-primary/80',
+          sidebarCollapsed && 'lg:sr-only'
+        )}
+        aria-hidden
+      />
+    ) : null
+    return (
+      <Link
+        key={href}
+        href={href}
+        title={label}
+        prefetch={false}
+        onClick={() => setSidebarOpen(false)}
+        data-testid={`sidebar-nav-${slug}`}
+      >
+        <div
+          className={cn(
+            'flex min-w-0 w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+            sidebarCollapsed && 'lg:justify-center lg:px-2',
+            active
+              ? 'bg-primary/10 font-medium text-primary'
+              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+          )}
+        >
+          <IconComponent className="h-4 w-4 shrink-0 opacity-90" />
+          <span
+            className={cn(
+              'min-w-0 flex-1 truncate',
+              sidebarCollapsed && 'lg:sr-only'
+            )}
+          >
+            {label}
+          </span>
+          {showLock && (
+            <Lock className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+          )}
+          {chevron}
+        </div>
+      </Link>
+    )
   }
 
   return (
@@ -604,67 +728,39 @@ export default function DashboardLayout({
                   </div>
                 ) : (
                   navEntries.map((entry) => {
-                    if (entry.type === 'section') {
+                    if (entry.type === 'group') {
+                      const { label, items } = entry
+                      const expanded = sidebarCollapsed || !collapsedSections.has(label)
                       return (
-                        <div key={entry.label} className={cn(
-                          'px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/60',
-                          sidebarCollapsed && 'lg:sr-only'
-                        )}>
-                          {entry.label}
-                        </div>
-                      )
-                    }
-                    const { href, label, icon: IconComponent } = entry.item
-                    const active = isActive(href)
-                    const nestedShell = mainNavHasNestedShell(href)
-                    const slug = label.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-                    const basePath = href.split('?')[0]
-                    const isLocked = effectiveLockedPages.some(r => basePath === r || basePath.startsWith(r + '/'))
-                    const showLock = isLocked && (userProfile?.role ? !isSuperAdmin(userProfile.role) : true)
-                    const chevron = nestedShell ? (
-                      <ChevronRight
-                        className={cn(
-                          'h-4 w-4 shrink-0 text-muted-foreground/70',
-                          active && 'text-primary/80',
-                          sidebarCollapsed && 'lg:sr-only'
-                        )}
-                        aria-hidden
-                      />
-                    ) : null
-                    return (
-                      <Link
-                        key={href}
-                        href={href}
-                        title={label}
-                        prefetch={false}
-                        onClick={() => setSidebarOpen(false)}
-                        data-testid={`sidebar-nav-${slug}`}
-                      >
-                        <div
-                          className={cn(
-                            'flex min-w-0 w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
-                            sidebarCollapsed && 'lg:justify-center lg:px-2',
-                            active
-                              ? 'bg-primary/10 font-medium text-primary'
-                              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
-                          )}
-                        >
-                          <IconComponent className="h-4 w-4 shrink-0 opacity-90" />
-                          <span
+                        <div key={label} className="space-y-0.5">
+                          <button
+                            type="button"
+                            onClick={() => toggleSection(label)}
+                            aria-expanded={expanded}
                             className={cn(
-                              'min-w-0 flex-1 truncate',
+                              'flex w-full items-center justify-between gap-1 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground',
                               sidebarCollapsed && 'lg:sr-only'
                             )}
                           >
-                            {label}
-                          </span>
-                          {showLock && (
-                            <Lock className="h-4 w-4 shrink-0 text-muted-foreground/50" />
+                            <span className="min-w-0 truncate">{label}</span>
+                            <ChevronDown
+                              className={cn(
+                                'h-3.5 w-3.5 shrink-0 transition-transform duration-200',
+                                expanded && 'rotate-180',
+                                sidebarCollapsed && 'lg:sr-only'
+                              )}
+                              aria-hidden
+                            />
+                          </button>
+                          {expanded && (
+                            <div className="space-y-0.5">
+                              {items.map(item => renderLeaf(item))}
+                            </div>
                           )}
-                          {chevron}
                         </div>
-                      </Link>
-                    )
+                      )
+                    }
+                    return renderLeaf(entry.item)
                   })
                 )}
               </div>
@@ -820,6 +916,9 @@ export default function DashboardLayout({
           sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
         )}
       >
+        {/* Impersonation notice — superadmin acting as another user */}
+        <ImpersonationBanner />
+
         {/* Breadcrumbs + mobile menu (no top profile — account lives in sidebar footer) */}
         <div className="sticky top-0 z-20 flex h-12 items-center justify-between gap-3 border-b border-border/20 bg-background/80 px-4 backdrop-blur-xl lg:px-6">
           <Breadcrumbs homeHref={homeHref} className="min-w-0" />

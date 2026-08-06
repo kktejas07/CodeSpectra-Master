@@ -288,6 +288,17 @@ export const emailTemplates = {
     ${baseStyles.footer}`,
   }),
 
+  orgInvite: (params: { orgName: string; invitedByName: string; acceptUrl: string }) => ({
+    subject: `You're invited to join ${params.orgName} on CodeSpectra`,
+    html: `${baseStyles.wrapper}
+      <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Organization invitation</h1>
+      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px"><strong>${params.invitedByName}</strong> invited you to join <strong>${params.orgName}</strong> on CodeSpectra.</p>
+      <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Once you accept, you'll be a member of <strong>${params.orgName}</strong> and get access to their team's assessments, exams and codeathons.</p>
+      ${baseStyles.button(params.acceptUrl, 'Accept Invitation')}
+      <p style="margin:8px 0 0;font-size:13px;color:${BRAND.muted}">This invite link will expire in 7 days.</p>
+    ${baseStyles.footer}`,
+  }),
+
   twoFactorBackup: (backupCodes: string) => ({
     subject: '2FA backup codes — CodeSpectra',
     html: `${baseStyles.wrapper}

@@ -39,6 +39,8 @@ type TableUser = {
   joinedAt: string
   lastActive: string
   plan: string
+  tenantId: string | null
+  tenantName: string | null
 }
 
 function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
@@ -52,6 +54,8 @@ function mapRowToTableUser(row: AdminUserListRow, tick: number): TableUser {
     joinedAt: row.joinedAt,
     lastActive: row.lastActiveAt ? formatRelativeTime(row.lastActiveAt) : 'Never',
     plan: (row as any).plan || 'free',
+    tenantId: (row as any).tenant_id ?? null,
+    tenantName: (row as any).tenant_name ?? null,
   }
 }
 
@@ -72,6 +76,7 @@ export default function UsersManagement() {
   const [resetPwValue, setResetPwValue] = useState('')
   const [resetPwLoading, setResetPwLoading] = useState(false)
   const [sendingResetEmail, setSendingResetEmail] = useState<string | null>(null)
+  const [tenants, setTenants] = useState<{ id: string; name: string }[]>([])
 
   const loadUsers = useCallback(async () => {
     const res = await fetch('/api/admin/users', { credentials: 'include' })
@@ -80,6 +85,21 @@ export default function UsersManagement() {
       throw new Error(json.error || `Failed to load users (${res.status})`)
     }
     setRows(json.users as AdminUserListRow[])
+  }, [])
+
+  useEffect(() => {
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/admin/tenants', { credentials: 'include' })
+        if (res.ok) {
+          const json = await res.json().catch(() => ({}))
+          const list = json.tenants || json.data || []
+          if (!cancelled) setTenants(list.map((t: any) => ({ id: t.id, name: t.name })))
+        }
+      } catch { /* org picker is optional */ }
+    })()
+    return () => { cancelled = true }
   }, [])
 
   useEffect(() => {
@@ -251,13 +271,14 @@ export default function UsersManagement() {
     try { await loadUsers() } catch { /* ignore */ }
   }
 
-  const handleConfirmRole = async (payload: { role?: string; full_name?: string; status?: string; plan?: string }) => {
+  const handleConfirmRole = async (payload: { role?: string; full_name?: string; status?: string; plan?: string; tenantId?: string | null }) => {
     if (!selectedUser) return
-    const body: Record<string, string> = {}
+    const body: Record<string, string | null> = {}
     if (payload.role !== undefined) body.role = normalizeUserRole(payload.role)
     if (payload.full_name !== undefined) body.full_name = payload.full_name.trim()
     if (payload.status !== undefined) body.status = payload.status
     if (payload.plan !== undefined) body.plan = payload.plan
+    if (payload.tenantId !== undefined) body.tenantId = payload.tenantId
     if (Object.keys(body).length === 0) return
     try {
       const res = await csrfFetch(`/api/admin/users/${selectedUser.id}`, {
@@ -275,6 +296,7 @@ export default function UsersManagement() {
       if (body.role !== undefined) parts.push('Role')
       if (body.status !== undefined) parts.push('Status')
       if (body.plan !== undefined) parts.push('Plan')
+      if (body.tenantId !== undefined) parts.push('Organization')
       addToast({ type: 'success', title: `${parts.join(', ')} updated` })
       try {
         await loadUsers()
@@ -297,6 +319,7 @@ export default function UsersManagement() {
     full_name: string
     password: string
     role: UserRole
+    tenantId?: string | null
   }) => {
     const res = await csrfFetch('/api/admin/users', {
       method: 'POST',
@@ -307,6 +330,7 @@ export default function UsersManagement() {
         full_name: payload.full_name,
         password: payload.password || undefined,
         role: payload.role,
+        tenantId: payload.tenantId || null,
       }),
     })
     const json = await res.json().catch(() => ({}))
@@ -380,6 +404,8 @@ export default function UsersManagement() {
         currentRole={selectedUser?.role}
         currentStatus={selectedUser?.status}
         currentPlan={selectedUser?.plan}
+        currentTenantId={selectedUser?.tenantId ?? null}
+        tenants={tenants}
         onOpenChange={setRoleDialogOpen}
         onConfirm={handleConfirmRole}
       />

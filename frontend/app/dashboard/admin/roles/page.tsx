@@ -19,13 +19,19 @@ import { useConfirm } from '@/lib/confirm-context'
 interface UserData {
   id: string; email: string; full_name?: string; name?: string
   role: string; status: string; plan?: string
+  tenant_id?: string | null; tenant_name?: string | null
 }
 
-export default function UserRoleAssignments() {
+interface Tenant {
+  id: string; name: string; slug?: string
+}
+
+export default function RolesPage() {
   const confirmDialog = useConfirm()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const [users, setUsers] = useState<UserData[]>([])
+  const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [roleFilter, setRoleFilter] = useState('all')
@@ -44,7 +50,15 @@ export default function UserRoleAssignments() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchUsers() }, [])
+  const fetchTenants = async () => {
+    try {
+      const res = await fetch('/api/admin/tenants', { credentials: 'include' })
+      const data = await res.json()
+      if (res.ok) setTenants(data.data || [])
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => { void fetchUsers(); void fetchTenants() }, [])
 
   useEffect(() => { setPage(1) }, [search, roleFilter])
 
@@ -57,6 +71,23 @@ export default function UserRoleAssignments() {
       })
       if (res.ok) {
         addToast({ type: 'success', title: 'Updated', message: 'User role changed' })
+        await fetchUsers()
+      } else {
+        const d = await res.json()
+        addToast({ type: 'error', title: 'Failed', message: d.error })
+      }
+    } catch { addToast({ type: 'error', title: 'Error', message: 'Network error' }) }
+  }
+
+  const updateUserTenant = async (userId: string, tenantId: string) => {
+    try {
+      const res = await csrfFetch(`/api/admin/users/${userId}`, {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tenantId: tenantId === '__none__' ? null : tenantId }),
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Updated', message: 'Organization changed' })
         await fetchUsers()
       } else {
         const d = await res.json()
@@ -150,7 +181,7 @@ export default function UserRoleAssignments() {
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"><Users className="h-6 w-6 text-primary" /></div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">User Role Assignments
+            <h1 className="text-3xl font-bold text-foreground">Roles
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
@@ -237,6 +268,7 @@ export default function UserRoleAssignments() {
               <th className="text-left py-3 px-4 font-semibold text-xs">User</th>
               <th className="text-left py-3 px-4 font-semibold text-xs">Email</th>
               <th className="text-left py-3 px-4 font-semibold text-xs">Role</th>
+              <th className="text-left py-3 px-4 font-semibold text-xs">Organization</th>
               <th className="text-left py-3 px-4 font-semibold text-xs">Plan</th>
               <th className="text-left py-3 px-4 font-semibold text-xs">Status</th>
               <th className="text-right py-3 px-4 font-semibold text-xs">Actions</th>
@@ -244,7 +276,7 @@ export default function UserRoleAssignments() {
           </thead>
           <tbody>
             {filteredUsers.length === 0 ? (
-              <tr><td colSpan={7} className="py-8 text-center text-muted-foreground text-xs">No users found</td></tr>
+              <tr><td colSpan={8} className="py-8 text-center text-muted-foreground text-xs">No users found</td></tr>
             ) : (
               paginatedUsers.map(u => (
                 <tr key={u.id} className="border-b border-border hover:bg-muted/50">
@@ -264,6 +296,19 @@ export default function UserRoleAssignments() {
                       <option value="user">User</option>
                       <option value="tenant_admin">Org Admin</option>
                       <option value="superadmin">Platform Admin</option>
+                    </select>
+                  </td>
+                  <td className="py-2.5 px-4">
+                    <select
+                      value={u.tenant_id || '__none__'}
+                      onChange={e => updateUserTenant(u.id, e.target.value)}
+                      className="text-xs bg-background border border-border rounded px-2 py-1 max-w-[140px]"
+                      aria-label="Organization"
+                    >
+                      <option value="__none__">— No org —</option>
+                      {tenants.map(t => (
+                        <option key={t.id} value={t.id}>{t.name}</option>
+                      ))}
                     </select>
                   </td>
                   <td className="py-2.5 px-4"><Badge variant="outline" className="text-[10px]">{u.plan || 'free'}</Badge></td>
