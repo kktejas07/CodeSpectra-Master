@@ -81,7 +81,7 @@ export async function POST(request: NextRequest) {
   const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  let body: { email?: string; name?: string; password?: string; tenantId?: string }
+  let body: { email?: string; name?: string; password?: string; tenantId?: string; role?: string }
   try {
     body = await request.json()
   } catch {
@@ -107,11 +107,15 @@ export async function POST(request: NextRequest) {
       )
     }
 
+    // Superadmin may provision the new member as an org admin; tenant admins always add plain users.
+    const requestedRole = (body.role || '').trim().toLowerCase()
+    const memberRole = gate.user.role === 'superadmin' && requestedRole === 'tenant_admin' ? 'tenant_admin' : 'user'
+
     const existing = await userCol.findOne({ email })
     if (existing) {
       await userCol.updateOne(
         { email },
-        { $set: { tenantId, updatedAt: new Date() } },
+        { $set: { tenantId, role: existing.role === 'superadmin' ? existing.role : memberRole, updatedAt: new Date() } },
       )
       return NextResponse.json({ user: { id: existing.id || String(existing._id), email, already_existed: true } }, { status: 200 })
     }
@@ -158,7 +162,7 @@ export async function POST(request: NextRequest) {
           name: fullName,
           fullName,
           passwordHash,
-          role: 'user',
+          role: memberRole,
           tenantId,
           updatedAt: new Date(),
         },
@@ -167,7 +171,7 @@ export async function POST(request: NextRequest) {
       { upsert: true },
     )
 
-    return NextResponse.json({ user: { id: newUserId, email, full_name: fullName, role: 'user', tenant_id: tenantId } }, { status: 201 })
+    return NextResponse.json({ user: { id: newUserId, email, full_name: fullName, role: memberRole, tenant_id: tenantId } }, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to add member'
     console.error('[CodeSpectra] admin/teams/members POST:', e)

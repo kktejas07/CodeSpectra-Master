@@ -47,6 +47,9 @@ export default function TenantsPage() {
   const [name, setName] = useState('')
   const [slug, setSlug] = useState('')
   const [plan, setPlan] = useState('enterprise')
+  const [adminName, setAdminName] = useState('')
+  const [adminEmail, setAdminEmail] = useState('')
+  const [adminPassword, setAdminPassword] = useState('')
 
   const [editTenant, setEditTenant] = useState<Tenant | null>(null)
   const [editName, setEditName] = useState('')
@@ -59,6 +62,13 @@ export default function TenantsPage() {
   const [members, setMembers] = useState<TenantMember[]>([])
   const [membersLoading, setMembersLoading] = useState(false)
   const [impersonatingId, setImpersonatingId] = useState<string | null>(null)
+
+  const [addMemberOpen, setAddMemberOpen] = useState(false)
+  const [addingMember, setAddingMember] = useState(false)
+  const [newMemberName, setNewMemberName] = useState('')
+  const [newMemberEmail, setNewMemberEmail] = useState('')
+  const [newMemberPassword, setNewMemberPassword] = useState('')
+  const [newMemberRole, setNewMemberRole] = useState('user')
 
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
@@ -96,12 +106,26 @@ export default function TenantsPage() {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: name.trim(), slug: slug.trim(), plan }),
+        body: JSON.stringify({
+          name: name.trim(),
+          slug: slug.trim(),
+          plan,
+          admin_name: adminName.trim(),
+          admin_email: adminEmail.trim(),
+          admin_password: adminPassword,
+        }),
       })
       const json = await res.json()
       if (res.ok) {
-        addToast({ type: 'success', title: 'Created', message: `Organization "${name.trim()}" created` })
+        addToast({
+          type: 'success',
+          title: 'Created',
+          message: json.admin
+            ? `Organization "${name.trim()}" created with org admin ${json.admin.email}`
+            : `Organization "${name.trim()}" created`,
+        })
         setName(''); setSlug(''); setPlan('enterprise')
+        setAdminName(''); setAdminEmail(''); setAdminPassword('')
         setCreateOpen(false)
         await fetchTenants()
       } else {
@@ -212,6 +236,44 @@ export default function TenantsPage() {
     } catch (e) {
       addToast({ type: 'error', title: 'Impersonation failed', message: e instanceof Error ? e.message : 'Unknown error' })
       setImpersonatingId(null)
+    }
+  }
+
+  const handleAddMember = async (e: React.FormEvent) => {
+    e.preventDefault()
+    if (!membersOf || addingMember) return
+    if (!newMemberEmail.trim()) return
+    setAddingMember(true)
+    try {
+      const res = await csrfFetch('/api/admin/teams/members', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          email: newMemberEmail.trim(),
+          name: newMemberName.trim(),
+          password: newMemberPassword || undefined,
+          tenantId: membersOf.id,
+          role: newMemberRole,
+        }),
+      })
+      const json = await res.json()
+      if (res.ok) {
+        addToast({
+          type: 'success',
+          title: 'Member added',
+          message: `${json.user.email} added to "${membersOf.name}"`,
+        })
+        setNewMemberName(''); setNewMemberEmail(''); setNewMemberPassword(''); setNewMemberRole('user')
+        setAddMemberOpen(false)
+        await openMembers(membersOf)
+      } else {
+        addToast({ type: 'error', title: 'Failed', message: json.error })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to add member' })
+    } finally {
+      setAddingMember(false)
     }
   }
 
@@ -349,7 +411,7 @@ export default function TenantsPage() {
             <DialogHeader>
               <DialogTitle>New organization</DialogTitle>
               <DialogDescription>
-                Create a tenant. Then assign a user the Organization admin role and attach them to it from the Roles page.
+                Create a tenant. Optionally provision the org admin account in the same step, then impersonate them to verify their experience.
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 text-xs">
@@ -371,6 +433,22 @@ export default function TenantsPage() {
                     <SelectItem value="free">Free</SelectItem>
                   </SelectContent>
                 </Select>
+              </div>
+              <div className="rounded-lg border border-border/60 p-3 space-y-3">
+                <p className="text-xs font-semibold text-foreground">Org admin account <span className="font-normal text-muted-foreground">(optional)</span></p>
+                <div className="grid gap-2">
+                  <Label htmlFor="tenant-admin-name">Name</Label>
+                  <Input id="tenant-admin-name" value={adminName} onChange={e => setAdminName(e.target.value)} placeholder="Jane Doe" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="tenant-admin-email">Email</Label>
+                  <Input id="tenant-admin-email" type="email" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="jane@acme.com" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="tenant-admin-password">Password</Label>
+                  <Input id="tenant-admin-password" type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} placeholder="Min 8 characters" />
+                </div>
+                <p className="text-[11px] text-muted-foreground">Leave email empty to create the org without an admin and assign one later.</p>
               </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-2">
@@ -437,17 +515,23 @@ export default function TenantsPage() {
               <Building2 className="h-4 w-4" /> {membersOf?.name || ''} members
             </DialogTitle>
             <DialogDescription>
-              People attached to this tenant. Impersonate any member to view the app as them.
+              People attached to this tenant. Add members or impersonate one to view the app as them.
             </DialogDescription>
           </DialogHeader>
-          <div className="max-h-[50vh] overflow-y-auto py-2">
+          <div className="flex items-center justify-between gap-2">
+            <p className="text-xs text-muted-foreground">{members.length} member{members.length !== 1 ? 's' : ''}</p>
+            <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => setAddMemberOpen(true)}>
+              <Plus className="h-3.5 w-3.5" /> Add member
+            </Button>
+          </div>
+          <div className="max-h-[45vh] overflow-y-auto py-2">
             {membersLoading ? (
               <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
             ) : members.length === 0 ? (
               <div className="text-center py-10">
                 <UserRound className="mx-auto h-10 w-10 text-muted-foreground/30" />
                 <p className="mt-2 text-sm text-muted-foreground">No members in this organization yet.</p>
-                <p className="text-xs text-muted-foreground">Assign users to this tenant from the Roles page, or add them via the Organization page.</p>
+                <p className="text-xs text-muted-foreground">Use "Add member" to create one and attach it to this org.</p>
               </div>
             ) : (
               <div className="space-y-2">
@@ -495,6 +579,51 @@ export default function TenantsPage() {
           <DialogFooter className="gap-2 sm:gap-2">
             <Button variant="outline" onClick={() => setMembersOf(null)}>Close</Button>
           </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add member dialog */}
+      <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
+        <DialogContent className="sm:max-w-md">
+          <form onSubmit={handleAddMember}>
+            <DialogHeader>
+              <DialogTitle>Add member</DialogTitle>
+              <DialogDescription>
+                Create a user and attach them to {membersOf?.name || 'this organization'}.
+              </DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4 text-xs">
+              <div className="grid gap-2">
+                <Label htmlFor="member-name">Name</Label>
+                <Input id="member-name" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder="Jane Doe" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="member-email">Email</Label>
+                <Input id="member-email" type="email" required value={newMemberEmail} onChange={e => setNewMemberEmail(e.target.value)} placeholder="jane@acme.com" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="member-password">Password</Label>
+                <Input id="member-password" type="password" value={newMemberPassword} onChange={e => setNewMemberPassword(e.target.value)} placeholder="Min 8 characters" />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="member-role">Role</Label>
+                <Select value={newMemberRole} onValueChange={setNewMemberRole}>
+                  <SelectTrigger id="member-role"><SelectValue /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user">User</SelectItem>
+                    <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                  </SelectContent>
+                </Select>
+                <p className="text-[11px] text-muted-foreground">Org Admin can manage this tenant's team. Pick User for regular members.</p>
+              </div>
+            </div>
+            <DialogFooter className="gap-2 sm:gap-2">
+              <Button type="button" variant="outline" onClick={() => setAddMemberOpen(false)}>Cancel</Button>
+              <Button type="submit" disabled={addingMember || !newMemberEmail.trim()}>
+                {addingMember ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Adding…</> : 'Add member'}
+              </Button>
+            </DialogFooter>
+          </form>
         </DialogContent>
       </Dialog>
     </div>

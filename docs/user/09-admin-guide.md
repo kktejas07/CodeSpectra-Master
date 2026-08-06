@@ -180,7 +180,7 @@ Manage subscription plans (Free, Pro, Enterprise):
 - Edit plan descriptions
 - Save changes to the database
 
-## Team Management (Tenant Admin)
+ ## Team Management (Tenant Admin)
 
 Navigate to `/dashboard/admin/team`.
 
@@ -197,3 +197,23 @@ For organization admins:
 - Billing
 - Email settings
 - Notifications
+
+## Organizations (Superadmin)
+
+Navigate to `/dashboard/admin/tenants` (superadmin only). Manage enterprise tenants and their members.
+
+### Create an Organization
+Click **New organization**. Enter the org name, optional slug and plan. To create the org admin in the same step, fill in the **Org admin account** section (name, email, password). The account is created with the Org Admin role and attached to the new tenant automatically. Leave the email empty to create the org without an admin and assign one later.
+
+### Members
+Click **Members** on an org card to view who's attached to that tenant.
+- **Add member** — create a user (name/email/password) attached to this org, choosing **User** or **Org Admin**.
+- **Impersonate** — sign in as that member to debug their experience. The ImpersonationBanner appears with an **Exit** button to restore your real session. Platform admins (superadmin) can't be impersonated.
+
+### Edit / Deactivate / Delete
+- **Edit** — change name, slug, plan, or active state.
+- **Toggle** — deactivate a tenant to block member sign-in/team access.
+- **Delete** — remove the org; members are detached but their accounts remain.
+
+Users can also be assigned to an org from `/dashboard/admin/roles` (Organization column) or created via User Management.
+
