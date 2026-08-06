@@ -516,16 +516,21 @@ export default function DashboardLayout({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [navEntries.length, activeSection])
 
-  // Keep the active section expanded whenever navigation changes it
+  // Accordion: navigating into a section keeps it open and auto-collapses every other section
   useEffect(() => {
     if (!activeSection) return
     setCollapsedSections(prev => {
-      if (!prev.has(activeSection)) return prev
       const next = new Set(prev)
+      for (const entry of navEntries) {
+        if (entry.type === 'group' && entry.label !== activeSection) {
+          next.add(entry.label)
+        }
+      }
       next.delete(activeSection)
       return next
     })
-  }, [activeSection])
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeSection, navEntries])
 
   const toggleSection = (label: string) => {
     setCollapsedSections(prev => {

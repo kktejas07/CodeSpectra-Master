@@ -210,7 +210,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/system': 'Operations',
   '/dashboard/admin/proctor': 'Proctor',
   '/dashboard/admin/users': 'Users',
-  '/dashboard/admin/roles': 'Assignments',
+  '/dashboard/admin/roles': 'Roles',
   '/dashboard/admin/analytics': 'Insights',
   '/dashboard/admin/audit-logs': 'Audit Logs',
   '/dashboard/admin/integrations': 'Integrations',

@@ -21,7 +21,7 @@ interface UserData {
   role: string; status: string; plan?: string
 }
 
-export default function UserRoleAssignments() {
+export default function RolesPage() {
   const confirmDialog = useConfirm()
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
@@ -150,7 +150,7 @@ export default function UserRoleAssignments() {
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10"><Users className="h-6 w-6 text-primary" /></div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">User Role Assignments
+            <h1 className="text-3xl font-bold text-foreground">Roles
               <TooltipProvider>
                 <Tooltip>
                   <TooltipTrigger asChild>
