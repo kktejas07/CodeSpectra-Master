@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/api-auth'
 import { tenants, newId, nowIso } from '@/lib/db/admin'
 import { getMongoDb } from '@/lib/mongodb'
+import { getAdminAuthInstance } from '@/lib/firebase-admin'
+import bcrypt from 'bcryptjs'
 
 export async function GET() {
   const gate = await requireSuperAdmin()
@@ -34,7 +36,7 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
-  let body: { name?: string; slug?: string; plan?: string }
+  let body: { name?: string; slug?: string; plan?: string; admin_email?: string; admin_name?: string; admin_password?: string }
   try {
     body = await request.json()
   } catch {
@@ -44,6 +46,16 @@ export async function POST(request: Request) {
   const name = (body.name || '').trim()
   if (!name) {
     return NextResponse.json({ error: 'Tenant name is required' }, { status: 400 })
+  }
+
+  const adminEmail = (body.admin_email || '').trim().toLowerCase()
+  const adminName = (body.admin_name || '').trim()
+  const adminPassword = body.admin_password || ''
+  if (adminEmail && !/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(adminEmail)) {
+    return NextResponse.json({ error: 'Valid admin email is required' }, { status: 400 })
+  }
+  if (adminEmail && adminPassword && adminPassword.length < 8) {
+    return NextResponse.json({ error: 'Admin password must be at least 8 characters' }, { status: 400 })
   }
 
   try {
@@ -63,7 +75,63 @@ export async function POST(request: Request) {
       created_by: gate.user.id,
     }
     await col.insertOne(doc)
-    return NextResponse.json({ data: { ...doc, member_count: 0 } }, { status: 201 })
+
+    // Optional: provision the org admin user in the same step.
+    let admin: { id: string; email: string; role: string } | null = null
+    if (adminEmail) {
+      const db = await getMongoDb()
+      const userCol = db.collection('user')
+      const existingUser = await userCol.findOne({ email: adminEmail })
+
+      let adminId: string
+      if (existingUser) {
+        adminId = existingUser.id || String(existingUser._id)
+        // Attach the existing user to the new tenant and promote to org admin.
+        await userCol.updateOne(
+          { _id: existingUser._id },
+          { $set: { tenantId: doc.id, role: 'tenant_admin', updatedAt: new Date() } },
+        )
+      } else {
+        const adminAuth = await getAdminAuthInstance()
+        const displayName = adminName || adminEmail.split('@')[0] || 'User'
+        if (adminAuth) {
+          const rec = await adminAuth.createUser({
+            email: adminEmail,
+            password: adminPassword && adminPassword.length >= 8 ? adminPassword : `temp-${Math.random().toString(36).slice(2)}${Math.random().toString(36).slice(2)}A1!`,
+            displayName,
+          })
+          adminId = rec.uid
+        } else {
+          adminId = `local-${crypto.randomUUID()}`
+        }
+
+        const passwordHash = await bcrypt.hash(
+          adminPassword && adminPassword.length >= 8 ? adminPassword : `temp-${Math.random().toString(36).slice(2)}A1!`,
+          10,
+        )
+        await userCol.updateOne(
+          { email: adminEmail },
+          {
+            $set: {
+              id: adminId,
+              email: adminEmail,
+              name: displayName,
+              fullName: displayName,
+              passwordHash,
+              role: 'tenant_admin',
+              tenantId: doc.id,
+              updatedAt: new Date(),
+            },
+            $setOnInsert: { _id: adminId, createdAt: new Date() },
+          },
+          { upsert: true },
+        )
+      }
+
+      admin = { id: adminId, email: adminEmail, role: 'tenant_admin' }
+    }
+
+    return NextResponse.json({ data: { ...doc, member_count: admin ? 1 : 0 }, admin }, { status: 201 })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'Failed to create tenant'
     console.error('[CodeSpectra] admin/tenants POST:', e)

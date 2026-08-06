@@ -104,15 +104,21 @@ List all organizations with live `member_count`.
 ```
 
 ### POST /api/admin/tenants
-Create an organization.
+Create an organization. Optionally provisions the org admin account in the same step.
 
 **Auth**: `requireSuperAdmin()`
 
 **Request Body:**
 ```json
-{ "name": "Acme Corp", "slug": "acme", "plan": "enterprise" }
+{ "name": "Acme Corp", "slug": "acme", "plan": "enterprise", "admin_email": "jane@acme.com", "admin_name": "Jane Doe", "admin_password": "min-8-chars" }
 ```
 Slug is auto-generated (lowercase, dashed) when omitted and deduped with a suffix on collision.
+
+`admin_email` is optional. When provided, the user is created (Firebase account + DB record) with role `tenant_admin`, attached to the new tenant, and returned as `admin` in the response:
+```json
+{ "data": { "...": "...", "member_count": 1 }, "admin": { "id": "uid", "email": "jane@acme.com", "role": "tenant_admin" } }
+```
+If `admin_email` matches an existing user, they are attached to the new tenant and promoted to `tenant_admin` instead. A password is generated when omitted or shorter than 8 chars.
 
 ### PATCH /api/admin/tenants/[id]
 Update organization (name, slug, plan, is_active).
@@ -156,14 +162,17 @@ List team members for the caller's organization (`tenant_admin`) or all users (`
 - `?stats=true` — include `{ total, active }` counts
 
 ### POST /api/admin/teams/members
-Create a member inside the caller's organization (always role `user`, scoped to the caller's tenant).
+Create a member inside the caller's organization (always role `user` unless superadmin opts into `tenant_admin`; scoped to the caller's tenant).
 
 **Auth**: `requireSuperAdmin()` or `tenant_admin`
 
 **Request Body:**
 ```json
-{ "email": "member@company.com", "name": "Jane Doe", "password": "optional" }
+{ "email": "member@company.com", "name": "Jane Doe", "password": "optional", "tenantId": "optional-superadmin", "role": "user | tenant_admin" }
 ```
+- `tenantId` — superadmin only: attach the member to any org.
+- `role` — superadmin only: `tenant_admin` provisions an org admin; anything else creates a plain `user`. Tenant admins always create plain `user`.
+- If the email already exists, the account is attached to the tenant and its role is upgraded (never downgrades a `superadmin`).
 
 ### GET /api/admin/teams/activity
 Team activity report — aggregates scan counts, review counts, submissions per team member.
