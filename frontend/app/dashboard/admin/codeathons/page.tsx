@@ -144,7 +144,7 @@ export default function AdminCodeathonsPage() {
 
       {/* Edit Modal (Existing) */}
       {editing && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4">
           <div className="bg-background rounded-xl shadow-lg border w-full max-w-md overflow-hidden">
             <div className="p-4 border-b bg-muted/30">
               <h3 className="font-semibold">Edit Codeathon</h3>

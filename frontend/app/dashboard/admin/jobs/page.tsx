@@ -307,7 +307,7 @@ export default function AdminJobsPage() {
       )}
 
       {showModal && (
-        <div className="fixed inset-0 bg-black/60 flex items-start justify-center z-50 overflow-y-auto py-8">
+        <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-start justify-center z-50 overflow-y-auto py-8">
           <Card className="w-full max-w-2xl m-auto">
             <div className="flex items-center justify-between p-5 border-b border-border">
               <h2 className="text-lg font-semibold">

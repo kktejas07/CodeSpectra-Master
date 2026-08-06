@@ -832,7 +832,7 @@ setManualGrades({})
       </div>
 
       {reviewCandidate && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-xs pt-8 overflow-y-auto print-review-overlay">
+        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-sm pt-8 overflow-y-auto print-review-overlay">
           <div className="max-w-4xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 mb-8 print-review-card">
             <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-card z-10">
               <div>
