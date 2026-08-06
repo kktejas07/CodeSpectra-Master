@@ -8,6 +8,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { verifyPhonePeWebhook } from '@/lib/phonepe-server'
 import { billingOrders, billingPayments, billingSubscriptions, BILLING_PLANS, nowIso, newId } from '@/lib/db/billing'
 import { notify } from '@/lib/notifications'
+import { getCurrencySymbol } from '@/lib/currency'
+import { getPlatformCurrency } from '@/lib/server-currency'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 import { getMongoDb } from '@/lib/mongodb'
@@ -78,11 +80,12 @@ export async function POST(req: NextRequest) {
         created_at: nowIso(),
       })
 
+      const sym = getCurrencySymbol(await getPlatformCurrency())
       notify({
         user_id: order.user_id,
         type: 'billing.payment_success',
         title: 'Payment successful',
-        message: `Payment of ₹${(amount / 100).toFixed(2)} completed via PhonePe.`,
+        message: `Payment of ${sym}${(amount / 100).toFixed(2)} completed via PhonePe.`,
         icon: 'credit-card',
         link: '/dashboard/billing',
       }).catch(() => {})
@@ -140,11 +143,12 @@ export async function POST(req: NextRequest) {
         { $set: { status: 'failed', updated_at: nowIso() } }
       )
 
+      const sym = getCurrencySymbol(await getPlatformCurrency())
       notify({
         user_id: order.user_id,
         type: 'billing.payment_failed',
         title: 'Payment failed',
-        message: `PhonePe payment of ₹${(amount / 100).toFixed(2)} failed.`,
+        message: `PhonePe payment of ${sym}${(amount / 100).toFixed(2)} failed.`,
         icon: 'alert-circle',
         link: '/dashboard/billing',
       }).catch(() => {})

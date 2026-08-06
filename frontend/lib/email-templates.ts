@@ -1,4 +1,5 @@
 // ponytail: Brand update from purple-indigo to green (#22c55e) to match icon.svg
+import { getCurrencySymbol } from '@/lib/currency'
 
 const BRAND = {
   green: '#16a34a',
@@ -182,7 +183,7 @@ export const emailTemplates = {
 
   subscriptionConfirmation: (planName: string, amount: number, currency = 'INR') => {
     const base = getBaseUrl()
-    const symbol = currency === 'USD' ? '$' : '₹'
+    const symbol = getCurrencySymbol(currency || 'USD')
     const nextBilling = new Date(Date.now() + 30 * 86400000).toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' })
     return {
       subject: `Welcome to ${planName} — subscription active`,
@@ -205,7 +206,7 @@ export const emailTemplates = {
 
   invoiceNotification: (invoiceId: string, amount: number, planName: string, currency = 'INR') => {
     const base = getBaseUrl()
-    const symbol = currency === 'USD' ? '$' : '₹'
+    const symbol = getCurrencySymbol(currency || 'USD')
     return {
       subject: `Invoice #${invoiceId} — ${planName}`,
       html: `${baseStyles.wrapper}
@@ -224,18 +225,19 @@ export const emailTemplates = {
     }
   },
 
-  phonePePaymentSuccess: (planName: string, amount: number, transactionId: string) => {
+  phonePePaymentSuccess: (planName: string, amount: number, transactionId: string, currency?: string) => {
     const base = getBaseUrl()
+    const symbol = getCurrencySymbol(currency || 'INR')
     return {
       subject: `Payment successful — ${planName}`,
       html: `${baseStyles.wrapper}
         <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Payment successful!</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Your payment of <strong>₹${(amount / 100).toFixed(2)}</strong> for <strong>${planName}</strong> has been processed.</p>
+        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Your payment of <strong>${symbol}${(amount / 100).toFixed(2)}</strong> for <strong>${planName}</strong> has been processed.</p>
         ${baseStyles.card(`
           <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
             ${statRow('Transaction ID', transactionId, true)}
             ${statRow('Method', 'PhonePe UPI')}
-            ${statRow('Amount', `₹${(amount / 100).toFixed(2)}`)}
+            ${statRow('Amount', `${symbol}${(amount / 100).toFixed(2)}`)}
             ${statRow('Status', 'Success')}
           </table>
         `)}
@@ -244,13 +246,14 @@ export const emailTemplates = {
     }
   },
 
-  phonePePaymentFailed: (planName: string, amount: number, reason?: string) => {
+  phonePePaymentFailed: (planName: string, amount: number, reason?: string, currency?: string) => {
     const base = getBaseUrl()
+    const symbol = getCurrencySymbol(currency || 'INR')
     return {
       subject: `Payment failed — ${planName}`,
       html: `${baseStyles.wrapper}
         <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.red}">Payment failed</h1>
-        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Your payment of <strong>₹${(amount / 100).toFixed(2)}</strong> for <strong>${planName}</strong> could not be processed.</p>
+        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">Your payment of <strong>${symbol}${(amount / 100).toFixed(2)}</strong> for <strong>${planName}</strong> could not be processed.</p>
         ${reason ? alertBox(`<p style="margin:0;font-size:14px;color:${BRAND.red}"><strong>Reason:</strong> ${reason}</p>`, BRAND.redBg, `${BRAND.red}`) : ''}
         <p style="margin:16px 0;font-size:14px;color:${BRAND.muted}">Please try again or use a different payment method.</p>
         ${baseStyles.button(`${base}/dashboard/billing`, 'Try Again')}

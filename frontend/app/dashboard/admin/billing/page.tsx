@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, DollarSign, Users, TrendingUp, Activity } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { getCurrencySymbol } from '@/lib/currency'
 
 interface BillingStats {
   active_subscriptions: number
@@ -28,6 +29,7 @@ export default function AdminBillingPage() {
   const [plans, setPlans] = useState<PlanOrder[]>([])
   const [revenueByDay, setRevenueByDay] = useState<Record<string, number>>({})
   const [loading, setLoading] = useState(true)
+  const [currency, setCurrency] = useState('USD')
 
   const load = useCallback(async () => {
     try {
@@ -41,12 +43,20 @@ export default function AdminBillingPage() {
     } catch {} finally { setLoading(false) }
   }, [])
 
-  useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
+  const loadCurrency = async () => {
+    try {
+      const res = await fetch('/api/admin/platform-settings', { credentials: 'include' })
+      const data = await res.json()
+      if (data?.settings?.platform_currency) setCurrency(data.settings.platform_currency)
+    } catch {}
+  }
 
-  const fmt = (paise: number, currency = 'USD') => {
+  useEffect(() => { if (gate.ready) { void load(); void loadCurrency() } }, [gate.ready, load])
+
+  const fmt = (paise: number, currencyArg?: string) => {
     const amt = paise / 100
-    if (currency === 'INR') return `₹${amt.toLocaleString('en-IN', { minimumFractionDigits: 2 })}`
-    return `$${amt.toLocaleString('en-US', { minimumFractionDigits: 2 })}`
+    const c = (currencyArg || currency).toUpperCase()
+    return `${getCurrencySymbol(c)}${amt.toLocaleString(c === 'INR' ? 'en-IN' : 'en-US', { minimumFractionDigits: 2 })}`
   }
 
   if (!gate.ready) return null

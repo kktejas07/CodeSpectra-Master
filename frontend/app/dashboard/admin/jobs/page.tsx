@@ -11,6 +11,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { ALL_CURRENCIES } from '@/lib/currency'
 import { useToast } from '@/lib/toast-context'
 import {
   Briefcase, Plus, Edit, Trash2, Eye, Users,
@@ -52,7 +53,7 @@ interface JobForm {
 
 const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Lead', 'Executive']
-const CURRENCIES = ['USD', 'INR']
+const CURRENCIES = ALL_CURRENCIES
 
 const emptyForm: JobForm = {
   title: '', company: '', location: '', job_type: 'Full-time',

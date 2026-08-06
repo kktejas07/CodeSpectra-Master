@@ -13,6 +13,7 @@ import {
   CheckCircle, Loader2, AlertCircle, ExternalLink, Users, Calendar,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
+import { useCurrency } from '@/lib/use-currency'
 
 interface JobPosting {
   id: string
@@ -31,18 +32,19 @@ interface JobPosting {
   is_active: boolean
 }
 
-function formatSalary(salary: JobPosting['salary']) {
+function formatSalary(salary: JobPosting['salary'], symbol: string) {
   if (!salary) return null
   const fmt = (n: number) =>
     salary.currency === 'INR'
-      ? `₹${(n / 100000).toFixed(1)}L`
-      : `$${(n / 1000).toFixed(0)}k`
+      ? `${symbol}${(n / 100000).toFixed(1)}L`
+      : `${symbol}${(n / 1000).toFixed(0)}k`
   return `${fmt(salary.min)} – ${fmt(salary.max)}`
 }
 
 export default function JobDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
+  const { symbol } = useCurrency()
   const { user: authUser } = useAuth()
   const [job, setJob] = useState<JobPosting | null>(null)
   const [loading, setLoading] = useState(true)
@@ -104,7 +106,7 @@ export default function JobDetailPage({ params }: { params: Promise<{ id: string
     </div>
   )
 
-  const salary = formatSalary(job.salary)
+  const salary = formatSalary(job.salary, symbol)
 
   return (
     <div className="min-h-screen bg-background">

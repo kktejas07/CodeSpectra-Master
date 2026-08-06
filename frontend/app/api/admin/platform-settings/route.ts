@@ -5,6 +5,7 @@ import {
   normalizeAdminNewUserEmailDelivery,
 } from '@/lib/platform-general-settings'
 import { getMongoDb } from '@/lib/mongodb'
+import { invalidateCurrencyCache } from '@/lib/server-currency'
 import type { Collection } from 'mongodb'
 
 const GENERAL_KEY = 'general'
@@ -115,6 +116,7 @@ export async function PATCH(request: Request) {
       { $set: { value: mergedNext as Record<string, unknown>, updated_at: new Date().toISOString() } },
       { upsert: true },
     )
+    invalidateCurrencyCache()
     return NextResponse.json({ settings: mergedNext })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })

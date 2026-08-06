@@ -9,6 +9,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useCurrency } from '@/lib/use-currency'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -28,6 +29,7 @@ export default function PricingPage() {
   const gate = usePageGuard('user')
 
   const addToast = useToast()
+  const { symbol } = useCurrency()
   const [plans, setPlans] = useState<PlanDef[]>([])
   const [currency, setCurrency] = useState('USD')
   const [currentPlanId, setCurrentPlanId] = useState<string | null>(null)
@@ -48,7 +50,7 @@ export default function PricingPage() {
       if (Array.isArray(plansData)) setPlans(plansData.map((p: any) => ({
       ...p,
       plan: p.plan || p.id,
-      price: p.price != null ? (typeof p.price === 'number' ? `$${p.price}` : p.price) : p.price,
+      price: p.price != null ? (typeof p.price === 'number' ? `${symbol}${p.price}` : p.price) : p.price,
     })))
       else if (plansData?.plans) setPlans(plansData.plans)
       if (settingsData?.settings?.platform_currency) setCurrency(settingsData.settings.platform_currency)
@@ -123,7 +125,7 @@ export default function PricingPage() {
     }
   }
 
-const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency === 'JPY' ? '¥' : '$'
+const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : currency === 'GBP' ? '£' : currency === 'JPY' ? '¥' : symbol
   const formatLimit = (v: number) => v === -1 || v === 0 ? 'Unlimited' : String(v)
   const getLimitSuffix = (key: string) => {
     const map: Record<string, string> = { 'seats': ' /user', 'storage': ' GB', 'requests': ' /mo', 'api_calls': ' /mo' }

@@ -9,6 +9,8 @@ import { getAPIUser } from '@/lib/route-auth'
 import { getPhonePeTransactionStatus } from '@/lib/phonepe-server'
 import { billingOrders, billingSubscriptions, BILLING_PLANS, nowIso } from '@/lib/db/billing'
 import { notify } from '@/lib/notifications'
+import { getCurrencySymbol } from '@/lib/currency'
+import { getPlatformCurrency } from '@/lib/server-currency'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 
@@ -62,11 +64,12 @@ export async function GET(req: NextRequest) {
       )
 
       // Send notification
+      const sym = getCurrencySymbol(await getPlatformCurrency())
       notify({
         user_id: user.id,
         type: 'billing.payment_success',
         title: 'Payment successful',
-        message: `Payment of ₹${(amount / 100).toFixed(2)} completed via PhonePe.`,
+        message: `Payment of ${sym}${(amount / 100).toFixed(2)} completed via PhonePe.`,
         icon: 'credit-card',
         link: '/dashboard/billing',
       }).catch(() => {})

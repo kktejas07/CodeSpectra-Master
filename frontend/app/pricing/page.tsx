@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Check, ArrowRight, Loader2 } from 'lucide-react'
 import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
+import { useCurrency } from '@/lib/use-currency'
 
 type PublicPlan = {
   id: string
@@ -20,6 +21,7 @@ export default function PricingPage() {
   const [annual, setAnnual] = useState(false)
   const [plans, setPlans] = useState<PublicPlan[] | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const { symbol } = useCurrency()
 
   useEffect(() => {
     let cancelled = false
@@ -148,18 +150,18 @@ export default function PricingPage() {
                     <span className="text-4xl font-bold">Custom</span>
                   ) : !annual ? (
                     <div className="flex items-baseline gap-1">
-                      <span className="text-4xl font-bold">${monthlyDisplay.toFixed(2)}</span>
+                      <span className="text-4xl font-bold">{symbol}{monthlyDisplay.toFixed(2)}</span>
                       <span className="text-muted-foreground">/month</span>
                     </div>
                   ) : (
                     <div className="space-y-1">
                       <div className="flex items-baseline gap-1">
-                        <span className="text-4xl font-bold">${yearlyDisplay.toFixed(2)}</span>
+                        <span className="text-4xl font-bold">{symbol}{yearlyDisplay.toFixed(2)}</span>
                         <span className="text-muted-foreground">/year</span>
                       </div>
                       {perMonthIfAnnual > 0 ? (
                         <p className="text-sm text-muted-foreground">
-                          ≈ ${perMonthIfAnnual.toFixed(2)}/mo billed annually
+                          ≈ {symbol}{perMonthIfAnnual.toFixed(2)}/mo billed annually
                         </p>
                       ) : null}
                     </div>
