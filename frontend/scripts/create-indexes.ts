@@ -216,6 +216,10 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
     { key: { user_id: 1, timestamp: -1 } },
     { key: { session_id: 1 } },
   ],
+  analytics_funnels: [
+    { key: { id: 1 }, unique: true },
+    { key: { created_at: -1 } },
+  ],
 }
 
 async function main() {

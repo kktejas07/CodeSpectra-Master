@@ -5,6 +5,7 @@
  *   - analytics_events      (custom events: code_run, challenge_completed, etc.)
  *   - analytics_sessions    (user sessions with journey, duration, device)
  *   - analytics_pageviews   (automatic pageview tracking)
+ *   - analytics_funnels     (funnel definitions + computed results)
  */
 import { randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
@@ -124,4 +125,45 @@ export function hashIp(ip: string): string {
     hash = ((hash << 5) - hash + ip.charCodeAt(i)) | 0
   }
   return `h${Math.abs(hash).toString(36)}`
+}
+
+// ─── Funnel types ───────────────────────────────────────────────────────────
+
+export interface FunnelStep {
+  event: string
+  path?: string
+  label?: string
+}
+
+export interface AnalyticsFunnel {
+  id: string
+  name: string
+  description?: string
+  steps: FunnelStep[]
+  created_at: string
+  created_by?: string
+}
+
+export interface FunnelStepResult {
+  event: string
+  label: string
+  users: number
+  conversion_rate: number
+  dropoff_rate: number
+}
+
+export interface FunnelResult {
+  funnel_id: string
+  computed_at: string
+  period: string
+  steps: FunnelStepResult[]
+  total_starters: number
+  total_completers: number
+  completion_rate: number
+}
+
+// ─── Funnel collection ──────────────────────────────────────────────────────
+
+export async function analyticsFunnels(): Promise<Collection<AnalyticsFunnel>> {
+  return (await db()).collection<AnalyticsFunnel>('analytics_funnels')
 }

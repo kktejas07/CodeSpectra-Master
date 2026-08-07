@@ -13,7 +13,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   BarChart3, Users, Eye, Activity, Globe, Monitor, Smartphone, Tablet,
   Clock, RefreshCw, Loader2, TrendingUp, ArrowUp, ArrowDown,
-  Search, Download, Trash2, Zap, MousePointer, Gauge,
+  Search, Download, Trash2, Zap, MousePointer, Gauge, Filter, UserCheck,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -95,6 +95,30 @@ interface WebVitalsSummary {
   sampleSize: number
   p75: Record<string, number | null>
   countsByMetric: Record<string, number>
+}
+
+interface FunnelDef {
+  id: string
+  name: string
+  description?: string
+  steps: { event: string; path?: string; label?: string }[]
+  created_at: string
+}
+
+interface FunnelResult {
+  funnel_id: string
+  computed_at: string
+  period: string
+  steps: { event: string; label: string; users: number; conversion_rate: number; dropoff_rate: number }[]
+  total_starters: number
+  total_completers: number
+  completion_rate: number
+}
+
+interface RetentionData {
+  cohorts: { cohort_week: string; cohort_size: number; retention: number[] }[]
+  retention_days: number[]
+  total_users: number
 }
 
 // ─── Constants ───────────────────────────────────────────────────────────────
@@ -202,6 +226,18 @@ export default function AnalyticsPage() {
   const [eventSearch, setEventSearch] = useState('')
   const [eventFilter, setEventFilter] = useState('all')
 
+  const [funnels, setFunnels] = useState<FunnelDef[]>([])
+  const [funnelResult, setFunnelResult] = useState<FunnelResult | null>(null)
+  const [funnelLoading, setFunnelLoading] = useState(false)
+  const [selectedFunnel, setSelectedFunnel] = useState<string>('')
+  const [showFunnelForm, setShowFunnelForm] = useState(false)
+  const [newFunnelName, setNewFunnelName] = useState('')
+  const [newFunnelSteps, setNewFunnelSteps] = useState('')
+  const [creatingFunnel, setCreatingFunnel] = useState(false)
+
+  const [retentionData, setRetentionData] = useState<RetentionData | null>(null)
+  const [retentionLoading, setRetentionLoading] = useState(false)
+
   const hiddenRef = useRef(document.hidden)
   const overviewTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const liveTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -273,6 +309,60 @@ export default function AnalyticsPage() {
     finally { setVitalsLoading(false) }
   }, [gate.ready])
 
+  const loadFunnels = useCallback(async () => {
+    if (!gate.ready) return
+    setFunnelLoading(true)
+    try {
+      const res = await fetch('/api/admin/analytics/funnels', { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setFunnels(json.funnels || [])
+    } catch { /* ignore */ }
+    finally { setFunnelLoading(false) }
+  }, [gate.ready])
+
+  const loadFunnelResult = useCallback(async (funnelId: string) => {
+    if (!gate.ready || !funnelId) return
+    try {
+      const res = await fetch(`/api/admin/analytics/funnels?id=${funnelId}&range=${range}`, { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setFunnelResult(json)
+    } catch { /* ignore */ }
+  }, [gate.ready, range])
+
+  const createFunnel = useCallback(async () => {
+    if (!newFunnelName.trim() || !newFunnelSteps.trim()) return
+    setCreatingFunnel(true)
+    try {
+      const steps = newFunnelSteps.split('\n').map(l => {
+        const [event, path] = l.split('|').map(s => s.trim())
+        return { event, path: path || undefined, label: event }
+      }).filter(s => s.event)
+      const res = await csrfFetch('/api/admin/analytics/funnels', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newFunnelName, steps }),
+      })
+      if (res.ok) {
+        setShowFunnelForm(false)
+        setNewFunnelName('')
+        setNewFunnelSteps('')
+        void loadFunnels()
+      }
+    } catch { /* ignore */ }
+    setCreatingFunnel(false)
+  }, [newFunnelName, newFunnelSteps, loadFunnels])
+
+  const loadRetention = useCallback(async () => {
+    if (!gate.ready) return
+    setRetentionLoading(true)
+    try {
+      const res = await fetch('/api/admin/analytics/retention?weeks=8', { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setRetentionData(json)
+    } catch { /* ignore */ }
+    finally { setRetentionLoading(false) }
+  }, [gate.ready])
+
   // ─── Initial Load ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -294,7 +384,13 @@ export default function AnalyticsPage() {
     if (activeTab === 'events' && !eventsData && gate.ready) {
       void loadEvents()
     }
-  }, [activeTab, pagesData, eventsData, gate.ready, loadPages, loadEvents])
+    if (activeTab === 'funnels' && funnels.length === 0 && gate.ready) {
+      void loadFunnels()
+    }
+    if (activeTab === 'retention' && !retentionData && gate.ready) {
+      void loadRetention()
+    }
+  }, [activeTab, pagesData, eventsData, funnels.length, retentionData, gate.ready, loadPages, loadEvents, loadFunnels, loadRetention])
 
   // ─── Polling ─────────────────────────────────────────────────────────────
 
@@ -376,7 +472,7 @@ export default function AnalyticsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="grid w-full grid-cols-7">
           <TabsTrigger value="overview" className="gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
           </TabsTrigger>
@@ -388,6 +484,12 @@ export default function AnalyticsPage() {
           </TabsTrigger>
           <TabsTrigger value="events" className="gap-1.5">
             <Zap className="h-4 w-4" /> Events
+          </TabsTrigger>
+          <TabsTrigger value="funnels" className="gap-1.5">
+            <Filter className="h-4 w-4" /> Funnels
+          </TabsTrigger>
+          <TabsTrigger value="retention" className="gap-1.5">
+            <UserCheck className="h-4 w-4" /> Retention
           </TabsTrigger>
           <TabsTrigger value="performance" className="gap-1.5">
             <Gauge className="h-4 w-4" /> Performance
@@ -426,7 +528,32 @@ export default function AnalyticsPage() {
           />
         </TabsContent>
 
-        {/* ─── Tab 5: Performance ──────────────────────────────────────────── */}
+        {/* ─── Tab 5: Funnels ────────────────────────────────────────────── */}
+        <TabsContent value="funnels" className="space-y-6">
+          <FunnelsTab
+            funnels={funnels}
+            result={funnelResult}
+            loading={funnelLoading}
+            selectedFunnel={selectedFunnel}
+            onSelectFunnel={(id) => { setSelectedFunnel(id); void loadFunnelResult(id) }}
+            showForm={showFunnelForm}
+            onToggleForm={() => setShowFunnelForm(!showFunnelForm)}
+            funnelName={newFunnelName}
+            onFunnelNameChange={setNewFunnelName}
+            funnelSteps={newFunnelSteps}
+            onFunnelStepsChange={setNewFunnelSteps}
+            creating={creatingFunnel}
+            onCreate={createFunnel}
+            range={range}
+          />
+        </TabsContent>
+
+        {/* ─── Tab 6: Retention ──────────────────────────────────────────── */}
+        <TabsContent value="retention" className="space-y-6">
+          <RetentionTab data={retentionData} loading={retentionLoading} />
+        </TabsContent>
+
+        {/* ─── Tab 7: Performance ──────────────────────────────────────────── */}
         <TabsContent value="performance" className="space-y-6">
           <PerformanceTab data={vitalsData} loading={vitalsLoading} />
         </TabsContent>
@@ -934,6 +1061,155 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
             searchPlaceholder="Search events…"
           />
         </div>
+      </Card>
+    </div>
+  )
+}
+
+// ─── Tab: Funnels ────────────────────────────────────────────────────────────
+
+function FunnelsTab({ funnels, result, loading, selectedFunnel, onSelectFunnel, showForm, onToggleForm, funnelName, onFunnelNameChange, funnelSteps, onFunnelStepsChange, creating, onCreate, range }: {
+  funnels: FunnelDef[]; result: FunnelResult | null; loading: boolean; selectedFunnel: string; onSelectFunnel: (id: string) => void
+  showForm: boolean; onToggleForm: () => void; funnelName: string; onFunnelNameChange: (v: string) => void
+  funnelSteps: string; onFunnelStepsChange: (v: string) => void; creating: boolean; onCreate: () => void; range: string
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Conversion Funnels</h2>
+          <p className="text-sm text-muted-foreground">Track user progression through multi-step flows</p>
+        </div>
+        <div className="flex gap-2">
+          <Select value={selectedFunnel} onValueChange={onSelectFunnel}>
+            <SelectTrigger className="w-[200px] h-9"><SelectValue placeholder="Select a funnel" /></SelectTrigger>
+            <SelectContent>
+              {funnels.map(f => <SelectItem key={f.id} value={f.id}>{f.name}</SelectItem>)}
+            </SelectContent>
+          </Select>
+          <Button size="sm" onClick={onToggleForm}>{showForm ? 'Cancel' : '+ New Funnel'}</Button>
+        </div>
+      </div>
+
+      {showForm && (
+        <Card className="p-6 border-border/60 space-y-4">
+          <h3 className="font-semibold">Create Funnel</h3>
+          <Input placeholder="Funnel name (e.g. Signup to Paid)" value={funnelName} onChange={e => onFunnelNameChange(e.target.value)} />
+          <div>
+            <p className="text-xs text-muted-foreground mb-1">Steps (one per line: <code>event_name</code> or <code>event_name|/path</code>)</p>
+            <textarea className="w-full h-32 rounded-md border border-border bg-background px-3 py-2 text-sm font-mono" placeholder={"page_view|/signup\nsignup_completed\nproject_created\ncode_run\nsubscription_started"} value={funnelSteps} onChange={e => onFunnelStepsChange(e.target.value)} />
+          </div>
+          <Button onClick={onCreate} disabled={creating || !funnelName.trim() || !funnelSteps.trim()}>
+            {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Create Funnel
+          </Button>
+        </Card>
+      )}
+
+      {loading && !result && (
+        <div className="flex min-h-[20vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Computing funnel…</div>
+      )}
+
+      {result && (
+        <Card className="p-6 border-border/60">
+          <div className="flex items-center gap-4 mb-6">
+            <div className="text-center">
+              <p className="text-3xl font-bold">{result.total_starters.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Started</p>
+            </div>
+            <TrendingUp className="h-5 w-5 text-muted-foreground" />
+            <div className="text-center">
+              <p className="text-3xl font-bold text-primary">{result.total_completers.toLocaleString()}</p>
+              <p className="text-xs text-muted-foreground">Completed</p>
+            </div>
+            <Badge variant="outline" className="ml-auto">{result.completion_rate}% conversion</Badge>
+          </div>
+
+          <div className="space-y-3">
+            {result.steps.map((step, i) => (
+              <div key={i} className="flex items-center gap-4">
+                <div className="w-8 text-center">
+                  <Badge variant={i === 0 ? 'default' : 'secondary'} className="text-xs">{i + 1}</Badge>
+                </div>
+                <div className="flex-1">
+                  <div className="flex items-center justify-between mb-1">
+                    <span className="text-sm font-medium">{step.label}</span>
+                    <span className="text-sm tabular-nums">{step.users.toLocaleString()} <span className="text-muted-foreground">({step.conversion_rate}%)</span></span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted/50 overflow-hidden">
+                    <div className="h-full rounded-full bg-primary transition-all" style={{ width: `${step.conversion_rate}%` }} />
+                  </div>
+                </div>
+                {i > 0 && step.dropoff_rate > 0 && (
+                  <span className="text-xs text-red-500 tabular-nums w-16 text-right">-{step.dropoff_rate}%</span>
+                )}
+              </div>
+            ))}
+          </div>
+        </Card>
+      )}
+
+      {!loading && !result && funnels.length === 0 && (
+        <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
+          <Filter className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+          <p>No funnels yet. Create one to track conversion flows.</p>
+        </Card>
+      )}
+    </div>
+  )
+}
+
+// ─── Tab: Retention ──────────────────────────────────────────────────────────
+
+function RetentionTab({ data, loading }: { data: RetentionData | null; loading: boolean }) {
+  if (loading && !data) {
+    return <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Computing retention…</div>
+  }
+
+  if (!data || data.cohorts.length === 0) {
+    return (
+      <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
+        <UserCheck className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+        <p>No retention data yet. Data appears as users sign in and return.</p>
+      </Card>
+    )
+  }
+
+  const dayLabels = data.retention_days.map(d => d === 0 ? 'Day 0' : `Day ${d}`)
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold">User Retention</h2>
+        <p className="text-sm text-muted-foreground">{data.total_users.toLocaleString()} total tracked users · Weekly cohorts</p>
+      </div>
+
+      <Card className="p-6 border-border/60 overflow-x-auto">
+        <table className="w-full text-sm">
+          <thead>
+            <tr className="border-b border-border/40">
+              <th className="text-left py-3 px-3 font-medium text-muted-foreground">Cohort</th>
+              <th className="text-left py-3 px-3 font-medium text-muted-foreground">Users</th>
+              {dayLabels.map(d => <th key={d} className="text-center py-3 px-3 font-medium text-muted-foreground">{d}</th>)}
+            </tr>
+          </thead>
+          <tbody>
+            {data.cohorts.map((cohort, i) => (
+              <tr key={i} className="border-b border-border/30 hover:bg-muted/20">
+                <td className="py-3 px-3 font-mono text-xs">{cohort.cohort_week}</td>
+                <td className="py-3 px-3 tabular-nums">{cohort.cohort_size.toLocaleString()}</td>
+                {cohort.retention.map((pct, j) => {
+                  const intensity = Math.round(pct * 2.55)
+                  const bg = pct > 0 ? `rgba(34, 197, 94, ${Math.min(pct / 100 * 0.6, 0.6)})` : 'transparent'
+                  return (
+                    <td key={j} className="py-3 px-3 text-center tabular-nums text-xs font-medium" style={{ backgroundColor: bg }}>
+                      {pct > 0 ? `${pct}%` : '—'}
+                    </td>
+                  )
+                })}
+              </tr>
+            ))}
+          </tbody>
+        </table>
       </Card>
     </div>
   )
