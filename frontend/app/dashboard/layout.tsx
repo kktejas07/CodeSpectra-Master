@@ -72,6 +72,7 @@ import {
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PushNotifications } from '@/components/push-notifications'
+import { Celebration } from '@/components/gamification/celebration'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
@@ -151,6 +152,20 @@ export default function DashboardLayout({
       if (!cancelled) setLockedPages(pages)
     })
     return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/daily-login', {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.xp_awarded) {
+          window.dispatchEvent(new CustomEvent('codespectra:celebrate', { detail: { type: 'daily_login' } }))
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Fetch public platform settings
@@ -955,6 +970,7 @@ export default function DashboardLayout({
 
       {/* Real-time FCM push → XP toasts / notification popups */}
       <PushNotifications userId={userProfile?.id} />
+      <Celebration />
 
       {/* Global Modals */}
     </div>

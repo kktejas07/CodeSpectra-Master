@@ -33,6 +33,7 @@ import {
   CheckCircle2,
   XCircle,
   ScrollText,
+  Trophy,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -291,7 +292,7 @@ function SystemSettingsInner() {
   const addToast = useToast()
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState<
-    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | null
+    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | 'gamification' | null
   >(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [form, setForm] = useState<General>(defaults)
@@ -302,6 +303,34 @@ function SystemSettingsInner() {
     postal_api_key: '',
     postal_from_email: '',
   })
+
+  const GAMIFICATION_DEFAULTS: Record<string, unknown> = {
+    xp_submission_easy: 10,
+    xp_submission_medium: 25,
+    xp_submission_hard: 50,
+    xp_first_blood: 25,
+    xp_exam_pass: 50,
+    xp_cert_pass: 100,
+    xp_codeathon: 20,
+    xp_hackathon: 100,
+    xp_daily_login: 5,
+    xp_streak_7day: 25,
+    xp_streak_30day: 100,
+    level_2_xp: 100,
+    level_5_xp: 500,
+    level_10_xp: 2000,
+    level_20_xp: 8000,
+    level_50_xp: 50000,
+    streak_multiplier: 1.5,
+    streak_freeze_enabled: true,
+    referral_xp_bonus: 500,
+    referral_commission_percent: 10,
+    badge_hackathon_enabled: true,
+    badge_exam_enabled: true,
+    badge_cert_enabled: true,
+    badge_streak_enabled: true,
+  }
+  const [gamification, setGamification] = useState<Record<string, unknown>>(GAMIFICATION_DEFAULTS)
 
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({})
   const [revealedValues, setRevealedValues] = useState<Record<string, string>>({})
@@ -341,9 +370,10 @@ function SystemSettingsInner() {
   useEffect(() => {
     if (!gate.ready) return
     const run = async () => {
-      const [res, secRes] = await Promise.all([
+      const [res, secRes, gamRes] = await Promise.all([
         fetch('/api/admin/platform-settings', { credentials: 'include' }),
         fetch('/api/admin/server-secrets', { credentials: 'include' }),
+        fetch('/api/admin/platform-settings?section=gamification', { credentials: 'include' }),
       ])
       const json = await res.json().catch(() => ({}))
       const secJson = await secRes.json().catch(() => ({}))
@@ -364,6 +394,12 @@ function SystemSettingsInner() {
       }
       if (secRes.ok && secJson.secrets) {
         setSecretsMeta(secJson.secrets as Record<string, unknown>)
+      }
+      if (gamRes.ok) {
+        const gamJson = await gamRes.json().catch(() => ({}))
+        if (gamJson.settings) {
+          setGamification({ ...GAMIFICATION_DEFAULTS, ...gamJson.settings })
+        }
       }
       setLoading(false)
     }
@@ -570,6 +606,36 @@ function SystemSettingsInner() {
       setSavingKey(null)
     }
   }, [addToast, form.admin_new_user_email_delivery, mailSecretsDraft, reloadSecrets])
+
+  const saveGamification = useCallback(async () => {
+    setSavingKey('gamification')
+    try {
+      const res = await csrfFetch('/api/admin/platform-settings', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ section: 'gamification', ...gamification }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) {
+        const msg =
+          res.status === 401
+            ? 'Unauthorized — sign out and sign in again so the API receives your session cookie.'
+            : (json.error as string) || 'Save failed'
+        throw new Error(msg)
+      }
+      setGamification({ ...GAMIFICATION_DEFAULTS, ...json.settings })
+      addToast({ type: 'success', title: 'Gamification settings saved' })
+    } catch (e) {
+      addToast({
+        type: 'error',
+        title: 'Save failed',
+        message: e instanceof Error ? e.message : 'Unknown error',
+      })
+    } finally {
+      setSavingKey(null)
+    }
+  }, [addToast, gamification])
 
   // While the role gate is still resolving, render NOTHING — prevents the
   // half-mounted form (and its outbound /api/admin/* fetches) from racing
@@ -2197,6 +2263,155 @@ function SystemSettingsInner() {
                 </div>
               </Card>
             </div>
+          ) : section === 'gamification' ? (
+            <Card className="rounded-xl border-border/60 shadow-sm">
+              <div className="border-b border-border/60 px-6 py-4">
+                <div className="flex items-center gap-2">
+                  <Trophy className="h-5 w-5 text-primary" />
+                  <h3 className="font-semibold text-foreground">Gamification & XP</h3>
+                </div>
+                <p className="mt-1 text-sm text-muted-foreground">
+                  Configure experience points, level thresholds, streaks, referrals, and badge awards.
+                </p>
+              </div>
+              <div className="space-y-6 px-6 py-5">
+                <div className="space-y-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">XP Rewards</p>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {[
+                      { key: 'xp_submission_easy', label: 'Easy submission', default: 10 },
+                      { key: 'xp_submission_medium', label: 'Medium submission', default: 25 },
+                      { key: 'xp_submission_hard', label: 'Hard submission', default: 50 },
+                      { key: 'xp_first_blood', label: 'First blood', default: 25 },
+                      { key: 'xp_exam_pass', label: 'Exam pass', default: 50 },
+                      { key: 'xp_cert_pass', label: 'Certification pass', default: 100 },
+                      { key: 'xp_codeathon', label: 'Codeathon', default: 20 },
+                      { key: 'xp_hackathon', label: 'Hackathon', default: 100 },
+                      { key: 'xp_daily_login', label: 'Daily login', default: 5 },
+                      { key: 'xp_streak_7day', label: '7-day streak', default: 25 },
+                      { key: 'xp_streak_30day', label: '30-day streak', default: 100 },
+                    ].map(({ key, label, default: def }) => (
+                      <div key={key}>
+                        <Label className="text-xs">{label}</Label>
+                        <Input
+                          type="number"
+                          value={String(gamification[key] ?? def)}
+                          onChange={(e) => setGamification((g) => ({ ...g, [key]: Number(e.target.value) || 0 }))}
+                          className="mt-1.5 h-9 rounded-lg border-border/60 bg-background text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Level Thresholds</p>
+                  <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                    {[
+                      { key: 'level_2_xp', label: 'Level 2', default: 100 },
+                      { key: 'level_5_xp', label: 'Level 5', default: 500 },
+                      { key: 'level_10_xp', label: 'Level 10', default: 2000 },
+                      { key: 'level_20_xp', label: 'Level 20', default: 8000 },
+                      { key: 'level_50_xp', label: 'Level 50', default: 50000 },
+                    ].map(({ key, label, default: def }) => (
+                      <div key={key}>
+                        <Label className="text-xs">{label} XP</Label>
+                        <Input
+                          type="number"
+                          value={String(gamification[key] ?? def)}
+                          onChange={(e) => setGamification((g) => ({ ...g, [key]: Number(e.target.value) || 0 }))}
+                          className="mt-1.5 h-9 rounded-lg border-border/60 bg-background text-sm"
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Streak Settings</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label className="text-xs">Streak XP multiplier</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={String(gamification.streak_multiplier ?? 1.5)}
+                        onChange={(e) => setGamification((g) => ({ ...g, streak_multiplier: Number(e.target.value) || 1 }))}
+                        className="mt-1.5 h-9 rounded-lg border-border/60 bg-background text-sm"
+                      />
+                    </div>
+                    <div className="flex items-center justify-between gap-4 pt-5">
+                      <div className="space-y-0.5">
+                        <Label className="text-xs">Streak freeze enabled</Label>
+                        <p className="text-xs text-muted-foreground">Allow users to freeze their streak</p>
+                      </div>
+                      <Switch
+                        checked={Boolean(gamification.streak_freeze_enabled ?? true)}
+                        onCheckedChange={(v) => setGamification((g) => ({ ...g, streak_freeze_enabled: v }))}
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Referral</p>
+                  <div className="grid gap-4 sm:grid-cols-2">
+                    <div>
+                      <Label className="text-xs">Referral XP bonus</Label>
+                      <Input
+                        type="number"
+                        value={String(gamification.referral_xp_bonus ?? 500)}
+                        onChange={(e) => setGamification((g) => ({ ...g, referral_xp_bonus: Number(e.target.value) || 0 }))}
+                        className="mt-1.5 h-9 rounded-lg border-border/60 bg-background text-sm"
+                      />
+                    </div>
+                    <div>
+                      <Label className="text-xs">Referral commission %</Label>
+                      <Input
+                        type="number"
+                        step="0.1"
+                        value={String(gamification.referral_commission_percent ?? 10)}
+                        onChange={(e) => setGamification((g) => ({ ...g, referral_commission_percent: Number(e.target.value) || 0 }))}
+                        className="mt-1.5 h-9 rounded-lg border-border/60 bg-background text-sm"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="space-y-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Badges</p>
+                  <div className="space-y-0 divide-y divide-border/60">
+                    {[
+                      { key: 'badge_hackathon_enabled', label: 'Hackathon badges', desc: 'Award badges for hackathon participation' },
+                      { key: 'badge_exam_enabled', label: 'Exam badges', desc: 'Award badges for passing exams' },
+                      { key: 'badge_cert_enabled', label: 'Certification badges', desc: 'Award badges for earning certifications' },
+                      { key: 'badge_streak_enabled', label: 'Streak badges', desc: 'Award badges for maintaining streaks' },
+                    ].map(({ key, label, desc }) => (
+                      <div key={key} className="flex items-center justify-between gap-4 py-3">
+                        <div className="space-y-0.5">
+                          <Label className="text-xs text-foreground">{label}</Label>
+                          <p className="text-xs text-muted-foreground">{desc}</p>
+                        </div>
+                        <Switch
+                          checked={Boolean(gamification[key] ?? true)}
+                          onCheckedChange={(v) => setGamification((g) => ({ ...g, [key]: v }))}
+                        />
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              </div>
+              <div className="flex justify-end border-t border-border/60 bg-muted/20 px-6 py-4">
+                <Button
+                  className="gap-2 rounded-lg"
+                  onClick={() => void saveGamification()}
+                  disabled={savingKey !== null}
+                >
+                  {savingKey === 'gamification' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Save gamification
+                </Button>
+              </div>
+            </Card>
           ) : section === 'email-templates' ? (
             <Card className="rounded-xl border-border/60 shadow-sm">
               <div className="border-b border-border/60 px-6 py-4">

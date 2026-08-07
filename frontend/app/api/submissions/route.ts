@@ -9,7 +9,7 @@ import {
   type SubmissionStatus,
   type TestRunResult,
 } from '@/lib/db/problems'
-import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS } from '@/lib/db/leaderboard'
+import { awardXp, DIFFICULTY_XP, FIRST_BLOOD_BONUS, getXpRewards } from '@/lib/db/leaderboard'
 import { executeOnce } from '@/lib/piston'
 import type { PistonExecuteResult } from '@/lib/piston'
 
@@ -208,7 +208,8 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     if (aggregateStatus === 'accepted') {
       try {
         const difficulty = (problem.difficulty || 'easy') as 'easy' | 'medium' | 'hard'
-        const baseXp = DIFFICULTY_XP[difficulty] ?? 10
+        const rewards = await getXpRewards()
+        const baseXp = rewards[difficulty] ?? 10
 
         const prior = await sCol.findOne({
           problem_id: problem.id,
@@ -233,7 +234,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           if (!earlier) {
             await awardXp({
               userId: gate.user.id,
-              amount: FIRST_BLOOD_BONUS,
+              amount: rewards.first_blood,
               reason: 'first_blood',
               problemId: problem.id,
               submissionId: doc.id,

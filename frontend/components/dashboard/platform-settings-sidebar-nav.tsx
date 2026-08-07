@@ -14,6 +14,7 @@ import {
   Globe2,
   Smartphone,
   ScrollText,
+  Trophy,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -39,6 +40,7 @@ const ITEMS: {
   { id: 'payments', label: 'Payments & billing', icon: CreditCard },
   { id: 'email-templates', label: 'Email templates', icon: FileText },
   { id: 'llm', label: 'AI & LLM Keys', icon: Sparkles },
+  { id: 'gamification', label: 'Gamification & XP', icon: Trophy },
 ]
 
 export function PlatformSettingsSidebarNav({

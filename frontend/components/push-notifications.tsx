@@ -41,6 +41,7 @@ export function PushNotifications({ userId }: { userId?: string }) {
             message: xp ? `You earned +${xp} XP. A level-up certificate is on its way.` : 'A level-up certificate is on its way.',
             duration: 7000,
           })
+          window.dispatchEvent(new CustomEvent('codespectra:celebrate', { detail: { type: 'level_up' } }))
         } else if (type === 'xp.awarded') {
           addToast({
             type: 'success',
@@ -48,6 +49,7 @@ export function PushNotifications({ userId }: { userId?: string }) {
             message: 'Keep it up — you are doing great!',
             duration: 4500,
           })
+          window.dispatchEvent(new CustomEvent('codespectra:celebrate', { detail: { type: 'xp.awarded' } }))
         } else if (msg.title) {
           addToast({ type: 'info', title: msg.title, message: msg.body, duration: 5000 })
         }
