@@ -67,11 +67,13 @@ import {
   Flame,
   Mail,
   ScanSearch,
+  UserPlus,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
 import { Breadcrumbs } from '@/components/breadcrumbs'
 import { PushNotifications } from '@/components/push-notifications'
+import { Celebration } from '@/components/gamification/celebration'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
@@ -151,6 +153,20 @@ export default function DashboardLayout({
       if (!cancelled) setLockedPages(pages)
     })
     return () => { cancelled = true }
+  }, [])
+
+  useEffect(() => {
+    fetch('/api/daily-login', {
+      method: 'POST',
+      credentials: 'include',
+    })
+      .then(r => r.json())
+      .then(data => {
+        if (data.xp_awarded) {
+          window.dispatchEvent(new CustomEvent('codespectra:celebrate', { detail: { type: 'daily_login' } }))
+        }
+      })
+      .catch(() => {})
   }, [])
 
   // Fetch public platform settings
@@ -312,7 +328,6 @@ export default function DashboardLayout({
       [p.security]: Shield,
       '/dashboard/admin/proctor': Shield,
       '/dashboard/admin/certificates': Award,
-      [p.teams]: Users,
       [p.jobs]: Briefcase,
       [p.resumes]: FileText,
       [p.codeathons]: Trophy,
@@ -353,6 +368,7 @@ export default function DashboardLayout({
       '/dashboard/cad': LayersIcon,
       '/dashboard/recruiter-analytics': BarChart3,
       '/dashboard/scanner': ScanSearch,
+      '/dashboard/referrals': UserPlus,
     }
 
     const HREF_OVERRIDES: Record<string, string> = {
@@ -680,6 +696,9 @@ export default function DashboardLayout({
               fullWidth
               compact={sidebarCollapsed}
               overviewHref={homeHref}
+              userRole={userProfile?.role}
+              allowedRoutes={allowedRoutes}
+              deniedRoutes={deniedRoutes}
             />
           </div>
 
@@ -955,6 +974,7 @@ export default function DashboardLayout({
 
       {/* Real-time FCM push → XP toasts / notification popups */}
       <PushNotifications userId={userProfile?.id} />
+      <Celebration />
 
       {/* Global Modals */}
     </div>

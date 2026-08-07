@@ -88,7 +88,7 @@ export default function AdminCodeathonsPage() {
     { key: 'participants', header: 'Participants', cell: (r) => r.participants },
     { key: 'prize', header: 'Prize Pool', cell: (r) => r.prizePool || '—' },
     { key: 'actions', header: '', cell: (r) => (
-      <Button size="sm" variant="ghost" onClick={() => openEdit(r)}><Pencil className="h-3.5 w-3.5" /></Button>
+      <Button size="sm" variant="ghost" onClick={() => openEdit(r)} title="Edit"><Pencil className="h-3.5 w-3.5" /></Button>
     )},
   ]
 

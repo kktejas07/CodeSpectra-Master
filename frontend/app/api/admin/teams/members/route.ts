@@ -181,10 +181,9 @@ export async function POST(request: NextRequest) {
       const orgName = tenantDoc?.name || 'your organization'
       const emailResult = await sendEmail(
         email,
-        emailTemplates.orgAccountProvisioned({
+        emailTemplates.accountCredentials({
           name: fullName,
           email,
-          password: tempPassword || '(contact your admin for password)',
           orgName,
           role: memberRole === 'tenant_admin' ? 'Organization Admin' : 'Team Member',
         }),

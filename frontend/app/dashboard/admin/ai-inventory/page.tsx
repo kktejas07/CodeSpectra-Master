@@ -121,6 +121,7 @@ export default function AiInventoryPage() {
   // Toggling status state
   const [togglingId, setTogglingId] = useState<string | null>(null)
   const [actionMessage, setActionMessage] = useState<string | null>(null)
+  const [reviewedFindings, setReviewedFindings] = useState<Set<string>>(new Set())
 
   const loadSummary = useCallback(async () => {
     setError(null)
@@ -305,7 +306,7 @@ export default function AiInventoryPage() {
                 </TooltipTrigger>
                 <TooltipContent side="right">
                   <p className="text-xs max-w-[250px]">
-                    Superadmin control plane: view auto-discovered AI assets, toggle features on/off, add custom endpoints, and remediate dependency vulnerabilities.
+                    Superadmin control plane: view auto-discovered AI assets, toggle features on/off, add custom endpoints, and review dependency vulnerabilities.
                   </p>
                 </TooltipContent>
               </Tooltip>
@@ -603,8 +604,8 @@ export default function AiInventoryPage() {
                 </Badge>
               </div>
               <p className="text-xs text-muted-foreground border-b border-border pb-3">{audit.note}</p>
-              <FindingTable title="Python Ecosystem (PyPI)" findings={audit.python.findings} onRemediate={(pkg) => setActionMessage(`Triggered background upgrade check for ${pkg}`)} />
-              <FindingTable title="JavaScript Ecosystem (npm)" findings={audit.npm.findings} onRemediate={(pkg) => setActionMessage(`Triggered background audit fix for ${pkg}`)} />
+              <FindingTable title="Python Ecosystem (PyPI)" findings={audit.python.findings} onRemediate={(pkg) => { setReviewedFindings(prev => new Set(prev).add(pkg)); setActionMessage(`Marked "${pkg}" as reviewed`) }} reviewedSet={reviewedFindings} />
+              <FindingTable title="JavaScript Ecosystem (npm)" findings={audit.npm.findings} onRemediate={(pkg) => { setReviewedFindings(prev => new Set(prev).add(pkg)); setActionMessage(`Marked "${pkg}" as reviewed`) }} reviewedSet={reviewedFindings} />
             </>
           ) : (
             <p className="text-xs text-muted-foreground">No audit run yet.</p>
@@ -732,10 +733,12 @@ function FindingTable({
   title,
   findings,
   onRemediate,
+  reviewedSet,
 }: {
   title: string
   findings: Finding[]
   onRemediate: (pkg: string) => void
+  reviewedSet: Set<string>
 }) {
   return (
     <div className="space-y-2">
@@ -772,14 +775,20 @@ function FindingTable({
                 <p className="text-xs font-mono text-primary font-medium">→ Recommended Fix: {f.fix}</p>
               </div>
               <div className="self-start sm:self-center">
-                <Button
-                  size="sm"
-                  variant="outline"
-                  onClick={() => onRemediate(f.package)}
-                  className="h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
-                >
-                  Remediate Fix
-                </Button>
+                {reviewedSet.has(f.package) ? (
+                  <span className="inline-flex items-center gap-1 rounded-md border border-emerald-500/40 bg-emerald-500/10 px-2.5 py-1 text-xs font-medium text-emerald-500">
+                    <CheckCircle2 className="h-3 w-3" /> Reviewed
+                  </span>
+                ) : (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => onRemediate(f.package)}
+                    className="h-7 text-xs border-primary/40 text-primary hover:bg-primary/10"
+                  >
+                    Mark as Reviewed
+                  </Button>
+                )}
               </div>
             </li>
           ))}

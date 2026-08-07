@@ -62,6 +62,8 @@ export default function TracksPage() {
     return n
   }
 
+  if (!gate.ready) return null
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2">
@@ -77,8 +79,6 @@ export default function TracksPage() {
           </Tooltip>
         </TooltipProvider>
       </div>
-
-      if (!gate.ready) return null
 
       {loading ? (
         <div className="flex items-center gap-2 text-muted-foreground text-sm py-20 justify-center">

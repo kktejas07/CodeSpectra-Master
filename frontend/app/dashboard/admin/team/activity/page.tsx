@@ -102,7 +102,7 @@ export default function TeamActivityPage() {
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href="/dashboard/admin/team">
-            <Button variant="outline" size="icon" className="h-8 w-8">
+            <Button variant="outline" size="icon" className="h-8 w-8" title="Back">
               <ArrowLeft className="h-4 w-4" />
             </Button>
           </Link>

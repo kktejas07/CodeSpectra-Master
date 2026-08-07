@@ -408,6 +408,7 @@ function BuilderInner({ value, onChange }: Props) {
                 size="sm"
                 className="h-6 px-2 text-destructive"
                 data-testid="builder-delete-node"
+                title="Delete"
               >
                 <Trash2 className="h-3 w-3" />
               </Button>

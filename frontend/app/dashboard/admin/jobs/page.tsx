@@ -230,15 +230,15 @@ export default function AdminJobsPage() {
           <Button variant="ghost" size="sm" title="Toggle active" onClick={() => toggleActive(r)}>
             {r.is_active ? <CheckCircle className="w-4 h-4 text-green-600" /> : <AlertCircle className="w-4 h-4 text-gray-400" />}
           </Button>
-          <Button variant="ghost" size="sm" asChild>
+          <Button variant="ghost" size="sm" asChild title="View">
             <a href={`/jobs/${r.id}`} target="_blank" rel="noopener">
               <Eye className="w-4 h-4" />
             </a>
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => openEdit(r)}>
+          <Button variant="ghost" size="sm" onClick={() => openEdit(r)} title="Edit">
             <Edit className="w-4 h-4" />
           </Button>
-          <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id}>
+          <Button variant="ghost" size="sm" onClick={() => handleDelete(r.id)} disabled={deletingId === r.id} title="Delete">
             {deletingId === r.id
               ? <Loader2 className="w-4 h-4 animate-spin text-red-600" />
               : <Trash2 className="w-4 h-4 text-red-600" />}

@@ -29,7 +29,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/system',
   '/dashboard/admin/analytics',
   '/dashboard/admin/users',
-  '/dashboard/admin/teams',
   '/dashboard/admin/roles',
   '/dashboard/admin/tenants',
   '/dashboard/admin/permissions',
@@ -166,6 +165,9 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/settings',
   '/dashboard/settings/ai',
 
+  // Referrals
+  '/dashboard/referrals',
+
   // Misc
   '/dashboard/support',
   '/dashboard/status',
@@ -224,7 +226,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/settings/cloudflare': 'Cloudflare',
   '/dashboard/admin/settings/llm': 'LLM Config',
   '/dashboard/admin/settings/mobile': 'Mobile App',
-  '/dashboard/admin/teams': 'Teams',
   '/dashboard/admin/jobs': 'Jobs',
   '/dashboard/admin/resumes': 'Resumes',
   '/dashboard/admin/codeathons': 'Codeathons',
@@ -270,6 +271,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/notifications': 'Notifications',
   '/dashboard/notifications/preferences': 'Notification Preferences',
   '/dashboard/support': 'Support',
+  '/dashboard/referrals': 'Referrals',
   '/dashboard/status': 'System Status',
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',

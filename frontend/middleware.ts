@@ -37,6 +37,7 @@ export function middleware(request: NextRequest) {
     '/api/webhooks/postal',
     '/api/admin/llm-test',
     '/api/exams',
+    '/api/daily-login',
   ]
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const csrf = checkCsrf(request)

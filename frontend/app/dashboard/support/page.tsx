@@ -139,7 +139,7 @@ export default function SupportPage() {
         {selectedTicket.status !== 'closed' && (
           <div className="flex gap-2">
             <Input value={newMessage} onChange={e => setNewMessage(e.target.value)} placeholder="Type your reply..." onKeyDown={e => e.key === 'Enter' && sendReply()} />
-            <Button onClick={sendReply} disabled={sending || !newMessage.trim()}><Send className="h-4 w-4" /></Button>
+            <Button onClick={sendReply} disabled={sending || !newMessage.trim()} title="Send"><Send className="h-4 w-4" /></Button>
           </div>
         )}
       </div>

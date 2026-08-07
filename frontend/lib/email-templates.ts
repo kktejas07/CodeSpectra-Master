@@ -464,6 +464,32 @@ export const emailTemplates = {
       ${baseStyles.footer}`,
     }
   },
+
+  accountCredentials: (params: { name: string; email: string; role: string; orgName: string }) => {
+    const base = getBaseUrl()
+    return {
+      subject: `Your ${params.orgName} account is ready — CodeSpectra`,
+      html: `${baseStyles.wrapper}
+        <h1 style="font-size:20px;margin:0 0 4px;font-weight:700;color:${BRAND.text}">Welcome to CodeSpectra, ${params.name}!</h1>
+        <p style="margin:12px 0 16px;color:${BRAND.muted};font-size:14px">An account has been created for you on <strong>${params.orgName}</strong>.</p>
+        ${baseStyles.card(`
+          <table cellpadding="0" cellspacing="0" style="width:100%;font-size:14px">
+            ${statRow('Name', params.name)}
+            ${statRow('Email', params.email)}
+            ${statRow('Role', params.role)}
+            ${statRow('Organization', params.orgName)}
+          </table>
+        `)}
+        <p style="margin:16px 0;font-size:14px;color:${BRAND.text};font-weight:500">How to sign in</p>
+        <ol style="margin:0 0 16px;padding-left:18px;color:${BRAND.muted};font-size:14px;line-height:1.9">
+          <li>Go to <a href="${base}/login" style="color:${BRAND.green};font-weight:500;text-decoration:none">${base}/login</a></li>
+          <li>Enter your email address and the password provided by your admin</li>
+          <li>We recommend changing your password after your first sign-in</li>
+        </ol>
+        ${baseStyles.button(`${base}/login`, 'Sign In')}
+      ${baseStyles.footer}`,
+    }
+  },
 }
 
 export const hackathonEmailTemplates = {

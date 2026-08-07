@@ -7,8 +7,9 @@ import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import Link from 'next/link'
 import { Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle, 
-  MapPin, CheckCircle2, Activity, Loader2,
+  MapPin, CheckCircle2, Activity, Loader2, Settings, Info,
 } from 'lucide-react'
 import { WorldTrafficMap } from '@/components/admin/world-traffic-map'
 
@@ -172,6 +173,41 @@ export default function CdnAdminPage() {
         </Card>
       </div>
 
+      {/* Cloudflare not configured setup message */}
+      {!cfLoading && cfData && !cfData.configured && (
+        <Card className="p-6 border border-primary/20 bg-primary/5">
+          <div className="flex items-start gap-4">
+            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
+              <Info className="h-5 w-5" />
+            </div>
+            <div className="space-y-3 flex-1">
+              <h3 className="font-semibold text-lg">Cloudflare CDN Not Configured</h3>
+              <p className="text-sm text-muted-foreground leading-relaxed">
+                Cloudflare CDN accelerates your site by caching content at edge locations worldwide, 
+                reduces origin server load, and provides DDoS protection, WAF rules, and analytics. 
+                Configuring it enables real traffic metrics, cache purge controls, and visitor geography data on this page.
+              </p>
+              <div className="space-y-1.5 text-sm text-muted-foreground">
+                <p className="font-medium text-foreground">How to configure:</p>
+                <ol className="list-decimal list-inside space-y-1">
+                  <li>Create a Cloudflare account and add your domain</li>
+                  <li>Find your Zone ID on the Cloudflare dashboard (right sidebar)</li>
+                  <li>Create an API Token with Zone Analytics and Cache Purge permissions</li>
+                  <li>Enter both in Settings</li>
+                </ol>
+              </div>
+              <Link
+                href="/dashboard/admin/settings"
+                className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
+              >
+                <Settings className="h-4 w-4" />
+                Go to Settings
+              </Link>
+            </div>
+          </div>
+        </Card>
+      )}
+
       {/* Main content grid */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Left Col: Purge Cache & WAF Configuration */}
@@ -238,6 +274,11 @@ export default function CdnAdminPage() {
               <div>
                 <h3 className="font-semibold text-lg">Web Application Firewall (WAF)</h3>
                 <p className="text-xs text-muted-foreground">Manage active intrusion protection rules deployed at the CDN edge network layer.</p>
+                {!cfData?.configured && (
+                  <p className="text-[11px] text-amber-500 mt-1">
+                    WAF rules shown here are simulated and stored locally. Configure Cloudflare to manage real WAF rules.
+                  </p>
+                )}
               </div>
             </div>
 

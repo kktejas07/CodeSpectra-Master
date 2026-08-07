@@ -34,6 +34,7 @@ export default function AdminProctorPage() {
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
   const [expanded, setExpanded] = useState<string | null>(null)
+  const [userMap, setUserMap] = useState<Record<string, { name: string; email: string }>>({})
 
   const load = useCallback(async (sessionId = '') => {
     setLoading(true)
@@ -50,6 +51,22 @@ export default function AdminProctorPage() {
   }, [])
 
   useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
+
+  useEffect(() => {
+    if (!gate.ready) return
+    fetch('/api/admin/users', { cache: 'no-store' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (!data) return
+        const users = Array.isArray(data) ? data : data.users || []
+        const map: Record<string, { name: string; email: string }> = {}
+        for (const u of users) {
+          if (u.id || u._id) map[u.id || u._id] = { name: u.name || u.email || 'Unknown', email: u.email || '' }
+        }
+        setUserMap(map)
+      })
+      .catch(() => {})
+  }, [gate.ready])
 
   const filtered = search
     ? events.filter((e) =>
@@ -128,7 +145,7 @@ export default function AdminProctorPage() {
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{e.event_type}</p>
                   <p className="text-xs text-muted-foreground truncate">
-                    {e.session_id.slice(0, 24)}… · {new Date(e.created_at).toLocaleTimeString()}
+                    {userMap[e.user_id]?.name || e.user_id.slice(0, 16)} · {e.session_id.slice(0, 24)}… · {new Date(e.created_at).toLocaleTimeString()}
                   </p>
                 </div>
                 <Badge variant={EVENT_SEVERITY[e.event_type] === 'critical' ? 'destructive' : 'secondary'} className="text-[10px]">
@@ -139,7 +156,7 @@ export default function AdminProctorPage() {
               {expanded === e.id && (
                 <div className="px-12 pb-3 text-xs text-muted-foreground space-y-1 bg-muted/20">
                   <p>ID: {e.id}</p>
-                  <p>User: {e.user_id}</p>
+                  <p>User: {userMap[e.user_id]?.name || e.user_id}{userMap[e.user_id]?.email ? ` (${userMap[e.user_id].email})` : ''}</p>
                   <p>Session: {e.session_id}</p>
                   <p>Time: {new Date(e.created_at).toLocaleString()}</p>
                   {Object.keys(e.meta).length > 0 && (

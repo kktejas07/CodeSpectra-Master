@@ -128,8 +128,9 @@ export async function POST(
     if (userId && !userId.startsWith('candidate_') && maxScore > 0 && totalScore > 0) {
       try {
         const { awardXpWithLevelUp } = await import('@/lib/xp-service')
-        const { EXAM_PASS_XP } = await import('@/lib/db/leaderboard')
-        const amount = Math.max(5, Math.round((totalScore / maxScore) * EXAM_PASS_XP))
+        const { getXpRewards } = await import('@/lib/db/leaderboard')
+        const rewards = await getXpRewards()
+        const amount = Math.max(5, Math.round((totalScore / maxScore) * rewards.exam_pass))
         await awardXpWithLevelUp({
           userId,
           amount,

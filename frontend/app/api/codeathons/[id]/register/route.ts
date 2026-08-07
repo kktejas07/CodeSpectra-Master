@@ -46,10 +46,11 @@ export async function POST(request: Request, { params }: IdRouteContext) {
     // Attendance XP (idempotent per registration).
     try {
       const { awardXpWithLevelUp } = await import('@/lib/xp-service')
-      const { CODEATHON_ATTEND_XP } = await import('@/lib/db/leaderboard')
+      const { getXpRewards } = await import('@/lib/db/leaderboard')
+      const rewards = await getXpRewards()
       await awardXpWithLevelUp({
         userId: gate.user.id,
-        amount: CODEATHON_ATTEND_XP,
+        amount: rewards.codeathon,
         reason: 'codeathon_attended',
         submissionId: doc.id,
         metadata: { codeathon_id: id },
@@ -57,6 +58,20 @@ export async function POST(request: Request, { params }: IdRouteContext) {
     } catch (e) {
       console.error('[CodeSpectra] codeathon XP award failed:', e)
     }
+
+    try {
+      const codeathonDoc = await codeCol.findOne({ id })
+      const hackathonTitle = codeathonDoc?.title || 'the hackathon'
+      const { notify } = await import('@/lib/notifications')
+      await notify({
+        user_id: gate.user.id,
+        type: 'xp.awarded',
+        title: 'Hackathon Participant!',
+        message: `You earned 100 XP for registering for ${hackathonTitle}`,
+        link: `/dashboard/codeathons/${id}`,
+        icon: 'star',
+      })
+    } catch { /* notification best-effort */ }
 
     return NextResponse.json({
       success: true,

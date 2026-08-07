@@ -70,10 +70,11 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (passed) {
     try {
       const { awardXpWithLevelUp } = await import('@/lib/xp-service')
-      const { CERT_PASS_XP } = await import('@/lib/db/leaderboard')
+      const { getXpRewards } = await import('@/lib/db/leaderboard')
+      const rewards = await getXpRewards()
       await awardXpWithLevelUp({
         userId: user.id,
-        amount: CERT_PASS_XP,
+        amount: rewards.cert_pass,
         reason: 'certification_passed',
         submissionId: attempt.id,
         metadata: { certification_id: cert.id, score: String(score) },

@@ -158,6 +158,7 @@ function QuickFixCard({
                 variant="ghost"
                 onClick={onCopy}
                 className="h-6 px-2 gap-1 text-xs"
+                title="Copy"
               >
                 <Copy className="w-3 h-3" />
               </Button>
@@ -192,6 +193,7 @@ function QuickFixCard({
               variant="outline"
               onClick={onDismiss}
               className="h-8 px-2"
+              title="Dismiss"
             >
               <X className="w-3 h-3" />
             </Button>

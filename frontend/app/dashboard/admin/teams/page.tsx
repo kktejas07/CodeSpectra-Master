@@ -33,6 +33,8 @@ export default function TeamsManagement() {
   if (!gate.ready) return null
   if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
 
+  const safeTeams = teams || []
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -54,12 +56,12 @@ export default function TeamsManagement() {
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card className="p-4"><p className="text-sm text-muted-foreground">Total Teams</p><p className="text-3xl font-bold mt-2">{teams.length}</p></Card>
-        <Card className="p-4"><p className="text-sm text-muted-foreground">Total Members</p><p className="text-3xl font-bold mt-2">{teams.reduce((acc, t) => acc + t.members, 0)}</p></Card>
-        <Card className="p-4"><p className="text-sm text-muted-foreground">Active Teams</p><p className="text-3xl font-bold mt-2">{teams.filter(t => t.status === 'active').length}</p></Card>
+        <Card className="p-4"><p className="text-sm text-muted-foreground">Total Teams</p><p className="text-3xl font-bold mt-2">{safeTeams.length}</p></Card>
+        <Card className="p-4"><p className="text-sm text-muted-foreground">Total Members</p><p className="text-3xl font-bold mt-2">{safeTeams.reduce((acc, t) => acc + t.members, 0)}</p></Card>
+        <Card className="p-4"><p className="text-sm text-muted-foreground">Active Teams</p><p className="text-3xl font-bold mt-2">{safeTeams.filter(t => t.status === 'active').length}</p></Card>
       </div>
 
-      {teams.length === 0 ? (
+      {safeTeams.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
           <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
           <p className="mt-3 text-muted-foreground">No teams created yet.</p>
@@ -71,7 +73,7 @@ export default function TeamsManagement() {
             <Input placeholder="Search teams..." className="pl-9" />
           </div>
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {teams.map(team => (
+            {safeTeams.map(team => (
               <Card key={team.id} className="border-border/60 p-4">
                 <h3 className="font-semibold text-foreground">{team.name}</h3>
                 <div className="mt-2 flex items-center gap-4 text-xs text-muted-foreground">

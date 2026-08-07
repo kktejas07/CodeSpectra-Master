@@ -142,6 +142,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
         <button 
           onClick={onCancel}
           className="absolute top-4 right-4 p-1.5 rounded-full hover:bg-muted text-muted-foreground transition-colors"
+          title="Close"
         >
           <X className="h-5 w-5" />
         </button>

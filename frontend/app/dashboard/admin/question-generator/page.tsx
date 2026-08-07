@@ -4,6 +4,7 @@ import { useState } from 'react'
 import { Loader2, Sparkles, FileCheck2, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -148,7 +149,7 @@ export default function QuestionGeneratorPage() {
               Generated problem will appear here. Publish to push it live to all candidates.
             </p>
           ) : (
-            <div className="space-y-3">
+            <div className="space-y-4">
               {result.published_problem_id && (
                 <div className="rounded-md border border-primary/30 bg-primary/10 text-primary p-2 text-xs flex items-center gap-2">
                   <FileCheck2 className="h-4 w-4" />
@@ -162,12 +163,86 @@ export default function QuestionGeneratorPage() {
                   </a>
                 </div>
               )}
-              <pre
-                className="text-[11px] whitespace-pre-wrap break-words font-mono max-h-[480px] overflow-y-auto rounded border border-border bg-background/40 p-3"
-                data-testid="qgen-result"
-              >
-                {JSON.stringify(result.problem, null, 2)}
-              </pre>
+
+              <div className="space-y-3">
+                {(result.problem as { title?: string }).title && (
+                  <div>
+                    <h3 className="text-lg font-bold">{(result.problem as { title?: string }).title}</h3>
+                    <div className="flex flex-wrap gap-1.5 mt-1.5">
+                      {(result.problem as { difficulty?: string }).difficulty && (
+                        <Badge variant="outline" className={
+                          (result.problem as { difficulty?: string }).difficulty === 'easy' ? 'border-emerald-500/40 text-emerald-500' :
+                          (result.problem as { difficulty?: string }).difficulty === 'hard' ? 'border-red-500/40 text-red-500' :
+                          'border-amber-500/40 text-amber-500'
+                        }>
+                          {(result.problem as { difficulty?: string }).difficulty}
+                        </Badge>
+                      )}
+                      {Array.isArray((result.problem as { topics?: string[] }).topics) &&
+                        (result.problem as { topics?: string[] }).topics!.map((t: string) => (
+                          <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                        ))
+                      }
+                    </div>
+                  </div>
+                )}
+
+                {(result.problem as { description?: string }).description && (
+                  <div className="rounded-lg border border-border/60 p-3">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground mb-1.5">Description</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">
+                      {(result.problem as { description?: string }).description}
+                    </p>
+                  </div>
+                )}
+
+                {Array.isArray((result.problem as { test_cases?: Array<{ input: string; output: string; explanation?: string }> }).test_cases) &&
+                  (result.problem as { test_cases?: Array<{ input: string; output: string; explanation?: string }> }).test_cases!.length > 0 && (
+                  <div className="rounded-lg border border-border/60 overflow-hidden">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-3 py-2 bg-muted/30 border-b border-border/60">Test Cases</p>
+                    <div className="divide-y divide-border/60">
+                      {(result.problem as { test_cases?: Array<{ input: string; output: string; explanation?: string }> }).test_cases!.map((tc: { input: string; output: string; explanation?: string }, i: number) => (
+                        <div key={i} className="grid grid-cols-[1fr_1fr_auto] gap-3 px-3 py-2 text-xs">
+                          <div>
+                            <span className="text-muted-foreground font-medium">Input: </span>
+                            <code className="font-mono text-foreground">{tc.input}</code>
+                          </div>
+                          <div>
+                            <span className="text-muted-foreground font-medium">Output: </span>
+                            <code className="font-mono text-foreground">{tc.output}</code>
+                          </div>
+                          {tc.explanation && (
+                            <div className="text-muted-foreground italic">{tc.explanation}</div>
+                          )}
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+
+                {(result.problem as { starter_code?: string }).starter_code && (
+                  <div className="rounded-lg border border-border/60 overflow-hidden">
+                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-3 py-2 bg-muted/30 border-b border-border/60">
+                      Starter Code
+                      {(result.problem as { language?: string }).language && (
+                        <span className="ml-2 normal-case tracking-normal">{(result.problem as { language?: string }).language}</span>
+                      )}
+                    </p>
+                    <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap break-words">
+                      {(result.problem as { starter_code?: string }).starter_code}
+                    </pre>
+                  </div>
+                )}
+
+                {!((result.problem as { title?: string }).title) && (
+                  <pre
+                    className="text-[11px] whitespace-pre-wrap break-words font-mono max-h-[480px] overflow-y-auto rounded border border-border bg-background/40 p-3"
+                    data-testid="qgen-result"
+                  >
+                    {JSON.stringify(result.problem, null, 2)}
+                  </pre>
+                )}
+              </div>
             </div>
           )}
         </div>

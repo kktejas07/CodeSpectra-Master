@@ -37,7 +37,7 @@ export function ToastNotification({ toast, onClose }: { toast: Toast; onClose: (
         <p className="font-semibold text-sm">{toast.title}</p>
         <p className="text-xs opacity-90">{toast.message}</p>
       </div>
-      <button onClick={onClose} className="text-lg opacity-50 hover:opacity-100">
+      <button onClick={onClose} className="text-lg opacity-50 hover:opacity-100" title="Close">
         <X className="w-4 h-4" />
       </button>
     </div>

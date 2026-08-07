@@ -115,6 +115,7 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
               <button
                 onClick={handleRemoveFile}
                 className="p-2 hover:bg-background rounded-lg transition-colors"
+                title="Remove"
               >
                 <X className="w-5 h-5 text-muted-foreground hover:text-foreground" />
               </button>

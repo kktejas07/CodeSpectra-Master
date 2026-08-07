@@ -47,6 +47,8 @@ export type XpReason =
   | 'certification_passed'
   | 'codeathon_attended'
   | 'challenge_completed'
+  | 'xp_redeemed'
+  | 'referral_earned'
 
 export interface XpEventDoc {
   id: string
@@ -136,6 +138,36 @@ export interface WorkflowRunDoc {
     duration_ms: number
   }>
   duration_ms: number
+}
+
+export async function getXpRewards(): Promise<Record<string, number>> {
+  try {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const db = await getMongoDb()
+    const doc = await db.collection('platform_settings').findOne({ key: 'gamification' })
+    const saved = doc?.value as any
+    return {
+      easy: saved?.xp_rewards?.easy ?? DIFFICULTY_XP.easy,
+      medium: saved?.xp_rewards?.medium ?? DIFFICULTY_XP.medium,
+      hard: saved?.xp_rewards?.hard ?? DIFFICULTY_XP.hard,
+      first_blood: saved?.xp_rewards?.first_blood ?? FIRST_BLOOD_BONUS,
+      exam_pass: saved?.xp_rewards?.exam_pass ?? EXAM_PASS_XP,
+      cert_pass: saved?.xp_rewards?.cert_pass ?? CERT_PASS_XP,
+      codeathon: saved?.xp_rewards?.codeathon ?? CODEATHON_ATTEND_XP,
+      hackathon: saved?.xp_rewards?.hackathon ?? 100,
+    }
+  } catch {
+    return {
+      easy: DIFFICULTY_XP.easy,
+      medium: DIFFICULTY_XP.medium,
+      hard: DIFFICULTY_XP.hard,
+      first_blood: FIRST_BLOOD_BONUS,
+      exam_pass: EXAM_PASS_XP,
+      cert_pass: CERT_PASS_XP,
+      codeathon: CODEATHON_ATTEND_XP,
+      hackathon: 100,
+    }
+  }
 }
 
 async function db() {
