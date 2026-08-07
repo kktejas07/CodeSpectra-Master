@@ -11,6 +11,7 @@ import {
   Search, Briefcase, MapPinIcon, DollarSign, Clock,
   Filter, X, Loader2, ArrowRight, Building2,
 } from 'lucide-react'
+import { useCurrency } from '@/lib/use-currency'
 
 interface JobPosting {
   id: string
@@ -30,12 +31,12 @@ interface JobPosting {
 const JOB_TYPES = ['Full-time', 'Part-time', 'Contract', 'Internship', 'Remote']
 const EXPERIENCE_LEVELS = ['Entry', 'Mid', 'Senior', 'Lead', 'Executive']
 
-function formatSalary(salary: JobPosting['salary']) {
+function formatSalary(salary: JobPosting['salary'], symbol: string) {
   if (!salary) return null
   const fmt = (n: number) =>
     salary.currency === 'INR'
-      ? `₹${(n / 100000).toFixed(1)}L`
-      : `$${(n / 1000).toFixed(0)}k`
+      ? `${symbol}${(n / 100000).toFixed(1)}L`
+      : `${symbol}${(n / 1000).toFixed(0)}k`
   return `${fmt(salary.min)} – ${fmt(salary.max)}`
 }
 
@@ -51,6 +52,7 @@ function timeAgo(dateStr: string) {
 
 export default function JobsPage() {
   const router = useRouter()
+  const { symbol } = useCurrency()
   const searchParams = useSearchParams()
   const [jobs, setJobs] = useState<JobPosting[]>([])
   const [loading, setLoading] = useState(true)
@@ -223,7 +225,7 @@ export default function JobsPage() {
                       {job.salary && (
                         <span className="flex items-center gap-1 text-green-600 font-medium">
                           <DollarSign className="h-3 w-3" />
-                          {formatSalary(job.salary)}
+                          {formatSalary(job.salary, symbol)}
                         </span>
                       )}
                       <span className="text-muted-foreground">

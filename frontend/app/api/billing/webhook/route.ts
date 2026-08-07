@@ -9,6 +9,8 @@ import {
   BILLING_PLANS,
 } from '@/lib/db/billing'
 import { notify } from '@/lib/notifications'
+import { getCurrencySymbol } from '@/lib/currency'
+import { getPlatformCurrency } from '@/lib/server-currency'
 
 export const runtime = 'nodejs'
 
@@ -73,13 +75,14 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           created_at: nowIso(),
           raw_event: pay,
         })
+        const sym = getCurrencySymbol(await getPlatformCurrency())
         notify({
           user_id: order.user_id,
           type: status === 'captured' ? 'billing.payment_success' : 'billing.payment_failed',
           title: status === 'captured' ? 'Payment successful' : 'Payment failed',
           message: status === 'captured'
-            ? `Payment of ₹${(amount / 100).toFixed(2)} completed.`
-            : `Payment of ₹${(amount / 100).toFixed(2)} failed.`,
+            ? `Payment of ${sym}${(amount / 100).toFixed(2)} completed.`
+            : `Payment of ${sym}${(amount / 100).toFixed(2)} failed.`,
           icon: status === 'captured' ? 'credit-card' : 'alert-circle',
           link: '/dashboard/billing',
         }).catch(() => {})

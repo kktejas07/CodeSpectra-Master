@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { findPlan } from '@/lib/billing-catalog'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
 
 type InvoiceRow = {
   id: string
@@ -101,6 +102,14 @@ function BillingContent() {
   } | null>(null)
   const [cancelOpen, setCancelOpen] = useState(false)
   const [busy, setBusy] = useState<string | null>(null)
+
+  const [currency, setCurrency] = useState('USD')
+  useEffect(() => {
+    fetch('/api/admin/platform-settings', { credentials: 'include' })
+      .then(r => r.json())
+      .then(d => { if (d?.settings?.platform_currency) setCurrency(d.settings.platform_currency) })
+      .catch(() => {})
+  }, [])
 
   const [pickPlan, setPickPlan] = useState('pro')
   const [pickInterval, setPickInterval] = useState<'month' | 'year'>('month')
@@ -385,7 +394,7 @@ function BillingContent() {
             <h2 className="text-2xl font-bold text-foreground">{subscription.planName}</h2>
             <p className="mt-1 text-muted-foreground">
               {subscription.billingInterval === 'year' ? 'Annual' : 'Monthly'} billing ·{' '}
-              <span className="font-medium text-foreground">${subscription.currentPrice}</span>
+              <span className="font-medium text-foreground">{getCurrencySymbol(currency)}{subscription.currentPrice}</span>
               {subscription.billingInterval === 'year' ? '/year' : '/month'}
             </p>
             {subscription.canceledAt ? (
@@ -463,7 +472,7 @@ function BillingContent() {
                       <td className="px-4 py-3 font-mono text-xs">{inv.id.slice(0, 8)}…</td>
                       <td className="px-4 py-3">{inv.date}</td>
                       <td className="px-4 py-3">
-                          {(inv.currency || 'USD').toUpperCase() === 'INR' ? '₹' : '$'}{inv.amount.toFixed(2)}
+                          {getCurrencySymbol(inv.currency || currency)}{inv.amount.toFixed(2)}
                       </td>
                       <td className="px-4 py-3">
                         <Badge variant="outline" className="capitalize">
@@ -538,7 +547,7 @@ function BillingContent() {
               >
                 {plans.map((p) => (
                   <option key={p.id} value={p.id} disabled={p.id === 'free'}>
-                    {p.name} — ${p.price}/mo (${p.yearlyPrice}/yr)
+                    {p.name} — {getCurrencySymbol(currency)}{p.price}/mo ({getCurrencySymbol(currency)}{p.yearlyPrice}/yr)
                   </option>
                 ))}
               </select>
@@ -654,7 +663,7 @@ function BillingContent() {
               <p>
                 <span className="text-muted-foreground">Amount:</span>{' '}
                 <strong>
-                  ${invoiceDetail.amount.toFixed(2)} {invoiceDetail.currency}
+                  {getCurrencySymbol(invoiceDetail.currency || currency)}{invoiceDetail.amount.toFixed(2)} {invoiceDetail.currency}
                 </strong>
               </p>
               <p>

@@ -12,7 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, LogIn, ShieldAlert, RefreshCw, UserRound } from 'lucide-react'
+import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, LogIn, ShieldAlert, RefreshCw, UserRound, Mail } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
 
@@ -236,6 +236,43 @@ export default function TenantsPage() {
     } catch (e) {
       addToast({ type: 'error', title: 'Impersonation failed', message: e instanceof Error ? e.message : 'Unknown error' })
       setImpersonatingId(null)
+    }
+  }
+
+  const handleResendCredentials = async (member: TenantMember) => {
+    try {
+      const res = await csrfFetch(`/api/admin/users/${member.id}/resend-credentials`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Email sent', message: `Password reset link sent to ${member.email}` })
+      } else {
+        addToast({ type: 'error', title: 'Failed', message: json.error })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to send email' })
+    }
+  }
+
+  const handleUpdateMemberRole = async (member: TenantMember, newRole: string) => {
+    try {
+      const res = await csrfFetch(`/api/admin/users/${member.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ role: newRole }),
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Role updated', message: `${member.name || member.email} is now ${getRoleLabel(normalizeUserRole(newRole))}` })
+        if (membersOf) await openMembers(membersOf)
+      } else {
+        const json = await res.json().catch(() => ({}))
+        addToast({ type: 'error', title: 'Failed', message: json.error })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to update role' })
     }
   }
 
@@ -540,9 +577,24 @@ export default function TenantsPage() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate text-sm font-medium text-foreground flex items-center gap-2">
                         {m.name}
-                        <Badge variant="outline" className="text-[10px] capitalize shrink-0">
-                          {getRoleLabel(normalizeUserRole(m.role))}
-                        </Badge>
+                        {normalizeUserRole(m.role) === 'superadmin' ? (
+                          <Badge variant="outline" className="text-[10px] capitalize shrink-0">
+                            {getRoleLabel(normalizeUserRole(m.role))}
+                          </Badge>
+                        ) : (
+                          <Select
+                            value={normalizeUserRole(m.role)}
+                            onValueChange={(v) => void handleUpdateMemberRole(m, v)}
+                          >
+                            <SelectTrigger className="h-6 w-auto min-w-[100px] text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">User</SelectItem>
+                              <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        )}
                       </p>
                       <p className="truncate text-xs text-muted-foreground">{m.email}</p>
                     </div>
@@ -559,16 +611,27 @@ export default function TenantsPage() {
                           </Tooltip>
                         </TooltipProvider>
                       ) : (
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          className="h-7 gap-1 px-2 text-xs"
-                          onClick={() => void handleImpersonate(m)}
-                          disabled={impersonatingId === m.id || Boolean(impersonatingId)}
-                        >
-                          {impersonatingId === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
-                          Impersonate
-                        </Button>
+                        <div className="flex items-center gap-1">
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => void handleResendCredentials(m)}
+                            title="Send password reset email"
+                          >
+                            <Mail className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="outline"
+                            className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => void handleImpersonate(m)}
+                            disabled={impersonatingId === m.id || Boolean(impersonatingId)}
+                          >
+                            {impersonatingId === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
+                            Impersonate
+                          </Button>
+                        </div>
                       )}
                     </div>
                   </div>

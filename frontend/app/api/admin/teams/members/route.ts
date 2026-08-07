@@ -4,6 +4,8 @@ import { users as getUsersCollection } from '@/lib/db/admin'
 import bcrypt from 'bcryptjs'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { getMongoDb } from '@/lib/mongodb'
+import { sendEmail } from '@/lib/send-email'
+import { emailTemplates } from '@/lib/email-templates'
 
 function parseEmail(s: string | null | undefined): string | null {
   const e = (s || '').trim().toLowerCase()
@@ -170,6 +172,27 @@ export async function POST(request: NextRequest) {
       },
       { upsert: true },
     )
+
+    // Send welcome email with credentials
+    const tempPassword = body.password && body.password.length >= 8 ? body.password : null
+    try {
+      const { tenants: tenantsCol } = await import('@/lib/db/admin')
+      const tenantDoc = await (await tenantsCol()).findOne({ id: tenantId })
+      const orgName = tenantDoc?.name || 'your organization'
+      const emailResult = await sendEmail(
+        email,
+        emailTemplates.orgAccountProvisioned({
+          name: fullName,
+          email,
+          password: tempPassword || '(contact your admin for password)',
+          orgName,
+          role: memberRole === 'tenant_admin' ? 'Organization Admin' : 'Team Member',
+        }),
+      )
+      console.log(`[Members] Welcome email to ${email}: ${emailResult.success ? 'sent' : 'failed'} (${emailResult.provider})`)
+    } catch (e) {
+      console.error(`[Members] Welcome email to ${email} failed:`, e)
+    }
 
     return NextResponse.json({ user: { id: newUserId, email, full_name: fullName, role: memberRole, tenant_id: tenantId } }, { status: 201 })
   } catch (e: unknown) {

@@ -5,7 +5,9 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Clock, BookOpen, Play, Loader, Loader2, CheckCircle } from 'lucide-react'
+import { Input } from '@/components/ui/input'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Clock, BookOpen, Play, Loader2, CheckCircle, Search, Users, BarChart3 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Exam {
@@ -15,33 +17,46 @@ interface Exam {
   level: string
   duration: number
   questions: number
-  passingScore: number
-  description: string
+  access_type: string
+  published: boolean
+  cert_template?: string
+  degree_type?: string
+  branch?: string
+  screening_type?: string
+  techStack?: string[]
+  attempts: number
+  avgScore: number
   status: string
   score?: number
-  date?: string
 }
 
 export default function ExamsPage() {
   const gate = usePageGuard('user')
-
   const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])
   const [loading, setLoading] = useState(true)
-  const [filter, setFilter] = useState({ level: '', subject: '' })
+  const [search, setSearch] = useState('')
+  const [levelFilter, setLevelFilter] = useState('all')
+  const [subjectFilter, setSubjectFilter] = useState('all')
 
   useEffect(() => {
-    fetch('/api/exams')
+    fetch('/api/exams', { credentials: 'include' })
       .then(r => r.json())
       .then(json => { if (json.data) setExams(json.data) })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
 
-  const filteredExams = exams.filter(exam =>
-    (!filter.level || exam.level === filter.level) &&
-    (!filter.subject || exam.subject === filter.subject)
-  )
+  const subjects = [...new Set(exams.map(e => e.subject).filter(Boolean))].sort()
+  const levels = [...new Set(exams.map(e => e.level).filter(Boolean))].sort()
+
+  const filtered = exams.filter(exam => {
+    const q = search.trim().toLowerCase()
+    if (q && !(exam.title || '').toLowerCase().includes(q) && !(exam.subject || '').toLowerCase().includes(q)) return false
+    if (levelFilter !== 'all' && exam.level !== levelFilter) return false
+    if (subjectFilter !== 'all' && exam.subject !== subjectFilter) return false
+    return true
+  })
 
   const getLevelColor = (level: string) => {
     const l = (level || '').toLowerCase()
@@ -51,74 +66,133 @@ export default function ExamsPage() {
     return 'bg-muted text-muted-foreground'
   }
 
+  const stats = {
+    total: exams.length,
+    open: exams.filter(e => e.access_type === 'open').length,
+    inviteOnly: exams.filter(e => e.access_type === 'invite_only').length,
+  }
+
   if (!gate.ready) return null
 
-  if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+  if (loading) return (
+    <div className="flex justify-center py-20">
+      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    </div>
+  )
 
   return (
-    <div className="space-y-8">
-      <div>
-        <h1 className="text-3xl font-bold">Exams</h1>
-        <p className="text-muted-foreground mt-1">Take certification exams to validate your skills</p>
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="text-3xl font-bold text-foreground">Exams</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Take certification exams to validate your skills</p>
+        </div>
       </div>
 
-      {exams.length === 0 ? (
+      {/* Stats */}
+      <div className="grid gap-4 sm:grid-cols-3">
+        <Card className="border-border/60 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
+              <BookOpen className="h-5 w-5 text-blue-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
+              <p className="text-xs text-muted-foreground">Total exams</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="border-border/60 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-500/10">
+              <Play className="h-5 w-5 text-green-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.open}</p>
+              <p className="text-xs text-muted-foreground">Open enrollment</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="border-border/60 p-4">
+          <div className="flex items-center gap-3">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/10">
+              <Users className="h-5 w-5 text-purple-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{stats.inviteOnly}</p>
+              <p className="text-xs text-muted-foreground">Invite only</p>
+            </div>
+          </div>
+        </Card>
+      </div>
+
+      {/* Filters */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative max-w-sm flex-1 min-w-[200px]">
+          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
+          <Input placeholder="Search exams..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
+        </div>
+        <Select value={levelFilter} onValueChange={setLevelFilter}>
+          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="All levels" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All levels</SelectItem>
+            {levels.map(l => <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <Select value={subjectFilter} onValueChange={setSubjectFilter}>
+          <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue placeholder="All subjects" /></SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All subjects</SelectItem>
+            {subjects.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
+          </SelectContent>
+        </Select>
+        <p className="text-xs text-muted-foreground">{filtered.length} exam{filtered.length !== 1 ? 's' : ''}</p>
+      </div>
+
+      {/* Exam Grid */}
+      {filtered.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">No exams available yet.</p>
+          <p className="mt-3 text-muted-foreground">{search || levelFilter !== 'all' || subjectFilter !== 'all' ? 'No exams match your filters' : 'No exams available yet.'}</p>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filteredExams.map(exam => (
-            <Card key={exam.id} className="border-border/60 p-5">
+          {filtered.map(exam => (
+            <Card key={exam.id} className="border-border/60 p-5 hover:shadow-md transition-shadow">
               <div className="mb-3 flex items-start justify-between gap-2">
-                <div>
-                  <h3 className="font-semibold text-foreground">{exam.title}</h3>
+                <div className="min-w-0">
+                  <h3 className="font-semibold text-foreground truncate">{exam.title}</h3>
                   <p className="text-xs text-muted-foreground">{exam.subject}</p>
                 </div>
-                <Badge variant="outline" className={getLevelColor(exam.level)}>{exam.level}</Badge>
+                <Badge variant="outline" className={`text-[10px] shrink-0 ${getLevelColor(exam.level)}`}>{exam.level}</Badge>
               </div>
-              <p className="mb-4 line-clamp-2 text-xs text-muted-foreground">{exam.description}</p>
-              <div className="mb-4 flex items-center gap-4 text-xs text-muted-foreground">
+
+              <div className="mb-4 flex items-center gap-3 text-xs text-muted-foreground">
                 <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{exam.duration} min</span>
                 <span>{exam.questions} questions</span>
-                <span>Pass: {exam.passingScore}%</span>
+                {exam.access_type === 'invite_only' && <Badge variant="secondary" className="text-[10px]">Invite</Badge>}
               </div>
+
               {exam.status === 'completed' ? (
                 <>
-                  <div className="mb-3 p-2.5 rounded-xl bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-600 dark:text-green-400 flex items-center gap-1.5 justify-center">
-                    <CheckCircle className="h-3.5 w-3.5" /> Score: {exam.score}% - Completed
+                  <div className="mb-3 p-2 rounded-lg bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-600 flex items-center gap-1.5 justify-center">
+                    <CheckCircle className="h-3.5 w-3.5" /> Score: {exam.score}% — Completed
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full gap-2 border-green-500/30 hover:bg-green-500/10 text-green-600 dark:text-green-400 font-semibold" 
-                    onClick={() => router.push(`/dashboard/exams/${exam.id}`)}
-                  >
+                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/exams/${exam.id}`)}>
                     <BookOpen className="h-3.5 w-3.5" /> View Results
                   </Button>
                 </>
               ) : exam.status === 'submitted' ? (
                 <>
-                  <div className="mb-3 p-2.5 rounded-xl bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-600 dark:text-amber-400 flex items-center gap-1.5 justify-center">
+                  <div className="mb-3 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-600 flex items-center gap-1.5 justify-center">
                     <Clock className="h-3.5 w-3.5" /> Submitted — Awaiting Review
                   </div>
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="w-full gap-2 border-amber-500/30 hover:bg-amber-500/10 text-amber-600 dark:text-amber-400 font-semibold"
-                    onClick={() => router.push(`/dashboard/exams/${exam.id}`)}
-                  >
+                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/exams/${exam.id}`)}>
                     <Clock className="h-3.5 w-3.5" /> View Status
                   </Button>
                 </>
               ) : (
-                <Button 
-                  variant="default" 
-                  size="sm" 
-                  className="w-full gap-2 font-semibold" 
-                  onClick={() => router.push(`/dashboard/exams/${exam.id}`)}
-                >
+                <Button size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/exams/${exam.id}`)}>
                   <Play className="h-3.5 w-3.5" /> Start Exam
                 </Button>
               )}
@@ -129,4 +203,3 @@ export default function ExamsPage() {
     </div>
   )
 }
-

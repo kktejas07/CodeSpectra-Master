@@ -18,6 +18,8 @@ import {
 } from '@/lib/db/billing'
 import { getMongoDb } from '@/lib/mongodb'
 import { notify } from '@/lib/notifications'
+import { getCurrencySymbol } from '@/lib/currency'
+import { getPlatformCurrency } from '@/lib/server-currency'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 
@@ -100,11 +102,12 @@ async function processSuccessfulPayment(merchantTransactionId: string, amount: n
     created_at: nowIso(),
   })
 
+  const sym = getCurrencySymbol(await getPlatformCurrency())
   notify({
     user_id: order.user_id,
     type: 'billing.payment_success',
     title: 'Payment successful',
-    message: `Payment of ₹${(finalAmount / 100).toFixed(2)} completed via PhonePe.`,
+    message: `Payment of ${sym}${(finalAmount / 100).toFixed(2)} completed via PhonePe.`,
     icon: 'credit-card',
     link: '/dashboard/billing',
   }).catch(() => {})

@@ -24,6 +24,10 @@ const PLAN_COLORS: Record<string, string> = {
   enterprise: 'bg-purple-500/20 text-purple-700',
 }
 
+const CURRENCY_SYMBOLS: Record<string, string> = {
+  USD: '$', INR: '₹', EUR: '€', GBP: '£', AUD: 'A$', CAD: 'C$',
+}
+
 export default function PricingAdminPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
@@ -31,6 +35,7 @@ export default function PricingAdminPage() {
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [selectedPlan, setSelectedPlan] = useState('free')
+  const [currency, setCurrency] = useState('USD')
 
   const fetchPlans = async () => {
     setLoading(true)
@@ -42,7 +47,15 @@ export default function PricingAdminPage() {
     finally { setLoading(false) }
   }
 
-  useEffect(() => { fetchPlans() }, [])
+  const loadCurrency = async () => {
+    try {
+      const res = await fetch('/api/admin/platform-settings', { credentials: 'include' })
+      const data = await res.json()
+      if (data?.settings?.platform_currency) setCurrency(data.settings.platform_currency)
+    } catch { /* ignore */ }
+  }
+
+  useEffect(() => { fetchPlans(); loadCurrency() }, [])
 
   const currentPlan = plans.find(p => p.plan === selectedPlan)
 
@@ -107,7 +120,7 @@ export default function PricingAdminPage() {
         {plans.map(p => (
           <button key={p.plan} onClick={() => setSelectedPlan(p.plan)}
             className={`px-5 py-2.5 rounded-lg text-sm font-medium transition-all ${selectedPlan === p.plan ? 'bg-primary text-primary-foreground shadow' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
-            {p.name} {p.price && <span className="text-xs opacity-70 ml-1">{p.price}</span>}
+            {p.name} {p.price && <span className="text-xs opacity-70 ml-1">{p.price.replace('$', CURRENCY_SYMBOLS[currency] || '$')}</span>}
           </button>
         ))}
       </div>

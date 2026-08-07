@@ -52,7 +52,7 @@ export default function PlansPage() {
     try {
       const res = await fetch('/api/admin/platform-settings', { credentials: 'include' })
       const data = await res.json()
-      if (data?.platform_currency) setCurrency(data.platform_currency)
+      if (data?.settings?.platform_currency) setCurrency(data.settings.platform_currency)
     } catch { /* ignore */ }
   }
 

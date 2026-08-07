@@ -49,7 +49,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     ],
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
     solve_limit: 0,
-    cert_template: 'classic' as 'classic' | 'modern' | 'minimal',
+    cert_template: 'classic' as 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic',
     banner_url: '',
   })
 
@@ -91,7 +91,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
             : form.scoring,
           solve_limit: Number(doc.solve_limit) || 0,
           banner_url: typeof doc.banner_url === 'string' ? doc.banner_url : '',
-          cert_template: (doc.cert_template as 'classic' | 'modern' | 'minimal') || 'classic',
+          cert_template: (doc.cert_template as 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic') || 'classic',
         })
       })
       .catch(e => setError(e instanceof Error ? e.message : String(e)))
@@ -752,12 +752,15 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 <Label>Certificate Template</Label>
                 <select
                   value={form.cert_template}
-                  onChange={(e) => setForm((f) => ({ ...f, cert_template: e.target.value as 'classic' | 'modern' | 'minimal' }))}
+                  onChange={(e) => setForm((f) => ({ ...f, cert_template: e.target.value as 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic' }))}
                   className="flex h-10 w-full rounded-lg border border-border/60 bg-background px-3 py-2 text-sm"
                 >
                   <option value="classic">Classic (Gold/Serif)</option>
                   <option value="modern">Modern (Dark Gradient)</option>
                   <option value="minimal">Minimal (Monochrome)</option>
+                  <option value="professional">Professional (Blue/White)</option>
+                  <option value="corporate">Corporate (Navy/Gold)</option>
+                  <option value="academic">Academic (Green/Cream)</option>
                 </select>
                 <p className="text-xs text-muted-foreground">Template used for participant certificates on the results page.</p>
               </div>
