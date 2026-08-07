@@ -134,19 +134,22 @@ export async function POST(request: Request) {
 
       // Send welcome email with credentials
       const displayName = adminName || adminEmail.split('@')[0] || 'User'
-      const emailPassword = adminPassword && adminPassword.length >= 8 ? adminPassword : 'your temporary password'
+      const actualPassword = adminPassword && adminPassword.length >= 8 ? adminPassword : null
       try {
-        await sendEmail(
+        const emailResult = await sendEmail(
           adminEmail,
           emailTemplates.orgAccountProvisioned({
             name: displayName,
             email: adminEmail,
-            password: emailPassword,
+            password: actualPassword || '(check platform settings for password reset)',
             orgName: name,
             role: 'Organization Admin',
           }),
         )
-      } catch { /* email delivery best-effort */ }
+        console.log(`[Tenants] Welcome email to ${adminEmail}: ${emailResult.success ? 'sent' : 'failed'} (${emailResult.provider})`)
+      } catch (e) {
+        console.error(`[Tenants] Welcome email to ${adminEmail} failed:`, e)
+      }
     }
 
     return NextResponse.json({ data: { ...doc, member_count: admin ? 1 : 0 }, admin }, { status: 201 })
