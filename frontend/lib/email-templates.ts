@@ -88,7 +88,8 @@ const statRow = (label: string, value: string, mono = false) =>
 const alertBox = (content: string, bg: string, border: string) =>
   `<div style="background:${bg};border-left:3px solid ${border.split(' ')[0]};padding:12px 16px;border-radius:0 6px 6px 0;margin:16px 0">${content}</div>`
 
-export const emailTemplates = {
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+export const emailTemplates: { [key: string]: (...args: any[]) => { subject: string; html: string } } = {
   welcomeEmail: (name: string) => {
     const base = getBaseUrl()
     return {
