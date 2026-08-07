@@ -129,10 +129,27 @@ export default function SpeedInsightsPage() {
         })}
 
         {summary && summary.sampleSize === 0 && (
-          <Card className="border-dashed border-muted-foreground/30 p-8 text-center col-span-full">
-            <Gauge className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
-            <p className="text-sm font-medium text-muted-foreground">No web vitals data collected yet</p>
-            <p className="text-xs text-muted-foreground mt-1">Real user events will appear here once the dashboard is used by visitors</p>
+          <Card className="border-dashed border-muted-foreground/30 p-8 text-center col-span-full space-y-4">
+            <Gauge className="h-10 w-10 text-muted-foreground mx-auto" />
+            <div className="space-y-2">
+              <p className="text-base font-semibold">No web vitals data collected yet</p>
+              <p className="text-sm text-muted-foreground max-w-lg mx-auto leading-relaxed">
+                Core Web Vitals are performance metrics that measure real-world user experience on your site.
+                Data is collected automatically from real user visits — it may take some time for metrics to appear
+                as visitors browse your dashboard.
+              </p>
+            </div>
+            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 max-w-2xl mx-auto text-left">
+              {METRICS.slice(0, 5).map(({ key, title, desc }) => (
+                <div key={key} className="rounded-lg border border-border/60 p-3 space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Badge variant="outline" className="font-mono text-[10px]">{key}</Badge>
+                    <span className="text-xs font-medium">{title}</span>
+                  </div>
+                  <p className="text-[11px] text-muted-foreground leading-snug">{desc}</p>
+                </div>
+              ))}
+            </div>
           </Card>
         )}
       </div>

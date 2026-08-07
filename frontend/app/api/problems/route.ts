@@ -2,16 +2,17 @@ import { NextResponse, NextRequest } from 'next/server'
 import { requireAuth, requireAdmin } from '@/lib/route-auth'
 import { problems, nowIso, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
+import { SEED_PROBLEMS_BULK } from '@/scripts/seed-problems-bulk'
 import { sanitizeRegex } from '@/lib/sanitize'
 
-/** Insert default problems if the collection is empty. Best-effort. */
 async function ensureSeeded() {
   try {
     const col = await problems()
     const n = await col.estimatedDocumentCount()
     if (n > 0) return
     const now = nowIso()
-    const docs: ProblemDoc[] = SEED_PROBLEMS.map((p) => ({
+    const all = [...SEED_PROBLEMS, ...SEED_PROBLEMS_BULK]
+    const docs: ProblemDoc[] = all.map((p) => ({
       ...p,
       created_at: now,
       updated_at: now,
