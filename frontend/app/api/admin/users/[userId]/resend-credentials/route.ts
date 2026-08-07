@@ -48,7 +48,7 @@ export async function POST(
 
   try {
     const result = await sendEmail(user.email!, accountEmail)
-    console.log(`[ResendCredentials] Account info email to ${user.email}: ${result.success ? 'sent' : 'failed'} (${result.provider})`)
+
   } catch (e) {
     console.error(`[ResendCredentials] Account info email to ${user.email} failed:`, e)
     return NextResponse.json({ error: 'Failed to send email' }, { status: 500 })
@@ -69,7 +69,7 @@ export async function POST(
 
     try {
       const resetResult = await sendEmail(user.email!, resetEmail)
-      console.log(`[ResendCredentials] Password reset email to ${user.email}: ${resetResult.success ? 'sent' : 'failed'} (${resetResult.provider})`)
+
     } catch (e) {
       console.error(`[ResendCredentials] Password reset email to ${user.email} failed:`, e)
     }

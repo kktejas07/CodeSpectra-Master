@@ -188,7 +188,7 @@ export async function POST(request: NextRequest) {
           role: memberRole === 'tenant_admin' ? 'Organization Admin' : 'Team Member',
         }),
       )
-      console.log(`[Members] Welcome email to ${email}: ${emailResult.success ? 'sent' : 'failed'} (${emailResult.provider})`)
+
     } catch (e) {
       console.error(`[Members] Welcome email to ${email} failed:`, e)
     }

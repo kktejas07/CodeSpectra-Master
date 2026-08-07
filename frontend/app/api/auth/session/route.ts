@@ -64,12 +64,10 @@ export async function POST(request: NextRequest) {
     }
 
     // ponytail: fallback when Firebase Admin SDK is not configured
-    console.log('[Session] Firebase Admin not available, falling back to JWKS verify')
     const projectId = process.env.FIREBASE_PROJECT_ID || 'codespectra-f60cf'
     const JWKS = createRemoteJWKSet(
       new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
     )
-    console.log('[Session] JWKS created, calling jwtVerify...')
     let payload: { sub?: string; email?: string; name?: string; [key: string]: unknown }
     try {
       const result = await jwtVerify(idToken, JWKS, {

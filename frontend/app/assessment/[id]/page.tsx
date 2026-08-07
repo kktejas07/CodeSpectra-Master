@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
+import { usePageGuard } from '@/lib/use-page-guard'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import ReactMarkdown from 'react-markdown'
@@ -73,6 +74,7 @@ interface Exam {
 
 export default function CandidateAssessmentPage() {
   const addToast = useToast()
+  const gate = usePageGuard('user')
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
@@ -80,6 +82,12 @@ export default function CandidateAssessmentPage() {
   const [exam, setExam] = useState<Exam | null>(null)
   const [loading, setLoading] = useState(true)
   const [accessError, setAccessError] = useState<string | null>(null)
+
+  if (!gate.ready) return null
+  if (!gate.allowed) {
+    router.push('/')
+    return null
+  }
   
   // Assessment State
   const [hasStarted, setHasStarted] = useState(false)

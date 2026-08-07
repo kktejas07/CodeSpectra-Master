@@ -11,7 +11,7 @@ import Link from 'next/link'
 import { Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle, 
   MapPin, CheckCircle2, Activity, Loader2, Settings, Info,
 } from 'lucide-react'
-import { WorldTrafficMap } from '@/components/admin/world-traffic-map'
+import { WorldMap } from '@/components/gamification/world-map'
 
 interface CloudflareData {
   configured: boolean
@@ -26,6 +26,28 @@ interface WafRule {
   description: string
   action: 'block' | 'challenge' | 'allow'
   enabled: boolean
+}
+
+const COUNTRY_NAME_TO_CODE: Record<string, string> = {
+  'United States': 'US', 'Canada': 'CA', 'Mexico': 'MX', 'Brazil': 'BR', 'Argentina': 'AR',
+  'United Kingdom': 'GB', 'France': 'FR', 'Germany': 'DE', 'Spain': 'ES', 'Italy': 'IT',
+  'Russia': 'RU', 'China': 'CN', 'Japan': 'JP', 'India': 'IN', 'Australia': 'AU',
+  'Nigeria': 'NG', 'South Africa': 'ZA', 'Egypt': 'EG', 'Saudi Arabia': 'SA', 'Turkey': 'TR',
+  'South Korea': 'KR', 'Sweden': 'SE', 'Norway': 'NO', 'Netherlands': 'NL', 'Singapore': 'SG',
+  'New Zealand': 'NZ', 'Indonesia': 'ID', 'Thailand': 'TH', 'Vietnam': 'VN', 'Philippines': 'PH',
+  'Malaysia': 'MY', 'Pakistan': 'PK', 'Bangladesh': 'BD', 'Kenya': 'KE', 'Chile': 'CL',
+  'Colombia': 'CO', 'Peru': 'PE', 'Poland': 'PL', 'Ukraine': 'UA', 'Iran': 'IR',
+  'United Arab Emirates': 'AE', 'Israel': 'IL', 'Austria': 'AT', 'Belgium': 'BE',
+  'Portugal': 'PT', 'Greece': 'GR', 'Czech Republic': 'CZ', 'Romania': 'RO', 'Hungary': 'HU',
+  'Bulgaria': 'BG', 'Denmark': 'DK', 'Finland': 'FI', 'Switzerland': 'CH', 'Ireland': 'IE',
+}
+
+function mapCountries(topCountries: Array<{ country: string; requests: number }>) {
+  return topCountries.map(c => ({
+    code: COUNTRY_NAME_TO_CODE[c.country] || c.country.slice(0, 2).toUpperCase(),
+    name: c.country,
+    count: c.requests,
+  }))
 }
 
 export default function CdnAdminPage() {
@@ -327,8 +349,8 @@ export default function CdnAdminPage() {
                 <p className="text-xs text-muted-foreground text-center py-10">Configure Cloudflare in Settings → Cloudflare</p>
               ) : cfData?.topCountries && cfData.topCountries.length > 0 ? (
                 <>
-                  <WorldTrafficMap
-                    data={cfData.topCountries}
+                  <WorldMap
+                    countries={mapCountries(cfData.topCountries)}
                     totalRequests={cfData.traffic?.requests || 0}
                   />
                   <div className="space-y-2 mt-4">

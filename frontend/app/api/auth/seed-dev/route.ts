@@ -6,10 +6,12 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 
+const SEED_PASSWORD = process.env.SEED_PASSWORD || 'fallback-password-123'
+
 const DEV_ACCOUNTS = [
-  { email: 'superadmin@codespectra.com', password: 'SuperAdmin123!', role: 'superadmin', name: 'Super Admin' },
-  { email: 'admin@codespectra.com', password: 'TenantAdmin123!', role: 'tenant_admin', name: 'Tenant Admin' },
-  { email: 'demo@codespectra.com', password: 'DemoPass123!', role: 'user', name: 'Demo User' },
+  { email: 'superadmin@codespectra.com', password: SEED_PASSWORD, role: 'superadmin', name: 'Super Admin' },
+  { email: 'admin@codespectra.com', password: SEED_PASSWORD, role: 'tenant_admin', name: 'Tenant Admin' },
+  { email: 'demo@codespectra.com', password: SEED_PASSWORD, role: 'user', name: 'Demo User' },
 ]
 
 export async function POST() {

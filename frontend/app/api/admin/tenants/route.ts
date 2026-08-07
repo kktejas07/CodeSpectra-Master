@@ -145,7 +145,7 @@ export async function POST(request: Request) {
             role: 'Organization Admin',
           }),
         )
-        console.log(`[Tenants] Welcome email to ${adminEmail}: ${emailResult.success ? 'sent' : 'failed'} (${emailResult.provider})`)
+
       } catch (e) {
         console.error(`[Tenants] Welcome email to ${adminEmail} failed:`, e)
       }

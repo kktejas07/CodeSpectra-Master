@@ -3,11 +3,13 @@ import bcrypt from 'bcryptjs'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireSuperAdmin } from '@/lib/route-auth'
 
+const SEED_PASSWORD = process.env.SEED_PASSWORD || 'fallback-password-123'
+
 const DEMO_USERS = [
-  { email: 'superadmin@codespectra.com', password: 'SuperAdmin123!', name: 'Super Admin', role: 'superadmin' },
-  { email: 'admin@codespectra.com', password: 'TenentAdmin123!', name: 'Tenant Admin', role: 'tenant_admin' },
-  { email: 'demo@codespectra.com', password: 'DemoPass123!', name: 'Demo User', role: 'user' },
-  { email: 'qa@codespectra.ai', password: 'QAAdmin123!', name: 'QA Admin', role: 'superadmin' },
+  { email: 'superadmin@codespectra.com', password: SEED_PASSWORD, name: 'Super Admin', role: 'superadmin' },
+  { email: 'admin@codespectra.com', password: SEED_PASSWORD, name: 'Tenant Admin', role: 'tenant_admin' },
+  { email: 'demo@codespectra.com', password: SEED_PASSWORD, name: 'Demo User', role: 'user' },
+  { email: 'qa@codespectra.ai', password: SEED_PASSWORD, name: 'QA Admin', role: 'superadmin' },
 ]
 
 export async function POST() {

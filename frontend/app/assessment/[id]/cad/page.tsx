@@ -1,5 +1,6 @@
 'use client'
 import { useToast } from '@/lib/toast-context'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
@@ -32,7 +33,13 @@ const CADEditor = dynamic(() => import('@/components/cad/CADEditor').then((m) =>
 
 export default function CandidateCADAssessmentPage() {
   const addToast = useToast()
+  const gate = usePageGuard('user')
   const [activeTab, setActiveTab] = useState<'editor' | 'file_upload' | 'task_selection'>('editor')
+
+  if (!gate.ready) return null
+  if (!gate.allowed) {
+    return null
+  }
   const [selectedTaskCode, setSelectedTaskCode] = useState<string>('T1_PART_MODELLING')
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
