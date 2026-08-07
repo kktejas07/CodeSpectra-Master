@@ -1,0 +1,55 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>CodeSpectra Device Audit</title>
+  <link rel="stylesheet" href="popup.css">
+</head>
+<body>
+  <div class="popup">
+    <header class="header">
+      <div class="logo">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+        </svg>
+        <span class="title">Device Audit</span>
+      </div>
+      <span id="version" class="version"></span>
+    </header>
+
+    <div id="status" class="status">
+      <div class="spinner"></div>
+      <span>Scanning…</span>
+    </div>
+
+    <div id="summary" class="summary" style="display:none;">
+      <div class="stat safe">
+        <div class="stat-value" id="safe-count">0</div>
+        <div class="stat-label">Safe</div>
+      </div>
+      <div class="stat warn">
+        <div class="stat-value" id="warn-count">0</div>
+        <div class="stat-label">Review</div>
+      </div>
+      <div class="stat blocked">
+        <div class="stat-value" id="blocked-count">0</div>
+        <div class="stat-label">Blocked</div>
+      </div>
+    </div>
+
+    <div id="devices" class="devices" style="display:none;"></div>
+
+    <div id="hotplug" class="hotplug" style="display:none;">
+      <span class="hotplug-dot"></span> Hotplug watcher active
+    </div>
+
+    <div id="no-session" class="no-session" style="display:none;">
+      No active proctored session. Open an assessment to start auditing.
+    </div>
+
+    <button id="rescan" class="rescan" style="display:none;">Rescan Devices</button>
+  </div>
+  <script src="popup.js"></script>
+</body>
+</html>

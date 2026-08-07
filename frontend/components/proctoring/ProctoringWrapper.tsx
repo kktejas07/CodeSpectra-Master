@@ -15,12 +15,16 @@ import {
 import { auditHardwarePorts, HardwareAuditResult } from '@/lib/proctoring/hardware-detector'
 import { EyeGazeTracker, EyeGazeAnalysis } from '@/lib/proctoring/eye-gaze-tracker'
 import { AadhaarIDVerificationModal } from './AadhaarIDVerificationModal'
+import { DeviceAuditModal } from './DeviceAuditModal'
 
 interface ProctoringWrapperProps {
   children: React.ReactNode
   proctoringLevel?: 'none' | 'focus_only' | 'ai_flagged' | 'strict_lockdown'
   candidateName?: string
   onFlagEvent?: (event: { type: string; timestamp: number; details: string }) => void
+  /** Used to report the hardware-port audit to /api/proctor/events. */
+  sessionKind?: 'exam' | 'problem' | 'interview'
+  sessionId?: string
 }
 
 export function ProctoringWrapper({
@@ -28,6 +32,8 @@ export function ProctoringWrapper({
   proctoringLevel = 'ai_flagged',
   candidateName = 'Candidate',
   onFlagEvent,
+  sessionKind,
+  sessionId,
 }: ProctoringWrapperProps) {
   const [tabFocusLostCount, setTabFocusLostCount] = useState(0)
   const [showWarningBanner, setShowWarningBanner] = useState(false)
@@ -35,6 +41,10 @@ export function ProctoringWrapper({
   const [hardwareAudit, setHardwareAudit] = useState<HardwareAuditResult | null>(null)
   const [showIdKycModal, setShowIdKycModal] = useState(false)
   const [kycVerified, setKycVerified] = useState(false)
+  const [showDeviceAudit, setShowDeviceAudit] = useState(
+    proctoringLevel === 'strict_lockdown' || proctoringLevel === 'ai_flagged',
+  )
+  const [auditCompleted, setAuditCompleted] = useState(false)
 
   // Real-time Eye Gaze & Blink Counter State
   const [gazeAnalysis, setGazeAnalysis] = useState<EyeGazeAnalysis | null>(null)
@@ -47,9 +57,11 @@ export function ProctoringWrapper({
 
     auditHardwarePorts().then((result) => {
       setHardwareAudit(result)
-      if (result.violations.length > 0) {
+      const blocked = result.devices.filter((d) => d.verdict === 'blocked')
+      const warns = result.devices.filter((d) => d.verdict === 'warn')
+      if (blocked.length > 0 || warns.length > 0) {
         setShowWarningBanner(true)
-        setWarningMessage(`Hardware Security Warning: ${result.violations[0]}`)
+        setWarningMessage(`Hardware Security Warning: ${blocked[0]?.productName || warns[0]?.productName || 'Unrecognized device detected'}`)
         if (onFlagEvent) {
           onFlagEvent({
             type: 'hardware_port_anomaly',
@@ -237,6 +249,26 @@ export function ProctoringWrapper({
             setShowIdKycModal(false)
           }}
           onCancel={() => setShowIdKycModal(false)}
+        />
+      )}
+
+      {/* Pre-exam Device & Port Audit gate */}
+      {showDeviceAudit && sessionKind && sessionId && !auditCompleted && (
+        <DeviceAuditModal
+          sessionKind={sessionKind}
+          sessionId={sessionId}
+          onComplete={(result) => {
+            setAuditCompleted(true)
+            setShowDeviceAudit(false)
+            setHardwareAudit(result)
+            if (onFlagEvent && result.violations.length > 0) {
+              onFlagEvent({
+                type: 'hardware_port_anomaly',
+                timestamp: Date.now(),
+                details: result.violations.join('; '),
+              })
+            }
+          }}
         />
       )}
 

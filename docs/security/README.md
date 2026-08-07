@@ -15,7 +15,8 @@
 | [03-RBAC-Model.md](./03-RBAC-Model.md) | RBAC model — role definitions (superadmin, tenant_admin, user), permission matrix, static (page-permissions.ts) and dynamic (MongoDB) enforcement points. |
 | [04-OWASP-Checklist.md](./04-OWASP-Checklist.md) | OWASP Top 10 (2021) compliance — per-category assessment of controls, vulnerabilities found, and remediation recommendations. |
 | [05-Device-Fingerprinting.md](./05-Device-Fingerprinting.md) | Device fingerprinting — FingerprintJS v5 integration, multi-account risk detection, IP blocklist, impossible-travel detection, and the admin Security dashboard. |
+| [06-Lockdown-Agent.md](./06-Lockdown-Agent.md) | Native lockdown agent (design proposal) — true USB port auditing that the browser cannot provide, with Tauri + rusb architecture and implementation plan. |
 
 ## Document Count
 
-**5 documents** in this section.
+**6 documents** in this section.
