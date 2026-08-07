@@ -10,6 +10,7 @@ import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, Chevro
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
+import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
@@ -381,8 +382,9 @@ export default function CandidateAssessmentPage() {
   const currentQ = exam.questionList[currentQIndex]
 
   return (
+    <ExtensionGate>
     <>
-      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate">
+      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)}>
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 border-b border-border bg-card px-6 py-3 flex items-center justify-between shadow-xs">
@@ -604,5 +606,6 @@ export default function CandidateAssessmentPage() {
       </AlertDialogContent>
     </AlertDialog>
     </>
+    </ExtensionGate>
   )
 }

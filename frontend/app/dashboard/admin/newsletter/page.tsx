@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Loader2, Mail, Send, Users as UsersIcon, CheckCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Subscriber {
   id: string
@@ -51,7 +52,7 @@ export default function NewsletterPage() {
     }
     setSending(true)
     try {
-      const res = await fetch('/api/newsletter/subscribers', {
+      const res = await csrfFetch('/api/newsletter/subscribers', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

@@ -10,6 +10,7 @@ import { Skeleton } from '@/components/ui/skeleton'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
+import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -339,6 +340,7 @@ export default function ExamPage() {
   }
 
   return (
+    <ExtensionGate>
     <>
       <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
       <ProctorMonitor
@@ -522,5 +524,6 @@ export default function ExamPage() {
       </AlertDialogContent>
     </AlertDialog>
     </>
+    </ExtensionGate>
   )
 }
