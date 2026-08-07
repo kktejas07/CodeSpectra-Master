@@ -71,7 +71,7 @@ export async function POST(request: Request) {
 
   // Send certificate email
   try {
-    const appUrl = process.env.N_APP_URL || 'https://codespectra.ai'
+    const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.ai'
     const verifyUrl = `${appUrl}/cert/verify/${verifyToken}`
     await sendEmail(
       user.email,

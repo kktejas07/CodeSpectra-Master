@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/route-auth'
 
 type NormalizedGate = {
   min_quality_score: number
@@ -30,6 +31,9 @@ function normalizeGateConfig(raw: unknown): NormalizedGate | null {
  * Check if metrics pass the given gate thresholds (DB field names or API aliases).
  */
 export async function POST(request: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
   try {
     const body = await request.json()
     const gate_config = normalizeGateConfig(body.gate_config)

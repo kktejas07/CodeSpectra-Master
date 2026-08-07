@@ -71,6 +71,9 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/speed-insights',
   '/dashboard/admin/announcements',
   '/dashboard/admin/newsletter',
+  '/dashboard/admin/billing',
+  '/dashboard/admin/help',
+  '/dashboard/admin/sso',
 ]
 
 export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
@@ -282,6 +285,9 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/analytics': 'Analytics',
   '/dashboard/judge': 'Judge Dashboard',
   '/dashboard/cad': 'CAD Editor',
+  '/dashboard/admin/billing': 'Billing Admin',
+  '/dashboard/admin/help': 'Help Center',
+  '/dashboard/admin/sso': 'SSO Config',
   '/dashboard/admin/question-bank': 'Question Bank',
   '/dashboard/admin/requisitions': 'Requisitions',
   '/dashboard/admin/hiring-manager-report': 'Hiring Report',
