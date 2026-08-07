@@ -1345,10 +1345,15 @@ function SystemSettingsInner() {
                     </div>
                   </div>
                   <p className="text-xs text-muted-foreground">
-                    Additional origins for <code className="rounded bg-muted px-1">/api/auth/*</code>. One per line or comma-separated.
+                    Controls which external domains are allowed to make requests to your auth endpoints.
+                    CORS (Cross-Origin Resource Sharing) governs browser-initiated requests from other sites.
+                    CSRF (Cross-Site Request Forgery) tokens protect state-changing operations like login and signup.
+                    Add any staging, preview, or custom-domain URLs that need to reach <code className="rounded bg-muted px-1">/api/auth/*</code>.
+                    One per line or comma-separated.
                   </p>
                   <p className="text-[11px] text-muted-foreground">
-                    Trailing slashes stripped. Only <code>http://</code> and <code>https://</code>.
+                    Trailing slashes stripped. Only <code>http://</code> and <code>https://</code> origins accepted.
+                    Your production domain is automatically trusted.
                   </p>
                   <textarea
                     id="sec_trusted_origins"

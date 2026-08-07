@@ -47,6 +47,7 @@ export default function CouponsAdminPage() {
   const [editCoupon, setEditCoupon] = useState<Coupon | null>(null)
   const [confirmDeleteCoupon, setConfirmDeleteCoupon] = useState<{ id: string; code: string } | null>(null)
   const [viewRedemptions, setViewRedemptions] = useState<Coupon | null>(null)
+  const [redemptionUsers, setRedemptionUsers] = useState<Record<string, { name: string; email: string }>>({})
 
   const [code, setCode] = useState('')
   const [type, setType] = useState<'percentage' | 'flat' | 'trial'>('percentage')
@@ -84,6 +85,31 @@ export default function CouponsAdminPage() {
   }
 
   useEffect(() => { if (gate.ready) { fetchCoupons(); loadCurrency() } }, [gate.ready])
+
+  useEffect(() => {
+    const redemptions = (viewRedemptions as any)?.redemptions
+    if (!redemptions?.length) return
+    const rawIds: string[] = []
+    for (const r of redemptions) {
+      if (r.user_id) rawIds.push(String(r.user_id))
+    }
+    const userIds = [...new Set(rawIds)]
+    const missing = userIds.filter(id => !redemptionUsers[id])
+    if (!missing.length) return
+    let cancelled = false
+    fetch('/api/admin/users', { credentials: 'include' })
+      .then(r => r.ok ? r.json() : null)
+      .then(data => {
+        if (cancelled || !data?.users) return
+        const map: Record<string, { name: string; email: string }> = {}
+        for (const u of data.users) {
+          map[u.id] = { name: u.full_name || u.name || u.email || u.id, email: u.email || '—' }
+        }
+        setRedemptionUsers(prev => ({ ...prev, ...map }))
+      })
+      .catch(() => {})
+    return () => { cancelled = true }
+  }, [viewRedemptions])
 
   const loadCurrency = async () => {
     try {
@@ -243,14 +269,19 @@ export default function CouponsAdminPage() {
                   </tr>
                 </thead>
                 <tbody>
-                  {(viewRedemptions as any).redemptions.map((r: any, i: number) => (
+                  {(viewRedemptions as any).redemptions.map((r: any, i: number) => {
+                    const u = redemptionUsers[r.user_id]
+                    const displayName = u?.name || r.user_name || r.user_id?.slice(0, 12) + '…'
+                    const displayEmail = u?.email || r.user_email || '—'
+                    return (
                     <tr key={i} className="border-b last:border-0">
-                      <td className="py-2 pr-2 font-medium">{r.user_name || r.user_id?.slice(0, 12) + '…'}</td>
-                      <td className="py-2 pr-2 text-xs text-muted-foreground">{r.user_email || '—'}</td>
+                      <td className="py-2 pr-2 font-medium">{displayName}</td>
+                      <td className="py-2 pr-2 text-xs text-muted-foreground">{displayEmail}</td>
                       <td className="py-2 text-xs">{r.plan_id || '—'}</td>
                       <td className="py-2 text-xs text-muted-foreground">{r.redeemed_at ? new Date(r.redeemed_at).toLocaleString() : '—'}</td>
                     </tr>
-                  ))}
+                    )
+                  })}
                 </tbody>
               </table>
             ) : (

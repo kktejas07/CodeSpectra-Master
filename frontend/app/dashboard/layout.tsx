@@ -328,7 +328,6 @@ export default function DashboardLayout({
       [p.security]: Shield,
       '/dashboard/admin/proctor': Shield,
       '/dashboard/admin/certificates': Award,
-      [p.teams]: Users,
       [p.jobs]: Briefcase,
       [p.resumes]: FileText,
       [p.codeathons]: Trophy,
