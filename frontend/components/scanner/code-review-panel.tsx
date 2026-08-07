@@ -67,7 +67,7 @@ export function CodeReviewPanel({
               <p className="font-medium text-sm text-foreground">{comment.author.name}</p>
               <p className="text-xs text-foreground/60">{formatDistanceToNow(comment.timestamp, { addSuffix: true })}</p>
             </div>
-            <button className="p-1 hover:bg-background rounded text-foreground/60 hover:text-red-600 transition">
+            <button className="p-1 hover:bg-background rounded text-foreground/60 hover:text-red-600 transition" title="Delete">
               <Trash2 className="w-4 h-4" />
             </button>
           </div>

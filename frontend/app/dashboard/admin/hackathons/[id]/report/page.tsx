@@ -168,7 +168,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <Link href={`/dashboard/admin/hackathons/${id}`}>
-            <Button variant="ghost" size="icon"><ArrowLeft className="h-4 w-4" /></Button>
+            <Button variant="ghost" size="icon" title="Back"><ArrowLeft className="h-4 w-4" /></Button>
           </Link>
           <div>
             <h1 className="text-2xl font-bold">{hackathon.name} — Judge Report</h1>

@@ -431,6 +431,7 @@ export default function TenantsPage() {
                     className="rounded p-1 text-muted-foreground hover:text-destructive"
                     onClick={() => { if (confirm(`Delete "${t.name}"? Members will be detached from this org.`)) void handleDelete(t) }}
                     disabled={deletingId === t.id}
+                    title="Delete"
                   >
                     <Trash2 className="h-4 w-4" />
                   </button>

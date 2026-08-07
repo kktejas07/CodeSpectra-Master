@@ -67,6 +67,7 @@ import {
   Flame,
   Mail,
   ScanSearch,
+  UserPlus,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -368,6 +369,7 @@ export default function DashboardLayout({
       '/dashboard/cad': LayersIcon,
       '/dashboard/recruiter-analytics': BarChart3,
       '/dashboard/scanner': ScanSearch,
+      '/dashboard/referrals': UserPlus,
     }
 
     const HREF_OVERRIDES: Record<string, string> = {

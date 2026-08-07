@@ -525,7 +525,7 @@ export default function JudgeReviewPage() {
           <Card className="w-full lg:w-96 shrink-0 space-y-4 p-5">
             <div className="flex items-center justify-between">
               <h3 className="font-semibold">Review Submission</h3>
-              <Button size="sm" variant="ghost" onClick={closeSidebar}>
+              <Button size="sm" variant="ghost" onClick={closeSidebar} title="Close">
                 <X className="h-4 w-4" />
               </Button>
             </div>
@@ -733,7 +733,7 @@ export default function JudgeReviewPage() {
 
                   <AlertDialog>
                     <AlertDialogTrigger asChild>
-                      <Button variant="outline" size="icon" className="text-destructive border-destructive hover:bg-destructive/10" disabled={submitting}>
+                      <Button variant="outline" size="icon" className="text-destructive border-destructive hover:bg-destructive/10" disabled={submitting} title="Reject">
                         <AlertTriangle className="h-4 w-4" />
                       </Button>
                     </AlertDialogTrigger>

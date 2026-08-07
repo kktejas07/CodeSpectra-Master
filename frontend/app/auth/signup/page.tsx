@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useMemo, useState } from "react";
+import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
@@ -27,6 +27,7 @@ function SignupInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const redirectTo = searchParams.get("redirect") || searchParams.get("redirectTo") || "/dashboard";
+  const refCode = searchParams.get("ref");
 
   const [name, setName] = useState("");
   const [email, setEmail] = useState(searchParams.get("email") || "");
@@ -37,6 +38,29 @@ function SignupInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signUpWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
+
+  useEffect(() => {
+    if (refCode) localStorage.setItem('referral_code', refCode);
+  }, [refCode]);
+
+  useEffect(() => {
+    const stored = localStorage.getItem('referral_code');
+    if (stored && !refCode) {
+    }
+  }, [refCode]);
+
+  async function applyReferral() {
+    const code = localStorage.getItem('referral_code');
+    if (!code) return;
+    try {
+      await fetch('/api/referral/apply', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code }),
+      });
+    } catch { /* best effort */ }
+    localStorage.removeItem('referral_code');
+  }
 
   const passwordChecks = useMemo(() => [
     { label: "At least 8 characters", met: password.length >= 8 },
@@ -59,6 +83,7 @@ function SignupInner() {
 
     try {
       await signUpWithEmail(email.trim().toLowerCase(), password, name.trim());
+      await applyReferral();
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
@@ -74,6 +99,7 @@ function SignupInner() {
     setLoading(true);
     try {
       await signInWithGoogle();
+      await applyReferral();
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
@@ -89,6 +115,7 @@ function SignupInner() {
     setLoading(true);
     try {
       await signInWithGithub();
+      await applyReferral();
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {

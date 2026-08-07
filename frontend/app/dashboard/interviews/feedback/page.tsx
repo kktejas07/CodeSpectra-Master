@@ -111,7 +111,7 @@ export default function InterviewFeedbackPage() {
             <div className="space-y-4">
               <div className="bg-muted rounded-lg p-4 space-y-4">
                 <div className="flex items-center gap-4">
-                  <Button size="sm" className="rounded-full w-10 h-10 p-0">
+                  <Button size="sm" className="rounded-full w-10 h-10 p-0" title="Play">
                     <Play className="w-4 h-4" />
                   </Button>
                   <div className="flex-1">

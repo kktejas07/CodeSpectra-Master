@@ -166,6 +166,9 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/settings',
   '/dashboard/settings/ai',
 
+  // Referrals
+  '/dashboard/referrals',
+
   // Misc
   '/dashboard/support',
   '/dashboard/status',
@@ -270,6 +273,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/notifications': 'Notifications',
   '/dashboard/notifications/preferences': 'Notification Preferences',
   '/dashboard/support': 'Support',
+  '/dashboard/referrals': 'Referrals',
   '/dashboard/status': 'System Status',
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',

@@ -177,7 +177,7 @@ export function CodebaseChatSidebar({ files = [], scanId }: CodebaseChatSidebarP
             disabled={loading}
             className="h-10"
           />
-          <Button onClick={handleSend} disabled={loading} size="icon" className="h-10 w-10 shrink-0">
+          <Button onClick={handleSend} disabled={loading} size="icon" className="h-10 w-10 shrink-0" title="Send">
             <Send className="w-4 h-4" />
           </Button>
         </div>

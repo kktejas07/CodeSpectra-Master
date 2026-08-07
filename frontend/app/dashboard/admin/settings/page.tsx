@@ -1027,7 +1027,7 @@ function SystemSettingsInner() {
                       type="button"
                       tabIndex={-1}
                       onClick={() => handleRevealToggle('postal_api_key')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                     >
                       {visibleFields.postal_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -1493,7 +1493,7 @@ function SystemSettingsInner() {
                       type="button"
                       tabIndex={-1}
                       onClick={() => handleRevealToggle('github_app_token')}
-                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                     >
                       {visibleFields.github_app_token ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
@@ -1571,7 +1571,7 @@ function SystemSettingsInner() {
                           type="button"
                           tabIndex={-1}
                           onClick={() => handleRevealToggle('github_client_secret')}
-                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                          className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                         >
                           {visibleFields.github_client_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                         </button>
@@ -1648,7 +1648,7 @@ function SystemSettingsInner() {
                             type="button"
                             tabIndex={-1}
                             onClick={() => toggleVisible(key)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                           >
                             {visibleFields[key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
@@ -1738,7 +1738,7 @@ function SystemSettingsInner() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('razorpay_key_id')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                       >
                         {visibleFields.razorpay_key_id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -1768,7 +1768,7 @@ function SystemSettingsInner() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('razorpay_key_secret')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                       >
                         {visibleFields.razorpay_key_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -1798,7 +1798,7 @@ function SystemSettingsInner() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('razorpay_webhook_secret')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                       >
                         {visibleFields.razorpay_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -1863,7 +1863,7 @@ function SystemSettingsInner() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('phonepe_merchant_id')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                       >
                         {visibleFields.phonepe_merchant_id ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -1893,7 +1893,7 @@ function SystemSettingsInner() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('phonepe_salt_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                       >
                         {visibleFields.phonepe_salt_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -1941,7 +1941,7 @@ function SystemSettingsInner() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('phonepe_webhook_secret')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                       >
                         {visibleFields.phonepe_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -1991,7 +1991,7 @@ function SystemSettingsInner() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('stripe_secret_key')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                       >
                         {visibleFields.stripe_secret_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -2020,7 +2020,7 @@ function SystemSettingsInner() {
                         type="button"
                         tabIndex={-1}
                         onClick={() => handleRevealToggle('stripe_webhook_secret')}
-                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                       >
                         {visibleFields.stripe_webhook_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                       </button>
@@ -2218,7 +2218,7 @@ function SystemSettingsInner() {
                             className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
                             placeholder={info.placeholder + " (key1,key2 for rotation)"} />
                           <button type="button" tabIndex={-1} onClick={() => handleRevealToggle(info.key)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground">
+                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility">
                             {(visibleFields as any)[info.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                           </button>
                         </div>

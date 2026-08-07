@@ -340,7 +340,7 @@ export default function WorkflowsPage() {
                     )}
                     Run
                   </Button>
-                  <Button onClick={remove} variant="ghost" disabled={busy} data-testid="workflow-delete-btn">
+                  <Button onClick={remove} variant="ghost" disabled={busy} data-testid="workflow-delete-btn" title="Delete">
                     <Trash2 className="h-4 w-4 text-destructive" />
                   </Button>
                 </div>

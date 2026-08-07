@@ -138,10 +138,9 @@ export async function POST(request: Request) {
       try {
         const emailResult = await sendEmail(
           adminEmail,
-          emailTemplates.orgAccountProvisioned({
+          emailTemplates.accountCredentials({
             name: displayName,
             email: adminEmail,
-            password: actualPassword || '(check platform settings for password reset)',
             orgName: name,
             role: 'Organization Admin',
           }),

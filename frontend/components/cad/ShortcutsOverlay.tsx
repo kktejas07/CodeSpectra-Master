@@ -70,6 +70,7 @@ export function ShortcutsOverlay({ open, onClose }: ShortcutsOverlayProps) {
             type="button"
             onClick={onClose}
             className="rounded-md p-1 text-muted-foreground hover:bg-muted hover:text-foreground"
+            title="Close"
           >
             <X className="h-4 w-4" />
           </button>

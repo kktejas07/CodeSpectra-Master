@@ -150,7 +150,7 @@ export function GitHubIntegration() {
                         {(repo.stars ?? 0) > 0 ? <span>★ {repo.stars}</span> : null}
                       </div>
                     </div>
-                    <Button size="sm" variant="ghost" type="button" className="shrink-0">
+                    <Button size="sm" variant="ghost" type="button" className="shrink-0" title="Details">
                       <ChevronRight className="h-4 w-4" />
                     </Button>
                   </div>

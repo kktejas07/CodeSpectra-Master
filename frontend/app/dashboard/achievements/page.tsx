@@ -8,6 +8,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { ContributionGraph } from '@/components/gamification/contribution-graph'
+import { SkillBadges } from '@/components/gamification/skill-badges'
 
 interface Achievement {
   id: number
@@ -99,6 +101,8 @@ export default function AchievementsPage() {
             </Card>
           </div>
 
+          <ContributionGraph />
+          <SkillBadges />
           <Tabs defaultValue="achievements">
             <TabsList>
               <TabsTrigger value="achievements">Achievements</TabsTrigger>
