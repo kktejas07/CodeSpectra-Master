@@ -2,7 +2,12 @@
 
 import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import { Search, Home, Trophy, Code2, BookOpen, BarChart3, Star, Settings } from 'lucide-react'
+import {
+  Search, Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Star, Settings,
+  Users, Lock, ScrollText, Plug, Gauge, Globe2, Shield, FileText, Building2,
+  CreditCard, Bell, Database, Sparkles, Bot, Briefcase, Flame, MessageSquare,
+  Camera, Layers, UserPlus, Award, ScanSearch, type LucideIcon,
+} from 'lucide-react'
 import { cn } from '@/lib/utils'
 import {
   CommandDialog,
@@ -13,40 +18,184 @@ import {
   CommandList,
 } from '@/components/ui/command'
 import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
+import {
+  ADMIN_ONLY_ROUTES,
+  TENANT_ADMIN_ROUTES,
+  JUDGE_ROUTES,
+  ALL_USER_ROUTES,
+  ROUTE_LABELS,
+} from '@/lib/page-permissions'
+import {
+  DASHBOARD_ROUTES,
+  normalizeUserRole,
+  isSuperAdmin,
+  isTenantAdmin,
+  isJudge,
+  type UserRole,
+} from '@/lib/rbac'
 
 type CommandMenuProps = {
-  /** Full-width trigger (sidebar) */
   fullWidth?: boolean
-  /** Icon-only trigger on large screens (collapsed sidebar) */
   compact?: boolean
-  /** Role-aware home / overview (e.g. superadmin → `/dashboard/admin/system`). */
   overviewHref?: string
+  userRole?: UserRole | null
+  allowedRoutes?: Set<string>
+  deniedRoutes?: Set<string>
+}
+
+const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
+  '/dashboard': Home,
+  '/dashboard/admin/system': Home,
+  '/dashboard/admin/users': Users,
+  '/dashboard/admin/roles': Lock,
+  '/dashboard/admin/analytics': BarChart3,
+  '/dashboard/admin/audit-logs': ScrollText,
+  '/dashboard/admin/integrations': Plug,
+  '/dashboard/admin/speed-insights': Gauge,
+  '/dashboard/admin/cdn': Globe2,
+  '/dashboard/admin/permissions': Shield,
+  '/dashboard/admin/plans': FileText,
+  '/dashboard/admin/pricing': FileText,
+  '/dashboard/admin/tenants': Building2,
+  '/dashboard/admin/coupons': CreditCard,
+  '/dashboard/admin/announcements': Bell,
+  '/dashboard/admin/newsletter': Bell,
+  '/dashboard/admin/hackathons': Trophy,
+  '/dashboard/admin/rag': Database,
+  '/dashboard/admin/ai-inventory': Sparkles,
+  '/dashboard/admin/settings': Settings,
+  '/dashboard/admin/security': Shield,
+  '/dashboard/admin/proctor': Shield,
+  '/dashboard/admin/certificates': Award,
+  '/dashboard/admin/teams': Users,
+  '/dashboard/admin/jobs': Briefcase,
+  '/dashboard/admin/resumes': FileText,
+  '/dashboard/admin/codeathons': Trophy,
+  '/dashboard/admin/exams': FileText,
+  '/dashboard/admin/workflows': Settings,
+  '/dashboard/admin/question-generator': Bot,
+  '/dashboard/admin/team': Users,
+  '/dashboard/admin/question-bank': Database,
+  '/dashboard/admin/predictive-validity': BarChart3,
+  '/dashboard/admin/sme-review': Users,
+  '/dashboard/admin/hiring-manager-report': FileText,
+  '/dashboard/admin/requisitions': Briefcase,
+  '/dashboard/arena': Trophy,
+  '/dashboard/hackathons': Trophy,
+  '/dashboard/problems': CodeIcon,
+  '/dashboard/tracks': Layers,
+  '/dashboard/agent': Bot,
+  '/dashboard/learning': BookOpen,
+  '/dashboard/skill-analytics': Sparkles,
+  '/dashboard/identity-verify': Camera,
+  '/dashboard/leaderboard': BarChart3,
+  '/dashboard/achievements': Star,
+  '/dashboard/certifications': Award,
+  '/dashboard/pricing': CreditCard,
+  '/dashboard/settings/ai': Sparkles,
+  '/dashboard/status': MessageSquare,
+  '/dashboard/support': MessageSquare,
+  '/dashboard/codeathons': Trophy,
+  '/dashboard/challenges': CodeIcon,
+  '/dashboard/interviews': Users,
+  '/dashboard/jobs': Briefcase,
+  '/dashboard/exams': FileText,
+  '/dashboard/resumes': FileText,
+  '/dashboard/analytics': BarChart3,
+  '/dashboard/interview-prep': BookOpen,
+  '/dashboard/judge': Shield,
+  '/dashboard/100-days': Flame,
+  '/dashboard/cad': Layers,
+  '/dashboard/recruiter-analytics': BarChart3,
+  '/dashboard/scanner': ScanSearch,
+  '/dashboard/referrals': UserPlus,
+  '/dashboard/interviews/feedback': Users,
+}
+
+const SEARCH_HREF_OVERRIDES: Record<string, string> = {
+  '/dashboard/scanner': '/dashboard/scanner?mode=manual',
+  '/dashboard/learning': LEARNING_HUB_DEFAULT,
 }
 
 export function CommandMenu({
   fullWidth = false,
   compact = false,
   overviewHref = '/dashboard',
+  userRole = null,
+  allowedRoutes,
+  deniedRoutes,
 }: CommandMenuProps) {
   const router = useRouter()
   const [open, setOpen] = useState(false)
 
-  const commands = useMemo(
-    () => [
-      {
-        label: overviewHref === '/dashboard' ? 'Dashboard' : 'Overview',
-        icon: Home,
-        href: overviewHref,
-      },
-      { label: 'Arena', icon: Trophy, href: '/dashboard/arena' },
-      { label: 'Scanner', icon: Code2, href: '/dashboard/scanner?mode=manual' },
-      { label: 'Learning', icon: BookOpen, href: LEARNING_HUB_DEFAULT },
-      { label: 'Leaderboard', icon: BarChart3, href: '/dashboard/leaderboard' },
-      { label: 'Achievements', icon: Star, href: '/dashboard/achievements' },
-      { label: 'Settings', icon: Settings, href: '/dashboard/settings' },
-    ],
-    [overviewHref]
-  )
+  const commands = useMemo(() => {
+    const role = normalizeUserRole(userRole)
+    const allRouteGroups = [ADMIN_ONLY_ROUTES, TENANT_ADMIN_ROUTES, JUDGE_ROUTES, ALL_USER_ROUTES] as const
+    const seen = new Set<string>()
+
+    const allItems: { label: string; icon: LucideIcon; href: string; route: string }[] = []
+
+    for (const group of allRouteGroups) {
+      for (const route of group) {
+        if (seen.has(route)) continue
+        seen.add(route)
+        const icon = SEARCH_ICON_MAP[route]
+        if (!icon) continue
+        allItems.push({
+          label: ROUTE_LABELS[route] || route.split('/').pop() || route,
+          icon,
+          href: SEARCH_HREF_OVERRIDES[route] || route,
+          route,
+        })
+      }
+    }
+
+    let filtered = allItems
+    if (isSuperAdmin(role)) {
+      filtered = allItems
+    } else if (isTenantAdmin(role)) {
+      const tenantAdminSet = new Set(TENANT_ADMIN_ROUTES)
+      filtered = allItems.filter(item => {
+        const r = item.href.split('?')[0]
+        return !r.startsWith('/dashboard/admin/') || tenantAdminSet.has(r)
+      })
+    } else if (isJudge(role)) {
+      const judgeSet = new Set([...JUDGE_ROUTES, ...ALL_USER_ROUTES])
+      filtered = allItems.filter(item => judgeSet.has(item.href.split('?')[0]))
+    } else {
+      const tenantOnlySet = new Set(TENANT_ADMIN_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
+      const judgeOnlySet = new Set(JUDGE_ROUTES.filter(r => !ALL_USER_ROUTES.includes(r)))
+      filtered = allItems.filter(item => {
+        const r = item.href.split('?')[0]
+        return r.startsWith('/dashboard') &&
+          !r.startsWith('/dashboard/admin/') &&
+          !r.startsWith(DASHBOARD_ROUTES.organization.team) &&
+          !tenantOnlySet.has(r) &&
+          !judgeOnlySet.has(r)
+      })
+    }
+
+    if (allowedRoutes && allowedRoutes.size > 0) {
+      filtered = filtered.filter(item => {
+        const checkRoute = item.route
+        return allowedRoutes.has(checkRoute) ||
+          Array.from(allowedRoutes).some(r => checkRoute.startsWith(r + '/'))
+      })
+    }
+
+    if (deniedRoutes && deniedRoutes.size > 0) {
+      filtered = filtered.filter(item => !deniedRoutes.has(item.route))
+    }
+
+    const overview = {
+      label: overviewHref === '/dashboard' ? 'Dashboard' : 'Overview',
+      icon: Home,
+      href: overviewHref,
+      route: overviewHref.split('?')[0],
+    }
+
+    return [overview, ...filtered]
+  }, [userRole, overviewHref, allowedRoutes, deniedRoutes])
 
   useEffect(() => {
     const down = (e: KeyboardEvent) => {

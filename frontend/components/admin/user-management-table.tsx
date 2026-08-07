@@ -1,11 +1,11 @@
 'use client'
 
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Users, Search, Edit2, Trash2, MoreVertical, Shield, KeyRound, Mail, CheckSquare, Square, Download } from 'lucide-react'
+import { Users, Search, Edit2, Trash2, MoreVertical, Shield, KeyRound, Mail, CheckSquare, Square, Download, ChevronLeft, ChevronRight } from 'lucide-react'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -58,6 +58,9 @@ export function UserManagementTable({
 }: UserManagementTableProps) {
   const [searchQuery, setSearchQuery] = useState('')
   const [roleFilter, setRoleFilter] = useState<string>('all')
+  const [statusFilter, setStatusFilter] = useState<string>('all')
+  const [page, setPage] = useState(1)
+  const [pageSize, setPageSize] = useState(15)
   const [selected, setSelected] = useState<Set<string>>(new Set())
 
   const filteredUsers = useMemo(() => users.filter((user) => {
@@ -67,8 +70,15 @@ export function UserManagementTable({
     const canon = normalizeUserRole(user.role)
     const matchesRole =
       roleFilter === 'all' || canon === (roleFilter as 'superadmin' | 'tenant_admin' | 'user')
-    return matchesSearch && matchesRole
-  }), [users, searchQuery, roleFilter])
+    const matchesStatus = statusFilter === 'all' || user.status === statusFilter
+    return matchesSearch && matchesRole && matchesStatus
+  }), [users, searchQuery, roleFilter, statusFilter])
+
+  const totalPages = Math.max(1, Math.ceil(filteredUsers.length / pageSize))
+  const safePage = Math.min(page, totalPages)
+  const paginatedUsers = filteredUsers.slice((safePage - 1) * pageSize, safePage * pageSize)
+
+  useEffect(() => { setPage(1) }, [searchQuery, roleFilter, statusFilter, pageSize])
 
   const filteredIds = useMemo(() => new Set(filteredUsers.map(u => u.id)), [filteredUsers])
   const allSelected = filteredUsers.length > 0 && filteredUsers.every(u => selected.has(u.id))
@@ -142,6 +152,16 @@ export function UserManagementTable({
             <SelectItem value="superadmin">Superadmin</SelectItem>
             <SelectItem value="tenant_admin">Tenant admin</SelectItem>
             <SelectItem value="user">User</SelectItem>
+          </SelectContent>
+        </Select>
+        <Select value={statusFilter} onValueChange={setStatusFilter}>
+          <SelectTrigger className="w-[140px]">
+            <SelectValue placeholder="All Status" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">All Status</SelectItem>
+            <SelectItem value="active">Active</SelectItem>
+            <SelectItem value="inactive">Inactive</SelectItem>
           </SelectContent>
         </Select>
         <Button
@@ -225,7 +245,7 @@ export function UserManagementTable({
                   </td>
                 </tr>
               ) : (
-                filteredUsers.map((user) => (
+                paginatedUsers.map((user) => (
                   <tr key={user.id} className="border-b border-border hover:bg-muted/50 transition-colors">
                     <td className="py-3 px-4">
                       <button
@@ -296,8 +316,29 @@ export function UserManagementTable({
       </Card>
 
       {filteredUsers.length > 0 && (
-        <div className="text-sm text-muted-foreground">
-          Showing {filteredUsers.length} of {users.length} users
+        <div className="flex items-center justify-between text-xs text-muted-foreground">
+          <p>Page {safePage} of {totalPages}</p>
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage <= 1} onClick={() => setPage(p => Math.max(1, p - 1))}>
+                <ChevronLeft className="h-3 w-3 mr-1" />Prev
+              </Button>
+              <Button variant="outline" size="sm" className="h-8 text-xs" disabled={safePage >= totalPages} onClick={() => setPage(p => Math.min(totalPages, p + 1))}>
+                Next<ChevronRight className="h-3 w-3 ml-1" />
+              </Button>
+            </div>
+            <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+              <SelectTrigger className="h-8 w-[100px] text-xs">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="10">10 per page</SelectItem>
+                <SelectItem value="15">15 per page</SelectItem>
+                <SelectItem value="25">25 per page</SelectItem>
+                <SelectItem value="50">50 per page</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
         </div>
       )}
     </div>

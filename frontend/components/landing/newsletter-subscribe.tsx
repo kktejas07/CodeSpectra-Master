@@ -3,6 +3,7 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Mail, CheckCircle2, Loader2 } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 /**
  * Newsletter signup — posts to the public subscribe endpoint. Used on the
@@ -22,7 +23,7 @@ export function NewsletterSubscribe({ source = 'web', compact = false }: { sourc
     setState('loading')
     setError('')
     try {
-      const res = await fetch('/api/newsletter/subscribe', {
+      const res = await csrfFetch('/api/newsletter/subscribe', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email: email.trim(), source }),

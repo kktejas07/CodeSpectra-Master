@@ -697,6 +697,9 @@ export default function DashboardLayout({
               fullWidth
               compact={sidebarCollapsed}
               overviewHref={homeHref}
+              userRole={userProfile?.role}
+              allowedRoutes={allowedRoutes}
+              deniedRoutes={deniedRoutes}
             />
           </div>
 
