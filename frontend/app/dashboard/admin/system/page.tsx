@@ -375,7 +375,7 @@ export default function SystemAdminDashboard() {
           <QL href={p.users} icon={Users} label="Users & roles" />
           <QL href={p.analytics} icon={BarChart3} label="Insights" />
           <QL href={p.settings} icon={Settings} label="Platform settings" />
-          <QL href={p.auditLogs} icon={Activity} label="Audit logs" />
+          <QL href={p.security} icon={Activity} label="Audit logs" />
         </div>
       </div>
 

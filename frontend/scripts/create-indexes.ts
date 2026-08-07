@@ -195,6 +195,27 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   user_ai_settings: [
     { key: { user_id: 1 }, unique: true },
   ],
+  analytics_events: [
+    { key: { timestamp: -1 } },
+    { key: { event: 1, timestamp: -1 } },
+    { key: { user_id: 1, timestamp: -1 } },
+    { key: { anonymous_id: 1, timestamp: -1 } },
+    { key: { session_id: 1 } },
+    { key: { path: 1 } },
+  ],
+  analytics_sessions: [
+    { key: { id: 1 }, unique: true },
+    { key: { user_id: 1, started_at: -1 } },
+    { key: { anonymous_id: 1, started_at: -1 } },
+    { key: { started_at: -1 } },
+    { key: { last_activity_at: -1 } },
+  ],
+  analytics_pageviews: [
+    { key: { timestamp: -1 } },
+    { key: { path: 1, timestamp: -1 } },
+    { key: { user_id: 1, timestamp: -1 } },
+    { key: { session_id: 1 } },
+  ],
 }
 
 async function main() {

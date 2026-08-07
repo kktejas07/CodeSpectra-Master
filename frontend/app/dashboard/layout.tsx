@@ -46,7 +46,6 @@ import {
   ChevronsRight,
   Lock,
   FileText,
-  ScrollText,
   Plug,
   Gauge,
   Globe2,
@@ -79,6 +78,7 @@ import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
 import { Activity } from 'lucide-react'
 import { WebVitalsReporter } from '@/components/dashboard/web-vitals-reporter'
+import { AnalyticsTracker } from '@/components/dashboard/analytics-tracker'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { LearningSidebarNav } from '@/components/dashboard/learning-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
@@ -310,7 +310,6 @@ export default function DashboardLayout({
       [p.users]: Users,
       [p.roles]: Lock,
       [p.analytics]: BarChart3,
-      [p.auditLogs]: ScrollText,
       [p.integrations]: Plug,
       [p.speedInsights]: Gauge,
       [p.cdn]: Globe2,
@@ -625,6 +624,7 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/4 dark:from-background dark:via-background dark:to-primary/10">
       <ActivityHeartbeat />
       <WebVitalsReporter />
+      <AnalyticsTracker />
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 

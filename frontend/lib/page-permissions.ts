@@ -33,7 +33,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/tenants',
   '/dashboard/admin/permissions',
   '/dashboard/admin/security',
-  '/dashboard/admin/audit-logs',
 
   // Hackathons, Problems & Proctoring
   '/dashboard/admin/hackathons',
@@ -220,7 +219,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/roles': 'Roles',
   '/dashboard/admin/tenants': 'Organizations',
   '/dashboard/admin/analytics': 'Insights',
-  '/dashboard/admin/audit-logs': 'Audit Logs',
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
   '/dashboard/admin/security': 'Security',

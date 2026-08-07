@@ -1,20 +1,26 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
+import { DataTable, type BulkAction } from '@/components/ui/data-table'
+import { auditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   Shield, Users, LogIn, Ban, Globe, Monitor, Smartphone, Tablet,
   AlertTriangle, CheckCircle, XCircle, Clock, MapPin, Activity,
   RefreshCw, ChevronDown, ChevronUp, Loader2, Fingerprint, ShieldOff,
-  ShieldAlert, Plus, Trash2, Blocks,
+  ShieldAlert, Plus, Trash2, Blocks, Download, ScrollText,
 } from 'lucide-react'
+import {
+  AreaChart, Area, BarChart, Bar, LineChart, Line,
+  XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
+} from 'recharts'
 
 interface SecuritySetting {
   _id?: string
@@ -177,6 +183,22 @@ export default function Security() {
   const [loading, setLoading] = useState(true)
   const [toggling, setToggling] = useState<string | null>(null)
 
+  const [auditLogs, setAuditLogs] = useState<AuditRow[]>([])
+  const [auditStats, setAuditStats] = useState({ total: 0, critical: 0, warning: 0, denied: 0 })
+  const [auditLoading, setAuditLoading] = useState(true)
+
+  const fetchAuditLogs = useCallback(async () => {
+    setAuditLoading(true)
+    try {
+      const params = new URLSearchParams({ limit: '1000' })
+      const res = await fetch(`/api/admin/audit-logs?${params.toString()}`)
+      const json = await res.json()
+      if (json.data) setAuditLogs(json.data)
+      if (json.stats) setAuditStats(json.stats)
+    } catch { /* ignore */ }
+    setAuditLoading(false)
+  }, [])
+
   const load = useCallback(async () => {
     setLoading(true)
     try {
@@ -203,7 +225,7 @@ export default function Security() {
     setLoading(false)
   }, [])
 
-  useEffect(() => { load() }, [load])
+  useEffect(() => { load(); fetchAuditLogs() }, [load, fetchAuditLogs])
 
   const toggleSetting = useCallback(async (name: string, currentStatus: string) => {
     setToggling(name)
@@ -309,6 +331,104 @@ export default function Security() {
     setMutating(null)
   }, [concurrentLimitDraft, load])
 
+  const handleAuditDelete = useCallback(async (ids: string[]) => {
+    for (const id of ids) {
+      await csrfFetch(`/api/admin/audit-logs/${id}`, { method: 'DELETE', credentials: 'include' })
+    }
+    setAuditLogs(prev => prev.filter(l => !ids.includes(l.id)))
+  }, [])
+
+  const handleAuditExport = useCallback((ids: string[]) => {
+    const selected = auditLogs.filter(l => ids.includes(l.id))
+    const headers = ['ts', 'actor', 'actorIp', 'action', 'resource', 'resourceType', 'severity', 'outcome', 'detail']
+    const csv = [headers.join(','),
+      ...selected.map(r => headers.map(h => {
+        const v = (r as any)[h] || ''
+        return `"${String(v).replace(/"/g, '""')}"`
+      }).join(','))
+    ].join('\n')
+    const blob = new Blob([csv], { type: 'text/csv' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url; a.download = 'audit-logs.csv'; a.click()
+    URL.revokeObjectURL(url)
+  }, [auditLogs])
+
+  const auditBulkActions: BulkAction[] = [
+    { label: 'Delete', variant: 'destructive', icon: <Trash2 className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditDelete },
+    { label: 'Export Selected', icon: <Download className="w-3.5 h-3.5 mr-1" />, onClick: handleAuditExport, clearSelection: false },
+  ]
+
+  // ── Chart data ─────────────────────────────────────────────────────────
+  const loginTimelineData = (() => {
+    const now = new Date()
+    const hours: { hour: string; success: number; failed: number }[] = []
+    for (let i = 23; i >= 0; i--) {
+      const h = new Date(now.getTime() - i * 3600_000)
+      const label = h.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })
+      const hourStr = h.toISOString().slice(0, 13)
+      const events = (data?.loginEvents || []).filter(e => e.ts.slice(0, 13) === hourStr)
+      hours.push({
+        hour: label,
+        success: events.filter(e => e.outcome === 'success').length,
+        failed: events.filter(e => e.outcome !== 'success').length,
+      })
+    }
+    return hours
+  })()
+
+  const geoData = (data?.geoStats || []).slice(0, 10).map(g => ({ country: g._id || 'Unknown', sessions: g.count }))
+
+  const threatTrendData = (() => {
+    const now = new Date()
+    const days: { day: string; critical: number; warning: number; info: number }[] = []
+    for (let i = 6; i >= 0; i--) {
+      const d = new Date(now.getTime() - i * 86400_000)
+      const label = d.toLocaleDateString([], { weekday: 'short', month: 'short', day: 'numeric' })
+      const dayStr = d.toISOString().slice(0, 10)
+      const events = (data?.securityEvents || []).filter(e => e.ts.slice(0, 10) === dayStr)
+      days.push({
+        day: label,
+        critical: events.filter(e => e.severity === 'critical').length,
+        warning: events.filter(e => e.severity === 'warning').length,
+        info: events.filter(e => e.severity === 'info').length,
+      })
+    }
+    return days
+  })()
+
+  // ── Polling ────────────────────────────────────────────────────────────
+  const SESSION_POLL_MS = 10_000
+  const DATA_POLL_MS = 30_000
+
+  const sessionTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const dataTimerRef = useRef<NodeJS.Timeout | null>(null)
+
+  useEffect(() => {
+    sessionTimerRef.current = setInterval(load, SESSION_POLL_MS)
+    dataTimerRef.current = setInterval(() => { load(); fetchAuditLogs() }, DATA_POLL_MS)
+    return () => {
+      if (sessionTimerRef.current) clearInterval(sessionTimerRef.current)
+      if (dataTimerRef.current) clearInterval(dataTimerRef.current)
+    }
+  }, [load, fetchAuditLogs])
+
+  useEffect(() => {
+    const handleVisibility = () => {
+      if (document.hidden) {
+        if (sessionTimerRef.current) clearInterval(sessionTimerRef.current)
+        if (dataTimerRef.current) clearInterval(dataTimerRef.current)
+      } else {
+        load()
+        fetchAuditLogs()
+        sessionTimerRef.current = setInterval(load, SESSION_POLL_MS)
+        dataTimerRef.current = setInterval(() => { load(); fetchAuditLogs() }, DATA_POLL_MS)
+      }
+    }
+    document.addEventListener('visibilitychange', handleVisibility)
+    return () => document.removeEventListener('visibilitychange', handleVisibility)
+  }, [load, fetchAuditLogs])
+
   if (!gate.ready) return null
 
   const stats = data?.sessionStats
@@ -323,8 +443,8 @@ export default function Security() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Security</h1>
-          <p className="text-sm text-muted-foreground mt-1">Monitor sessions, devices, blocked IPs, and security events</p>
+          <h1 className="text-2xl font-bold tracking-tight">Security & Audit</h1>
+          <p className="text-sm text-muted-foreground mt-1">Real-time monitoring: sessions, devices, audit logs, blocked IPs, and security events</p>
         </div>
         <Button variant="outline" size="sm" className="gap-2" onClick={load} disabled={loading}>
           <RefreshCw className={`h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
@@ -338,12 +458,69 @@ export default function Security() {
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="mb-4">
             <TabsTrigger value="overview" className="gap-1.5"><Activity className="h-4 w-4" />Overview</TabsTrigger>
+            <TabsTrigger value="audit" className="gap-1.5"><ScrollText className="h-4 w-4" />Audit Logs</TabsTrigger>
             <TabsTrigger value="fingerprints" className="gap-1.5"><Fingerprint className="h-4 w-4" />Device Fingerprints</TabsTrigger>
             <TabsTrigger value="blocked" className="gap-1.5"><Ban className="h-4 w-4" />Blocked IPs</TabsTrigger>
             <TabsTrigger value="events" className="gap-1.5"><ShieldAlert className="h-4 w-4" />Security Events</TabsTrigger>
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+          {/* ── Charts ──────────────────────────────────────────────── */}
+          <div className="grid gap-6 lg:grid-cols-3">
+            <Card className="border-border/60 p-4">
+              <h3 className="font-semibold text-sm mb-3">Login Timeline (24h)</h3>
+              {loginTimelineData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <AreaChart data={loginTimelineData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="hour" tick={{ fontSize: 10 }} interval={3} />
+                    <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                    <Area type="monotone" dataKey="success" stackId="1" stroke="#22c55e" fill="#22c55e" fillOpacity={0.3} name="Success" />
+                    <Area type="monotone" dataKey="failed" stackId="1" stroke="#ef4444" fill="#ef4444" fillOpacity={0.3} name="Failed" />
+                  </AreaChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+              )}
+            </Card>
+
+            <Card className="border-border/60 p-4">
+              <h3 className="font-semibold text-sm mb-3">Sessions by Country (Top 10)</h3>
+              {geoData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <BarChart data={geoData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="country" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                    <Bar dataKey="sessions" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+              )}
+            </Card>
+
+            <Card className="border-border/60 p-4">
+              <h3 className="font-semibold text-sm mb-3">Threat Trend (7d)</h3>
+              {threatTrendData.length > 0 ? (
+                <ResponsiveContainer width="100%" height={200}>
+                  <LineChart data={threatTrendData}>
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                    <XAxis dataKey="day" tick={{ fontSize: 10 }} />
+                    <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                    <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                    <Line type="monotone" dataKey="critical" stroke="#ef4444" strokeWidth={2} dot={{ r: 3 }} name="Critical" />
+                    <Line type="monotone" dataKey="warning" stroke="#f59e0b" strokeWidth={2} dot={{ r: 3 }} name="Warning" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+              )}
+            </Card>
+          </div>
+
           <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <StatCard
               label="Active Now"
@@ -604,6 +781,53 @@ export default function Security() {
               </div>
             </div>
           </Card>
+          </TabsContent>
+
+          {/* ── Audit Logs ──────────────────────────────────────────────────── */}
+          <TabsContent value="audit" className="space-y-4">
+            <div className="grid gap-4 sm:grid-cols-3">
+              <Card className="border-border/60 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Total Events</p>
+                <p className="mt-1 text-2xl font-bold">{auditStats.total}</p>
+              </Card>
+              <Card className="border-border/60 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Critical</p>
+                <p className="mt-1 text-2xl font-bold text-red-500">{auditStats.critical}</p>
+              </Card>
+              <Card className="border-border/60 p-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Denied / Failed</p>
+                <p className="mt-1 text-2xl font-bold text-amber-500">{auditStats.denied}</p>
+              </Card>
+            </div>
+            <DataTable
+              columns={auditLogColumns}
+              data={auditLogs}
+              tableId="security-audit-logs"
+              searchPlaceholder="Search actor, action, resource..."
+              searchKeys={['actor', 'action', 'resource'] as (keyof AuditRow)[]}
+              filters={[
+                {
+                  label: 'Severity', key: 'severity',
+                  options: [
+                    { label: 'Info', value: 'info' },
+                    { label: 'Warning', value: 'warning' },
+                    { label: 'Critical', value: 'critical' },
+                  ],
+                },
+                {
+                  label: 'Outcome', key: 'outcome',
+                  options: [
+                    { label: 'Success', value: 'success' },
+                    { label: 'Failure', value: 'failure' },
+                    { label: 'Denied', value: 'denied' },
+                  ],
+                },
+              ]}
+              bulkActions={auditBulkActions}
+              loading={auditLoading}
+              emptyMessage="No audit events found."
+              pageSize={50}
+            />
           </TabsContent>
 
           {/* ── Device Fingerprints ───────────────────────────────────────── */}
