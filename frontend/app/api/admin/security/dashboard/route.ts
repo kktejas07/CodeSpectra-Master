@@ -13,7 +13,7 @@ export async function GET() {
     const todayIso = todayStart.toISOString()
     const sevenDaysAgo = new Date(Date.now() - 7 * 24 * 60 * 60 * 1000).toISOString()
 
-    const [settings, activeSessions, sessionStats, loginEvents, recentAlerts, geoStats] = await Promise.all([
+    const [settings, activeSessions, sessionStats, loginEvents, recentAlerts, geoStats, securityEvents, fingerprints, blockedIps] = await Promise.all([
       db.collection('security_settings').find({}).toArray(),
       getActiveSessions(50),
       getSessionStats(),
@@ -31,6 +31,13 @@ export async function GET() {
         { $sort: { count: -1 } },
         { $limit: 10 },
       ]).toArray(),
+      db.collection('security_events').find({}).sort({ ts: -1 }).limit(20).toArray(),
+      db.collection('device_fingerprints').aggregate([
+        { $addFields: { account_count: { $size: { $ifNull: ['$accounts', []] } } } },
+        { $sort: { last_seen: -1 } },
+        { $limit: 20 },
+      ]).toArray(),
+      db.collection('security_blocklist').find({ active: { $ne: false } }).sort({ blocked_at: -1 }).limit(20).toArray(),
     ])
 
     const successCount = loginEvents.filter(e => e.outcome === 'success').length
@@ -49,6 +56,9 @@ export async function GET() {
       loginEvents,
       recentAlerts,
       geoStats,
+      securityEvents,
+      fingerprints,
+      blockedIps,
     })
   } catch (e) {
     console.error('[security dashboard] Error:', e)

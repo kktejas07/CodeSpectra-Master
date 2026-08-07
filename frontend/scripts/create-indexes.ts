@@ -149,6 +149,21 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   security_settings: [
     { key: { name: 1 }, unique: true },
   ],
+  security_events: [
+    { key: { ts: -1 } },
+    { key: { severity: 1, ts: -1 } },
+    { key: { type: 1 } },
+    { key: { visitorId: 1 } },
+  ],
+  device_fingerprints: [
+    { key: { visitorId: 1 }, unique: true },
+    { key: { last_seen: -1 } },
+    { key: { is_blocked: 1 } },
+  ],
+  security_blocklist: [
+    { key: { ip: 1 }, unique: true },
+    { key: { active: 1, blocked_at: -1 } },
+  ],
   user_sessions: [
     { key: { user_id: 1, last_seen: -1 } },
     { key: { user_id: 1, is_active: 1 } },

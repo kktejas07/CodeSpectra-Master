@@ -4,6 +4,9 @@ import { cookies } from 'next/headers'
 import { users as getUsersCollection } from '@/lib/db/admin'
 import { verifySessionToken, setSessionCookie } from '@/lib/session'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
+import { createUserSession, updateSessionHeartbeat } from '@/lib/db/sessions'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { isIpBlocked, trackDeviceFingerprint, recordSecurityEvent } from '@/lib/db/security'
 
 const SESSION_COOKIE_NAME = 'codespectra_session'
 const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7 * 1000
@@ -37,9 +40,35 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
   }
 }
 
+/** Record a user session + track the device fingerprint for OAuth sign-ins. */
+async function recordOAuthSession(request: NextRequest, uid: string, email: string, visitorId?: string) {
+  try {
+    const rawIp = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
+    const userAgent = request.headers.get('user-agent') || 'Unknown device'
+    if (await isIpBlocked(rawIp)) {
+      await recordSecurityEvent({ type: 'auth.blocked_ip', severity: 'critical', ip: rawIp, user_id: uid, email, detail: 'Blocked IP attempted OAuth sign-in' })
+      return
+    }
+    // Heartbeat path: session POST fires on every 5-min heartbeat — update the existing
+    // session instead of inserting a new doc. Create one only when none matched.
+    const matched = await updateSessionHeartbeat(uid, rawIp, userAgent, visitorId)
+    if (matched === 0) {
+      await createUserSession({ user_id: uid, email, ip: rawIp, user_agent: userAgent, visitor_id: visitorId || undefined })
+    }
+    if (visitorId) {
+      const fp = await trackDeviceFingerprint({ visitorId, user_id: uid, email, ip: rawIp, user_agent: userAgent })
+      if (fp.multiAccountRisk) {
+        await recordSecurityEvent({ type: 'auth.multi_account', severity: 'warning', user_id: uid, email, ip: rawIp, visitorId, detail: 'Same device fingerprint used by multiple accounts' })
+      }
+    }
+  } catch (e) {
+    console.error('[Session] recordOAuthSession failed:', e)
+  }
+}
+
 export async function POST(request: NextRequest) {
   try {
-    const { idToken, loginMethod } = await request.json()
+    const { idToken, loginMethod, visitorId } = await request.json()
     if (!idToken) {
       return NextResponse.json({ error: 'idToken required' }, { status: 400 })
     }
@@ -60,16 +89,15 @@ export async function POST(request: NextRequest) {
         maxAge: SESSION_EXPIRES_IN / 1000,
       })
       await ensureUserProfile(decoded.uid, decoded.email || '', decoded.name, loginMethod)
+      await recordOAuthSession(request, decoded.uid, decoded.email || '', typeof visitorId === 'string' ? visitorId : undefined)
       return response
     }
 
     // ponytail: fallback when Firebase Admin SDK is not configured
-    console.log('[Session] Firebase Admin not available, falling back to JWKS verify')
     const projectId = process.env.FIREBASE_PROJECT_ID || 'codespectra-f60cf'
     const JWKS = createRemoteJWKSet(
       new URL('https://www.googleapis.com/service_accounts/v1/jwk/securetoken@system.gserviceaccount.com'),
     )
-    console.log('[Session] JWKS created, calling jwtVerify...')
     let payload: { sub?: string; email?: string; name?: string; [key: string]: unknown }
     try {
       const result = await jwtVerify(idToken, JWKS, {
@@ -95,6 +123,7 @@ export async function POST(request: NextRequest) {
       payload.name as string | undefined,
       loginMethod,
     )
+    await recordOAuthSession(request, payload.sub, (payload.email as string) || '', typeof visitorId === 'string' ? visitorId : undefined)
     return NextResponse.json({ ok: true })
   } catch (error) {
     console.error('[Session] Error creating session:', error)

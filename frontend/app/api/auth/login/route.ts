@@ -10,6 +10,7 @@ import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 import { updateUserLastLogin } from '@/lib/db/admin'
 import { createUserSession } from '@/lib/db/sessions'
+import { isIpBlocked, blockIp, trackDeviceFingerprint, detectImpossibleTravel, recordSecurityEvent, isIpOutsideWhitelist, securityPolicy } from '@/lib/db/security'
 
 export const runtime = 'nodejs'
 
@@ -24,13 +25,38 @@ export async function POST(request: Request) {
       )
     }
 
-    const { email, password, totpToken } = await request.json()
+    // Blocked IP fast-path — refuse before touching the DB.
+    const rawIp = ipKey.replace(/^(ip:|u:)/, '')
+    if (await isIpBlocked(rawIp)) {
+      await recordSecurityEvent({
+        type: 'auth.blocked_ip',
+        severity: 'critical',
+        ip: rawIp,
+        detail: 'Blocked IP attempted to sign in',
+        metadata: { userAgent: request.headers.get('user-agent') },
+      })
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+
+    // IP Whitelist enforcement (when enabled by superadmin)
+    if (await isIpOutsideWhitelist(rawIp)) {
+      await recordSecurityEvent({
+        type: 'auth.blocked_ip',
+        severity: 'warning',
+        ip: rawIp,
+        detail: 'Login blocked — IP outside configured whitelist',
+        metadata: { userAgent: request.headers.get('user-agent') },
+      })
+      return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
+    }
+
+    const { email, password, totpToken, visitorId } = await request.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
     const normalizedEmail = email.toLowerCase().trim()
-    const actorIp = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
+    const actorIp = rawIp
     const db = await getMongoDb()
     const user = await db.collection('user').findOne({ email: normalizedEmail })
     if (!user) {
@@ -57,6 +83,18 @@ export async function POST(request: Request) {
         )
       }
       await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'info', detail: 'wrong password', user_id: normalizedEmail })
+
+      // Brute-force escalation: 3+ distinct failed attempts from one IP in 10 min → block the IP.
+      const failWindow = rateLimitSlidingWindow(`login:fail:${rawIp}`, 3, 600_000)
+      if (!failWindow.ok) {
+        await blockIp({ ip: rawIp, reason: 'Brute-force: 3+ failed logins in 10 minutes', actor: 'system' })
+        await recordSecurityEvent({
+          type: 'auth.rate_limited',
+          severity: 'critical',
+          ip: rawIp,
+          detail: 'IP auto-blocked after repeated failed logins',
+        })
+      }
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
@@ -83,7 +121,72 @@ export async function POST(request: Request) {
     notify({ user_id: uid, type: 'auth.login', title: 'New sign-in', message: `Signed in as ${user.email}`, icon: 'log-in' }).catch(() => {})
 
     const userAgent = request.headers.get('user-agent') || 'Unknown device'
-    createUserSession({ user_id: uid, email: user.email, ip: actorIp, user_agent: userAgent }).catch(() => {})
+    const sessionGeo = await createUserSession({ user_id: uid, email: user.email, ip: actorIp, user_agent: userAgent, visitor_id: visitorId || undefined })
+
+    // Concurrent Session Limit — prune oldest sessions beyond the configured cap.
+    const policy = await securityPolicy()
+    if (policy.concurrentSessionLimit > 0) {
+      try {
+        const db2 = await getMongoDb()
+        const active = await db2.collection('user_sessions')
+          .find({ user_id: uid, is_active: true })
+          .sort({ last_seen: -1 })
+          .toArray()
+        const excess = active.slice(policy.concurrentSessionLimit)
+        if (excess.length > 0) {
+          await db2.collection('user_sessions').updateMany(
+            { id: { $in: excess.map(s => s.id) } },
+            { $set: { is_active: false } },
+          )
+        }
+      } catch (e) {
+        console.error('[Login] Concurrent session prune failed:', e)
+      }
+    }
+
+    // Device fingerprint — detect new device + multi-account risk.
+    if (visitorId) {
+      const fp = await trackDeviceFingerprint({ visitorId, user_id: uid, email: user.email, ip: actorIp, user_agent: userAgent })
+      if (fp.isNewDevice) {
+        await recordSecurityEvent({
+          type: 'auth.new_device',
+          severity: 'info',
+          user_id: uid,
+          email: user.email,
+          ip: actorIp,
+          visitorId,
+          detail: 'New device fingerprint used for this account',
+          metadata: { userAgent },
+        })
+      }
+      if (fp.multiAccountRisk) {
+        await recordSecurityEvent({
+          type: 'auth.multi_account',
+          severity: 'warning',
+          user_id: uid,
+          email: user.email,
+          ip: actorIp,
+          visitorId,
+          detail: 'Same device fingerprint used by multiple accounts',
+          metadata: { userAgent },
+        })
+      }
+    }
+
+    // Impossible-travel check (account-takeover signal). Compare resolved geo from this
+    // login against the user's most recent session.
+    const travel = await detectImpossibleTravel({ user_id: uid, ip: actorIp, country: sessionGeo.country })
+    if (travel) {
+      await recordSecurityEvent({
+        type: 'auth.impossible_travel',
+        severity: 'critical',
+        user_id: uid,
+        email: user.email,
+        ip: actorIp,
+        visitorId: visitorId || undefined,
+        detail: 'Login from a different country within 2h of previous login',
+      })
+    }
 
     // Send login notification email
     const deviceInfo = userAgent.includes('Mobile') ? 'Mobile device' : 'Desktop browser'

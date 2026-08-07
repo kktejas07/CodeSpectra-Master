@@ -13,34 +13,21 @@ interface LiveInterviewProps {
   onEndInterview?: () => void
 }
 
-const MOCK_QUESTIONS = [
-  {
-    id: 1,
-    question: 'Great to meet you. I\'ve had a chance to look through your background before we got on — looks like you\'ve been building some really interesting projects with React and modern frontend tech. I\'m an AI Technical Recruiter and I\'ll be running your mock screening today for the Frontend Engineer role. Here\'s what we\'ll cover today: We\'ll start with a quick check on your experience and background,',
-    category: 'Introduction',
-    duration: 45,
-  },
-  {
-    id: 2,
-    question: 'Tell me about a challenging project you worked on recently and how you solved a complex problem.',
-    category: 'Technical',
-    duration: 60,
-  },
-  {
-    id: 3,
-    question: 'How do you handle performance optimization in React applications?',
-    category: 'Technical',
-    duration: 90,
-  },
-]
-
 export function LiveInterview({ roleId, interviewType, onEndInterview }: LiveInterviewProps) {
+  const [questions, setQuestions] = useState<{ id: number; question: string; category: string; duration: number }[]>([])
   const [currentQuestion, setCurrentQuestion] = useState(0)
-  const [timeRemaining, setTimeRemaining] = useState(30 * 60) // 30 minutes
+  const [timeRemaining, setTimeRemaining] = useState(30 * 60)
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoOff, setIsVideoOff] = useState(false)
   const [userResponse, setUserResponse] = useState('')
   const [isRecording, setIsRecording] = useState(false)
+
+  useEffect(() => {
+    fetch(`/api/interviews/questions?type=${interviewType}`, { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : { data: [] }))
+      .then((d) => setQuestions(d.data || []))
+      .catch(() => setQuestions([]))
+  }, [interviewType])
 
   useEffect(() => {
     const timer = setInterval(() => {
@@ -55,7 +42,15 @@ export function LiveInterview({ roleId, interviewType, onEndInterview }: LiveInt
     return `${mins}:${secs.toString().padStart(2, '0')}`
   }
 
-  const question = MOCK_QUESTIONS[currentQuestion]
+  const question = questions[currentQuestion]
+
+  if (!question) {
+    return (
+      <div className="min-h-screen bg-black text-white flex items-center justify-center">
+        <p className="text-white/60">Loading questions...</p>
+      </div>
+    )
+  }
 
   return (
     <div className="min-h-screen bg-black text-white p-6">
@@ -122,7 +117,7 @@ export function LiveInterview({ roleId, interviewType, onEndInterview }: LiveInt
                 <Badge variant="outline" className="bg-blue-500/20 border-blue-500/50 text-blue-300 mb-2">
                   {question.category}
                 </Badge>
-                <h3 className="text-lg font-semibold text-white">Question {currentQuestion + 1} of {MOCK_QUESTIONS.length}</h3>
+                <h3 className="text-lg font-semibold text-white">Question {currentQuestion + 1} of {questions.length}</h3>
               </div>
               <Badge variant="outline" className="bg-orange-500/20 border-orange-500/50 text-orange-300">
                 {question.duration}s to respond
@@ -161,10 +156,10 @@ export function LiveInterview({ roleId, interviewType, onEndInterview }: LiveInt
             </Button>
             <Button
               className="flex-1"
-              onClick={() => setCurrentQuestion(Math.min(MOCK_QUESTIONS.length - 1, currentQuestion + 1))}
-              disabled={currentQuestion === MOCK_QUESTIONS.length - 1}
+              onClick={() => setCurrentQuestion(Math.min(questions.length - 1, currentQuestion + 1))}
+              disabled={currentQuestion === questions.length - 1}
             >
-              {currentQuestion === MOCK_QUESTIONS.length - 1 ? 'Finish Interview' : 'Next Question'}
+              {currentQuestion === questions.length - 1 ? 'Finish Interview' : 'Next Question'}
             </Button>
           </div>
         </div>

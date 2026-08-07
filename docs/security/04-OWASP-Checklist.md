@@ -129,16 +129,22 @@
 |---------|-----------|----------|--------|
 | JWT fallback secret when `SESSION_SECRET` unset | `frontend/lib/session.ts:6` | **CRITICAL** | ❌ |
 | TOTP 2FA implemented (setup + verify + disable) | `app/api/user/2fa/*` | — | ✅ |
-| No audit logging for auth events | — | **HIGH** | ❌ |
+| Audit logging for auth events (login/signup/2FA/rate-limit) | `lib/db/misc.ts:89` `writeAuditLog` | — | ✅ |
 | Session cookie 7-day lifetime (long) | `frontend/lib/session.ts:20` | **MEDIUM** | ❌ |
-| No rate limiting on login | — | **HIGH** | ❌ |
-| No brute-force lockout mechanism | — | **HIGH** | ❌ |
+| Per-IP + per-email rate limiting on login (10/5 per min) | `app/api/auth/login/route.ts` | — | ✅ |
+| Rate limiting on signup (3/hr/IP), forgot/reset password, verify email | `app/api/auth/*` | — | ✅ |
+| Global API rate limiter (240 req/min/IP) + Retry-After | `middleware.ts`, `lib/edge-rate-limit.ts` | — | ✅ |
+| Brute-force lockout: 3 failed logins/IP in 10 min → auto-block IP | `app/api/auth/login/route.ts`, `lib/db/security.ts:blockIp` | — | ✅ |
+| Device fingerprint tracking (FingerprintJS v5) for multi-account abuse | `lib/fingerprint.ts`, `lib/db/security.ts:trackDeviceFingerprint` | — | ✅ |
+| Impossible-travel detection (country change <2h) | `lib/db/security.ts:detectImpossibleTravel` | — | ✅ |
+| IP Whitelist (IPv4 CIDR) enforcement when enabled | `lib/db/security.ts:isIpOutsideWhitelist` | — | ✅ |
+| Blocked-IP blocklist enforced on login/signup/session | `lib/db/security.ts:isIpBlocked` | — | ✅ |
+| Concurrent session limit (prune oldest) | `app/api/auth/login/route.ts` | — | ✅ |
 
 **Remediation:**
 - Enforce `SESSION_SECRET` in production; use RS256 for session tokens
-- Add audit logging to all auth events (login, logout, 2fa change, role change)
 - Reduce session lifetime or implement refresh token rotation
-- Implement account lockout after N failed login attempts
+- Add per-user + per-IP rate limiting to all AI backend endpoints (`backend/ai_router.py`)
 
 ---
 

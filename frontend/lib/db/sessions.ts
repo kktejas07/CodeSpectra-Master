@@ -15,6 +15,7 @@ export interface UserSessionDoc {
   isp: string | null
   lat: number | null
   lon: number | null
+  visitor_id?: string | null
   last_seen: string
   created_at: string
   is_active: boolean
@@ -87,7 +88,8 @@ export async function createUserSession(params: {
   email: string
   ip: string
   user_agent: string
-}): Promise<void> {
+  visitor_id?: string
+}): Promise<{ country: string | null }> {
   try {
     const parsed = parseUserAgent(params.user_agent)
     const geo = await resolveGeo(params.ip)
@@ -100,26 +102,33 @@ export async function createUserSession(params: {
       user_agent: params.user_agent,
       ...parsed,
       ...geo,
+      visitor_id: params.visitor_id || null,
       last_seen: nowIso(),
       created_at: nowIso(),
       is_active: true,
     })
     await db.collection('user_sessions').deleteMany({ user_id: params.user_id, created_at: { $lt: new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString() } })
+    return { country: geo.country }
   } catch (e) {
     console.error('[sessions] Failed to create session:', e)
+    return { country: null }
   }
 }
 
-export async function updateSessionHeartbeat(userId: string, ip: string, userAgent: string): Promise<void> {
+export async function updateSessionHeartbeat(userId: string, ip: string, userAgent: string, visitor_id?: string): Promise<number> {
   try {
     const parsed = parseUserAgent(userAgent)
     const db = await getMongoDb()
-    await db.collection<UserSessionDoc>('user_sessions').updateOne(
+    const set: Record<string, unknown> = { last_seen: nowIso(), ...parsed }
+    if (visitor_id) set.visitor_id = visitor_id
+    const res = await db.collection<UserSessionDoc>('user_sessions').updateOne(
       { user_id: userId, ip, user_agent: userAgent, is_active: true },
-      { $set: { last_seen: nowIso(), ...parsed } },
+      { $set: set },
     )
+    return res.matchedCount
   } catch (e) {
     console.error('[sessions] Heartbeat update failed:', e)
+    return 0
   }
 }
 
