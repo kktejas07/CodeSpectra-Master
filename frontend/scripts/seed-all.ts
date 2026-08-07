@@ -153,6 +153,8 @@ async function seed() {
       { name: 'New Device Notification', status: 'enabled', icon: 'Bell', description: 'Email user when login is detected from an unknown device or location', created_at: now() },
       { name: 'Concurrent Session Limit', status: 'disabled', icon: 'Users', description: 'Limit to 3 active sessions per user', created_at: now() },
       { name: 'Password Policy', status: 'enabled', icon: 'Key', description: 'Enforce minimum length, complexity, and rotation rules', created_at: now() },
+      { name: 'Device Fingerprinting', status: 'enabled', icon: 'Fingerprint', description: 'Track device fingerprints to detect multi-account abuse and fraud', created_at: now() },
+      { name: 'Impossible Travel Detection', status: 'enabled', icon: 'Globe', description: 'Alert when a login comes from a different country within 2 hours', created_at: now() },
     ])
     console.log('✓ security_settings seeded')
   }

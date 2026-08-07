@@ -16,6 +16,7 @@ import {
 } from 'firebase/auth'
 import { getFirebaseAuth, prefetchFirebaseConfig, setFirebaseConfig } from './firebase'
 import { csrfFetch } from './csrf-fetch'
+import { getVisitorId, withFingerprint } from './fingerprint'
 
 export interface AuthUser {
   uid: string
@@ -87,6 +88,19 @@ async function recordLoginMethod(uid: string, method: 'google' | 'github' | 'ema
   } catch { /* non-critical */ }
 }
 
+/** Best-effort sync of this device's fingerprint to the server for admin visibility. */
+async function reportFingerprint(uid: string) {
+  try {
+    const visitorId = await getVisitorId()
+    if (!visitorId) return
+    await csrfFetch('/api/security/track', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ visitorId, uid }),
+    })
+  } catch { /* non-critical */ }
+}
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<AuthUser | null>(null)
   const [loading, setLoading] = useState(true)
@@ -150,10 +164,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             setUser(toAuthUser(fbUser))
             try {
               const idToken = await fbUser.getIdToken()
+              const body: Record<string, string> = { idToken }
+              await withFingerprint(body)
               await csrfFetch('/api/auth/session', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ idToken }),
+                body: JSON.stringify(body),
               })
             } catch { /* non-critical */ }
           } else {
@@ -199,10 +215,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const a = getFirebaseAuth()
         if (!a?.currentUser) return
         const idToken = await a.currentUser.getIdToken(true)
+        const body: Record<string, string> = { idToken }
+        await withFingerprint(body)
         await csrfFetch('/api/auth/session', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ idToken }),
+          body: JSON.stringify(body),
         })
       } catch { /* heartbeat failed — will retry next interval */ }
     }, 5 * 60 * 1000) // every 5 minutes
@@ -213,6 +231,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpired(false)
     const body: Record<string, string> = { email, password }
     if (totpToken) body.totpToken = totpToken
+    await withFingerprint(body)
     const res = await csrfFetch('/api/auth/login', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -227,17 +246,21 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(authUser)
     setLastLogin('email')
     await recordLoginMethod(json.user.id, 'email')
+    await reportFingerprint(json.user.id)
   }
 
   const signUpWithEmailFn = async (email: string, password: string, name: string) => {
+    const body: Record<string, string> = { email, password, name }
+    await withFingerprint(body)
     const res = await csrfFetch('/api/auth/signup', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email, password, name }),
+      body: JSON.stringify(body),
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Signup failed')
     setUser(toAuthUser({ uid: json.user.id, email: json.user.email, displayName: json.user.name }))
+    await reportFingerprint(json.user.id)
   }
 
   const signInWithGoogleFn = async () => {
@@ -248,6 +271,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLastLogin('google')
     setUser(toAuthUser(cred.user))
     await recordLoginMethod(cred.user.uid, 'google')
+    await reportFingerprint(cred.user.uid)
   }
 
   const signInWithGithubFn = async () => {
@@ -258,6 +282,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setLastLogin('github')
     setUser(toAuthUser(cred.user))
     await recordLoginMethod(cred.user.uid, 'github')
+    await reportFingerprint(cred.user.uid)
   }
 
   const signOutFn = async () => {

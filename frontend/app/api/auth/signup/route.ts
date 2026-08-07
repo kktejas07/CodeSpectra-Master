@@ -9,6 +9,7 @@ import { writeAuditLog } from '@/lib/db/misc'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 import { createUserSession } from '@/lib/db/sessions'
+import { isIpBlocked, trackDeviceFingerprint, recordSecurityEvent, isIpOutsideWhitelist } from '@/lib/db/security'
 
 export const runtime = 'nodejs'
 
@@ -23,7 +24,30 @@ export async function POST(request: Request) {
       )
     }
 
-    const { email, password, name } = await request.json()
+    const rawIp = ipKey.replace(/^(ip:|u:)/, '')
+    if (await isIpBlocked(rawIp)) {
+      await recordSecurityEvent({
+        type: 'auth.blocked_ip',
+        severity: 'critical',
+        ip: rawIp,
+        detail: 'Blocked IP attempted to create an account',
+        metadata: { userAgent: request.headers.get('user-agent') },
+      })
+      return NextResponse.json({ error: 'Access denied' }, { status: 403 })
+    }
+
+    if (await isIpOutsideWhitelist(rawIp)) {
+      await recordSecurityEvent({
+        type: 'auth.blocked_ip',
+        severity: 'warning',
+        ip: rawIp,
+        detail: 'Signup blocked — IP outside configured whitelist',
+        metadata: { userAgent: request.headers.get('user-agent') },
+      })
+      return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
+    }
+
+    const { email, password, name, visitorId } = await request.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
@@ -32,7 +56,7 @@ export async function POST(request: Request) {
     }
 
     const normalizedEmail = email.toLowerCase().trim()
-    const actorIp = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
+    const actorIp = rawIp
     const db = await getMongoDb()
     const existing = await db.collection('user').findOne({ email: normalizedEmail })
     if (existing) {
@@ -61,7 +85,24 @@ export async function POST(request: Request) {
     await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
 
     const userAgent = request.headers.get('user-agent') || 'Unknown device'
-    createUserSession({ user_id: uid, email: normalizedEmail, ip: actorIp, user_agent: userAgent }).catch(() => {})
+    createUserSession({ user_id: uid, email: normalizedEmail, ip: actorIp, user_agent: userAgent, visitor_id: visitorId || undefined }).catch(() => {})
+
+    // Device fingerprint — detect same device creating multiple accounts (multi-account abuse).
+    if (visitorId) {
+      const fp = await trackDeviceFingerprint({ visitorId, user_id: uid, email: normalizedEmail, ip: actorIp, user_agent: userAgent })
+      if (fp.multiAccountRisk) {
+        await recordSecurityEvent({
+          type: 'auth.multi_account',
+          severity: 'critical',
+          user_id: uid,
+          email: normalizedEmail,
+          ip: actorIp,
+          visitorId,
+          detail: 'New account created from a device already used by other accounts',
+          metadata: { userAgent },
+        })
+      }
+    }
 
     // Send welcome email
     const displayName = name || normalizedEmail.split('@')[0]

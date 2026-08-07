@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import type { NextRequest } from 'next/server'
 import { checkCsrf, CSRF_COOKIE, CSRF_HEADER } from '@/lib/csrf'
+import { edgeRateLimit, edgeClientKey } from '@/lib/edge-rate-limit'
 
 const CSP = [
   "default-src 'self'",
@@ -27,7 +28,8 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next()
 
-  // CSRF protection for API routes (webhooks & web-vitals exempt — external callers use HMAC signatures, not CSRF tokens)
+  // Global API rate limiting (best-effort edge layer). Generous threshold catches
+  // only egregious abuse — per-route limits in Node handlers are the real guard.
   const CSRF_EXEMPT = [
     '/api/analytics/web-vitals',
     '/api/github/webhook',
@@ -39,6 +41,20 @@ export function middleware(request: NextRequest) {
     '/api/exams',
     '/api/daily-login',
   ]
+  if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
+    const rl = edgeRateLimit(`api:${edgeClientKey(request)}`, 240, 60_000)
+    if (!rl.ok) {
+      return NextResponse.json(
+        { error: `Too many requests. Try again in ${rl.retryAfterSec}s.` },
+        {
+          status: 429,
+          headers: { 'Retry-After': String(rl.retryAfterSec) },
+        },
+      )
+    }
+  }
+
+  // CSRF protection for API routes (webhooks & web-vitals exempt — external callers use HMAC signatures, not CSRF tokens)
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const csrf = checkCsrf(request)
     if (!csrf.pass) {
@@ -67,6 +83,9 @@ export function middleware(request: NextRequest) {
   response.headers.set('Strict-Transport-Security', HSTS)
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
+  response.headers.set('X-XSS-Protection', '1; mode=block')
+  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
+  response.headers.set('Cross-Origin-Resource-Policy', 'same-site')
   response.headers.set(
     'Permissions-Policy',
     'camera=(self), microphone=(), geolocation=(), interest-cohort=()',
