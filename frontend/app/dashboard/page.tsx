@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle, ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users, ExternalLink, Loader2, Crown } from 'lucide-react'
+import { TrendingUp, Activity, Code, Trophy, BookOpen, Zap, CheckCircle, ArrowRight, Clock, Target, Flame, Star, Layers, Calendar, Users, ExternalLink, Loader2, Crown, FileText } from 'lucide-react'
 import Link from 'next/link'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
@@ -236,6 +236,12 @@ export default function DashboardPage() {
               <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
                 <Target className="mx-auto h-6 w-6 text-red-500" />
                 <p className="mt-2 text-sm font-medium text-foreground">Arena</p>
+              </div>
+            </Link>
+            <Link href="/dashboard/assessments">
+              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
+                <FileText className="mx-auto h-6 w-6 text-indigo-500" />
+                <p className="mt-2 text-sm font-medium text-foreground">Assessments</p>
               </div>
             </Link>
             <Link href="/dashboard/tracks">
