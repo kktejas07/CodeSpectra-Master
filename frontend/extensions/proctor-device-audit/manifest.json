@@ -21,8 +21,10 @@
     {
       "matches": [
         "https://codespectra.ai/assessment/*",
+        "https://codespectra.ai/dashboard/assessments/*",
         "https://codespectra.ai/dashboard/exams/*",
         "http://localhost:3000/assessment/*",
+        "http://localhost:3000/dashboard/assessments/*",
         "http://localhost:3000/dashboard/exams/*"
       ],
       "js": ["lib/classify.js", "content.js"],

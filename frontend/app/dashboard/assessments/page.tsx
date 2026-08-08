@@ -178,7 +178,7 @@ export default function ExamsPage() {
                   <div className="mb-3 p-2 rounded-lg bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-600 flex items-center gap-1.5 justify-center">
                     <CheckCircle className="h-3.5 w-3.5" /> Score: {exam.score}% — Completed
                   </div>
-                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/exams/${exam.id}`)}>
+                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/assessments/${exam.id}`)}>
                     <BookOpen className="h-3.5 w-3.5" /> View Results
                   </Button>
                 </>
@@ -187,12 +187,12 @@ export default function ExamsPage() {
                   <div className="mb-3 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-600 flex items-center gap-1.5 justify-center">
                     <Clock className="h-3.5 w-3.5" /> Submitted — Awaiting Review
                   </div>
-                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/exams/${exam.id}`)}>
+                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/assessments/${exam.id}`)}>
                     <Clock className="h-3.5 w-3.5" /> View Status
                   </Button>
                 </>
               ) : (
-                <Button size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/exams/${exam.id}`)}>
+                <Button size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/assessments/${exam.id}`)}>
                   <Play className="h-3.5 w-3.5" /> Start Exam
                 </Button>
               )}

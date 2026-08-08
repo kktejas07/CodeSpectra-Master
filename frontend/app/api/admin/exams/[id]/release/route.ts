@@ -39,7 +39,7 @@ export async function POST(
 
     // Notify candidates asynchronously (fire-and-forget/logged error handling)
     const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const resultsUrl = `${appUrl}/dashboard/exams`
+    const resultsUrl = `${appUrl}/dashboard/assessments`
     
     for (const sub of releasedNow) {
       if (sub.email) {

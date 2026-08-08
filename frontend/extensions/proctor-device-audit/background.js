@@ -243,7 +243,7 @@ function stopHotplugWatcher() {
 // ─── Content script bridge ───────────────────────────────────────────────────
 
 function notifyContentScript(msg) {
-  chrome.tabs.query({ url: ['*://codespectra.ai/assessment/*', '*://codespectra.ai/dashboard/exams/*', '*://localhost:3000/assessment/*', '*://localhost:3000/dashboard/exams/*'] }, (tabs) => {
+  chrome.tabs.query({ url: ['*://codespectra.ai/assessment/*', '*://codespectra.ai/dashboard/assessments/*', '*://codespectra.ai/dashboard/exams/*', '*://localhost:3000/assessment/*', '*://localhost:3000/dashboard/assessments/*', '*://localhost:3000/dashboard/exams/*'] }, (tabs) => {
     for (const tab of tabs) {
       chrome.tabs.sendMessage(tab.id, msg).catch(() => null)
     }

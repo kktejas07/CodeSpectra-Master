@@ -58,7 +58,7 @@ export async function PATCH(
     // Send email notification
     if (submission.email) {
       const appUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-      const resultsUrl = `${appUrl}/dashboard/exams`
+      const resultsUrl = `${appUrl}/dashboard/assessments`
       const template = emailTemplates.assessmentScoreReleased({
         candidateName,
         examTitle,

@@ -225,7 +225,7 @@ export default function ExamReviewPage() {
         setMetaScreeningType(found.screening_type || 'mixed')
       } else {
         addToast({ type: 'error', title: 'Exam not found' })
-        router.push('/dashboard/admin/exams')
+        router.push('/dashboard/admin/assessments')
       }
     } catch { 
       addToast({ type: 'error', title: 'Failed to load exam' })
@@ -446,7 +446,7 @@ export default function ExamReviewPage() {
         })
       })
       addToast({ type: 'success', title: 'Exam Published!' })
-      router.push('/dashboard/admin/exams')
+      router.push('/dashboard/admin/assessments')
     } catch {
       addToast({ type: 'error', title: 'Failed to publish exam' })
     } finally {
@@ -470,8 +470,8 @@ export default function ExamReviewPage() {
     <div className="space-y-6 max-w-5xl mx-auto pb-12 p-6">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/exams')}>
-            <ArrowLeft className="h-4 w-4" /> Back to Exams
+          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>
+            <ArrowLeft className="h-4 w-4" /> Back to Assessments
           </div>
           {editingMeta ? (
             <div className="space-y-3">
@@ -596,7 +596,7 @@ export default function ExamReviewPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
-          <Button variant="outline" onClick={() => router.push('/dashboard/admin/exams')}>Save as Draft</Button>
+          <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>Save as Draft</Button>
           <Button onClick={handlePublish} disabled={publishing} className="bg-green-600 hover:bg-green-700 text-white">
             {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
             Publish Exam
