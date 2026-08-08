@@ -220,6 +220,11 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
     { key: { id: 1 }, unique: true },
     { key: { created_at: -1 } },
   ],
+  analytics_replays: [
+    { key: { session_id: 1 }, unique: true },
+    { key: { user_id: 1, last_activity_at: -1 } },
+    { key: { last_activity_at: -1 } },
+  ],
 }
 
 async function main() {
