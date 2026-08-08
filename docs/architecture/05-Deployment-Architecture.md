@@ -1,5 +1,7 @@
 # Deployment Architecture
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 ## Docker Compose Topology
 
 ```mermaid

@@ -1,5 +1,7 @@
 # CodeSpectra Technology Stack
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Auto-generated:** Verified from package.json, requirements.txt, docker-compose.yml, and codebase audit. Last updated: 2026-07-08.
 
 ---

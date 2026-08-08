@@ -1,5 +1,7 @@
 # Product Vision — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Document**: Product Vision
 > **Date**: 2026-07-08
 > **Status**: Living document

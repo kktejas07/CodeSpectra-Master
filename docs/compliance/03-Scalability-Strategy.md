@@ -1,5 +1,7 @@
 # CodeSpectra Scalability Strategy
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Auto-generated:** Based on codebase audit. Last updated: 2026-07-08.
 
 ---

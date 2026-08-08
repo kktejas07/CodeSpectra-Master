@@ -1,5 +1,7 @@
 # Executive Summary — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Document**: Executive Summary
 > **Version**: 1.0
 > **Date**: 2026-07-08

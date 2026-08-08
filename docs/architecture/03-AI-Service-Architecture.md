@@ -1,5 +1,7 @@
 # AI Service Architecture
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 ## LLM Provider Overview
 
 CodeSpectra integrates four LLM providers through two access paths:

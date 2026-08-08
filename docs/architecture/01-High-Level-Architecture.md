@@ -1,5 +1,7 @@
 # High-Level Architecture
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 ## System Context Diagram
 
 ```mermaid

@@ -1,5 +1,7 @@
 # CI/CD Pipeline — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Last Updated:** 2026-07-08  
 > **Current State:** Manual deployment via Dokploy  
 

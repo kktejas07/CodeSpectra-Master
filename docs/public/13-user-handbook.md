@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: CodeSpectra User Handbook
 description: The complete guide to getting the most out of the CodeSpectra platform.

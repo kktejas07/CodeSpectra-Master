@@ -1,5 +1,7 @@
 # HackerRank-style Event System — Technical Specification
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Status**: Draft Implementation
 > **Version**: v0.1
 > **Last Updated**: 2026-07-08

@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: AI Safety Analysis
 description: Security, safety, and risk assessment of the CodeSpectra AI system

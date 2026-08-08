@@ -1,5 +1,7 @@
 # Role-Based Access Control (RBAC) — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Last Updated:** 2026-07-08  
 > **Roles:** `superadmin`, `tenant_admin`, `user`  
 > **Permission Sources:** Static (page-permissions.ts) + Dynamic (MongoDB `roles` collection)

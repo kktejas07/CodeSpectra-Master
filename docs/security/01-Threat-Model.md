@@ -1,5 +1,7 @@
 # STRIDE Threat Model — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Last Updated:** 2026-07-08  
 > **Audit Scope:** Full codebase (frontend/, backend/, lib/)  
 > **Risk Rating:** CRITICAL / HIGH / MEDIUM / LOW

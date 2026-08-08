@@ -1,5 +1,7 @@
 # CodeSpectra Major Workflow Flowcharts
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Auto-generated from codebase audit** — Last updated: 2026-07-08
 > Sources: `auth-context.tsx`, `signup/route.ts`, `login/route.ts`, `session/route.ts`,
 > `rbac.ts`, `page-permissions.ts`, `piston.ts`, `ai_router.py`, `quality-rater.ts`,

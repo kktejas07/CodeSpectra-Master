@@ -1,5 +1,7 @@
 # Deployment Guide — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Last Updated:** 2026-07-08  
 > **Deployment Target:** Docker Compose (3 containers)  
 > **Production Host:** Dokploy (Docker Swarm)  
