@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Input } from '@/components/ui/input'
+import { Switch } from '@/components/ui/switch'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -249,6 +250,15 @@ export default function AnalyticsPage() {
   const [aiData, setAiData] = useState<any>(null)
   const [aiLoading, setAiLoading] = useState(false)
 
+  const [revenueData, setRevenueData] = useState<any>(null)
+  const [revenueLoading, setRevenueLoading] = useState(false)
+
+  const [featureFlags, setFeatureFlags] = useState<any[]>([])
+  const [ffLoading, setFfLoading] = useState(false)
+  const [newFfName, setNewFfName] = useState('')
+  const [newFfDesc, setNewFfDesc] = useState('')
+  const [showFfForm, setShowFfForm] = useState(false)
+
   const hiddenRef = useRef(document.hidden)
   const overviewTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const liveTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -410,6 +420,57 @@ export default function AnalyticsPage() {
     finally { setAiLoading(false) }
   }, [gate.ready, range])
 
+  const loadRevenue = useCallback(async () => {
+    if (!gate.ready) return
+    setRevenueLoading(true)
+    try {
+      const res = await fetch(`/api/admin/analytics/revenue?range=${range}`, { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setRevenueData(json)
+    } catch { /* ignore */ }
+    finally { setRevenueLoading(false) }
+  }, [gate.ready, range])
+
+  const loadFeatureFlags = useCallback(async () => {
+    if (!gate.ready) return
+    setFfLoading(true)
+    try {
+      const res = await fetch('/api/admin/analytics/feature-flags', { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setFeatureFlags(json.flags || [])
+    } catch { /* ignore */ }
+    finally { setFfLoading(false) }
+  }, [gate.ready])
+
+  const toggleFlag = useCallback(async (name: string, enabled: boolean) => {
+    await csrfFetch('/api/admin/analytics/feature-flags', {
+      method: 'PATCH',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name, enabled }),
+    })
+    setFeatureFlags(prev => prev.map(f => f.id === name ? { ...f, enabled } : f))
+  }, [])
+
+  const createFlag = useCallback(async () => {
+    if (!newFfName.trim()) return
+    const res = await csrfFetch('/api/admin/analytics/feature-flags', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ name: newFfName, description: newFfDesc }),
+    })
+    if (res.ok) {
+      setShowFfForm(false)
+      setNewFfName('')
+      setNewFfDesc('')
+      void loadFeatureFlags()
+    }
+  }, [newFfName, newFfDesc, loadFeatureFlags])
+
+  const deleteFlag = useCallback(async (name: string) => {
+    await csrfFetch(`/api/admin/analytics/feature-flags?id=${name}`, { method: 'DELETE' })
+    setFeatureFlags(prev => prev.filter(f => f.id !== name))
+  }, [])
+
   // ─── Initial Load ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -442,6 +503,12 @@ export default function AnalyticsPage() {
     }
     if (activeTab === 'ai' && !aiData && gate.ready) {
       void loadAiData()
+    }
+    if (activeTab === 'revenue' && !revenueData && gate.ready) {
+      void loadRevenue()
+    }
+    if (activeTab === 'flags' && featureFlags.length === 0 && gate.ready) {
+      void loadFeatureFlags()
     }
   }, [activeTab, pagesData, eventsData, funnels.length, retentionData, gate.ready, loadPages, loadEvents, loadFunnels, loadRetention])
 
@@ -525,7 +592,7 @@ export default function AnalyticsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-9">
+        <TabsList className="grid w-full grid-cols-11">
           <TabsTrigger value="overview" className="gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
           </TabsTrigger>
@@ -550,8 +617,14 @@ export default function AnalyticsPage() {
           <TabsTrigger value="ai" className="gap-1.5">
             <Zap className="h-4 w-4" /> AI
           </TabsTrigger>
+          <TabsTrigger value="revenue" className="gap-1.5">
+            <TrendingUp className="h-4 w-4" /> Revenue
+          </TabsTrigger>
+          <TabsTrigger value="flags" className="gap-1.5">
+            <Monitor className="h-4 w-4" /> Flags
+          </TabsTrigger>
           <TabsTrigger value="performance" className="gap-1.5">
-            <Gauge className="h-4 w-4" /> Performance
+            <Gauge className="h-4 w-4" /> Perf
           </TabsTrigger>
         </TabsList>
 
@@ -630,7 +703,29 @@ export default function AnalyticsPage() {
           <AiAnalyticsTab data={aiData} loading={aiLoading} />
         </TabsContent>
 
-        {/* ─── Tab 9: Performance ──────────────────────────────────────────── */}
+        {/* ─── Tab 9: Revenue ──────────────────────────────────────────────── */}
+        <TabsContent value="revenue" className="space-y-6">
+          <RevenueTab data={revenueData} loading={revenueLoading} />
+        </TabsContent>
+
+        {/* ─── Tab 10: Feature Flags ───────────────────────────────────────── */}
+        <TabsContent value="flags" className="space-y-6">
+          <FeatureFlagsTab
+            flags={featureFlags}
+            loading={ffLoading}
+            showForm={showFfForm}
+            onToggleForm={() => setShowFfForm(!showFfForm)}
+            flagName={newFfName}
+            onFlagNameChange={setNewFfName}
+            flagDesc={newFfDesc}
+            onFlagDescChange={setNewFfDesc}
+            onCreate={createFlag}
+            onToggle={toggleFlag}
+            onDelete={deleteFlag}
+          />
+        </TabsContent>
+
+        {/* ─── Tab 11: Performance ──────────────────────────────────────────── */}
         <TabsContent value="performance" className="space-y-6">
           <PerformanceTab data={vitalsData} loading={vitalsLoading} />
         </TabsContent>
@@ -1490,6 +1585,200 @@ function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
           </div>
         </Card>
       </div>
+    </div>
+  )
+}
+
+// ─── Tab: Revenue ────────────────────────────────────────────────────────────
+
+function RevenueTab({ data, loading }: { data: any; loading: boolean }) {
+  if (loading && !data) {
+    return <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading revenue data…</div>
+  }
+
+  if (!data) {
+    return (
+      <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
+        <TrendingUp className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+        <p>No billing data yet. Revenue analytics appear when users subscribe.</p>
+      </Card>
+    )
+  }
+
+  const currency = data.currency || 'USD'
+  const sym = currency === 'INR' ? '₹' : '$'
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold">Revenue Analytics</h2>
+        <p className="text-sm text-muted-foreground">MRR, subscriptions, and payment insights</p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard icon={<TrendingUp className="h-5 w-5 text-green-500" />} color="bg-green-500/10" label="MRR" value={`${sym}${data.mrr.toLocaleString()}`} />
+        <KpiCard icon={<TrendingUp className="h-5 w-5 text-blue-500" />} color="bg-blue-500/10" label="ARR" value={`${sym}${data.arr.toLocaleString()}`} />
+        <KpiCard icon={<Users className="h-5 w-5 text-purple-500" />} color="bg-purple-500/10" label="Active Subs" value={data.activeSubscriptions} />
+        <KpiCard icon={<Activity className="h-5 w-5 text-amber-500" />} color="bg-amber-500/10" label="Total Revenue" value={`${sym}${data.totalRevenue.toLocaleString()}`} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Monthly Trend */}
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Revenue Trend (6 months)</h3>
+          {data.monthlyTrend?.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={data.monthlyTrend}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="month" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                <Bar dataKey="revenue" fill="#22c55e" radius={[4, 4, 0, 0]} name={`Revenue (${sym})`} />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
+          )}
+        </Card>
+
+        {/* Subscriptions by Plan */}
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Subscriptions by Plan</h3>
+          <div className="space-y-3">
+            {(data.subsByPlan || []).map((s: any) => {
+              const max = Math.max(...(data.subsByPlan || []).map((x: any) => x.count), 1)
+              const pct = Math.round((s.count / max) * 100)
+              return (
+                <div key={s.plan}>
+                  <div className="flex justify-between text-sm mb-1">
+                    <span className="text-muted-foreground">{s.plan}</span>
+                    <span className="font-medium">{s.count}</span>
+                  </div>
+                  <div className="h-2 w-full rounded-full bg-muted/50">
+                    <div className="h-2 rounded-full bg-primary transition-all" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              )
+            })}
+          </div>
+        </Card>
+      </div>
+
+      {/* Revenue by Plan + Payment Methods */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Revenue by Plan</h3>
+          <div className="space-y-2">
+            {(data.revenueByPlan || []).map((r: any) => (
+              <div key={r.plan} className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground">{r.plan}</span>
+                <span className="font-medium">{sym}{r.revenue.toLocaleString()}</span>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Payment Methods</h3>
+          <div className="space-y-2">
+            {(data.paymentMethods || []).map((m: any) => (
+              <div key={m.method} className="flex items-center justify-between text-sm">
+                <span className="text-muted-foreground capitalize">{m.method}</span>
+                <Badge variant="outline">{m.count}</Badge>
+              </div>
+            ))}
+          </div>
+        </Card>
+      </div>
+
+      {/* Churn + Coupons */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Churn</h3>
+          <div className="space-y-3">
+            <div>
+              <p className="text-xs text-muted-foreground">Churn Rate</p>
+              <p className="text-2xl font-bold tabular-nums">{data.churnRate}%</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Cancelled (period)</p>
+              <p className="text-2xl font-bold tabular-nums">{data.cancelledInPeriod}</p>
+            </div>
+          </div>
+        </Card>
+
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Coupons</h3>
+          <div>
+            <p className="text-xs text-muted-foreground">Total Redemptions</p>
+            <p className="text-2xl font-bold tabular-nums">{data.totalRedemptions}</p>
+          </div>
+        </Card>
+      </div>
+    </div>
+  )
+}
+
+// ─── Tab: Feature Flags ──────────────────────────────────────────────────────
+
+function FeatureFlagsTab({ flags, loading, showForm, onToggleForm, flagName, onFlagNameChange, flagDesc, onFlagDescChange, onCreate, onToggle, onDelete }: {
+  flags: any[]; loading: boolean; showForm: boolean; onToggleForm: () => void
+  flagName: string; onFlagNameChange: (v: string) => void; flagDesc: string; onFlagDescChange: (v: string) => void
+  onCreate: () => void; onToggle: (name: string, enabled: boolean) => void; onDelete: (name: string) => void
+}) {
+  return (
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-xl font-bold">Feature Flags</h2>
+          <p className="text-sm text-muted-foreground">Toggle features on/off without deploying</p>
+        </div>
+        <Button size="sm" onClick={onToggleForm}>{showForm ? 'Cancel' : '+ New Flag'}</Button>
+      </div>
+
+      {showForm && (
+        <Card className="p-6 border-border/60 space-y-4">
+          <h3 className="font-semibold">Create Feature Flag</h3>
+          <Input placeholder="Flag name (e.g. new_dashboard)" value={flagName} onChange={e => onFlagNameChange(e.target.value)} />
+          <Input placeholder="Description (optional)" value={flagDesc} onChange={e => onFlagDescChange(e.target.value)} />
+          <Button onClick={onCreate} disabled={!flagName.trim()}>Create Flag</Button>
+        </Card>
+      )}
+
+      {loading ? (
+        <div className="flex min-h-[20vh] items-center justify-center text-muted-foreground">
+          <Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading flags…
+        </div>
+      ) : flags.length === 0 ? (
+        <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
+          <Monitor className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+          <p>No feature flags yet. Create one to start toggling features.</p>
+        </Card>
+      ) : (
+        <div className="space-y-2">
+          {flags.map((f: any) => (
+            <Card key={f.id} className="p-4 border-border/60">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-4">
+                  <div className={`w-3 h-3 rounded-full ${f.enabled ? 'bg-green-500' : 'bg-muted-foreground/30'}`} />
+                  <div>
+                    <p className="text-sm font-medium font-mono">{f.name}</p>
+                    {f.description && <p className="text-xs text-muted-foreground">{f.description}</p>}
+                  </div>
+                </div>
+                <div className="flex items-center gap-3">
+                  <Badge variant={f.enabled ? 'default' : 'secondary'} className="text-[10px]">
+                    {f.enabled ? 'ON' : 'OFF'}
+                  </Badge>
+                  <Switch checked={f.enabled} onCheckedChange={(v) => onToggle(f.name, v)} />
+                  <Button variant="ghost" size="sm" className="h-7 text-xs text-red-500" onClick={() => onDelete(f.name)}>Delete</Button>
+                </div>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   )
 }
