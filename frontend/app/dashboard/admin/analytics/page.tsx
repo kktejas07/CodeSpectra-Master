@@ -246,6 +246,9 @@ export default function AnalyticsPage() {
   const [replayEvents, setReplayEvents] = useState<any[]>([])
   const [replayEventsLoading, setReplayEventsLoading] = useState(false)
 
+  const [aiData, setAiData] = useState<any>(null)
+  const [aiLoading, setAiLoading] = useState(false)
+
   const hiddenRef = useRef(document.hidden)
   const overviewTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const liveTimer = useRef<ReturnType<typeof setInterval> | null>(null)
@@ -396,6 +399,17 @@ export default function AnalyticsPage() {
     finally { setReplayEventsLoading(false) }
   }, [gate.ready])
 
+  const loadAiData = useCallback(async () => {
+    if (!gate.ready) return
+    setAiLoading(true)
+    try {
+      const res = await fetch(`/api/analytics/ai?range=${range}`, { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setAiData(json)
+    } catch { /* ignore */ }
+    finally { setAiLoading(false) }
+  }, [gate.ready, range])
+
   // ─── Initial Load ────────────────────────────────────────────────────────
 
   useEffect(() => {
@@ -425,6 +439,9 @@ export default function AnalyticsPage() {
     }
     if (activeTab === 'replays' && replays.length === 0 && gate.ready) {
       void loadReplays()
+    }
+    if (activeTab === 'ai' && !aiData && gate.ready) {
+      void loadAiData()
     }
   }, [activeTab, pagesData, eventsData, funnels.length, retentionData, gate.ready, loadPages, loadEvents, loadFunnels, loadRetention])
 
@@ -508,7 +525,7 @@ export default function AnalyticsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-8">
+        <TabsList className="grid w-full grid-cols-9">
           <TabsTrigger value="overview" className="gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
           </TabsTrigger>
@@ -529,6 +546,9 @@ export default function AnalyticsPage() {
           </TabsTrigger>
           <TabsTrigger value="replays" className="gap-1.5">
             <Film className="h-4 w-4" /> Replays
+          </TabsTrigger>
+          <TabsTrigger value="ai" className="gap-1.5">
+            <Zap className="h-4 w-4" /> AI
           </TabsTrigger>
           <TabsTrigger value="performance" className="gap-1.5">
             <Gauge className="h-4 w-4" /> Performance
@@ -605,7 +625,12 @@ export default function AnalyticsPage() {
           />
         </TabsContent>
 
-        {/* ─── Tab 8: Performance ──────────────────────────────────────────── */}
+        {/* ─── Tab 8: AI Analytics ────────────────────────────────────────── */}
+        <TabsContent value="ai" className="space-y-6">
+          <AiAnalyticsTab data={aiData} loading={aiLoading} />
+        </TabsContent>
+
+        {/* ─── Tab 9: Performance ──────────────────────────────────────────── */}
         <TabsContent value="performance" className="space-y-6">
           <PerformanceTab data={vitalsData} loading={vitalsLoading} />
         </TabsContent>
@@ -1335,6 +1360,136 @@ function ReplaysTab({ replays, loading, selectedReplay, replayEvents, replayEven
           ))}
         </div>
       )}
+    </div>
+  )
+}
+
+// ─── Tab: AI Analytics ───────────────────────────────────────────────────────
+
+function AiAnalyticsTab({ data, loading }: { data: any; loading: boolean }) {
+  if (loading && !data) {
+    return <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading AI analytics…</div>
+  }
+
+  if (!data || data.totalRequests === 0) {
+    return (
+      <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
+        <Zap className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
+        <p>No AI usage data yet. Data appears as users interact with AI features.</p>
+      </Card>
+    )
+  }
+
+  const featureBarData = (data.byFeature || []).map((f: any) => ({ name: f.feature, requests: f.requests, cost: f.cost }))
+  const modelBarData = (data.byModel || []).map((m: any) => ({ name: m.model, requests: m.requests, cost: m.cost }))
+
+  return (
+    <div className="space-y-6">
+      <div>
+        <h2 className="text-xl font-bold">AI Analytics</h2>
+        <p className="text-sm text-muted-foreground">LLM usage, token consumption, and cost tracking</p>
+      </div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <KpiCard icon={<Zap className="h-5 w-5 text-blue-500" />} color="bg-blue-500/10" label="Total Requests" value={data.totalRequests} />
+        <KpiCard icon={<Activity className="h-5 w-5 text-green-500" />} color="bg-green-500/10" label="Success Rate" value={`${data.successRate}%`} />
+        <KpiCard icon={<TrendingUp className="h-5 w-5 text-purple-500" />} color="bg-purple-500/10" label="Total Tokens" value={data.totalTokens > 1_000_000 ? `${(data.totalTokens / 1_000_000).toFixed(1)}M` : data.totalTokens.toLocaleString()} />
+        <KpiCard icon={<Globe className="h-5 w-5 text-amber-500" />} color="bg-amber-500/10" label="Estimated Cost" value={`$${data.totalCost.toFixed(2)}`} />
+      </div>
+
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* By Feature */}
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Usage by Feature</h3>
+          {featureBarData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={featureBarData} layout="vertical">
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis type="number" tick={{ fontSize: 10 }} />
+                <YAxis type="category" dataKey="name" tick={{ fontSize: 10 }} width={100} />
+                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                <Bar dataKey="requests" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} name="Requests" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
+          )}
+        </Card>
+
+        {/* By Model */}
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Usage by Model</h3>
+          {modelBarData.length > 0 ? (
+            <ResponsiveContainer width="100%" height={250}>
+              <BarChart data={modelBarData}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+                <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+                <Bar dataKey="requests" fill="#8b5cf6" radius={[4, 4, 0, 0]} name="Requests" />
+              </BarChart>
+            </ResponsiveContainer>
+          ) : (
+            <div className="flex items-center justify-center h-[250px] text-muted-foreground text-xs">No data</div>
+          )}
+        </Card>
+      </div>
+
+      {/* Hourly Activity */}
+      <Card className="p-6 border-border/60">
+        <h3 className="font-semibold text-sm mb-4">AI Requests (24h)</h3>
+        {data.hourly?.length > 0 ? (
+          <ResponsiveContainer width="100%" height={200}>
+            <AreaChart data={data.hourly.map((h: any) => ({ hour: h.hour?.slice(11, 13) ? `${h.hour.slice(11, 13)}:00` : h.hour, requests: h.requests }))}>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+              <XAxis dataKey="hour" tick={{ fontSize: 10 }} interval={3} />
+              <YAxis tick={{ fontSize: 10 }} allowDecimals={false} />
+              <Tooltip contentStyle={{ background: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: 8, fontSize: 12 }} />
+              <Area type="monotone" dataKey="requests" stroke="#8b5cf6" fill="#8b5cf6" fillOpacity={0.2} />
+            </AreaChart>
+          </ResponsiveContainer>
+        ) : (
+          <div className="flex items-center justify-center h-[200px] text-muted-foreground text-xs">No data</div>
+        )}
+      </Card>
+
+      {/* Latency + Provider breakdown */}
+      <div className="grid gap-6 lg:grid-cols-2">
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Provider Breakdown</h3>
+          <div className="space-y-3">
+            {(data.byProvider || []).map((p: any) => (
+              <div key={p.provider} className="flex items-center justify-between">
+                <span className="text-sm font-medium">{p.provider}</span>
+                <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                  <span>{p.requests} requests</span>
+                  <span>{(p.tokens / 1000).toFixed(1)}K tokens</span>
+                  <span className="font-medium text-foreground">${p.cost.toFixed(2)}</span>
+                </div>
+              </div>
+            ))}
+          </div>
+        </Card>
+
+        <Card className="p-6 border-border/60">
+          <h3 className="font-semibold text-sm mb-4">Performance</h3>
+          <div className="space-y-4">
+            <div>
+              <p className="text-xs text-muted-foreground">Avg Latency</p>
+              <p className="text-2xl font-bold tabular-nums">{data.avgLatency}ms</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Failed Requests</p>
+              <p className="text-2xl font-bold tabular-nums text-red-500">{data.failed}</p>
+            </div>
+            <div>
+              <p className="text-xs text-muted-foreground">Avg Tokens/Request</p>
+              <p className="text-2xl font-bold tabular-nums">{data.totalRequests > 0 ? Math.round(data.totalTokens / data.totalRequests) : 0}</p>
+            </div>
+          </div>
+        </Card>
+      </div>
     </div>
   )
 }

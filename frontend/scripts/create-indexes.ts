@@ -225,6 +225,13 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
     { key: { user_id: 1, last_activity_at: -1 } },
     { key: { last_activity_at: -1 } },
   ],
+  analytics_ai_usage: [
+    { key: { timestamp: -1 } },
+    { key: { feature: 1, timestamp: -1 } },
+    { key: { user_id: 1, timestamp: -1 } },
+    { key: { model: 1, timestamp: -1 } },
+    { key: { provider: 1 } },
+  ],
 }
 
 async function main() {

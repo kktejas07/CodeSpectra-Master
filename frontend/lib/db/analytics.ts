@@ -167,3 +167,44 @@ export interface FunnelResult {
 export async function analyticsFunnels(): Promise<Collection<AnalyticsFunnel>> {
   return (await db()).collection<AnalyticsFunnel>('analytics_funnels')
 }
+
+// ─── AI Analytics types ─────────────────────────────────────────────────────
+
+export interface AiUsageEvent {
+  id: string
+  user_id?: string
+  feature: string        // 'chat', 'code-review', 'hints', 'grade', etc.
+  provider: string       // 'openai', 'anthropic', 'gemini', 'groq', etc.
+  model: string          // 'gpt-4o-mini', 'claude-3.5-sonnet', etc.
+  input_tokens: number
+  output_tokens: number
+  total_tokens: number
+  estimated_cost: number // USD
+  latency_ms: number
+  success: boolean
+  error?: string
+  timestamp: string
+}
+
+// Rough cost estimates per 1M tokens (USD)
+export const AI_COST_RATES: Record<string, { input: number; output: number }> = {
+  'gpt-4o-mini': { input: 0.15, output: 0.60 },
+  'gpt-4o': { input: 2.50, output: 10.00 },
+  'gpt-4-turbo': { input: 10.00, output: 30.00 },
+  'claude-3-5-sonnet': { input: 3.00, output: 15.00 },
+  'claude-3-haiku': { input: 0.25, output: 1.25 },
+  'gemini-2.0-flash': { input: 0.10, output: 0.40 },
+  'gemini-2.5-pro': { input: 1.25, output: 10.00 },
+  'llama-3.3-70b': { input: 0.59, output: 0.79 },
+  'deepseek-v4-pro': { input: 0.27, output: 1.10 },
+}
+
+export function estimateAiCost(model: string, inputTokens: number, outputTokens: number): number {
+  const key = Object.keys(AI_COST_RATES).find(k => model.toLowerCase().includes(k)) || 'gpt-4o-mini'
+  const rates = AI_COST_RATES[key]
+  return (inputTokens * rates.input + outputTokens * rates.output) / 1_000_000
+}
+
+export async function analyticsAiUsage(): Promise<Collection<AiUsageEvent>> {
+  return (await db()).collection<AiUsageEvent>('analytics_ai_usage')
+}
