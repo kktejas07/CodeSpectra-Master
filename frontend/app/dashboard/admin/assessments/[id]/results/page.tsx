@@ -134,7 +134,7 @@ export default function ExamResultsPage() {
       })))
     } catch {
       addToast({ type: 'error', title: 'Failed to load results' })
-      router.push('/dashboard/admin/exams')
+      router.push('/dashboard/admin/assessments')
     } finally {
       setLoading(false)
     }
@@ -728,8 +728,8 @@ setManualGrades({})
     <div className="space-y-6 max-w-7xl mx-auto pb-12 p-6">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="space-y-1 min-w-0">
-          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/exams')}>
-            <ArrowLeft className="h-4 w-4" /> Back to Exams
+          <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>
+            <ArrowLeft className="h-4 w-4" /> Back to Assessments
           </div>
           <h1 className="text-3xl font-bold tracking-tight">Results: {exam.title}</h1>
           <div className="flex flex-wrap items-center gap-2 mt-2">

@@ -268,7 +268,7 @@ export default function SystemAdminDashboard() {
                       <span>{c.cpu}</span>
                       <span>{c.memory}</span>
                       <Badge variant="outline" className="text-[9px] px-1">
-                        {c.status.includes('Up') ? 'Up' : c.status.slice(0, 10)}
+                        {(c.status || '').includes('Up') ? 'Up' : (c.status || '').slice(0, 10)}
                       </Badge>
                     </div>
                   </div>

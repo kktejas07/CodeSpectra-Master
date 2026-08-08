@@ -35,7 +35,7 @@ export function ImpersonationBanner() {
         // to re-read the restored session cookie (router.replace+refresh+reload
         // triple-fired duplicate TTFB/navigation records and could re-trigger the
         // banner's impersonation check mid-loop).
-        window.location.href = '/dashboard/admin/tenants'
+        window.location.href = '/dashboard/admin/organizations'
       }
     } catch {
       setExiting(false)

@@ -193,8 +193,8 @@ export default function ExamPage() {
             <div className="border-t border-border/60 pt-4 text-xs text-muted-foreground">
               Your results are currently under review. The administrator will release your scores shortly.
             </div>
-            <Button onClick={() => router.push('/dashboard/exams')} className="w-full gap-2 mt-2">
-              <ArrowLeft className="h-4 w-4" /> Back to Exams
+            <Button onClick={() => router.push('/dashboard/assessments')} className="w-full gap-2 mt-2">
+              <ArrowLeft className="h-4 w-4" /> Back to Assessments
             </Button>
           </Card>
         </div>
@@ -332,8 +332,8 @@ export default function ExamPage() {
           })}
         </div>
 
-        <Button onClick={() => router.push('/dashboard/exams')} className="w-full gap-2">
-          <ArrowLeft className="h-4 w-4" /> Back to Exams
+        <Button onClick={() => router.push('/dashboard/assessments')} className="w-full gap-2">
+          <ArrowLeft className="h-4 w-4" /> Back to Assessments
         </Button>
       </div>
     )
@@ -358,7 +358,7 @@ export default function ExamPage() {
       {/* Header */}
       <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0">
         <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/exams')}>
+          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/assessments')}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <h1 className="font-semibold truncate">{exam.title}</h1>

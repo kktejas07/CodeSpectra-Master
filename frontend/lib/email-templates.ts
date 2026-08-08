@@ -177,7 +177,7 @@ export const emailTemplates: { [key: string]: (...args: any[]) => { subject: str
           </ul>
         `)}
         <p style="margin:0 0 20px;font-size:14px;color:${BRAND.green};font-weight:500">Good luck! 🍀</p>
-        ${baseStyles.button(`${base}/dashboard/exams`, 'Return to Exam', 'outline')}
+        ${baseStyles.button(`${base}/dashboard/assessments`, 'Return to Assessment', 'outline')}
       ${baseStyles.footer}`,
     }
   },
