@@ -435,36 +435,6 @@ function LoginInner() {
                   Sign in
                   {!loading && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
                 </Button>
-
-                <div className="pt-2 border-t border-border/50 space-y-2">
-                  <p className="text-xs text-muted-foreground text-center font-medium">Quick Demo Accounts</p>
-                  <div className="grid grid-cols-2 gap-2">
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => {
-                        setEmail('demo@codespectra.com')
-                        setPassword('fallback-password-123')
-                      }}
-                    >
-                      Demo User
-                    </Button>
-                    <Button
-                      type="button"
-                      variant="outline"
-                      size="sm"
-                      className="text-xs"
-                      onClick={() => {
-                        setEmail('superadmin@codespectra.com')
-                        setPassword('fallback-password-123')
-                      }}
-                    >
-                      Super Admin
-                    </Button>
-                  </div>
-                </div>
               </>
             )}
           </form>
