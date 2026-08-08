@@ -244,7 +244,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/rag': 'RAG',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
   '/dashboard/admin/permissions': 'Permissions',
-  '/dashboard/admin/plans': 'Plans',
+  '/dashboard/admin/plans': 'Plans & Pricing',
   '/dashboard/admin/team': 'Team',
   '/dashboard/admin/team/activity': 'Team Activity',
   '/dashboard/arena': 'Arena',
