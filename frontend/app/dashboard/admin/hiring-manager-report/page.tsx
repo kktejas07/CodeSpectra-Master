@@ -17,7 +17,7 @@ interface Candidate {
 }
 
 export default function HiringManagerReportPage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const [candidates, setCandidates] = useState<Candidate[]>([])
   const [loading, setLoading] = useState(true)
 

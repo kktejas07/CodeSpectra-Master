@@ -181,9 +181,13 @@ export async function candidateInvites(): Promise<Collection<CandidateInviteDoc>
 
 // ---------- User admin queries ----------
 
-export async function listAllUsers(): Promise<BetterAuthUserDoc[]> {
+export async function listAllUsers(filter: { tenantId?: string } = {}): Promise<BetterAuthUserDoc[]> {
   const col = await users()
-  return col.find({}).sort({ createdAt: -1 }).toArray()
+  const query: Record<string, unknown> = {}
+  if (filter.tenantId) {
+    query.$or = [{ tenantId: filter.tenantId }, { organizationId: filter.tenantId }]
+  }
+  return col.find(query).sort({ createdAt: -1 }).toArray()
 }
 
 export async function getUserById(id: string): Promise<BetterAuthUserDoc | null> {

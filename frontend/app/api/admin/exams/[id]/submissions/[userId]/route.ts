@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/api-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
 export async function GET(
@@ -15,8 +15,11 @@ export async function GET(
   try {
     const db = await getMongoDb()
 
-    const exam = await db.collection('exams').findOne({ id: examId }, { projection: { questionList: 1, questions: 1, title: 1 } })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
+    }
+    const exam = owned.doc
 
     const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId })
     if (!submission) return NextResponse.json({ error: 'No submission found' }, { status: 404 })
@@ -84,6 +87,12 @@ export async function PATCH(
 
   try {
     const db = await getMongoDb()
+
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
+    }
+
     const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId })
     if (!submission) return NextResponse.json({ error: 'No submission found' }, { status: 404 })
 

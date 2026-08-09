@@ -171,7 +171,8 @@ export default function PermissionsPage() {
           resource: r.resource,
           resourceType: r.resourceType,
           label: r.label,
-          actions: edited !== null ? edited : (stored?.actions || []),
+          actions: edited !== null ? edited : (stored?.actions || r.actions || []),
+          edited: edited !== null,
         }
       })
       const body = reseed

@@ -17,6 +17,11 @@ export async function GET(
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
+  // tenant_admin can only judge submissions for their own tenant's hackathon
+  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const isJudge = (hk.judges || []).includes(user.id)
   if (!isAdmin && !isJudge) {

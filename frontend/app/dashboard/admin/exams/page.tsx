@@ -36,7 +36,7 @@ interface Exam {
 }
 
 export default function AdminExamsPage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
   const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])

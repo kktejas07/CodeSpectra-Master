@@ -21,10 +21,21 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
+  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   const { id } = await params
   try {
     const data = (await request.json()) as Record<string, unknown>
     const col = await codeathons()
+    // tenant_admin can only edit codeathons in their own tenant
+    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
+      const existing = await col.findOne({ id })
+      if (!existing) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
+      if (existing.tenant_id !== gate.user.tenantId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
     await col.updateOne({ id }, { $set: { ...data, updated_at: nowIso() } })
     const updated = await col.findOne({ id })
     return NextResponse.json(updated)

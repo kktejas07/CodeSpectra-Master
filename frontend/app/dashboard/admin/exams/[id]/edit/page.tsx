@@ -168,7 +168,7 @@ const emptyQuestion = (): Question => ({
 })
 
 export default function ExamReviewPage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
   const router = useRouter()
   const params = useParams()

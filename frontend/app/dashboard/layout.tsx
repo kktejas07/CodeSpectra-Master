@@ -441,8 +441,12 @@ export default function DashboardLayout({
       })
     }
 
+    // When DB permissions are loaded they are the source of truth: they carry the
+    // role defaults (merged server-side) PLUS any pages superadmin explicitly
+    // granted beyond the static role arrays. So once loaded, ignore the static
+    // role filter above — otherwise granted pages never appear (the old bug).
     if (permsLoaded && allowedRoutes.size > 0) {
-      leaves = leaves.filter(leaf => {
+      leaves = allLeaves.filter(leaf => {
         const checkRoute = leaf.route
         if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) return true
         return allowedRoutes.has(checkRoute) ||
@@ -451,7 +455,10 @@ export default function DashboardLayout({
     }
 
     if (deniedRoutes.size > 0) {
-      leaves = leaves.filter(leaf => !deniedRoutes.has(leaf.route))
+      leaves = leaves.filter(leaf =>
+        !deniedRoutes.has(leaf.route) &&
+        !Array.from(deniedRoutes).some(r => leaf.route.startsWith(r + '/'))
+      )
     }
 
     return addSectionHeaders(leaves)

@@ -19,6 +19,11 @@ export async function GET(
   const hk = await hkCol.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
+  // tenant_admin can only view submissions for their own tenant's hackathon
+  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const subsCol = await hackathonSubmissions()
   const sub = await subsCol.findOne({ id: submissionId, hackathon_id: hk.id })
   if (!sub) return NextResponse.json({ error: 'submission not found' }, { status: 404 })
@@ -49,6 +54,11 @@ export async function PATCH(
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  // tenant_admin can only grade submissions for their own tenant's hackathon
+  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   const isAdmin = ['superadmin', 'tenant_admin'].includes((user.role || '').toLowerCase())
   const isJudge = (hk.judges || []).includes(user.id)

@@ -4,4 +4,4 @@
  * (avoids Turbopack treating mixed sync/async exports as Server Actions).
  */
 export type { UserRole, APIUser } from './route-auth'
-export { getAPIUser, requireAuth, requireAdmin, requireSuperAdmin } from './route-auth'
+export { getAPIUser, requireAuth, requireAdmin, requireSuperAdmin, requireTenantEntity } from './route-auth'
