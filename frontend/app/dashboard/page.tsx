@@ -52,6 +52,7 @@ export default function DashboardPage() {
         setRole(userRole)
         const r = normalizeUserRole(userRole)
         if (isSuperAdmin(r)) { router.replace('/dashboard/admin/system'); return }
+        if (isTenantAdmin(r)) { router.replace('/dashboard/admin/assessments'); return }
       })
       .catch(() => setRole('user'))
   }, [router, isPending, fbUser?.uid])
