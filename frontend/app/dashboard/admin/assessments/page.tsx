@@ -164,7 +164,7 @@ export default function AdminExamsPage() {
         const newExam = await createRes.json()
         addToast({ type: 'success', title: 'Draft generated! Redirecting to review...' })
         setIsModalOpen(false)
-        router.push(`/dashboard/admin/exams/${newExam.id}/edit`)
+        router.push(`/dashboard/admin/assessments/${newExam.id}/edit`)
         return
       }
       setIsModalOpen(false)
@@ -289,11 +289,12 @@ export default function AdminExamsPage() {
             <DropdownMenuItem onClick={() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }} disabled={!r.published} className="gap-2">
               <Users className="h-4 w-4" /> Bulk Invite
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/exams/${r.id}/results`)} className="gap-2">
+            <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/results`)} className="gap-2">
               <Eye className="h-4 w-4" /> View Results
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/exams/${r.id}/edit`)} className="gap-2">
+            <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/edit`)} className="gap-2">
               <Edit className="h-4 w-4" /> Edit Assessment
+            </DropdownMenuItem>
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive focus:text-destructive">
               <Trash2 className="h-4 w-4" /> Delete

@@ -31,7 +31,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/users',
   '/dashboard/admin/roles',
   '/dashboard/admin/teams',
-  '/dashboard/admin/tenants',
+  '/dashboard/admin/organizations',
   '/dashboard/admin/permissions',
   '/dashboard/admin/security',
 
@@ -41,6 +41,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/hackathons/edit',
   '/dashboard/admin/codeathons',
   '/dashboard/admin/question-bank',
+  '/dashboard/admin/assessments',
   '/dashboard/admin/proctor',
   '/dashboard/admin/certificates',
 
@@ -101,7 +102,7 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
  */
 export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
-  '/dashboard/admin/exams',
+  '/dashboard/admin/assessments',
   '/dashboard/interviews/feedback',
   '/dashboard/recruiter-analytics',
   '/dashboard/admin/hiring-manager-report',
@@ -145,7 +146,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/jobs',
   '/dashboard/interviews',
   '/dashboard/resumes',
-  '/dashboard/exams',
+  '/dashboard/assessments',
 '/dashboard/certifications',
 
   // Tools
@@ -218,7 +219,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/certificates': 'Certificates',
   '/dashboard/admin/users': 'Users',
   '/dashboard/admin/roles': 'Roles',
-  '/dashboard/admin/tenants': 'Organizations',
+  '/dashboard/admin/organizations': 'Organizations',
   '/dashboard/admin/analytics': 'Insights',
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
@@ -230,7 +231,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/resumes': 'Resumes',
   '/dashboard/admin/codeathons': 'Codeathons',
   '/dashboard/admin/coupons': 'Coupons',
-  '/dashboard/admin/exams': 'Assessments',
+  '/dashboard/admin/assessments': 'Assessments',
   '/dashboard/admin/speed-insights': 'Speed Insights',
   '/dashboard/admin/cdn': 'CDN & Edge',
   '/dashboard/admin/workflows': 'Workflows',
@@ -243,7 +244,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/rag': 'RAG',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
   '/dashboard/admin/permissions': 'Permissions',
-  '/dashboard/admin/plans': 'Plans',
+  '/dashboard/admin/plans': 'Plans & Pricing',
   '/dashboard/admin/team': 'Team',
   '/dashboard/admin/teams': 'Tenant Teams',
   '/dashboard/admin/team/activity': 'Team Activity',
@@ -277,7 +278,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/jobs': 'Jobs',
-  '/dashboard/exams': 'Assessments',
+  '/dashboard/assessments': 'Assessments',
   '/dashboard/resumes': 'Resumes',
   '/dashboard/100-days': '100 Days',
   '/dashboard/analytics': 'Analytics',
