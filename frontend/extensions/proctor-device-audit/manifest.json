@@ -2,7 +2,7 @@
   "manifest_version": 3,
   "name": "CodeSpectra Device Audit",
   "version": "1.0.0",
-  "description": "Detects connected USB/HID/storage devices during proctored CodeSpectra assessments. Pen drives, unauthorized peripherals, and hotplug events are flagged in real time.",
+  "description": "Detects USB/HID/storage devices during proctored assessments. Pen drives, peripherals, and hotplug events flagged in real time.",
   "permissions": [
     "system.storage",
     "hid",
@@ -22,10 +22,8 @@
       "matches": [
         "https://codespectra.ai/assessment/*",
         "https://codespectra.ai/dashboard/assessments/*",
-        "https://codespectra.ai/dashboard/exams/*",
         "http://localhost:3000/assessment/*",
-        "http://localhost:3000/dashboard/assessments/*",
-        "http://localhost:3000/dashboard/exams/*"
+        "http://localhost:3000/dashboard/assessments/*"
       ],
       "js": ["lib/classify.js", "content.js"],
       "run_at": "document_idle"

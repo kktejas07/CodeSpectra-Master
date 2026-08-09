@@ -33,8 +33,8 @@
     if (assessmentMatch) {
       return { sessionKind: 'exam', sessionId: assessmentMatch[1] }
     }
-    // /dashboard/exams/[id] → sessionKind=exam, sessionId=[id]
-    const examMatch = url.match(/\/dashboard\/exams\/([^/]+)$/)
+    // /dashboard/assessments/[id] → sessionKind=exam, sessionId=[id]
+    const examMatch = url.match(/\/dashboard\/assessments\/([^/]+)$/)
     if (examMatch) {
       return { sessionKind: 'exam', sessionId: examMatch[1] }
     }
