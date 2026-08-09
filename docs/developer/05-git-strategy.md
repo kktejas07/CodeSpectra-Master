@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: Git Strategy
 description: Branching model, commit conventions, and PR workflow for CodeSpectra

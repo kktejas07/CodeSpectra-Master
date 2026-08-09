@@ -1,5 +1,7 @@
 # Product Roadmap — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Document**: Product Roadmap  
 > **Date**: 2026-07-08  
 > **Classification**: Internal — Strategic Planning  

@@ -59,7 +59,14 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const col = await hackathons()
   const isJudgeFilter = req.nextUrl.searchParams.get('judge') === '1'
-  const filter: Record<string, unknown> = isAdmin(user.role) ? {} : { status: { $ne: 'draft' as const } }
+  const tenantFilter: Record<string, unknown> = {}
+  if (user.role === 'tenant_admin' && user.tenantId) {
+    tenantFilter.tenant_id = user.tenantId
+  }
+  const filter: Record<string, unknown> = { ...tenantFilter }
+  if (!isAdmin(user.role)) {
+    filter.status = { $ne: 'draft' as const }
+  }
   if (isJudgeFilter) {
     filter.judges = user.id
   }
@@ -159,6 +166,7 @@ export async function POST(req: NextRequest) {
     banner_url: body.banner_url || '',
     cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
     created_by: user.id,
+    tenant_id: user.tenantId || null,
     created_at: nowIso(),
     updated_at: nowIso(),
   }

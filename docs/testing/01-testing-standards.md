@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: Testing Standards
 description: Current test coverage, gaps, and recommended testing strategy for CodeSpectra

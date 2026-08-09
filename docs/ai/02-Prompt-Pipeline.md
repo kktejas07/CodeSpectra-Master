@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: Prompt Pipeline
 description: Documented prompt construction for every AI feature in CodeSpectra

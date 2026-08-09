@@ -1,5 +1,7 @@
 # System Architecture
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 ## Container Diagram
 
 ```mermaid

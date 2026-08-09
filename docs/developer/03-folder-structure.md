@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: Folder Structure
 description: Current project structure and proposed monorepo migration plan

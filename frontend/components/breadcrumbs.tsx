@@ -38,7 +38,7 @@ const SEGMENT_LABELS: Record<string, string> = {
   resumes: 'Resumes',
   jobs: 'Jobs',
   codeathons: 'Codeathons',
-  exams: 'Exams',
+  exams: 'Assessments',
   integrations: 'Integrations',
   pricing: 'Pricing',
   security: 'Security',

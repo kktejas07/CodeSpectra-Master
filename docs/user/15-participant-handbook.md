@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: Participant Handbook
 description: Your complete guide to using the CodeSpectra platform for coding, assessments, and hackathons.

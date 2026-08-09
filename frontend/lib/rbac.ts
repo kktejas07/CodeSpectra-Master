@@ -38,7 +38,7 @@ export const DASHBOARD_ROUTES = {
     users: '/dashboard/admin/users',
     roles: '/dashboard/admin/roles',
     analytics: '/dashboard/admin/analytics',
-    auditLogs: '/dashboard/admin/audit-logs',
+    auditLogs: '/dashboard/admin/security',
     integrations: '/dashboard/admin/integrations',
     pricing: '/dashboard/admin/pricing',
     security: '/dashboard/admin/security',

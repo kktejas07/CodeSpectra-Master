@@ -1,5 +1,7 @@
 # Architecture Document 05: CAD & Engineering Assessment Module
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 **Author**: AXISS Group (Araxis Systems Inc. / AVKS AI) & CodeSpectra Core Architecture Team  
 **Companion To**: Implementation Agenda and Requirements  
 **Scope**: Requirements FR-41 through FR-92, Tasks T1–T9, Delivery Modes A–D, 4-Layer Scoring Engine, Add-ons A–J, and Integrity Controls.

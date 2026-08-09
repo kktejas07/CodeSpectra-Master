@@ -226,7 +226,7 @@ function EmailTemplatesSection() {
     { id: 'welcomeEmail' as const, label: 'Welcome email', desc: 'Sent after user registration', sample: { name: 'John' }, icon: <Hand className="h-5 w-5" /> },
     { id: 'loginNotification' as const, label: 'Login notification', desc: 'Sent when a new sign-in is detected on the account', sample: { name: 'John', deviceInfo: 'Chrome on Mac', location: 'Mumbai, India', time: 'Jul 25, 2026 10:30 AM' }, icon: <Eye className="h-5 w-5" /> },
     { id: 'jobApplicationConfirmation' as const, label: 'Job application confirmation', desc: 'Sent when a user applies to a job', sample: { jobTitle: 'Software Engineer', companyName: 'Acme Inc', applicantName: 'Jane' }, icon: <FileSearch className="h-5 w-5" /> },
-    { id: 'examStartedNotification' as const, label: 'Exam started', desc: 'Sent when a user starts an exam', sample: { examTitle: 'JavaScript Fundamentals', candidateName: 'Jane' }, icon: <NotebookText className="h-5 w-5" /> },
+    { id: 'examStartedNotification' as const, label: 'Assessment started', desc: 'Sent when a user starts an assessment', sample: { examTitle: 'JavaScript Fundamentals', candidateName: 'Jane' }, icon: <NotebookText className="h-5 w-5" /> },
     { id: 'subscriptionConfirmation' as const, label: 'Subscription confirmation', desc: 'Sent after successful subscription', sample: { planName: 'Pro', amount: 2999 }, icon: <Sparkles className="h-5 w-5" /> },
     { id: 'invoiceNotification' as const, label: 'Invoice notification', desc: 'Sent when a new invoice is generated', sample: { invoiceId: 'INV-001', amount: 2999, planName: 'Pro' }, icon: <FileText className="h-5 w-5" /> },
     { id: 'phonePePaymentSuccess' as const, label: 'PhonePe payment success', desc: 'Sent after a successful PhonePe UPI payment', sample: { planName: 'Pro', amount: 2999, transactionId: 'TXN123456789' }, icon: <CreditCard className="h-5 w-5" /> },
@@ -2288,7 +2288,7 @@ function SystemSettingsInner() {
                       { key: 'xp_submission_medium', label: 'Medium submission', default: 25 },
                       { key: 'xp_submission_hard', label: 'Hard submission', default: 50 },
                       { key: 'xp_first_blood', label: 'First blood', default: 25 },
-                      { key: 'xp_exam_pass', label: 'Exam pass', default: 50 },
+                      { key: 'xp_exam_pass', label: 'Assessment pass', default: 50 },
                       { key: 'xp_cert_pass', label: 'Certification pass', default: 100 },
                       { key: 'xp_codeathon', label: 'Codeathon', default: 20 },
                       { key: 'xp_hackathon', label: 'Hackathon', default: 100 },
@@ -2388,7 +2388,7 @@ function SystemSettingsInner() {
                   <div className="space-y-0 divide-y divide-border/60">
                     {[
                       { key: 'badge_hackathon_enabled', label: 'Hackathon badges', desc: 'Award badges for hackathon participation' },
-                      { key: 'badge_exam_enabled', label: 'Exam badges', desc: 'Award badges for passing exams' },
+                      { key: 'badge_exam_enabled', label: 'Assessment badges', desc: 'Award badges for passing assessments' },
                       { key: 'badge_cert_enabled', label: 'Certification badges', desc: 'Award badges for earning certifications' },
                       { key: 'badge_streak_enabled', label: 'Streak badges', desc: 'Award badges for maintaining streaks' },
                     ].map(({ key, label, desc }) => (

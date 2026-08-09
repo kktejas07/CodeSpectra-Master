@@ -18,6 +18,10 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   const col = await hackathons()
   const hk = await col.findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  // tenant_admin can only release results for their own tenant's hackathon
+  if (user.role === 'tenant_admin' && user.tenantId && hk.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   // Release results — from under_review to released
   // WARNING: pending (never-reviewed) submissions are auto-scored as 0

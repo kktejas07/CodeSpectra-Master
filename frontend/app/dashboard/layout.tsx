@@ -46,7 +46,6 @@ import {
   ChevronsRight,
   Lock,
   FileText,
-  ScrollText,
   Plug,
   Gauge,
   Globe2,
@@ -79,6 +78,7 @@ import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
 import { Activity } from 'lucide-react'
 import { WebVitalsReporter } from '@/components/dashboard/web-vitals-reporter'
+import { AnalyticsTracker } from '@/components/dashboard/analytics-tracker'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
 import { LearningSidebarNav } from '@/components/dashboard/learning-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
@@ -310,7 +310,6 @@ export default function DashboardLayout({
       [p.users]: Users,
       [p.roles]: Lock,
       [p.analytics]: BarChart3,
-      [p.auditLogs]: ScrollText,
       [p.integrations]: Plug,
       [p.speedInsights]: Gauge,
       [p.cdn]: Globe2,
@@ -442,8 +441,12 @@ export default function DashboardLayout({
       })
     }
 
+    // When DB permissions are loaded they are the source of truth: they carry the
+    // role defaults (merged server-side) PLUS any pages superadmin explicitly
+    // granted beyond the static role arrays. So once loaded, ignore the static
+    // role filter above — otherwise granted pages never appear (the old bug).
     if (permsLoaded && allowedRoutes.size > 0) {
-      leaves = leaves.filter(leaf => {
+      leaves = allLeaves.filter(leaf => {
         const checkRoute = leaf.route
         if (effectiveLockedPages.some(r => checkRoute === r || checkRoute.startsWith(r + '/'))) return true
         return allowedRoutes.has(checkRoute) ||
@@ -452,7 +455,10 @@ export default function DashboardLayout({
     }
 
     if (deniedRoutes.size > 0) {
-      leaves = leaves.filter(leaf => !deniedRoutes.has(leaf.route))
+      leaves = leaves.filter(leaf =>
+        !deniedRoutes.has(leaf.route) &&
+        !Array.from(deniedRoutes).some(r => leaf.route.startsWith(r + '/'))
+      )
     }
 
     return addSectionHeaders(leaves)
@@ -625,6 +631,7 @@ export default function DashboardLayout({
     <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/4 dark:from-background dark:via-background dark:to-primary/10">
       <ActivityHeartbeat />
       <WebVitalsReporter />
+      <AnalyticsTracker />
       {/* Mobile overlay */}
       {sidebarOpen && (
         <div 

@@ -102,6 +102,7 @@ export interface HackathonDoc {
   color_theme?: string
   /** Certificate template */
   cert_template?: 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
+  tenant_id?: string | null
   created_by: string
   created_at: string
   updated_at: string

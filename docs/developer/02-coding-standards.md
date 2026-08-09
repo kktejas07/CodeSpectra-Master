@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: Coding Standards
 description: Language-specific coding standards and conventions for the CodeSpectra codebase

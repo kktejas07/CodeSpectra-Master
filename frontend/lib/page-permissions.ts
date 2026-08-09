@@ -30,10 +30,10 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/analytics',
   '/dashboard/admin/users',
   '/dashboard/admin/roles',
+  '/dashboard/admin/teams',
   '/dashboard/admin/organizations',
   '/dashboard/admin/permissions',
   '/dashboard/admin/security',
-  '/dashboard/admin/audit-logs',
 
   // Hackathons, Problems & Proctoring
   '/dashboard/admin/hackathons',
@@ -102,6 +102,7 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
  */
 export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
+  '/dashboard/admin/assessments',
   '/dashboard/interviews/feedback',
   '/dashboard/recruiter-analytics',
   '/dashboard/admin/hiring-manager-report',
@@ -220,7 +221,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/roles': 'Roles',
   '/dashboard/admin/organizations': 'Organizations',
   '/dashboard/admin/analytics': 'Insights',
-  '/dashboard/admin/audit-logs': 'Audit Logs',
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
   '/dashboard/admin/security': 'Security',
@@ -246,6 +246,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/permissions': 'Permissions',
   '/dashboard/admin/plans': 'Plans & Pricing',
   '/dashboard/admin/team': 'Team',
+  '/dashboard/admin/teams': 'Tenant Teams',
   '/dashboard/admin/team/activity': 'Team Activity',
   '/dashboard/arena': 'Arena',
   '/dashboard/problems': 'Problems',

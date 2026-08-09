@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/api-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { gradeAnswer, GradeRateLimitedError, OBJECTIVE_TYPES } from '@/lib/ai/grade-question'
 
@@ -35,8 +35,11 @@ export async function POST(
 
   try {
     const db = await getMongoDb()
-    const exam = await db.collection('exams').findOne({ id: examId }, { projection: { questionList: 1, questions: 1 } })
-    if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
+    }
+    const exam = owned.doc
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
 

@@ -152,6 +152,28 @@ export async function requireSuperAdmin() {
 }
 
 /**
+ * Tenant ownership guard for a single entity document.
+ * - superadmin: always allowed (returns the doc)
+ * - tenant_admin: allowed only when the doc belongs to their tenant
+ * Returns `{ doc }` on success, or an error result to return directly.
+ */
+export async function requireTenantEntity(
+  db: Awaited<ReturnType<typeof getMongoDb>>,
+  collection: string,
+  id: string,
+  user: APIUser,
+  idField: string = 'id'
+) {
+  if (!id) return { error: 'id required', status: 400 as const }
+  const doc = await db.collection(collection).findOne({ [idField]: id })
+  if (!doc) return { error: 'Not found', status: 404 as const }
+  if (user.role === 'tenant_admin' && user.tenantId && doc.tenant_id !== user.tenantId) {
+    return { error: 'Forbidden - resource belongs to another tenant', status: 403 as const }
+  }
+  return { doc }
+}
+
+/**
  * Check if the current user can perform an action on a resource.
  * This is the primary DB-driven permission check for API routes.
  */

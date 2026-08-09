@@ -71,11 +71,19 @@ export async function GET() {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()
-    const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
+
+    const tenantFilter: Record<string, unknown> = {}
+    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
+      tenantFilter.tenant_id = gate.user.tenantId
+    }
 
     // Non-admin users see open exams + exams they were invited to or have submitted
     let filter: Record<string, unknown> = {}
-    if (!isAdmin) {
+    if (gate.user.role === 'superadmin') {
+      filter = {}
+    } else if (gate.user.role === 'tenant_admin') {
+      filter = tenantFilter
+    } else {
       const userId = gate.user.id
       const [submissions, invites] = await Promise.all([
         db.collection('exam_submissions').find({ user_id: userId }).project({ exam_id: 1 }).toArray(),
@@ -141,6 +149,10 @@ export async function GET() {
 export async function POST(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const user = gate.user
+  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const body = await request.json()
     const db = await getMongoDb()
@@ -275,6 +287,8 @@ export async function POST(request: Request) {
       cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
       attempts: 0,
       avgScore: 0,
+      created_by: user.id,
+      tenant_id: user.tenantId || null,
       createdAt: now,
       updatedAt: now,
     }
@@ -289,11 +303,20 @@ export async function POST(request: Request) {
 export async function PATCH(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const user = gate.user
+  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const body = await request.json()
     const { id, ...updates } = body
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
     const db = await getMongoDb()
+    if (user.role === 'tenant_admin' && user.tenantId) {
+      const exam = await db.collection('exams').findOne({ id })
+      if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     await db.collection('exams').updateOne({ id }, { $set: { ...updates, updatedAt: new Date().toISOString() } })
     return NextResponse.json({ ok: true })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
@@ -302,11 +325,20 @@ export async function PATCH(request: Request) {
 export async function DELETE(request: Request) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+  const user = gate.user
+  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   try {
     const { searchParams } = new URL(request.url)
     const id = searchParams.get('id')
     if (!id) return NextResponse.json({ error: 'id required' }, { status: 400 })
     const db = await getMongoDb()
+    if (user.role === 'tenant_admin' && user.tenantId) {
+      const exam = await db.collection('exams').findOne({ id })
+      if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     await db.collection('exams').deleteOne({ id })
     return NextResponse.json({ ok: true })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }

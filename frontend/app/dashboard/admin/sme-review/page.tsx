@@ -18,7 +18,7 @@ interface ReviewTask {
 }
 
 export default function SMEReviewPage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const [tasks, setTasks] = useState<ReviewTask[]>([])
   const [loading, setLoading] = useState(true)
 

@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: Model Selection
 description: Criteria and decision matrix for LLM model selection across CodeSpectra features

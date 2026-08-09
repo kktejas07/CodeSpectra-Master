@@ -101,7 +101,7 @@ const PROCTOR_ICONS: Record<string, React.ReactNode> = {
 }
 
 export default function ExamResultsPage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
   const router = useRouter()
   const params = useParams()

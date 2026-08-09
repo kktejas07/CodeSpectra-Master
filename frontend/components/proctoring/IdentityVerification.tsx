@@ -171,7 +171,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                 <ul className="list-disc pl-4 space-y-1.5 text-muted-foreground text-xs">
                   <li><strong>Proctored Environment:</strong> We monitor your camera stream, eye movements, and active browser tab.</li>
                   <li><strong>Zero Cheating Tolerance:</strong> Switching tabs, copy-pasting, or using external AI resources will flag your assessment.</li>
-                  <li><strong>Identity Check:</strong> You must verify your identity before taking the exam.</li>
+                  <li><strong>Identity Check:</strong> You must verify your identity before taking the assessment.</li>
                 </ul>
               </div>
             </div>

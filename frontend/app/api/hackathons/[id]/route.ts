@@ -119,6 +119,10 @@ export async function PATCH(
   const col = await hackathons()
   const cur = await col.findOne({ id })
   if (!cur) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  // tenant_admin can only mutate their own tenant's hackathons
+  if (user.role === 'tenant_admin' && user.tenantId && cur.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   const hasProtectedFields = body.tasks !== undefined || body.rules !== undefined || body.scoring !== undefined
   if ((cur.status === 'live' || cur.status === 'closed') && hasProtectedFields) {
     return NextResponse.json({ error: 'cannot modify tasks, rules, or scoring during or after the event' }, { status: 409 })
@@ -160,6 +164,10 @@ export async function DELETE(
   const col = await hackathons()
   const doc = await col.findOne({ id }, { projection: { _id: 0 } })
   if (!doc) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  // tenant_admin can only delete their own tenant's hackathons
+  if (user.role === 'tenant_admin' && user.tenantId && doc.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   const teams = await (await hackathonTeams()).countDocuments({ hackathon_id: id })
   if (teams > 0 && doc.status !== 'closed') {
     return NextResponse.json(

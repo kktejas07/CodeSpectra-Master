@@ -8,7 +8,11 @@ export async function GET() {
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()
-    const data = await db.collection('codeathons').find({}).toArray()
+    const filter: Record<string, unknown> = {}
+    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
+      filter.tenant_id = gate.user.tenantId
+    }
+    const data = await db.collection('codeathons').find(filter).toArray()
     return NextResponse.json({ data })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }
@@ -30,6 +34,7 @@ export async function POST(request: Request) {
       participants: 0,
       prizePool: body.prizePool || '',
       cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
+      tenant_id: gate.user.tenantId || null,
       createdAt: now,
       updatedAt: now,
     }

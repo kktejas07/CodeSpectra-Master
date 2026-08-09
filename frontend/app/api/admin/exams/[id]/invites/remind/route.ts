@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/api-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
@@ -20,10 +20,11 @@ export async function POST(
   try {
     const db = await getMongoDb()
 
-    const exam = await db.collection('exams').findOne({ id: examId })
-    if (!exam) {
-      return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
     }
+    const exam = owned.doc
 
     const pendingInvites = await db.collection('candidate_invites').find({
       target_url: { $regex: String(examId) },

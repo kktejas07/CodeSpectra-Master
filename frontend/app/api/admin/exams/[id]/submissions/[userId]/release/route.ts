@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/api-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
 
@@ -18,7 +18,12 @@ export async function PATCH(
 
   try {
     const db = await getMongoDb()
-    
+
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
+    }
+
     // Find the submission and the exam first
     const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId })
     if (!submission) {

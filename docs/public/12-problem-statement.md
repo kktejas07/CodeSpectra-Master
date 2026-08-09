@@ -1,5 +1,7 @@
 # Problem Statement — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Document**: Problem Statement & Market Analysis
 > **Date**: 2026-07-08
 > **Classification**: Internal — Strategic

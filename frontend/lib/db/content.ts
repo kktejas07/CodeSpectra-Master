@@ -28,6 +28,7 @@ export interface CodeathonDoc {
   rules?: string | null
   tracks?: string[]
   cert_template?: 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
+  tenant_id?: string | null
   created_by?: string | null
   created_at: string
   updated_at: string
@@ -60,6 +61,7 @@ export interface ExamDoc {
     correctAnswer?: number
   }>
   created_by?: string | null
+  tenant_id?: string | null
   created_at: string
 }
 
@@ -87,6 +89,7 @@ export interface JobDoc {
   salary?: { min?: number; max?: number; currency?: string } | null
   applicants: number
   is_active: boolean
+  tenant_id?: string | null
   created_by?: string | null
   created_at: string
 }

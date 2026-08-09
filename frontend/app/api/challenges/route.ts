@@ -11,6 +11,7 @@ interface ChallengeDoc {
   success_rate: number
   description: string
   starter_code?: string | null
+  tenant_id?: string | null
   created_by?: string | null
   created_at: string
   updated_at: string
@@ -63,7 +64,11 @@ export async function GET() {
   try {
     await ensureSeeded()
     const db = await getMongoDb()
-    const data = await db.collection('challenges').find({}).toArray()
+    const filter: Record<string, unknown> = {}
+    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
+      filter.tenant_id = gate.user.tenantId
+    }
+    const data = await db.collection('challenges').find(filter).toArray()
     return NextResponse.json({ data })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
 }
@@ -88,6 +93,7 @@ export async function POST(request: NextRequest) {
       success_rate: body.success_rate ?? 50,
       description: body.description || '',
       starter_code: body.starter_code ?? null,
+      tenant_id: gate.user.tenantId || null,
       created_by: gate.user.id,
       created_at: now,
       updated_at: now,

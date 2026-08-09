@@ -176,7 +176,7 @@ export function CommandMenu({
     }
 
     if (allowedRoutes && allowedRoutes.size > 0) {
-      filtered = filtered.filter(item => {
+      filtered = allItems.filter(item => {
         const checkRoute = item.route
         return allowedRoutes.has(checkRoute) ||
           Array.from(allowedRoutes).some(r => checkRoute.startsWith(r + '/'))
@@ -184,7 +184,10 @@ export function CommandMenu({
     }
 
     if (deniedRoutes && deniedRoutes.size > 0) {
-      filtered = filtered.filter(item => !deniedRoutes.has(item.route))
+      filtered = filtered.filter(item =>
+        !deniedRoutes.has(item.route) &&
+        !Array.from(deniedRoutes).some(r => item.route.startsWith(r + '/'))
+      )
     }
 
     const overview = {

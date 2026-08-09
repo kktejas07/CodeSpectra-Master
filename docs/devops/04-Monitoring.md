@@ -1,5 +1,7 @@
 # Monitoring — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Last Updated:** 2026-07-08  
 > **Current State:** Minimal (client-side Web Vitals only)  
 

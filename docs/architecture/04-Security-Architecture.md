@@ -1,5 +1,7 @@
 # Security Architecture
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 ## Authentication Flow
 
 CodeSpectra supports three authentication paths, with session persistence managed via httpOnly cookies.

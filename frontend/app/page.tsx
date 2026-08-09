@@ -69,7 +69,7 @@ export default function Home() {
     { title: 'Code scanner', subtitle: 'Scan your projects, see issues, and track quality over time' },
     { title: 'Guidance & AI assist', subtitle: 'Explanations, fixes, and suggestions for errors and smells' },
     { title: 'Challenges & arena', subtitle: 'Practice problems and competitive coding flows' },
-    { title: 'Learning & exams', subtitle: 'Structured lessons, progress, and timed assessments' },
+    { title: 'Learning & assessments', subtitle: 'Structured lessons, progress, and timed assessments' },
     { title: 'Interview training', subtitle: 'Dynamic interviews, feedback, and resume tools' },
     { title: 'Certificates & jobs', subtitle: 'Credentials, listings, and applications in one place' },
   ]
@@ -213,7 +213,7 @@ export async function bootstrap() {
               style={{ transitionDelay: '240ms' }}
             >
               CodeSpectra gives you access to tools that help you learn: scan the code you build, understand errors and
-              issues, get AI-assisted fixes, practice in challenges and arenas, follow courses and exams, train for interviews,
+              issues, get AI-assisted fixes, practice in challenges and arenas, follow courses and assessments, train for interviews,
               manage resumes, earn certificates, and explore roles—all from your account.
             </p>
 
@@ -444,7 +444,7 @@ export async function bootstrap() {
           <div data-reveal className="mx-auto mt-12 max-w-md rounded-2xl border border-border/40 bg-muted/10 p-6 text-left">
             <h3 className="text-sm font-semibold text-foreground">Get product updates</h3>
             <p className="mb-4 text-xs text-muted-foreground">
-              New challenges, exams, hackathons and features — straight to your inbox. Unsubscribe anytime.
+              New challenges, assessments, hackathons and features — straight to your inbox. Unsubscribe anytime.
             </p>
             <NewsletterSubscribe source="landing-page" />
           </div>

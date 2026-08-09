@@ -168,7 +168,7 @@ export default function ExamPage() {
 
   if (!gate.ready) return null
   if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
-  if (!exam) return <div className="p-8 text-center text-muted-foreground">Exam not found.</div>
+  if (!exam) return <div className="p-8 text-center text-muted-foreground">Assessment not found.</div>
 
   const isLowTime = timeRemaining <= 60 && timeRemaining > 0
   const question = exam.questions[currentQ]
@@ -205,7 +205,7 @@ export default function ExamPage() {
     return (
       <div className="max-w-3xl mx-auto p-6 space-y-8">
         <Card className="p-8 text-center space-y-4 bg-card/60 backdrop-blur border-primary/10 shadow-lg">
-          <h1 className="text-3xl font-bold tracking-tight">Exam Results</h1>
+          <h1 className="text-3xl font-bold tracking-tight">Assessment Results</h1>
           <div className="flex justify-center items-baseline gap-1">
             <span className="text-6xl font-extrabold text-primary">{results.score}</span>
             <span className="text-2xl text-muted-foreground">/ {results.total}</span>
@@ -478,7 +478,7 @@ export default function ExamPage() {
                 ) : (
                   <Button onClick={() => setShowSubmitConfirm(true)} disabled={submitting}>
                     {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
-                    Submit Exam
+                    Submit Assessment
                   </Button>
                 )}
               </div>

@@ -1,5 +1,7 @@
 # CodeSpectra Technical Debt Register
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Auto-generated:** Based on codebase audit. Last updated: 2026-07-08.
 > **Priority:** CRITICAL > HIGH > MEDIUM > LOW
 

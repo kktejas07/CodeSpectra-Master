@@ -1,5 +1,7 @@
 # CodeSpectra Competitor Comparison
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Auto-generated:** Based on codebase audit. Last updated: 2026-07-08.
 > **Legend:** ✅ Full | 🟡 Partial | ❌ None/Weak | — Unknown
 

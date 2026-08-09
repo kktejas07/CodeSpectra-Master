@@ -1,5 +1,7 @@
 # CodeSpectra Activity Diagrams
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Auto-generated from codebase audit** — Last updated: 2026-07-08
 
 ---

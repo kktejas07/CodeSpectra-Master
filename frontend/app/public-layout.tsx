@@ -8,6 +8,7 @@ import { cn } from '@/lib/utils'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
 import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
+import { FooterWordmark } from '@/components/landing/footer-wordmark'
 
 export const DASHBOARD_HREF = '/dashboard'
 
@@ -172,7 +173,7 @@ export function PublicPageWrapper({
               </Link>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 CodeSpectra helps you learn and improve: scan your code, fix issues with guidance and AI support, practice
-                challenges, take courses and exams, train for interviews, earn certificates, and explore opportunities.
+                challenges, take courses and assessments, train for interviews, earn certificates, and explore opportunities.
               </p>
             </div>
             <div>
@@ -226,6 +227,9 @@ export function PublicPageWrapper({
               </div>
             </div>
           </div>
+
+          {/* Giant gradient wordmark + domain — Arcade-style footer logo */}
+          <FooterWordmark />
         </div>
       </footer>
     </div>

@@ -1,5 +1,7 @@
 # CodeSpectra Implementation Roadmap
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Auto-generated:** This document is derived from the codebase audit. Last updated: 2026-07-08.
 > **Status:** Living document — update as phases are completed.
 

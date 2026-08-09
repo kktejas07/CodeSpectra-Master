@@ -1,5 +1,7 @@
 # Architecture Decision Records
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 ## ADR-001: Next.js App Router over Pages Router
 
 **Status:** Accepted

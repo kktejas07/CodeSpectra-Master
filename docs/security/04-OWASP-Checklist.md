@@ -1,5 +1,7 @@
 # OWASP Top 10 (2021) Compliance Checklist — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Last Updated:** 2026-07-08  
 > **Assessment:** Manual codebase audit — not penetration tested  
 

@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/api-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
 
@@ -19,8 +19,11 @@ export async function POST(
   try {
     const db = await getMongoDb()
 
-    const exam = await db.collection('exams').findOne({ id: examId })
-    const examTitle = exam?.title || 'Technical Assessment'
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
+    }
+    const examTitle = owned.doc?.title || 'Technical Assessment'
 
     // Find all unreleased submissions first to send emails
     const unreleasedSubmissions = await db.collection('exam_submissions').find({

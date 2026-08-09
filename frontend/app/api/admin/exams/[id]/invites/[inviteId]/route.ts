@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/api-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
 export async function DELETE(
@@ -14,7 +14,12 @@ export async function DELETE(
 
   try {
     const db = await getMongoDb()
-    
+
+    const owned = await requireTenantEntity(db, 'exams', id, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
+    }
+
     // Find the invite first to get user_id/email for deleting matching submissions
     const invite = await db.collection('candidate_invites').findOne({ id: inviteId })
     

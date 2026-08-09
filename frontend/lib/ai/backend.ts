@@ -164,3 +164,63 @@ export async function backendPost<T = unknown>(
   }
   return (await res.json()) as T
 }
+
+/**
+ * Wraps backendPost with AI usage tracking (latency, tokens, cost).
+ * Call this from AI route handlers to automatically log usage.
+ */
+export async function trackedBackendPost<T = unknown>(
+  path: string,
+  body: unknown,
+  opts: { feature: string; userId?: string; providerOverride?: string; modelOverride?: string; modelRole?: 'reasoning' | 'fast'; endpointOverride?: string; apiKeyOverride?: string },
+): Promise<T> {
+  const start = Date.now()
+  let success = true
+  let error: string | undefined
+  let result: T
+
+  try {
+    result = await backendPost<T>(path, body, opts)
+  } catch (e) {
+    success = false
+    error = e instanceof Error ? e.message : 'Unknown error'
+    throw e
+  } finally {
+    const latencyMs = Date.now() - start
+
+    // Fire-and-forget: log usage to analytics (don't block the response)
+    import('@/lib/db/analytics').then(async ({ analyticsAiUsage, estimateAiCost, newId, nowIso }) => {
+      try {
+        // Try to extract token info from response
+        const res = result as any
+        const inputTokens = res?.usage?.input_tokens || res?.prompt_tokens || 0
+        const outputTokens = res?.usage?.output_tokens || res?.completion_tokens || 0
+        const model = opts.modelOverride || 'unknown'
+        const provider = opts.providerOverride || 'unknown'
+        const totalTokens = inputTokens + outputTokens
+        const cost = estimateAiCost(model, inputTokens, outputTokens)
+
+        const col = await analyticsAiUsage()
+        await col.insertOne({
+          id: newId(),
+          user_id: opts.userId,
+          feature: opts.feature,
+          provider,
+          model,
+          input_tokens: inputTokens,
+          output_tokens: outputTokens,
+          total_tokens: totalTokens,
+          estimated_cost: cost,
+          latency_ms: latencyMs,
+          success,
+          error,
+          timestamp: nowIso(),
+        } as any)
+      } catch {
+        // Silent — analytics should never break AI
+      }
+    }).catch(() => null)
+  }
+
+  return result!
+}

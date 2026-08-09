@@ -91,6 +91,12 @@ export async function PATCH(
   const team = await resolveTeam(id, teamId)
   if (!team) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
+  // tenant_admin can only manage teams in their own tenant's hackathon
+  const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
+  if (user.role === 'tenant_admin' && user.tenantId && hk?.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
   const $set: Record<string, unknown> = { updated_at: nowIso() }
   const $push: Record<string, unknown> = {}
   const $inc: Record<string, number> = {}
@@ -143,6 +149,11 @@ export async function DELETE(
   const { id, teamId } = await ctx.params
   const team = await resolveTeam(id, teamId)
   if (!team) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  // tenant_admin can only delete teams in their own tenant's hackathon
+  const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
+  if (user.role === 'tenant_admin' && user.tenantId && hk?.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   await (await hackathonTeams()).deleteOne({ id: team.id })
   return NextResponse.json({ ok: true })
 }

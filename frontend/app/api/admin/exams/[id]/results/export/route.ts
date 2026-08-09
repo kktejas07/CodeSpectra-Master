@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server'
-import { requireAdmin } from '@/lib/api-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
 
@@ -13,10 +13,11 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
   try {
     const db = await getMongoDb()
 
-    const exam = await db.collection('exams').findOne({
-      $or: [{ id }, { _id: id as any }],
-    })
-    const examTitle = exam?.title || 'Exam'
+    const owned = await requireTenantEntity(db, 'exams', id, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
+    }
+    const examTitle = owned.doc?.title || 'Exam'
 
     const invites = await db.collection('candidate_invites').find({
       $or: [

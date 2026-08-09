@@ -1,3 +1,5 @@
+> **Auto-Generated**: Internal Engineering documentation.
+
 ---
 title: AI Architecture
 description: Complete AI system architecture for CodeSpectra

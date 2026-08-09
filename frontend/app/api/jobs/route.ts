@@ -1,15 +1,20 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { jobs } from '@/lib/db/content'
-import { requireAdmin } from '@/lib/route-auth'
+import { requireAuth, requireAdmin } from '@/lib/route-auth'
 
 export async function GET(request: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()
     const { searchParams } = new URL(request.url)
     const onlyActive = searchParams.get('active') !== 'false'
 
-    const filter = onlyActive ? { is_active: true } : {}
+    const filter: Record<string, unknown> = onlyActive ? { is_active: true } : {}
+    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
+      filter.tenant_id = gate.user.tenantId
+    }
     const data = await db.collection('job_postings')
       .find(filter, { projection: { _id: 0 } })
       .sort({ created_at: -1 })
@@ -49,6 +54,7 @@ export async function POST(request: NextRequest) {
       salary: salary || null,
       applicants: 0,
       is_active: body.is_active !== false,
+      tenant_id: gate.user.tenantId || null,
       created_by: gate.user.id,
       created_at: nowIso(),
     }

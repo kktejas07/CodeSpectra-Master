@@ -28,6 +28,10 @@ export async function PATCH(request: Request, { params }: IdRouteContext) {
     const col = await jobs()
     const existing = await col.findOne({ id })
     if (!existing) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+    // tenant_admin can only edit jobs in their own tenant
+    if (user.role === 'tenant_admin' && user.tenantId && existing.tenant_id !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     const allowed = ['title', 'company', 'location', 'job_type', 'experience_level',
       'description', 'requirements', 'benefits', 'skills', 'salary', 'is_active']
     const updates: Record<string, unknown> = {}
@@ -53,6 +57,12 @@ export async function DELETE(_request: Request, { params }: IdRouteContext) {
   }
   try {
     const col = await jobs()
+    const existing = await col.findOne({ id })
+    if (!existing) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+    // tenant_admin can only delete jobs in their own tenant
+    if (user.role === 'tenant_admin' && user.tenantId && existing.tenant_id !== user.tenantId) {
+      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
     await col.deleteOne({ id })
     return NextResponse.json({ success: true, deletedId: id })
   } catch (error) {

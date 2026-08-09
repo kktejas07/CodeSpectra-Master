@@ -51,6 +51,7 @@ export interface CertificationDoc {
   license: string
   questions: CertQuestion[]
   is_active: boolean
+  tenant_id?: string | null
   created_at: string
   updated_at: string
 }

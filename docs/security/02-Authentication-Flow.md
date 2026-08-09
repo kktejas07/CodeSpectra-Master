@@ -1,5 +1,7 @@
 # Authentication Flow — CodeSpectra
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Last Updated:** 2026-07-08  
 > **Auth Libraries:** Better Auth (primary), Firebase (legacy), Jose (session tokens)
 

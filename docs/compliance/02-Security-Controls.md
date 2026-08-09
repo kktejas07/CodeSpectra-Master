@@ -1,5 +1,7 @@
 # CodeSpectra Security Controls
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 > **Auto-generated:** Based on codebase audit. Last updated: 2026-07-08.
 > **Legend:** ✅ Implemented | 🟡 Partial | ❌ Not Implemented
 

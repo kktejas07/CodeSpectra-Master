@@ -16,7 +16,8 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    const usersList = await listAllUsers()
+    // tenant_admins must only see users within their own tenant
+    const usersList = await listAllUsers(gate.user.role === 'tenant_admin' ? { tenantId: gate.user.tenantId ?? undefined } : undefined)
 
     const search = req.nextUrl.searchParams.get('search')?.trim().toLowerCase()
   const filtered = search

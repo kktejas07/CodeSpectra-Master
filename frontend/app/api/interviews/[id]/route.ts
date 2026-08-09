@@ -33,6 +33,17 @@ export async function PATCH(req: NextRequest, ctx: { params: Promise<{ id: strin
   const session = await col.findOne({ id })
   if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
 
+  const userId = gate.user.id
+  const role = gate.user.role
+  const isParticipant = session.interviewer_id === userId || session.candidate_id === userId
+  if (!isParticipant && role !== 'superadmin' && role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+  // tenant_admin can only edit interviews in their own tenant
+  if (!isParticipant && role === 'tenant_admin' && gate.user.tenantId && session.tenant_id !== gate.user.tenantId) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
+
   const body = await req.json().catch(() => ({})) as Record<string, unknown>
   const $set: Record<string, unknown> = { updated_at: nowIso() }
 
@@ -59,6 +70,13 @@ export async function DELETE(_req: NextRequest, ctx: { params: Promise<{ id: str
     return NextResponse.json({ error: 'forbidden' }, { status: 403 })
   }
   const { id } = await ctx.params
+  const col = await interviewSessions()
+  const session = await col.findOne({ id })
+  if (!session) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  // tenant_admin can only delete interviews in their own tenant
+  if (gate.user.role === 'tenant_admin' && gate.user.tenantId && session.tenant_id !== gate.user.tenantId) {
+    return NextResponse.json({ error: 'forbidden' }, { status: 403 })
+  }
   await (await interviewSessions()).deleteOne({ id })
   return NextResponse.json({ ok: true })
 }

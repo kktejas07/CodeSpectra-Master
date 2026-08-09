@@ -12,6 +12,7 @@
  * Seeds the open-source modules on first call if the collection is empty.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { requireAuth } from '@/lib/route-auth'
 import {
   certifications,
   publicCertView,
@@ -22,6 +23,9 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
+
   const col = await certifications()
   let count = await col.countDocuments({})
   if (count === 0) {
@@ -36,6 +40,9 @@ export async function GET(req: NextRequest) {
   const limit = Math.max(1, Math.min(50, Number.isFinite(limitRaw) ? limitRaw : 20))
 
   const query: Record<string, unknown> = { is_active: true }
+  if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
+    query.tenant_id = gate.user.tenantId
+  }
   if (category === 'skill' || category === 'role') {
     query.category = category
   }

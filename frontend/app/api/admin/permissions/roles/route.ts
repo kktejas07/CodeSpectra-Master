@@ -78,10 +78,25 @@ export async function POST(request: Request) {
     }
 
     const existingPerms = body.permissions || []
-    // Save ALL submitted permissions — including those with empty actions.
-    // Resources with empty actions are treated as "explicitly denied" and
-    // the sidebar uses this to hide pages the admin has toggled off.
+    // Persist only deltas vs. the role's defaults:
+    // - Explicitly edited entries (page sends `edited: true`) are always saved,
+    //   so a toggled-off page stays denied and a granted page stays granted.
+    // - Untouched entries are dropped when they match (or are a stale empty
+    //   override of) the role default — this heals old saves that wrote `[]`
+    //   for every resource, which would otherwise hide newly-added pages.
+    const defaultMap = new Map(
+      getDefaultRolePermissions(body.role as UserRole).map(p => [p.resource, (p.actions || [])])
+    )
+    const arraysEqual = (a: string[], b: string[]) => a.length === b.length && a.every((x, i) => x === b[i])
     const mergedPermissions = existingPerms
+      .filter((p: any) => {
+        if (p.edited === true) return true
+        const def = defaultMap.get(p.resource) || []
+        const actions = p.actions || []
+        if (actions.length === 0) return def.length > 0 ? false : true
+        return !arraysEqual(actions, def)
+      })
+      .map(({ edited: _edited, ...p }: any) => p)
 
     const doc = {
       role: body.role, name: body.name, description: body.description || '',

@@ -1,5 +1,7 @@
 # Gate 0 — Code Spectra Baseline Audit
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 **Document**: `docs/audit/codespectra-baseline.md`  
 **Status**: Gate 0 Complete  
 **Date**: 2026-08-03  

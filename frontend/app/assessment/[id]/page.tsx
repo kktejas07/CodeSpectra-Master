@@ -148,7 +148,7 @@ export default function CandidateAssessmentPage() {
 
         if (accType === 'invite_only') {
           if (!inviteToken) {
-            setAccessError('This exam is invite-only. A valid invitation link is required.')
+            setAccessError('This assessment is invite-only. A valid invitation link is required.')
             setLoading(false)
             return
           }

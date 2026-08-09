@@ -29,6 +29,7 @@ export interface InterviewSessionDoc {
   overall_score?: number
   /** Summary/notes from interviewer */
   notes?: string
+  tenant_id?: string | null
   created_at: string
   updated_at: string
 }
@@ -66,6 +67,7 @@ export async function createInterviewSession(data: {
   scheduled_at: string
   duration_minutes: number
   resume_info?: string
+  tenant_id?: string | null
 }): Promise<InterviewSessionDoc> {
   const col = await interviewSessions()
   const doc: InterviewSessionDoc = {
@@ -80,6 +82,7 @@ export async function createInterviewSession(data: {
     candidate_id: data.candidate_id,
     resume_info: data.resume_info,
     questions: [],
+    tenant_id: data.tenant_id ?? null,
     created_at: nowIso(),
     updated_at: nowIso(),
   }
