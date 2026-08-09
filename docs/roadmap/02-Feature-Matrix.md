@@ -35,7 +35,7 @@
 | Team management | ✅ | P2 | `/dashboard/admin/team` real tenant-scoped members + add-member |
 | Organization invitations | ✅ | P2 | `organization_invitations` collection + invite + accept API + landing page + branded email |
 | User role assignments | ✅ | P2 | Roles page + org picker + `normalizeUserRole()` |
-| Tenant CRUD | ✅ | P2 | `/dashboard/admin/tenants` page, CRUD API, edit dialog, active toggle |
+| Tenant CRUD | ✅ | P2 | `/dashboard/admin/organizations` page, CRUD API, edit dialog, active toggle |
 | Tenant member list + impersonation | ✅ | P2 | Per-member dialog, `POST /api/admin/impersonate` (superadmin) + exit banner |
 | Tenant membership on users | ✅ | P2 | `tenantId` field on `user` collection, `route-auth` resolution |
 | Tenant isolation | 🟡 | P3 | Query-level filtering in progress (team members scoped; platform-wide pending) |
@@ -170,7 +170,7 @@
 | Job management | ✅ | P2 | `/dashboard/admin/jobs` |
 | Resume management | ✅ | P2 | `/dashboard/admin/resumes` |
 | Hackathon management | ✅ | P2 | `/dashboard/admin/hackathons` |
-| Exam management | ✅ | P2 | `/dashboard/admin/exams` |
+| Exam management | ✅ | P2 | `/dashboard/admin/assessments` |
 | Question generator | ✅ | P2 | `/dashboard/admin/question-generator` |
 | Subscription plan config | ✅ | P2 | `/dashboard/admin/plans` |
 | Pricing config | ✅ | P2 | `/dashboard/admin/pricing` |

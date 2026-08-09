@@ -162,7 +162,7 @@ graph TB
         PricingPg["app/dashboard/pricing"]
         Challenges["app/dashboard/challenges"]
         Codeathons["app/dashboard/codeathons"]
-        Exams["app/dashboard/exams"]
+        Exams["app/dashboard/assessments"]
         Jobs["app/dashboard/jobs"]
         Resumes["app/dashboard/resumes"]
     end
@@ -314,7 +314,7 @@ graph TB
         Jobs["/dashboard/admin/jobs"]
         Resumes["/dashboard/admin/resumes"]
         Codeathons["/dashboard/admin/codeathons"]
-        Exams["/dashboard/admin/exams"]
+        Exams["/dashboard/admin/assessments"]
         SpeedInsights["/dashboard/admin/speed-insights"]
         CDN["/dashboard/admin/cdn"]
         Workflows["/dashboard/admin/workflows"]

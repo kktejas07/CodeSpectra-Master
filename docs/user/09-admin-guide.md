@@ -200,7 +200,7 @@ For organization admins:
 
 ## Organizations (Superadmin)
 
-Navigate to `/dashboard/admin/tenants` (superadmin only). Manage enterprise tenants and their members.
+Navigate to `/dashboard/admin/organizations` (superadmin only). Manage enterprise tenants and their members.
 
 ### Create an Organization
 Click **New organization**. Enter the org name, optional slug and plan. To create the org admin in the same step, fill in the **Org admin account** section (name, email, password). The account is created with the Org Admin role and attached to the new tenant automatically. Leave the email empty to create the org without an admin and assign one later.

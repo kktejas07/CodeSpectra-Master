@@ -224,6 +224,25 @@ All under `frontend/app/dashboard/` with RBAC gating:
 
 ---
 
+### 2026-08-09 — RBAC Fixes + tenants→organizations / exams→assessments integration
+
+**Fixed (dev-fixes branch, PR #101)**:
+- `/api/user/my-permissions` now merges stored DB perms with `getDefaultRolePermissions` via `mergePermissions` — grants granted beyond static role arrays now appear in the sidebar
+- Permissions page sends `edited: true`; roles POST persists deltas vs. defaults (heals stale `[]` saves)
+- Sidebar (`layout.tsx`) + command menu are DB-driven when perms loaded: grants show, denies (incl. children via route prefix) hide
+- 5 page guards flipped `superadmin` → `tenant_admin` (assessments admin, results, edit, sme-review, hiring-manager-report)
+- `/dashboard/admin/teams` registered in `ADMIN_ONLY_ROUTES` + `ROUTE_LABELS`
+- `requireTenantEntity()` added to `lib/route-auth.ts` + re-exported from `lib/api-auth.ts`, applied to all 10 `admin/exams/[id]/**` + hackathon/codeathon/job/interview owner routes
+- `admin/hiring-reports` + `admin/sme-reviews` → `requireAdmin`; `admin/predictive-validity` + `admin/proctor` → `requireSuperAdmin`; `admin/users` scoped via `listAllUsers({tenantId})`
+
+**Integrated from main (#102–#104)**:
+- `exams` → `assessments` route rename (`dashboard/admin/exams/**` → `dashboard/admin/assessments/**`, `/dashboard/exams` → `/dashboard/assessments`)
+- `tenants` → `organizations` route rename (`/dashboard/admin/tenants` → `/dashboard/admin/organizations`)
+- `/dashboard/admin/assessments` kept in BOTH `ADMIN_ONLY_ROUTES` (main) and `TENANT_ADMIN_ROUTES` (dev-fixes) so tenant admins + superadmins both access it
+- Merged `rbac.ts` references new `assessments`/`organizations` paths; stale `.next` cache cleared before build
+
+---
+
 ### Legacy
 
 | Date | Event |
