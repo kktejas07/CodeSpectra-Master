@@ -12,8 +12,8 @@ export async function GET(request: NextRequest) {
     const onlyActive = searchParams.get('active') !== 'false'
 
     const filter: Record<string, unknown> = onlyActive ? { is_active: true } : {}
-    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
-      filter.tenant_id = gate.user.tenantId
+    if (gate.user.role === 'tenant_admin') {
+      Object.assign(filter, gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
     }
     const data = await db.collection('job_postings')
       .find(filter, { projection: { _id: 0 } })

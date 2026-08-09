@@ -59,10 +59,9 @@ export async function GET(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const col = await hackathons()
   const isJudgeFilter = req.nextUrl.searchParams.get('judge') === '1'
-  const tenantFilter: Record<string, unknown> = {}
-  if (user.role === 'tenant_admin' && user.tenantId) {
-    tenantFilter.tenant_id = user.tenantId
-  }
+  const tenantFilter: Record<string, unknown> = user.role === 'tenant_admin'
+    ? (user.tenantId ? { tenant_id: user.tenantId } : { _id: null })
+    : {}
   const filter: Record<string, unknown> = { ...tenantFilter }
   if (!isAdmin(user.role)) {
     filter.status = { $ne: 'draft' as const }

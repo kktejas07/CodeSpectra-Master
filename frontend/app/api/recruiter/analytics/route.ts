@@ -17,10 +17,9 @@ export async function GET() {
     const proctorCol = await proctorEvents()
 
     // tenant_admins only see their own tenant's interviews
-    const tenantFilter: Record<string, unknown> = {}
-    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
-      tenantFilter.tenant_id = gate.user.tenantId
-    }
+    const tenantFilter: Record<string, unknown> = gate.user.role === 'tenant_admin'
+      ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
+      : {}
 
     // All interviews
     const allInterviews = await sessions.find(tenantFilter).sort({ created_at: -1 }).limit(200).toArray()

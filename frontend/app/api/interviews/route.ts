@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
   const col = await interviewSessions()
   const filter: Record<string, unknown> = role === 'superadmin'
     ? {}
-    : role === 'tenant_admin' && gate.user.tenantId
-      ? { tenant_id: gate.user.tenantId }
+    : role === 'tenant_admin'
+      ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
       : { $or: [{ interviewer_id: userId }, { candidate_id: userId }] }
 
   const items = await col.find(filter).sort({ scheduled_at: -1 }).toArray()

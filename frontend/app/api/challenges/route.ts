@@ -64,10 +64,9 @@ export async function GET() {
   try {
     await ensureSeeded()
     const db = await getMongoDb()
-    const filter: Record<string, unknown> = {}
-    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
-      filter.tenant_id = gate.user.tenantId
-    }
+    const filter: Record<string, unknown> = gate.user.role === 'tenant_admin'
+      ? (gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null })
+      : {}
     const data = await db.collection('challenges').find(filter).toArray()
     return NextResponse.json({ data })
   } catch { return NextResponse.json({ error: 'Failed' }, { status: 500 }) }
