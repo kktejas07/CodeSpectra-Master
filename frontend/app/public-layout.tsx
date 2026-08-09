@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
-import { Code2, CodeXml, ArrowRight, Menu, X, Github } from 'lucide-react'
+import { Code2, CodeXml, ArrowRight, Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
@@ -218,9 +218,6 @@ export function PublicPageWrapper({
                 All systems operational
               </div>
               <div className="flex items-center gap-5">
-                <a href="https://github.com/kktejas07/CodeSpectra-Master" target="_blank" rel="noopener noreferrer" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="CodeSpectra on GitHub">
-                  <Github className="h-5 w-5" />
-                </a>
                 <Link href="/docs" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="Documentation">
                   <Code2 className="h-5 w-5" />
                 </Link>

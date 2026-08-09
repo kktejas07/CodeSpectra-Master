@@ -36,11 +36,6 @@ export function FooterWordmark() {
       >
         CodeSpectra
       </p>
-
-      {/* Domain line */}
-      <div className="mt-2 text-center text-sm font-medium uppercase tracking-[0.35em] text-muted-foreground">
-        codespectra.ai
-      </div>
     </div>
   )
 }
