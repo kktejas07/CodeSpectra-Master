@@ -54,6 +54,13 @@ export default function ExamPage() {
   const gate = usePageGuard()
   const examId = params.id as string
 
+  // Tenant admins should manage assessments, not take them
+  useEffect(() => {
+    if (gate.ready && gate.user && (gate.user.role === 'tenant_admin' || gate.user.role === 'superadmin')) {
+      router.replace('/dashboard/admin/assessments')
+    }
+  }, [gate.ready, gate.user, router])
+
   const [exam, setExam] = useState<ExamDoc | null>(null)
   const [loading, setLoading] = useState(true)
   const [currentQ, setCurrentQ] = useState(0)

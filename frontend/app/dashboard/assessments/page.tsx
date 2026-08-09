@@ -39,6 +39,13 @@ export default function ExamsPage() {
   const [levelFilter, setLevelFilter] = useState('all')
   const [subjectFilter, setSubjectFilter] = useState('all')
 
+  // Tenant admins should manage assessments, not take them
+  useEffect(() => {
+    if (gate.ready && gate.user && (gate.user.role === 'tenant_admin' || gate.user.role === 'superadmin')) {
+      router.replace('/dashboard/admin/assessments')
+    }
+  }, [gate.ready, gate.user, router])
+
   useEffect(() => {
     fetch('/api/exams', { credentials: 'include' })
       .then(r => r.json())
