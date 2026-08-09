@@ -25,7 +25,7 @@ export default function CookiesPage() {
             <table className="w-full border-collapse border border-muted-foreground/20 text-left">
               <thead>
                 <tr className="border-b border-muted-foreground/20 bg-muted/30">
-                  <th className="px-3 py-2 font-semibold text-foreground">Cookie</th>
+                  <th className="px-3 py-2 font-semibold text-foreground">Category</th>
                   <th className="px-3 py-2 font-semibold text-foreground">Type</th>
                   <th className="px-3 py-2 font-semibold text-foreground">Purpose</th>
                   <th className="px-3 py-2 font-semibold text-foreground">Duration</th>
@@ -33,33 +33,27 @@ export default function CookiesPage() {
               </thead>
               <tbody className="divide-y divide-muted-foreground/10">
                 <tr>
-                  <td className="px-3 py-2">session_token</td>
+                  <td className="px-3 py-2">Authentication</td>
                   <td className="px-3 py-2">Essential</td>
-                  <td className="px-3 py-2">Authentication session — keeps you logged in</td>
+                  <td className="px-3 py-2">Keeps you logged in and maintains your session</td>
                   <td className="px-3 py-2">30 days or until logout</td>
                 </tr>
                 <tr>
-                  <td className="px-3 py-2">theme</td>
-                  <td className="px-3 py-2">Functional</td>
-                  <td className="px-3 py-2">Stores your UI theme preference (dark/light)</td>
-                  <td className="px-3 py-2">1 year</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2">sidebar_collapsed</td>
-                  <td className="px-3 py-2">Functional</td>
-                  <td className="px-3 py-2">Remembers sidebar collapsed/expanded state</td>
-                  <td className="px-3 py-2">1 year</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2">locale</td>
-                  <td className="px-3 py-2">Functional</td>
-                  <td className="px-3 py-2">Stores your preferred language</td>
-                  <td className="px-3 py-2">1 year</td>
-                </tr>
-                <tr>
-                  <td className="px-3 py-2">cspectra_impersonator</td>
+                  <td className="px-3 py-2">Security</td>
                   <td className="px-3 py-2">Essential</td>
-                  <td className="px-3 py-2">Admin impersonation session (admin use only)</td>
+                  <td className="px-3 py-2">Protects against cross-site request forgery attacks</td>
+                  <td className="px-3 py-2">Session</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2">UI Preferences</td>
+                  <td className="px-3 py-2">Functional</td>
+                  <td className="px-3 py-2">Remembers your theme, language, and layout settings</td>
+                  <td className="px-3 py-2">1 year</td>
+                </tr>
+                <tr>
+                  <td className="px-3 py-2">Admin Session</td>
+                  <td className="px-3 py-2">Essential</td>
+                  <td className="px-3 py-2">Supports administrative impersonation for troubleshooting (admin accounts only)</td>
                   <td className="px-3 py-2">Session duration</td>
                 </tr>
               </tbody>
