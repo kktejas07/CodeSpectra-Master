@@ -39,7 +39,7 @@ const SECTIONS = [
     items: [
       { label: 'Hackathons', desc: 'Create and manage hackathons/contests with team registration, QR scoreboards, and timeouts.', href: '/dashboard/admin/hackathons' },
       { label: 'Codeathons', desc: 'Manage coding competitions and hackathons.', href: '/dashboard/admin/codeathons' },
-      { label: 'Exams', desc: 'Create and manage coding exams for assessment.', href: '/dashboard/admin/exams' },
+      { label: 'Assessments', desc: 'Create and manage coding assessments for evaluation.', href: '/dashboard/admin/exams' },
       { label: 'Jobs', desc: 'Manage job postings on the platform.', href: '/dashboard/admin/jobs' },
       { label: 'Resumes', desc: 'AI-powered resume analysis and job matching.', href: '/dashboard/admin/resumes' },
     ]

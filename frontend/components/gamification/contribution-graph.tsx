@@ -143,7 +143,7 @@ export function ContributionGraph() {
                             <p className="font-medium">{day.count} activities on {formatDate(day.date)}</p>
                             {day.xp > 0 && <p>{day.xp} XP earned</p>}
                             {day.problems > 0 && <p>{day.problems} problem{day.problems > 1 ? 's' : ''} solved</p>}
-                            {day.exams > 0 && <p>{day.exams} exam{day.exams > 1 ? 's' : ''} passed</p>}
+                            {day.exams > 0 && <p>{day.exams} assessment{day.exams > 1 ? 's' : ''} passed</p>}
                             {day.hackathons > 0 && <p>{day.hackathons} hackathon activit{day.hackathons > 1 ? 'ies' : 'y'}</p>}
                           </TooltipContent>
                         </Tooltip>

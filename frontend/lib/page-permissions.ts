@@ -40,7 +40,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/hackathons/edit',
   '/dashboard/admin/codeathons',
   '/dashboard/admin/question-bank',
-  '/dashboard/admin/exams',
   '/dashboard/admin/proctor',
   '/dashboard/admin/certificates',
 
@@ -101,6 +100,7 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
  */
 export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
+  '/dashboard/admin/exams',
   '/dashboard/interviews/feedback',
   '/dashboard/recruiter-analytics',
   '/dashboard/admin/hiring-manager-report',
@@ -229,7 +229,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/resumes': 'Resumes',
   '/dashboard/admin/codeathons': 'Codeathons',
   '/dashboard/admin/coupons': 'Coupons',
-  '/dashboard/admin/exams': 'Exams',
+  '/dashboard/admin/exams': 'Assessments',
   '/dashboard/admin/speed-insights': 'Speed Insights',
   '/dashboard/admin/cdn': 'CDN & Edge',
   '/dashboard/admin/workflows': 'Workflows',
@@ -275,7 +275,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/jobs': 'Jobs',
-  '/dashboard/exams': 'Exams',
+  '/dashboard/exams': 'Assessments',
   '/dashboard/resumes': 'Resumes',
   '/dashboard/100-days': '100 Days',
   '/dashboard/analytics': 'Analytics',

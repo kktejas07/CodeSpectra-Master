@@ -43,10 +43,19 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
+  const user = gate.user
+  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
   const { id } = await params
   try {
-    const data = (await request.json()) as Record<string, unknown>
     const col = await exams()
+    if (user.role === 'tenant_admin' && user.tenantId) {
+      const exam = await col.findOne({ id })
+      if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+      if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    const data = (await request.json()) as Record<string, unknown>
     await col.updateOne({ id }, { $set: data })
     const updated = await col.findOne({ id })
     return NextResponse.json(updated)

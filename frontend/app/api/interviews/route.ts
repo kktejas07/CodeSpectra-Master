@@ -13,9 +13,11 @@ export async function GET(req: NextRequest) {
   const role = gate.user.role
   const userId = gate.user.id
   const col = await interviewSessions()
-  const filter = role === 'superadmin' || role === 'tenant_admin'
+  const filter: Record<string, unknown> = role === 'superadmin'
     ? {}
-    : { $or: [{ interviewer_id: userId }, { candidate_id: userId }] }
+    : role === 'tenant_admin' && gate.user.tenantId
+      ? { tenant_id: gate.user.tenantId }
+      : { $or: [{ interviewer_id: userId }, { candidate_id: userId }] }
 
   const items = await col.find(filter).sort({ scheduled_at: -1 }).toArray()
   return NextResponse.json({ items })
@@ -54,6 +56,7 @@ export async function POST(req: NextRequest) {
     scheduled_at: body.scheduled_at,
     duration_minutes: Math.min(180, Math.max(15, body.duration_minutes || 60)),
     resume_info: body.resume_info,
+    tenant_id: gate.user.tenantId || null,
   })
 
   return NextResponse.json(session, { status: 201 })

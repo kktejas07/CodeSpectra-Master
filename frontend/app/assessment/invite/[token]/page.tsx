@@ -143,7 +143,7 @@ export default function CandidateInviteLandingPage() {
               </div>
               <h1 className="text-xl font-bold text-foreground">Assessment Already Completed</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This invitation has already been used to complete the assessment. If you need to retake the exam, please contact your administrator.
+                This invitation has already been used to complete the assessment. If you need to retake the assessment, please contact your administrator.
               </p>
               <div className="pt-2">
                 <Link href="/auth/login" className="block">
@@ -158,7 +158,7 @@ export default function CandidateInviteLandingPage() {
               </div>
               <h1 className="text-xl font-bold text-foreground">Invitation Link Expired</h1>
               <p className="text-sm text-muted-foreground leading-relaxed">
-                This candidate assessment link has expired. Request a fresh link and check your email to start the exam.
+                This candidate assessment link has expired. Request a fresh link and check your email to start the assessment.
               </p>
               <div className="pt-2 space-y-2">
                 <Button 

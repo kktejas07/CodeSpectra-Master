@@ -173,7 +173,7 @@ export function PublicPageWrapper({
               </Link>
               <p className="text-sm text-muted-foreground leading-relaxed">
                 CodeSpectra helps you learn and improve: scan your code, fix issues with guidance and AI support, practice
-                challenges, take courses and exams, train for interviews, earn certificates, and explore opportunities.
+                challenges, take courses and assessments, train for interviews, earn certificates, and explore opportunities.
               </p>
             </div>
             <div>

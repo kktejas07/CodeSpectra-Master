@@ -224,11 +224,11 @@ export default function ExamReviewPage() {
         setMetaBranch(found.branch || '')
         setMetaScreeningType(found.screening_type || 'mixed')
       } else {
-        addToast({ type: 'error', title: 'Exam not found' })
+        addToast({ type: 'error', title: 'Assessment not found' })
         router.push('/dashboard/admin/exams')
       }
     } catch { 
-      addToast({ type: 'error', title: 'Failed to load exam' })
+      addToast({ type: 'error', title: 'Failed to load assessment' })
     } finally { 
       setLoading(false) 
     }
@@ -275,9 +275,9 @@ export default function ExamReviewPage() {
       })
       setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
       setEditingMeta(false)
-      addToast({ type: 'success', title: 'Exam details updated' })
+      addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
-      addToast({ type: 'error', title: 'Failed to update exam details' })
+      addToast({ type: 'error', title: 'Failed to update assessment details' })
     } finally {
       setSavingMeta(false)
     }
@@ -445,10 +445,10 @@ export default function ExamReviewPage() {
           published: true 
         })
       })
-      addToast({ type: 'success', title: 'Exam Published!' })
+      addToast({ type: 'success', title: 'Assessment Published!' })
       router.push('/dashboard/admin/exams')
     } catch {
-      addToast({ type: 'error', title: 'Failed to publish exam' })
+      addToast({ type: 'error', title: 'Failed to publish assessment' })
     } finally {
       setPublishing(false)
     }
@@ -480,7 +480,7 @@ export default function ExamReviewPage() {
                   value={metaTitle}
                   onChange={(e) => setMetaTitle(e.target.value)}
                   className="text-2xl font-bold h-auto py-1 min-w-[200px] max-w-[400px]"
-                  placeholder="Exam Title"
+                  placeholder="Assessment Title"
                 />
                 <Button size="sm" onClick={saveExamMeta} disabled={savingMeta}>
                   {savingMeta ? <Loader2 className="h-4 w-4 animate-spin mr-1" /> : <Save className="h-4 w-4 mr-1" />}

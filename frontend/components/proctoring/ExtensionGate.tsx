@@ -83,7 +83,7 @@ export function ExtensionGate({ children, bypass = false }: ExtensionGateProps) 
           </p>
           <ul className="list-disc list-inside space-y-1 text-xs">
             <li>Detects connected USB devices (pen drives, peripherals)</li>
-            <li>Reports real-time hotplug events during the exam</li>
+            <li>Reports real-time hotplug events during the assessment</li>
             <li>Your data stays local — only device types are reported, not file contents</li>
           </ul>
         </div>
@@ -112,7 +112,7 @@ export function ExtensionGate({ children, bypass = false }: ExtensionGateProps) 
         </div>
 
         <p className="text-[11px] text-center text-muted-foreground">
-          After installing, the exam will detect the extension automatically. You may need to reload this page.
+          After installing, the assessment will detect the extension automatically. You may need to reload this page.
         </p>
       </div>
     </div>

@@ -117,6 +117,7 @@ export interface WorkflowDoc {
   is_active: boolean
   nodes: WorkflowNode[]
   edges: WorkflowEdge[]
+  tenant_id?: string | null
   created_by: string
   created_at: string
   updated_at: string
