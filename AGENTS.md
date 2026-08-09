@@ -113,13 +113,43 @@ Every API entity that has a list page should also have:
 
 ## Deployment
 
-Server runs Docker Swarm managed by Dokploy. Frontend container: `codespectra-frontend-dmeptb`. To deploy:
+### Production Server (verified 2026-08-09)
+
+| Item | Value |
+|---|---|
+| Host | `65.21.196.49` (Ubuntu noble, Docker Swarm managed by Dokploy) |
+| SSH | `sshpass -p '<pass>' ssh root@65.21.196.49` |
+| Frontend service | `codespectra-frontend-dmeptb` (1 replica) |
+| Frontend image | `codespectra-frontend-dmeptb:latest` — **always roll to `:latest`, never `:patched`** |
+| Dockerfile build context | `./frontend` (Dockerfile copies `frontend/` into image) |
+| Container WORKDIR | `/app` (Next.js app root: `app/`, `components/`, `lib/`) |
+| Container CMD | `npx next start -p 80` (exposed internally; host TLS via traefik) |
+| Mongo service | `codespectra-mongo-iadpbk` (mongo:8) |
+| Related | `codespectra-backend-cd7lq6` (FastAPI, 1 replica) |
+
+### Deploy / roll the frontend
+
 ```bash
-# Build on server
-docker exec <container> sh -c "cd /app && yarn build"
-docker commit <container> codespectra-frontend-dmeptb:patched
-docker service update --image codespectra-frontend-dmeptb:patched --force codespectra-frontend-dmeptb
+# Build a new image from frontend/ context (or let Dokploy build it), then:
+docker service update --image codespectra-frontend-dmeptb:latest --force codespectra-frontend-dmeptb
+# Wait for convergence:
+docker service ps codespectra-frontend-dmeptb --format "{{.Name}} {{.Image}} {{.CurrentState}}"
+# Verify routes flipped (new paths 200, old paths 404):
+curl -s -o /dev/null -w "%{http_code}" https://codespectra.ai/dashboard/assessments
 ```
+
+### Known pitfalls (DO NOT repeat)
+
+- **`codespectra-frontend-dmeptb:patched` is STALE** (built Aug 7, pre-`exams→assessments`/`tenants→organizations` rename). It is NOT the current image. The old AGENTS.md flow (`docker commit ... :patched`) produced it and left the service pinned to old code — the root cause of the Aug 9 outage.
+- **Dokploy builds `:latest` but does not always roll the service** — a failed deploy can leave a working `:latest` sitting un-rolled. If routes look old after a deploy, check `docker service inspect codespectra-frontend-dmeptb --format "{{.Spec.TaskTemplate.ContainerSpec.Image}}"` and force-update to `:latest`.
+- **Dockerfile `RUN apk add docker-cli`** — the image is a build image, not a runtime shell host; don't try to `docker exec ... yarn build` against a running task for deployment.
+- Container workdir is `/app` for the frontend image; the git repo root (`frontend/...`) is NOT inside the container — build happens at image build time from `./frontend`.
+
+### Verify what's live
+
+- `docker ps --filter name=codespectra-frontend` → image must be `codespectra-frontend-dmeptb:latest`
+- Compiled routes inside container: `docker exec <task> ls /app/.next/server/app/dashboard/` → should show `assessments` (not `exams`), and `admin/organizations` (not `admin/tenants`)
+- External: `/dashboard/assessments` and `/dashboard/admin/organizations` return 200; `/dashboard/exams` and `/dashboard/admin/tenants` return 404
 
 ---
 
