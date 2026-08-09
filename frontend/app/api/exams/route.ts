@@ -82,7 +82,8 @@ export async function GET() {
     if (gate.user.role === 'superadmin') {
       filter = {}
     } else if (gate.user.role === 'tenant_admin') {
-      filter = tenantFilter
+      // Tenant admins only see exams created within their organization
+      filter = gate.user.tenantId ? { tenant_id: gate.user.tenantId } : { _id: null }
     } else {
       const userId = gate.user.id
       const [submissions, invites] = await Promise.all([
