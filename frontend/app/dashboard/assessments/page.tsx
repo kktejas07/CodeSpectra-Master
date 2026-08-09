@@ -195,7 +195,6 @@ export default function ExamsPage() {
                 <Button size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/assessments/${exam.id}`)}>
                   <Play className="h-3.5 w-3.5" /> Start Assessment
                 </Button>
-                </Button>
               )}
             </Card>
           ))}
