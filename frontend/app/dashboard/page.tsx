@@ -208,115 +208,77 @@ export default function DashboardPage() {
       )}
 
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="border-border/60 p-6 lg:col-span-2">
-          <div className="mb-4 flex items-center gap-2">
-            <BookOpen className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Quick actions</h2>
-          </div>
-          <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-            <Link href="/dashboard/scanner?mode=manual">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                <Activity className="mx-auto h-6 w-6 text-blue-500" />
-                <p className="mt-2 text-sm font-medium text-foreground">Run Scan</p>
-              </div>
-            </Link>
-            <Link href="/dashboard/challenges">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                <Trophy className="mx-auto h-6 w-6 text-amber-500" />
-                <p className="mt-2 text-sm font-medium text-foreground">Challenges</p>
-              </div>
-            </Link>
-            <Link href="/dashboard/problems">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                <Code className="mx-auto h-6 w-6 text-green-500" />
-                <p className="mt-2 text-sm font-medium text-foreground">Problems</p>
-              </div>
-            </Link>
-            <Link href="/dashboard/arena">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                <Target className="mx-auto h-6 w-6 text-red-500" />
-                <p className="mt-2 text-sm font-medium text-foreground">Arena</p>
-              </div>
-            </Link>
-            <Link href="/dashboard/assessments">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                <FileText className="mx-auto h-6 w-6 text-indigo-500" />
-                <p className="mt-2 text-sm font-medium text-foreground">Assessments</p>
-              </div>
-            </Link>
+        <div className="lg:col-span-2 space-y-6">
+          <Card className="border-border/60 p-5">
+            <div className="mb-3 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
+                <BookOpen className="h-4 w-4 text-primary" /> Quick actions
+              </h2>
+            </div>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+              <Link href="/dashboard/assessments">
+                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
+                  <FileText className="mx-auto h-5 w-5 text-indigo-500" />
+                  <p className="mt-1.5 text-xs font-medium text-foreground">Assessments</p>
+                </div>
+              </Link>
+              <Link href="/dashboard/problems">
+                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
+                  <Code className="mx-auto h-5 w-5 text-green-500" />
+                  <p className="mt-1.5 text-xs font-medium text-foreground">Problems</p>
+                </div>
+              </Link>
+              <Link href="/dashboard/arena">
+                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
+                  <Target className="mx-auto h-5 w-5 text-red-500" />
+                  <p className="mt-1.5 text-xs font-medium text-foreground">Arena</p>
+                </div>
+              </Link>
+              <Link href="/dashboard/scanner?mode=manual">
+                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
+                  <Activity className="mx-auto h-5 w-5 text-blue-500" />
+                  <p className="mt-1.5 text-xs font-medium text-foreground">Run Scan</p>
+                </div>
+              </Link>
+              <Link href="/dashboard/tracks">
+                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
+                  <Layers className="mx-auto h-5 w-5 text-purple-500" />
+                  <p className="mt-1.5 text-xs font-medium text-foreground">Tracks</p>
+                </div>
+              </Link>
+              <Link href="/dashboard/achievements">
+                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
+                  <Star className="mx-auto h-5 w-5 text-yellow-500" />
+                  <p className="mt-1.5 text-xs font-medium text-foreground">Achievements</p>
+                </div>
+              </Link>
+            </div>
+          </Card>
+        </div>
+
+        <div className="space-y-6">
+          <ActivityTimeline
+            activities={activities}
+            limit={5}
+            showViewAll={true}
+            title="Recent activity"
+            subtitle="Your latest contributions"
+          />
+
+          <Card className="border-border/60 p-5 space-y-3">
+            <div className="flex items-center gap-2">
+              <Target className="h-4 w-4 text-primary" />
+              <h2 className="text-sm font-semibold text-foreground">Learning progress</h2>
+            </div>
+            <p className="text-xs text-muted-foreground">Track your learning journey across tech stacks.</p>
             <Link href="/dashboard/tracks">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                <Layers className="mx-auto h-6 w-6 text-purple-500" />
-                <p className="mt-2 text-sm font-medium text-foreground">Tracks</p>
-              </div>
+              <Button variant="outline" size="sm" className="w-full gap-2 text-xs">
+                <Layers className="h-3.5 w-3.5" />
+                Browse learning tracks
+              </Button>
             </Link>
-            <Link href="/dashboard/achievements">
-              <div className="rounded-lg border border-border/60 bg-muted/20 p-4 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                <Star className="mx-auto h-6 w-6 text-yellow-500" />
-                <p className="mt-2 text-sm font-medium text-foreground">Achievements</p>
-              </div>
-            </Link>
-          </div>
-        </Card>
-
-        <ActivityTimeline
-          activities={activities}
-          limit={6}
-          showViewAll={true}
-          title="Recent activity"
-          subtitle="Your latest contributions"
-        />
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card className="border-border/60 p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <TrendingUp className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Your stats</h2>
-          </div>
-          <div className="space-y-4">
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Scans</span>
-              <span className="text-sm font-medium text-foreground">{stats.scans}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Challenges completed</span>
-              <span className="text-sm font-medium text-foreground">{stats.challenges}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Daily challenges</span>
-              <span className="text-sm font-medium text-foreground">{stats.dailyChallenges}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Reviews</span>
-              <span className="text-sm font-medium text-foreground">{stats.reviews}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Fixes applied</span>
-              <span className="text-sm font-medium text-foreground">{stats.fixes}</span>
-            </div>
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">Current streak</span>
-              <span className="text-sm font-medium text-foreground flex items-center gap-1">
-                <Flame className="h-3 w-3 text-orange-500" /> {stats.streak} days
-              </span>
-            </div>
-          </div>
-        </Card>
-
-        <Card className="border-border/60 p-6">
-          <div className="mb-4 flex items-center gap-2">
-            <Target className="h-5 w-5 text-primary" />
-            <h2 className="text-lg font-semibold text-foreground">Learning progress</h2>
-          </div>
-          <p className="text-sm text-muted-foreground mb-4">Track your learning journey across tech stacks.</p>
-          <Link href="/dashboard/tracks">
-            <Button variant="outline" className="w-full gap-2">
-              <Layers className="h-4 w-4" />
-              Browse learning tracks
-            </Button>
-          </Link>
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
   )

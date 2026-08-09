@@ -93,7 +93,7 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Career', firstRoute: '/dashboard/jobs' },
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
   { label: 'Stats', firstRoute: '/dashboard/leaderboard' },
-  { label: 'Account', firstRoute: '/dashboard/pricing' },
+  { label: 'Account', firstRoute: '/dashboard/profile' },
   { label: 'Help', firstRoute: '/dashboard/support' },
 ]
 
@@ -152,6 +152,7 @@ export const ALL_USER_ROUTES: string[] = [
   // Tools
   '/dashboard/scanner',
   '/dashboard/cad',
+  '/dashboard/identity-verify',
 
   // Stats & Progress
   '/dashboard/leaderboard',
@@ -164,7 +165,6 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/notifications',
   '/dashboard/billing',
   '/dashboard/pricing',
-  '/dashboard/identity-verify',
   '/dashboard/settings',
   '/dashboard/settings/ai',
 
