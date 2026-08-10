@@ -12,8 +12,9 @@ import { useToast } from '@/lib/toast-context'
 import { DailyChallengeWidget } from '@/components/dashboard/daily-challenge-widget'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
-import { getDefaultDashboard, normalizeUserRole, isSuperAdmin } from '@/lib/rbac'
+import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } from '@/lib/rbac'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { OrganizationDashboard } from '@/components/dashboard/organization-dashboard'
 
 interface ActivityItem {
   ts: string
@@ -94,6 +95,10 @@ export default function DashboardPage() {
   }, [])
 
   if (!gate.ready) return null
+
+  if (role && isTenantAdmin(normalizeUserRole(role))) {
+    return <OrganizationDashboard />
+  }
 
   return (
     <div className="space-y-8">
