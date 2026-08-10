@@ -12,7 +12,7 @@ import { useToast } from '@/lib/toast-context'
 import { DailyChallengeWidget } from '@/components/dashboard/daily-challenge-widget'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
-import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } from '@/lib/rbac'
+import { getDefaultDashboard, normalizeUserRole, isSuperAdmin } from '@/lib/rbac'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ActivityItem {
@@ -52,7 +52,6 @@ export default function DashboardPage() {
         setRole(userRole)
         const r = normalizeUserRole(userRole)
         if (isSuperAdmin(r)) { router.replace('/dashboard/admin/system'); return }
-        if (isTenantAdmin(r)) { router.replace('/dashboard/admin/assessments'); return }
       })
       .catch(() => setRole('user'))
   }, [router, isPending, fbUser?.uid])
