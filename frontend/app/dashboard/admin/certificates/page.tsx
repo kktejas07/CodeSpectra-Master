@@ -125,7 +125,7 @@ export default function CertificatesPage() {
       const res = await csrfFetch('/api/admin/certifications/issued')
       if (res.ok) {
         const data = await res.json()
-        setIssued(data.certs || data || [])
+        setIssued(data.data || data.certs || (Array.isArray(data) ? data : []))
       }
     } catch {
       addToast({ title: 'Failed to load certificates', type: 'error' })
