@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
-import { usePageGuard } from '@/lib/use-page-guard'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
@@ -75,7 +74,6 @@ interface Exam {
 
 export default function CandidateAssessmentPage() {
   const addToast = useToast()
-  const gate = usePageGuard('user')
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
@@ -205,12 +203,6 @@ export default function CandidateAssessmentPage() {
       localStorage.setItem(`codespectra_exam_draft_${exam.id}`, JSON.stringify(answers))
     }
   }, [answers, exam])
-
-  if (!gate.ready) return null
-  if (!gate.allowed) {
-    router.push('/')
-    return null
-  }
 
   const handleStart = () => {
     if (!exam) return
