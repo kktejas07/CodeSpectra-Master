@@ -84,13 +84,7 @@ export default function CandidateAssessmentPage() {
   const [loading, setLoading] = useState(true)
   const [accessError, setAccessError] = useState<string | null>(null)
 
-  if (!gate.ready) return null
-  if (!gate.allowed) {
-    router.push('/')
-    return null
-  }
-  
-  // Assessment State
+  // Assessment State — all hooks declared unconditionally (React rule of hooks)
   const [hasStarted, setHasStarted] = useState(false)
   const [isSubmitting, setIsSubmitting] = useState(false)
   const [isSubmitted, setIsSubmitted] = useState(false)
@@ -98,7 +92,7 @@ export default function CandidateAssessmentPage() {
   const [answers, setAnswers] = useState<Record<string, string | string[]>>({})
   const [currentQIndex, setCurrentQIndex] = useState(0)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
-  
+
   // Shuffle: map of question id -> shuffled options (stable per session)
   const [shuffledOpts, setShuffledOpts] = useState<Record<string, string[]>>({})
 
@@ -106,9 +100,15 @@ export default function CandidateAssessmentPage() {
   const [showVerification, setShowVerification] = useState(false)
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
   const [facePhoto, setFacePhoto] = useState<string | null>(null)
-  
+
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  if (!gate.ready) return null
+  if (!gate.allowed) {
+    router.push('/')
+    return null
+  }
 
   // Shuffle options once when exam loads or starts
   const sessionSeed = useRef(Math.floor(Math.random() * 2147483647))
