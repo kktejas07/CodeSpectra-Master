@@ -551,12 +551,12 @@ export default function CertificatesPage() {
       </Dialog>
 
       <Dialog open={previewDialogOpen} onOpenChange={setPreviewDialogOpen}>
-        <DialogContent className="max-w-3xl">
+        <DialogContent className="max-w-5xl">
           <DialogHeader>
             <DialogTitle>Certificate Preview</DialogTitle>
             <DialogDescription>Preview of the selected certificate template.</DialogDescription>
           </DialogHeader>
-          <div className="flex justify-center overflow-auto py-4">
+          <div className="w-full overflow-hidden rounded-lg border shadow-sm my-4 bg-muted/20">
             <CertificateRenderer template={previewTemplate} data={previewData} />
           </div>
           <DialogFooter>
