@@ -104,12 +104,6 @@ export default function CandidateAssessmentPage() {
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  if (!gate.ready) return null
-  if (!gate.allowed) {
-    router.push('/')
-    return null
-  }
-
   // Shuffle options once when exam loads or starts
   const sessionSeed = useRef(Math.floor(Math.random() * 2147483647))
   useEffect(() => {
@@ -117,7 +111,6 @@ export default function CandidateAssessmentPage() {
     const map: Record<string, string[]> = {}
     for (const q of exam.questionList) {
       if (q.options && q.options.length > 0 && ['mcq', 'multiple_response', 'true_false'].includes(q.type)) {
-        // ponytail: seed = question id hash + session seed => unique order per user, stable for same user
         const qSeed = q.id.split('').reduce((acc, c) => acc + c.charCodeAt(0), 0) + sessionSeed.current
         map[q.id] = shuffleArray(q.options, qSeed)
       }
@@ -173,8 +166,8 @@ export default function CandidateAssessmentPage() {
             const draft = localStorage.getItem(`codespectra_exam_draft_${params.id}`)
             if (draft) {
               const parsed = JSON.parse(draft)
-              if (exam?.questionList) {
-                for (const q of exam.questionList) {
+              if (found.questionList) {
+                for (const q of found.questionList) {
                   if (q.type === 'multiple_response' && typeof parsed[q.id] === 'string') {
                     parsed[q.id] = parsed[q.id].split(',').map((s: string) => s.trim()).filter(Boolean)
                   }
@@ -200,7 +193,6 @@ export default function CandidateAssessmentPage() {
     if (hasStarted && timeLeft !== null && timeLeft > 0 && !isSubmitted && !isSubmitting) {
       timerRef.current = setTimeout(() => setTimeLeft(prev => (prev !== null ? prev - 1 : 0)), 1000)
     } else if (hasStarted && timeLeft === 0 && !isSubmitted && !isSubmitting) {
-      // Time is up -> Auto Submit
       handleAutoSubmit()
     }
     return () => {
@@ -213,6 +205,12 @@ export default function CandidateAssessmentPage() {
       localStorage.setItem(`codespectra_exam_draft_${exam.id}`, JSON.stringify(answers))
     }
   }, [answers, exam])
+
+  if (!gate.ready) return null
+  if (!gate.allowed) {
+    router.push('/')
+    return null
+  }
 
   const handleStart = () => {
     if (!exam) return
