@@ -28,5 +28,6 @@ export async function GET(_req: Request, ctx: { params: Promise<{ token: string 
     score: attempt.score,
     score_label: attempt.score_label,
     issued_at: attempt.submitted_at,
+    template: attempt.template || 'classic',
   })
 }

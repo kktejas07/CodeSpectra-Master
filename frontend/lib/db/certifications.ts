@@ -71,6 +71,8 @@ export interface CertificationAttemptDoc {
   cert_snapshot: { title: string; level: string; source: string }
   /** Optional override for the score line (e.g. "+420 XP earned" on level-up certs). */
   score_label?: string
+  template?: string
+  event_title?: string | null
 }
 
 async function db() {

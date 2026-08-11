@@ -771,3 +771,9 @@
   .print-review-card .space-y-3 > div { break-inside: avoid; }
   pre { white-space: pre-wrap !important; word-wrap: break-word !important; }
 }
+
+.cert-sheet {
+  aspect-ratio: 1123 / 794;
+  width: 100%;
+}
+

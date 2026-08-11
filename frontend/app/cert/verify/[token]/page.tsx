@@ -24,6 +24,7 @@ interface VerifyResponse {
   score?: number
   score_label?: string
   issued_at?: string
+  template?: string
 }
 
 /**
@@ -61,7 +62,12 @@ export default function CertVerifyPage() {
     fetch(`/api/certifications/verify/${token}`)
       .then(async (res) => {
         const json = (await res.json()) as VerifyResponse
-        if (active) setData(json)
+        if (active) {
+          setData(json)
+          if (json.template) {
+            setTemplate(json.template as TemplateKey)
+          }
+        }
       })
       .catch(() => {
         if (active) setData({ valid: false, reason: 'network' })
@@ -116,13 +122,6 @@ export default function CertVerifyPage() {
         </Card>
       </main>
     )
-  }
-
-  const updateTemplate = (next: TemplateKey) => {
-    setTemplate(next)
-    const url = new URL(window.location.href)
-    url.searchParams.set('template', next)
-    router.replace(url.pathname + url.search)
   }
 
   if (loading) {
@@ -191,38 +190,12 @@ export default function CertVerifyPage() {
             >
               <Printer className="w-4 h-4" /> Print / Save as PDF
             </Button>
-            <a
-              href={`/api/certifications/cert-svg/${token}?template=${template}`}
-              download
-              data-testid="cert-svg-download"
-            >
-              <Button variant="outline" className="gap-2">
-                <Download className="w-4 h-4" /> Download SVG
-              </Button>
-            </a>
           </div>
         </div>
 
-        {/* Template picker */}
-        <div className="flex flex-wrap items-center gap-2" data-testid="cert-template-picker">
-          <Sparkles className="w-4 h-4 text-muted-foreground" />
-          <span className="text-xs text-muted-foreground mr-2">Template:</span>
-          {TEMPLATES.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => updateTemplate(t.key)}
-              data-testid={`cert-template-${t.key}`}
-              className={`text-xs px-3 py-1.5 rounded-full border transition ${
-                template === t.key
-                  ? 'bg-primary text-primary-foreground border-primary'
-                  : 'border-border text-muted-foreground hover:text-foreground'
-              }`}
-              title={t.description}
-            >
-              {t.label}
-            </button>
-          ))}
-          <span className="text-[11px] text-muted-foreground ml-auto hidden sm:inline">
+        {/* Curriculum Source Info */}
+        <div className="flex flex-wrap items-center justify-end" data-testid="cert-template-picker">
+          <span className="text-[11px] text-muted-foreground">
             <a href="/open-source" target="_blank" rel="noopener noreferrer" className="underline hover:text-foreground">
               100% open-source curricula and libraries
             </a>
