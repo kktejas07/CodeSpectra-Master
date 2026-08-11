@@ -32,6 +32,8 @@ export function middleware(request: NextRequest) {
   // only egregious abuse — per-route limits in Node handlers are the real guard.
   const CSRF_EXEMPT = [
     '/api/analytics/web-vitals',
+    '/api/analytics/events',
+    '/api/analytics/replay',
     '/api/github/webhook',
     '/api/billing/webhook',
     '/api/billing/stripe-webhook',

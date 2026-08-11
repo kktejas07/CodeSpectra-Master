@@ -289,24 +289,6 @@ export default function CertificatesPage() {
         </Card>
       </div>
 
-      <div>
-        <h2 className="mb-3 text-lg font-semibold">Templates</h2>
-        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-6">
-          {TEMPLATES.map((t) => (
-            <button
-              key={t.key}
-              onClick={() => openTemplatePreview(t.key)}
-              className="group rounded-lg border border-border/60 p-4 text-left transition-colors hover:border-primary/50 hover:bg-accent"
-            >
-              <div className="flex items-center gap-2">
-                <FileText className="h-4 w-4 text-muted-foreground group-hover:text-primary" />
-                <span className="text-xs font-medium capitalize">{t.label}</span>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
       <Card className="border-border/60">
         <div className="border-b border-border/60 px-4 py-3">
           <div className="flex items-center gap-2">
