@@ -12,73 +12,121 @@
 # Error details
 
 ```
-Test timeout of 30000ms exceeded while setting up "authenticatedPage".
+Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/dashboard
+Call log:
+  - navigating to "http://localhost:3000/dashboard", waiting until "load"
+
 ```
 
-# Page snapshot
+# Test source
 
-```yaml
-- generic [active] [ref=f1e1]:
-  - generic [ref=f1e2]:
-    - complementary [ref=f1e3]:
-      - link "CodeSpectra" [ref=f1e5] [cursor=pointer]:
-        - /url: /
-      - generic [ref=f1e12]:
-        - generic [ref=f1e13]: Code quality + competitive coding, one platform
-        - heading "Ship cleaner code. Win the competition." [level=1] [ref=f1e17]: Ship cleaner code.Win the competition.
-        - paragraph [ref=f1e18]: AI-powered static analysis meets competitive coding challenges. Scan, fix, and compete — all in one workspace.
-        - generic [ref=f1e19]:
-          - generic [ref=f1e20]: AI fix suggestions on every issue
-          - generic [ref=f1e25]: 40+ languages, real test cases, live judging
-          - generic [ref=f1e30]: Quality gates that block bad pushes
-        - generic [ref=f1e37]:
-          - generic [ref=f1e38]: analysis.ts
-          - generic [ref=f1e43]: "// 1 bug, 2 smells found function analyze(code) { if (code == null) { // 🟢 use === instead } return runQualityGate(code) }"
-      - generic [ref=f1e44]:
-        - generic [ref=f1e45]: © 2026 CodeSpectra
-        - generic [ref=f1e46]:
-          - link "Privacy" [ref=f1e47] [cursor=pointer]:
-            - /url: /privacy
-          - link "Terms" [ref=f1e48] [cursor=pointer]:
-            - /url: /terms
-    - main [ref=f1e49]:
-      - generic [ref=f1e50]:
-        - generic [ref=f1e51]:
-          - heading "Sign in to your account" [level=2] [ref=f1e52]
-          - paragraph [ref=f1e53]:
-            - text: New to CodeSpectra?
-            - link "Create an account" [ref=f1e54] [cursor=pointer]:
-              - /url: /auth/signup
-        - generic [ref=f1e55]:
-          - button "Google" [ref=f1e56]
-          - button "GitHub" [ref=f1e57]
-        - generic [ref=f1e58]: or sign in with email
-        - generic [ref=f1e63]:
-          - generic [ref=f1e64]:
-            - generic [ref=f1e65]: Email
-            - textbox "Email" [ref=f1e70]:
-              - /placeholder: you@example.com
-          - generic [ref=f1e71]:
-            - generic [ref=f1e72]:
-              - generic [ref=f1e73]: Password
-              - link "Forgot password?" [ref=f1e74] [cursor=pointer]:
-                - /url: /auth/forgot-password
-            - generic [ref=f1e75]:
-              - textbox "Password" [ref=f1e79]:
-                - /placeholder: Enter your password
-              - button [ref=f1e80]
-          - generic [ref=f1e84] [cursor=pointer]:
-            - checkbox "Keep me signed in" [checked] [ref=f1e85]
-            - generic [ref=f1e86]: Keep me signed in
-          - button "Sign in" [ref=f1e87]
-        - paragraph [ref=f1e88]:
-          - text: By signing in you agree to our
-          - link "Terms" [ref=f1e89] [cursor=pointer]:
-            - /url: /terms
-          - text: and
-          - link "Privacy Policy" [ref=f1e90] [cursor=pointer]:
-            - /url: /privacy
-          - text: .
-  - button "Open Next.js Dev Tools" [ref=f1e96] [cursor=pointer]
-  - alert [ref=f1e100]
+```ts
+  1   | import { test, expect } from '../../fixtures/test-fixtures';
+  2   | import AxeBuilder from '@axe-core/playwright';
+  3   | 
+  4   | test.describe('Accessibility Tests', () => {
+  5   |   test.describe('Axe Core Accessibility', () => {
+  6   |     test('should have no critical accessibility issues on dashboard', async ({ page, authenticatedPage }) => {
+> 7   |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard`);
+      |                               ^ Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/dashboard
+  8   |       await authenticatedPage.waitForLoadState('networkidle');
+  9   |       
+  10  |       const accessibilityScan = await new AxeBuilder({ page: authenticatedPage })
+  11  |         .withTags(['wcag2a', 'wcag2aa'])
+  12  |         .analyze();
+  13  |       
+  14  |       const criticalIssues = accessibilityScan.violations.filter(v => v.impact === 'critical');
+  15  |       console.log(`Critical accessibility issues: ${criticalIssues.length}`);
+  16  |       
+  17  |       accessibilityScan.violations.forEach(v => {
+  18  |         console.log(`${v.impact}: ${v.description} - ${v.nodes.length} nodes`);
+  19  |       });
+  20  |       
+  21  |       expect(criticalIssues.length).toBe(0);
+  22  |     });
+  23  | 
+  24  |     test('should have no accessibility issues on login page', async ({ page }) => {
+  25  |       await page.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/login`);
+  26  |       await page.waitForLoadState('networkidle');
+  27  |       
+  28  |       const accessibilityScan = await new AxeBuilder({ page })
+  29  |         .withTags(['wcag2a', 'wcag2aa'])
+  30  |         .analyze();
+  31  |       
+  32  |       console.log(`Total accessibility violations: ${accessibilityScan.violations.length}`);
+  33  |       
+  34  |       accessibilityScan.violations.slice(0, 5).forEach(v => {
+  35  |         console.log(`${v.impact}: ${v.description}`);
+  36  |       });
+  37  |     });
+  38  | 
+  39  |     test('should have no accessibility issues on problems page', async ({ page, authenticatedPage }) => {
+  40  |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard/problems`);
+  41  |       await authenticatedPage.waitForLoadState('networkidle');
+  42  |       
+  43  |       const accessibilityScan = await new AxeBuilder({ page: authenticatedPage })
+  44  |         .withTags(['wcag2a', 'wcag2aa'])
+  45  |         .analyze();
+  46  |       
+  47  |       console.log(`Problems page violations: ${accessibilityScan.violations.length}`);
+  48  |     });
+  49  |   });
+  50  | 
+  51  |   test.describe('Missing Labels', () => {
+  52  |     test('should have labels for all form inputs', async ({ page, authenticatedPage }) => {
+  53  |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard/profile`);
+  54  |       await authenticatedPage.waitForLoadState('networkidle');
+  55  |       
+  56  |       const inputsWithoutLabels = await authenticatedPage.evaluate(() => {
+  57  |         const inputs = Array.from(document.querySelectorAll('input:not([type="hidden"]):not([type="submit"]):not([type="button"])'));
+  58  |         return inputs
+  59  |           .filter(input => {
+  60  |             const id = input.id;
+  61  |             const hasLabel = id && document.querySelector(`label[for="${id}"]`);
+  62  |             const hasAriaLabel = input.getAttribute('aria-label') || input.getAttribute('aria-labelledby');
+  63  |             return !hasLabel && !hasAriaLabel && !input.title;
+  64  |           })
+  65  |           .map(input => ({
+  66  |             id: input.id || input.name || 'unnamed',
+  67  |             type: input.type,
+  68  |           }));
+  69  |       });
+  70  |       
+  71  |       console.log(`Inputs without labels: ${inputsWithoutLabels.length}`);
+  72  |       expect(inputsWithoutLabels.length).toBe(0);
+  73  |     });
+  74  | 
+  75  |     test('should have accessible names for buttons', async ({ page, authenticatedPage }) => {
+  76  |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard`);
+  77  |       await authenticatedPage.waitForLoadState('networkidle');
+  78  |       
+  79  |       const buttonsWithoutNames = await authenticatedPage.evaluate(() => {
+  80  |         const buttons = Array.from(document.querySelectorAll('button'));
+  81  |         return buttons
+  82  |           .filter(btn => {
+  83  |             const hasText = btn.textContent?.trim();
+  84  |             const hasAriaLabel = btn.getAttribute('aria-label');
+  85  |             return !hasText && !hasAriaLabel;
+  86  |           })
+  87  |           .map(btn => btn.className);
+  88  |       });
+  89  |       
+  90  |       console.log(`Buttons without accessible names: ${buttonsWithoutNames.length}`);
+  91  |       expect(buttonsWithoutNames.length).toBe(0);
+  92  |     });
+  93  |   });
+  94  | 
+  95  |   test.describe('Color Contrast', () => {
+  96  |     test('should have sufficient color contrast', async ({ page, authenticatedPage }) => {
+  97  |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard`);
+  98  |       await authenticatedPage.waitForLoadState('networkidle');
+  99  |       
+  100 |       const accessibilityScan = await new AxeBuilder({ page: authenticatedPage })
+  101 |         .withTags(['wcag2aa'])
+  102 |         .analyze();
+  103 |       
+  104 |       const contrastIssues = accessibilityScan.violations.filter(v => 
+  105 |         v.description.toLowerCase().includes('contrast')
+  106 |       );
+  107 |       
 ```

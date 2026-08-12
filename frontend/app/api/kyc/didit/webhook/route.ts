@@ -1,99 +1,138 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
-import { createHmac } from 'crypto'
+import crypto from 'node:crypto'
 
 export const runtime = 'nodejs'
 
-const DIDIT_WEBHOOK_SECRET = process.env.DIDIT_WEBHOOK_SECRET || ''
-
-interface DiditWebhookPayload {
-  session_id: string
-  status: 'Approved' | 'Declined' | 'In Review' | 'Expired' | 'Not Finished'
-  vendor_data: string
-  id_verification?: {
-    status: string
-    document_type: string
-    full_name: string
-    date_of_birth: string
-    document_number: string
-    issuing_country: string
+// Whole-number floats (1.0) -> integers (1), recursively.
+function shortenFloats(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(shortenFloats)
+  if (v && typeof v === 'object') {
+    return Object.fromEntries(
+      Object.entries(v as Record<string, unknown>).map(([k, x]) => [k, shortenFloats(x)])
+    )
   }
-  liveness?: {
-    status: string
-    score: number
-  }
-  face_match?: {
-    status: string
-    similarity: number
-  }
-  ip_analysis?: {
-    status: string
-    vpn: boolean
-    proxy: boolean
-    tor: boolean
-  }
+  if (typeof v === 'number' && !Number.isInteger(v) && v % 1 === 0) return Math.trunc(v)
+  return v
 }
 
-function verifySignature(payload: string, signature: string, secret: string): boolean {
-  if (!secret) return true // Skip verification if no secret configured
-  const expected = createHmac('sha256', secret).update(payload).digest('hex')
-  return signature === expected
+// Recursive lexicographic key sort (array order preserved).
+function sortKeys(v: unknown): unknown {
+  if (Array.isArray(v)) return v.map(sortKeys)
+  if (v && typeof v === 'object') {
+    return Object.keys(v as object)
+      .sort()
+      .reduce<Record<string, unknown>>((acc, k) => {
+        acc[k] = sortKeys((v as Record<string, unknown>)[k])
+        return acc
+      }, {})
+  }
+  return v
 }
+
+// Idempotency tracking (in-memory for simplicity; use Redis/DB in production)
+const processedEvents = new Set<string>()
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
-  const body = await request.text()
-  const signature = request.headers.get('x-signature-v2') || ''
+  const raw = await request.text()
+  const sig = request.headers.get('x-signature-v2') || ''
+  const ts = Number(request.headers.get('x-timestamp'))
 
-  // Verify webhook signature
-  if (!verifySignature(body, signature, DIDIT_WEBHOOK_SECRET)) {
-    console.error('[Didit webhook] Invalid signature')
-    return NextResponse.json({ error: 'Invalid signature' }, { status: 401 })
+  // 1. Freshness — reject anything older/newer than 300s (replay protection)
+  if (!ts || Math.abs(Date.now() / 1000 - ts) > 300) {
+    return NextResponse.json({ error: 'stale' }, { status: 401 })
   }
 
-  const payload = JSON.parse(body) as DiditWebhookPayload
+  // 2. Canonicalise (shortenFloats -> sortKeys -> JSON.stringify with unescaped Unicode)
+  let parsed: Record<string, unknown>
+  try {
+    parsed = JSON.parse(raw)
+  } catch {
+    return NextResponse.json({ error: 'invalid JSON' }, { status: 400 })
+  }
+  const canonical = JSON.stringify(sortKeys(shortenFloats(parsed)))
+
+  // 3. Constant-time HMAC-SHA256 compare against X-Signature-V2
+  const webhookSecret = process.env.DIDIT_WEBHOOK_SECRET || ''
+  if (webhookSecret) {
+    const expected = crypto
+      .createHmac('sha256', webhookSecret)
+      .update(canonical, 'utf8')
+      .digest('hex')
+    if (
+      sig.length !== expected.length ||
+      !crypto.timingSafeEqual(Buffer.from(expected), Buffer.from(sig))
+    ) {
+      return NextResponse.json({ error: 'bad sig' }, { status: 401 })
+    }
+  }
+
+  // 4. Idempotency — dedupe on event_id
+  const eventId = parsed.event_id as string
+  if (eventId && processedEvents.has(eventId)) {
+    return NextResponse.json({ ok: true })
+  }
+  if (eventId) processedEvents.add(eventId)
+
+  // 5. Apply the decision
+  const status = parsed.status as string
+  const vendorData = parsed.vendor_data as string
 
   try {
     const db = await getMongoDb()
 
     // Determine verification status
-    let status: string = 'pending'
-    if (payload.status === 'Approved') status = 'approved'
-    else if (payload.status === 'Declined') status = 'rejected'
-    else if (payload.status === 'In Review') status = 'manual_review'
+    let dbStatus: string = 'pending'
+    if (status === 'Approved') dbStatus = 'approved'
+    else if (status === 'Declined') dbStatus = 'rejected'
+    else if (status === 'In Review') dbStatus = 'manual_review'
 
     // Update KYC session
     await db.collection('kyc_sessions').updateOne(
-      { id: payload.session_id },
+      { id: parsed.session_id as string },
       {
         $set: {
-          status,
-          result: payload,
+          status: dbStatus,
+          result: parsed,
           updated_at: new Date().toISOString(),
         },
       }
     )
 
     // Update identity verification record for the user
-    if (payload.vendor_data) {
+    if (vendorData) {
+      const decision = parsed.decision as Record<string, unknown> | undefined
+      const idVerifications = decision?.id_verifications as Array<Record<string, unknown>> | undefined
+      const livenessChecks = decision?.liveness_checks as Array<Record<string, unknown>> | undefined
+      const faceMatches = decision?.face_matches as Array<Record<string, unknown>> | undefined
+      const ipAnalyses = decision?.ip_analyses as Array<Record<string, unknown>> | undefined
+
+      const idVer = idVerifications?.[0]
+      const liveness = livenessChecks?.[0]
+      const faceMatch = faceMatches?.[0]
+      const ipAnalysis = ipAnalyses?.[0]
+
       await db.collection('identity_verifications').insertOne({
         id: crypto.randomUUID(),
-        user_id: payload.vendor_data,
+        user_id: vendorData,
         provider: 'didit',
-        session_id: payload.session_id,
-        status,
+        session_id: parsed.session_id,
+        status: dbStatus,
         result: {
-          document_type: payload.id_verification?.document_type,
-          full_name: payload.id_verification?.full_name,
-          date_of_birth: payload.id_verification?.date_of_birth,
-          liveness_score: payload.liveness?.score,
-          face_match_similarity: payload.face_match?.similarity,
-          vpn_detected: payload.ip_analysis?.vpn,
+          document_type: idVer?.document_type,
+          full_name: idVer?.first_name && idVer?.last_name
+            ? `${idVer.first_name} ${idVer.last_name}`
+            : undefined,
+          date_of_birth: idVer?.date_of_birth,
+          liveness_score: liveness?.score,
+          face_match_similarity: faceMatch?.score,
+          vpn_detected: (ipAnalysis as Record<string, unknown>)?.vpn,
         },
         created_at: new Date().toISOString(),
       })
     }
 
-    console.log(`[Didit webhook] Session ${payload.session_id} → ${status}`)
+    console.log(`[Didit webhook] Session ${parsed.session_id} → ${status}`)
     return NextResponse.json({ ok: true })
   } catch (e) {
     console.error('[Didit webhook]', e)

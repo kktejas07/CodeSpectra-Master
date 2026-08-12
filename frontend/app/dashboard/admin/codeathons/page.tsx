@@ -56,14 +56,16 @@ export default function AdminCodeathonsPage() {
   const [createOpen, setCreateOpen] = useState(false)
   const [form, setForm] = useState({
     title: '', description: '', difficulty: 'Medium', topics: [] as string[],
-    rules: '', maxParticipants: 0, startDate: '', endDate: '', prizePool: '', cert_template: 'classic'
+    rules: '', maxParticipants: 0, startDate: '', endDate: '', prizePool: '', cert_template: 'classic',
+    event_type: 'individual', team_size_min: 2, team_size_max: 4, problem_visibility: 'during_contest'
   })
 
   // Edit sheet
   const [editing, setEditing] = useState<Codeathon | null>(null)
   const [editForm, setEditForm] = useState({
     title: '', description: '', difficulty: 'Medium', topics: [] as string[],
-    rules: '', maxParticipants: 0, startDate: '', endDate: '', prizePool: '', cert_template: 'classic'
+    rules: '', maxParticipants: 0, startDate: '', endDate: '', prizePool: '', cert_template: 'classic',
+    event_type: 'individual', team_size_min: 2, team_size_max: 4, problem_visibility: 'during_contest'
   })
 
   // Problem management
@@ -95,7 +97,11 @@ export default function AdminCodeathonsPage() {
       title: c.title, description: c.description || '', difficulty: c.difficulty || 'Medium',
       topics: c.topics || [], rules: c.rules || '', maxParticipants: c.maxParticipants || 0,
       startDate: c.startDate, endDate: c.endDate, prizePool: c.prizePool || '',
-      cert_template: c.cert_template || 'classic'
+      cert_template: c.cert_template || 'classic',
+      event_type: (c as any).event_type || 'individual',
+      team_size_min: (c as any).team_size_min || 2,
+      team_size_max: (c as any).team_size_max || 4,
+      problem_visibility: (c as any).problem_visibility || 'during_contest',
     })
     setEditingProblems(c.problems || [])
     setEditing(c)
@@ -161,7 +167,7 @@ export default function AdminCodeathonsPage() {
       fetchData()
       addToast({ type: 'success', title: 'Codeathon created' })
       setCreateOpen(false)
-      setForm({ title: '', description: '', difficulty: 'Medium', topics: [], rules: '', maxParticipants: 0, startDate: '', endDate: '', prizePool: '', cert_template: 'classic' })
+      setForm({ title: '', description: '', difficulty: 'Medium', topics: [], rules: '', maxParticipants: 0, startDate: '', endDate: '', prizePool: '', cert_template: 'classic', event_type: 'individual', team_size_min: 2, team_size_max: 4, problem_visibility: 'during_contest' })
     } catch { addToast({ type: 'error', title: 'Failed to create codeathon' }) }
     finally { setSaving(false) }
   }
@@ -257,6 +263,51 @@ export default function AdminCodeathonsPage() {
             <SelectItem value="minimal">Minimal (Monochrome)</SelectItem>
           </SelectContent>
         </Select>
+      </div>
+
+      {/* Event Type & Team Settings */}
+      <div className="border-t border-border pt-4">
+        <h3 className="text-sm font-semibold mb-3">Event Format</h3>
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="space-y-2">
+            <Label>Event Type</Label>
+            <Select value={f.event_type} onValueChange={v => setF({...f, event_type: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="individual">Individual</SelectItem>
+                <SelectItem value="team">Team</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {f.event_type === 'individual' ? 'Each participant competes alone' : 'Participants form teams to compete'}
+            </p>
+          </div>
+          <div className="space-y-2">
+            <Label>Problem Visibility</Label>
+            <Select value={f.problem_visibility} onValueChange={v => setF({...f, problem_visibility: v})}>
+              <SelectTrigger><SelectValue /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="during_contest">Visible when contest starts</SelectItem>
+                <SelectItem value="immediate">Visible immediately</SelectItem>
+              </SelectContent>
+            </Select>
+            <p className="text-xs text-muted-foreground">
+              {f.problem_visibility === 'during_contest' ? 'Problems hidden until start time' : 'Problems visible as soon as created'}
+            </p>
+          </div>
+        </div>
+        {f.event_type === 'team' && (
+          <div className="grid grid-cols-2 gap-4 mt-4">
+            <div className="space-y-2">
+              <Label>Min Team Size</Label>
+              <Input type="number" min={1} max={f.team_size_max} value={f.team_size_min} onChange={e => setF({...f, team_size_min: Math.max(1, Number(e.target.value) || 1)})} />
+            </div>
+            <div className="space-y-2">
+              <Label>Max Team Size</Label>
+              <Input type="number" min={f.team_size_min} value={f.team_size_max} onChange={e => setF({...f, team_size_max: Math.max(f.team_size_min, Number(e.target.value) || 4)})} />
+            </div>
+          </div>
+        )}
       </div>
     </div>
   )

@@ -141,6 +141,11 @@
   resolved "https://registry.npmjs.org/@date-fns/tz/-/tz-1.5.0.tgz"
   integrity sha512-lwYN/vDPeNRULcepoE/LO2Pgx+7/RV+S9ARfbc9lr2DtGkOD7pAiruHvbR1RX3Qyf6ja47EWJDMsNK5vK08DJg==
 
+"@didit-protocol/sdk-web@^0.2.1":
+  version "0.2.1"
+  resolved "https://registry.yarnpkg.com/@didit-protocol/sdk-web/-/sdk-web-0.2.1.tgz#db7eedf89b39ed38b20d6dd45634037c24200d8f"
+  integrity sha512-dv5mrvgV6RJgXySWIcDFwp9AMD7Hz9AN/GbDIhmZMRHpSumiIb44XP9MhUaF7YgWbtscRJhkbDH0KgHzSO6hJg==
+
 "@dimforge/rapier3d-compat@~0.12.0":
   version "0.12.0"
   resolved "https://registry.npmjs.org/@dimforge/rapier3d-compat/-/rapier3d-compat-0.12.0.tgz"

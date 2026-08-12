@@ -1,0 +1,537 @@
+'use client'
+
+import React, { useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import {
+  Trophy, Users, Clock, HelpCircle, Calendar, Target, BookOpen, ChevronRight,
+  Plus, UserMinus, UserPlus, Mail, CheckCircle2, XCircle, Shield, Copy
+} from 'lucide-react'
+import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
+
+interface Problem {
+  id: string
+  title: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  points: number
+}
+
+interface Team {
+  id: string
+  name: string
+  created_by: string
+  member_count: number
+  members: { user_id: string; role: string; joined_at: string }[]
+  created_at: string
+}
+
+interface Invitation {
+  id: string
+  team_id: string
+  team_name: string
+  inviter_name: string
+  status: string
+  created_at: string
+}
+
+interface Codeathon {
+  id: string
+  title: string
+  description: string
+  difficulty: string
+  topics: string[]
+  startDate: string
+  endDate: string
+  totalPrize: string
+  prizePool: string
+  participants: number
+  maxParticipants: number
+  status: string
+  registered?: boolean
+  problems?: Problem[]
+  event_type?: string
+  team_size_min?: number
+  team_size_max?: number
+  problem_visibility?: string
+}
+
+function CountdownTimer({ target }: { target: string }) {
+  const [time, setTime] = useState({ days: 0, hours: 0, minutes: 0, seconds: 0 })
+
+  useEffect(() => {
+    const calc = () => {
+      const diff = new Date(target).getTime() - Date.now()
+      if (diff <= 0) { setTime({ days: 0, hours: 0, minutes: 0, seconds: 0 }); return }
+      setTime({
+        days: Math.floor(diff / 86400000),
+        hours: Math.floor((diff % 86400000) / 3600000),
+        minutes: Math.floor((diff % 3600000) / 60000),
+        seconds: Math.floor((diff % 60000) / 1000),
+      })
+    }
+    calc()
+    const interval = setInterval(calc, 1000)
+    return () => clearInterval(interval)
+  }, [target])
+
+  if (time.days === 0 && time.hours === 0 && time.minutes === 0 && time.seconds === 0) return null
+
+  return (
+    <div className="flex items-center gap-1.5 text-xs">
+      {time.days > 0 && <span className="font-mono font-semibold">{time.days}d</span>}
+      <span className="font-mono font-semibold">{String(time.hours).padStart(2, '0')}</span>
+      <span className="text-muted-foreground">:</span>
+      <span className="font-mono font-semibold">{String(time.minutes).padStart(2, '0')}</span>
+      <span className="text-muted-foreground">:</span>
+      <span className="font-mono font-semibold">{String(time.seconds).padStart(2, '0')}</span>
+    </div>
+  )
+}
+
+export default function CodeathonDetailPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = React.use(params)
+  const router = useRouter()
+  const gate = usePageGuard('user')
+  const addToast = useToast()
+
+  const [codeathon, setCodeathon] = useState<Codeathon | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [registering, setRegistering] = useState(false)
+  const [activeTab, setActiveTab] = useState('overview')
+
+  // Team state
+  const [teams, setTeams] = useState<Team[]>([])
+  const [invitations, setInvitations] = useState<Invitation[]>([])
+  const [myTeam, setMyTeam] = useState<Team | null>(null)
+  const [createTeamOpen, setCreateTeamOpen] = useState(false)
+  const [newTeamName, setNewTeamName] = useState('')
+  const [inviteEmail, setInviteEmail] = useState('')
+  const [creatingTeam, setCreatingTeam] = useState(false)
+  const [joiningTeam, setJoiningTeam] = useState<string | null>(null)
+
+  useEffect(() => {
+    void fetchData()
+  }, [id])
+
+  async function fetchData() {
+    try {
+      const [codeathonRes, teamsRes, invitesRes] = await Promise.all([
+        csrfFetch(`/api/codeathons/${id}`, { credentials: 'include' }),
+        csrfFetch(`/api/codeathons/${id}/teams`, { credentials: 'include' }),
+        csrfFetch(`/api/codeathons/${id}/invitations`, { credentials: 'include' }),
+      ])
+
+      if (codeathonRes.ok) {
+        const data = await codeathonRes.json() as Codeathon
+        setCodeathon(data)
+      }
+
+      if (teamsRes.ok) {
+        const data = await teamsRes.json() as { teams: Team[] }
+        setTeams(data.teams || [])
+        // Find my team
+        const userId = (gate as any)?.user?.id
+        const mine = data.teams?.find((t: Team) => t.members?.some((m: any) => m.user_id === userId))
+        setMyTeam(mine || null)
+      }
+
+      if (invitesRes.ok) {
+        const data = await invitesRes.json() as { invitations: Invitation[] }
+        setInvitations(data.invitations || [])
+      }
+    } catch { /* ignore */ }
+    setLoading(false)
+  }
+
+  async function handleRegister() {
+    setRegistering(true)
+    try {
+      const res = await csrfFetch(`/api/codeathons/${id}/register`, {
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({ teamName: myTeam?.name }),
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Registered!', message: 'You are now registered for this codeathon' })
+        setCodeathon(prev => prev ? { ...prev, registered: true } : prev)
+      } else {
+        const data = await res.json() as { error?: string }
+        addToast({ type: 'error', title: 'Failed', message: data.error || 'Registration failed' })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to register' })
+    } finally {
+      setRegistering(false)
+    }
+  }
+
+  async function handleCreateTeam() {
+    if (!newTeamName.trim()) return
+    setCreatingTeam(true)
+    try {
+      const res = await csrfFetch(`/api/codeathons/${id}/teams`, {
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({ name: newTeamName.trim() }),
+      })
+      if (res.ok) {
+        const data = await res.json() as { team: Team }
+        setMyTeam(data.team)
+        setTeams(prev => [data.team, ...prev])
+        setCreateTeamOpen(false)
+        setNewTeamName('')
+        addToast({ type: 'success', title: 'Team created!' })
+      } else {
+        const data = await res.json() as { error?: string }
+        addToast({ type: 'error', title: 'Failed', message: data.error || 'Failed to create team' })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to create team' })
+    } finally {
+      setCreatingTeam(false)
+    }
+  }
+
+  async function handleJoinTeam(teamId: string) {
+    setJoiningTeam(teamId)
+    try {
+      const res = await csrfFetch(`/api/codeathons/${id}/teams/${teamId}/join`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Joined team!' })
+        void fetchData()
+      } else {
+        const data = await res.json() as { error?: string }
+        addToast({ type: 'error', title: 'Failed', message: data.error || 'Failed to join' })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to join team' })
+    } finally {
+      setJoiningTeam(null)
+    }
+  }
+
+  async function handleLeaveTeam() {
+    if (!myTeam) return
+    try {
+      const res = await csrfFetch(`/api/codeathons/${id}/teams/${myTeam.id}/leave`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (res.ok) {
+        setMyTeam(null)
+        void fetchData()
+        addToast({ type: 'success', title: 'Left team' })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to leave team' })
+    }
+  }
+
+  async function handleInvite() {
+    if (!myTeam || !inviteEmail.trim()) return
+    try {
+      const res = await csrfFetch(`/api/codeathons/${id}/teams/${myTeam.id}/invite`, {
+        method: 'POST',
+        credentials: 'include',
+        body: JSON.stringify({ email: inviteEmail.trim() }),
+      })
+      if (res.ok) {
+        setInviteEmail('')
+        addToast({ type: 'success', title: 'Invitation sent!' })
+      } else {
+        const data = await res.json() as { error?: string }
+        addToast({ type: 'error', title: 'Failed', message: data.error || 'Failed to invite' })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to send invitation' })
+    }
+  }
+
+  async function handleAcceptInvite(inviteId: string) {
+    try {
+      const res = await csrfFetch(`/api/codeathons/${id}/invitations/${inviteId}/accept`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Joined team!' })
+        void fetchData()
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to accept invitation' })
+    }
+  }
+
+  async function handleDeclineInvite(inviteId: string) {
+    try {
+      await csrfFetch(`/api/codeathons/${id}/invitations/${inviteId}/decline`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      setInvitations(prev => prev.filter(i => i.id !== inviteId))
+    } catch { /* ignore */ }
+  }
+
+  const isTeamMode = codeathon?.event_type === 'team'
+  const isContestActive = codeathon?.status === 'active' || (codeathon?.startDate && new Date(codeathon.startDate) <= new Date())
+  const problemsVisible = codeathon?.problem_visibility === 'immediate' || isContestActive
+
+  if (loading) return (
+    <div className="flex flex-col items-center justify-center py-20 gap-3">
+      <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      <p className="text-sm text-muted-foreground">Loading...</p>
+    </div>
+  )
+
+  if (!codeathon) return <div className="text-center py-20 text-muted-foreground">Codeathon not found</div>
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/codeathons')}>
+          <ChevronRight className="h-4 w-4 rotate-180" />
+        </Button>
+        <div className="flex-1">
+          <div className="flex items-center gap-2">
+            <h1 className="text-2xl font-bold">{codeathon.title}</h1>
+            <Badge variant="outline" className={
+              codeathon.status === 'active' ? 'border-green-400 text-green-600' :
+              codeathon.status === 'upcoming' ? 'border-blue-400 text-blue-600' :
+              'border-gray-400 text-gray-600'
+            }>
+              {codeathon.status}
+            </Badge>
+            <Badge variant="outline">{isTeamMode ? 'Team Event' : 'Individual'}</Badge>
+          </div>
+          {codeathon.description && (
+            <p className="text-sm text-muted-foreground mt-1">{codeathon.description}</p>
+          )}
+        </div>
+      </div>
+
+      {/* Invitations Banner */}
+      {invitations.length > 0 && (
+        <Card className="p-4 border-blue-500/20 bg-blue-500/5">
+          <h3 className="text-sm font-semibold mb-2">Team Invitations</h3>
+          {invitations.map(inv => (
+            <div key={inv.id} className="flex items-center justify-between py-2 border-b border-blue-500/10 last:border-0">
+              <div>
+                <p className="text-sm font-medium">{inv.team_name}</p>
+                <p className="text-xs text-muted-foreground">Invited by {inv.inviter_name}</p>
+              </div>
+              <div className="flex gap-2">
+                <Button size="sm" onClick={() => handleAcceptInvite(inv.id)}>Accept</Button>
+                <Button size="sm" variant="outline" onClick={() => handleDeclineInvite(inv.id)}>Decline</Button>
+              </div>
+            </div>
+          ))}
+        </Card>
+      )}
+
+      {/* Main content */}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="overview">Overview</TabsTrigger>
+          {isTeamMode && <TabsTrigger value="teams">Teams ({teams.length})</TabsTrigger>}
+          {problemsVisible && codeathon.problems && <TabsTrigger value="problems">Problems ({codeathon.problems.length})</TabsTrigger>}
+        </TabsList>
+
+        <TabsContent value="overview" className="space-y-4">
+          {/* Stats */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+            <Card className="p-4">
+              <p className="text-xs text-muted-foreground">Participants</p>
+              <p className="text-2xl font-bold">{codeathon.participants || 0}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-muted-foreground">Prize Pool</p>
+              <p className="text-2xl font-bold">{codeathon.prizePool || '—'}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-muted-foreground">Difficulty</p>
+              <p className="text-2xl font-bold">{codeathon.difficulty || 'Medium'}</p>
+            </Card>
+            <Card className="p-4">
+              <p className="text-xs text-muted-foreground">Starts</p>
+              {codeathon.startDate ? (
+                <CountdownTimer target={codeathon.startDate} />
+              ) : (
+                <p className="text-sm">TBA</p>
+              )}
+            </Card>
+          </div>
+
+          {/* Topics */}
+          {codeathon.topics && codeathon.topics.length > 0 && (
+            <Card className="p-4">
+              <h3 className="text-sm font-semibold mb-2">Topics</h3>
+              <div className="flex flex-wrap gap-1.5">
+                {codeathon.topics.map(t => <Badge key={t} variant="secondary">{t}</Badge>)}
+              </div>
+            </Card>
+          )}
+
+          {/* Team info */}
+          {isTeamMode && (
+            <Card className="p-4">
+              <h3 className="text-sm font-semibold mb-2">Team Format</h3>
+              <p className="text-sm text-muted-foreground">
+                Team size: {codeathon.team_size_min || 2} - {codeathon.team_size_max || 4} members
+              </p>
+            </Card>
+          )}
+        </TabsContent>
+
+        <TabsContent value="teams" className="space-y-4">
+          {!myTeam && (
+            <div className="flex gap-2">
+              <Button onClick={() => setCreateTeamOpen(true)}>
+                <Plus className="h-4 w-4 mr-1" />Create Team
+              </Button>
+            </div>
+          )}
+
+          {myTeam && (
+            <Card className="p-4 border-primary/20">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="text-sm font-semibold flex items-center gap-2">
+                  <Shield className="h-4 w-4" />Your Team: {myTeam.name}
+                </h3>
+                <Button size="sm" variant="outline" onClick={handleLeaveTeam}>
+                  <UserMinus className="h-3.5 w-3.5 mr-1" />Leave
+                </Button>
+              </div>
+              <div className="space-y-2">
+                {myTeam.members?.map(m => (
+                  <div key={m.user_id} className="flex items-center justify-between text-sm">
+                    <span>{m.user_id.slice(0, 8)}...</span>
+                    <Badge variant="outline" className="text-xs">{m.role}</Badge>
+                  </div>
+                ))}
+              </div>
+              <div className="mt-3 flex gap-2">
+                <Input
+                  placeholder="Email to invite"
+                  value={inviteEmail}
+                  onChange={e => setInviteEmail(e.target.value)}
+                  className="flex-1"
+                />
+                <Button size="sm" onClick={handleInvite} disabled={!inviteEmail.trim()}>
+                  <Mail className="h-3.5 w-3.5 mr-1" />Invite
+                </Button>
+              </div>
+            </Card>
+          )}
+
+          <div className="space-y-2">
+            <h3 className="text-sm font-semibold">All Teams</h3>
+            {teams.length === 0 ? (
+              <p className="text-sm text-muted-foreground">No teams created yet</p>
+            ) : (
+              teams.map(team => (
+                <Card key={team.id} className="p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="font-medium">{team.name}</p>
+                      <p className="text-xs text-muted-foreground">{team.member_count} members</p>
+                    </div>
+                    {!myTeam && (
+                      <Button size="sm" variant="outline" onClick={() => handleJoinTeam(team.id)} disabled={joiningTeam === team.id}>
+                        {joiningTeam === team.id ? 'Joining...' : 'Join'}
+                      </Button>
+                    )}
+                  </div>
+                </Card>
+              ))
+            )}
+          </div>
+        </TabsContent>
+
+        <TabsContent value="problems" className="space-y-4">
+          {!problemsVisible ? (
+            <Card className="p-8 text-center">
+              <Target className="h-10 w-10 mx-auto text-muted-foreground/40 mb-3" />
+              <p className="text-muted-foreground">Problems will be visible when the contest starts</p>
+              <p className="text-xs text-muted-foreground mt-1">Start time: {codeathon.startDate ? new Date(codeathon.startDate).toLocaleString() : 'TBA'}</p>
+            </Card>
+          ) : (
+            <div className="space-y-2">
+              {codeathon.problems?.map((p, i) => (
+                <Card key={p.id} className="p-4 hover:border-primary/30 transition-colors cursor-pointer"
+                  onClick={() => router.push(`/dashboard/codeathons/${id}/problems/${p.id}`)}>
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <span className="text-sm font-mono text-muted-foreground">#{i + 1}</span>
+                      <div>
+                        <p className="font-medium">{p.title}</p>
+                        <div className="flex items-center gap-2 mt-1">
+                          <Badge variant="outline" className={
+                            p.difficulty === 'Hard' ? 'border-red-400 text-red-600' :
+                            p.difficulty === 'Easy' ? 'border-green-400 text-green-600' :
+                            'border-yellow-400 text-yellow-600'
+                          }>
+                            {p.difficulty}
+                          </Badge>
+                          <span className="text-xs text-muted-foreground">{p.points} pts</span>
+                        </div>
+                      </div>
+                    </div>
+                    <ChevronRight className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                </Card>
+              ))}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      {/* Register button */}
+      <div className="flex gap-2">
+        {!codeathon.registered ? (
+          <Button onClick={handleRegister} disabled={registering} size="lg">
+            {registering ? 'Registering...' : 'Register for Codeathon'}
+          </Button>
+        ) : (
+          <Button variant="outline" size="lg" disabled>
+            <CheckCircle2 className="h-4 w-4 mr-1" />Registered
+          </Button>
+        )}
+      </div>
+
+      {/* Create Team Dialog */}
+      <Dialog open={createTeamOpen} onOpenChange={setCreateTeamOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Create Team</DialogTitle>
+            <DialogDescription>Create a team for this codeathon</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Team Name</Label>
+              <Input value={newTeamName} onChange={e => setNewTeamName(e.target.value)} placeholder="Enter team name" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setCreateTeamOpen(false)}>Cancel</Button>
+            <Button onClick={handleCreateTeam} disabled={creatingTeam || !newTeamName.trim()}>
+              {creatingTeam ? 'Creating...' : 'Create Team'}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+    </div>
+  )
+}
