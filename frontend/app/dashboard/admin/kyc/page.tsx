@@ -4,14 +4,12 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
-import { Input } from '@/components/ui/input'
 import {
-  ShieldCheck, Users, CheckCircle2, XCircle, Clock, Search,
-  Loader2, Download, Eye, AlertTriangle
+  ShieldCheck, CheckCircle2, XCircle, Clock, Eye, Loader2, AlertTriangle,
+  FileCheck, Globe, User, CreditCard, MapPin, Smartphone, AlertCircle
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
-import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface KycRecord {
@@ -23,9 +21,15 @@ interface KycRecord {
   status: 'approved' | 'rejected' | 'manual_review' | 'pending'
   document_type?: string
   full_name?: string
+  document_number?: string
+  issuing_state?: string
   liveness_score?: number
   face_match_similarity?: number
   vpn_detected?: boolean
+  ip_address?: string
+  ip_city?: string
+  device?: string
+  browser?: string
   created_at: string
 }
 
@@ -39,18 +43,14 @@ interface KycStats {
 
 export default function AdminKycPage() {
   const gate = usePageGuard('superadmin')
-  const addToast = useToast()
   const [records, setRecords] = useState<KycRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<KycStats>({ total: 0, approved: 0, rejected: 0, pending: 0, manual_review: 0 })
   const [selectedRecord, setSelectedRecord] = useState<KycRecord | null>(null)
 
-  useEffect(() => {
-    void fetchData()
-  }, [])
+  useEffect(() => { void fetchData() }, [])
 
   async function fetchData() {
-    setLoading(true)
     try {
       const res = await csrfFetch('/api/admin/kyc', { credentials: 'include' })
       if (res.ok) {
@@ -80,7 +80,6 @@ export default function AdminKycPage() {
       </div>
     )},
     { key: 'status', header: 'Status', cell: (r) => getStatusBadge(r.status) },
-    { key: 'provider', header: 'Provider', cell: (r) => <Badge variant="outline" className="text-xs">{r.provider}</Badge> },
     { key: 'document_type', header: 'Document', cell: (r) => r.document_type || '—' },
     { key: 'liveness_score', header: 'Liveness', cell: (r) => r.liveness_score ? `${r.liveness_score}/100` : '—' },
     { key: 'face_match_similarity', header: 'Face Match', cell: (r) => r.face_match_similarity ? `${r.face_match_similarity}%` : '—' },
@@ -108,86 +107,79 @@ export default function AdminKycPage() {
 
       {/* Stats */}
       <div className="grid grid-cols-2 sm:grid-cols-5 gap-4">
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Total</p>
-          <p className="text-2xl font-bold">{stats.total}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Approved</p>
-          <p className="text-2xl font-bold text-emerald-500">{stats.approved}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Rejected</p>
-          <p className="text-2xl font-bold text-destructive">{stats.rejected}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">Pending</p>
-          <p className="text-2xl font-bold text-blue-500">{stats.pending}</p>
-        </Card>
-        <Card className="p-4">
-          <p className="text-xs text-muted-foreground">In Review</p>
-          <p className="text-2xl font-bold text-amber-500">{stats.manual_review}</p>
-        </Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Total</p><p className="text-2xl font-bold">{stats.total}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Approved</p><p className="text-2xl font-bold text-emerald-500">{stats.approved}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Rejected</p><p className="text-2xl font-bold text-destructive">{stats.rejected}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">Pending</p><p className="text-2xl font-bold text-blue-500">{stats.pending}</p></Card>
+        <Card className="p-4"><p className="text-xs text-muted-foreground">In Review</p><p className="text-2xl font-bold text-amber-500">{stats.manual_review}</p></Card>
       </div>
 
-      {/* Table */}
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
           <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading records...
         </div>
       ) : (
-        <DataTable
-          columns={columns}
-          data={records}
-          searchPlaceholder="Search by name or email..."
-          searchKeys={['user_name', 'user_email']}
-          loading={loading}
-          emptyMessage="No KYC records yet."
-        />
+        <DataTable columns={columns} data={records} searchPlaceholder="Search by name or email..." searchKeys={['user_name', 'user_email']} loading={loading} emptyMessage="No KYC records yet." />
       )}
 
-      {/* Detail Modal */}
+      {/* Detail Modal — Full Didit-style view */}
       {selectedRecord && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 backdrop-blur-sm p-4" onClick={() => setSelectedRecord(null)}>
-          <Card className="w-full max-w-lg p-6" onClick={e => e.stopPropagation()}>
-            <div className="flex items-center justify-between mb-4">
-              <h3 className="text-lg font-semibold">Verification Details</h3>
-              <Button variant="ghost" size="sm" onClick={() => setSelectedRecord(null)}>×</Button>
+          <Card className="w-full max-w-3xl max-h-[90vh] overflow-y-auto p-6" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between mb-6">
+              <div>
+                <h3 className="text-lg font-semibold">{selectedRecord.full_name || selectedRecord.user_name || 'User'}</h3>
+                <p className="text-sm text-muted-foreground">{selectedRecord.user_email}</p>
+              </div>
+              <div className="flex items-center gap-2">
+                {getStatusBadge(selectedRecord.status)}
+                <Button variant="ghost" size="sm" onClick={() => setSelectedRecord(null)}>×</Button>
+              </div>
             </div>
+
             <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-4 text-sm">
-                <div>
-                  <p className="text-muted-foreground">User</p>
-                  <p className="font-medium">{selectedRecord.user_name || 'Unknown'}</p>
+              {/* Document Information */}
+              <div className="p-4 rounded-lg border border-border/50 bg-background/50">
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <FileCheck className="h-4 w-4 text-primary" /> Document Information
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  <div><p className="text-xs text-muted-foreground">Full Name</p><p className="font-medium">{selectedRecord.full_name || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Document Type</p><p className="font-medium">{selectedRecord.document_type || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Document Number</p><p className="font-medium font-mono text-xs">{selectedRecord.document_number || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Issuing Country</p><p className="font-medium">{selectedRecord.issuing_state || '—'}</p></div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Status</p>
-                  {getStatusBadge(selectedRecord.status)}
+              </div>
+
+              {/* Biometric Verification */}
+              <div className="p-4 rounded-lg border border-border/50 bg-background/50">
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4 text-primary" /> Biometric Verification
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  <div><p className="text-xs text-muted-foreground">Liveness Score</p><p className="font-medium">{selectedRecord.liveness_score ?? '—'}/100</p></div>
+                  <div><p className="text-xs text-muted-foreground">Face Match Similarity</p><p className="font-medium">{selectedRecord.face_match_similarity ?? '—'}%</p></div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Provider</p>
-                  <p className="font-medium">{selectedRecord.provider}</p>
+              </div>
+
+              {/* Device & Location */}
+              <div className="p-4 rounded-lg border border-border/50 bg-background/50">
+                <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Globe className="h-4 w-4 text-primary" /> Device & Location
+                </h4>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-4 text-sm">
+                  <div><p className="text-xs text-muted-foreground">IP Address</p><p className="font-medium font-mono text-xs">{selectedRecord.ip_address || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Location</p><p className="font-medium">{selectedRecord.ip_city || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Device</p><p className="font-medium">{selectedRecord.device || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">Browser</p><p className="font-medium">{selectedRecord.browser || '—'}</p></div>
+                  <div><p className="text-xs text-muted-foreground">VPN Detected</p><p className="font-medium">{selectedRecord.vpn_detected ? 'Yes' : 'No'}</p></div>
                 </div>
-                <div>
-                  <p className="text-muted-foreground">Document Type</p>
-                  <p className="font-medium">{selectedRecord.document_type || '—'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Liveness Score</p>
-                  <p className="font-medium">{selectedRecord.liveness_score ?? '—'}/100</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Face Match</p>
-                  <p className="font-medium">{selectedRecord.face_match_similarity ?? '—'}%</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">VPN Detected</p>
-                  <p className="font-medium">{selectedRecord.vpn_detected ? 'Yes' : 'No'}</p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground">Date</p>
-                  <p className="font-medium">{selectedRecord.created_at ? new Date(selectedRecord.created_at).toLocaleString() : '—'}</p>
-                </div>
+              </div>
+
+              {/* Meta */}
+              <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/50">
+                <span>Provider: {selectedRecord.provider}</span>
+                <span>{selectedRecord.created_at ? new Date(selectedRecord.created_at).toLocaleString() : '—'}</span>
               </div>
             </div>
           </Card>

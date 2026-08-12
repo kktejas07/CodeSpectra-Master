@@ -12,6 +12,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
@@ -473,68 +474,67 @@ export default function AdminExamsPage() {
         </DialogContent>
       </Dialog>
 
-      <Dialog open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
-          <DialogHeader>
-            <DialogTitle>Invite Candidate</DialogTitle>
-          </DialogHeader>
-          <div className="py-4 space-y-4">
-            <p className="text-sm text-muted-foreground">
-              Invite a candidate to take the <strong className="text-foreground">{invitingExam?.title}</strong> assessment.
-            </p>
-            {!generatedLink ? (
-              <form onSubmit={handleSendInvite} className="grid gap-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <div className="grid gap-2">
-                    <Label htmlFor="candName">Candidate Name (Optional)</Label>
-                    <Input id="candName" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. John Doe" />
-                  </div>
-                  <div className="grid gap-2">
-                    <Label htmlFor="candEmail">Email Address</Label>
-                    <Input id="candEmail" type="email" required value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="candidate@example.com" />
-                  </div>
+      <Sheet open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
+        <SheetContent side="right" className="w-full sm:w-[480px] sm:max-w-md overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Invite Candidate</SheetTitle>
+            <SheetDescription>
+              Send an assessment invitation to a candidate for <strong>{invitingExam?.title}</strong>.
+            </SheetDescription>
+          </SheetHeader>
+          {!generatedLink ? (
+            <form onSubmit={handleSendInvite} className="space-y-4 px-4 pb-4">
+              <div className="space-y-2">
+                <Label htmlFor="candName">Candidate Name <span className="text-muted-foreground">(Optional)</span></Label>
+                <Input id="candName" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. John Doe" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="candEmail">Email Address *</Label>
+                <Input id="candEmail" type="email" required value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="candidate@example.com" />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="candCc">CC Email <span className="text-muted-foreground">(Optional)</span></Label>
+                <Input id="candCc" type="email" value={candCc} onChange={(e) => setCandCc(e.target.value)} placeholder="manager@company.com" />
+                <p className="text-xs text-muted-foreground">Copy this person on the invitation email</p>
+              </div>
+              <SheetFooter>
+                <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>
+                <Button type="submit" disabled={sendingInvite || !candEmail}>
+                  {sendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Send Invite
+                </Button>
+              </SheetFooter>
+            </form>
+          ) : (
+            <div className="space-y-4 px-4 pb-4">
+              <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
+                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
+                  <CheckCircle2 className="h-5 w-5" />
+                  <p className="font-medium">Invitation sent!</p>
                 </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="candCc">CC Email <span className="text-muted-foreground">(Optional)</span></Label>
-                  <Input id="candCc" type="email" value={candCc} onChange={(e) => setCandCc(e.target.value)} placeholder="manager@company.com" />
-                  <p className="text-xs text-muted-foreground">Copy this person on the invitation email</p>
-                </div>
-                <div className="pt-2 flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>
-                  <Button type="submit" disabled={sendingInvite || !candEmail}>
-                    {sendingInvite && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Generate & Send Invite
-                  </Button>
-                </div>
-              </form>
-            ) : (
-              <div className="space-y-4 pt-2">
-                <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
-                  <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
-                    <CheckCircle2 className="h-5 w-5" />
-                    <p className="font-medium">Invitation generated successfully!</p>
-                  </div>
-                  <p className="text-sm text-green-700/80 dark:text-green-400/80">
-                    The following secure link has been emailed to {candEmail}. You can also copy it manually:
-                  </p>
-                </div>
+                <p className="text-sm text-green-700/80 dark:text-green-400/80">
+                  Link emailed to <strong>{candEmail}</strong>
+                </p>
+              </div>
+              <div className="space-y-2">
+                <Label>Invite Link</Label>
                 <div className="flex gap-2">
                   <Input readOnly value={generatedLink} className="font-mono text-sm" />
                   <Button variant="secondary" onClick={() => {
                     navigator.clipboard.writeText(generatedLink)
-                    addToast({ type: 'success', title: 'Link copied to clipboard' })
+                    addToast({ type: 'success', title: 'Copied!' })
                   }}>
                     <Copy className="h-4 w-4" />
                   </Button>
                 </div>
-                <div className="pt-2 flex justify-end">
-                  <Button onClick={() => setIsInviteModalOpen(false)}>Done</Button>
-                </div>
               </div>
-            )}
-          </div>
-        </DialogContent>
-      </Dialog>
+              <SheetFooter>
+                <Button onClick={() => setIsInviteModalOpen(false)}>Done</Button>
+              </SheetFooter>
+            </div>
+          )}
+        </SheetContent>
+      </Sheet>
 
       <Dialog open={isBulkInviteOpen} onOpenChange={setIsBulkInviteOpen}>
         <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
