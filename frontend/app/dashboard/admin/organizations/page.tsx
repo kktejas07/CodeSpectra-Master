@@ -9,10 +9,11 @@ import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
+import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, LogIn, ShieldAlert, RefreshCw, UserRound, Mail } from 'lucide-react'
+import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, EyeOff, LogIn, ShieldAlert, RefreshCw, UserRound, Mail } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
 
@@ -69,11 +70,14 @@ export default function TenantsPage() {
   const [newMemberEmail, setNewMemberEmail] = useState('')
   const [newMemberPassword, setNewMemberPassword] = useState('')
   const [newMemberRole, setNewMemberRole] = useState('user')
+  const [showNewMemberPassword, setShowNewMemberPassword] = useState(false)
 
   const [editingMember, setEditingMember] = useState<TenantMember | null>(null)
   const [editMemberEmail, setEditMemberEmail] = useState('')
   const [editMemberPassword, setEditMemberPassword] = useState('')
+  const [showEditMemberPassword, setShowEditMemberPassword] = useState(false)
   const [savingMemberEdit, setSavingMemberEdit] = useState(false)
+  const [deletingMember, setDeletingMember] = useState(false)
 
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
@@ -314,6 +318,31 @@ export default function TenantsPage() {
     }
   }
 
+  const handleDeleteMember = async () => {
+    if (!editingMember || deletingMember) return
+    if (!window.confirm(`Delete ${editingMember.name || editingMember.email}? This cannot be undone.`)) return
+    setDeletingMember(true)
+    try {
+      const res = await csrfFetch(`/api/admin/users/${editingMember.id}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Member deleted', message: `${editingMember.name || editingMember.email} has been removed` })
+        setEditingMember(null)
+        setEditMemberPassword('')
+        if (membersOf) await openMembers(membersOf)
+      } else {
+        const json = await res.json().catch(() => ({}))
+        addToast({ type: 'error', title: 'Failed', message: json.error })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to delete member' })
+    } finally {
+      setDeletingMember(false)
+    }
+  }
+
   const handleAddMember = async (e: React.FormEvent) => {
     e.preventDefault()
     if (!membersOf || addingMember) return
@@ -480,17 +509,17 @@ export default function TenantsPage() {
         </div>
       )}
 
-      {/* Create dialog */}
-      <Dialog open={createOpen} onOpenChange={setCreateOpen}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleCreate}>
-            <DialogHeader>
-              <DialogTitle>New organization</DialogTitle>
-              <DialogDescription>
-                Create a tenant. Optionally provision the org admin account in the same step, then impersonate them to verify their experience.
-              </DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4 text-xs">
+      {/* Create drawer */}
+      <Sheet open={createOpen} onOpenChange={setCreateOpen}>
+        <SheetContent side="left" className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>New organization</SheetTitle>
+            <SheetDescription>
+              Create a tenant. Optionally provision the org admin account in the same step, then impersonate them to verify their experience.
+            </SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleCreate} className="px-4 pb-4">
+            <div className="grid gap-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="tenant-name">Organization name</Label>
@@ -531,25 +560,25 @@ export default function TenantsPage() {
                 <p className="text-[11px] text-muted-foreground">Leave email empty to create the org without an admin and assign one later.</p>
               </div>
             </div>
-            <DialogFooter className="gap-2 sm:gap-2">
+            <SheetFooter className="mt-4">
               <Button type="button" variant="outline" onClick={() => setCreateOpen(false)}>Cancel</Button>
               <Button type="submit" disabled={creating || !name.trim()}>
                 {creating ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Creating…</> : 'Create'}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
-      {/* Edit dialog */}
-      <Dialog open={Boolean(editTenant)} onOpenChange={(o) => !o && setEditTenant(null)}>
-        <DialogContent className="sm:max-w-md">
-          <form onSubmit={handleEdit}>
-            <DialogHeader>
-              <DialogTitle>Edit organization</DialogTitle>
-              <DialogDescription>Update tenant details. Changes apply immediately to members scoped to this org.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4 text-xs">
+      {/* Edit drawer */}
+      <Sheet open={Boolean(editTenant)} onOpenChange={(o) => !o && setEditTenant(null)}>
+        <SheetContent side="left" className="sm:max-w-lg overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle>Edit organization</SheetTitle>
+            <SheetDescription>Update tenant details. Changes apply immediately to members scoped to this org.</SheetDescription>
+          </SheetHeader>
+          <form onSubmit={handleEdit} className="px-4 pb-4">
+            <div className="grid gap-4 text-xs">
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="edit-tenant-name">Organization name</Label>
@@ -581,129 +610,131 @@ export default function TenantsPage() {
                 </div>
               </div>
             </div>
-            <DialogFooter className="gap-2 sm:gap-2">
+            <SheetFooter className="mt-4">
               <Button type="button" variant="outline" onClick={() => setEditTenant(null)}>Cancel</Button>
               <Button type="submit" disabled={savingEdit || !editName.trim()}>
                 {savingEdit ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Saving…</> : 'Save'}
               </Button>
-            </DialogFooter>
+            </SheetFooter>
           </form>
-        </DialogContent>
-      </Dialog>
+        </SheetContent>
+      </Sheet>
 
-      {/* Members dialog */}
-      <Dialog open={Boolean(membersOf)} onOpenChange={(o) => !o && setMembersOf(null)}>
-        <DialogContent className="sm:max-w-lg">
-          <DialogHeader>
-            <DialogTitle className="flex items-center gap-2">
+      {/* Members drawer */}
+      <Sheet open={Boolean(membersOf)} onOpenChange={(o) => !o && setMembersOf(null)}>
+        <SheetContent side="left" className="sm:max-w-xl overflow-y-auto">
+          <SheetHeader>
+            <SheetTitle className="flex items-center gap-2">
               <Building2 className="h-4 w-4" /> {membersOf?.name || ''} members
-            </DialogTitle>
-            <DialogDescription>
+            </SheetTitle>
+            <SheetDescription>
               People attached to this tenant. Add members or impersonate one to view the app as them.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="flex items-center justify-between gap-2">
-            <p className="text-xs text-muted-foreground">{members.length} member{members.length !== 1 ? 's' : ''}</p>
-            <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => setAddMemberOpen(true)}>
-              <Plus className="h-3.5 w-3.5" /> Add member
-            </Button>
-          </div>
-          <div className="max-h-[45vh] overflow-y-auto py-2">
-            {membersLoading ? (
-              <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
-            ) : members.length === 0 ? (
-              <div className="text-center py-10">
-                <UserRound className="mx-auto h-10 w-10 text-muted-foreground/30" />
-                <p className="mt-2 text-sm text-muted-foreground">No members in this organization yet.</p>
-                <p className="text-xs text-muted-foreground">Use "Add member" to create one and attach it to this org.</p>
-              </div>
-            ) : (
-              <div className="space-y-2">
-                {members.map(m => (
-                  <div key={m.id} className="flex items-center justify-between gap-3 rounded-md border border-border/50 p-3">
-                    <div className="min-w-0 flex-1">
-                      <p className="truncate text-sm font-medium text-foreground flex items-center gap-2">
-                        {m.name}
+            </SheetDescription>
+          </SheetHeader>
+          <div className="px-4">
+            <div className="flex items-center justify-between gap-2">
+              <p className="text-xs text-muted-foreground">{members.length} member{members.length !== 1 ? 's' : ''}</p>
+              <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" onClick={() => setAddMemberOpen(true)}>
+                <Plus className="h-3.5 w-3.5" /> Add member
+              </Button>
+            </div>
+            <div className="max-h-[60vh] overflow-y-auto py-2">
+              {membersLoading ? (
+                <div className="flex justify-center py-10"><Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /></div>
+              ) : members.length === 0 ? (
+                <div className="text-center py-10">
+                  <UserRound className="mx-auto h-10 w-10 text-muted-foreground/30" />
+                  <p className="mt-2 text-sm text-muted-foreground">No members in this organization yet.</p>
+                  <p className="text-xs text-muted-foreground">Use "Add member" to create one and attach it to this org.</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  {members.map(m => (
+                    <div key={m.id} className="flex items-center justify-between gap-3 rounded-md border border-border/50 p-3">
+                      <div className="min-w-0 flex-1">
+                        <p className="truncate text-sm font-medium text-foreground flex items-center gap-2">
+                          {m.name}
+                          {normalizeUserRole(m.role) === 'superadmin' ? (
+                            <Badge variant="outline" className="text-[10px] capitalize shrink-0">
+                              {getRoleLabel(normalizeUserRole(m.role))}
+                            </Badge>
+                          ) : (
+                            <Select
+                              value={normalizeUserRole(m.role)}
+                              onValueChange={(v) => void handleUpdateMemberRole(m, v)}
+                            >
+                              <SelectTrigger className="h-6 w-auto min-w-[100px] text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                <SelectItem value="user">User</SelectItem>
+                                <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </p>
+                        <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+                      </div>
+                      <div className="flex items-center gap-2 shrink-0">
                         {normalizeUserRole(m.role) === 'superadmin' ? (
-                          <Badge variant="outline" className="text-[10px] capitalize shrink-0">
-                            {getRoleLabel(normalizeUserRole(m.role))}
-                          </Badge>
+                          <TooltipProvider>
+                            <Tooltip>
+                              <TooltipTrigger asChild>
+                                <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled>
+                                  <ShieldAlert className="h-3.5 w-3.5" /> Protected
+                                </Button>
+                              </TooltipTrigger>
+                              <TooltipContent side="top"><p className="text-xs">Platform admins can't be impersonated</p></TooltipContent>
+                            </Tooltip>
+                          </TooltipProvider>
                         ) : (
-                          <Select
-                            value={normalizeUserRole(m.role)}
-                            onValueChange={(v) => void handleUpdateMemberRole(m, v)}
-                          >
-                            <SelectTrigger className="h-6 w-auto min-w-[100px] text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              <SelectItem value="user">User</SelectItem>
-                              <SelectItem value="tenant_admin">Org Admin</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          <div className="flex items-center gap-1">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 gap-1 px-2 text-xs"
+                              onClick={() => {
+                                setEditingMember(m)
+                                setEditMemberEmail(m.email)
+                                setEditMemberPassword('')
+                              }}
+                              title="Edit email / password"
+                            >
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7 gap-1 px-2 text-xs"
+                              onClick={() => void handleResendCredentials(m)}
+                              title="Send password reset email"
+                            >
+                              <Mail className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="outline"
+                              className="h-7 gap-1 px-2 text-xs"
+                              onClick={() => void handleImpersonate(m)}
+                              disabled={impersonatingId === m.id || Boolean(impersonatingId)}
+                            >
+                              {impersonatingId === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
+                              Impersonate
+                            </Button>
+                          </div>
                         )}
-                      </p>
-                      <p className="truncate text-xs text-muted-foreground">{m.email}</p>
+                      </div>
                     </div>
-                    <div className="flex items-center gap-2 shrink-0">
-                      {normalizeUserRole(m.role) === 'superadmin' ? (
-                        <TooltipProvider>
-                          <Tooltip>
-                            <TooltipTrigger asChild>
-                              <Button size="sm" variant="outline" className="h-7 gap-1 px-2 text-xs" disabled>
-                                <ShieldAlert className="h-3.5 w-3.5" /> Protected
-                              </Button>
-                            </TooltipTrigger>
-                            <TooltipContent side="top"><p className="text-xs">Platform admins can't be impersonated</p></TooltipContent>
-                          </Tooltip>
-                        </TooltipProvider>
-                      ) : (
-                        <div className="flex items-center gap-1">
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 gap-1 px-2 text-xs"
-                            onClick={() => {
-                              setEditingMember(m)
-                              setEditMemberEmail(m.email)
-                              setEditMemberPassword('')
-                            }}
-                            title="Edit email / password"
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="ghost"
-                            className="h-7 gap-1 px-2 text-xs"
-                            onClick={() => void handleResendCredentials(m)}
-                            title="Send password reset email"
-                          >
-                            <Mail className="h-3.5 w-3.5" />
-                          </Button>
-                          <Button
-                            size="sm"
-                            variant="outline"
-                            className="h-7 gap-1 px-2 text-xs"
-                            onClick={() => void handleImpersonate(m)}
-                            disabled={impersonatingId === m.id || Boolean(impersonatingId)}
-                          >
-                            {impersonatingId === m.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <LogIn className="h-3.5 w-3.5" />}
-                            Impersonate
-                          </Button>
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
-          <DialogFooter className="gap-2 sm:gap-2">
+          <SheetFooter>
             <Button variant="outline" onClick={() => setMembersOf(null)}>Close</Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </SheetFooter>
+        </SheetContent>
+      </Sheet>
 
       {/* Add member dialog */}
       <Dialog open={addMemberOpen} onOpenChange={setAddMemberOpen}>
@@ -729,7 +760,23 @@ export default function TenantsPage() {
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="grid gap-2">
                   <Label htmlFor="member-password">Password</Label>
-                  <Input id="member-password" type="password" value={newMemberPassword} onChange={e => setNewMemberPassword(e.target.value)} placeholder="Min 8 characters" />
+                  <div className="relative">
+                    <Input
+                      id="member-password"
+                      type={showNewMemberPassword ? 'text' : 'password'}
+                      value={newMemberPassword}
+                      onChange={e => setNewMemberPassword(e.target.value)}
+                      placeholder="Min 8 characters"
+                      className="pr-10"
+                    />
+                    <button
+                      type="button"
+                      onClick={() => setShowNewMemberPassword(!showNewMemberPassword)}
+                      className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                    >
+                      {showNewMemberPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="member-role">Role</Label>
@@ -755,7 +802,7 @@ export default function TenantsPage() {
       </Dialog>
 
       {/* Edit member dialog */}
-      <Dialog open={Boolean(editingMember)} onOpenChange={(o) => { if (!o) { setEditingMember(null); setEditMemberPassword('') } }}>
+      <Dialog open={Boolean(editingMember)} onOpenChange={(o) => { if (!o) { setEditingMember(null); setEditMemberPassword(''); setShowEditMemberPassword(false) } }}>
         <DialogContent className="sm:max-w-md">
           <DialogHeader>
             <DialogTitle>Edit member</DialogTitle>
@@ -776,17 +823,31 @@ export default function TenantsPage() {
             </div>
             <div className="grid gap-2">
               <Label htmlFor="edit-member-password">New Password <span className="text-muted-foreground">(leave blank to keep current)</span></Label>
-              <Input
-                id="edit-member-password"
-                type="password"
-                value={editMemberPassword}
-                onChange={e => setEditMemberPassword(e.target.value)}
-                placeholder="Min 8 characters"
-              />
+              <div className="relative">
+                <Input
+                  id="edit-member-password"
+                  type={showEditMemberPassword ? 'text' : 'password'}
+                  value={editMemberPassword}
+                  onChange={e => setEditMemberPassword(e.target.value)}
+                  placeholder="Min 8 characters"
+                  className="pr-10"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowEditMemberPassword(!showEditMemberPassword)}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
+                >
+                  {showEditMemberPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                </button>
+              </div>
             </div>
           </div>
           <DialogFooter className="gap-2 sm:gap-2">
-            <Button variant="outline" onClick={() => { setEditingMember(null); setEditMemberPassword('') }}>Cancel</Button>
+            <Button variant="destructive" size="sm" onClick={() => void handleDeleteMember()} disabled={deletingMember}>
+              {deletingMember ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+            </Button>
+            <div className="flex-1" />
+            <Button variant="outline" onClick={() => { setEditingMember(null); setEditMemberPassword(''); setShowEditMemberPassword(false) }}>Cancel</Button>
             <Button onClick={() => void handleEditMember()} disabled={savingMemberEdit || !editMemberEmail.trim()}>
               {savingMemberEdit ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Saving…</> : 'Save changes'}
             </Button>
