@@ -11,6 +11,16 @@ import { Badge } from '@/components/ui/badge'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 
+// Helper to render warnings (handles both strings and Didit warning objects)
+function renderWarning(w: unknown): string {
+  if (typeof w === 'string') return w
+  if (w && typeof w === 'object') {
+    const obj = w as Record<string, unknown>
+    return (obj.short_description as string) || (obj.long_description as string) || (obj.feature as string) || JSON.stringify(obj)
+  }
+  return String(w)
+}
+
 interface KycStatus {
   kyc_status: string
   verified: boolean
@@ -258,7 +268,9 @@ export default function IdentityVerificationPage() {
                     <AlertTriangle className="h-4 w-4" /> Warnings
                   </h3>
                   <ul className="list-disc pl-4 text-xs text-amber-600 space-y-1">
-                    {status.result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                    {status.result.warnings.map((w, i) => (
+                      <li key={i}>{renderWarning(w)}</li>
+                    ))}
                   </ul>
                 </div>
               )}
@@ -413,7 +425,9 @@ export default function IdentityVerificationPage() {
                     <AlertTriangle className="h-4 w-4" /> Warnings
                   </h3>
                   <ul className="list-disc pl-4 text-xs text-amber-600 space-y-1">
-                    {status.result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                    {status.result.warnings.map((w, i) => (
+                      <li key={i}>{renderWarning(w)}</li>
+                    ))}
                   </ul>
                 </div>
               )}

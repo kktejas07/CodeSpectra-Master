@@ -49,6 +49,7 @@ export default function AdminExamsPage() {
   const [invitingExam, setInvitingExam] = useState<Exam | null>(null)
   const [candName, setCandName] = useState('')
   const [candEmail, setCandEmail] = useState('')
+  const [candCc, setCandCc] = useState('')
   const [generatedLink, setGeneratedLink] = useState<string | null>(null)
   const [sendingInvite, setSendingInvite] = useState(false)
 
@@ -199,6 +200,7 @@ export default function AdminExamsPage() {
           role: 'user',
           target_url: `/assessment/${invitingExam.id}`,
           exam_title: invitingExam.title,
+          cc_email: candCc.trim() || undefined,
         }),
       })
       const json = await res.json()
@@ -491,6 +493,11 @@ export default function AdminExamsPage() {
                     <Label htmlFor="candEmail">Email Address</Label>
                     <Input id="candEmail" type="email" required value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="candidate@example.com" />
                   </div>
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="candCc">CC Email <span className="text-muted-foreground">(Optional)</span></Label>
+                  <Input id="candCc" type="email" value={candCc} onChange={(e) => setCandCc(e.target.value)} placeholder="manager@company.com" />
+                  <p className="text-xs text-muted-foreground">Copy this person on the invitation email</p>
                 </div>
                 <div className="pt-2 flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>

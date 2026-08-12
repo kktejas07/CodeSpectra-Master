@@ -5,6 +5,7 @@ export async function sendEmailViaPostal(params: {
   subject: string
   html: string
   text?: string
+  cc?: string
 }): Promise<{ messageId: number | null }> {
   await warmServerSecretsCache()
   const s = getServerSecretsFromCache()
@@ -26,6 +27,7 @@ export async function sendEmailViaPostal(params: {
     },
     body: JSON.stringify({
       to: [params.to],
+      ...(params.cc ? { cc: [params.cc] } : {}),
       from,
       subject: params.subject,
       html_body: params.html,

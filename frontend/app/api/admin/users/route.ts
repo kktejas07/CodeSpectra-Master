@@ -115,6 +115,7 @@ export async function POST(request: Request) {
     tenantId?: string | null
     target_url?: string
     exam_title?: string
+    cc_email?: string
     assigned_assessments?: import('@/lib/db/admin').AssessmentStep[]
     allowed_languages?: string[]
   }
@@ -249,7 +250,7 @@ export async function POST(request: Request) {
         inviteUrl,
         expiresIn: expiresStr,
       })
-      const result = await sendEmail(email, template)
+      const result = await sendEmail(email, template, body.cc_email)
       welcomeEmailSent = result.success
       delivery = result.provider
 
