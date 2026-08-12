@@ -355,7 +355,7 @@ export default function AdminCodeathonsPage() {
 
       {/* Create Sheet */}
       <Sheet open={createOpen} onOpenChange={setCreateOpen}>
-        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-[512px] sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Create Codeathon</SheetTitle>
             <SheetDescription>Set up a new coding competition.</SheetDescription>
@@ -374,7 +374,7 @@ export default function AdminCodeathonsPage() {
 
       {/* Edit Sheet */}
       <Sheet open={Boolean(editing)} onOpenChange={(o) => { if (!o) setEditing(null) }}>
-        <SheetContent side="right" className="sm:max-w-2xl overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-[672px] sm:max-w-2xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Edit Codeathon</SheetTitle>
             <SheetDescription>Update codeathon details and problem set.</SheetDescription>
