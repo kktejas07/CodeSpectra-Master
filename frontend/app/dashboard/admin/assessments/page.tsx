@@ -348,8 +348,8 @@ export default function AdminExamsPage() {
           <DialogHeader>
             <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-2 gap-4 py-4">
-            <div className="col-span-2 grid gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
+            <div className="col-span-1 sm:col-span-2 grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. JavaScript Fundamentals" />
             </div>
@@ -413,11 +413,11 @@ export default function AdminExamsPage() {
               <Label htmlFor="questions">Questions</Label>
               <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
             </div>
-            <div className="col-span-2 grid gap-2">
+            <div className="sm:col-span-2 grid gap-2">
               <Label htmlFor="techStack">Topics / Skills (comma separated)</Label>
               <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder="e.g. Selenium, TestNG, API Testing, SQL" />
             </div>
-            <div className="flex items-center justify-between mt-2 col-span-2">
+            <div className="flex items-center justify-between mt-2 sm:col-span-2">
               <div className="space-y-0.5">
                 <Label>Access Type</Label>
                 <div className="text-sm text-muted-foreground">
@@ -449,7 +449,7 @@ export default function AdminExamsPage() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between mt-2 col-span-2">
+            <div className="flex items-center justify-between mt-2 sm:col-span-2">
               <div className="space-y-0.5">
                 <Label>Published</Label>
                 <div className="text-sm text-muted-foreground">
@@ -482,13 +482,15 @@ export default function AdminExamsPage() {
             </p>
             {!generatedLink ? (
               <form onSubmit={handleSendInvite} className="grid gap-4">
-                <div className="grid gap-2">
-                  <Label htmlFor="candName">Candidate Name (Optional)</Label>
-                  <Input id="candName" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. John Doe" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="candEmail">Email Address</Label>
-                  <Input id="candEmail" type="email" required value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="candidate@example.com" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="candName">Candidate Name (Optional)</Label>
+                    <Input id="candName" value={candName} onChange={(e) => setCandName(e.target.value)} placeholder="e.g. John Doe" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="candEmail">Email Address</Label>
+                    <Input id="candEmail" type="email" required value={candEmail} onChange={(e) => setCandEmail(e.target.value)} placeholder="candidate@example.com" />
+                  </div>
                 </div>
                 <div className="pt-2 flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => setIsInviteModalOpen(false)}>Cancel</Button>

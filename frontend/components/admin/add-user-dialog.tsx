@@ -91,26 +91,28 @@ export function AddUserDialog({ open, onOpenChange, onSubmit }: AddUserDialogPro
             </DialogDescription>
           </DialogHeader>
           <div className="grid gap-4 py-4 text-xs">
-            <div className="grid gap-2">
-              <Label htmlFor="add-user-email">Email Address</Label>
-              <Input
-                id="add-user-email"
-                type="email"
-                autoComplete="email"
-                required
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                placeholder="user@company.com"
-              />
-            </div>
-            <div className="grid gap-2">
-              <Label htmlFor="add-user-name">Full Name</Label>
-              <Input
-                id="add-user-name"
-                value={fullName}
-                onChange={(e) => setFullName(e.target.value)}
-                placeholder="Jane Doe"
-              />
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid gap-2">
+                <Label htmlFor="add-user-email">Email Address</Label>
+                <Input
+                  id="add-user-email"
+                  type="email"
+                  autoComplete="email"
+                  required
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  placeholder="user@company.com"
+                />
+              </div>
+              <div className="grid gap-2">
+                <Label htmlFor="add-user-name">Full Name</Label>
+                <Input
+                  id="add-user-name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  placeholder="Jane Doe"
+                />
+              </div>
             </div>
 
             <div className="grid gap-2">

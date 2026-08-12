@@ -158,22 +158,24 @@ export default function SupportPage() {
 
       {showForm && (
         <Card className="p-6 space-y-4">
-          <div>
-            <Label>Subject</Label>
-            <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Brief summary of your issue" />
-          </div>
-          <div>
-            <Label>Category</Label>
-            <Select value={category} onValueChange={setCategory}>
-              <SelectTrigger><SelectValue /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="general">General</SelectItem>
-                <SelectItem value="billing">Billing</SelectItem>
-                <SelectItem value="technical">Technical</SelectItem>
-                <SelectItem value="bug">Bug Report</SelectItem>
-                <SelectItem value="feature">Feature Request</SelectItem>
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div>
+              <Label>Subject</Label>
+              <Input value={subject} onChange={e => setSubject(e.target.value)} placeholder="Brief summary of your issue" />
+            </div>
+            <div>
+              <Label>Category</Label>
+              <Select value={category} onValueChange={setCategory}>
+                <SelectTrigger><SelectValue /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="general">General</SelectItem>
+                  <SelectItem value="billing">Billing</SelectItem>
+                  <SelectItem value="technical">Technical</SelectItem>
+                  <SelectItem value="bug">Bug Report</SelectItem>
+                  <SelectItem value="feature">Feature Request</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
           </div>
           <div>
             <Label>Message</Label>

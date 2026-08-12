@@ -418,7 +418,7 @@ export default function QuestionBankPage() {
               <Label>Question</Label>
               <Textarea value={form.question} onChange={e => setForm({ ...form, question: e.target.value })} rows={3} placeholder="Full question prompt" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Type</Label>
                 <Select value={form.type} onValueChange={v => setForm({ ...form, type: v as QuestionType })}>
@@ -442,7 +442,7 @@ export default function QuestionBankPage() {
                 <Textarea value={form.options} onChange={e => setForm({ ...form, options: e.target.value })} rows={4} placeholder={form.type === 'true_false' ? 'True\nFalse' : 'Option 1\nOption 2\nOption 3\nOption 4'} />
               </div>
             )}
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Correct Answer</Label>
                 <Input value={form.answer} onChange={e => setForm({ ...form, answer: e.target.value })} placeholder="Correct option text or explanation" />
@@ -456,7 +456,7 @@ export default function QuestionBankPage() {
               <Label>Explanation</Label>
               <Textarea value={form.explanation} onChange={e => setForm({ ...form, explanation: e.target.value })} rows={2} placeholder="Optional — shown after answering" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Branch</Label>
                 <Select value={form.branch} onValueChange={v => setForm({ ...form, branch: v })}>
@@ -478,7 +478,7 @@ export default function QuestionBankPage() {
                 </Select>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
               <div className="space-y-2">
                 <Label>Industry</Label>
                 <Select value={form.industry || 'none'} onValueChange={v => setForm({ ...form, industry: v === 'none' ? '' : v })}>
@@ -514,7 +514,7 @@ export default function QuestionBankPage() {
               <Label>Subject / Topic</Label>
               <Input value={form.subject} onChange={e => setForm({ ...form, subject: e.target.value })} placeholder="e.g., Data Structures, Thermodynamics" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Tech Stack (comma separated)</Label>
                 <Input value={form.tech_stack} onChange={e => setForm({ ...form, tech_stack: e.target.value })} placeholder="e.g., Java, React" />
@@ -611,7 +611,7 @@ export default function QuestionBankPage() {
               <Label>Subject / Topic</Label>
               <Input value={aiForm.subject} onChange={e => setAiForm({ ...aiForm, subject: e.target.value })} placeholder="e.g., Binary Trees, Thermodynamics" />
             </div>
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="space-y-2">
                 <Label>Difficulty</Label>
                 <Select value={aiForm.difficulty} onValueChange={v => setAiForm({ ...aiForm, difficulty: v })}>

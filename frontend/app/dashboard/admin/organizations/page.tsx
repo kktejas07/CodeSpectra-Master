@@ -453,13 +453,15 @@ export default function TenantsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 text-xs">
-              <div className="grid gap-2">
-                <Label htmlFor="tenant-name">Organization name</Label>
-                <Input id="tenant-name" required value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="tenant-slug">Slug (optional)</Label>
-                <Input id="tenant-slug" value={slug} onChange={e => setSlug(e.target.value)} placeholder="acme" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="tenant-name">Organization name</Label>
+                  <Input id="tenant-name" required value={name} onChange={e => setName(e.target.value)} placeholder="Acme Corp" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="tenant-slug">Slug (optional)</Label>
+                  <Input id="tenant-slug" value={slug} onChange={e => setSlug(e.target.value)} placeholder="acme" />
+                </div>
               </div>
               <div className="grid gap-2">
                 <Label htmlFor="tenant-plan">Plan</Label>
@@ -474,13 +476,15 @@ export default function TenantsPage() {
               </div>
               <div className="rounded-lg border border-border/60 p-3 space-y-3">
                 <p className="text-xs font-semibold text-foreground">Org admin account <span className="font-normal text-muted-foreground">(optional)</span></p>
-                <div className="grid gap-2">
-                  <Label htmlFor="tenant-admin-name">Name</Label>
-                  <Input id="tenant-admin-name" value={adminName} onChange={e => setAdminName(e.target.value)} placeholder="Jane Doe" />
-                </div>
-                <div className="grid gap-2">
-                  <Label htmlFor="tenant-admin-email">Email</Label>
-                  <Input id="tenant-admin-email" type="email" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="jane@acme.com" />
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid gap-2">
+                    <Label htmlFor="tenant-admin-name">Name</Label>
+                    <Input id="tenant-admin-name" value={adminName} onChange={e => setAdminName(e.target.value)} placeholder="Jane Doe" />
+                  </div>
+                  <div className="grid gap-2">
+                    <Label htmlFor="tenant-admin-email">Email</Label>
+                    <Input id="tenant-admin-email" type="email" value={adminEmail} onChange={e => setAdminEmail(e.target.value)} placeholder="jane@acme.com" />
+                  </div>
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="tenant-admin-password">Password</Label>
@@ -508,31 +512,35 @@ export default function TenantsPage() {
               <DialogDescription>Update tenant details. Changes apply immediately to members scoped to this org.</DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 text-xs">
-              <div className="grid gap-2">
-                <Label htmlFor="edit-tenant-name">Organization name</Label>
-                <Input id="edit-tenant-name" required value={editName} onChange={e => setEditName(e.target.value)} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="edit-tenant-slug">Slug</Label>
-                <Input id="edit-tenant-slug" value={editSlug} onChange={e => setEditSlug(e.target.value)} placeholder="acme" />
-              </div>
-              <div className="grid gap-2">
-                <Label>Plan</Label>
-                <Select value={editPlan} onValueChange={setEditPlan}>
-                  <SelectTrigger><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="enterprise">Enterprise</SelectItem>
-                    <SelectItem value="team">Team</SelectItem>
-                    <SelectItem value="free">Free</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5">
-                <div>
-                  <p className="text-xs font-medium text-foreground">Active</p>
-                  <p className="text-[11px] text-muted-foreground">Inactive tenants block member sign-in / team access</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-tenant-name">Organization name</Label>
+                  <Input id="edit-tenant-name" required value={editName} onChange={e => setEditName(e.target.value)} />
                 </div>
-                <Switch checked={editActive} onCheckedChange={setEditActive} />
+                <div className="grid gap-2">
+                  <Label htmlFor="edit-tenant-slug">Slug</Label>
+                  <Input id="edit-tenant-slug" value={editSlug} onChange={e => setEditSlug(e.target.value)} placeholder="acme" />
+                </div>
+              </div>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label>Plan</Label>
+                  <Select value={editPlan} onValueChange={setEditPlan}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="enterprise">Enterprise</SelectItem>
+                      <SelectItem value="team">Team</SelectItem>
+                      <SelectItem value="free">Free</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="flex items-center justify-between rounded-lg border border-border/60 px-3 py-2.5">
+                  <div>
+                    <p className="text-xs font-medium text-foreground">Active</p>
+                    <p className="text-[11px] text-muted-foreground">Inactive tenants block member sign-in / team access</p>
+                  </div>
+                  <Switch checked={editActive} onCheckedChange={setEditActive} />
+                </div>
               </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-2">
@@ -657,28 +665,32 @@ export default function TenantsPage() {
               </DialogDescription>
             </DialogHeader>
             <div className="grid gap-4 py-4 text-xs">
-              <div className="grid gap-2">
-                <Label htmlFor="member-name">Name</Label>
-                <Input id="member-name" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder="Jane Doe" />
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="member-name">Name</Label>
+                  <Input id="member-name" value={newMemberName} onChange={e => setNewMemberName(e.target.value)} placeholder="Jane Doe" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="member-email">Email</Label>
+                  <Input id="member-email" type="email" required value={newMemberEmail} onChange={e => setNewMemberEmail(e.target.value)} placeholder="jane@acme.com" />
+                </div>
               </div>
-              <div className="grid gap-2">
-                <Label htmlFor="member-email">Email</Label>
-                <Input id="member-email" type="email" required value={newMemberEmail} onChange={e => setNewMemberEmail(e.target.value)} placeholder="jane@acme.com" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="member-password">Password</Label>
-                <Input id="member-password" type="password" value={newMemberPassword} onChange={e => setNewMemberPassword(e.target.value)} placeholder="Min 8 characters" />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="member-role">Role</Label>
-                <Select value={newMemberRole} onValueChange={setNewMemberRole}>
-                  <SelectTrigger id="member-role"><SelectValue /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user">User</SelectItem>
-                    <SelectItem value="tenant_admin">Org Admin</SelectItem>
-                  </SelectContent>
-                </Select>
-                <p className="text-[11px] text-muted-foreground">Org Admin can manage this tenant's team. Pick User for regular members.</p>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <div className="grid gap-2">
+                  <Label htmlFor="member-password">Password</Label>
+                  <Input id="member-password" type="password" value={newMemberPassword} onChange={e => setNewMemberPassword(e.target.value)} placeholder="Min 8 characters" />
+                </div>
+                <div className="grid gap-2">
+                  <Label htmlFor="member-role">Role</Label>
+                  <Select value={newMemberRole} onValueChange={setNewMemberRole}>
+                    <SelectTrigger id="member-role"><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="user">User</SelectItem>
+                      <SelectItem value="tenant_admin">Org Admin</SelectItem>
+                    </SelectContent>
+                  </Select>
+                  <p className="text-[11px] text-muted-foreground">Org Admin can manage this tenant's team. Pick User for regular members.</p>
+                </div>
               </div>
             </div>
             <DialogFooter className="gap-2 sm:gap-2">
