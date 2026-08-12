@@ -57,6 +57,8 @@ function normString(v: unknown, max = 2000): string {
 /**
  * True when a title is a placeholder with no meaning — "Q1", "Q.3", "Question 7",
  * "1.2.3", "DBMS Q1", "9". These are unusable for a question-bank list UI.
+ * A leading numbering prefix ("Q1: Deep Learning Basics") is NOT placeholder —
+ * the description after it is usable and is stripped by cleanTitle().
  */
 export function isPlaceholderTitle(title: string): boolean {
   const t = (title || '').trim()
@@ -68,6 +70,13 @@ export function isPlaceholderTitle(title: string): boolean {
     /^[a-z0-9][\w /&+.-]*[qQ][\s.:_\-]*\d+$/.test(t) || // DBMS Q1, Topic-4.Q2
     /^n\/a$|^null$|^undefined$/i.test(t)
   )
+}
+
+/** Strip a numbering prefix like "Q1:", "Q.3 -", "Question 7." from a title. */
+export function cleanTitle(title: string): string {
+  const t = (title || '').trim()
+  const m = t.match(/^(?:[qQ]\s*\d+|[qQ][\s.:_\-]*\d+|question\s*\d+|[\d]+([./_-][\d]+)*)\s*[:.\-–—]*\s+(.+)$/i)
+  return m && m[2] ? m[2].trim() : t
 }
 
 /** Derive a readable short title from the question prompt. */
@@ -102,7 +111,8 @@ export function bankContentHash(doc: Partial<BankQuestionDoc>): string {
 export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestionDoc | null {
   const question = normString(raw.question || raw.prompt || raw.title)
   const rawTitle = normString(raw.title, 200)
-  const title = isPlaceholderTitle(rawTitle) || !rawTitle ? deriveTitleFromQuestion(question) : rawTitle
+  const cleaned = cleanTitle(rawTitle)
+  const title = !cleaned || isPlaceholderTitle(cleaned) ? deriveTitleFromQuestion(question) : cleaned
   if (!question) return null
 
   const rawType = normString(raw.type || 'mcq', 40).toLowerCase()
