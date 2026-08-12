@@ -344,12 +344,12 @@ export default function AdminExamsPage() {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[425px]">
+        <DialogContent className="sm:max-w-[640px]">
           <DialogHeader>
             <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
           </DialogHeader>
-          <div className="grid gap-4 py-4">
-            <div className="grid gap-2">
+          <div className="grid grid-cols-2 gap-4 py-4">
+            <div className="col-span-2 grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. JavaScript Fundamentals" />
             </div>
@@ -406,20 +406,18 @@ export default function AdminExamsPage() {
               </Select>
             </div>
             <div className="grid gap-2">
+              <Label htmlFor="duration">Duration (mins)</Label>
+              <Input id="duration" type="number" min="0" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="questions">Questions</Label>
+              <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
+            </div>
+            <div className="col-span-2 grid gap-2">
               <Label htmlFor="techStack">Topics / Skills (comma separated)</Label>
               <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder="e.g. Selenium, TestNG, API Testing, SQL" />
             </div>
-            <div className="grid grid-cols-2 gap-4">
-              <div className="grid gap-2">
-                <Label htmlFor="duration">Duration (mins)</Label>
-                <Input id="duration" type="number" min="0" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 0)} />
-              </div>
-              <div className="grid gap-2">
-                <Label htmlFor="questions">Questions</Label>
-                <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
-              </div>
-            </div>
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center justify-between mt-2 col-span-2">
               <div className="space-y-0.5">
                 <Label>Access Type</Label>
                 <div className="text-sm text-muted-foreground">
@@ -451,7 +449,7 @@ export default function AdminExamsPage() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between mt-2">
+            <div className="flex items-center justify-between mt-2 col-span-2">
               <div className="space-y-0.5">
                 <Label>Published</Label>
                 <div className="text-sm text-muted-foreground">
