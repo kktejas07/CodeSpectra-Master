@@ -21,7 +21,7 @@ export async function PATCH(
 
   const { userId } = await params
 
-  let body: { role?: string; full_name?: string; status?: string; plan?: string; password?: string; tenantId?: string | null }
+  let body: { role?: string; full_name?: string; status?: string; plan?: string; password?: string; email?: string; tenantId?: string | null }
   try {
     body = await request.json()
   } catch {
@@ -61,6 +61,28 @@ export async function PATCH(
     if (adminAuth) {
       try {
         await adminAuth.updateUser(userId, { password: body.password })
+      } catch { /* Firebase may not have this user */ }
+    }
+  }
+
+  if (body.email !== undefined) {
+    const email = body.email.trim().toLowerCase()
+    if (!email || !email.includes('@')) {
+      return NextResponse.json({ error: 'Invalid email address' }, { status: 400 })
+    }
+    const db = await getMongoDb()
+    const existing = await db.collection('user').findOne({ email, $or: [{ _id: { $ne: userId } }, { id: { $ne: userId } }] } as Filter<any>)
+    if (existing) {
+      return NextResponse.json({ error: 'Email already in use' }, { status: 400 })
+    }
+    await db.collection('user').updateOne(
+      { $or: [{ _id: userId }, { id: userId }] } as Filter<any>,
+      { $set: { email, updatedAt: new Date() } },
+    )
+    const adminAuth = await getAdminAuthInstance()
+    if (adminAuth) {
+      try {
+        await adminAuth.updateUser(userId, { email })
       } catch { /* Firebase may not have this user */ }
     }
   }

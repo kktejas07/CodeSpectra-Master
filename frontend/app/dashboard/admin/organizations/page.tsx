@@ -70,6 +70,11 @@ export default function TenantsPage() {
   const [newMemberPassword, setNewMemberPassword] = useState('')
   const [newMemberRole, setNewMemberRole] = useState('user')
 
+  const [editingMember, setEditingMember] = useState<TenantMember | null>(null)
+  const [editMemberEmail, setEditMemberEmail] = useState('')
+  const [editMemberPassword, setEditMemberPassword] = useState('')
+  const [savingMemberEdit, setSavingMemberEdit] = useState(false)
+
   const [deletingId, setDeletingId] = useState<string | null>(null)
   const [togglingId, setTogglingId] = useState<string | null>(null)
 
@@ -273,6 +278,39 @@ export default function TenantsPage() {
       }
     } catch {
       addToast({ type: 'error', title: 'Error', message: 'Failed to update role' })
+    }
+  }
+
+  const handleEditMember = async () => {
+    if (!editingMember || savingMemberEdit) return
+    setSavingMemberEdit(true)
+    try {
+      const body: Record<string, string> = {}
+      if (editMemberEmail.trim() && editMemberEmail.trim() !== editingMember.email) body.email = editMemberEmail.trim()
+      if (editMemberPassword.trim()) body.password = editMemberPassword.trim()
+      if (Object.keys(body).length === 0) {
+        setEditingMember(null)
+        return
+      }
+      const res = await csrfFetch(`/api/admin/users/${editingMember.id}`, {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Member updated', message: `${editingMember.name || editingMember.email} updated successfully` })
+        setEditingMember(null)
+        setEditMemberPassword('')
+        if (membersOf) await openMembers(membersOf)
+      } else {
+        const json = await res.json().catch(() => ({}))
+        addToast({ type: 'error', title: 'Failed', message: json.error })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Error', message: 'Failed to update member' })
+    } finally {
+      setSavingMemberEdit(false)
     }
   }
 
@@ -625,6 +663,19 @@ export default function TenantsPage() {
                             size="sm"
                             variant="ghost"
                             className="h-7 gap-1 px-2 text-xs"
+                            onClick={() => {
+                              setEditingMember(m)
+                              setEditMemberEmail(m.email)
+                              setEditMemberPassword('')
+                            }}
+                            title="Edit email / password"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            className="h-7 gap-1 px-2 text-xs"
                             onClick={() => void handleResendCredentials(m)}
                             title="Send password reset email"
                           >
@@ -700,6 +751,46 @@ export default function TenantsPage() {
               </Button>
             </DialogFooter>
           </form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit member dialog */}
+      <Dialog open={Boolean(editingMember)} onOpenChange={(o) => { if (!o) { setEditingMember(null); setEditMemberPassword('') } }}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Edit member</DialogTitle>
+            <DialogDescription>
+              Update email or reset password for <strong>{editingMember?.name || editingMember?.email}</strong>.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4 text-xs">
+            <div className="grid gap-2">
+              <Label htmlFor="edit-member-email">Email</Label>
+              <Input
+                id="edit-member-email"
+                type="email"
+                value={editMemberEmail}
+                onChange={e => setEditMemberEmail(e.target.value)}
+                placeholder="member@company.com"
+              />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="edit-member-password">New Password <span className="text-muted-foreground">(leave blank to keep current)</span></Label>
+              <Input
+                id="edit-member-password"
+                type="password"
+                value={editMemberPassword}
+                onChange={e => setEditMemberPassword(e.target.value)}
+                placeholder="Min 8 characters"
+              />
+            </div>
+          </div>
+          <DialogFooter className="gap-2 sm:gap-2">
+            <Button variant="outline" onClick={() => { setEditingMember(null); setEditMemberPassword('') }}>Cancel</Button>
+            <Button onClick={() => void handleEditMember()} disabled={savingMemberEdit || !editMemberEmail.trim()}>
+              {savingMemberEdit ? <><Loader2 className="h-4 w-4 animate-spin mr-1" />Saving…</> : 'Save changes'}
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>
