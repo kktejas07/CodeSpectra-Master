@@ -188,7 +188,9 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
     : recommended >= maxPoints ? 'correct' : recommended > 0 ? 'partial' : 'incorrect'
 
   if (!feedback && !Number.isFinite(awarded)) {
-    throw new Error('AI returned no structured feedback.')
+    // Graceful fallback — return 0 points instead of crashing the whole review page
+    console.warn('[ai-grade] LLM returned unstructured response, falling back to 0')
+    return { recommended: 0, verdict: 'incorrect', feedback: 'AI could not evaluate this answer — manual review recommended.' }
   }
 
   return { recommended, verdict: verdict as GradeResult['verdict'], feedback }
