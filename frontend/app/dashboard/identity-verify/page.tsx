@@ -4,7 +4,7 @@ import { useEffect, useRef, useState } from 'react'
 import {
   Camera, CheckCircle2, Loader2, Upload, XCircle, Eye, RotateCcw,
   User, FileText, ShieldCheck, ChevronRight, ChevronLeft, AlertTriangle,
-  Info, CreditCard, BookOpen, BadgeCheck
+  Info, CreditCard, BookOpen, BadgeCheck, Scan, Fingerprint
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
@@ -15,6 +15,7 @@ import { Badge } from '@/components/ui/badge'
 import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { createWorker } from 'tesseract.js'
 
 interface VerifyResult {
   match?: boolean
@@ -73,6 +74,11 @@ export default function IdentityVerificationPage() {
   // Selfie
   const [selfie, setSelfie] = useState<string | null>(null)
   const [camOn, setCamOn] = useState(false)
+
+  // OCR
+  const [ocrText, setOcrText] = useState('')
+  const [ocrExtracting, setOcrExtracting] = useState(false)
+  const [ocrMatch, setOcrMatch] = useState<{ nameMatch: boolean; dobMatch: boolean } | null>(null)
 
   // Verification
   const [busy, setBusy] = useState(false)
@@ -149,8 +155,48 @@ export default function IdentityVerificationPage() {
     reader.readAsDataURL(file)
   }
 
+  async function extractTextFromID() {
+    if (!idFront) return
+    setOcrExtracting(true)
+    setOcrText('')
+    setOcrMatch(null)
+    try {
+      const worker = await createWorker('eng')
+      const { data } = await worker.recognize(idFront)
+      await worker.terminate()
+      const text = data.text
+      setOcrText(text)
+
+      // Simple matching: check if user-provided name appears in extracted text
+      const nameWords = fullName.toLowerCase().split(/\s+/).filter(w => w.length > 2)
+      const textLower = text.toLowerCase()
+      const nameMatch = nameWords.length > 0 && nameWords.every(w => textLower.includes(w))
+
+      // Check DOB match (DD/MM/YYYY or DD-MM-YYYY or YYYY-MM-DD)
+      const dobVariants = [
+        dob.replace(/-/g, '/'),
+        dob.split('-').reverse().join('/'),
+        dob,
+      ]
+      const dobMatch = dobVariants.some(v => textLower.includes(v.toLowerCase()))
+
+      setOcrMatch({ nameMatch, dobMatch })
+    } catch (e) {
+      setOcrText('OCR extraction failed: ' + (e instanceof Error ? e.message : String(e)))
+    } finally {
+      setOcrExtracting(false)
+    }
+  }
+
+  // Auto-extract when ID is uploaded and user info is available
+  useEffect(() => {
+    if (idFront && fullName.trim() && dob) {
+      void extractTextFromID()
+    }
+  }, [idFront, fullName, dob])
+
   async function submit() {
-    if (!selfie || !idFront) return
+    if (!idFront) return
     setBusy(true)
     setErr(null)
     setResult(null)
@@ -159,12 +205,15 @@ export default function IdentityVerificationPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          selfie_data_url: selfie,
+          selfie_data_url: selfie || null,
           id_data_url: idFront,
           candidate_name: fullName,
           document_type: docType,
           date_of_birth: dob,
           nationality,
+          ocr_extracted_text: ocrText,
+          ocr_name_match: ocrMatch?.nameMatch ?? null,
+          ocr_dob_match: ocrMatch?.dobMatch ?? null,
         }),
       })
       const j = (await res.json()) as VerifyResult & { error?: string }
@@ -196,7 +245,7 @@ export default function IdentityVerificationPage() {
     if (step === 1) return fullName.trim().length > 0 && dob.length > 0 && nationality.length > 0
     if (step === 2) return docType.length > 0
     if (step === 3) return idFront !== null
-    if (step === 4) return selfie !== null
+    if (step === 4) return true // Selfie is optional
     return true
   }
 
@@ -476,9 +525,10 @@ export default function IdentityVerificationPage() {
           <div className="flex items-center gap-2 mb-2">
             <Camera className="h-5 w-5 text-primary" />
             <h2 className="text-lg font-semibold">Take a Selfie</h2>
+            <Badge variant="outline" className="text-[10px]">Optional</Badge>
           </div>
           <p className="text-sm text-muted-foreground">
-            Take a clear, front-facing photo. Remove sunglasses or hats. The AI will compare this with your ID photo.
+            A selfie helps with verification but is not required. If your ID photo is old or differs significantly from your current appearance, you can skip this step.
           </p>
 
           <div className="rounded-lg bg-blue-500/5 border border-blue-500/20 p-3">
@@ -567,6 +617,10 @@ export default function IdentityVerificationPage() {
                 <p className="text-xs text-muted-foreground">Document Type</p>
                 <p className="text-sm font-medium">{DOC_TYPES.find(d => d.id === docType)?.label || docType}</p>
               </div>
+              <div>
+                <p className="text-xs text-muted-foreground">Selfie</p>
+                <p className="text-sm font-medium">{selfie ? 'Provided' : 'Skipped'}</p>
+              </div>
             </div>
             <div className="space-y-3">
               {idFront && (
@@ -583,6 +637,42 @@ export default function IdentityVerificationPage() {
               )}
             </div>
           </div>
+
+          {/* OCR Results */}
+          {ocrExtracting && (
+            <div className="rounded-lg bg-blue-500/5 border border-blue-500/20 p-3 flex items-center gap-2">
+              <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+              <span className="text-sm text-blue-400">Extracting text from ID document...</span>
+            </div>
+          )}
+          {ocrMatch && (
+            <div className={cn(
+              'rounded-lg p-3 border',
+              ocrMatch.nameMatch && ocrMatch.dobMatch
+                ? 'bg-emerald-500/5 border-emerald-500/20'
+                : 'bg-amber-500/5 border-amber-500/20'
+            )}>
+              <div className="flex items-center gap-2 mb-2">
+                <Scan className="h-4 w-4" />
+                <span className="text-sm font-semibold">OCR Verification</span>
+              </div>
+              <div className="flex gap-4 text-xs">
+                <span className="flex items-center gap-1">
+                  {ocrMatch.nameMatch ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : <XCircle className="h-3.5 w-3.5 text-amber-400" />}
+                  Name {ocrMatch.nameMatch ? 'matched' : 'not found'}
+                </span>
+                <span className="flex items-center gap-1">
+                  {ocrMatch.dobMatch ? <CheckCircle2 className="h-3.5 w-3.5 text-emerald-400" /> : <XCircle className="h-3.5 w-3.5 text-amber-400" />}
+                  DOB {ocrMatch.dobMatch ? 'matched' : 'not found'}
+                </span>
+              </div>
+              {!ocrMatch.nameMatch && !ocrMatch.dobMatch && (
+                <p className="text-xs text-amber-400 mt-2">
+                  If your ID photo is old and text is not clearly visible, this is normal. The AI will still review your documents.
+                </p>
+              )}
+            </div>
+          )}
 
           <div className="rounded-lg bg-muted/40 p-3 text-xs text-muted-foreground">
             By submitting, you confirm that the information and documents provided are genuine and belong to you.
