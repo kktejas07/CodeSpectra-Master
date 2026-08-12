@@ -110,8 +110,8 @@ export default function CertificationsPage() {
       <div>
         <h1 className="text-3xl font-bold mb-2">Get Certified</h1>
         <p className="text-muted-foreground">
-          Open-source certification modules. Questions sourced from MDN, FreeCodeCamp, exercism and
-          OSSU under permissive licenses.
+          Certification modules built on open-source curricula. Questions curated from
+          industry-standard knowledge bases under permissive licenses.
         </p>
       </div>
 

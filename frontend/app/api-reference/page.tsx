@@ -17,7 +17,7 @@ export default function ApiReferencePage() {
         <section id="auth" className="scroll-mt-24 space-y-3 border-t border-border/60 pt-8">
           <h2 className="text-xl font-semibold">Authentication</h2>
           <p className="text-sm text-muted-foreground">
-            Dashboard and most APIs expect a Supabase session (cookies). Use{' '}
+            Dashboard and most APIs expect an authenticated session (cookies). Use{' '}
             <Link href="/auth/login" className="text-primary underline-offset-4 hover:underline">
               Sign in
             </Link>{' '}

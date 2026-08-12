@@ -74,9 +74,9 @@ export default function CookiesPage() {
           <h2 className="text-xl font-semibold text-foreground">4. Third-Party Cookies</h2>
           <p>The Service may include cookies from third-party services:</p>
           <ul className="list-disc space-y-1 pl-5">
-            <li><strong>Firebase Auth:</strong> Google&apos;s authentication cookies for Google/GitHub sign-in</li>
+            <li><strong>Authentication cookies:</strong> Session cookies for Google/GitHub sign-in</li>
             <li><strong>Razorpay:</strong> Payment processing cookies (only if billing features are used)</li>
-            <li><strong>Analytics (Vercel/Web Vitals):</strong> Performance and usage data collection</li>
+            <li><strong>Analytics:</strong> Performance and usage data collection</li>
           </ul>
         </section>
 

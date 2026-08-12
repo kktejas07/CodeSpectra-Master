@@ -170,12 +170,12 @@ export default function SetupPage() {
             <ul className="text-xs space-y-2 text-muted-foreground">
               <li className="flex gap-2">
                 <span className="text-primary font-bold shrink-0">1.</span>
-                <span>Ensure your Supabase project URL and API keys are configured in environment variables</span>
+                <span>Ensure your database connection string and API keys are configured in environment variables</span>
               </li>
               <li className="flex gap-2">
                 <span className="text-primary font-bold shrink-0">2.</span>
                 <span>
-                  Check that SUPABASE_SERVICE_ROLE_KEY or SUPABASE_SECRET_KEY (and anon or publishable key) is set in
+                  Check that MONGODB_URI is set correctly in
                   `.env.local`
                 </span>
               </li>

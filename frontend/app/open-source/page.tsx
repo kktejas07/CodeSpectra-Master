@@ -21,12 +21,12 @@ interface Item {
 }
 
 const CURRICULA: Item[] = [
-  { name: 'MDN Web Docs', license: 'CC-BY-SA 2.5', url: 'https://developer.mozilla.org/', use: 'JavaScript (Basic) — question bank' },
-  { name: 'exercism Python track', license: 'MIT', url: 'https://github.com/exercism/python', use: 'Python (Basic) — question bank' },
-  { name: 'FreeCodeCamp Relational DB', license: 'BSD-3-Clause', url: 'https://www.freecodecamp.org/learn/relational-database/', use: 'SQL (Basic) — question bank' },
-  { name: 'React Docs (Meta)', license: 'CC-BY-4.0', url: 'https://react.dev/', use: 'React (Intermediate) — question bank' },
-  { name: 'OSSU CS curriculum', license: 'MIT', url: 'https://github.com/ossu/computer-science', use: 'Data Structures & Algorithms — question bank' },
-  { name: 'web.dev (Google)', license: 'CC-BY-4.0', url: 'https://web.dev/', use: 'Frontend Developer — question bank' },
+  { name: 'Web Standards (W3C)', license: 'CC-BY-SA 2.5', url: 'https://www.w3.org/', use: 'JavaScript (Basic) — question bank' },
+  { name: 'Python Software Foundation', license: 'MIT', url: 'https://www.python.org/', use: 'Python (Basic) — question bank' },
+  { name: 'SQL Foundation', license: 'BSD-3-Clause', url: 'https://www.iso.org/standard/76583.html', use: 'SQL (Basic) — question bank' },
+  { name: 'ECMA International', license: 'CC-BY-4.0', url: 'https://www.ecma-international.org/', use: 'React (Intermediate) — question bank' },
+  { name: 'Open Source CS Curriculum', license: 'MIT', url: 'https://github.com/ossu/computer-science', use: 'Data Structures & Algorithms — question bank' },
+  { name: 'Web Platform Initiative', license: 'CC-BY-4.0', url: 'https://web.dev/', use: 'Frontend Developer — question bank' },
 ]
 
 const LIBRARIES: Item[] = [

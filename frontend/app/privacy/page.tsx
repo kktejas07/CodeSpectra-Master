@@ -82,7 +82,7 @@ export default function PrivacyPage() {
           <p>We do not sell your personal information. We may share data with:</p>
           <ul className="list-disc space-y-1 pl-5">
             <li><strong>Service providers:</strong> hosting (Dokploy/Docker), database (MongoDB), analytics, and email delivery providers who process data on our behalf under strict contractual obligations</li>
-            <li><strong>Authentication providers:</strong> Google, GitHub, or Firebase for identity verification</li>
+            <li><strong>Authentication providers:</strong> Google, GitHub, or email-based identity verification</li>
             <li><strong>Legal requirements:</strong> when required by law, court order, or governmental request</li>
             <li><strong>Business transfers:</strong> in connection with a merger, acquisition, or sale of assets (you will be notified of any change in ownership or data practices)</li>
           </ul>
