@@ -53,8 +53,22 @@ export default function AdminKycPage() {
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<KycStats>({ total: 0, approved: 0, rejected: 0, pending: 0, manual_review: 0 })
   const [selectedRecord, setSelectedRecord] = useState<KycRecord | null>(null)
+  const [diditDetails, setDiditDetails] = useState<any>(null)
+  const [loadingDetails, setLoadingDetails] = useState(false)
 
   useEffect(() => { void fetchData() }, [])
+
+  async function fetchDiditDetails(sessionId: string) {
+    setLoadingDetails(true)
+    try {
+      const res = await csrfFetch(`/api/kyc/didit/session/${sessionId}`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json()
+        setDiditDetails(data)
+      }
+    } catch { /* ignore */ }
+    setLoadingDetails(false)
+  }
 
   async function fetchData() {
     try {
@@ -91,7 +105,7 @@ export default function AdminKycPage() {
     { key: 'face_match_similarity', header: 'Face Match', cell: (r) => r.face_match_similarity ? `${r.face_match_similarity}%` : '—' },
     { key: 'created_at', header: 'Date', cell: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString() : '—' },
     { key: 'actions', header: '', cell: (r) => (
-      <Button size="sm" variant="ghost" onClick={() => setSelectedRecord(r)}>
+      <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }}>
         <Eye className="h-3.5 w-3.5" />
       </Button>
     )},
@@ -228,6 +242,49 @@ export default function AdminKycPage() {
                   <div><p className="text-xs text-muted-foreground">VPN Detected</p><p className="font-medium">{selectedRecord.vpn_detected ? 'Yes' : 'No'}</p></div>
                 </div>
               </div>
+
+              {/* Full Didit Details (loaded from API) */}
+              {loadingDetails && (
+                <div className="p-4 rounded-lg border border-border/50 bg-background/50 flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                  <span className="text-sm text-muted-foreground">Loading full details from Didit...</span>
+                </div>
+              )}
+              {diditDetails && (
+                <div className="p-4 rounded-lg border border-border/50 bg-background/50 space-y-3">
+                  <h4 className="text-sm font-semibold flex items-center gap-2">
+                    <ShieldCheck className="h-4 w-4 text-primary" /> Full Verification Details
+                  </h4>
+                  {/* User Info */}
+                  {diditDetails.vendor_data && (
+                    <div className="text-xs">
+                      <p className="text-muted-foreground">Vendor Data (User ID)</p>
+                      <p className="font-mono">{diditDetails.vendor_data}</p>
+                    </div>
+                  )}
+                  {/* Session Info */}
+                  <div className="grid grid-cols-2 gap-3 text-xs">
+                    {diditDetails.session_id && (
+                      <div><p className="text-muted-foreground">Session ID</p><p className="font-mono">{diditDetails.session_id}</p></div>
+                    )}
+                    {diditDetails.workflow_id && (
+                      <div><p className="text-muted-foreground">Workflow</p><p className="font-medium">{diditDetails.workflow_id}</p></div>
+                    )}
+                    {diditDetails.status && (
+                      <div><p className="text-muted-foreground">Status</p><p className="font-medium">{diditDetails.status}</p></div>
+                    )}
+                  </div>
+                  {/* Raw Decision Summary */}
+                  {diditDetails.decision && (
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">View raw decision data</summary>
+                      <pre className="mt-2 p-2 rounded bg-muted text-[10px] overflow-x-auto max-h-40">
+                        {JSON.stringify(diditDetails.decision, null, 2)}
+                      </pre>
+                    </details>
+                  )}
+                </div>
+              )}
 
               {/* Meta */}
               <div className="flex items-center justify-between text-xs text-muted-foreground pt-2 border-t border-border/50">
