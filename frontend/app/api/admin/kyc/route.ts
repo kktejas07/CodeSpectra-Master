@@ -14,36 +14,59 @@ export async function GET(): Promise<NextResponse> {
   try {
     const db = await getMongoDb()
 
-    // Get all identity verification records
-    const records = await db.collection('identity_verifications')
+    // Get all KYC sessions (has full Didit data)
+    const sessions = await db.collection('kyc_sessions')
       .find({})
       .sort({ created_at: -1 })
-      .limit(100)
       .toArray()
 
-    // Get user details for each record
-    const userIds = [...new Set(records.map(r => r.user_id).filter(Boolean))]
+    // Get user details
+    const userIds = [...new Set(sessions.map(s => s.user_id).filter(Boolean))]
     const users = await db.collection('user')
       .find({ id: { $in: userIds } })
       .project({ id: 1, fullName: 1, email: 1 })
       .toArray()
     const userMap = new Map(users.map(u => [u.id, u]))
 
-    // Enrich records with user info
-    const enrichedRecords = records.map(r => ({
-      id: r.id,
-      user_id: r.user_id,
-      user_name: userMap.get(r.user_id)?.fullName || 'Unknown',
-      user_email: userMap.get(r.user_id)?.email || '',
-      provider: r.provider || 'unknown',
-      status: r.status,
-      document_type: r.result?.document_type,
-      full_name: r.result?.full_name,
-      liveness_score: r.result?.liveness_score,
-      face_match_similarity: r.result?.face_match_similarity,
-      vpn_detected: r.result?.vpn_detected,
-      created_at: r.created_at,
-    }))
+    // Enrich and deduplicate (keep latest per user)
+    const userLatest = new Map<string, any>()
+    for (const s of sessions) {
+      const existing = userLatest.get(s.user_id)
+      if (!existing || new Date(s.created_at) > new Date(existing.created_at)) {
+        userLatest.set(s.user_id, s)
+      }
+    }
+
+    const records = Array.from(userLatest.values()).map(s => {
+      const decision = s.result?.decision || s.result
+      const idVer = decision?.id_verifications?.[0]
+      const liveness = decision?.liveness_checks?.[0]
+      const faceMatch = decision?.face_matches?.[0]
+      const ipAnalysis = decision?.ip_analyses?.[0]
+      const u = userMap.get(s.user_id)
+
+      return {
+        id: s.id,
+        user_id: s.user_id,
+        user_name: u?.fullName || 'Unknown',
+        user_email: u?.email || '',
+        provider: s.provider || 'didit',
+        status: s.status,
+        document_type: idVer?.document_type,
+        full_name: idVer?.first_name && idVer?.last_name
+          ? `${idVer.first_name} ${idVer.last_name}`
+          : undefined,
+        document_number: idVer?.document_number,
+        issuing_state: idVer?.issuing_state_name || idVer?.issuing_state,
+        liveness_score: liveness?.score,
+        face_match_similarity: faceMatch?.score,
+        vpn_detected: ipAnalysis?.is_vpn_or_tor,
+        ip_address: ipAnalysis?.ip_address,
+        ip_city: ipAnalysis?.ip_city,
+        device: ipAnalysis?.device_model,
+        created_at: s.created_at,
+      }
+    })
 
     // Calculate stats
     const stats = {
@@ -54,7 +77,7 @@ export async function GET(): Promise<NextResponse> {
       manual_review: records.filter(r => r.status === 'manual_review').length,
     }
 
-    return NextResponse.json({ records: enrichedRecords, stats })
+    return NextResponse.json({ records, stats })
   } catch (e) {
     console.error('[Admin KYC]', e)
     return NextResponse.json({ error: 'Failed to fetch KYC records' }, { status: 500 })
