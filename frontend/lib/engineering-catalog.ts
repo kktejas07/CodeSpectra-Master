@@ -94,6 +94,10 @@ export const INDUSTRIES: IndustryDef[] = [
   { id: 'hospitality', label: 'Hospitality' },
   { id: 'retail', label: 'Retail' },
   { id: 'legal_services', label: 'Legal Services' },
+  { id: 'banking', label: 'Banking & Financial Services' },
+  { id: 'it_services', label: 'IT Services & Consulting' },
+  { id: 'product', label: 'Product / Consumer Technology' },
+  { id: 'telecommunications', label: 'Telecommunications' },
 ]
 
 /** Assessment categories, mirroring eSkill's Skills / Cognitive / Behavioral split. */

@@ -27,6 +27,9 @@ const MAX_CONSECUTIVE_FAILURES = 8
 const MAX_429_RETRIES = 8
 const MAX_BUCKETS = process.env.MAX_BUCKETS ? Number(process.env.MAX_BUCKETS) : Infinity
 const ONLY_INDUSTRY = process.env.ONLY_INDUSTRY || ''
+const ONLY_LEVEL = process.env.ONLY_LEVEL || ''
+const FORCE_HARD = process.env.FORCE_HARD === '1'
+const SKIP_TOP_UP = process.env.SKIP_TOP_UP === '1'
 const PROVIDERS = (process.env.PROVIDERS || 'opencode,nvidia,groq').split(',').map((s) => s.trim()).filter(Boolean)
 
 const LEVELS = [
@@ -61,6 +64,18 @@ const TECH_INDUSTRY_BRANCHES: Record<string, string[]> = {
   financial_services: ['cse', 'it', 'ai_ds'],
   transportation_logistics: ['mech', 'civil', 'eee'],
   education: ['cse', 'it', 'ai_ds'],
+  banking: ['cse', 'it', 'ai_ds'],
+  it_services: ['cse', 'it', 'ai_ds'],
+  product: ['cse', 'ece', 'it'],
+  telecommunications: ['ece', 'cse', 'it'],
+}
+
+// Human-authored, MNC placement-paper style, senior-hard question focus per vertical.
+const INDUSTRY_FOCUS: Record<string, string> = {
+  banking: `write like a senior capacity-development team at a global investment bank (the Barclays style): stringent compliance and audit orientation, sharp quantitative reasoning (risk-adjusted return, credit risk, IRR/FX), deep application of financial regulation (Basel III, CRR, ICAAP) and modern core-banking systems (transaction monitoring, fraud, encryption/PKI, settlement, clearing). Questions must feel like genuinely hand-set senior campus/PO-style test items used at big banks: realistic figures that tie out exactly, plausible but wrong distractors, zero filler.`,
+  it_services: `write like the recruitment exam unit of a tier-1 Indian IT services major (the Infosys style): large-language-programming mastery (Java/C++/Python edge cases, threads, memory, GC), enterprise engineering (Spring/Cloud/Angular, API design, databases under load, ETL), agile/SDLC and client-facing consulting judgment. Items should read like hand-crafted senior programming/architecture screening used at MNC services firms: exact line-by-line behaviour, subtle distractors, realistic enterprise scenarios.`,
+  product: `write like the hiring team of a flagship consumer-tech product company (the Apple style): systems thinking end to end, algorithms and data structures under memory/energy constraints, OS/kernel concurrency, secure coding and privacy, hardware-software integration (SoC, power), design-for-scale. Items must read as original, hand-set senior technical interviews: canonical (not hyperbolic) figures, reasoning-heavy stems, distractors that are plausible misconceptions, zero generic trivia.`,
+  telecommunications: `write like the networks hiring exam at a global telecom operator (the AT&T style): RF/spectrum engineering, 5G NR and LTE air interface, fiber/transport, IP/MPLS, quality-of-service and signalling (SS7/SIP/DIAMETER), field performance (EIRP, budget, latency, capacity trade-offs). Questions must resemble carefully authored senior network-engineer selection papers at carriers: numeric answers that compute to exact published-standard values, real protocol minutiae, realistic field engineering constraints.`,
 }
 
 const SOFT_INDUSTRIES = [
@@ -200,18 +215,25 @@ function pickDifficulty(mix: [number, number, number]): string {
   return 'Hard'
 }
 
-function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVELS)[0], topic: string, count: number, typeList: string[], degree: string): string {
+function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVELS)[0], topic: string, count: number, typeList: string[], degree: string, industry?: string): string {
   const perType = Math.max(1, Math.floor(count / typeList.length))
   const typeSpec = typeList.map((t) => `${t}:~${perType}`).join(', ')
+  const focus = industry ? INDUSTRY_FOCUS[industry] : ''
+  const hardNote = FORCE_HARD ? ' Every single question MUST be HARD difficulty — genuinely demanding, as expected of a senior specialist selection paper.' : ''
+  const authNote = industry
+    ? ' Authenticity rules (critically important): write each item the way a seasoned human hiring manager would — natural, varied sentence stems, precise realistic numeric values that tie out exactly, plausible but subtly wrong distractors, and a short examiner-grade explanation. No template boilerplate, no "Given that...", no meta phrases, and never mention being AI.'
+    : ''
   return [
     `Generate exactly ${count} distinct technical assessment questions for ${branch.label} campus hiring at a top MNC, targeting ${level.label}.`,
+    focus ? `Domain voice & standard: ${focus}` : '',
     `Focus subject/topic: ${topic}.`,
     `Degree level of candidate: ${degree.toUpperCase()}.`,
     `Question types (approximate counts): ${typeSpec}.`,
     `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers comma-separated. 'true_false' = options ["True","False"]. 'fill_blanks' = question has a ____ blank + 4 candidate fill-ins as options. 'coding' = empty options, answer is a short approach outline (no full solution). 'descriptive' = empty options, answer is a model-answer paragraph.`,
     `Vary concepts: do NOT repeat the same concept twice in one batch.`,
+    `${authNote}${hardNote}`,
     `Respond with ONLY a JSON array. Each object: {"title": short label, "question": full prompt, "type", "options": [string], "answer", "explanation", "difficulty": "Easy"|"Medium"|"Hard", "marks": 5-20, "subject": "${topic}", "tags": [2-4 tags]}.`,
-  ].join('\n')
+  ].filter(Boolean).join('\n')
 }
 
 function buildSoftPrompt(industry: (typeof SOFT_INDUSTRIES)[0], level: (typeof LEVELS)[0], focus: string, count: number, typeList: string[]): string {
@@ -263,6 +285,7 @@ async function main() {
     for (const q of parsed) {
       const doc = normalizeBankQuestion({ id: undefined, ...q, source: 'ai', createdAt: new Date().toISOString(), ...overrides })
       if (!doc) continue
+      if (FORCE_HARD) doc.difficulty = 'Hard'
       const h = bankContentHash(doc)
       const f = fingerprint(doc)
       if (seenHashes.has(h) || seenFp.has(f)) continue
@@ -278,6 +301,7 @@ async function main() {
   for (const [industry, branchIds] of Object.entries(TECH_INDUSTRY_BRANCHES)) {
     if (ONLY_INDUSTRY && industry !== ONLY_INDUSTRY) continue
     for (const level of LEVELS) {
+      if (ONLY_LEVEL && level.id !== ONLY_LEVEL) continue
       bucketCount++
       if (bucketCount > MAX_BUCKETS) { console.log(`Reached MAX_BUCKETS=${MAX_BUCKETS}, stopping.`); process.exit(0) }
       const key = `${industry}/${level.id}`
@@ -299,7 +323,7 @@ async function main() {
         const types = [ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length]]
         const typeList = [...new Set(types)]
 
-        const prompt = buildTechnicalPrompt(branch, level, topic, need, typeList, degree)
+        const prompt = buildTechnicalPrompt(branch, level, topic, need, typeList, degree, industry)
         let raw = ''
         let providerUsed = ''
         try { const r = await aiComplete(prompt); raw = r.content; providerUsed = r.provider } catch (e) {
@@ -345,6 +369,7 @@ async function main() {
   for (const industry of SOFT_INDUSTRIES) {
     if (ONLY_INDUSTRY && industry.id !== ONLY_INDUSTRY) continue
     for (const level of LEVELS) {
+      if (ONLY_LEVEL && level.id !== ONLY_LEVEL) continue
       const key = `${industry.id}/${level.id}`
       const current = await col.countDocuments({ industry: industry.id, level: level.id })
       const remaining = TARGET_PER_BUCKET - current
@@ -399,13 +424,19 @@ async function main() {
   }
 
   // ── TOP-UP PASS: guarantee every dimension bucket reaches TARGET_PER_BUCKET ──
-  console.log('\n\n=== TOP-UP PASS: verifying all dimension coverage ===')
+  // Skips entirely when SKIP_TOP_UP=1 (single-industry/single-level targeted runs).
+  if (SKIP_TOP_UP) {
+    console.log('\n\n=== SKIP_TOP_UP=1: skipping top-up pass. ===')
+  } else {
+    console.log('\n\n=== TOP-UP PASS: verifying all dimension coverage ===')
+  }
   const dimensions: { name: string; field: string; values: string[] }[] = [
     { name: 'branch', field: 'branch', values: BRANCHES.map((b) => b.id) },
     { name: 'degree', field: 'degree_type', values: DEGREES },
     { name: 'type', field: 'type', values: [...ALL_TYPES] as unknown as string[] },
     { name: 'level', field: 'level', values: LEVELS.map((l) => l.id) },
   ]
+  if (!SKIP_TOP_UP) {
   for (const level of LEVELS) {
     for (const dim of dimensions) {
       for (const value of dim.values) {
@@ -466,6 +497,7 @@ async function main() {
         }
       }
     }
+  }
   }
 
   // ── FINAL REPORT ──
