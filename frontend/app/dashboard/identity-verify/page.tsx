@@ -60,6 +60,11 @@ export default function IdentityVerificationPage() {
     setLoading(false)
   }
 
+  async function refreshStatus() {
+    setLoading(true)
+    await fetchStatus()
+  }
+
   async function startVerification() {
     setStarting(true)
     setError(null)
@@ -97,25 +102,64 @@ export default function IdentityVerificationPage() {
   if (status?.verified) {
     return (
       <div className="space-y-6" data-testid="identity-verify-page">
-        <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/5 p-8 text-center">
-          <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-400 mb-3" />
-          <h1 className="text-2xl font-bold text-foreground mb-1">Identity Verified</h1>
-          <p className="text-muted-foreground mb-4">
-            Your identity has been verified successfully.
-          </p>
-          <div className="flex items-center justify-center gap-4 text-sm text-muted-foreground">
+        <div className="rounded-xl border border-emerald-400/40 bg-emerald-400/5 p-8">
+          <div className="text-center mb-6">
+            <CheckCircle2 className="h-12 w-12 mx-auto text-emerald-400 mb-3" />
+            <h1 className="text-2xl font-bold text-foreground mb-1">Identity Verified</h1>
+            <p className="text-muted-foreground">Your identity has been verified successfully.</p>
+          </div>
+
+          {/* Verification Details */}
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
             {status.result?.full_name && (
-              <span>Verified as <strong>{status.result.full_name}</strong></span>
+              <div className="p-3 rounded-lg bg-background/50">
+                <p className="text-xs text-muted-foreground">Full Name</p>
+                <p className="text-sm font-medium">{status.result.full_name}</p>
+              </div>
+            )}
+            {status.result?.document_type && (
+              <div className="p-3 rounded-lg bg-background/50">
+                <p className="text-xs text-muted-foreground">Document Type</p>
+                <p className="text-sm font-medium">{status.result.document_type}</p>
+              </div>
+            )}
+            {status.result?.liveness_score !== undefined && (
+              <div className="p-3 rounded-lg bg-background/50">
+                <p className="text-xs text-muted-foreground">Liveness Score</p>
+                <p className="text-sm font-medium">{status.result.liveness_score}/100</p>
+              </div>
+            )}
+            {status.result?.face_match_similarity !== undefined && (
+              <div className="p-3 rounded-lg bg-background/50">
+                <p className="text-xs text-muted-foreground">Face Match</p>
+                <p className="text-sm font-medium">{status.result.face_match_similarity}%</p>
+              </div>
+            )}
+            {status.result?.vpn_detected !== undefined && (
+              <div className="p-3 rounded-lg bg-background/50">
+                <p className="text-xs text-muted-foreground">VPN Detected</p>
+                <p className="text-sm font-medium">{status.result.vpn_detected ? 'Yes' : 'No'}</p>
+              </div>
             )}
             {status.provider && (
-              <Badge variant="outline" className="text-xs">{status.provider}</Badge>
+              <div className="p-3 rounded-lg bg-background/50">
+                <p className="text-xs text-muted-foreground">Provider</p>
+                <p className="text-sm font-medium capitalize">{status.provider}</p>
+              </div>
             )}
           </div>
+
           {status.created_at && (
-            <p className="text-xs text-muted-foreground mt-3">
+            <p className="text-xs text-muted-foreground text-center mt-4">
               Verified on {new Date(status.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           )}
+
+          <div className="text-center mt-4">
+            <Button variant="outline" size="sm" onClick={refreshStatus}>
+              <RefreshCcw className="h-4 w-4 mr-1" />Refresh Status
+            </Button>
+          </div>
         </div>
       </div>
     )

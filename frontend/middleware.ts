@@ -42,6 +42,7 @@ export function middleware(request: NextRequest) {
     '/api/admin/llm-test',
     '/api/exams',
     '/api/daily-login',
+    '/api/kyc/didit/webhook',
   ]
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const rl = edgeRateLimit(`api:${edgeClientKey(request)}`, 240, 60_000)
