@@ -23,8 +23,14 @@ interface KycRecord {
   full_name?: string
   document_number?: string
   issuing_state?: string
+  front_image?: string
+  back_image?: string
+  portrait_image?: string
   liveness_score?: number
+  liveness_image?: string
   face_match_similarity?: number
+  face_match_source?: string
+  face_match_target?: string
   vpn_detected?: boolean
   ip_address?: string
   ip_city?: string
@@ -151,6 +157,35 @@ export default function AdminKycPage() {
                 </div>
               </div>
 
+              {/* Document Images */}
+              {(selectedRecord.front_image || selectedRecord.back_image || selectedRecord.portrait_image) && (
+                <div className="p-4 rounded-lg border border-border/50 bg-background/50">
+                  <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <CreditCard className="h-4 w-4 text-primary" /> Submitted Documents
+                  </h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {selectedRecord.front_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">ID Front</p>
+                        <img src={selectedRecord.front_image} alt="ID Front" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                    {selectedRecord.back_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">ID Back</p>
+                        <img src={selectedRecord.back_image} alt="ID Back" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                    {selectedRecord.portrait_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Portrait</p>
+                        <img src={selectedRecord.portrait_image} alt="Portrait" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               {/* Biometric Verification */}
               <div className="p-4 rounded-lg border border-border/50 bg-background/50">
                 <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
@@ -160,6 +195,23 @@ export default function AdminKycPage() {
                   <div><p className="text-xs text-muted-foreground">Liveness Score</p><p className="font-medium">{selectedRecord.liveness_score ?? '—'}/100</p></div>
                   <div><p className="text-xs text-muted-foreground">Face Match Similarity</p><p className="font-medium">{selectedRecord.face_match_similarity ?? '—'}%</p></div>
                 </div>
+                {/* Face match images */}
+                {(selectedRecord.face_match_source || selectedRecord.face_match_target) && (
+                  <div className="mt-3 grid grid-cols-2 gap-3">
+                    {selectedRecord.face_match_source && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">ID Photo</p>
+                        <img src={selectedRecord.face_match_source} alt="ID Photo" className="w-full h-28 object-cover rounded-lg border border-border" />
+                      </div>
+                    )}
+                    {selectedRecord.face_match_target && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Selfie</p>
+                        <img src={selectedRecord.face_match_target} alt="Selfie" className="w-full h-28 object-cover rounded-lg border border-border" />
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
 
               {/* Device & Location */}

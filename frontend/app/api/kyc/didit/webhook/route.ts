@@ -132,9 +132,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           issuing_state: idVer?.issuing_state_name || idVer?.issuing_state,
           nationality: idVer?.nationality,
           address: idVer?.formatted_address,
+          // Document images
+          front_image: idVer?.front_image,
+          back_image: idVer?.back_image,
+          portrait_image: idVer?.portrait_image,
+          // Liveness
           liveness_score: liveness?.score,
           liveness_method: liveness?.method,
+          liveness_image: liveness?.reference_image,
+          // Face match
           face_match_similarity: faceMatch?.score,
+          face_match_source: faceMatch?.source_image,
+          face_match_target: faceMatch?.target_image,
+          // Device & IP
           vpn_detected: ipAnalysis?.is_vpn_or_tor,
           ip_address: ipAnalysis?.ip_address,
           ip_city: ipAnalysis?.ip_city,
@@ -142,6 +152,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           device: ipAnalysis?.device_model,
           browser: ipAnalysis?.browser_family,
           isp: ipAnalysis?.isp,
+          // Warnings
           warnings: [
             ...(Array.isArray(idVer?.warnings) ? idVer.warnings : []),
             ...(Array.isArray(liveness?.warnings) ? liveness.warnings : []),

@@ -38,8 +38,14 @@ interface KycStatus {
     issuing_state?: string
     nationality?: string
     address?: string
+    front_image?: string
+    back_image?: string
+    portrait_image?: string
     liveness_score?: number
     liveness_method?: string
+    liveness_image?: string
+    face_match_source?: string
+    face_match_target?: string
     face_match_similarity?: number
     vpn_detected?: boolean
     ip_address?: string
@@ -277,6 +283,36 @@ export default function IdentityVerificationPage() {
             </div>
           )}
 
+
+              {/* Document Images */}
+              {(status.result?.front_image || status.result?.back_image || status.result?.portrait_image) && (
+                <div className="p-4 rounded-lg bg-background/50 border border-border/50">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <FileCheck className="h-4 w-4" /> Submitted Documents
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {status.result?.front_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">ID Front</p>
+                        <img src={status.result?.front_image} alt="ID Front" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                    {status.result?.back_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">ID Back</p>
+                        <img src={status.result?.back_image} alt="ID Back" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                    {status.result?.portrait_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Portrait</p>
+                        <img src={status.result?.portrait_image} alt="Portrait" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
           {status.created_at && (
             <p className="text-xs text-muted-foreground text-center mt-4">
               Submitted on {new Date(status.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
@@ -436,6 +472,36 @@ export default function IdentityVerificationPage() {
 
           {status.created_at && (
             <p className="text-xs text-muted-foreground text-center mt-4">
+
+              {/* Document Images */}
+              {(status.result?.front_image || status.result?.back_image || status.result?.portrait_image) && (
+                <div className="p-4 rounded-lg bg-background/50 border border-border/50">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <FileCheck className="h-4 w-4" /> Submitted Documents
+                  </h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    {status.result?.front_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">ID Front</p>
+                        <img src={status.result?.front_image} alt="ID Front" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                    {status.result?.back_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">ID Back</p>
+                        <img src={status.result?.back_image} alt="ID Back" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                    {status.result?.portrait_image && (
+                      <div>
+                        <p className="text-xs text-muted-foreground mb-1">Portrait</p>
+                        <img src={status.result?.portrait_image} alt="Portrait" className="w-full h-40 object-contain rounded-lg border border-border" />
+                      </div>
+                    )}
+                  </div>
+                </div>
+              )}
+
               Verified on {new Date(status.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' })}
             </p>
           )}

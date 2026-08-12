@@ -58,8 +58,16 @@ export async function GET(): Promise<NextResponse> {
           : undefined,
         document_number: idVer?.document_number,
         issuing_state: idVer?.issuing_state_name || idVer?.issuing_state,
+        // Document images
+        front_image: idVer?.front_image,
+        back_image: idVer?.back_image,
+        portrait_image: idVer?.portrait_image,
+        // Biometric
         liveness_score: liveness?.score,
         face_match_similarity: faceMatch?.score,
+        face_match_source: faceMatch?.source_image,
+        face_match_target: faceMatch?.target_image,
+        // Device & IP
         vpn_detected: ipAnalysis?.is_vpn_or_tor,
         ip_address: ipAnalysis?.ip_address,
         ip_city: ipAnalysis?.ip_city,
