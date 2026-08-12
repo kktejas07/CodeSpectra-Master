@@ -3,20 +3,41 @@ import { createHash } from 'crypto'
 import { normalizeBankQuestion, bankContentHash, type BankQuestionDoc } from '../lib/question-bank'
 
 // ────────────────────────────────────────────────────────────────────────────
-// Local 45k question-bank generator.
-// Buckets by (industry, level): 15 industries × 3 levels × 1000 = 45k.
-// Rotates branches, degree types and question types within each bucket so every
-// dimension reaches >=1k per level. Soft industries get cognitive/behavioral
-// (aptitude) questions instead of engineering technical ones. Runs from the Mac
-// over an SSH tunnel to prod Mongo, calling OpenRouter directly.
+// Local question-bank generator.
+//
+// Base coverage: buckets by (industry, level): 15 industries × 3 levels × 1,000
+// = 45,000 questions. Branches, degree types and question types are rotated
+// WITHIN each bucket so dimensions stay balanced inside an industry's 1,000.
+//
+// TOP-UP PASS (unless SKIP_TOP_UP=1): after the 45k base, force every (branch,
+// level), (degree, level), (type, level), and (level) GLOBAL bucket to reach
+// 1,000. These are global counts, NOT per-industry — so the final DB WILL
+// exceed 45,000 once top-up runs. Realistic ceiling: ~60–90k. If you need
+// exactly 45,000, set SKIP_TOP_UP=1.
+//
+// Soft industries get cognitive/behavioral (aptitude) questions instead of
+// engineering technical ones. Runs from the Mac over an SSH tunnel to prod
+// Mongo, calling OpenRouter directly.
 //
 // Strict no-duplicate rule: dedupe keys are (a) normalized text fingerprint of
-// question+options+answer (case/space/punctuation insensitive) and (b) the
+// question + options + answer (case/space/punctuation insensitive) and (b) the
 // existing bankContentHash. Any doc matching an existing or previously-inserted
 // fingerprint is skipped.
+//
+// Strict validation: every AI-generated object is schema-validated BEFORE
+// insert (option count per type, answer∈options, marks 5–20, difficulty enum,
+// tags 2–4). Invalid objects are rejected and counted as failed.
 // ────────────────────────────────────────────────────────────────────────────
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://mongo:kfgXeV32FU2WPp1tERVs@127.0.0.1:27018/?authSource=admin&directConnection=true'
+// ponytail: MONGO_URI must come from env. A hardcoded fallback password was
+// previously committed here (commit 3efd717) and had to be scrubbed from git
+// history + rotated. Never put a credential in source — the file enters git
+// history, backups, logs, and shares.
+const MONGO_URI: string = (() => {
+  const v = process.env.MONGODB_URI
+  if (!v) throw new Error('MONGODB_URI is required (set it in your shell env, never in source)')
+  return v
+})()
 const MONGO_DB = process.env.MONGODB_DB_NAME || 'codespectra'
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
@@ -31,7 +52,7 @@ const ONLY_LEVEL = process.env.ONLY_LEVEL || ''
 const FORCE_HARD = process.env.FORCE_HARD === '1'
 const SKIP_TOP_UP = process.env.SKIP_TOP_UP === '1'
 const MAX_INSERTS = process.env.MAX_INSERTS ? Number(process.env.MAX_INSERTS) : 0
-const PROVIDERS = (process.env.PROVIDERS || 'opencode,nvidia,groq').split(',').map((s) => s.trim()).filter(Boolean)
+const PROVIDERS = (process.env.PROVIDERS || 'opencode,nvidia,groq,openrouter').split(',').map((s) => s.trim()).filter(Boolean)
 
 const LEVELS = [
   { id: 'entry', label: 'entry-level (0-2 years experience, fresher)', difficultyMix: [0.7, 0.25, 0.05] as [number, number, number] },
@@ -99,15 +120,12 @@ let opencodeKey = ''
 
 const SYSTEM_PROMPT = 'You are a meticulous technical assessment question writer for MNC campus hiring. You always respond with a valid JSON array of question objects and nothing else.'
 
-async function loadSecrets() {
-  const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
-  await client.connect()
+async function loadSecrets(client: MongoClient) {
   const secrets = (await client.db(MONGO_DB).collection('platform_settings').findOne({ key: 'secrets' }))?.value || {}
   openrouterKey = secrets.openrouter_api_key || secrets.openai_api_key || ''
   groqKey = secrets.groq_api_key || ''
   nvidiaKey = secrets.nvidia_api_key || ''
   opencodeKey = secrets.opencode_api_key || ''
-  await client.close()
   if (!groqKey && !nvidiaKey && !openrouterKey && !opencodeKey) throw new Error('No provider keys found in platform_settings')
   console.log(`Keys: opencode=${opencodeKey.slice(0, 8)}... groq=${groqKey.slice(0, 8)}... nvidia=${nvidiaKey.slice(0, 8)}... openrouter=${openrouterKey.slice(0, 8)}...`)
 }
@@ -147,9 +165,11 @@ async function aiComplete(prompt: string, active: string[] = PROVIDERS): Promise
           ],
           max_tokens: p.maxTokens,
         }
-        // NVIDIA 8b misbehaves with json_object (returns a bare object + 7x slower);
-        // omit response_format for it so it returns a clean array fast.
-        if (p.id !== 'nvidia') payload.response_format = { type: 'json_object' }
+        // ponytail: do NOT set response_format=json_object — the prompt asks for
+        // a JSON ARRAY, but json_object instructs the model to return a single
+        // JSON OBJECT. The two contradict each other and the previous code
+        // worked around the resulting mess with a fragile extractArray(). We
+        // instead let the model return raw JSON and parse strictly.
         const res = await fetch(p.url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
@@ -183,29 +203,108 @@ async function aiComplete(prompt: string, active: string[] = PROVIDERS): Promise
   throw new Error(`all providers failed: ${lastErr.join(' | ')}`)
 }
 
-function extractArray(text: string): Record<string, unknown>[] {
-  const cleaned = text.replace(/```json/gi, '').replace(/```/g, '').trim()
-  // OpenRouter with json_object may wrap in {"questions": [...]} or return a bare array.
-  let start = cleaned.indexOf('[')
-  let end = cleaned.lastIndexOf(']')
-  if (start === -1 || end === -1 || end <= start) {
-    // try to unwrap {"...": [...]}
-    const m = cleaned.match(/\[\s*\{/)
-    if (m) { start = m.index ?? -1; end = cleaned.lastIndexOf(']'); }
-  }
-  if (start === -1 || end === -1 || end <= start) return []
+/**
+ * Robust JSON-array parser. Handles:
+ *  - bare JSON arrays:           [...]
+ *  - fenced arrays:             ```json\n[...]\n```
+ *  - wrapper object:            {"questions": [...]} or {"array": [...]} or
+ *                               {"data": [...]} or any single-key object whose
+ *                               value is an array
+ *  - leading/trailing prose:    "Here are the questions:\n[...]\nNote: ..."
+ *
+ * Falls back to a balanced-bracket scan (handles nested arrays/objects, strings
+ * with escaped quotes) only as a last resort — never just `indexOf('[')` /
+ * `lastIndexOf(']')`, which can grab the wrong array when prose mentions
+ * options like `["A","B"]`.
+ */
+function parseQuestionArray(raw: string): Record<string, unknown>[] {
+  const cleaned = raw.replace(/```json/gi, '').replace(/```/g, '').trim()
+  if (!cleaned) return []
+
+  // 1) Try direct parse.
+  try {
+    const v = JSON.parse(cleaned)
+    if (Array.isArray(v)) return v as Record<string, unknown>[]
+    if (v && typeof v === 'object') {
+      const arr = firstArrayValue(v as Record<string, unknown>)
+      if (arr) return arr
+    }
+  } catch { /* fall through */ }
+
+  // 2) Find the first balanced top-level '[' in the text — robust to
+  //    prose that mentions short arrays like ["A","B"]. We scan with a
+  //    string-aware counter so quotes/escapes don't trip bracket tallies.
+  const start = firstTopLevelArrayStart(cleaned)
+  if (start === -1) return []
+  const end = matchingBracket(cleaned, start)
+  if (end === -1 || end <= start) return []
   try {
     const arr = JSON.parse(cleaned.slice(start, end + 1))
-    return Array.isArray(arr) ? arr : []
+    return Array.isArray(arr) ? arr as Record<string, unknown>[] : []
   } catch { return [] }
 }
 
-/** Normalized fingerprint — case/space/punctuation-insensitive duplicate detector.
- *  Question-text only: the same question rendered as mcq vs descriptive (or with
- *  O(n²) vs O(n^2)) must still be caught as a duplicate. bankContentHash handles
- *  full-content equality; this catches re-worded-but-identical questions. */
+/** Return the value of the first key in `o` whose value is an array, else null. */
+function firstArrayValue(o: Record<string, unknown>): Record<string, unknown>[] | null {
+  for (const v of Object.values(o)) {
+    if (Array.isArray(v) && v.length && typeof v[0] === 'object' && v[0] !== null) {
+      return v as Record<string, unknown>[]
+    }
+  }
+  return null
+}
+
+/** Index of the first '[' that begins a balanced array containing at least one
+ *  '{' (a heuristic to skip short option-list arrays in prose). -1 if none. */
+function firstTopLevelArrayStart(s: string): number {
+  for (let i = 0; i < s.length; i++) {
+    if (s[i] === '[') {
+      const end = matchingBracket(s, i)
+      if (end !== -1 && end > i + 2) {
+        const inner = s.slice(i + 1, end)
+        // a question array always contains object literals; option lists don't
+        if (inner.includes('{')) return i
+      }
+    }
+  }
+  return -1
+}
+
+/** Return the index of the ']' that closes the '[' at `open`, honoring string
+ *  literals and escape sequences. -1 if unbalanced. */
+function matchingBracket(s: string, open: number): number {
+  let depth = 0
+  let inStr = false
+  let esc = false
+  for (let i = open; i < s.length; i++) {
+    const c = s[i]
+    if (inStr) {
+      if (esc) { esc = false }
+      else if (c === '\\') esc = true
+      else if (c === '"') inStr = false
+      continue
+    }
+    if (c === '"') inStr = true
+    else if (c === '[') depth++
+    else if (c === ']') { depth--; if (depth === 0) return i }
+  }
+  return -1
+}
+
+/** Normalized fingerprint — case/space/punctuation-insensitive duplicate
+ *  detection across question + options + answer. The comment used to claim this
+ *  used question+options+answer, but the old impl hashed only the question text,
+ *  so re-worded-but-identical questions with the same options/answer slipped in.
+ *  We now hash the concatenation of question + options + answer.
+ *  ponytail: ceiling — does NOT catch semantic paraphrases with different
+ *  wording AND different options/answer; that needs embeddings (planned PR2). */
 function fingerprint(doc: Partial<BankQuestionDoc>): string {
-  const text = (doc.question || doc.title || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const norm = (s: string) => (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').replace(/\s+/g, ' ').trim()
+  const text = [
+    norm(doc.question || doc.title || ''),
+    Array.isArray(doc.options) ? doc.options.map(norm).join('|') : '',
+    norm(doc.answer || ''),
+  ].join('::')
   return createHash('sha256').update(text).digest('hex')
 }
 
@@ -214,6 +313,87 @@ function pickDifficulty(mix: [number, number, number]): string {
   if (r < mix[0]) return 'Easy'
   if (r < mix[0] + mix[1]) return 'Medium'
   return 'Hard'
+}
+
+// ── Strict generated-question validator ─────────────────────────────────────
+// The prompt instructs the model, but prompt instructions are not validation.
+// Every AI-generated doc is validated here BEFORE insertion. Invalid docs are
+// rejected and counted as failed. Errors collect to a string for logging.
+const DIFFICULTIES = new Set(['Easy', 'Medium', 'Hard'])
+const VALID_TYPES = new Set(['mcq', 'multiple_response', 'true_false', 'fill_blanks', 'coding', 'descriptive'])
+const MCQ_OPTION_COUNTS = new Set([4])
+const TF_OPTION_COUNTS = new Set([2])
+
+function validateBankQuestion(doc: BankQuestionDoc): { ok: true } | { ok: false; reason: string } {
+  const reason = (m: string) => ({ ok: false as const, reason: m })
+
+  // Required text fields
+  if (!doc.title || !doc.title.trim()) return reason('missing title')
+  if (!doc.question || !doc.question.trim()) return reason('missing question')
+
+  // Type
+  if (!VALID_TYPES.has(doc.type)) return reason(`invalid type "${doc.type}"`)
+
+  // Options count per type
+  const opts = Array.isArray(doc.options) ? doc.options : []
+  switch (doc.type) {
+    case 'mcq':
+      if (!MCQ_OPTION_COUNTS.has(opts.length)) return reason(`mcq requires exactly 4 options, got ${opts.length}`)
+      break
+    case 'multiple_response':
+      if (!MCQ_OPTION_COUNTS.has(opts.length)) return reason(`multiple_response requires exactly 4 options, got ${opts.length}`)
+      break
+    case 'true_false':
+      if (!TF_OPTION_COUNTS.has(opts.length)) return reason(`true_false requires exactly 2 options, got ${opts.length}`)
+      break
+    case 'fill_blanks':
+      if (!MCQ_OPTION_COUNTS.has(opts.length)) return reason(`fill_blanks requires exactly 4 options, got ${opts.length}`)
+      break
+    case 'coding':
+      if (opts.length !== 0) return reason(`coding requires options to be empty, got ${opts.length}`)
+      break
+    case 'descriptive':
+      if (opts.length !== 0) return reason(`descriptive requires options to be empty, got ${opts.length}`)
+      break
+  }
+
+  // Answer
+  if (!doc.answer || !doc.answer.trim()) return reason('missing answer')
+
+  // answer ∈ options for choice-based types
+  if (doc.type === 'mcq') {
+    // answer must equal one of the options (case-insensitive)
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (!opts.some((o) => norm(o) === norm(doc.answer || ''))) return reason('mcq answer not in options')
+  } else if (doc.type === 'true_false') {
+    if (!/^(true|false)$/i.test(doc.answer)) return reason(`true_false answer must be True or False, got "${doc.answer}"`)
+  } else if (doc.type === 'fill_blanks') {
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+    if (!opts.some((o) => norm(o) === norm(doc.answer || ''))) return reason('fill_blanks answer not in options')
+  } else if (doc.type === 'multiple_response') {
+    // answer may be comma-separated; every token must match an option
+    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
+    const tokens = (doc.answer || '').split(',').map((s) => norm(s)).filter(Boolean)
+    if (tokens.length < 1) return reason('multiple_response answer has no valid tokens')
+    const optsNorm = opts.map(norm)
+    for (const t of tokens) {
+      if (!optsNorm.includes(t)) return reason(`multiple_response answer token "${t}" not in options`)
+    }
+  }
+
+  // Difficulty
+  if (!DIFFICULTIES.has(doc.difficulty)) return reason(`invalid difficulty "${doc.difficulty}"`)
+
+  // Marks
+  if (typeof doc.marks !== 'number' || doc.marks < 5 || doc.marks > 20 || !Number.isFinite(doc.marks)) {
+    return reason(`marks must be 5–20, got ${doc.marks}`)
+  }
+
+  // Tags: 2–4 values
+  const tags = Array.isArray(doc.tags) ? doc.tags : []
+  if (tags.length < 2 || tags.length > 4) return reason(`tags must be 2–4 values, got ${tags.length}`)
+
+  return { ok: true }
 }
 
 function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVELS)[0], topic: string, count: number, typeList: string[], degree: string, industry?: string): string {
@@ -258,269 +438,301 @@ function buildSoftPrompt(industry: (typeof SOFT_INDUSTRIES)[0], level: (typeof L
 async function main() {
   const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
-  const col = client.db(MONGO_DB).collection<BankQuestionDoc>('question_bank')
-  await loadSecrets()
+  try {
+    const col = client.db(MONGO_DB).collection<BankQuestionDoc>('question_bank')
+    await loadSecrets(client)
 
-  const existing = await col.find({}, { projection: { _id: 0 } }).toArray()
-  const seenHashes = new Set<string>()
-  const seenFp = new Set<string>()
-  let dupExisting = 0
-  for (const d of existing) {
-    const h = bankContentHash(d)
-    const f = fingerprint(d)
-    if (seenHashes.has(h) || seenFp.has(f)) dupExisting++
-    seenHashes.add(h)
-    seenFp.add(f)
-  }
-  console.log(`Loaded ${existing.length} existing docs. ${seenHashes.size} unique hashes, ${seenFp.size} unique fingerprints (${dupExisting} near-duplicates already in DB).`)
-
-  const startedAt = Date.now()
-  let totalInserted = 0
-  let totalFailed = 0
-
-  // Rotating counters per dimension (global across the whole run).
-  let branchIdx = 0
-  let degreeIdx = 0
-  let typeIdx = 0
-
-  const buildDocs = (parsed: Record<string, unknown>[], overrides: Partial<BankQuestionDoc>): BankQuestionDoc[] => {
-    const out: BankQuestionDoc[] = []
-    for (const q of parsed) {
-      const doc = normalizeBankQuestion({ id: undefined, ...q, source: 'ai', createdAt: new Date().toISOString(), ...overrides })
-      if (!doc) continue
-      if (FORCE_HARD) doc.difficulty = 'Hard'
-      const h = bankContentHash(doc)
-      const f = fingerprint(doc)
-      if (seenHashes.has(h) || seenFp.has(f)) continue
+    const existing = await col.find({}, { projection: { _id: 0 } }).toArray()
+    const seenHashes = new Set<string>()
+    const seenFp = new Set<string>()
+    let dupExisting = 0
+    for (const d of existing) {
+      const h = bankContentHash(d)
+      const f = fingerprint(d)
+      if (seenHashes.has(h) || seenFp.has(f)) dupExisting++
       seenHashes.add(h)
       seenFp.add(f)
-      out.push(doc)
     }
-    return out
-  }
+    console.log(`Loaded ${existing.length} existing docs. ${seenHashes.size} unique hashes, ${seenFp.size} unique fingerprints (${dupExisting} near-duplicates already in DB).`)
 
-  // Technical industries: 10 × 3 levels × 1000 = 30k
-  let bucketCount = 0
-  for (const [industry, branchIds] of Object.entries(TECH_INDUSTRY_BRANCHES)) {
-    if (ONLY_INDUSTRY && industry !== ONLY_INDUSTRY) continue
-    for (const level of LEVELS) {
-      if (ONLY_LEVEL && level.id !== ONLY_LEVEL) continue
-      bucketCount++
-      if (bucketCount > MAX_BUCKETS) { console.log(`Reached MAX_BUCKETS=${MAX_BUCKETS}, stopping.`); process.exit(0) }
-      const key = `${industry}/${level.id}`
-      const current = await col.countDocuments({ industry, level: level.id })
-      const remaining = TARGET_PER_BUCKET - current
-      console.log(`\n=== Bucket ${key}: ${current}/${TARGET_PER_BUCKET} existing, ${Math.max(0, remaining)} to generate ===`)
-      if (remaining <= 0) { console.log(`Bucket ${key} already at target, skipping.`); continue }
+    const startedAt = Date.now()
+    let totalInserted = 0
+    let totalFailed = 0
+    // Sentinel — set by MAX_BUCKETS / MAX_INSERTS gates to unwind cleanly out of
+    // nested loops instead of process.exit(0) (which would skip client.close()).
+    let stopRequested = false
 
-      const branches = branchIds.map((id) => BRANCHES.find((b) => b.id === id)!).filter(Boolean)
-      let topicIdx = 0
-      let failures = 0
-      let inserted = 0
-      while (inserted < remaining) {
-        const need = Math.min(BATCH, remaining - inserted)
-        const branch = branches[topicIdx % branches.length]
-        const topic = branch.topics[topicIdx % branch.topics.length]
-        topicIdx++
-        const degree = DEGREES[degreeIdx++ % DEGREES.length]
-        const types = [ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length]]
-        const typeList = [...new Set(types)]
+    // Rotating counters per dimension (global across the whole run).
+    let branchIdx = 0
+    let degreeIdx = 0
+    let typeIdx = 0
 
-        const prompt = buildTechnicalPrompt(branch, level, topic, need, typeList, degree, industry)
-        let raw = ''
-        let providerUsed = ''
-        try { const r = await aiComplete(prompt); raw = r.content; providerUsed = r.provider } catch (e) {
-          failures++
-          if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} failures.`); break }
-          console.log(`  [${key}] ai error (${e instanceof Error ? e.message : e}) failure ${failures}/${MAX_CONSECUTIVE_FAILURES}`)
-          await sleep(3000)
-          continue
+    // buildDocs: normalize → dedupe (exact fingerprint + content-hash) → validate.
+    // Each rejected doc (dedupe OR validation) increments totalFailed.
+    const buildDocs = (parsed: Record<string, unknown>[], overrides: Partial<BankQuestionDoc>): BankQuestionDoc[] => {
+      const out: BankQuestionDoc[] = []
+      for (const q of parsed) {
+        const doc = normalizeBankQuestion({ id: undefined, ...q, source: 'ai', createdAt: new Date().toISOString(), ...overrides })
+        if (!doc) { totalFailed++; continue }
+        if (FORCE_HARD) doc.difficulty = 'Hard'
+        // Exact duplicate? (fingerprint now uses question+options+answer)
+        const h = bankContentHash(doc)
+        const f = fingerprint(doc)
+        if (seenHashes.has(h) || seenFp.has(f)) { totalFailed++; continue }
+        // Strict schema validation
+        const v = validateBankQuestion(doc)
+        if (!v.ok) { totalFailed++; console.log(`    reject: ${v.reason} | "${(doc.title || doc.question || '').slice(0, 60)}"`); continue }
+        seenHashes.add(h)
+        seenFp.add(f)
+        out.push(doc)
+      }
+      return out
+    }
+
+    // Technical industries: 10 × 3 levels × 1000 = 30k
+    let bucketCount = 0
+    for (const [industry, branchIds] of Object.entries(TECH_INDUSTRY_BRANCHES)) {
+      if (ONLY_INDUSTRY && industry !== ONLY_INDUSTRY) continue
+      for (const level of LEVELS) {
+        if (ONLY_LEVEL && level.id !== ONLY_LEVEL) continue
+        bucketCount++
+        if (bucketCount > MAX_BUCKETS) { console.log(`Reached MAX_BUCKETS=${MAX_BUCKETS}, stopping.`); stopRequested = true; break }
+        const key = `${industry}/${level.id}`
+        const current = await col.countDocuments({ industry, level: level.id })
+        const remaining = TARGET_PER_BUCKET - current
+        console.log(`\n=== Bucket ${key}: ${current}/${TARGET_PER_BUCKET} existing, ${Math.max(0, remaining)} to generate ===`)
+        if (remaining <= 0) { console.log(`Bucket ${key} already at target, skipping.`); continue }
+
+        const branches = branchIds.map((id) => BRANCHES.find((b) => b.id === id)!).filter(Boolean)
+        let topicIdx = 0
+        let failures = 0
+        let inserted = 0
+        while (inserted < remaining) {
+          if (stopRequested) break
+          const need = Math.min(BATCH, remaining - inserted)
+          const branch = branches[topicIdx % branches.length]
+          const topic = branch.topics[topicIdx % branch.topics.length]
+          topicIdx++
+          const degree = DEGREES[degreeIdx++ % DEGREES.length]
+          const types = [ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length]]
+          const typeList = [...new Set(types)]
+
+          const prompt = buildTechnicalPrompt(branch, level, topic, need, typeList, degree, industry)
+          let raw = ''
+          let providerUsed = ''
+          try { const r = await aiComplete(prompt); raw = r.content; providerUsed = r.provider } catch (e) {
+            failures++
+            totalFailed++
+            if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} failures.`); break }
+            console.log(`  [${key}] ai error (${e instanceof Error ? e.message : e}) failure ${failures}/${MAX_CONSECUTIVE_FAILURES}`)
+            await sleep(3000)
+            continue
+          }
+          const parsed = parseQuestionArray(raw)
+          if (!parsed.length) {
+            failures++
+            totalFailed++
+            if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} empty batches.`); break }
+            console.log(`  [${key}] empty/unparseable batch (failure ${failures}/${MAX_CONSECUTIVE_FAILURES})`)
+            await sleep(2000)
+            continue
+          }
+          failures = 0
+
+          const docs = buildDocs(parsed, {
+            branch: branch.id,
+            level: level.id,
+            industry,
+            degree_type: degree,
+            assessment_category: 'skills',
+          })
+          if (docs.length) {
+            await col.insertMany(docs)
+            inserted += docs.length
+            totalInserted += docs.length
+            console.log(`  [${key}] +${docs.length} (${typeList.join(',')} @${branch.id}/${degree} via ${providerUsed}); bucket ${current + inserted}/${TARGET_PER_BUCKET}`)
+          } else {
+            console.log(`  [${key}] batch all rejected/duplicates (${parsed.length} parsed)`)
+          }
+          const el = ((Date.now() - startedAt) / 60000).toFixed(1)
+          console.log(`  [elapsed ${el}m, total ${totalInserted} new, ${totalFailed} failed]`)
+          if (MAX_INSERTS > 0 && totalInserted >= MAX_INSERTS) { console.log(`  [${key}] reached MAX_INSERTS=${MAX_INSERTS}, stopping.`); stopRequested = true; break }
+          await sleep(1200)
         }
-        const parsed = extractArray(raw)
-        if (!parsed.length) {
-          failures++
-          if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} empty batches.`); break }
-          console.log(`  [${key}] empty/unparseable batch (failure ${failures}/${MAX_CONSECUTIVE_FAILURES})`)
-          await sleep(2000)
-          continue
-        }
-        failures = 0
+        if (stopRequested) break
+      }
+      if (stopRequested) break
+    }
 
-        const docs = buildDocs(parsed, {
-          branch: branch.id,
-          level: level.id,
-          industry,
-          degree_type: degree,
-          assessment_category: 'skills',
-        })
-        if (docs.length) {
-          await col.insertMany(docs)
-          inserted += docs.length
-          totalInserted += docs.length
-          console.log(`  [${key}] +${docs.length} (${typeList.join(',')} @${branch.id}/${degree} via ${providerUsed}); bucket ${current + inserted}/${TARGET_PER_BUCKET}`)
-        } else {
-          console.log(`  [${key}] batch all duplicates (${parsed.length} parsed)`)
+    if (stopRequested) { console.log('\n=== stop requested — skipping remaining industries + top-up ===') }
+    else {
+    // Soft industries: 5 × 3 levels × 1000 = 15k
+    for (const industry of SOFT_INDUSTRIES) {
+      if (ONLY_INDUSTRY && industry.id !== ONLY_INDUSTRY) continue
+      for (const level of LEVELS) {
+        if (ONLY_LEVEL && level.id !== ONLY_LEVEL) continue
+        const key = `${industry.id}/${level.id}`
+        const current = await col.countDocuments({ industry: industry.id, level: level.id })
+        const remaining = TARGET_PER_BUCKET - current
+        console.log(`\n=== Bucket ${key}: ${current}/${TARGET_PER_BUCKET} existing, ${Math.max(0, remaining)} to generate ===`)
+        if (remaining <= 0) { console.log(`Bucket ${key} already at target, skipping.`); continue }
+
+        let failures = 0
+        let inserted = 0
+        while (inserted < remaining) {
+          const need = Math.min(BATCH, remaining - inserted)
+          const types = [SOFT_TYPES[typeIdx++ % SOFT_TYPES.length], SOFT_TYPES[typeIdx++ % SOFT_TYPES.length], SOFT_TYPES[typeIdx++ % SOFT_TYPES.length]]
+          const typeList = [...new Set(types)]
+          const prompt = buildSoftPrompt(industry, level, industry.focus, need, typeList)
+          let raw = ''
+          let providerUsed = ''
+          try { const r = await aiComplete(prompt); raw = r.content; providerUsed = r.provider } catch (e) {
+            failures++
+            totalFailed++
+            if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} failures.`); break }
+            console.log(`  [${key}] ai error (${e instanceof Error ? e.message : e}) failure ${failures}/${MAX_CONSECUTIVE_FAILURES}`)
+            await sleep(3000)
+            continue
+          }
+          const parsed = parseQuestionArray(raw)
+          if (!parsed.length) {
+            failures++
+            totalFailed++
+            if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} empty batches.`); break }
+            console.log(`  [${key}] empty/unparseable batch (failure ${failures}/${MAX_CONSECUTIVE_FAILURES})`)
+            await sleep(2000)
+            continue
+          }
+          failures = 0
+
+          const docs = buildDocs(parsed, {
+            level: level.id,
+            industry: industry.id,
+            degree_type: DEGREES[degreeIdx++ % DEGREES.length],
+            assessment_category: industry.category,
+          })
+          if (docs.length) {
+            await col.insertMany(docs)
+            inserted += docs.length
+            totalInserted += docs.length
+            console.log(`  [${key}] +${docs.length} (${typeList.join(',')} via ${providerUsed}); bucket ${current + inserted}/${TARGET_PER_BUCKET}`)
+          } else {
+            console.log(`  [${key}] batch all rejected/duplicates (${parsed.length} parsed)`)
+          }
+          const el = ((Date.now() - startedAt) / 60000).toFixed(1)
+          console.log(`  [elapsed ${el}m, total ${totalInserted} new, ${totalFailed} failed]`)
+          await sleep(1200)
         }
-        const el = ((Date.now() - startedAt) / 60000).toFixed(1)
-        console.log(`  [elapsed ${el}m, total ${totalInserted} new, ${totalFailed} failed]`)
-        if (MAX_INSERTS > 0 && totalInserted >= MAX_INSERTS) { console.log(`  [${key}] reached MAX_INSERTS=${MAX_INSERTS}, stopping.`); process.exit(0) }
-        await sleep(1200)
       }
     }
-  }
 
-  // Soft industries: 5 × 3 levels × 1000 = 15k
-  for (const industry of SOFT_INDUSTRIES) {
-    if (ONLY_INDUSTRY && industry.id !== ONLY_INDUSTRY) continue
-    for (const level of LEVELS) {
-      if (ONLY_LEVEL && level.id !== ONLY_LEVEL) continue
-      const key = `${industry.id}/${level.id}`
-      const current = await col.countDocuments({ industry: industry.id, level: level.id })
-      const remaining = TARGET_PER_BUCKET - current
-      console.log(`\n=== Bucket ${key}: ${current}/${TARGET_PER_BUCKET} existing, ${Math.max(0, remaining)} to generate ===`)
-      if (remaining <= 0) { console.log(`Bucket ${key} already at target, skipping.`); continue }
-
-      let failures = 0
-      let inserted = 0
-      while (inserted < remaining) {
-        const need = Math.min(BATCH, remaining - inserted)
-        const types = [SOFT_TYPES[typeIdx++ % SOFT_TYPES.length], SOFT_TYPES[typeIdx++ % SOFT_TYPES.length], SOFT_TYPES[typeIdx++ % SOFT_TYPES.length]]
-        const typeList = [...new Set(types)]
-        const prompt = buildSoftPrompt(industry, level, industry.focus, need, typeList)
-        let raw = ''
-        let providerUsed = ''
-        try { const r = await aiComplete(prompt); raw = r.content; providerUsed = r.provider } catch (e) {
-          failures++
-          if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} failures.`); break }
-          console.log(`  [${key}] ai error (${e instanceof Error ? e.message : e}) failure ${failures}/${MAX_CONSECUTIVE_FAILURES}`)
-          await sleep(3000)
-          continue
-        }
-        const parsed = extractArray(raw)
-        if (!parsed.length) {
-          failures++
-          if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} empty batches.`); break }
-          console.log(`  [${key}] empty/unparseable batch (failure ${failures}/${MAX_CONSECUTIVE_FAILURES})`)
-          await sleep(2000)
-          continue
-        }
-        failures = 0
-
-        const docs = buildDocs(parsed, {
-          level: level.id,
-          industry: industry.id,
-          degree_type: DEGREES[degreeIdx++ % DEGREES.length],
-          assessment_category: industry.category,
-        })
-        if (docs.length) {
-          await col.insertMany(docs)
-          inserted += docs.length
-          totalInserted += docs.length
-          console.log(`  [${key}] +${docs.length} (${typeList.join(',')} via ${providerUsed}); bucket ${current + inserted}/${TARGET_PER_BUCKET}`)
-        } else {
-          console.log(`  [${key}] batch all duplicates (${parsed.length} parsed)`)
-        }
-        const el = ((Date.now() - startedAt) / 60000).toFixed(1)
-        console.log(`  [elapsed ${el}m, total ${totalInserted} new, ${totalFailed} failed]`)
-        await sleep(1200)
-      }
-    }
-  }
-
-  // ── TOP-UP PASS: guarantee every dimension bucket reaches TARGET_PER_BUCKET ──
-  // Skips entirely when SKIP_TOP_UP=1 (single-industry/single-level targeted runs).
-  if (SKIP_TOP_UP) {
-    console.log('\n\n=== SKIP_TOP_UP=1: skipping top-up pass. ===')
-  } else {
-    console.log('\n\n=== TOP-UP PASS: verifying all dimension coverage ===')
-  }
-  const dimensions: { name: string; field: string; values: string[] }[] = [
-    { name: 'branch', field: 'branch', values: BRANCHES.map((b) => b.id) },
-    { name: 'degree', field: 'degree_type', values: DEGREES },
-    { name: 'type', field: 'type', values: [...ALL_TYPES] as unknown as string[] },
-    { name: 'level', field: 'level', values: LEVELS.map((l) => l.id) },
-  ]
-  if (!SKIP_TOP_UP) {
-  for (const level of LEVELS) {
-    for (const dim of dimensions) {
-      for (const value of dim.values) {
-        const count = await col.countDocuments({ [dim.field]: value, level: level.id })
-        if (count < TARGET_PER_BUCKET) {
-          const need = TARGET_PER_BUCKET - count
-          console.log(`\n=== TOP-UP ${dim.field}=${value} level=${level.id}: ${count}/${TARGET_PER_BUCKET}, generating ${need} ===`)
-          let failures = 0
-          let inserted = 0
-          while (inserted < need) {
-            const batchNeed = Math.min(BATCH, need - inserted)
-            let prompt = ''
-            let overrides: Partial<BankQuestionDoc> = { level: level.id, degree_type: DEGREES[degreeIdx++ % DEGREES.length] }
-            if (dim.field === 'branch') {
-              const b = BRANCHES.find((x) => x.id === value)!
-              const topic = b.topics[inserted % b.topics.length]
-              const tl = [ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length]]
-              prompt = buildTechnicalPrompt(b, level, topic, batchNeed, [...new Set(tl)], overrides.degree_type!)
-              overrides = { ...overrides, branch: b.id, industry: 'engineering', assessment_category: 'skills' }
-            } else if (dim.field === 'type') {
-              const type = value
-              const b = BRANCHES[(branchIdx++) % BRANCHES.length]
-              const topic = b.topics[branchIdx % b.topics.length]
-              overrides = { ...overrides, branch: b.id, industry: 'software', assessment_category: 'skills', type: type as BankQuestionDoc['type'] }
-              prompt = buildTechnicalPrompt(b, level, topic, batchNeed, [type], overrides.degree_type!)
-            } else if (dim.field === 'degree') {
-              const b = BRANCHES[(branchIdx++) % BRANCHES.length]
-              const topic = b.topics[branchIdx % b.topics.length]
-              overrides = { ...overrides, branch: b.id, industry: 'engineering', assessment_category: 'skills', degree_type: value }
-              prompt = buildTechnicalPrompt(b, level, topic, batchNeed, [ALL_TYPES[typeIdx++ % ALL_TYPES.length]], value)
-            } else if (dim.field === 'level') {
-              const b = BRANCHES[(branchIdx++) % BRANCHES.length]
-              const topic = b.topics[branchIdx % b.topics.length]
-              overrides = { ...overrides, branch: b.id, industry: 'engineering', assessment_category: 'skills' }
-              prompt = buildTechnicalPrompt(b, level, topic, batchNeed, [ALL_TYPES[typeIdx++ % ALL_TYPES.length]], overrides.degree_type!)
+    // ── TOP-UP PASS: guarantee every dimension bucket reaches TARGET_PER_BUCKET ──
+    // Skips entirely when SKIP_TOP_UP=1 (single-industry/single-level targeted runs).
+    // NOTE: these are GLOBAL counts (not per-industry); the final DB WILL exceed
+    // 45,000 once top-up runs. Set SKIP_TOP_UP=1 for an exact 45k cap.
+    if (SKIP_TOP_UP) {
+      console.log('\n\n=== SKIP_TOP_UP=1: skipping top-up pass. ===')
+    } else {
+      console.log('\n\n=== TOP-UP PASS: verifying all dimension coverage ===')
+      const dimensions: { name: string; field: string; values: string[] }[] = [
+        { name: 'branch', field: 'branch', values: BRANCHES.map((b) => b.id) },
+        { name: 'degree', field: 'degree_type', values: DEGREES },
+        { name: 'type', field: 'type', values: [...ALL_TYPES] as unknown as string[] },
+        { name: 'level', field: 'level', values: LEVELS.map((l) => l.id) },
+      ]
+      for (const level of LEVELS) {
+        for (const dim of dimensions) {
+          for (const value of dim.values) {
+            const count = await col.countDocuments({ [dim.field]: value, level: level.id })
+            if (count < TARGET_PER_BUCKET) {
+              const need = TARGET_PER_BUCKET - count
+              console.log(`\n=== TOP-UP ${dim.field}=${value} level=${level.id}: ${count}/${TARGET_PER_BUCKET}, generating ${need} ===`)
+              let failures = 0
+              let inserted = 0
+              while (inserted < need) {
+                const batchNeed = Math.min(BATCH, need - inserted)
+                let prompt = ''
+                let overrides: Partial<BankQuestionDoc> = { level: level.id, degree_type: DEGREES[degreeIdx++ % DEGREES.length] }
+                if (dim.field === 'branch') {
+                  const b = BRANCHES.find((x) => x.id === value)!
+                  const topic = b.topics[inserted % b.topics.length]
+                  const tl = [ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length]]
+                  prompt = buildTechnicalPrompt(b, level, topic, batchNeed, [...new Set(tl)], overrides.degree_type!)
+                  overrides = { ...overrides, branch: b.id, industry: 'engineering', assessment_category: 'skills' }
+                } else if (dim.field === 'type') {
+                  const type = value
+                  const b = BRANCHES[(branchIdx++) % BRANCHES.length]
+                  const topic = b.topics[branchIdx % b.topics.length]
+                  overrides = { ...overrides, branch: b.id, industry: 'software', assessment_category: 'skills', type: type as BankQuestionDoc['type'] }
+                  prompt = buildTechnicalPrompt(b, level, topic, batchNeed, [type], overrides.degree_type!)
+                } else if (dim.field === 'degree') {
+                  const b = BRANCHES[(branchIdx++) % BRANCHES.length]
+                  const topic = b.topics[branchIdx % b.topics.length]
+                  overrides = { ...overrides, branch: b.id, industry: 'engineering', assessment_category: 'skills', degree_type: value }
+                  prompt = buildTechnicalPrompt(b, level, topic, batchNeed, [ALL_TYPES[typeIdx++ % ALL_TYPES.length]], value)
+                } else if (dim.field === 'level') {
+                  const b = BRANCHES[(branchIdx++) % BRANCHES.length]
+                  const topic = b.topics[branchIdx % b.topics.length]
+                  overrides = { ...overrides, branch: b.id, industry: 'engineering', assessment_category: 'skills' }
+                  prompt = buildTechnicalPrompt(b, level, topic, batchNeed, [ALL_TYPES[typeIdx++ % ALL_TYPES.length]], overrides.degree_type!)
+                }
+                let raw = ''
+                try { const r = await aiComplete(prompt); raw = r.content } catch (e) {
+                  failures++
+                  totalFailed++
+                  if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  top-up ${dim.field}=${value} aborting.`); break }
+                  console.log(`  ai error (${e instanceof Error ? e.message : e})`)
+                  await sleep(3000)
+                  continue
+                }
+                const parsed = parseQuestionArray(raw)
+                if (!parsed.length) {
+                  failures++
+                  totalFailed++
+                  if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  top-up ${dim.field}=${value} aborting.`); break }
+                  await sleep(2000)
+                  continue
+                }
+                failures = 0
+                const docs = buildDocs(parsed, overrides)
+                if (docs.length) { await col.insertMany(docs); inserted += docs.length; totalInserted += docs.length }
+                console.log(`  top-up ${dim.field}=${value} @${level.id}: +${docs.length} (${inserted}/${need})`)
+                await sleep(1200)
+              }
             }
-            let raw = ''
-            try { const r = await aiComplete(prompt); raw = r.content } catch (e) {
-              failures++
-              if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  top-up ${dim.field}=${value} aborting.`); break }
-              console.log(`  ai error (${e instanceof Error ? e.message : e})`)
-              await sleep(3000)
-              continue
-            }
-            const parsed = extractArray(raw)
-            if (!parsed.length) {
-              failures++
-              if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  top-up ${dim.field}=${value} aborting.`); break }
-              await sleep(2000)
-              continue
-            }
-            failures = 0
-            const docs = buildDocs(parsed, overrides)
-            if (docs.length) { await col.insertMany(docs); inserted += docs.length; totalInserted += docs.length }
-            console.log(`  top-up ${dim.field}=${value} @${level.id}: +${docs.length} (${inserted}/${need})`)
-            await sleep(1200)
           }
         }
       }
     }
-  }
-  }
 
-  // ── FINAL REPORT ──
-  console.log('\n\n=== FINAL COVERAGE REPORT ===')
-  for (const dim of [{ name: 'industry', field: 'industry', values: [...Object.keys(TECH_INDUSTRY_BRANCHES), ...SOFT_INDUSTRIES.map((s) => s.id)] }, ...dimensions]) {
-    for (const level of LEVELS) {
-      const short: string[] = []
-      for (const value of dim.values) {
-        const c = await col.countDocuments({ [dim.field]: value, level: level.id })
-        if (c < TARGET_PER_BUCKET) short.push(`${value}=${c}`)
+    // ── FINAL REPORT ──
+    console.log('\n\n=== FINAL COVERAGE REPORT ===')
+    const reportDims: { name: string; field: string; values: string[] }[] = [
+      { name: 'industry', field: 'industry', values: [...Object.keys(TECH_INDUSTRY_BRANCHES), ...SOFT_INDUSTRIES.map((s) => s.id)] },
+      { name: 'branch', field: 'branch', values: BRANCHES.map((b) => b.id) },
+      { name: 'degree', field: 'degree_type', values: DEGREES },
+      { name: 'type', field: 'type', values: [...ALL_TYPES] as unknown as string[] },
+      { name: 'level', field: 'level', values: LEVELS.map((l) => l.id) },
+    ]
+    for (const dim of reportDims) {
+      for (const level of LEVELS) {
+        const short: string[] = []
+        for (const value of dim.values) {
+          const c = await col.countDocuments({ [dim.field]: value, level: level.id })
+          if (c < TARGET_PER_BUCKET) short.push(`${value}=${c}`)
+        }
+        if (short.length) console.log(`SHORT ${dim.field} @${level.id}: ${short.join(', ')}`)
+        else console.log(`OK ${dim.field} @${level.id}: all >= ${TARGET_PER_BUCKET}`)
       }
-      if (short.length) console.log(`SHORT ${dim.field} @${level.id}: ${short.join(', ')}`)
-      else console.log(`OK ${dim.field} @${level.id}: all >= ${TARGET_PER_BUCKET}`)
     }
-  }
 
-  console.log(`\n=== DONE: inserted ${totalInserted} new questions. ===`)
-  await client.close()
-  process.exit(0)
+    console.log(`\n=== DONE: inserted ${totalInserted} new questions, ${totalFailed} rejected/failed. ===`)
+    }
+  } finally {
+    // Always close Mongo — even on error or MAX_* early-stop. Previously
+    // process.exit(0) skipped this line, leaking a connection.
+    await client.close()
+  }
 }
 
 main().catch((e) => { console.error('FATAL:', e); process.exit(1) })
