@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { PasswordInput } from "@/components/ui/password-input";
 import { Label } from "@/components/ui/label";
 import {
   AlertCircle,
@@ -110,9 +111,8 @@ function ResetPasswordInner() {
                 <Label htmlFor="password">New password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
+                  <PasswordInput
                     id="password"
-                    type="password"
                     placeholder="At least 8 characters"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
@@ -128,9 +128,8 @@ function ResetPasswordInner() {
                 <Label htmlFor="confirmPassword">Confirm new password</Label>
                 <div className="relative">
                   <Lock className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-                  <Input
+                  <PasswordInput
                     id="confirmPassword"
-                    type="password"
                     placeholder="Repeat your password"
                     value={confirmPassword}
                     onChange={(e) => setConfirmPassword(e.target.value)}

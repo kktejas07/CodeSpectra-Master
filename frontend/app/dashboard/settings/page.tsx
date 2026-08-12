@@ -22,6 +22,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -435,9 +436,9 @@ export default function SettingsPage() {
           </DialogHeader>
           <div className="space-y-3 py-2">
             <Label htmlFor="pw-current">Current password</Label>
-            <Input id="pw-current" type="password" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)} placeholder="Enter current password" />
+            <PasswordInput id="pw-current" value={pwCurrent} onChange={e => setPwCurrent(e.target.value)} placeholder="Enter current password" />
             <Label htmlFor="pw-new">New password</Label>
-            <Input id="pw-new" type="password" value={pwNew} onChange={e => setPwNew(e.target.value)} placeholder="At least 8 characters" />
+            <PasswordInput id="pw-new" value={pwNew} onChange={e => setPwNew(e.target.value)} placeholder="At least 8 characters" />
             {pwError ? <p className="text-xs text-red-500">{pwError}</p> : null}
           </div>
           <DialogFooter>

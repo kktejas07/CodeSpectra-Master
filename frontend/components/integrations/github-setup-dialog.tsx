@@ -10,6 +10,7 @@ import {
 } from '@/components/ui/dialog'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Card } from '@/components/ui/card'
 import { Github, ExternalLink } from 'lucide-react'
 
@@ -67,8 +68,7 @@ export function GitHubIntegrationSetup({
 
           <div>
             <label className="text-sm font-medium text-foreground block mb-2">Personal Access Token</label>
-            <Input
-              type="password"
+            <PasswordInput
               placeholder="ghp_..."
               value={token}
               onChange={(e) => setToken(e.target.value)}

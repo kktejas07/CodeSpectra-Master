@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
@@ -138,11 +139,11 @@ export default function KycSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>API Key</Label>
-                <Input type="password" value={settings.didit_api_key} onChange={e => setSettings({...settings, didit_api_key: e.target.value})} placeholder="XqAc-..." />
+                <PasswordInput value={settings.didit_api_key} onChange={e => setSettings({...settings, didit_api_key: e.target.value})} placeholder="XqAc-..." />
               </div>
               <div className="space-y-2">
                 <Label>Webhook Secret</Label>
-                <Input type="password" value={settings.didit_webhook_secret} onChange={e => setSettings({...settings, didit_webhook_secret: e.target.value})} placeholder="MK46N..." />
+                <PasswordInput value={settings.didit_webhook_secret} onChange={e => setSettings({...settings, didit_webhook_secret: e.target.value})} placeholder="MK46N..." />
               </div>
               <div className="space-y-2">
                 <Label>Workflow ID</Label>
@@ -181,11 +182,11 @@ export default function KycSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Client ID</Label>
-                <Input type="password" value={settings.digilocker_client_id} onChange={e => setSettings({...settings, digilocker_client_id: e.target.value})} placeholder="Your client ID" />
+                <PasswordInput value={settings.digilocker_client_id} onChange={e => setSettings({...settings, digilocker_client_id: e.target.value})} placeholder="Your client ID" />
               </div>
               <div className="space-y-2">
                 <Label>Client Secret</Label>
-                <Input type="password" value={settings.digilocker_client_secret} onChange={e => setSettings({...settings, digilocker_client_secret: e.target.value})} placeholder="Your client secret" />
+                <PasswordInput value={settings.digilocker_client_secret} onChange={e => setSettings({...settings, digilocker_client_secret: e.target.value})} placeholder="Your client secret" />
               </div>
             </div>
             <div className="mt-4 p-3 rounded-lg bg-muted/40 text-xs text-muted-foreground">
@@ -216,11 +217,11 @@ export default function KycSettingsPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Client ID</Label>
-                <Input type="password" value={settings.apisetu_client_id} onChange={e => setSettings({...settings, apisetu_client_id: e.target.value})} placeholder="Your client ID" />
+                <PasswordInput value={settings.apisetu_client_id} onChange={e => setSettings({...settings, apisetu_client_id: e.target.value})} placeholder="Your client ID" />
               </div>
               <div className="space-y-2">
                 <Label>Client Secret</Label>
-                <Input type="password" value={settings.apisetu_client_secret} onChange={e => setSettings({...settings, apisetu_client_secret: e.target.value})} placeholder="Your client secret" />
+                <PasswordInput value={settings.apisetu_client_secret} onChange={e => setSettings({...settings, apisetu_client_secret: e.target.value})} placeholder="Your client secret" />
               </div>
             </div>
             <div className="mt-4 p-3 rounded-lg bg-muted/40 text-xs text-muted-foreground">

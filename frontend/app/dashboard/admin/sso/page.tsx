@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Plus, Shield, Trash2 } from 'lucide-react'
@@ -103,7 +104,7 @@ export default function AdminSSOPage() {
             </div>
             <div>
               <Label>Client Secret</Label>
-              <Input type="password" value={form.client_secret} onChange={(e) => setForm((f) => ({ ...f, client_secret: e.target.value }))} />
+              <PasswordInput value={form.client_secret} onChange={(e) => setForm((f) => ({ ...f, client_secret: e.target.value }))} />
             </div>
             <div>
               <Label>Metadata / Discovery URL</Label>

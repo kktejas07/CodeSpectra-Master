@@ -5,6 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
+import { PasswordInput } from '@/components/ui/password-input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
@@ -571,7 +572,7 @@ export default function TenantsPage() {
                 </div>
                 <div className="grid gap-2">
                   <Label htmlFor="tenant-admin-password">Password</Label>
-                  <Input id="tenant-admin-password" type="password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} placeholder="Min 8 characters" />
+                  <PasswordInput id="tenant-admin-password" value={adminPassword} onChange={e => setAdminPassword(e.target.value)} placeholder="Min 8 characters" />
                 </div>
                 <p className="text-[11px] text-muted-foreground">Leave email empty to create the org without an admin and assign one later.</p>
               </div>
