@@ -110,7 +110,7 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       const idVer = idVerifications?.[0]
       const liveness = livenessChecks?.[0]
       const faceMatch = faceMatches?.[0]
-      const ipAnalysis = ipAnalyses?.[0]
+      const ipAnalysis = ipAnalyses?.[0] as Record<string, unknown> | undefined
 
       await db.collection('identity_verifications').insertOne({
         id: crypto.randomUUID(),
@@ -123,11 +123,33 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
           full_name: idVer?.first_name && idVer?.last_name
             ? `${idVer.first_name} ${idVer.last_name}`
             : undefined,
+          first_name: idVer?.first_name,
+          last_name: idVer?.last_name,
           date_of_birth: idVer?.date_of_birth,
+          gender: idVer?.gender,
+          age: idVer?.age,
+          document_number: idVer?.document_number,
+          issuing_state: idVer?.issuing_state_name || idVer?.issuing_state,
+          nationality: idVer?.nationality,
+          address: idVer?.formatted_address,
           liveness_score: liveness?.score,
+          liveness_method: liveness?.method,
           face_match_similarity: faceMatch?.score,
-          vpn_detected: (ipAnalysis as Record<string, unknown>)?.vpn,
+          vpn_detected: ipAnalysis?.is_vpn_or_tor,
+          ip_address: ipAnalysis?.ip_address,
+          ip_city: ipAnalysis?.ip_city,
+          ip_country: ipAnalysis?.ip_country,
+          device: ipAnalysis?.device_model,
+          browser: ipAnalysis?.browser_family,
+          isp: ipAnalysis?.isp,
+          warnings: [
+            ...(Array.isArray(idVer?.warnings) ? idVer.warnings : []),
+            ...(Array.isArray(liveness?.warnings) ? liveness.warnings : []),
+            ...(Array.isArray(faceMatch?.warnings) ? faceMatch.warnings : []),
+            ...(Array.isArray(ipAnalysis?.warnings) ? ipAnalysis.warnings : []),
+          ],
         },
+        raw_decision: parsed.decision,
         created_at: new Date().toISOString(),
       })
     }

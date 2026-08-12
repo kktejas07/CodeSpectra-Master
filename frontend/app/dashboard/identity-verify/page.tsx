@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   CheckCircle2, Loader2, ExternalLink, ShieldCheck, AlertTriangle,
-  Info, RefreshCcw, Globe, FileCheck
+  Info, RefreshCcw, Globe, FileCheck, Eye, Clock
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -19,10 +19,26 @@ interface KycStatus {
   result: {
     document_type?: string
     full_name?: string
+    first_name?: string
+    last_name?: string
     date_of_birth?: string
+    gender?: string
+    age?: number
+    document_number?: string
+    issuing_state?: string
+    nationality?: string
+    address?: string
     liveness_score?: number
+    liveness_method?: string
     face_match_similarity?: number
     vpn_detected?: boolean
+    ip_address?: string
+    ip_city?: string
+    ip_country?: string
+    device?: string
+    browser?: string
+    isp?: string
+    warnings?: string[]
   } | null
   created_at: string | null
 }
@@ -98,6 +114,173 @@ export default function IdentityVerificationPage() {
     )
   }
 
+  // Pending or In Review status
+  if (status?.kyc_status && status.kyc_status !== 'none' && !status.verified) {
+    const isReview = status.kyc_status === 'manual_review'
+    const isPending = status.kyc_status === 'pending'
+    return (
+      <div className="space-y-6" data-testid="identity-verify-page">
+        <div className={`rounded-xl border p-8 ${isReview ? 'border-amber-400/40 bg-amber-400/5' : 'border-blue-400/40 bg-blue-400/5'}`}>
+          <div className="text-center mb-6">
+            {isReview ? (
+              <Eye className="h-12 w-12 mx-auto text-amber-400 mb-3" />
+            ) : (
+              <Clock className="h-12 w-12 mx-auto text-blue-400 mb-3" />
+            )}
+            <h1 className="text-2xl font-bold text-foreground mb-1">
+              {isReview ? 'Under Review' : 'Verification Pending'}
+            </h1>
+            <p className="text-muted-foreground">
+              {isReview 
+                ? 'Your verification is being reviewed by our team. We\'ll notify you once a decision is made.'
+                : 'Your verification is being processed. This usually takes a few seconds.'}
+            </p>
+          </div>
+
+          {/* Verification Details */}
+          {status.result && (
+            <div className="max-w-3xl mx-auto space-y-4">
+              {/* Document Info */}
+              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <FileCheck className="h-4 w-4" /> Document Information
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                  {status.result.full_name && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Full Name</p>
+                      <p className="font-medium">{status.result.full_name}</p>
+                    </div>
+                  )}
+                  {status.result.document_type && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Document Type</p>
+                      <p className="font-medium">{status.result.document_type}</p>
+                    </div>
+                  )}
+                  {status.result.document_number && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Document Number</p>
+                      <p className="font-medium font-mono text-xs">{status.result.document_number}</p>
+                    </div>
+                  )}
+                  {status.result.date_of_birth && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Date of Birth</p>
+                      <p className="font-medium">{status.result.date_of_birth}</p>
+                    </div>
+                  )}
+                  {status.result.gender && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Gender</p>
+                      <p className="font-medium">{status.result.gender}</p>
+                    </div>
+                  )}
+                  {status.result.issuing_state && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Issuing Country</p>
+                      <p className="font-medium">{status.result.issuing_state}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Biometric Checks */}
+              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" /> Biometric Verification
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                  {status.result.liveness_score !== undefined && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Liveness Score</p>
+                      <p className="font-medium">{status.result.liveness_score}/100</p>
+                    </div>
+                  )}
+                  {status.result.liveness_method && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Liveness Method</p>
+                      <p className="font-medium">{status.result.liveness_method}</p>
+                    </div>
+                  )}
+                  {status.result.face_match_similarity !== undefined && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Face Match</p>
+                      <p className="font-medium">{status.result.face_match_similarity}%</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Device & IP Info */}
+              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Globe className="h-4 w-4" /> Device & Location
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                  {status.result.ip_address && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">IP Address</p>
+                      <p className="font-medium font-mono text-xs">{status.result.ip_address}</p>
+                    </div>
+                  )}
+                  {status.result.ip_city && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Location</p>
+                      <p className="font-medium">{status.result.ip_city}, {status.result.ip_country}</p>
+                    </div>
+                  )}
+                  {status.result.device && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Device</p>
+                      <p className="font-medium">{status.result.device}</p>
+                    </div>
+                  )}
+                  {status.result.browser && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Browser</p>
+                      <p className="font-medium">{status.result.browser}</p>
+                    </div>
+                  )}
+                  {status.result.vpn_detected !== undefined && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">VPN Detected</p>
+                      <p className="font-medium">{status.result.vpn_detected ? 'Yes' : 'No'}</p>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Warnings */}
+              {status.result.warnings && status.result.warnings.length > 0 && (
+                <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-amber-600">
+                    <AlertTriangle className="h-4 w-4" /> Warnings
+                  </h3>
+                  <ul className="list-disc pl-4 text-xs text-amber-600 space-y-1">
+                    {status.result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
+
+          {status.created_at && (
+            <p className="text-xs text-muted-foreground text-center mt-4">
+              Submitted on {new Date(status.created_at).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric', hour: '2-digit', minute: '2-digit' })}
+            </p>
+          )}
+
+          <div className="text-center mt-4">
+            <Button variant="outline" size="sm" onClick={refreshStatus}>
+              <RefreshCcw className="h-4 w-4 mr-1" />Refresh Status
+            </Button>
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   // Already verified
   if (status?.verified) {
     return (
@@ -110,44 +293,132 @@ export default function IdentityVerificationPage() {
           </div>
 
           {/* Verification Details */}
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl mx-auto">
-            {status.result?.full_name && (
-              <div className="p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground">Full Name</p>
-                <p className="text-sm font-medium">{status.result.full_name}</p>
+          {status.result && (
+            <div className="max-w-3xl mx-auto space-y-4">
+              {/* Document Info */}
+              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <FileCheck className="h-4 w-4" /> Document Information
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                  {status.result.full_name && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Full Name</p>
+                      <p className="font-medium">{status.result.full_name}</p>
+                    </div>
+                  )}
+                  {status.result.document_type && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Document Type</p>
+                      <p className="font-medium">{status.result.document_type}</p>
+                    </div>
+                  )}
+                  {status.result.document_number && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Document Number</p>
+                      <p className="font-medium font-mono text-xs">{status.result.document_number}</p>
+                    </div>
+                  )}
+                  {status.result.date_of_birth && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Date of Birth</p>
+                      <p className="font-medium">{status.result.date_of_birth}</p>
+                    </div>
+                  )}
+                  {status.result.gender && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Gender</p>
+                      <p className="font-medium">{status.result.gender}</p>
+                    </div>
+                  )}
+                  {status.result.issuing_state && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Issuing Country</p>
+                      <p className="font-medium">{status.result.issuing_state}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-            {status.result?.document_type && (
-              <div className="p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground">Document Type</p>
-                <p className="text-sm font-medium">{status.result.document_type}</p>
+
+              {/* Biometric Checks */}
+              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <ShieldCheck className="h-4 w-4" /> Biometric Verification
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                  {status.result.liveness_score !== undefined && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Liveness Score</p>
+                      <p className="font-medium">{status.result.liveness_score}/100</p>
+                    </div>
+                  )}
+                  {status.result.liveness_method && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Liveness Method</p>
+                      <p className="font-medium">{status.result.liveness_method}</p>
+                    </div>
+                  )}
+                  {status.result.face_match_similarity !== undefined && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Face Match</p>
+                      <p className="font-medium">{status.result.face_match_similarity}%</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-            {status.result?.liveness_score !== undefined && (
-              <div className="p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground">Liveness Score</p>
-                <p className="text-sm font-medium">{status.result.liveness_score}/100</p>
+
+              {/* Device & IP Info */}
+              <div className="p-4 rounded-lg bg-background/50 border border-border/50">
+                <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                  <Globe className="h-4 w-4" /> Device & Location
+                </h3>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-3 text-sm">
+                  {status.result.ip_address && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">IP Address</p>
+                      <p className="font-medium font-mono text-xs">{status.result.ip_address}</p>
+                    </div>
+                  )}
+                  {status.result.ip_city && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Location</p>
+                      <p className="font-medium">{status.result.ip_city}, {status.result.ip_country}</p>
+                    </div>
+                  )}
+                  {status.result.device && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Device</p>
+                      <p className="font-medium">{status.result.device}</p>
+                    </div>
+                  )}
+                  {status.result.browser && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">Browser</p>
+                      <p className="font-medium">{status.result.browser}</p>
+                    </div>
+                  )}
+                  {status.result.vpn_detected !== undefined && (
+                    <div>
+                      <p className="text-xs text-muted-foreground">VPN Detected</p>
+                      <p className="font-medium">{status.result.vpn_detected ? 'Yes' : 'No'}</p>
+                    </div>
+                  )}
+                </div>
               </div>
-            )}
-            {status.result?.face_match_similarity !== undefined && (
-              <div className="p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground">Face Match</p>
-                <p className="text-sm font-medium">{status.result.face_match_similarity}%</p>
-              </div>
-            )}
-            {status.result?.vpn_detected !== undefined && (
-              <div className="p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground">VPN Detected</p>
-                <p className="text-sm font-medium">{status.result.vpn_detected ? 'Yes' : 'No'}</p>
-              </div>
-            )}
-            {status.provider && (
-              <div className="p-3 rounded-lg bg-background/50">
-                <p className="text-xs text-muted-foreground">Provider</p>
-                <p className="text-sm font-medium capitalize">{status.provider}</p>
-              </div>
-            )}
-          </div>
+
+              {/* Warnings */}
+              {status.result.warnings && status.result.warnings.length > 0 && (
+                <div className="p-4 rounded-lg bg-amber-500/5 border border-amber-500/20">
+                  <h3 className="text-sm font-semibold mb-2 flex items-center gap-2 text-amber-600">
+                    <AlertTriangle className="h-4 w-4" /> Warnings
+                  </h3>
+                  <ul className="list-disc pl-4 text-xs text-amber-600 space-y-1">
+                    {status.result.warnings.map((w, i) => <li key={i}>{w}</li>)}
+                  </ul>
+                </div>
+              )}
+            </div>
+          )}
 
           {status.created_at && (
             <p className="text-xs text-muted-foreground text-center mt-4">
