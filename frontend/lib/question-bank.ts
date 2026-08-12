@@ -54,6 +54,33 @@ function normString(v: unknown, max = 2000): string {
   return s.length > max ? s.slice(0, max) : s
 }
 
+/**
+ * True when a title is a placeholder with no meaning — "Q1", "Q.3", "Question 7",
+ * "1.2.3", "DBMS Q1", "9". These are unusable for a question-bank list UI.
+ */
+export function isPlaceholderTitle(title: string): boolean {
+  const t = (title || '').trim()
+  if (!t) return true
+  return (
+    /^[qQ][\s.:_\-]*\d+(\s*[qQ]?\d*)*$/.test(t) || // Q1, Q.3, Q 12, Q1.2
+    /^question[\s.:_\-]*\d+$/i.test(t) || // Question 7
+    /^\d+([./_-]\d+)*$/.test(t) || // 1, 1.1, 1.2.3
+    /^[a-z0-9][\w /&+.-]*[qQ][\s.:_\-]*\d+$/.test(t) || // DBMS Q1, Topic-4.Q2
+    /^n\/a$|^null$|^undefined$/i.test(t)
+  )
+}
+
+/** Derive a readable short title from the question prompt. */
+export function deriveTitleFromQuestion(question: string, max = 96): string {
+  const q = (question || '').trim().replace(/\s+/g, ' ')
+  if (!q) return 'Untitled question'
+  if (q.length <= max) return q.replace(/[?\s.]*$/, '')
+  const cut = q.slice(0, max + 1)
+  const lastSpace = cut.lastIndexOf(' ')
+  const t = lastSpace > 40 ? cut.slice(0, lastSpace) : cut
+  return t.replace(/[?\s.,;:]+$/, '') + '…'
+}
+
 /** Content hash used to skip duplicate imports. */
 export function bankContentHash(doc: Partial<BankQuestionDoc>): string {
   const core = [
@@ -74,7 +101,8 @@ export function bankContentHash(doc: Partial<BankQuestionDoc>): string {
  */
 export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestionDoc | null {
   const question = normString(raw.question || raw.prompt || raw.title)
-  const title = normString(raw.title, 200) || question.slice(0, 120)
+  const rawTitle = normString(raw.title, 200)
+  const title = isPlaceholderTitle(rawTitle) || !rawTitle ? deriveTitleFromQuestion(question) : rawTitle
   if (!question) return null
 
   const rawType = normString(raw.type || 'mcq', 40).toLowerCase()

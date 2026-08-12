@@ -230,6 +230,7 @@ function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVEL
     `Degree level of candidate: ${degree.toUpperCase()}.`,
     `Question types (approximate counts): ${typeSpec}.`,
     `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers comma-separated. 'true_false' = options ["True","False"]. 'fill_blanks' = question has a ____ blank + 4 candidate fill-ins as options. 'coding' = empty options, answer is a short approach outline (no full solution). 'descriptive' = empty options, answer is a model-answer paragraph.`,
+    `TITLE RULE (mandatory): the "title" field MUST be a concise human-readable summary of that specific question (e.g. "Binary Search worst-case time complexity", "Banker's algorithm safe-state check"), 4-12 words, unique per question. NEVER use "Q1", "Question 2", "1.1", or any numbering scheme as a title — a numbered title is an automatic rejection.`,
     `Vary concepts: do NOT repeat the same concept twice in one batch.`,
     `${authNote}${hardNote}`,
     `Respond with ONLY a JSON array. Each object: {"title": short label, "question": full prompt, "type", "options": [string], "answer", "explanation", "difficulty": "Easy"|"Medium"|"Hard", "marks": 5-20, "subject": "${topic}", "tags": [2-4 tags]}.`,
@@ -244,6 +245,7 @@ function buildSoftPrompt(industry: (typeof SOFT_INDUSTRIES)[0], level: (typeof L
     `Assessment category: ${industry.category.toUpperCase()} aptitude. Focus: ${focus}.`,
     `Question types (approximate counts): ${typeSpec}.`,
     `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers. 'true_false' = options ["True","False"]. 'fill_blanks' = statement with a ____ blank + 4 fill-ins. 'descriptive' = empty options, model-answer paragraph.`,
+    `TITLE RULE (mandatory): the "title" field MUST be a concise human-readable summary of that specific question, 4-12 words, unique per question. NEVER use "Q1", "Question 2", "1.1", or any numbering scheme as a title.`,
     `Vary the scenarios: do NOT repeat the same situation twice in one batch.`,
     `Respond with ONLY a JSON array. Each object: {"title": short label, "question": full prompt, "type", "options": [string], "answer", "explanation", "difficulty": "Easy"|"Medium"|"Hard", "marks": 5-20, "subject": "${industry.category}", "tags": [2-4 tags]}.`,
   ].join('\n')
