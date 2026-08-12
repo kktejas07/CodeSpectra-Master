@@ -15,6 +15,7 @@ import {
   Smartphone,
   ScrollText,
   Trophy,
+  Shield,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -41,6 +42,7 @@ const ITEMS: {
   { id: 'email-templates', label: 'Email templates', icon: FileText },
   { id: 'llm', label: 'AI & LLM Keys', icon: Sparkles },
   { id: 'gamification', label: 'Gamification & XP', icon: Trophy },
+  { id: 'kyc', label: 'KYC Providers', icon: Shield },
 ]
 
 export function PlatformSettingsSidebarNav({

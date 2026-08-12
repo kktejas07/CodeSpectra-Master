@@ -11,6 +11,7 @@ export const PLATFORM_SETTINGS_SECTIONS = [
   'email-templates',
   'llm',
   'gamification',
+  'kyc',
 ] as const
 
 export type PlatformSettingsSection = (typeof PLATFORM_SETTINGS_SECTIONS)[number]
