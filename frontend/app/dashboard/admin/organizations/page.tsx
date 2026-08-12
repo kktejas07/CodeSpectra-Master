@@ -12,6 +12,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Sheet, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle } from '@/components/ui/sheet'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { useConfirm } from '@/lib/confirm-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, EyeOff, LogIn, ShieldAlert, RefreshCw, UserRound, Mail } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -40,6 +41,7 @@ interface TenantMember {
 export default function TenantsPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
+  const confirm = useConfirm()
   const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
@@ -320,7 +322,13 @@ export default function TenantsPage() {
 
   const handleDeleteMember = async () => {
     if (!editingMember || deletingMember) return
-    if (!window.confirm(`Delete ${editingMember.name || editingMember.email}? This cannot be undone.`)) return
+    const ok = await confirm({
+      title: 'Delete member?',
+      description: `Remove ${editingMember.name || editingMember.email} from this organization. This cannot be undone.`,
+      confirmText: 'Delete',
+      destructive: true,
+    })
+    if (!ok) return
     setDeletingMember(true)
     try {
       const res = await csrfFetch(`/api/admin/users/${editingMember.id}`, {
@@ -496,7 +504,15 @@ export default function TenantsPage() {
                     type="button"
                     aria-label={`Delete ${t.name}`}
                     className="rounded p-1 text-muted-foreground hover:text-destructive"
-                    onClick={() => { if (confirm(`Delete "${t.name}"? Members will be detached from this org.`)) void handleDelete(t) }}
+                    onClick={async () => {
+                    const ok = await confirm({
+                      title: `Delete "${t.name}"?`,
+                      description: 'Members will be detached from this org. This cannot be undone.',
+                      confirmText: 'Delete',
+                      destructive: true,
+                    })
+                    if (ok) void handleDelete(t)
+                  }}
                     disabled={deletingId === t.id}
                     title="Delete"
                   >
@@ -511,7 +527,7 @@ export default function TenantsPage() {
 
       {/* Create drawer */}
       <Sheet open={createOpen} onOpenChange={setCreateOpen}>
-        <SheetContent side="left" className="sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>New organization</SheetTitle>
             <SheetDescription>
@@ -572,7 +588,7 @@ export default function TenantsPage() {
 
       {/* Edit drawer */}
       <Sheet open={Boolean(editTenant)} onOpenChange={(o) => !o && setEditTenant(null)}>
-        <SheetContent side="left" className="sm:max-w-lg overflow-y-auto">
+        <SheetContent side="right" className="sm:max-w-lg overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Edit organization</SheetTitle>
             <SheetDescription>Update tenant details. Changes apply immediately to members scoped to this org.</SheetDescription>
@@ -622,7 +638,7 @@ export default function TenantsPage() {
 
       {/* Members drawer */}
       <Sheet open={Boolean(membersOf)} onOpenChange={(o) => !o && setMembersOf(null)}>
-        <SheetContent side="left" className="sm:max-w-xl overflow-y-auto">
+        <SheetContent side="right" className="sm:max-w-xl overflow-y-auto">
           <SheetHeader>
             <SheetTitle className="flex items-center gap-2">
               <Building2 className="h-4 w-4" /> {membersOf?.name || ''} members
