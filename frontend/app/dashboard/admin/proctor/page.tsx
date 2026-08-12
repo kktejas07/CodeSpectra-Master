@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
-import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search, LogOut, RotateCcw, Copy, ClipboardPaste, Bell } from 'lucide-react'
+import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search, LogOut, RotateCcw, Copy, ClipboardPaste, Bell, Monitor, Usb, Mic, Video, Globe, Keyboard, Mouse, Maximize, Move } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ProctorEvent {
@@ -14,16 +14,72 @@ interface ProctorEvent {
 }
 
 const EVENT_ICONS: Record<string, React.ReactNode> = {
-  tab_blur: <LogOut className="w-4 h-4" />, tab_focus: <RotateCcw className="w-4 h-4" />, copy: <Copy className="w-4 h-4" />, paste: <ClipboardPaste className="w-4 h-4" />,
-  right_click: '🖱️', fullscreen_exit: '🖥️', idle_60s: '💤',
-  camera_capture: '📷', camera_denied: '🚫',
+  // Focus & Navigation
+  tab_blur: <LogOut className="w-4 h-4" />, tab_focus: <RotateCcw className="w-4 h-4" />,
+  alt_tab_detected: <LogOut className="w-4 h-4" />,
+  navigate_away_attempt: <LogOut className="w-4 h-4" />,
+  fullscreen_exit: <Maximize className="w-4 h-4" />,
+
+  // Clipboard
+  copy: <Copy className="w-4 h-4" />, paste: <ClipboardPaste className="w-4 h-4" />,
+  clipboard_copy: <Copy className="w-4 h-4" />, clipboard_paste: <ClipboardPaste className="w-4 h-4" />,
+  copy_paste_attempt: <Copy className="w-4 h-4" />,
+
+  // Screen & Display
+  screen_share_started: <Monitor className="w-4 h-4" />,
+  screen_share_ended: <Monitor className="w-4 h-4" />,
+  screen_capture_detected: <Monitor className="w-4 h-4" />,
+  rapid_window_resize: <Move className="w-4 h-4" />,
+
+  // USB & Hardware
+  usb_device_plugged: <Usb className="w-4 h-4" />,
+  usb_device_unplugged: <Usb className="w-4 h-4" />,
+  usb_device_inserted: <Usb className="w-4 h-4" />,
+  usb_device_removed: <Usb className="w-4 h-4" />,
+  hardware_port_anomaly: <Usb className="w-4 h-4" />,
+  hardware_port_audit: <Usb className="w-4 h-4" />,
+
+  // Audio
+  secondary_voice_detected: <Mic className="w-4 h-4" />,
+  volume_anomaly_detected: <Mic className="w-4 h-4" />,
+
+  // Applications & Proxy
+  prohibited_app_detected: <Globe className="w-4 h-4" />,
+  remote_desktop_detected: <Globe className="w-4 h-4" />,
+
+  // Input
+  keyboard_shortcut_blocked: <Keyboard className="w-4 h-4" />,
+  right_click_blocked: <Mouse className="w-4 h-4" />,
+  right_click: <Mouse className="w-4 h-4" />,
+
+  // Camera & Identity
+  camera_capture: <Video className="w-4 h-4" />,
+  camera_denied: <Video className="w-4 h-4" />,
   multi_face: '👥', no_face: '😶',
+
+  // Idle & Session
+  idle_60s: '💤',
+  session_kickout: <Shield className="w-4 h-4" />,
 }
 
 const EVENT_SEVERITY: Record<string, string> = {
-  tab_blur: 'warning', fullscreen_exit: 'critical', idle_60s: 'warning',
+  // Critical
+  screen_share_started: 'critical', screen_capture_detected: 'critical',
+  prohibited_app_detected: 'critical', remote_desktop_detected: 'critical',
+  usb_device_plugged: 'critical', usb_device_inserted: 'critical',
+  multi_face: 'critical', session_kickout: 'critical',
+  hardware_port_anomaly: 'critical',
+  // Warning
+  tab_blur: 'warning', fullscreen_exit: 'warning', idle_60s: 'warning',
+  secondary_voice_detected: 'warning', volume_anomaly_detected: 'warning',
+  alt_tab_detected: 'warning', navigate_away_attempt: 'warning',
+  no_face: 'warning', rapid_window_resize: 'warning',
+  // Info
   copy: 'info', paste: 'info', right_click: 'info',
-  multi_face: 'critical', no_face: 'warning',
+  clipboard_copy: 'info', clipboard_paste: 'info', copy_paste_attempt: 'info',
+  keyboard_shortcut_blocked: 'info', right_click_blocked: 'info',
+  usb_device_unplugged: 'info', usb_device_removed: 'info',
+  screen_share_ended: 'info', hardware_port_audit: 'info',
 }
 
 export default function AdminProctorPage() {
@@ -33,8 +89,42 @@ export default function AdminProctorPage() {
   const [flagged, setFlagged] = useState<string[]>([])
   const [loading, setLoading] = useState(true)
   const [search, setSearch] = useState('')
+  const [categoryFilter, setCategoryFilter] = useState<string>('all')
   const [expanded, setExpanded] = useState<string | null>(null)
   const [userMap, setUserMap] = useState<Record<string, { name: string; email: string }>>({})
+
+  // Event category mapping
+  const EVENT_CATEGORIES: Record<string, string> = {
+    tab_blur: 'focus', tab_focus: 'focus', alt_tab_detected: 'focus',
+    navigate_away_attempt: 'focus', fullscreen_exit: 'focus',
+    copy: 'clipboard', paste: 'clipboard', clipboard_copy: 'clipboard',
+    clipboard_paste: 'clipboard', copy_paste_attempt: 'clipboard',
+    screen_share_started: 'screen', screen_share_ended: 'screen',
+    screen_capture_detected: 'screen', rapid_window_resize: 'screen',
+    usb_device_plugged: 'hardware', usb_device_unplugged: 'hardware',
+    usb_device_inserted: 'hardware', usb_device_removed: 'hardware',
+    hardware_port_anomaly: 'hardware', hardware_port_audit: 'hardware',
+    secondary_voice_detected: 'audio', volume_anomaly_detected: 'audio',
+    prohibited_app_detected: 'applications', remote_desktop_detected: 'applications',
+    keyboard_shortcut_blocked: 'input', right_click_blocked: 'input', right_click: 'input',
+    camera_capture: 'identity', camera_denied: 'identity',
+    multi_face: 'identity', no_face: 'identity',
+    idle_60s: 'session', session_kickout: 'session',
+  }
+
+  const CATEGORIES = [
+    { id: 'all', label: 'All Events' },
+    { id: 'critical', label: 'Critical Only' },
+    { id: 'focus', label: 'Focus & Navigation' },
+    { id: 'clipboard', label: 'Clipboard' },
+    { id: 'screen', label: 'Screen & Display' },
+    { id: 'hardware', label: 'USB & Hardware' },
+    { id: 'audio', label: 'Audio' },
+    { id: 'applications', label: 'Apps & Proxy' },
+    { id: 'input', label: 'Input' },
+    { id: 'identity', label: 'Identity' },
+    { id: 'session', label: 'Session' },
+  ]
 
   const load = useCallback(async (sessionId = '') => {
     setLoading(true)
@@ -68,11 +158,23 @@ export default function AdminProctorPage() {
       .catch(() => {})
   }, [gate.ready])
 
-  const filtered = search
-    ? events.filter((e) =>
-        e.session_id.includes(search) || e.user_id.includes(search) || e.event_type.includes(search)
-      )
-    : events
+  const filtered = events.filter((e) => {
+    // Search filter
+    const matchesSearch = !search ||
+      e.session_id.includes(search) ||
+      e.user_id.includes(search) ||
+      e.event_type.includes(search)
+
+    // Category filter
+    let matchesCategory = true
+    if (categoryFilter === 'critical') {
+      matchesCategory = EVENT_SEVERITY[e.event_type] === 'critical'
+    } else if (categoryFilter !== 'all') {
+      matchesCategory = EVENT_CATEGORIES[e.event_type] === categoryFilter
+    }
+
+    return matchesSearch && matchesCategory
+  })
 
   const countViolations = events.filter((e) => EVENT_SEVERITY[e.event_type] === 'critical').length
   const countWarnings = events.filter((e) => EVENT_SEVERITY[e.event_type] === 'warning').length
@@ -117,12 +219,26 @@ export default function AdminProctorPage() {
         </Card>
       )}
 
-      <div className="flex gap-2">
+      <div className="flex gap-2 flex-wrap">
         <Input placeholder="Search by session ID, user ID, or event type…" value={search}
           onChange={(e) => setSearch(e.target.value)} className="max-w-md" />
+        <select
+          value={categoryFilter}
+          onChange={(e) => setCategoryFilter(e.target.value)}
+          className="h-10 rounded-md border border-input bg-background px-3 text-sm"
+        >
+          {CATEGORIES.map((cat) => (
+            <option key={cat.id} value={cat.id}>{cat.label}</option>
+          ))}
+        </select>
         <Button variant="outline" onClick={() => load(search)}>
           <Search className="h-4 w-4" />
         </Button>
+        {categoryFilter !== 'all' && (
+          <Button variant="ghost" size="sm" onClick={() => setCategoryFilter('all')}>
+            Clear Filter
+          </Button>
+        )}
       </div>
 
       {loading ? (

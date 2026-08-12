@@ -488,5 +488,59 @@ export function RealTimeProctor({
     return () => document.removeEventListener('contextmenu', handleContextMenu, true)
   }, [enabled, sendEventRef])
 
+  // ── 9. Audio VAD — Speech & Secondary Voice Detection ─────────────────
+  useEffect(() => {
+    if (!enabled) return
+    let detector: any = null
+    let interval: ReturnType<typeof setInterval> | null = null
+
+    const startAudioMonitoring = async () => {
+      try {
+        const { AudioVADDetector } = await import('@/lib/proctoring/audio-vad-detector')
+        detector = new AudioVADDetector()
+        const started = await detector.start()
+        if (!started) return
+
+        let secondaryVoiceReported = false
+        let volumeAnomalyReported = false
+
+        interval = setInterval(() => {
+          if (!detector) return
+          const analysis = detector.analyzeAudio()
+
+          // Flag secondary voice (someone else speaking in background)
+          if (analysis.secondaryVoiceFlagged && !secondaryVoiceReported) {
+            secondaryVoiceReported = true
+            sendEventRef('secondary_voice_detected', {
+              audioLevelDb: analysis.audioLevelDb,
+              speechDetected: analysis.speechDetected,
+            })
+            // Reset after 30s to allow re-detection
+            setTimeout(() => { secondaryVoiceReported = false }, 30000)
+          }
+
+          // Flag volume anomaly (extremely loud background)
+          if (analysis.volumeAnomaly && !volumeAnomalyReported) {
+            volumeAnomalyReported = true
+            sendEventRef('volume_anomaly_detected', {
+              audioLevelDb: analysis.audioLevelDb,
+              rms: analysis.audioLevelDb,
+            })
+            setTimeout(() => { volumeAnomalyReported = false }, 15000)
+          }
+        }, 2000) // Analyze every 2 seconds
+      } catch {
+        // Microphone permission denied or not available — silently skip
+      }
+    }
+
+    startAudioMonitoring()
+
+    return () => {
+      if (interval) clearInterval(interval)
+      if (detector) detector.stop()
+    }
+  }, [enabled, sendEventRef])
+
   return <>{children}</>
 }
