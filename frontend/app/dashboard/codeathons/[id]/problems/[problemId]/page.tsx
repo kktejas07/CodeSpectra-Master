@@ -3,11 +3,12 @@
 import { useEffect, useState, use } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Play, Send, Clock, CheckCircle2, XCircle, Loader2, Code2, FileText, Trophy } from 'lucide-react'
+import { ArrowLeft, Play, Send, Clock, CheckCircle2, XCircle, Loader2, Code2, FileText, Trophy, MessageSquare } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -202,6 +203,7 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
             <TabsList className="w-full">
               <TabsTrigger value="description" className="flex-1"><FileText className="h-4 w-4 mr-1" />Description</TabsTrigger>
               <TabsTrigger value="submissions" className="flex-1"><Code2 className="h-4 w-4 mr-1" />Submissions ({submissions.length})</TabsTrigger>
+              <TabsTrigger value="forum" className="flex-1"><MessageSquare className="h-4 w-4 mr-1" />Discussion</TabsTrigger>
               <TabsTrigger value="leaderboard" className="flex-1"><Trophy className="h-4 w-4 mr-1" />Leaderboard</TabsTrigger>
             </TabsList>
 
@@ -270,6 +272,10 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
               )}
             </TabsContent>
 
+            <TabsContent value="forum" className="space-y-3 mt-4">
+              <ForumSection codeathonId={id} problemId={problemId} />
+            </TabsContent>
+
             <TabsContent value="leaderboard" className="mt-4">
               <p className="text-sm text-muted-foreground text-center py-4">Leaderboard coming soon</p>
             </TabsContent>
@@ -326,4 +332,109 @@ function Editor(props: React.ComponentProps<typeof import('@monaco-editor/react'
   // Dynamic import to avoid SSR issues
   const MonacoEditor = require('@monaco-editor/react').default
   return <MonacoEditor {...props} />
+}
+
+// Forum Section Component
+function ForumSection({ codeathonId, problemId }: { codeathonId: string; problemId: string }) {
+  const addToast = useToast()
+  const [posts, setPosts] = useState<any[]>([])
+  const [loading, setLoading] = useState(true)
+  const [newPost, setNewPost] = useState('')
+  const [posting, setPosting] = useState(false)
+  const [replyTo, setReplyTo] = useState<string | null>(null)
+  const [replyContent, setReplyContent] = useState('')
+
+  useEffect(() => { void fetchPosts() }, [codeathonId, problemId])
+
+  async function fetchPosts() {
+    try {
+      const res = await csrfFetch(`/api/codeathons/${codeathonId}/problems/${problemId}/forum`, { credentials: 'include' })
+      if (res.ok) {
+        const data = await res.json() as { posts: any[] }
+        setPosts(data.posts || [])
+      }
+    } catch { /* ignore */ }
+    setLoading(false)
+  }
+
+  async function handlePost() {
+    if (!newPost.trim()) return
+    setPosting(true)
+    try {
+      const res = await csrfFetch(`/api/codeathons/${codeathonId}/problems/${problemId}/forum`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: newPost.trim() }),
+      })
+      if (res.ok) {
+        setNewPost('')
+        void fetchPosts()
+        addToast({ type: 'success', title: 'Posted' })
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Failed to post' })
+    } finally {
+      setPosting(false)
+    }
+  }
+
+  async function handleReply(postId: string) {
+    if (!replyContent.trim()) return
+    try {
+      const res = await csrfFetch(`/api/codeathons/${codeathonId}/problems/${problemId}/forum/${postId}/replies`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ content: replyContent.trim() }),
+      })
+      if (res.ok) {
+        setReplyContent('')
+        setReplyTo(null)
+        void fetchPosts()
+      }
+    } catch {
+      addToast({ type: 'error', title: 'Failed to reply' })
+    }
+  }
+
+  if (loading) return <div className="text-center py-4"><Loader2 className="h-4 w-4 animate-spin" /></div>
+
+  return (
+    <div className="space-y-3">
+      <div className="flex gap-2">
+        <Input value={newPost} onChange={e => setNewPost(e.target.value)} placeholder="Ask a question or share a hint..." className="flex-1" />
+        <Button size="sm" onClick={handlePost} disabled={posting || !newPost.trim()}>
+          {posting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+        </Button>
+      </div>
+
+      {posts.length === 0 ? (
+        <p className="text-sm text-muted-foreground text-center py-4">No discussions yet. Be the first to post!</p>
+      ) : (
+        <div className="space-y-3">
+          {posts.map(post => (
+            <div key={post.id} className="p-3 rounded border border-border/60 space-y-2">
+              <div className="flex items-center justify-between">
+                <span className="text-xs font-medium">{post.user_name}</span>
+                <span className="text-xs text-muted-foreground">{new Date(post.created_at).toLocaleString()}</span>
+              </div>
+              <p className="text-sm">{post.content}</p>
+              <div className="flex items-center gap-2">
+                <Button size="sm" variant="ghost" className="h-6 text-xs" onClick={() => setReplyTo(replyTo === post.id ? null : post.id)}>
+                  Reply ({post.reply_count || 0})
+                </Button>
+              </div>
+              {replyTo === post.id && (
+                <div className="flex gap-2 mt-2">
+                  <Input value={replyContent} onChange={e => setReplyContent(e.target.value)} placeholder="Write a reply..." className="flex-1" />
+                  <Button size="sm" onClick={() => handleReply(post.id)}>Send</Button>
+                </div>
+              )}
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  )
 }
