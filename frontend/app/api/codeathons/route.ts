@@ -38,6 +38,11 @@ export async function POST(request: Request) {
       prizePool: body.prizePool || '',
       cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
       problems: body.problems || [],
+      // New fields for team/individual mode
+      event_type: body.event_type || 'individual', // 'individual' | 'team'
+      team_size_min: body.team_size_min || 1,
+      team_size_max: body.team_size_max || 1,
+      problem_visibility: body.problem_visibility || 'during_contest', // 'during_contest' | 'after_start' | 'immediate'
       tenant_id: gate.user.tenantId || null,
       createdAt: now,
       updatedAt: now,

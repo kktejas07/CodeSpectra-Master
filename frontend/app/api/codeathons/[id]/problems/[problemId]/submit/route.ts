@@ -12,13 +12,6 @@ interface TestCase {
   hidden: boolean
 }
 
-interface SubmissionRequest {
-  code: string
-  language: string
-  codeathon_id: string
-  problem_id: string
-}
-
 async function runCode(code: string, language: string, input: string): Promise<{ output: string; error: string; exitCode: number }> {
   const tmpDir = `/tmp/codeathon-${Date.now()}`
   await execAsync(`mkdir -p ${tmpDir}`)
@@ -65,25 +58,51 @@ export async function POST(
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const { id: codeathonId, problemId } = await params
-  const body = await request.json() as SubmissionRequest
+  const body = await request.json() as { code: string; language: string }
 
   try {
     const db = await getMongoDb()
 
-    // Get problem test cases
+    // Get codeathon
     const codeathon = await db.collection('codeathons').findOne({ id: codeathonId })
     if (!codeathon) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
 
+    // Check contest is active
+    const now = new Date()
+    const startDate = codeathon.startDate ? new Date(codeathon.startDate as string) : null
+    const endDate = codeathon.endDate ? new Date(codeathon.endDate as string) : null
+    if (startDate && now < startDate) {
+      return NextResponse.json({ error: 'Contest has not started yet' }, { status: 400 })
+    }
+    if (endDate && now > endDate) {
+      return NextResponse.json({ error: 'Contest has ended' }, { status: 400 })
+    }
+
+    // Get problem
     const problem = (codeathon.problems as any[])?.find(p => p.id === problemId)
     if (!problem) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
 
     const testCases: TestCase[] = problem.test_cases || []
 
-    // Create submission record
+    // For team mode, get team ID
+    let teamId = null
+    if ((codeathon as any).event_type === 'team') {
+      const membership = await db.collection('codeathon_team_members').findOne({
+        codeathon_id: codeathonId,
+        user_id: user.id,
+      })
+      if (!membership) {
+        return NextResponse.json({ error: 'You must be in a team to submit' }, { status: 400 })
+      }
+      teamId = membership.team_id
+    }
+
+    // Create submission
     const submissionId = crypto.randomUUID()
     const submission = {
       id: submissionId,
       user_id: user.id,
+      team_id: teamId,
       codeathon_id: codeathonId,
       problem_id: problemId,
       code: body.code,
@@ -94,7 +113,6 @@ export async function POST(
       test_cases_total: testCases.length || 1,
       created_at: new Date().toISOString(),
     }
-
     await db.collection('codeathon_submissions').insertOne(submission)
 
     // Run against test cases
@@ -111,7 +129,6 @@ export async function POST(
       lastError = result.error
     }
 
-    // If no test cases, run with sample input
     if (testCases.length === 0) {
       const result = await runCode(body.code, body.language, problem.sample_input || '')
       lastOutput = result.output
@@ -129,7 +146,7 @@ export async function POST(
       { $set: { status, score, test_cases_passed: passed, output: lastOutput, error: lastError } }
     )
 
-    // Update leaderboard
+    // Update leaderboard (user level)
     await db.collection('codeathon_leaderboard').updateOne(
       { codeathon_id: codeathonId, user_id: user.id },
       {
@@ -139,6 +156,24 @@ export async function POST(
       },
       { upsert: true }
     )
+
+    // For team mode, also update team leaderboard
+    if (teamId) {
+      const team = await db.collection('codeathon_teams').findOne({ id: teamId })
+      await db.collection('codeathon_leaderboard').updateOne(
+        { codeathon_id: codeathonId, team_id: teamId },
+        {
+          $inc: { total_score: score, problems_solved: passed === total ? 1 : 0 },
+          $set: {
+            last_submission_at: new Date().toISOString(),
+            team_name: team?.name || 'Unknown Team',
+            user_name: team?.name || 'Unknown Team',
+          },
+          $setOnInsert: { created_at: new Date().toISOString() },
+        },
+        { upsert: true }
+      )
+    }
 
     return NextResponse.json({
       id: submissionId,

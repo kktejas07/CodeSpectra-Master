@@ -4,66 +4,60 @@ import { getMongoDb } from '@/lib/mongodb'
 
 export const runtime = 'nodejs'
 
-const DIDIT_API_KEY = process.env.DIDIT_API_KEY || ''
-const DIDIT_WORKFLOW_ID = process.env.DIDIT_WORKFLOW_ID || ''
-
-interface DiditSessionRequest {
-  workflow_id: string
-  vendor_data: string
-}
-
-interface DiditSessionResponse {
-  session_id?: string
-  session_url?: string
-  error?: string
-}
+// Per-session config, NOT a secret. Get from Workflows in Didit console.
+const WORKFLOW_ID = 'b4c4c9b0-7b86-4a7a-a156-e2db3896bca5'
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  if (!DIDIT_API_KEY) {
+  const apiKey = process.env.DIDIT_API_KEY
+  if (!apiKey) {
     return NextResponse.json({ error: 'Didit API key not configured' }, { status: 500 })
   }
 
-  if (!DIDIT_WORKFLOW_ID) {
-    return NextResponse.json({ error: 'Didit workflow ID not configured' }, { status: 500 })
-  }
-
   try {
-    // Create session with Didit
     const res = await fetch('https://verification.didit.me/v3/session/', {
       method: 'POST',
       headers: {
-        'x-api-key': DIDIT_API_KEY,
+        'x-api-key': apiKey,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
-        workflow_id: DIDIT_WORKFLOW_ID,
+        workflow_id: WORKFLOW_ID,
         vendor_data: user.id,
-      } as DiditSessionRequest),
+        callback: `${process.env.NEXT_PUBLIC_APP_URL || 'https://codespectra.ai'}/dashboard/identity-verify`,
+      }),
     })
 
-    const data = await res.json() as DiditSessionResponse
-
     if (!res.ok) {
-      return NextResponse.json({ error: data.error || 'Failed to create Didit session' }, { status: res.status })
+      const detail = await res.text()
+      console.error('[Didit session] Failed:', res.status, detail)
+      return NextResponse.json({ error: 'session_create_failed', detail }, { status: 502 })
+    }
+
+    const session = await res.json() as {
+      session_id: string
+      session_token: string
+      url: string
+      status: string
     }
 
     // Store session in MongoDB
     const db = await getMongoDb()
     await db.collection('kyc_sessions').insertOne({
-      id: data.session_id,
+      id: session.session_id,
       user_id: user.id,
       provider: 'didit',
       status: 'pending',
-      session_url: data.session_url,
+      session_url: session.url,
       created_at: new Date().toISOString(),
     })
 
+    // Return ONLY what the client needs
     return NextResponse.json({
-      session_id: data.session_id,
-      session_url: data.session_url,
+      url: session.url,
+      session_id: session.session_id,
     })
   } catch (e) {
     console.error('[Didit session]', e)

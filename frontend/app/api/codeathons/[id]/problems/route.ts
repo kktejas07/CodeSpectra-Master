@@ -16,6 +16,19 @@ export async function GET(
     }
 
     const problems = (codeathon.problems as any[]) || []
+    const now = new Date()
+    const startDate = codeathon.startDate ? new Date(codeathon.startDate as string) : null
+
+    // Check problem visibility
+    const visibility = (codeathon as any).problem_visibility || 'during_contest'
+    const isActive = codeathon.status === 'active' || (startDate && now >= startDate)
+
+    // If problems are hidden until contest starts, return empty
+    if (visibility === 'during_contest' && !isActive) {
+      return NextResponse.json({ problems: [], message: 'Problems will be visible when the contest starts' })
+    }
+
+    // If problems are visible immediately or after start, return them
     return NextResponse.json({ problems })
   } catch (e) {
     console.error('[Codeathon problems]', e)

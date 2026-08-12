@@ -8,7 +8,6 @@ import {
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { cn } from '@/lib/utils'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -29,8 +28,8 @@ interface KycStatus {
 }
 
 interface SessionResponse {
+  url: string
   session_id: string
-  session_url: string
 }
 
 export default function IdentityVerificationPage() {
@@ -42,6 +41,12 @@ export default function IdentityVerificationPage() {
 
   useEffect(() => {
     void fetchStatus()
+
+    // Check if we returned from Didit (query param indicates completion)
+    const params = new URLSearchParams(window.location.search)
+    if (params.get('session_id')) {
+      void fetchStatus()
+    }
   }, [])
 
   async function fetchStatus() {
@@ -66,9 +71,16 @@ export default function IdentityVerificationPage() {
       const data = await res.json() as SessionResponse & { error?: string }
       if (!res.ok) throw new Error(data.error || 'Failed to start verification')
 
-      // Redirect to Didit's hosted verification page
-      if (data.session_url) {
-        window.location.href = data.session_url
+      // Use Didit SDK to open the verification modal
+      if (typeof window !== 'undefined') {
+        const { DiditSdk } = await import('@didit-protocol/sdk-web')
+        DiditSdk.shared.onComplete = (result: { type: string }) => {
+          // result.type: "completed" | "cancelled" | "failed"
+          // The webhook is the source of truth for the verification decision
+          console.log('Didit flow finished:', result.type)
+          void fetchStatus()
+        }
+        DiditSdk.shared.startVerification({ url: data.url })
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start verification')
@@ -174,7 +186,7 @@ export default function IdentityVerificationPage() {
         <h2 className="text-lg font-semibold mb-4">How it works</h2>
         <div className="space-y-3">
           {[
-            { step: 1, title: 'Click "Start Verification"', desc: 'You\'ll be redirected to a secure verification page' },
+            { step: 1, title: 'Click "Start Verification"', desc: 'A secure modal opens in your browser' },
             { step: 2, title: 'Upload your ID', desc: 'Take a photo of your government-issued ID document' },
             { step: 3, title: 'Take a selfie', desc: 'The system verifies you\'re a real person (passive, no head turns needed)' },
             { step: 4, title: 'Done!', desc: 'Results are instant — typically under 30 seconds' },

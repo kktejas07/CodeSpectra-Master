@@ -12,73 +12,123 @@
 # Error details
 
 ```
-Test timeout of 30000ms exceeded while setting up "authenticatedPage".
+Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/dashboard
+Call log:
+  - navigating to "http://localhost:3000/dashboard", waiting until "load"
+
 ```
 
-# Page snapshot
+# Test source
 
-```yaml
-- generic [active] [ref=f1e1]:
-  - generic [ref=f1e2]:
-    - complementary [ref=f1e3]:
-      - link "CodeSpectra" [ref=f1e5] [cursor=pointer]:
-        - /url: /
-      - generic [ref=f1e12]:
-        - generic [ref=f1e13]: Code quality + competitive coding, one platform
-        - heading "Ship cleaner code. Win the competition." [level=1] [ref=f1e17]: Ship cleaner code.Win the competition.
-        - paragraph [ref=f1e18]: AI-powered static analysis meets competitive coding challenges. Scan, fix, and compete — all in one workspace.
-        - generic [ref=f1e19]:
-          - generic [ref=f1e20]: AI fix suggestions on every issue
-          - generic [ref=f1e25]: 40+ languages, real test cases, live judging
-          - generic [ref=f1e30]: Quality gates that block bad pushes
-        - generic [ref=f1e37]:
-          - generic [ref=f1e38]: analysis.ts
-          - generic [ref=f1e43]: "// 1 bug, 2 smells found function analyze(code) { if (code == null) { // 🟢 use === instead } return runQualityGate(code) }"
-      - generic [ref=f1e44]:
-        - generic [ref=f1e45]: © 2026 CodeSpectra
-        - generic [ref=f1e46]:
-          - link "Privacy" [ref=f1e47] [cursor=pointer]:
-            - /url: /privacy
-          - link "Terms" [ref=f1e48] [cursor=pointer]:
-            - /url: /terms
-    - main [ref=f1e49]:
-      - generic [ref=f1e50]:
-        - generic [ref=f1e51]:
-          - heading "Sign in to your account" [level=2] [ref=f1e52]
-          - paragraph [ref=f1e53]:
-            - text: New to CodeSpectra?
-            - link "Create an account" [ref=f1e54] [cursor=pointer]:
-              - /url: /auth/signup
-        - generic [ref=f1e55]:
-          - button "Google" [ref=f1e56]
-          - button "GitHub" [ref=f1e57]
-        - generic [ref=f1e58]: or sign in with email
-        - generic [ref=f1e63]:
-          - generic [ref=f1e64]:
-            - generic [ref=f1e65]: Email
-            - textbox "Email" [ref=f1e70]:
-              - /placeholder: you@example.com
-          - generic [ref=f1e71]:
-            - generic [ref=f1e72]:
-              - generic [ref=f1e73]: Password
-              - link "Forgot password?" [ref=f1e74] [cursor=pointer]:
-                - /url: /auth/forgot-password
-            - generic [ref=f1e75]:
-              - textbox "Password" [ref=f1e79]:
-                - /placeholder: Enter your password
-              - button [ref=f1e80]
-          - generic [ref=f1e84] [cursor=pointer]:
-            - checkbox "Keep me signed in" [checked] [ref=f1e85]
-            - generic [ref=f1e86]: Keep me signed in
-          - button "Sign in" [ref=f1e87]
-        - paragraph [ref=f1e88]:
-          - text: By signing in you agree to our
-          - link "Terms" [ref=f1e89] [cursor=pointer]:
-            - /url: /terms
-          - text: and
-          - link "Privacy Policy" [ref=f1e90] [cursor=pointer]:
-            - /url: /privacy
-          - text: .
-  - button "Open Next.js Dev Tools" [ref=f1e96] [cursor=pointer]
-  - alert [ref=f1e100]
+```ts
+  1   | import { test, expect } from '../../fixtures/test-fixtures';
+  2   | import { PerformanceMonitor } from '../../helpers/monitors';
+  3   | 
+  4   | test.describe('Performance Tests', () => {
+  5   |   test.describe('Page Load Time', () => {
+  6   |     test('should load dashboard within acceptable time', async ({ page, authenticatedPage }) => {
+  7   |       const start = Date.now();
+  8   |       
+> 9   |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard`);
+      |                               ^ Error: page.goto: net::ERR_CONNECTION_REFUSED at http://localhost:3000/dashboard
+  10  |       await authenticatedPage.waitForLoadState('networkidle');
+  11  |       
+  12  |       const loadTime = Date.now() - start;
+  13  |       console.log(`Dashboard load time: ${loadTime}ms`);
+  14  |       
+  15  |       expect(loadTime).toBeLessThan(5000);
+  16  |     });
+  17  | 
+  18  |     test('should load problems page within acceptable time', async ({ page, authenticatedPage }) => {
+  19  |       const start = Date.now();
+  20  |       
+  21  |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard/problems`);
+  22  |       await authenticatedPage.waitForLoadState('networkidle');
+  23  |       
+  24  |       const loadTime = Date.now() - start;
+  25  |       console.log(`Problems page load time: ${loadTime}ms`);
+  26  |       
+  27  |       expect(loadTime).toBeLessThan(5000);
+  28  |     });
+  29  | 
+  30  |     test('should have fast Time to First Byte', async ({ page, authenticatedPage }) => {
+  31  |       const start = Date.now();
+  32  |       
+  33  |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard`);
+  34  |       
+  35  |       const ttfb = Date.now() - start;
+  36  |       console.log(`Time to First Byte: ${ttfb}ms`);
+  37  |       
+  38  |       expect(ttfb).toBeLessThan(2000);
+  39  |     });
+  40  | 
+  41  |     test('should have fast First Contentful Paint', async ({ page, authenticatedPage }) => {
+  42  |       const metrics = await authenticatedPage.evaluate(() => {
+  43  |         return new Promise<{ fcp: number; domContentLoaded: number; load: number }>((resolve) => {
+  44  |           const observer = new PerformanceObserver((list) => {
+  45  |             const entries = list.getEntries();
+  46  |             const fcp = entries.find(e => e.entryType === 'paint' && e.name === 'first-contentful-paint');
+  47  |             
+  48  |             if (fcp) {
+  49  |               resolve({
+  50  |                 fcp: fcp.startTime,
+  51  |                 domContentLoaded: performance.getEntriesByType('navigation')[0]?.domContentLoadedEventEnd || 0,
+  52  |                 load: performance.getEntriesByType('navigation')[0]?.loadEventEnd || 0,
+  53  |               });
+  54  |             }
+  55  |           });
+  56  |           
+  57  |           observer.observe({ entryTypes: ['paint', 'navigation'] });
+  58  |           
+  59  |           setTimeout(() => {
+  60  |             resolve({
+  61  |               fcp: 0,
+  62  |               domContentLoaded: performance.getEntriesByType('navigation')[0]?.domContentLoadedEventEnd || 0,
+  63  |               load: performance.getEntriesByType('navigation')[0]?.loadEventEnd || 0,
+  64  |             });
+  65  |           }, 3000);
+  66  |         });
+  67  |       });
+  68  |       
+  69  |       console.log(`First Contentful Paint: ${metrics.fcp}ms`);
+  70  |       console.log(`DOM Content Loaded: ${metrics.domContentLoaded}ms`);
+  71  |       console.log(`Full Load: ${metrics.load}ms`);
+  72  |     });
+  73  |   });
+  74  | 
+  75  |   test.describe('Slow API Detection', () => {
+  76  |     test('should detect slow API calls', async ({ page, authenticatedPage }) => {
+  77  |       const performanceMonitor = new PerformanceMonitor(authenticatedPage);
+  78  |       
+  79  |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard`);
+  80  |       await authenticatedPage.waitForLoadState('networkidle');
+  81  |       
+  82  |       const slowApis = await authenticatedPage.evaluate(() => {
+  83  |         const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+  84  |         return resources
+  85  |           .filter(r => r.name.includes('/api/') && r.duration > 2000)
+  86  |           .map(r => ({
+  87  |             url: r.name,
+  88  |             duration: r.duration,
+  89  |           }));
+  90  |       });
+  91  |       
+  92  |       console.log(`Slow API calls (>2s): ${slowApis.length}`);
+  93  |       slowApis.forEach(api => {
+  94  |         console.log(`  ${api.url} - ${api.duration.toFixed(0)}ms`);
+  95  |       });
+  96  |     });
+  97  | 
+  98  |     test('should report API response times', async ({ page, authenticatedPage }) => {
+  99  |       await authenticatedPage.goto(`${process.env.BASE_URL || 'http://localhost:3000'}/dashboard`);
+  100 |       await authenticatedPage.waitForLoadState('networkidle');
+  101 |       
+  102 |       const apiTimings = await authenticatedPage.evaluate(() => {
+  103 |         const resources = performance.getEntriesByType('resource') as PerformanceResourceTiming[];
+  104 |         return resources
+  105 |           .filter(r => r.name.includes('/api/'))
+  106 |           .map(r => ({
+  107 |             url: r.name.split('/api/')[1] || r.name,
+  108 |             duration: r.duration.toFixed(0),
+  109 |           }));
 ```
