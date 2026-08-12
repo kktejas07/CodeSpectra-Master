@@ -30,6 +30,7 @@ const ONLY_INDUSTRY = process.env.ONLY_INDUSTRY || ''
 const ONLY_LEVEL = process.env.ONLY_LEVEL || ''
 const FORCE_HARD = process.env.FORCE_HARD === '1'
 const SKIP_TOP_UP = process.env.SKIP_TOP_UP === '1'
+const MAX_INSERTS = process.env.MAX_INSERTS ? Number(process.env.MAX_INSERTS) : 0
 const PROVIDERS = (process.env.PROVIDERS || 'opencode,nvidia,groq').split(',').map((s) => s.trim()).filter(Boolean)
 
 const LEVELS = [
@@ -362,6 +363,7 @@ async function main() {
         }
         const el = ((Date.now() - startedAt) / 60000).toFixed(1)
         console.log(`  [elapsed ${el}m, total ${totalInserted} new, ${totalFailed} failed]`)
+        if (MAX_INSERTS > 0 && totalInserted >= MAX_INSERTS) { console.log(`  [${key}] reached MAX_INSERTS=${MAX_INSERTS}, stopping.`); process.exit(0) }
         await sleep(1200)
       }
     }
