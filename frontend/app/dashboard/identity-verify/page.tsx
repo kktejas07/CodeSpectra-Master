@@ -71,16 +71,9 @@ export default function IdentityVerificationPage() {
       const data = await res.json() as SessionResponse & { error?: string }
       if (!res.ok) throw new Error(data.error || 'Failed to start verification')
 
-      // Use Didit SDK to open the verification modal
-      if (typeof window !== 'undefined') {
-        const { DiditSdk } = await import('@didit-protocol/sdk-web')
-        DiditSdk.shared.onComplete = (result: { type: string }) => {
-          // result.type: "completed" | "cancelled" | "failed"
-          // The webhook is the source of truth for the verification decision
-          console.log('Didit flow finished:', result.type)
-          void fetchStatus()
-        }
-        DiditSdk.shared.startVerification({ url: data.url })
+      // Redirect to Didit's hosted verification page (most reliable across browsers)
+      if (data.url) {
+        window.location.href = data.url
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : 'Failed to start verification')
