@@ -363,6 +363,7 @@ export default function DashboardLayout({
       '/dashboard/admin/predictive-validity': BarChart3,
       '/dashboard/admin/sme-review': Users,
       '/dashboard/admin/hiring-manager-report': FileText,
+      '/dashboard/admin/kyc': Shield,
       '/dashboard/100-days': Flame,
       '/dashboard/cad': LayersIcon,
       '/dashboard/recruiter-analytics': BarChart3,

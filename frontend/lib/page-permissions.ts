@@ -55,6 +55,9 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/resumes',
   '/dashboard/admin/predictive-validity',
 
+  // KYC & Verification
+  '/dashboard/admin/kyc',
+
   // AI & Generation Tools
   '/dashboard/admin/rag',
   '/dashboard/admin/ai-inventory',
@@ -248,6 +251,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/team': 'Team',
   '/dashboard/admin/teams': 'Tenant Teams',
   '/dashboard/admin/team/activity': 'Team Activity',
+  '/dashboard/admin/kyc': 'KYC Verification',
   '/dashboard/arena': 'Arena',
   '/dashboard/problems': 'Problems',
   '/dashboard/tracks': 'Tracks',
