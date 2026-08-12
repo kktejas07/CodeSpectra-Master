@@ -94,9 +94,12 @@ export async function POST(
           correct = userAnswer.toLowerCase() === correctAns.toLowerCase()
         }
       } else if (['coding', 'descriptive'].includes(qType)) {
-        // These require manual grading by admin
-        pendingReview = true
-        hasPendingReview = true
+        // These require manual grading by admin — but only when the candidate
+        // actually submitted something. A blank answer is an automatic 0.
+        if (userAnswer) {
+          pendingReview = true
+          hasPendingReview = true
+        }
       }
 
       if (correct) totalScore += points

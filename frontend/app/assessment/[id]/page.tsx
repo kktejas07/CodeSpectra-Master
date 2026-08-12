@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
+import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import ReactMarkdown from 'react-markdown'
@@ -375,6 +376,7 @@ export default function CandidateAssessmentPage() {
     <ExtensionGate>
     <>
       <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)}>
+      <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted}>
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 border-b border-border bg-card px-6 py-3 flex items-center justify-between shadow-xs">
@@ -574,6 +576,7 @@ export default function CandidateAssessmentPage() {
         </div>
       </main>
     </div>
+    </RealTimeProctor>
     </ProctoringWrapper>
 
     <AlertDialog open={showSubmitConfirm} onOpenChange={setShowSubmitConfirm}>

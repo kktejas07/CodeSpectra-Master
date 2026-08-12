@@ -13,6 +13,7 @@ document.addEventListener('DOMContentLoaded', async () => {
   const safeCount = document.getElementById('safe-count')
   const warnCount = document.getElementById('warn-count')
   const blockedCount = document.getElementById('blocked-count')
+  const rateUs = document.getElementById('rate-us')
 
   // Version
   const manifest = chrome.runtime.getManifest()
@@ -30,6 +31,12 @@ document.addEventListener('DOMContentLoaded', async () => {
     summaryEl.style.display = 'grid'
     devicesEl.style.display = 'block'
     rescanEl.style.display = 'block'
+
+    // Rate-us link only after a successful scan (the win moment).
+    // ponytail: store URL derives from the runtime ID; matches the store ID
+    // as long as the listing is uploaded with the same signing key (.pem).
+    rateUs.href = `https://chromewebstore.google.com/detail/${chrome.runtime.id}`
+    rateUs.style.display = 'block'
 
     safeCount.textContent = audit.safe || 0
     warnCount.textContent = audit.warn || 0
