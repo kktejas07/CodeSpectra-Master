@@ -163,6 +163,7 @@ export default function AdminKycPage() {
                   <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
                     <CreditCard className="h-4 w-4 text-primary" /> Submitted Documents
                   </h4>
+                  <p className="text-xs text-muted-foreground mb-2">Note: Document images expire 4 hours after verification.</p>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {selectedRecord.front_image && (
                       <div>
