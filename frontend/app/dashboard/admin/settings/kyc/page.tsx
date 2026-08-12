@@ -15,6 +15,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface KycSettings {
   didit_api_key: string
+  didit_sandbox_api_key: string
   didit_webhook_secret: string
   didit_workflow_id: string
   digilocker_client_id: string
@@ -28,6 +29,7 @@ export default function KycSettingsPage() {
   const addToast = useToast()
   const [settings, setSettings] = useState<KycSettings>({
     didit_api_key: '',
+    didit_sandbox_api_key: '',
     didit_webhook_secret: '',
     didit_workflow_id: '',
     digilocker_client_id: '',
@@ -138,8 +140,13 @@ export default function KycSettingsPage() {
             </p>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label>API Key</Label>
+                <Label>API Key (Production)</Label>
                 <PasswordInput value={settings.didit_api_key} onChange={e => setSettings({...settings, didit_api_key: e.target.value})} placeholder="XqAc-..." />
+              </div>
+              <div className="space-y-2">
+                <Label>API Key (Sandbox/Testing)</Label>
+                <PasswordInput value={settings.didit_sandbox_api_key || ''} onChange={e => setSettings({...settings, didit_sandbox_api_key: e.target.value})} placeholder="1PYQw..." />
+                <p className="text-xs text-muted-foreground">Sandbox sessions don't count toward free quota</p>
               </div>
               <div className="space-y-2">
                 <Label>Webhook Secret</Label>

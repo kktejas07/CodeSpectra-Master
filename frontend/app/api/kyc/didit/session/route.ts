@@ -11,7 +11,19 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const apiKey = process.env.DIDIT_API_KEY
+  // Check for sandbox API key in settings first, then fall back to env
+  let apiKey = process.env.DIDIT_API_KEY
+  try {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const db = await getMongoDb()
+    const settings = await db.collection('platform_settings').findOne({ key: 'kyc_providers' })
+    if (settings?.value?.didit_sandbox_api_key) {
+      apiKey = settings.value.didit_sandbox_api_key
+    } else if (settings?.value?.didit_api_key) {
+      apiKey = settings.value.didit_api_key
+    }
+  } catch { /* use env fallback */ }
+
   if (!apiKey) {
     return NextResponse.json({ error: 'Didit API key not configured' }, { status: 500 })
   }
