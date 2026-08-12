@@ -110,3 +110,4 @@ mobile/expo/ios/.xcode.env.local
 # Chrome extension artifacts (private key + signed package)
 frontend/extensions/*.crx
 frontend/extensions/*.pem
+# Environment files
