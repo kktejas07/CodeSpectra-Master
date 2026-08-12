@@ -119,6 +119,91 @@ const PROCTOR_ICONS: Record<string, React.ReactNode> = {
   paste: <Copy className="w-3 h-3" />,
 }
 
+// Keys every event carries that are noise for a human reviewer.
+const PROCTOR_META_HIDDEN = new Set(['ua', 'timestamp', 'id', 'user_id', 'session_id', 'created_at', 'event_type', 'session_kind', 'source'])
+
+const PROCTOR_META_LABELS: Record<string, string> = {
+  total: 'Devices', safe: 'Safe', warn: 'Review', blocked: 'Blocked',
+  multi_monitor: 'Multi-monitor', screen_count: 'Monitors', browser: 'Browser',
+  os: 'Operating System', device: 'Device Type', ip: 'IP Address',
+  textLength: 'Characters', preview: 'Content', appName: 'Application',
+  category: 'Category', url: 'URL', title: 'Page Title', deviceName: 'Device',
+  deviceType: 'Type', isBlocked: 'Blocked?', manufacturer: 'Manufacturer',
+  indicator: 'Detected Signal', displaySurface: 'Capture Surface',
+  trackKinds: 'Stream Type', state: 'Permission State', count: 'Count',
+  removedCount: 'Removed', audioLevelDb: 'Audio Level', speechDetected: 'Speech',
+  key: 'Key', label: 'Shortcut',
+}
+
+const humanize = (k: string): string =>
+  PROCTOR_META_LABELS[k] || k.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())
+
+/** Friendly, human-readable rendering of a proctoring event's metadata. */
+function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Record<string, unknown> }) {
+  // Hardware port audit gets a purpose-built summary.
+  if (event_type === 'hardware_port_audit') {
+    const devices = Array.isArray(meta.devices) ? (meta.devices as Array<Record<string, unknown>>) : []
+    const verdictClass = (v: unknown) => (v === 'blocked' ? 'text-rose-400' : v === 'warn' ? 'text-amber-400' : 'text-emerald-400')
+    const verdictLabel = (v: unknown) => (v === 'blocked' ? 'Blocked' : v === 'warn' ? 'Review' : 'Safe')
+    return (
+      <div className="px-4 pb-3 border-t border-muted/50 space-y-2">
+        <div className="flex flex-wrap gap-x-4 gap-y-1 pt-2 text-xs">
+          <span className="text-muted-foreground">Devices <b className="text-foreground">{Number(meta.total ?? 0)}</b></span>
+          {devices.length > 0 && (
+            <>
+              <span className="text-emerald-400">{Number(meta.safe ?? 0)} safe</span>
+              <span className="text-amber-400">{Number(meta.warn ?? 0)} review</span>
+              <span className="text-rose-400">{Number(meta.blocked ?? 0)} blocked</span>
+            </>
+          )}
+          <span className="text-muted-foreground">Monitors <b className="text-foreground">{Number(meta.screen_count ?? 1)}</b></span>
+          {meta.multi_monitor === true && <span className="text-rose-400 font-semibold">Multi-monitor detected</span>}
+          {meta.browser ? <span className="text-muted-foreground">{String(meta.browser)}</span> : null}
+          {meta.os ? <span className="text-muted-foreground">{String(meta.os)}</span> : null}
+          {meta.ip ? <span className="text-muted-foreground">IP {String(meta.ip)}</span> : null}
+        </div>
+        {devices.length > 0 && (
+          <div className="space-y-1 pt-1">
+            {devices.map((d, i) => (
+              <div key={i} className="text-xs flex items-start gap-2">
+                <span className={`shrink-0 font-medium ${verdictClass(d.verdict)}`}>{verdictLabel(d.verdict)}</span>
+                <span className="text-foreground">{String(d.productName || d.name || 'Unknown device')}</span>
+                {d.reason ? <span className="text-muted-foreground">— {String(d.reason)}</span> : null}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    )
+  }
+
+  // Everything else renders as labelled key/value rows (noise keys filtered out).
+  const entries = Object.entries(meta)
+    .filter(([k]) => !PROCTOR_META_HIDDEN.has(k))
+    .map(([k, v]) => {
+      let value: string
+      if (typeof v === 'boolean') value = v ? 'Yes' : 'No'
+      else if (v === null || v === undefined) value = ''
+      else if (typeof v === 'object') value = JSON.stringify(v)
+      else value = String(v)
+      return { label: humanize(k), value }
+    })
+    .filter(e => e.value !== '')
+
+  if (entries.length === 0) return null
+
+  return (
+    <div className="px-4 pb-3 border-t border-muted/50 space-y-1 pt-1">
+      {entries.map(({ label, value }) => (
+        <div key={label} className="text-xs flex gap-2">
+          <span className="text-muted-foreground shrink-0 w-32">{label}:</span>
+          <span className="text-foreground break-words">{value}</span>
+        </div>
+      ))}
+    </div>
+  )
+}
+
 export default function ExamResultsPage() {
   const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
@@ -139,6 +224,7 @@ export default function ExamResultsPage() {
   const [aiFeedback, setAiFeedback] = useState<Record<string, string>>({})
   const [remarks, setRemarks] = useState<Record<string, string>>({})
   const [showProctorLog, setShowProctorLog] = useState(true)
+  const [showRawProctorMeta, setShowRawProctorMeta] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!params.id) return
@@ -1103,15 +1189,28 @@ setManualGrades({})
 
                   {/* Proctoring Events */}
                   <div className="space-y-3">
-                    <button
-                      type="button"
-                      onClick={() => setShowProctorLog(v => !v)}
-                      className="w-full flex items-center gap-2 font-semibold text-sm text-left"
-                    >
-                      <ShieldAlert className="w-4 h-4 text-amber-500" /> Proctoring Log
-                      <Badge variant="outline" className="text-xs">{reviewData.proctorEvents.length} events</Badge>
-                      <ChevronDown className={`w-4 h-4 ml-auto text-muted-foreground transition-transform ${showProctorLog ? '' : '-rotate-90'}`} />
-                    </button>
+                    <div className="flex items-center gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setShowProctorLog(v => !v)}
+                        className="flex items-center gap-2 font-semibold text-sm text-left flex-1 min-w-0"
+                      >
+                        <ShieldAlert className="w-4 h-4 text-amber-500" /> Proctoring Log
+                        <Badge variant="outline" className="text-xs">{reviewData.proctorEvents.length} events</Badge>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setShowRawProctorMeta(v => !v)}
+                        title="Toggle raw JSON details"
+                        className={`text-[11px] px-2 py-0.5 rounded-md border font-medium shrink-0 transition-colors ${showRawProctorMeta ? 'border-amber-500/40 text-amber-500 bg-amber-500/10' : 'border-border text-muted-foreground hover:text-foreground'}`}
+                      >
+                        Raw JSON
+                      </button>
+                      <ChevronDown
+                        onClick={() => setShowProctorLog(v => !v)}
+                        className={`w-4 h-4 text-muted-foreground shrink-0 cursor-pointer transition-transform ${showProctorLog ? '' : '-rotate-90'}`}
+                      />
+                    </div>
                     {showProctorLog && (reviewData.proctorEvents.length === 0 ? (
                       <div className="border rounded-lg p-6 text-center">
                         <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
@@ -1129,9 +1228,13 @@ setManualGrades({})
                               </span>
                             </div>
                             {evt.meta && Object.keys(evt.meta).length > 0 && (
-                              <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
-                                {JSON.stringify(evt.meta, null, 2)}
-                              </pre>
+                              showRawProctorMeta ? (
+                                <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
+                                  {JSON.stringify(evt.meta, null, 2)}
+                                </pre>
+                              ) : (
+                                <ProctorMetaDetails event_type={evt.event_type} meta={evt.meta} />
+                              )
                             )}
                           </div>
                         ))}
