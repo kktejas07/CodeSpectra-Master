@@ -215,3 +215,17 @@ body {
   opacity: 0.5;
   cursor: not-allowed;
 }
+
+.rate-us {
+  display: block;
+  text-align: center;
+  font-size: 11px;
+  color: #71717a;
+  text-decoration: none;
+  padding-top: 4px;
+  transition: color 0.15s;
+}
+
+.rate-us:hover {
+  color: #22c55e;
+}

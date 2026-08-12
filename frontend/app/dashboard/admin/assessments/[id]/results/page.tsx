@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -91,6 +91,25 @@ const PROCTOR_LABELS: Record<string, string> = {
   window_blur: 'Window Blur',
   window_focus: 'Window Focus',
   screenshot: 'Screenshot',
+  clipboard_copy: 'Copy Attempt',
+  clipboard_paste: 'Paste Attempt',
+  alt_tab_detected: 'Alt+Tab',
+  right_click_blocked: 'Right Click Blocked',
+  keyboard_shortcut_blocked: 'Blocked Shortcut',
+  hardware_port_audit: 'Hardware Port Audit',
+  usb_device_plugged: 'USB Device Plugged',
+  usb_device_unplugged: 'USB Device Unplugged',
+  screen_share_started: 'Screen Share Started',
+  screen_share_ended: 'Screen Share Ended',
+  screen_capture_detected: 'Screen Capture Detected',
+  prohibited_app_detected: 'Prohibited App Detected',
+  remote_desktop_detected: 'Remote Desktop Detected',
+  rapid_window_resize: 'Rapid Window Resize',
+  secondary_voice_detected: 'Secondary Voice Detected',
+  volume_anomaly_detected: 'Volume Anomaly',
+  tab_focus_lost: 'Tab Switch',
+  copy_paste_attempt: 'Copy-Paste Attempt',
+  hardware_port_anomaly: 'Hardware Port Anomaly',
 }
 
 const PROCTOR_ICONS: Record<string, React.ReactNode> = {
@@ -119,6 +138,7 @@ export default function ExamResultsPage() {
   const [aiGrading, setAiGrading] = useState<Record<string, boolean>>({})
   const [aiFeedback, setAiFeedback] = useState<Record<string, string>>({})
   const [remarks, setRemarks] = useState<Record<string, string>>({})
+  const [showProctorLog, setShowProctorLog] = useState(true)
 
   const fetchData = useCallback(async () => {
     if (!params.id) return
@@ -192,20 +212,31 @@ export default function ExamResultsPage() {
   const aiGradeAll = async () => {
     if (!reviewData || !reviewCandidate || bulkGrading.running) return
     const uid = reviewCandidate.userId || reviewCandidate.id
-    const pending = reviewData.questions.filter(q => {
+    // Grade whatever still needs review: pending questions, or any question the
+    // candidate answered but that hasn't been awarded points yet.
+    const needsGrade = reviewData.questions.filter(q => {
       const detail = reviewData.submission.details.find((d: QuestionDetail) => d.qId === q.id)
-      const needReview = detail?.pending_review === true || (detail?.awarded === undefined && typeof detail?.correct === 'boolean' ? detail.correct === false : true)
-      return needReview && !!reviewData.submission.answers[q.id]
+      return detail?.pending_review === true || (detail?.awarded === undefined && !detail?.correct)
     })
-    const questions = pending.length > 0 ? pending : reviewData.questions.filter(q => !!reviewData.submission.answers[q.id])
-    if (questions.length === 0) {
-      addToast({ type: 'error', title: 'No answered questions to grade' })
+    const questions = needsGrade.length > 0 ? needsGrade : reviewData.questions.filter(q => !!reviewData.submission.answers[q.id])
+    const withAnswer = questions.filter(q => !!reviewData.submission.answers[q.id])
+    const blank = questions.filter(q => !reviewData.submission.answers[q.id])
+    // Unanswered questions are an automatic 0 — no LLM round-trip needed.
+    for (const q of blank) {
+      setManualGrades(prev => ({ ...prev, [q.id]: 0 }))
+    }
+    if (withAnswer.length === 0 && blank.length === 0) {
+      addToast({ type: 'error', title: 'No questions to grade' })
       return
     }
-    setBulkGrading({ running: true, done: 0, total: questions.length, failed: [] })
+    if (withAnswer.length === 0) {
+      addToast({ type: 'success', title: `${blank.length} unanswered question(s) set to 0`, message: 'Click Save Manual Grades to persist.' })
+      return
+    }
+    setBulkGrading({ running: true, done: 0, total: withAnswer.length, failed: [] })
     const failed: string[] = []
-    for (let i = 0; i < questions.length; i++) {
-      const q = questions[i]
+    for (let i = 0; i < withAnswer.length; i++) {
+      const q = withAnswer[i]
       try {
         const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}/ai-grade`, {
           method: 'POST',
@@ -227,9 +258,9 @@ export default function ExamResultsPage() {
     }
     setBulkGrading(prev => ({ ...prev, running: false, failed }))
     if (failed.length > 0) {
-      addToast({ type: 'error', title: `Graded ${questions.length - failed.length}/${questions.length}`, message: `${failed.length} question(s) could not be graded — check them manually.` })
+      addToast({ type: 'error', title: `Graded ${withAnswer.length - failed.length}/${withAnswer.length}`, message: `${failed.length} question(s) could not be graded — check them manually.` })
     } else {
-      addToast({ type: 'success', title: `AI graded ${questions.length} question(s)`, message: 'Review the suggestions, then click Save Manual Grades.' })
+      addToast({ type: 'success', title: `AI graded ${withAnswer.length} question(s)`, message: `Review the suggestions, then click Save Manual Grades.${blank.length > 0 ? ` ${blank.length} unanswered question(s) set to 0.` : ''}` })
     }
   }
 
@@ -561,8 +592,8 @@ setManualGrades({})
   const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 
   const proctorColor = (type: string): string => {
-    if (['copy', 'paste', 'right_click'].includes(type)) return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
-    if (['tab_blur', 'fullscreen_exit', 'window_blur', 'visibility_change'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+    if (['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked'].includes(type)) return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
+    if (['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
     return 'text-muted-foreground border-border bg-muted/50'
   }
 
@@ -1072,33 +1103,40 @@ setManualGrades({})
 
                   {/* Proctoring Events */}
                   <div className="space-y-3">
-                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                    <button
+                      type="button"
+                      onClick={() => setShowProctorLog(v => !v)}
+                      className="w-full flex items-center gap-2 font-semibold text-sm text-left"
+                    >
                       <ShieldAlert className="w-4 h-4 text-amber-500" /> Proctoring Log
                       <Badge variant="outline" className="text-xs">{reviewData.proctorEvents.length} events</Badge>
-                    </h4>
-                    {reviewData.proctorEvents.length === 0 ? (
+                      <ChevronDown className={`w-4 h-4 ml-auto text-muted-foreground transition-transform ${showProctorLog ? '' : '-rotate-90'}`} />
+                    </button>
+                    {showProctorLog && (reviewData.proctorEvents.length === 0 ? (
                       <div className="border rounded-lg p-6 text-center">
                         <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
                         <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
                       </div>
                     ) : (
-                      <div className="border rounded-lg max-h-64 overflow-y-auto">
+                      <div className="border rounded-lg max-h-96 overflow-y-auto">
                         {reviewData.proctorEvents.map((evt, i) => (
-                          <div key={i} className={`flex items-center gap-3 px-4 py-2 text-xs border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
-                            <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
-                            <span className="shrink-0 font-medium">{formatProctorType(evt.event_type)}</span>
-                            <span className="text-muted-foreground ml-auto shrink-0">
-                              {evt.created_at ? new Date(evt.created_at).toLocaleTimeString() : ''}
-                            </span>
-                            {evt.meta && Object.keys(evt.meta).length > 0 && (
-                              <span className="text-muted-foreground truncate max-w-[200px] hidden md:inline">
-                                {JSON.stringify(evt.meta)}
+                          <div key={i} className={`border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
+                            <div className="flex items-center gap-3 px-4 py-2 text-xs">
+                              <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
+                              <span className="shrink-0 font-medium">{formatProctorType(evt.event_type)}</span>
+                              <span className="text-muted-foreground ml-auto shrink-0">
+                                {evt.created_at ? new Date(evt.created_at).toLocaleString() : ''}
                               </span>
+                            </div>
+                            {evt.meta && Object.keys(evt.meta).length > 0 && (
+                              <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
+                                {JSON.stringify(evt.meta, null, 2)}
+                              </pre>
                             )}
                           </div>
                         ))}
                       </div>
-                    )}
+                    ))}
                   </div>
 
                   {/* Identity Photos */}

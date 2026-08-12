@@ -1,16 +1,18 @@
 import type { Metadata } from 'next'
-import { JetBrains_Mono } from 'next/font/google'
+import localFont from 'next/font/local'
 import { Providers } from '@/components/providers'
 import { LoadingWrapper } from '@/components/loading-wrapper'
 import './globals.css'
 
 export const dynamic = 'force-dynamic'
 
-const mono = JetBrains_Mono({
-  subsets: ['latin'],
+// Self-hosted JetBrains Mono (variable font, latin subset). Previously
+// `next/font/google` which failed the Docker build when the server couldn't
+// reach fonts.gstatic.com. The woff2 is a variable font covering 100–800.
+const mono = localFont({
+  src: '../fonts/jetbrains-mono-latin.woff2',
   variable: '--font-mono',
   display: 'swap',
-  weight: ['400', '500', '600', '700'],
 })
 
 export const metadata: Metadata = {

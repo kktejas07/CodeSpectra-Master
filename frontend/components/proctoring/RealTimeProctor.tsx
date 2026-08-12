@@ -102,7 +102,7 @@ export function RealTimeProctor({
 
     const checkUsbDevices = async () => {
       try {
-        const devices = await (navigator.usb as any).getDevices()
+        const devices = await (navigator as any).usb.getDevices()
         const currentIds = devices.map((d: any) => `${d.vendorId}:${d.productId}`)
         const prevIds = lastUsbDevicesRef.current
 
@@ -372,6 +372,25 @@ export function RealTimeProctor({
 
     document.addEventListener('fullscreenchange', handleFullscreenChange)
     return () => document.removeEventListener('fullscreenchange', handleFullscreenChange)
+  }, [enabled, sendEventRef])
+
+  // ── 4b. Tab / Window Switch Detection (visibilitychange) ─────────────
+  // Catches Cmd+Tab (Mac), Alt+Tab (Windows), clicking another tab, and
+  // switching to another window. This is the reliable cross-platform signal;
+  // keydown-based Alt+Tab detection below misses Cmd+Tab entirely.
+  useEffect(() => {
+    if (!enabled) return
+
+    const handleVisibilityChange = () => {
+      if (document.hidden) {
+        sendEventRef('tab_blur', { timestamp: new Date().toISOString() })
+      } else {
+        sendEventRef('tab_focus', { timestamp: new Date().toISOString() })
+      }
+    }
+
+    document.addEventListener('visibilitychange', handleVisibilityChange)
+    return () => document.removeEventListener('visibilitychange', handleVisibilityChange)
   }, [enabled, sendEventRef])
 
   // ── 5. Window Resize Detection (possible screen share prep) ──────────
