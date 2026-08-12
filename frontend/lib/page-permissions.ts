@@ -230,6 +230,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/settings': 'Platform Settings',
   '/dashboard/admin/settings/cloudflare': 'Cloudflare',
   '/dashboard/admin/settings/mobile': 'Mobile App',
+  '/dashboard/admin/settings/kyc': 'KYC Providers',
   '/dashboard/admin/jobs': 'Jobs',
   '/dashboard/admin/resumes': 'Resumes',
   '/dashboard/admin/codeathons': 'Codeathons',

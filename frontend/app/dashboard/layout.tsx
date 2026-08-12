@@ -324,6 +324,7 @@ export default function DashboardLayout({
       '/dashboard/admin/rag': Database,
       '/dashboard/admin/ai-inventory': Sparkles,
       [p.settings]: Settings,
+      [p.settingsKyc]: Shield,
       [p.security]: Shield,
       '/dashboard/admin/proctor': Shield,
       '/dashboard/admin/certificates': Award,

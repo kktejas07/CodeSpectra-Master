@@ -43,6 +43,7 @@ export const DASHBOARD_ROUTES = {
     pricing: '/dashboard/admin/pricing',
     security: '/dashboard/admin/security',
     settings: '/dashboard/admin/settings',
+    settingsKyc: '/dashboard/admin/settings/kyc',
     teams: '/dashboard/admin/teams',
     jobs: '/dashboard/admin/jobs',
     resumes: '/dashboard/admin/resumes',
