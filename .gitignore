@@ -106,3 +106,7 @@ mobile/expo/ios/build/
 mobile/expo/ios/DerivedData/
 mobile/expo/ios/.xcode.env.local
 .zcode/
+
+# Chrome extension artifacts (private key + signed package)
+frontend/extensions/*.crx
+frontend/extensions/*.pem
