@@ -31,7 +31,7 @@ async function getBackendSecrets(): Promise<{
       openai: fromEnv.openai || (secrets.openai_api_key?.trim() || llmKey),
       openrouter: fromEnv.openrouter || (secrets.openrouter_api_key?.trim() || llmKey),
       opencode: fromEnv.opencode || (secrets.opencode_api_key?.trim() || llmKey),
-      groq: fromEnv.openai || (secrets.groq_api_key?.trim() || llmKey),
+      groq: fromEnv.groq || (secrets.groq_api_key?.trim() || llmKey),
     }
   } catch {
     return fromEnv

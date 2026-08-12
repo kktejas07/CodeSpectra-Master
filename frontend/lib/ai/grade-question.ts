@@ -3,6 +3,17 @@ import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 
 export const OBJECTIVE_TYPES = ['multiple-choice', 'mcq', 'true_false', 'multiple_response', 'fill_blanks']
 
+/** Map a free-form provider name to a backend enum the AI router understands. */
+function normalizeProvider(provider: string): string {
+  const lower = provider.toLowerCase()
+  if (lower === 'opencode' || lower === 'omnirouter') return 'opencode'
+  if (lower === 'openrouter') return 'openrouter'
+  if (lower === 'gemini') return 'gemini'
+  if (lower === 'anthropic') return 'anthropic'
+  if (lower === 'openai') return 'openai'
+  return lower // groq, deepseek, nvidia, etc. pass through
+}
+
 /**
  * Honor the Superadmin LLM config (Settings → AI & LLM Provider) for grading so
  * the configured model/provider is used instead of the backend's hard-coded
@@ -17,15 +28,8 @@ async function platformModelOverrides(): Promise<{
   try {
     const cfg = await readPlatformLlmConfig()
     if (!cfg) return {}
-    const p = (cfg.provider || '').toLowerCase()
-    let provider = p
-    if (p === 'opencode' || p === 'omnirouter') provider = 'opencode'
-    else if (p === 'openrouter') provider = 'openrouter'
-    else if (p === 'gemini') provider = 'gemini'
-    else if (p === 'anthropic') provider = 'anthropic'
-    else if (p === 'openai') provider = 'openai'
-    else if (p === 'groq') provider = 'groq'
-    else return {}
+    const provider = normalizeProvider(cfg.provider || '')
+    if (!provider) return {}
     const apiKey = cfg.api_key && typeof cfg.api_key === 'string' && !cfg.api_key.includes('•') ? cfg.api_key.trim() : ''
     return {
       providerOverride: provider,
