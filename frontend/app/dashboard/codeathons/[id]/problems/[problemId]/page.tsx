@@ -1,0 +1,329 @@
+'use client'
+
+import { useEffect, useState, use } from 'react'
+import { useRouter } from 'next/navigation'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { Card } from '@/components/ui/card'
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { ArrowLeft, Play, Send, Clock, CheckCircle2, XCircle, Loader2, Code2, FileText, Trophy } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
+
+interface Problem {
+  id: string
+  title: string
+  description: string
+  difficulty: 'Easy' | 'Medium' | 'Hard'
+  points: number
+  input_format?: string
+  output_format?: string
+  constraints?: string[]
+  sample_input?: string
+  sample_output?: string
+  test_cases?: { input: string; expected: string; hidden: boolean }[]
+}
+
+interface Submission {
+  id: string
+  status: 'pending' | 'running' | 'accepted' | 'wrong_answer' | 'time_limit' | 'runtime_error'
+  score: number
+  test_cases_passed: number
+  test_cases_total: number
+  output?: string
+  error?: string
+  created_at: string
+}
+
+interface Codeathon {
+  id: string
+  title: string
+  status: string
+  problems?: Problem[]
+}
+
+const LANGUAGE_TEMPLATES: Record<string, string> = {
+  javascript: `function solve(input) {\n  // Your solution here\n  return '';\n}\n`,
+  python: `def solve(input):\n    # Your solution here\n    return ""\n`,
+  java: `public class Solution {\n    public static String solve(String input) {\n        // Your solution here\n        return "";\n    }\n}\n`,
+  cpp: `#include <iostream>\n#include <string>\nusing namespace std;\n\nstring solve(string input) {\n    // Your solution here\n    return "";\n}\n`,
+}
+
+const LANGUAGES = [
+  { id: 'javascript', label: 'JavaScript' },
+  { id: 'python', label: 'Python' },
+  { id: 'java', label: 'Java' },
+  { id: 'cpp', label: 'C++' },
+]
+
+export default function ProblemPage({ params }: { params: Promise<{ id: string; problemId: string }> }) {
+  const { id, problemId } = use(params)
+  const router = useRouter()
+  const gate = usePageGuard('user')
+  const addToast = useToast()
+
+  const [codeathon, setCodeathon] = useState<Codeathon | null>(null)
+  const [problem, setProblem] = useState<Problem | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [code, setCode] = useState('')
+  const [language, setLanguage] = useState('javascript')
+  const [submitting, setSubmitting] = useState(false)
+  const [submissions, setSubmissions] = useState<Submission[]>([])
+  const [activeTab, setActiveTab] = useState('description')
+
+  useEffect(() => {
+    void fetchData()
+  }, [id, problemId])
+
+  async function fetchData() {
+    try {
+      const [codeathonRes, problemRes] = await Promise.all([
+        csrfFetch(`/api/codeathons/${id}`, { credentials: 'include' }),
+        csrfFetch(`/api/codeathons/${id}/problems/${problemId}`, { credentials: 'include' }),
+      ])
+
+      if (codeathonRes.ok) {
+        const data = await codeathonRes.json() as Codeathon
+        setCodeathon(data)
+      }
+
+      if (problemRes.ok) {
+        const data = await problemRes.json() as Problem
+        setProblem(data)
+        setCode(LANGUAGE_TEMPLATES[language])
+      }
+    } catch { /* ignore */ }
+    setLoading(false)
+  }
+
+  async function submitCode() {
+    if (!code.trim()) {
+      addToast({ type: 'error', title: 'Error', message: 'Please write some code first' })
+      return
+    }
+
+    setSubmitting(true)
+    setActiveTab('submissions')
+    try {
+      const res = await csrfFetch(`/api/codeathons/${id}/problems/${problemId}/submit`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code, language, codeathon_id: id, problem_id: problemId }),
+      })
+
+      const data = await res.json() as Submission & { error?: string }
+      if (!res.ok) throw new Error(data.error || 'Submission failed')
+
+      setSubmissions(prev => [data, ...prev])
+      addToast({
+        type: data.status === 'accepted' ? 'success' : 'error',
+        title: data.status === 'accepted' ? 'Accepted!' : 'Not Accepted',
+        message: `${data.test_cases_passed}/${data.test_cases_total} test cases passed`,
+      })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Error', message: e instanceof Error ? e.message : 'Failed' })
+    } finally {
+      setSubmitting(false)
+    }
+  }
+
+  async function runCode() {
+    if (!code.trim()) {
+      addToast({ type: 'error', title: 'Error', message: 'Please write some code first' })
+      return
+    }
+
+    try {
+      const res = await csrfFetch(`/api/codeathons/${id}/problems/${problemId}/run`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ code, language, input: problem?.sample_input || '' }),
+      })
+
+      const data = await res.json() as { output?: string; error?: string; executionTime?: number }
+      if (!res.ok) throw new Error(data.error || 'Run failed')
+
+      addToast({
+        type: 'success',
+        title: 'Code Executed',
+        message: data.output || 'No output',
+      })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Error', message: e instanceof Error ? e.message : 'Failed' })
+    }
+  }
+
+  function handleLanguageChange(lang: string) {
+    setLanguage(lang)
+    setCode(LANGUAGE_TEMPLATES[lang] || '')
+  }
+
+  if (!gate.ready || loading) return null
+
+  if (!problem) {
+    return (
+      <div className="text-center py-20 text-muted-foreground">
+        Problem not found
+      </div>
+    )
+  }
+
+  return (
+    <div className="space-y-4">
+      {/* Header */}
+      <div className="flex items-center gap-3">
+        <Button variant="ghost" size="sm" onClick={() => router.push(`/dashboard/codeathons/${id}`)}>
+          <ArrowLeft className="h-4 w-4" />
+        </Button>
+        <div className="flex-1">
+          <h1 className="text-xl font-bold">{problem.title}</h1>
+          <div className="flex items-center gap-2 mt-1">
+            <Badge variant="outline" className={
+              problem.difficulty === 'Hard' ? 'border-red-400 text-red-600' :
+              problem.difficulty === 'Easy' ? 'border-green-400 text-green-600' :
+              'border-yellow-400 text-yellow-600'
+            }>
+              {problem.difficulty}
+            </Badge>
+            <span className="text-sm text-muted-foreground">{problem.points} points</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Main content */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        {/* Left: Problem description */}
+        <Card className="p-4 overflow-y-auto max-h-[70vh]">
+          <Tabs value={activeTab} onValueChange={setActiveTab}>
+            <TabsList className="w-full">
+              <TabsTrigger value="description" className="flex-1"><FileText className="h-4 w-4 mr-1" />Description</TabsTrigger>
+              <TabsTrigger value="submissions" className="flex-1"><Code2 className="h-4 w-4 mr-1" />Submissions ({submissions.length})</TabsTrigger>
+              <TabsTrigger value="leaderboard" className="flex-1"><Trophy className="h-4 w-4 mr-1" />Leaderboard</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="description" className="space-y-4 mt-4">
+              <div className="prose prose-sm max-w-none">
+                <p className="whitespace-pre-wrap text-sm">{problem.description}</p>
+              </div>
+
+              {problem.input_format && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Input Format</h3>
+                  <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">{problem.input_format}</pre>
+                </div>
+              )}
+
+              {problem.output_format && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Output Format</h3>
+                  <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">{problem.output_format}</pre>
+                </div>
+              )}
+
+              {problem.constraints && problem.constraints.length > 0 && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Constraints</h3>
+                  <ul className="list-disc pl-4 text-xs space-y-1">
+                    {problem.constraints.map((c, i) => <li key={i}>{c}</li>)}
+                  </ul>
+                </div>
+              )}
+
+              {problem.sample_input && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Sample Input</h3>
+                  <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">{problem.sample_input}</pre>
+                </div>
+              )}
+
+              {problem.sample_output && (
+                <div>
+                  <h3 className="text-sm font-semibold mb-1">Sample Output</h3>
+                  <pre className="bg-muted p-2 rounded text-xs overflow-x-auto">{problem.sample_output}</pre>
+                </div>
+              )}
+            </TabsContent>
+
+            <TabsContent value="submissions" className="space-y-3 mt-4">
+              {submissions.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">No submissions yet</p>
+              ) : (
+                submissions.map(sub => (
+                  <div key={sub.id} className="flex items-center justify-between p-2 rounded border border-border/60">
+                    <div className="flex items-center gap-2">
+                      {sub.status === 'accepted' ? (
+                        <CheckCircle2 className="h-4 w-4 text-emerald-400" />
+                      ) : sub.status === 'pending' || sub.status === 'running' ? (
+                        <Loader2 className="h-4 w-4 text-blue-400 animate-spin" />
+                      ) : (
+                        <XCircle className="h-4 w-4 text-destructive" />
+                      )}
+                      <span className="text-xs capitalize">{sub.status.replace('_', ' ')}</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">{sub.test_cases_passed}/{sub.test_cases_total}</span>
+                  </div>
+                ))
+              )}
+            </TabsContent>
+
+            <TabsContent value="leaderboard" className="mt-4">
+              <p className="text-sm text-muted-foreground text-center py-4">Leaderboard coming soon</p>
+            </TabsContent>
+          </Tabs>
+        </Card>
+
+        {/* Right: Code editor */}
+        <div className="space-y-3">
+          <div className="flex items-center gap-2">
+            <Select value={language} onValueChange={handleLanguageChange}>
+              <SelectTrigger className="w-40">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                {LANGUAGES.map(l => <SelectItem key={l.id} value={l.id}>{l.label}</SelectItem>)}
+              </SelectContent>
+            </Select>
+            <Button variant="outline" size="sm" onClick={runCode}>
+              <Play className="h-4 w-4 mr-1" />Run
+            </Button>
+            <Button size="sm" onClick={submitCode} disabled={submitting}>
+              {submitting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Send className="h-4 w-4 mr-1" />}
+              Submit
+            </Button>
+          </div>
+
+          <div className="border border-border rounded-lg overflow-hidden" style={{ height: '50vh' }}>
+            <Editor
+              language={language}
+              value={code}
+              onChange={(v) => setCode(v || '')}
+              theme="vs-dark"
+              options={{
+                minimap: { enabled: false },
+                fontSize: 14,
+                lineNumbers: 'on',
+                scrollBeyondLastLine: false,
+                automaticLayout: true,
+                tabSize: 2,
+              }}
+            />
+          </div>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+// Lazy load Monaco editor
+function Editor(props: React.ComponentProps<typeof import('@monaco-editor/react').default>) {
+  const [mounted, setMounted] = useState(false)
+  useEffect(() => setMounted(true), [])
+  if (!mounted) return <div className="h-full bg-[#1e1e1e] animate-pulse" />
+  // Dynamic import to avoid SSR issues
+  const MonacoEditor = require('@monaco-editor/react').default
+  return <MonacoEditor {...props} />
+}
