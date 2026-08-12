@@ -21,7 +21,9 @@
     {
       "matches": [
         "https://codespectra.ai/assessment/*",
+        "https://codespectra.ai/assessment/invite/*",
         "https://codespectra.ai/dashboard/assessments/*",
+        "https://codespectra.ai/dashboard/admin/assessments/*",
         "http://localhost:3000/assessment/*",
         "http://localhost:3000/dashboard/assessments/*"
       ],

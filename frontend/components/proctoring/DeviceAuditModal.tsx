@@ -52,7 +52,41 @@ export function DeviceAuditModal({ sessionKind, sessionId, onComplete }: DeviceA
     try {
       const peripherals = await enumeratePeripheralDevices()
       const base = await auditHardwarePorts()
-      setAudit({ ...base, devices: peripherals })
+
+      // Check if Chrome extension is installed for deeper USB/storage detection
+      let extensionDevices: DetectedDevice[] = []
+      const extMarker = document.querySelector('meta[name="cspectra-audit"]')
+      if (extMarker) {
+        // Chrome extension is active — request deeper audit via content script bridge
+        try {
+          const extResult = await new Promise<any>((resolve) => {
+            window.addEventListener('cspectra-audit-result' as any, (e: any) => resolve(e.detail), { once: true })
+            // Extension will dispatch cspectra-audit-result event
+            setTimeout(() => resolve(null), 3000) // timeout after 3s
+          })
+          if (extResult?.devices) {
+            extensionDevices = extResult.devices.map((d: any) => ({
+              productName: d.name || d.productName || 'Unknown Device',
+              vendorId: d.vendorId || 0,
+              productId: d.productId || 0,
+              classCode: d.classCode,
+              usagePage: d.usagePage,
+              kind: d.kind || 'usb',
+              verdict: d.verdict || 'warn',
+              reason: d.reason || 'Detected by Chrome extension',
+            }))
+          }
+        } catch { /* extension audit timeout or error */ }
+      }
+
+      // Merge WebUSB + extension devices (dedupe by vendorId+productId)
+      const allPeripherals = [...peripherals]
+      for (const extDev of extensionDevices) {
+        const isDupe = allPeripherals.some(p => p.vendorId === extDev.vendorId && p.productId === extDev.productId && p.kind === extDev.kind)
+        if (!isDupe) allPeripherals.push(extDev)
+      }
+
+      setAudit({ ...base, devices: allPeripherals })
     } catch (e) {
       setError('Device scan failed. You can retry or continue without a full audit.')
       console.error('[device-audit] scan failed:', e)
