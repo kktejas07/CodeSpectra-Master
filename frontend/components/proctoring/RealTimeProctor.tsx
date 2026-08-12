@@ -159,18 +159,143 @@ export function RealTimeProctor({
     return () => clearInterval(interval)
   }, [enabled, sendEventRef])
 
-  // ── 3. Teams / Google Meet / Zoom / Discord Detection ────────────────
+  // ── 3. Video Conferencing / Screen Sharing / Proxy / AI Detection ────
   useEffect(() => {
     if (!enabled) return
 
     const BLOCKED_APPS = [
-      { pattern: /teams\.microsoft\.com|teams\.live\.com/i, name: 'Microsoft Teams' },
-      { pattern: /meet\.google\.com/i, name: 'Google Meet' },
-      { pattern: /zoom\.us|zoom\.com/i, name: 'Zoom' },
-      { pattern: /discord\.com|discord\.gg/i, name: 'Discord' },
-      { pattern: /web\.whatsapp\.com/i, name: 'WhatsApp Web' },
-      { pattern: /telegram\.org|web\.telegram\.org/i, name: 'Telegram Web' },
-      { pattern: /slack\.com|app\.slack\.com/i, name: 'Slack' },
+      // Video Conferencing
+      { pattern: /teams\.microsoft\.com|teams\.live\.com/i, name: 'Microsoft Teams', category: 'video-conferencing' },
+      { pattern: /meet\.google\.com/i, name: 'Google Meet', category: 'video-conferencing' },
+      { pattern: /zoom\.us|zoom\.com/i, name: 'Zoom', category: 'video-conferencing' },
+      { pattern: /skype\.com|web\.skype\.com/i, name: 'Skype', category: 'video-conferencing' },
+      { pattern: /gotomeeting\.com/i, name: 'GoToMeeting', category: 'video-conferencing' },
+      { pattern: /webex\.com|cisco\.webex\.com/i, name: 'Cisco Webex', category: 'video-conferencing' },
+      { pattern: /bluejeans\.com/i, name: 'BlueJeans', category: 'video-conferencing' },
+      { pattern: /whereby\.com/i, name: 'Whereby', category: 'video-conferencing' },
+      { pattern: /ringcentral\.com|glip\.com/i, name: 'RingCentral', category: 'video-conferencing' },
+      { pattern: /8x8\.vc/i, name: '8x8 Video', category: 'video-conferencing' },
+      { pattern: /livestorm\.co/i, name: 'Livestorm', category: 'video-conferencing' },
+      { pattern: /demio\.com/i, name: 'Demio', category: 'video-conferencing' },
+      { pattern: /hopin\.com/i, name: 'Hopin', category: 'video-conferencing' },
+      { pattern: /airmeet\.com/i, name: 'Airmeet', category: 'video-conferencing' },
+      { pattern: /zoho.*meeting/i, name: 'Zoho Meeting', category: 'video-conferencing' },
+      { pattern: /facebook\.com.*live|fb\.com.*live/i, name: 'Facebook Live', category: 'video-conferencing' },
+      { pattern: /youtube\.com.*live|youtu\.be.*live/i, name: 'YouTube Live', category: 'video-conferencing' },
+      { pattern: /twitch\.tv/i, name: 'Twitch', category: 'video-conferencing' },
+
+      // Screen Sharing / Remote Desktop
+      { pattern: /teamviewer\.com/i, name: 'TeamViewer', category: 'screen-sharing' },
+      { pattern: /anydesk\.com/i, name: 'AnyDesk', category: 'screen-sharing' },
+      { pattern: /chrome\.remote\.desktop/i, name: 'Chrome Remote Desktop', category: 'screen-sharing' },
+      { pattern: /remotedesktop\.google\.com/i, name: 'Google Remote Desktop', category: 'screen-sharing' },
+      { pattern: /splashtop\.com/i, name: 'Splashtop', category: 'screen-sharing' },
+      { pattern: /logmein\.com/i, name: 'LogMeIn', category: 'screen-sharing' },
+      { pattern: /bomgar\.com|beyondtrust\.com/i, name: 'BeyondTrust', category: 'screen-sharing' },
+      { pattern: /connectwise\.com/i, name: 'ConnectWise', category: 'screen-sharing' },
+      { pattern: /parsec\.app/i, name: 'Parsec', category: 'screen-sharing' },
+      { pattern: /nomachine\.com/i, name: 'NoMachine', category: 'screen-sharing' },
+      { pattern: /ultraviewer\.net/i, name: 'UltraViewer', category: 'screen-sharing' },
+      { pattern: /ammyy\.com/i, name: 'Ammyy Admin', category: 'screen-sharing' },
+      { pattern: /rustdesk\.com/i, name: 'RustDesk', category: 'screen-sharing' },
+      { pattern: /sunlogin\.com/i, name: 'SunLogin', category: 'screen-sharing' },
+      { pattern: /todesk\.com/i, name: 'ToDesk', category: 'screen-sharing' },
+      { pattern: /apowermirror\.com/i, name: 'ApowerMirror', category: 'screen-sharing' },
+      { pattern: /airdroid\.com/i, name: 'AirDroid', category: 'screen-sharing' },
+      { pattern: /scrcpy\.org/i, name: 'Scrcpy', category: 'screen-sharing' },
+
+      // Screen Recording
+      { pattern: /loom\.com/i, name: 'Loom', category: 'screen-recording' },
+      { pattern: /screencastify\.com/i, name: 'Screencastify', category: 'screen-recording' },
+      { pattern: /obsproject\.com|obs\.studio/i, name: 'OBS Studio', category: 'screen-recording' },
+      { pattern: /streamlabs\.com/i, name: 'Streamlabs', category: 'screen-recording' },
+      { pattern: /camtasia\.com/i, name: 'Camtasia', category: 'screen-recording' },
+      { pattern: /snagit\.com/i, name: 'Snagit', category: 'screen-recording' },
+      { pattern: /screenrec\.com/i, name: 'ScreenRec', category: 'screen-recording' },
+      { pattern: /sharex\.org/i, name: 'ShareX', category: 'screen-recording' },
+      { pattern: /icecream.*screen.*recorder/i, name: 'Icecream Screen Recorder', category: 'screen-recording' },
+      { pattern: /bandicam\.com/i, name: 'Bandicam', category: 'screen-recording' },
+      { pattern: /fraps\.com/i, name: 'Fraps', category: 'screen-recording' },
+      { pattern: /nvidia.*shadowplay|geforce.*experience/i, name: 'NVIDIA ShadowPlay', category: 'screen-recording' },
+      { pattern: /xbox.*game.*bar|game.*bar/i, name: 'Xbox Game Bar', category: 'screen-recording' },
+
+      // Proxy / VPN / Tunnel / Bypass
+      { pattern: /otter\.ai/i, name: 'Otter.ai', category: 'proxy' },
+      { pattern: /nordvpn\.com/i, name: 'NordVPN', category: 'proxy' },
+      { pattern: /expressvpn\.com/i, name: 'ExpressVPN', category: 'proxy' },
+      { pattern: /surfshark\.com/i, name: 'Surfshark', category: 'proxy' },
+      { pattern: /protonvpn\.com/i, name: 'ProtonVPN', category: 'proxy' },
+      { pattern: /windscribe\.com/i, name: 'Windscribe', category: 'proxy' },
+      { pattern: /tunnelbear\.com/i, name: 'TunnelBear', category: 'proxy' },
+      { pattern: /hotspotshield\.com/i, name: 'Hotspot Shield', category: 'proxy' },
+      { pattern: /cyberghost\.vpn/i, name: 'CyberGhost', category: 'proxy' },
+      { pattern: /privateinternetaccess\.com/i, name: 'PIA', category: 'proxy' },
+      { pattern: /hide\.me|hideme\.com/i, name: 'Hide.me', category: 'proxy' },
+      { pattern: /hideipvpn\.com/i, name: 'HideIPVPN', category: 'proxy' },
+      { pattern: /unblock.*web|unblock.*site|unblock.*proxy/i, name: 'Unblock Proxy', category: 'proxy' },
+      { pattern: /proxy.*site|proxysite\.com/i, name: 'ProxySite', category: 'proxy' },
+      { pattern: /hideipweb\.com|hideip\.me/i, name: 'HideIP Web', category: 'proxy' },
+      { pattern: /kproxy\.com/i, name: 'KProxy', category: 'proxy' },
+      { pattern: /proxifier\.com|proxycap\.com/i, name: 'Proxifier/ProxyCap', category: 'proxy' },
+      { pattern: /ngrok\.com/i, name: 'ngrok', category: 'proxy' },
+      { pattern: /localtunnel|serveo\.net/i, name: 'Tunnel Service', category: 'proxy' },
+      { pattern: /torproject\.org/i, name: 'Tor Browser', category: 'proxy' },
+      { pattern: /ultrareach|ultrasurf/i, name: 'Ultrasurf', category: 'proxy' },
+      { pattern: /psiphon\.ca/i, name: 'Psiphon', category: 'proxy' },
+      { pattern: /lantern\.io/i, name: 'Lantern', category: 'proxy' },
+      { pattern: /hotspot.*shield/i, name: 'Hotspot Shield', category: 'proxy' },
+
+      // Chat / Messaging (can share screen or leak info)
+      { pattern: /discord\.com|discord\.gg/i, name: 'Discord', category: 'chat' },
+      { pattern: /web\.whatsapp\.com/i, name: 'WhatsApp Web', category: 'chat' },
+      { pattern: /telegram\.org|web\.telegram\.org/i, name: 'Telegram Web', category: 'chat' },
+      { pattern: /slack\.com|app\.slack\.com/i, name: 'Slack', category: 'chat' },
+      { pattern: /signal\.org|signal\.me/i, name: 'Signal', category: 'chat' },
+      { pattern: /viber\.com/i, name: 'Viber', category: 'chat' },
+      { pattern: /line\.me/i, name: 'LINE', category: 'chat' },
+      { pattern: /chat\.facebook\.com|messenger\.com/i, name: 'Messenger', category: 'chat' },
+      { pattern: /imessage|messages\.apple\.com/i, name: 'iMessage Web', category: 'chat' },
+      { pattern: /gitter\.im/i, name: 'Gitter', category: 'chat' },
+      { pattern: /matrix\.org|element\.io/i, name: 'Element/Matrix', category: 'chat' },
+
+      // AI Assistants (can answer exam questions)
+      { pattern: /chatgpt\.com|openai\.com\/chat/i, name: 'ChatGPT', category: 'ai-assistant' },
+      { pattern: /claude\.ai/i, name: 'Claude', category: 'ai-assistant' },
+      { pattern: /gemini\.google\.com|bard\.google\.com/i, name: 'Google Gemini', category: 'ai-assistant' },
+      { pattern: /copilot\.microsoft\.com|bing\.com\/chat/i, name: 'Microsoft Copilot', category: 'ai-assistant' },
+      { pattern: /perplexity\.ai/i, name: 'Perplexity', category: 'ai-assistant' },
+      { pattern: /you\.com\/chat/i, name: 'You.com', category: 'ai-assistant' },
+      { pattern: /phind\.com/i, name: 'Phind', category: 'ai-assistant' },
+      { pattern: /poe\.com/i, name: 'Poe', category: 'ai-assistant' },
+      { pattern: /character\.ai/i, name: 'Character.ai', category: 'ai-assistant' },
+      { pattern: /huggingface\.co\/chat/i, name: 'HuggingChat', category: 'ai-assistant' },
+      { pattern: /deepseek\.com|chat\.deepseek/i, name: 'DeepSeek', category: 'ai-assistant' },
+      { pattern: /copilot\.github\.com/i, name: 'GitHub Copilot', category: 'ai-assistant' },
+      { pattern: /tabnine\.com/i, name: 'Tabnine', category: 'ai-assistant' },
+      { pattern: /codeium\.com/i, name: 'Codeium', category: 'ai-assistant' },
+      { pattern: /writesonic\.com/i, name: 'Writesonic', category: 'ai-assistant' },
+      { pattern: /jasper\.ai/i, name: 'Jasper', category: 'ai-assistant' },
+      { pattern: /copy\.ai/i, name: 'Copy.ai', category: 'ai-assistant' },
+
+      // Code Collaboration (can share answers)
+      { pattern: /replit\.com/i, name: 'Replit', category: 'code-sharing' },
+      { pattern: /codeshare\.io/i, name: 'CodeShare', category: 'code-sharing' },
+      { pattern: /hackmd\.io/i, name: 'HackMD', category: 'code-sharing' },
+      { pattern: /pastebin\.com/i, name: 'Pastebin', category: 'code-sharing' },
+      { pattern: /jsfiddle\.net/i, name: 'JSFiddle', category: 'code-sharing' },
+      { pattern: /codepen\.io/i, name: 'CodePen', category: 'code-sharing' },
+      { pattern: /stackblitz\.com/i, name: 'StackBlitz', category: 'code-sharing' },
+      { pattern: /codesandbox\.io/i, name: 'CodeSandbox', category: 'code-sharing' },
+      { pattern: /gitpod\.io/i, name: 'Gitpod', category: 'code-sharing' },
+
+      // Search Engines (can look up answers)
+      { pattern: /google\.com\/search|bing\.com\/search|duckduckgo\.com/i, name: 'Search Engine', category: 'search' },
+      { pattern: /wikipedia\.org/i, name: 'Wikipedia', category: 'search' },
+      { pattern: /stackoverflow\.com/i, name: 'StackOverflow', category: 'search' },
+      { pattern: /geeksforgeeks\.org/i, name: 'GeeksforGeeks', category: 'search' },
+      { pattern: /tutorialspoint\.com/i, name: 'TutorialsPoint', category: 'search' },
+      { pattern: /w3schools\.com/i, name: 'W3Schools', category: 'search' },
+      { pattern: /github\.com/i, name: 'GitHub', category: 'search' },
     ]
 
     // Check URL bar / page title periodically (for SPA navigations)
@@ -179,30 +304,15 @@ export function RealTimeProctor({
       const title = document.title
       for (const app of BLOCKED_APPS) {
         if (app.pattern.test(url) || app.pattern.test(title)) {
-          sendEventRef('prohibited_app_detected', { appName: app.name, url, title })
+          sendEventRef('prohibited_app_detected', {
+            appName: app.name,
+            category: app.category,
+            url: url.slice(0, 500),
+            title: title.slice(0, 200),
+          })
           return
         }
       }
-    }
-
-    // Check for PiP (Picture-in-Picture) window — possible screen recording
-    const checkPiP = async () => {
-      try {
-        if ('pictureInPictureEnabled' in document) {
-          // Check if any video is in PiP mode
-          const videos = document.querySelectorAll('video')
-          for (const video of videos) {
-            if (video !== document.pictureInPictureElement as any) {
-              // Check if PiP window exists
-              try {
-                await (video as any).requestPictureInPicture()
-                // If this succeeds, a PiP window exists — but we wanted to detect, not create
-                // Instead, listen for the event
-              } catch { /* expected */ }
-            }
-          }
-        }
-      } catch { /* PiP not supported */ }
     }
 
     // Check for remote desktop / VM indicators via user agent hints
@@ -211,6 +321,7 @@ export function RealTimeProctor({
       const suspicious = [
         'rdp', 'vnc', 'citrix', 'vmware', 'virtualbox', 'parallels',
         'mstsc', 'anydesk', 'teamviewer', 'chrome remote desktop',
+        'rustdesk', 'todesk', 'sunlogin',
       ]
       for (const indicator of suspicious) {
         if (ua.includes(indicator)) {
