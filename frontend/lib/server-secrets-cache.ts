@@ -68,6 +68,13 @@ export type ServerSecretsRecord = {
   phonepe_salt_key?: string
   phonepe_salt_index?: string
   phonepe_webhook_secret?: string
+  // --- OpenWA / WhatsApp -------------------------------------------------
+  openwa_base_url?: string        // e.g. https://your-openwa-server.com
+  openwa_api_key?: string         // API key for authentication
+  openwa_session_id?: string      // WhatsApp session ID
+  openwa_default_country_code?: string // e.g. 91 for India
+  openwa_max_concurrency?: string // Max concurrent sends (default: 3)
+  openwa_send_delay_ms?: string   // Delay between sends in ms (default: 400)
 }
 
 interface PlatformSettingDoc {

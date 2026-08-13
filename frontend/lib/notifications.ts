@@ -94,6 +94,10 @@ interface NotifyInput {
   send_email?: boolean
   /** Skip the FCM push fan-out for this notification. */
   skip_push?: boolean
+  /** Send WhatsApp notification (if configured and user has phone). */
+  send_whatsapp?: boolean
+  /** WhatsApp phone number override (if not in user profile). */
+  whatsapp_phone?: string
 }
 
 /**
@@ -167,6 +171,31 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
           }
         }
       } catch { /* email is optional */ }
+    }
+
+    // Optional WhatsApp delivery
+    if (input.send_whatsapp || input.whatsapp_phone) {
+      try {
+        const { isWhatsAppConfigured, sendWhatsAppText, normalizePhone } = await import('@/lib/whatsapp')
+        if (await isWhatsAppConfigured()) {
+          let phone = input.whatsapp_phone || ''
+          if (!phone) {
+            const { getMongoDb } = await import('@/lib/mongodb')
+            const db = await getMongoDb()
+            const user = await db.collection('user').findOne(
+              { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
+              { projection: { phone: 1, phone_number: 1, whatsapp: 1 } },
+            )
+            phone = String(user?.phone || user?.phone_number || user?.whatsapp || '')
+          }
+          if (phone) {
+            const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+            let text = `*${doc.title}*\n\n${doc.message}`
+            if (doc.link) text += `\n\n${base}${doc.link}`
+            void sendWhatsAppText(phone, text) // fire-and-forget
+          }
+        }
+      } catch { /* whatsapp is optional */ }
     }
 
     return doc
