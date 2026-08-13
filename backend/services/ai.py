@@ -149,46 +149,41 @@ async def handle_chat(
     )
 
 
-_rag_client: pymongo.MongoClient | None = None
-
-
 async def _search_rag(query: str, uri: str) -> str | None:
-    """RAG search — embedding generated in async context, similarity search in thread."""
-    global _rag_client
+    """RAG search — embedding generated and similarity search in async context using motor."""
     from rag import cosine_similarity, build_context
+    from core.database import get_database
 
     query_emb = await generate_embedding(query, RAG_API_KEY)
     if not query_emb:
         return None
 
-    def _search() -> str | None:
-        global _rag_client
-        try:
-            if _rag_client is None:
-                _rag_client = pymongo.MongoClient(uri)
-            col = _rag_client[settings.MONGODB_DB_NAME]["embeddings"]
-            cands: list[dict] = []
-            for doc in col.find(
-                {}, projection={"text": 1, "source": 1, "embedding": 1}
-            ):
-                vec = doc.get("embedding")
-                if vec and len(vec) == 768:
-                    sim = cosine_similarity(query_emb, vec)
-                    if sim > 0.65:
-                        cands.append(
-                            {
-                                "text": doc.get("text", ""),
-                                "source": doc.get("source", ""),
-                                "score": sim,
-                            }
-                        )
-            cands.sort(key=lambda x: x["score"], reverse=True)
-            ctx = build_context(cands[:5])
-            return ctx if ctx else None
-        except Exception:
-            return None
+    try:
+        # Get the database connection (singleton via get_database)
+        db = await get_database()
+        col = db.get_collection("embeddings")
 
-    return await asyncio.to_thread(_search)
+        # Perform async query
+        cands: list[dict] = []
+        async for doc in col.find(
+            {}, projection={"text": 1, "source": 1, "embedding": 1}
+        ):
+            vec = doc.get("embedding")
+            if vec and len(vec) == 768:
+                sim = cosine_similarity(query_emb, vec)
+                if sim > 0.65:
+                    cands.append(
+                        {
+                            "text": doc.get("text", ""),
+                            "source": doc.get("source", ""),
+                            "score": sim,
+                        }
+                    )
+        cands.sort(key=lambda x: x["score"], reverse=True)
+        ctx = build_context(cands[:5])
+        return ctx if ctx else None
+    except Exception:
+        return None
 
 
 # ── Completion (non-stream) ────────────────────────────────────

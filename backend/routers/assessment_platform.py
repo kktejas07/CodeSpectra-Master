@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from models.question_bank import QuestionItem, QuestionItemCreate, QuestionItemUpdate
@@ -12,13 +12,14 @@ from models.requisition import Requisition, RequisitionCreate, RequisitionUpdate
 from services.scoring_service import scoring_service
 from services.workday_service import workday_service
 from services import assessment_service as store
+from core.auth import require_auth
 
 router = APIRouter(prefix="/api/assessment-platform", tags=["Engineering Assessment Platform"])
 
 
 # --- REQUISITIONS CRUD (MongoDB-backed) ---
 @router.post("/requisitions", response_model=Requisition)
-async def create_requisition(req: RequisitionCreate):
+async def create_requisition(req: RequisitionCreate, auth = Depends(require_auth)):
     return await store.create_requisition(req.model_dump())
 
 
@@ -37,7 +38,7 @@ async def get_requisition(req_id: str):
 
 
 @router.patch("/requisitions/{req_id}", response_model=Requisition)
-async def update_requisition(req_id: str, patch: RequisitionUpdate):
+async def update_requisition(req_id: str, patch: RequisitionUpdate, auth = Depends(require_auth)):
     record = await store.get_requisition(req_id)
     if not record:
         raise HTTPException(status_code=404, detail="Requisition not found")
@@ -47,7 +48,7 @@ async def update_requisition(req_id: str, patch: RequisitionUpdate):
 
 
 @router.delete("/requisitions/{req_id}")
-async def delete_requisition(req_id: str):
+async def delete_requisition(req_id: str, auth = Depends(require_auth)):
     ok = await store.delete_requisition(req_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Requisition not found")

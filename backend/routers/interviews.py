@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from services.features import InterviewsService
+from core.auth import require_auth
 
 router = APIRouter(prefix="/internal/interviews", tags=["interviews"])
 svc = InterviewsService()
@@ -26,13 +27,13 @@ async def get_interview(interview_id: str) -> Dict[str, Any]:
 
 
 @router.post("")
-async def create_interview(body: Dict[str, Any]) -> Dict[str, Any]:
+async def create_interview(body: Dict[str, Any], auth = Depends(require_auth)) -> Dict[str, Any]:
     _id = await svc.create(body)
     return {"ok": True, "id": _id}
 
 
 @router.put("/{interview_id}")
-async def update_interview(interview_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+async def update_interview(interview_id: str, body: Dict[str, Any], auth = Depends(require_auth)) -> Dict[str, Any]:
     doc = await svc.update(interview_id, body)
     if not doc:
         raise HTTPException(status_code=404, detail="Interview not found")
@@ -40,7 +41,7 @@ async def update_interview(interview_id: str, body: Dict[str, Any]) -> Dict[str,
 
 
 @router.delete("/{interview_id}")
-async def delete_interview(interview_id: str) -> Dict[str, Any]:
+async def delete_interview(interview_id: str, auth = Depends(require_auth)) -> Dict[str, Any]:
     ok = await svc.delete(interview_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Interview not found")

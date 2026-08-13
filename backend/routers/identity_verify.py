@@ -7,10 +7,11 @@ import uuid
 from datetime import datetime, timezone
 from typing import Any, Dict, Optional
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from pydantic import BaseModel, Field
 
 logger = logging.getLogger(__name__)
+from core.auth import require_auth
 
 router = APIRouter(prefix="/api/identity", tags=["Aadhaar & Identity Verification"])
 
@@ -54,7 +55,7 @@ class LivenessVideoResponse(BaseModel):
 
 
 @router.post("/aadhaar-ocr", response_model=AadhaarScanResponse)
-async def scan_aadhaar_card(req: AadhaarScanRequest):
+async def scan_aadhaar_card(req: AadhaarScanRequest, auth = Depends(require_auth)):
     """Perform OCR extraction and Aadhaar Mudra verification on Govt ID card."""
     logger.info("[Identity] Processing Aadhaar ID card OCR scan")
     # ponytail: mock Aadhaar OCR & Mudra API response
@@ -69,7 +70,7 @@ async def scan_aadhaar_card(req: AadhaarScanRequest):
 
 
 @router.post("/face-match", response_model=FaceMatchResponse)
-async def compare_faces(req: FaceMatchRequest):
+async def compare_faces(req: FaceMatchRequest, auth = Depends(require_auth)):
     """Compare candidate live camera feed against Aadhaar ID card photo."""
     logger.info("[Identity] Executing facial similarity match between ID card and camera feed")
 
@@ -87,7 +88,7 @@ async def compare_faces(req: FaceMatchRequest):
 
 
 @router.post("/liveness-video", response_model=LivenessVideoResponse)
-async def verify_liveness_video(req: LivenessVideoRequest):
+async def verify_liveness_video(req: LivenessVideoRequest, auth = Depends(require_auth)):
     """Verify 3-5 second live video clip to ensure active human candidate presence."""
     logger.info(f"[Identity] Verifying {req.duration_seconds}s video liveness clip")
 
