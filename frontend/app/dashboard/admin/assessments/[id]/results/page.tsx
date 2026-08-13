@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -113,6 +113,12 @@ const PROCTOR_LABELS: Record<string, string> = {
   eye_blink_detected: 'Eye Blink Detected',
   eye_gaze_changed: 'Eye Gaze Changed',
   head_pose_turned_away: 'Head Turned Away',
+  browser_fingerprint_captured: 'Device Fingerprint Captured',
+  browser_fingerprint_changed: 'Device Change Detected',
+  face_match_mismatch: 'Face Mismatch',
+  face_match_restored: 'Face Verified',
+  keyboard_dynamics_snapshot: 'Typing Pattern Analysis',
+  answer_pattern_score: 'Answer Pattern Score',
 }
 
 const PROCTOR_ICONS: Record<string, React.ReactNode> = {
@@ -123,6 +129,12 @@ const PROCTOR_ICONS: Record<string, React.ReactNode> = {
   eye_blink_detected: <Eye className="w-3 h-3" />,
   eye_gaze_changed: <Eye className="w-3 h-3" />,
   head_pose_turned_away: <AlertTriangle className="w-3 h-3" />,
+  browser_fingerprint_captured: <Fingerprint className="w-3 h-3" />,
+  browser_fingerprint_changed: <Fingerprint className="w-3 h-3" />,
+  face_match_mismatch: <Camera className="w-3 h-3" />,
+  face_match_restored: <Camera className="w-3 h-3" />,
+  keyboard_dynamics_snapshot: <Keyboard className="w-3 h-3" />,
+  answer_pattern_score: <ShieldAlert className="w-3 h-3" />,
 }
 
 // Keys every event carries that are noise for a human reviewer.
@@ -141,6 +153,16 @@ const PROCTOR_META_LABELS: Record<string, string> = {
   key: 'Key', label: 'Shortcut',
   blink_count: 'Total Blinks', new_blinks: 'New Blinks', gaze_direction: 'Gaze Direction',
   yaw: 'Head Yaw', pitch: 'Head Pitch',
+  hash: 'Fingerprint Hash', original_hash: 'Original Hash', current_hash: 'Current Hash',
+  original_screen: 'Original Screen', current_screen: 'Current Screen',
+  score: 'Score', mismatch_count: 'Mismatch Count', threshold: 'Threshold',
+  avg_flight_time: 'Avg Flight Time', avg_dwell_time: 'Avg Dwell Time',
+  typing_speed_cpm: 'Typing Speed (CPM)', rhythm_variance: 'Rhythm Variance',
+  total_keystrokes: 'Total Keystrokes', backspace_ratio: 'Backspace Ratio',
+  is_suspicious: 'Suspicious?', flags: 'Flags', breakdown: 'Breakdown',
+  paste_score: 'Paste Score', speed_score: 'Speed Score',
+  pattern_score: 'Pattern Score', clipboard_score: 'Clipboard Score',
+  total_answers: 'Total Answers', total_pastes: 'Total Pastes',
 }
 
 const humanize = (k: string): string =>
@@ -686,9 +708,9 @@ setManualGrades({})
   const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 
   const proctorColor = (type: string): string => {
-    if (['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked'].includes(type)) return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
-    if (['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
-    if (['eye_blink_detected', 'eye_gaze_changed'].includes(type)) return 'text-blue-400 border-blue-500/30 bg-blue-500/10'
+    if (['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked', 'face_match_mismatch', 'answer_pattern_score'].includes(type)) return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
+    if (['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+    if (['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot'].includes(type)) return 'text-blue-400 border-blue-500/30 bg-blue-500/10'
     return 'text-muted-foreground border-border bg-muted/50'
   }
 
