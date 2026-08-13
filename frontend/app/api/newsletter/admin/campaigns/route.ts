@@ -152,16 +152,21 @@ async function executeCampaign(campaign: EmailCampaignDoc) {
 
     // Email channel
     if (campaign.channels.email) {
+      const { renderNewsletterHtml } = await import('@/lib/newsletter-html')
       const hmacSecret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'codespectra-default-secret'
       for (const sub of subs) {
         const email = String(sub.email)
         try {
           const hmacToken = createHmac('sha256', hmacSecret).update(email.toLowerCase()).digest('hex').slice(0, 16)
-          const tpl = emailTemplates.newsletter({ subject: campaign.subject, body: campaign.body || campaign.intro || '' })
-          const html = tpl.html
-            .replace(/__EMAIL__/g, encodeURIComponent(email))
-            .replace('${base}/dashboard', `${base}/dashboard`)
-            .replace(/unsubscribe\?email=__EMAIL__/, `unsubscribe?email=${encodeURIComponent(email)}&t=${hmacToken}`)
+          const html = renderNewsletterHtml({
+            subject: campaign.subject,
+            hero_image: campaign.hero_image,
+            intro: campaign.intro,
+            body: campaign.body,
+            cta_text: campaign.cta_text,
+            cta_url: campaign.cta_url,
+          }).replace(/__EMAIL__/g, encodeURIComponent(email))
+            .replace(/unsubscribe\?email=[^"]*/, `unsubscribe?email=${encodeURIComponent(email)}&t=${hmacToken}`)
           await sendEmail(email, { subject: campaign.subject, html })
           emailOk++
         } catch {
