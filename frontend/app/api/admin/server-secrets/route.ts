@@ -28,6 +28,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'phonepe_webhook_secret',
   'stripe_secret_key',
   'stripe_webhook_secret',
+  'upstash_redis_rest_token',
 ]
 
 const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
@@ -52,6 +53,7 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'firebase_vapid_key',
   'phonepe_merchant_id',
   'phonepe_salt_index',
+  'upstash_redis_rest_url',
 ]
 
 const ALL_FIELDS: (keyof ServerSecretsRecord)[] = [...SECRET_FIELDS, ...PLAIN_FIELDS]
