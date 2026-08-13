@@ -6,8 +6,9 @@ import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX } from 'lucide-react'
+import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX, User, LogIn } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
+import { useAuth } from '@/lib/auth-context'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
@@ -78,6 +79,9 @@ export default function CandidateAssessmentPage() {
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
+  
+  const isShareLink = searchParams.get('share') === 'true'
   
   const [exam, setExam] = useState<Exam | null>(null)
   const [loading, setLoading] = useState(true)
@@ -138,7 +142,16 @@ export default function CandidateAssessmentPage() {
         const inviteToken = searchParams.get('inviteToken')
         const inviteEmail = searchParams.get('inviteEmail')
 
-        if (accType === 'invite_only') {
+        // Share link: skip invite-only check, but require login
+        if (isShareLink) {
+          if (!user) {
+            // Not logged in — show login prompt (exam loads but can't start)
+            setExam(found)
+            setLoading(false)
+            return
+          }
+          // Logged in — allow access regardless of access_type
+        } else if (accType === 'invite_only') {
           if (!inviteToken) {
             setAccessError('This assessment is invite-only. A valid invitation link is required.')
             setLoading(false)
@@ -294,6 +307,36 @@ export default function CandidateAssessmentPage() {
 
   // Pre-Start Screen
   if (!hasStarted) {
+    // Share link: prompt login if not authenticated
+    if (isShareLink && !user) {
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-primary/5 p-4">
+          <Card className="max-w-md w-full p-8 text-center border-primary/20 space-y-6 shadow-xl">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto">
+              <User className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">{exam.title}</h1>
+              <p className="text-sm text-muted-foreground mt-1">Sign in or create an account to take this assessment</p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-4 text-sm text-left space-y-2">
+              <div className="flex justify-between"><span className="text-muted-foreground">Duration:</span><span className="font-medium">{exam.duration} min</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Questions:</span><span className="font-medium">{exam.questionList.length}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Level:</span><span className="font-medium">{exam.level}</span></div>
+            </div>
+            <div className="space-y-2">
+              <Link href={`/auth/login?redirect=${encodeURIComponent(`/assessment/${params.id}?share=true`)}`}>
+                <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign In</Button>
+              </Link>
+              <Link href={`/auth/signup?redirect=${encodeURIComponent(`/assessment/${params.id}?share=true`)}`}>
+                <Button variant="outline" className="w-full gap-2"><User className="h-4 w-4" /> Create Account</Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
+      )
+    }
+
     return (
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-lg w-full p-8 border-primary/20 space-y-6">

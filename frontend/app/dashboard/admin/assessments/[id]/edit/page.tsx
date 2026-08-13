@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload, Download, Pencil, Database } from 'lucide-react'
+import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload, Download, Pencil, Database, Link2, Copy } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -596,6 +596,19 @@ export default function ExamReviewPage() {
           )}
         </div>
         <div className="flex items-center gap-3">
+          {exam.published && (
+            <Button
+              variant="outline"
+              onClick={() => {
+                const url = `${window.location.origin}/assessment/${exam.id}?share=true`
+                navigator.clipboard.writeText(url)
+                addToast({ type: 'success', title: 'Public link copied!' })
+              }}
+              className="gap-2"
+            >
+              <Link2 className="h-4 w-4" /> Copy Public Link
+            </Button>
+          )}
           <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>Save as Draft</Button>
           <Button onClick={handlePublish} disabled={publishing} className="bg-green-600 hover:bg-green-700 text-white">
             {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
