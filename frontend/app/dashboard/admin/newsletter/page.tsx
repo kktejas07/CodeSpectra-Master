@@ -258,7 +258,7 @@ export default function NewsletterPage() {
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-6xl mx-auto">
+    <div className="space-y-6 p-6">
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
@@ -275,7 +275,7 @@ export default function NewsletterPage() {
       </div>
 
       {/* KPI Stats */}
-      <div className="grid grid-cols-3 md:grid-cols-6 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
         <Card className="p-3 text-center"><p className="text-xl font-bold text-primary">{recipientCount}</p><p className="text-[10px] text-muted-foreground">Subscribers</p></Card>
         <Card className="p-3 text-center"><p className="text-xl font-bold">{stats.totalCampaigns}</p><p className="text-[10px] text-muted-foreground">Campaigns</p></Card>
         <Card className="p-3 text-center"><p className="text-xl font-bold text-green-600">{stats.totalEmailsSent.toLocaleString()}</p><p className="text-[10px] text-muted-foreground">Emails Sent</p></Card>
@@ -285,8 +285,8 @@ export default function NewsletterPage() {
       </div>
 
       {activeTab === 'compose' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <div className="xl:col-span-3 space-y-6">
             {/* Compose */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
@@ -380,7 +380,7 @@ export default function NewsletterPage() {
           </div>
 
           {/* Preview & Test */}
-          <div className="space-y-6">
+          <div className="xl:col-span-2 space-y-6">
             <Card className="p-6">
               <h2 className="font-semibold mb-4 flex items-center gap-2"><Eye className="h-4 w-4" /> Preview</h2>
               <Button variant="outline" onClick={handlePreview} disabled={previewLoading} className="w-full mb-4 gap-2">
