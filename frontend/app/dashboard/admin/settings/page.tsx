@@ -293,7 +293,7 @@ function SystemSettingsInner() {
   const addToast = useToast()
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState<
-    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | 'gamification' | null
+    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | 'gamification' | 'redis' | null
   >(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [form, setForm] = useState<General>(defaults)
@@ -921,6 +921,10 @@ function SystemSettingsInner() {
 
            {section === 'cloudflare' ? (
              <CloudflareSettingsSection />
+           ) : null}
+
+           {section === 'redis' ? (
+             <RedisSettingsSection />
            ) : null}
 
            {section === 'mail' ? (

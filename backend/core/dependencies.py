@@ -52,14 +52,56 @@ except ImportError:
 
 # Initialize Redis client if configured
 _redis_client: Optional[redis.Redis] = None
-if REDIS_AVAILABLE and settings.UPSTASH_REDIS_REST_URL and settings.UPSTASH_REDIS_REST_TOKEN:
+
+
+async def init_redis_client() -> Optional[redis.Redis]:
+    """Initialize Redis client from DB cache or environment variables."""
+    if not REDIS_AVAILABLE:
+        return None
+
     try:
-        _redis_client = redis.from_url(
-            settings.UPSTASH_REDIS_REST_URL,
-            password=settings.UPSTASH_REDIS_REST_TOKEN,
-        )
+        # Try to get secrets from MongoDB cache first
+        from core.database import get_collection
+        secrets_col = await get_collection("platform_settings")
+        doc = await secrets_col.find_one({"key": "secrets"})
+
+        if doc and isinstance(doc.get("value"), dict):
+            secrets = doc["value"]
+            upstash_url = secrets.get("upstash_redis_rest_url", "").strip()
+            upstash_token = secrets.get("upstash_redis_rest_token", "").strip()
+
+            if upstash_url and upstash_token:
+                try:
+                    client = redis.from_url(
+                        upstash_url,
+                        password=upstash_token,
+                    )
+                    # Test connection
+                    await client.ping()
+                    return client
+                except Exception:
+                    pass  # Fall back to environment variables
     except Exception:
-        _redis_client = None
+        pass  # Continue to environment variables fallback
+
+    # Fall back to environment variables
+    if settings.UPSTASH_REDIS_REST_URL and settings.UPSTASH_REDIS_REST_TOKEN:
+        try:
+            client = redis.from_url(
+                settings.UPSTASH_REDIS_REST_URL,
+                password=settings.UPSTASH_REDIS_REST_TOKEN,
+            )
+            # Test connection
+            await client.ping()
+            return client
+        except Exception:
+            return None
+
+    return None
+
+
+# Initialize Redis client (will be set during app startup)
+_redis_client: Optional[redis.Redis] = None
 
 # ── In-process rate limiter (fallback) ─────────────────────────────────────
 _rl: dict[str, list[float]] = defaultdict(list)

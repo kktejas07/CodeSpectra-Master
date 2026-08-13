@@ -57,6 +57,9 @@ export type ServerSecretsRecord = {
   opencode_api_key?: string     // OpenCode API key
   groq_api_key?: string           // Groq API key (fast inference)
   nvidia_api_key?: string        // NVIDIA NIM API key
+  // --- Upstash Redis (rate limiting) -------------------------------------
+  upstash_redis_rest_url?: string
+  upstash_redis_rest_token?: string
   // --- Cloudflare --------------------------------------------------------
   cloudflare_zone_id?: string
   cloudflare_api_token?: string

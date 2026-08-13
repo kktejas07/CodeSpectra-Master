@@ -22,12 +22,43 @@ from dotenv import load_dotenv
 from fastapi import FastAPI, Request
 from fastapi.responses import Response
 
+from core.dependencies import init_redis_client, _redis_client
+
 ROOT_DIR = Path(__file__).parent
 load_dotenv(ROOT_DIR / ".env")
 
 NEXT_ORIGIN = os.environ.get("NEXTJS_INTERNAL_URL", "http://localhost:3000")
 
 app = FastAPI(title="CodeSpectra API")
+
+
+@app.on_event("startup")
+async def startup_event():
+    """Initialize Redis client on startup."""
+    global _redis_client
+    try:
+        _redis_client = await init_redis_client()
+        if _redis_client:
+            logging.info("Redis client initialized successfully from MongoDB configuration")
+        else:
+            logging.info("Redis client not configured (will use in-memory fallback)")
+    except Exception as e:
+        logging.warning(f"Failed to initialize Redis client: {e}")
+        _redis_client = None
+
+
+@app.on_event("shutdown")
+async def shutdown_event():
+    """Close Redis client on shutdown."""
+    global _redis_client
+    if _redis_client:
+        try:
+            await _redis_client.close()
+            logging.info("Redis client closed")
+        except Exception as e:
+            logging.warning(f"Error closing Redis client: {e}")
+        finally:
+            _redis_client = None
 
 # ── Mount internal routers (modular backend) ───────────────────
 # Each router is self-contained in its own module.
