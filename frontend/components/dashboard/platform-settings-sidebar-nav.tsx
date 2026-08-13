@@ -16,6 +16,7 @@ import {
   ScrollText,
   Trophy,
   Shield,
+  Database,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -43,6 +44,7 @@ const ITEMS: {
   { id: 'llm', label: 'AI & LLM Keys', icon: Sparkles },
   { id: 'gamification', label: 'Gamification & XP', icon: Trophy },
   { id: 'kyc', label: 'KYC Providers', icon: Shield },
+  { id: 'redis', label: 'Redis / Rate Limiting', icon: Database },
 ]
 
 export function PlatformSettingsSidebarNav({
