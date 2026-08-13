@@ -17,7 +17,7 @@ function verifyHmacToken(email: string, token: string): boolean {
   return token === expected
 }
 
-export function generateHmacToken(email: string): string {
+function generateHmacToken(email: string): string {
   const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'codespectra-default-secret'
   return createHmac('sha256', secret).update(email.toLowerCase()).digest('hex').slice(0, 16)
 }
