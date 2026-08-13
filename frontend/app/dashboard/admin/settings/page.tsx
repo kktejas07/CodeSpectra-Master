@@ -48,6 +48,7 @@ import {
 } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloudflare-section'
+import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
 import { MobileSettingsPage } from '@/app/dashboard/admin/settings/mobile/mobile-settings-page'
 import KycSettingsSection from '@/app/dashboard/admin/settings/kyc/page'
 import { useToast } from '@/lib/toast-context'
