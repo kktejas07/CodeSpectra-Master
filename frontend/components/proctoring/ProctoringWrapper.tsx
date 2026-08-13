@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, useCallback } from 'react'
 import {
   ShieldAlert,
   AlertTriangle,
@@ -16,13 +16,13 @@ import { auditHardwarePorts, HardwareAuditResult } from '@/lib/proctoring/hardwa
 import { EyeGazeTracker, EyeGazeAnalysis } from '@/lib/proctoring/eye-gaze-tracker'
 import { AadhaarIDVerificationModal } from './AadhaarIDVerificationModal'
 import { DeviceAuditModal } from './DeviceAuditModal'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface ProctoringWrapperProps {
   children: React.ReactNode
   proctoringLevel?: 'none' | 'focus_only' | 'ai_flagged' | 'strict_lockdown'
   candidateName?: string
   onFlagEvent?: (event: { type: string; timestamp: number; details: string }) => void
-  /** Used to report the hardware-port audit to /api/proctor/events. */
   sessionKind?: 'exam' | 'problem' | 'interview'
   sessionId?: string
 }
@@ -50,6 +50,26 @@ export function ProctoringWrapper({
   const [gazeAnalysis, setGazeAnalysis] = useState<EyeGazeAnalysis | null>(null)
   const videoRef = useRef<HTMLVideoElement>(null)
   const trackerRef = useRef<EyeGazeTracker | null>(null)
+  const lastBlinkCountRef = useRef(0)
+  const lastGazeRef = useRef('')
+  const lastHeadPoseRef = useRef(false)
+
+  // Send proctor events to API
+  const sendEvent = useCallback(async (eventType: string, meta?: Record<string, unknown>) => {
+    if (!sessionKind || !sessionId) return
+    try {
+      await csrfFetch('/api/proctor/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_kind: sessionKind,
+          session_id: sessionId,
+          event_type: eventType,
+          meta: { ...meta, timestamp: new Date().toISOString() },
+        }),
+      })
+    } catch { /* fire-and-forget */ }
+  }, [sessionKind, sessionId])
 
   // 1. Hardware & Port Audit
   useEffect(() => {
@@ -141,9 +161,38 @@ export function ProctoringWrapper({
             const analysis = trackerRef.current.analyzeFrame(videoRef.current)
             setGazeAnalysis(analysis)
 
-            if (analysis.headPose.isTurnedAway) {
-              setShowWarningBanner(true)
-              setWarningMessage('Head turned away from camera center. Keep eyes on screen.')
+            // Persist blink count changes
+            if (analysis.blinkCount > lastBlinkCountRef.current) {
+              const newBlinks = analysis.blinkCount - lastBlinkCountRef.current
+              lastBlinkCountRef.current = analysis.blinkCount
+              sendEvent('eye_blink_detected', {
+                blink_count: analysis.blinkCount,
+                new_blinks: newBlinks,
+                gaze_direction: analysis.gazeDirection,
+              })
+            }
+
+            // Persist gaze direction changes
+            if (analysis.gazeDirection !== lastGazeRef.current) {
+              lastGazeRef.current = analysis.gazeDirection
+              sendEvent('eye_gaze_changed', {
+                gaze_direction: analysis.gazeDirection,
+                blink_count: analysis.blinkCount,
+              })
+            }
+
+            // Persist head pose changes
+            if (analysis.headPose.isTurnedAway !== lastHeadPoseRef.current) {
+              lastHeadPoseRef.current = analysis.headPose.isTurnedAway
+              if (analysis.headPose.isTurnedAway) {
+                sendEvent('head_pose_turned_away', {
+                  yaw: analysis.headPose.yaw,
+                  pitch: analysis.headPose.pitch,
+                  gaze_direction: analysis.gazeDirection,
+                })
+                setShowWarningBanner(true)
+                setWarningMessage('Head turned away from camera center. Keep eyes on screen.')
+              }
             }
           }
         }, 1000)
@@ -158,7 +207,7 @@ export function ProctoringWrapper({
       if (intervalId) clearInterval(intervalId)
       if (stream) stream.getTracks().forEach((t) => t.stop())
     }
-  }, [proctoringLevel])
+  }, [proctoringLevel, sendEvent])
 
   return (
     <div className="relative min-h-screen bg-background text-foreground">

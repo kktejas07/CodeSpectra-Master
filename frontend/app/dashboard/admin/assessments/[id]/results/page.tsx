@@ -110,6 +110,9 @@ const PROCTOR_LABELS: Record<string, string> = {
   tab_focus_lost: 'Tab Switch',
   copy_paste_attempt: 'Copy-Paste Attempt',
   hardware_port_anomaly: 'Hardware Port Anomaly',
+  eye_blink_detected: 'Eye Blink Detected',
+  eye_gaze_changed: 'Eye Gaze Changed',
+  head_pose_turned_away: 'Head Turned Away',
 }
 
 const PROCTOR_ICONS: Record<string, React.ReactNode> = {
@@ -117,6 +120,9 @@ const PROCTOR_ICONS: Record<string, React.ReactNode> = {
   tab_focus: <Maximize2 className="w-3 h-3" />,
   copy: <Copy className="w-3 h-3" />,
   paste: <Copy className="w-3 h-3" />,
+  eye_blink_detected: <Eye className="w-3 h-3" />,
+  eye_gaze_changed: <Eye className="w-3 h-3" />,
+  head_pose_turned_away: <AlertTriangle className="w-3 h-3" />,
 }
 
 // Keys every event carries that are noise for a human reviewer.
@@ -133,6 +139,8 @@ const PROCTOR_META_LABELS: Record<string, string> = {
   trackKinds: 'Stream Type', state: 'Permission State', count: 'Count',
   removedCount: 'Removed', audioLevelDb: 'Audio Level', speechDetected: 'Speech',
   key: 'Key', label: 'Shortcut',
+  blink_count: 'Total Blinks', new_blinks: 'New Blinks', gaze_direction: 'Gaze Direction',
+  yaw: 'Head Yaw', pitch: 'Head Pitch',
 }
 
 const humanize = (k: string): string =>
@@ -679,7 +687,8 @@ setManualGrades({})
 
   const proctorColor = (type: string): string => {
     if (['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked'].includes(type)) return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
-    if (['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+    if (['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
+    if (['eye_blink_detected', 'eye_gaze_changed'].includes(type)) return 'text-blue-400 border-blue-500/30 bg-blue-500/10'
     return 'text-muted-foreground border-border bg-muted/50'
   }
 
