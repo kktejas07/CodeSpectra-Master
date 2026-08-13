@@ -17,6 +17,7 @@ import {
   Trophy,
   Shield,
   Database,
+  MessageCircle,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -45,6 +46,7 @@ const ITEMS: {
   { id: 'gamification', label: 'Gamification & XP', icon: Trophy },
   { id: 'kyc', label: 'KYC Providers', icon: Shield },
   { id: 'redis', label: 'Redis / Rate Limiting', icon: Database },
+  { id: 'whatsapp', label: 'WhatsApp (OpenWA)', icon: MessageCircle },
 ]
 
 export function PlatformSettingsSidebarNav({
