@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users } from 'lucide-react'
+import {   BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users, Link2 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
@@ -308,6 +308,15 @@ export default function AdminExamsPage() {
             <DropdownMenuItem onClick={() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }} disabled={!r.published} className="gap-2">
               <Users className="h-4 w-4" /> Bulk Invite
             </DropdownMenuItem>
+            {r.published && (
+              <DropdownMenuItem onClick={() => {
+                const url = `${window.location.origin}/assessment/${r.id}?share=true`
+                navigator.clipboard.writeText(url)
+                addToast({ type: 'success', title: 'Public link copied!' })
+              }} className="gap-2">
+                <Link2 className="h-4 w-4" /> Copy Public Link
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/results`)} className="gap-2">
               <Eye className="h-4 w-4" /> View Results
             </DropdownMenuItem>
