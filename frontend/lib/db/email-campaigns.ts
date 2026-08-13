@@ -12,6 +12,7 @@ export interface CampaignChannels {
   email: boolean
   push: boolean
   in_app: boolean
+  whatsapp: boolean
 }
 
 export interface EmailCampaignDoc {
@@ -33,6 +34,8 @@ export interface EmailCampaignDoc {
   push_ok: number
   push_fail: number
   in_app_ok: number
+  whatsapp_ok: number
+  whatsapp_fail: number
   created_at: string
   completed_at?: string | null
   created_by: string

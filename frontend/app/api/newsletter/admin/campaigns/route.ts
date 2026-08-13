@@ -32,11 +32,12 @@ export async function GET(req: NextRequest) {
           totalEmailsFailed: { $sum: '$email_fail' },
           totalPushSent: { $sum: '$push_ok' },
           totalInAppSent: { $sum: '$in_app_ok' },
+          totalWhatsAppSent: { $sum: { $ifNull: ['$whatsapp_ok', 0] } },
         }
       }
     ]).toArray()
 
-    return NextResponse.json({ campaigns, stats: stats[0] || { totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0 } })
+    return NextResponse.json({ campaigns, stats: stats[0] || { totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0, totalWhatsAppSent: 0 } })
   } catch (e) {
     console.error('[newsletter] list campaigns error:', e)
     return NextResponse.json({ error: 'Failed' }, { status: 500 })
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest) {
     cta_text?: string
     cta_url?: string
     include_upcoming?: boolean
-    channels?: { email?: boolean; push?: boolean; in_app?: boolean }
+    channels?: { email?: boolean; push?: boolean; in_app?: boolean; whatsapp?: boolean }
     send_at?: string
     preview_only?: boolean
   }
@@ -71,9 +72,10 @@ export async function POST(req: NextRequest) {
     email: body.channels?.email !== false,
     push: body.channels?.push !== false,
     in_app: body.channels?.in_app !== false,
+    whatsapp: body.channels?.whatsapp === true,
   }
 
-  if (!channels.email && !channels.push && !channels.in_app) {
+  if (!channels.email && !channels.push && !channels.in_app && !channels.whatsapp) {
     return NextResponse.json({ error: 'At least one channel must be enabled' }, { status: 400 })
   }
 
@@ -101,6 +103,8 @@ export async function POST(req: NextRequest) {
       push_ok: 0,
       push_fail: 0,
       in_app_ok: 0,
+      whatsapp_ok: 0,
+      whatsapp_fail: 0,
       created_at: nowIso(),
       completed_at: null,
       created_by: gate.user.email || gate.user.id,
@@ -144,7 +148,7 @@ async function executeCampaign(campaign: EmailCampaignDoc) {
     const { sendEmail } = await import('@/lib/send-email')
     const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
-    let emailOk = 0, emailFail = 0, pushOk = 0, pushFail = 0, inAppOk = 0
+    let emailOk = 0, emailFail = 0, pushOk = 0, pushFail = 0, inAppOk = 0, whatsappOk = 0, whatsappFail = 0
 
     // Email channel
     if (campaign.channels.email) {
@@ -225,6 +229,39 @@ async function executeCampaign(campaign: EmailCampaignDoc) {
       }
     }
 
+    // WhatsApp channel - send to all users with phone numbers
+    if (campaign.channels.whatsapp) {
+      try {
+        const { isWhatsAppConfigured, sendWhatsAppBatch } = await import('@/lib/whatsapp')
+        if (await isWhatsAppConfigured()) {
+          const users = await db.collection('user').find({
+            $or: [
+              { phone: { $exists: true, $ne: '' } },
+              { phone_number: { $exists: true, $ne: '' } },
+              { whatsapp: { $exists: true, $ne: '' } },
+            ]
+          }).project({ id: 1, phone: 1, phone_number: 1, whatsapp: 1, _id: 0 }).toArray()
+
+          const messages = users
+            .map(u => {
+              const phone = String(u.phone || u.phone_number || u.whatsapp || '')
+              return phone ? { phone, text: `*${campaign.subject}*\n\n${campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 300) || 'New update from CodeSpectra'}` } : null
+            })
+            .filter((m): m is { phone: string; text: string } => m !== null)
+
+          if (messages.length > 0) {
+            const results = await sendWhatsAppBatch(messages)
+            for (const r of results) {
+              if (r.success) whatsappOk++
+              else whatsappFail++
+            }
+          }
+        }
+      } catch {
+        // WhatsApp is best-effort
+      }
+    }
+
     // Update campaign stats
     await col.updateOne(
       { id: campaign.id },
@@ -236,6 +273,8 @@ async function executeCampaign(campaign: EmailCampaignDoc) {
           push_ok: pushOk,
           push_fail: pushFail,
           in_app_ok: inAppOk,
+          whatsapp_ok: whatsappOk,
+          whatsapp_fail: whatsappFail,
           completed_at: nowIso(),
         }
       }

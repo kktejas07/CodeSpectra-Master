@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import {
   Loader2, Mail, Send, Users as UsersIcon, CheckCircle, Eye, Clock,
   BarChart3, Trash2, Copy, ExternalLink, AlertCircle, Image as ImageIcon,
-  Megaphone, Calendar, XCircle, RotateCcw
+  Megaphone, Calendar, XCircle, RotateCcw, MessageCircle
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -26,7 +26,7 @@ interface Campaign {
   cta_text?: string
   cta_url?: string
   include_upcoming: boolean
-  channels: { email: boolean; push: boolean; in_app: boolean }
+  channels: { email: boolean; push: boolean; in_app: boolean; whatsapp: boolean }
   recipients_count: number
   status: 'draft' | 'scheduled' | 'sending' | 'completed' | 'failed' | 'cancelled'
   send_at?: string | null
@@ -35,6 +35,8 @@ interface Campaign {
   push_ok: number
   push_fail: number
   in_app_ok: number
+  whatsapp_ok: number
+  whatsapp_fail: number
   created_at: string
   completed_at?: string | null
   created_by: string
@@ -46,6 +48,7 @@ interface CampaignStats {
   totalEmailsFailed: number
   totalPushSent: number
   totalInAppSent: number
+  totalWhatsAppSent: number
 }
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: React.ReactNode }> = {
@@ -63,7 +66,7 @@ export default function NewsletterPage() {
 
   // Campaigns data
   const [campaigns, setCampaigns] = useState<Campaign[]>([])
-  const [stats, setStats] = useState<CampaignStats>({ totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0 })
+  const [stats, setStats] = useState<CampaignStats>({ totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0, totalWhatsAppSent: 0 })
   const [recipientCount, setRecipientCount] = useState(0)
   const [loading, setLoading] = useState(true)
 
@@ -77,6 +80,7 @@ export default function NewsletterPage() {
   const [sendEmail, setSendEmail] = useState(true)
   const [sendPush, setSendPush] = useState(true)
   const [sendInApp, setSendInApp] = useState(true)
+  const [sendWhatsapp, setSendWhatsapp] = useState(false)
   const [scheduleAt, setScheduleAt] = useState('')
   const [sending, setSending] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
@@ -88,6 +92,8 @@ export default function NewsletterPage() {
   // Test send state
   const [testEmail, setTestEmail] = useState('')
   const [testSending, setTestSending] = useState(false)
+  const [testWhatsappPhone, setTestWhatsappPhone] = useState('')
+  const [testWhatsappSending, setTestWhatsappSending] = useState(false)
 
   // Active tab
   const [activeTab, setActiveTab] = useState<'compose' | 'campaigns'>('compose')
@@ -104,7 +110,7 @@ export default function NewsletterPage() {
       const campaignsData = await campaignsRes.json()
       const countData = await countRes.json()
       setCampaigns(campaignsData.campaigns || [])
-      setStats(campaignsData.stats || { totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0 })
+      setStats(campaignsData.stats || { totalCampaigns: 0, totalEmailsSent: 0, totalEmailsFailed: 0, totalPushSent: 0, totalInAppSent: 0, totalWhatsAppSent: 0 })
       setRecipientCount(countData.count || 0)
     } catch { /* ignore */ }
     finally { setLoading(false) }
@@ -148,7 +154,7 @@ export default function NewsletterPage() {
           body: body.trim(),
           cta_text: ctaText.trim(),
           cta_url: ctaUrl.trim(),
-          channels: { email: sendEmail, push: sendPush, in_app: sendInApp },
+          channels: { email: sendEmail, push: sendPush, in_app: sendInApp, whatsapp: sendWhatsapp },
           send_at: scheduleAt || undefined,
         }),
       })
@@ -230,6 +236,33 @@ export default function NewsletterPage() {
     }
   }
 
+  const handleTestWhatsapp = async () => {
+    if (!testWhatsappPhone.trim()) {
+      addToast({ type: 'error', title: 'Phone number required' })
+      return
+    }
+    setTestWhatsappSending(true)
+    try {
+      const res = await csrfFetch('/api/newsletter/admin/send-test-whatsapp', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          phone: testWhatsappPhone.trim(),
+          message: subject ? `*${subject}*\n\n${intro || body?.replace(/<[^>]*>/g, '').slice(0, 200) || 'Test message from CodeSpectra'}` : 'Test message from CodeSpectra',
+        }),
+      })
+      const data = await res.json()
+      if (data.error) { addToast({ type: 'error', title: data.error }); return }
+      addToast({ type: 'success', title: `WhatsApp sent to ${testWhatsappPhone}` })
+      setTestWhatsappPhone('')
+    } catch {
+      addToast({ type: 'error', title: 'Failed to send WhatsApp' })
+    } finally {
+      setTestWhatsappSending(false)
+    }
+  }
+
   const handleDeleteCampaign = async (id: string) => {
     try {
       const res = await csrfFetch(`/api/newsletter/admin/campaigns/${id}`, {
@@ -301,6 +334,10 @@ export default function NewsletterPage() {
         <Card className="p-4 text-center">
           <p className="text-2xl font-bold text-blue-600">{stats.totalPushSent + stats.totalInAppSent}</p>
           <p className="text-xs text-muted-foreground">Push + In-App Sent</p>
+        </Card>
+        <Card className="p-4 text-center">
+          <p className="text-2xl font-bold text-green-600">{stats.totalWhatsAppSent || 0}</p>
+          <p className="text-xs text-muted-foreground">WhatsApp Sent</p>
         </Card>
       </div>
 
@@ -401,6 +438,14 @@ export default function NewsletterPage() {
                   </div>
                   <Switch checked={sendInApp} onCheckedChange={setSendInApp} />
                 </div>
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <MessageCircle className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm">WhatsApp</span>
+                    <Badge variant="outline" className="text-[10px]">OpenWA</Badge>
+                  </div>
+                  <Switch checked={sendWhatsapp} onCheckedChange={setSendWhatsapp} />
+                </div>
               </div>
             </Card>
 
@@ -463,18 +508,36 @@ export default function NewsletterPage() {
                 <Send className="h-4 w-4" /> Test Send
               </h2>
               <div className="space-y-3">
-                <Input
-                  type="email"
-                  value={testEmail}
-                  onChange={e => setTestEmail(e.target.value)}
-                  placeholder="test@example.com"
-                />
+                <div>
+                  <Label className="text-xs text-muted-foreground">Email</Label>
+                  <Input
+                    type="email"
+                    value={testEmail}
+                    onChange={e => setTestEmail(e.target.value)}
+                    placeholder="test@example.com"
+                    className="mt-1"
+                  />
+                </div>
                 <Button variant="outline" onClick={handleTestSend} disabled={testSending || !testEmail.trim()} className="w-full gap-2">
                   {testSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                   Send Test Email
                 </Button>
+                <div className="border-t pt-3">
+                  <Label className="text-xs text-muted-foreground">WhatsApp</Label>
+                  <Input
+                    type="tel"
+                    value={testWhatsappPhone}
+                    onChange={e => setTestWhatsappPhone(e.target.value)}
+                    placeholder="+919876543210"
+                    className="mt-1"
+                  />
+                </div>
+                <Button variant="outline" onClick={handleTestWhatsapp} disabled={testWhatsappSending || !testWhatsappPhone.trim()} className="w-full gap-2">
+                  {testWhatsappSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <MessageCircle className="h-4 w-4" />}
+                  Send Test WhatsApp
+                </Button>
                 <p className="text-xs text-muted-foreground">
-                  Sends a test email with [Test] prefix to verify formatting
+                  Sends test messages to verify formatting and delivery
                 </p>
               </div>
             </Card>
@@ -534,6 +597,13 @@ export default function NewsletterPage() {
                             <span className="flex items-center gap-1">
                               <Megaphone className="h-3 w-3" />
                               <span className="text-purple-600">{c.in_app_ok}</span>
+                            </span>
+                          )}
+                          {c.channels.whatsapp && (
+                            <span className="flex items-center gap-1">
+                              <MessageCircle className="h-3 w-3" />
+                              <span className="text-green-600">{c.whatsapp_ok}</span>
+                              {c.whatsapp_fail > 0 && <span className="text-red-500">/ {c.whatsapp_fail} failed</span>}
                             </span>
                           )}
                         </div>
