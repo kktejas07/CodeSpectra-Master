@@ -100,7 +100,7 @@ export default function AnnouncementsPage() {
   }
 
   return (
-    <div className="space-y-6 p-6 max-w-4xl mx-auto">
+    <div className="space-y-6 p-6">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 bg-primary/10 rounded-lg flex items-center justify-center"><Megaphone className="h-5 w-5 text-primary" /></div>
@@ -116,8 +116,8 @@ export default function AnnouncementsPage() {
       </div>
 
       {activeTab === 'compose' ? (
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          <div className="lg:col-span-2 space-y-6">
+        <div className="grid grid-cols-1 xl:grid-cols-5 gap-6">
+          <div className="xl:col-span-3 space-y-6">
             <Card className="p-6">
               <h2 className="font-semibold mb-4 flex items-center gap-2"><Send className="h-4 w-4" /> New Announcement</h2>
               <div className="space-y-4">
@@ -201,7 +201,7 @@ export default function AnnouncementsPage() {
           </div>
 
           {/* Preview */}
-          <div className="space-y-6">
+          <div className="xl:col-span-2 space-y-6">
             <Card className="p-6">
               <h2 className="font-semibold mb-4 flex items-center gap-2"><Eye className="h-4 w-4" /> Live Preview</h2>
               <div className="bg-muted/40 rounded-lg p-4 border border-border/60">
