@@ -13,6 +13,7 @@ export const PLATFORM_SETTINGS_SECTIONS = [
   'gamification',
   'kyc',
   'redis',
+  'whatsapp',
 ] as const
 
 export type PlatformSettingsSection = (typeof PLATFORM_SETTINGS_SECTIONS)[number]
