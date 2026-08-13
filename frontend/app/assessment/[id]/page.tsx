@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
@@ -9,6 +9,8 @@ import { Card } from '@/components/ui/card'
 import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX, User, LogIn } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { useAuth } from '@/lib/auth-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { calculateCheatingScore, type AnswerEvent } from '@/lib/proctoring/answer-pattern'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
@@ -106,6 +108,37 @@ export default function CandidateAssessmentPage() {
 
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Answer pattern tracking
+  const answerEventsRef = useRef<AnswerEvent[]>([])
+  const questionViewTimeRef = useRef<number>(Date.now())
+  const questionViewIdRef = useRef<string>('')
+
+  const trackQuestionView = useCallback((qId: string) => {
+    // Record time spent on previous question
+    if (questionViewIdRef.current && questionViewIdRef.current !== qId) {
+      const timeSpent = Date.now() - questionViewTimeRef.current
+      answerEventsRef.current.push({
+        questionId: questionViewIdRef.current,
+        timestamp: Date.now(),
+        action: 'skip',
+        timeSpent,
+      })
+    }
+    questionViewIdRef.current = qId
+    questionViewTimeRef.current = Date.now()
+  }, [])
+
+  const trackAnswer = useCallback((qId: string, action: 'answer' | 'paste' = 'answer') => {
+    const timeSpent = Date.now() - questionViewTimeRef.current
+    answerEventsRef.current.push({
+      questionId: qId,
+      timestamp: Date.now(),
+      action,
+      timeSpent,
+      answerLength: (answers[qId] || '').length,
+    })
+  }, [answers])
 
   // Shuffle options once when exam loads or starts
   const sessionSeed = useRef(Math.floor(Math.random() * 2147483647))
@@ -262,6 +295,28 @@ export default function CandidateAssessmentPage() {
       if (typeof window !== 'undefined') {
         localStorage.removeItem(`codespectra_exam_draft_${exam.id}`)
       }
+
+      // Send answer pattern scoring
+      try {
+        const cheatingScore = calculateCheatingScore(answerEventsRef.current)
+        await csrfFetch('/api/proctor/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_kind: 'exam',
+            session_id: exam.id,
+            event_type: 'answer_pattern_score',
+            meta: {
+              score: cheatingScore.total,
+              flags: cheatingScore.flags,
+              breakdown: cheatingScore.breakdown,
+              total_answers: answerEventsRef.current.filter(e => e.action === 'answer').length,
+              total_pastes: answerEventsRef.current.filter(e => e.action === 'paste').length,
+              timestamp: new Date().toISOString(),
+            },
+          }),
+        })
+      } catch { /* fire-and-forget */ }
       addToast({ type: 'success', title: 'Assessment submitted successfully!' })
     } catch (e: any) {
       addToast({ type: 'error', title: 'Failed to submit', message: e.message || '' })
@@ -418,7 +473,7 @@ export default function CandidateAssessmentPage() {
   return (
     <ExtensionGate>
     <>
-      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)}>
+      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined}>
       <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted}>
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
