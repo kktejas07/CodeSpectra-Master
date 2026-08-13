@@ -70,13 +70,10 @@ export function CloudflareSettingsSection() {
       })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error((json.error as string) || 'Save failed')
-      setSavedZoneId(zoneId.trim())
-      if (zoneId.trim()) setHasSavedToken(true)
       setApiToken('')
       if (json.secrets) {
-        setSavedZoneId(json.secrets.cloudflare_zone_id || zoneId.trim())
-        if (json.secrets.has_cloudflare_api_token) setHasSavedToken(true)
-        setApiToken('')
+        setSavedZoneId(json.secrets.cloudflare_zone_id || '')
+        setHasSavedToken(!!json.secrets.has_cloudflare_api_token)
       }
       setMessage({ type: 'success', text: 'Cloudflare settings saved. Cache purge is now available.' })
       loadSettings()
