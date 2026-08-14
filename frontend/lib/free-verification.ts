@@ -89,7 +89,7 @@ export function verifyPhone(phone: string, defaultCountry: CountryCode = 'IN'): 
   }
 
   try {
-    const parsed = parsePhoneNumberFromString(cleaned, defaultCountry)
+    const parsed = parsePhoneNumberFromString(cleaned, defaultCountry as CountryCode)
     if (!parsed || !isValidPhoneNumber(parsed.number as string)) {
       return { valid: false, reason: 'Invalid phone number' }
     }
@@ -114,7 +114,9 @@ let geoipDb: any = null
 export async function initGeoIp(): Promise<boolean> {
   if (geoipDb) return true
   try {
-    const geoip = await import('geoip-lite')
+    // Use dynamic import with type assertion to avoid TS errors if module not installed
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const geoip = await import('geoip-lite' as any) as any
     geoipDb = geoip.default || geoip
     return true
   } catch {
