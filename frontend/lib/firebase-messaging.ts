@@ -13,6 +13,7 @@
 import { getMessaging, getToken, onMessage, type Messaging } from 'firebase/messaging'
 import { getApp, getApps } from 'firebase/app'
 import { getFirebaseAuth, prefetchFirebaseConfig } from '@/lib/firebase'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 let _messaging: Messaging | null = null
 let _vapidKey = ''
@@ -80,10 +81,9 @@ export async function registerPushToken(userId: string): Promise<string | null> 
     const token = await getToken(messaging, { vapidKey: _vapidKey || undefined })
     if (!token) return null
 
-    await fetch('/api/notifications/push-token', {
+    await csrfFetch('/api/notifications/push-token', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
       body: JSON.stringify({ token, userId }),
     })
     return token

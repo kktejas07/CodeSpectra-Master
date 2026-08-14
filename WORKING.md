@@ -12,6 +12,7 @@
 | opencode (this session) | Deploying v0.22.7 batch to prod (frontend + backend) | server repos (rsync — server git tokens expired) | DONE — frontend + backend rebuilt, services converged, verified | 2026-08-13 ~22:25 |
 | opencode (this session) | v0.22.10 → Newsletter image compression (canvas, auto on paste) + HTML size badge + F6 release-scores WhatsApp dedup via notify() | frontend/components/ui/rich-text-editor.tsx, frontend/app/dashboard/admin/newsletter/page.tsx, frontend/app/api/newsletter/admin/send-test/route.ts, frontend/lib/notifications.ts, frontend/app/api/admin/exams/[id]/release-scores/route.ts | DONE — committed | 2026-08-14 ~00:10 |
 | opencode (this session) | v0.22.8/v0.22.9 → Redis hardening: backend rate-limit fix + Redis-backed route limiters + scheduler lock (caches/edge SKIPPED — see AGENTS.md) | backend/core/dependencies.py, backend/services/ai.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/lib/scheduler.ts, frontend/app/api/** (20 route callers), docs/devops/02-Docker-Architecture.md | DONE — committed `235d727` (v0.22.9), `yarn build` clean | 2026-08-13 ~23:40 |
+| opencode (this session) | Redis settings UX + CSRF bugfix: token field hardcoded to bullets (untypeable) → Redis never configured; server-secrets/reveal missing `upstash_redis_rest_token` → 400; push-token fetch missing CSRF header → 403 | frontend/components/dashboard/settings/redis-section.tsx, frontend/app/api/admin/server-secrets/reveal/route.ts, frontend/lib/firebase-messaging.ts | DONE — committed `8264f4d` | 2026-08-14 |
 
 ## Rules (see AGENTS.md for full text)
 
@@ -30,6 +31,7 @@
 
 | Date | Session | What was done |
 |---|---|---|
+| 2026-08-14 | opencode (this session) | Fixed Redis settings + push-token bugs: (1) token input in redis-section was controlled to a literal `'••••••••'`, so a new token could never be typed → every redis/test 400'd with "Redis not configured"; now shows typed value, reveal is read-only. (2) server-secrets/reveal SECRET_FIELDS was missing `upstash_redis_rest_token` (+groq/opencode/openrouter/nvidia keys) → 400 "Invalid key"; synced with the save route. (3) firebase-messaging POST /api/notifications/push-token used plain fetch without the CSRF header → 403 from global middleware; now uses csrfFetch. `yarn tsc` clean. |
 | 2026-08-14 | opencode | F2+F3 review-finding fixes committed & pushed (`87777d6`): `routers/ai.py` rate limiting delegates to shared `check_rate_limit`; exam submit route reuses exported `isIpInCidr` (also fixes latent exact-match blocklist bug). `yarn tsc` clean, backend import verified. NOT yet deployed. |
 | 2026-08-14 | opencode (this session) | Committed v0.22.9 (`235d727`): Redis-backed route rate limiting across 20 API routes + distributed scheduler lock (`SET NX EX`, TTL 300s) + Redis ops-hardening docs. `yarn build` clean. |
 | 2026-08-13 | opencode (this session) | Deployed v0.22.7 to prod: frontend + backend images rebuilt & rolled (`:latest`), verified newsletter/system 200, redis/status 401 unauth, backend `ensure_redis_client` live. Note: server GitHub tokens expired — deploy used rsync of changed files. |
