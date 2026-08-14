@@ -61,6 +61,7 @@
     "firebase-admin": "^13.2.0",
     "gray-matter": "^4.0.3",
     "input-otp": "1.4.2",
+    "ioredis": "^6.0.0",
     "jose": "^6.2.3",
     "jspdf": "^4.2.1",
     "konva": "^10.3.0",

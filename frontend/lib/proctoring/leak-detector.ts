@@ -30,7 +30,7 @@ export async function detectLeaks(examId: string): Promise<LeakDetectionResult> 
 
   const leakedQuestions: LeakDetectionResult['leakedQuestions'] = []
 
-  // Load question bank
+  // Load question bank - create index for O(1) lookups
   let questionBank: any[] = []
   try {
     questionBank = await db.collection('question_bank').find({}).toArray()
@@ -42,21 +42,34 @@ export async function detectLeaks(examId: string): Promise<LeakDetectionResult> 
     return { leakedQuestions: [], totalFlagged: 0 }
   }
 
-  for (const q of questions) {
-    // Find matching bank entry by question_id or question text
-    const bankEntry = questionBank.find(
-      (b: any) => b.question_id === q.id || b.question_text === q.question
-    )
-    if (!bankEntry) continue
+  // Build map for O(1) lookup: question_id or question_text -> answer
+  const bankMap = new Map<string, string>()
+  for (const b of questionBank) {
+    if (b.question_id) bankMap.set(b.question_id, String(b.answer || '').trim().toLowerCase())
+    if (b.question_text) bankMap.set(b.question_text, String(b.answer || '').trim().toLowerCase())
+  }
 
-    const bankAnswer = String(bankEntry.answer || '').trim().toLowerCase()
+  // Pre-process submissions by question for efficient counting
+  const submissionsByQuestion: Record<string, string[]> = {}
+  for (const sub of submissions) {
+    const answers = sub.answers || {}
+    for (const q of questions) {
+      const ans = String(answers[q.id] || '').trim().toLowerCase()
+      if (ans) {
+        if (!submissionsByQuestion[q.id]) submissionsByQuestion[q.id] = []
+        submissionsByQuestion[q.id].push(ans)
+      }
+    }
+  }
+
+  for (const q of questions) {
+    const bankAnswer = bankMap.get(q.id) || bankMap.get(q.question)
     if (!bankAnswer) continue
 
-    // Count how many submissions used the exact bank answer
+    const userAnswers = submissionsByQuestion[q.id] || []
     let matchCount = 0
-    for (const sub of submissions) {
-      const userAnswer = String(sub.answers?.[q.id] || '').trim().toLowerCase()
-      if (userAnswer && userAnswer === bankAnswer) {
+    for (const userAnswer of userAnswers) {
+      if (userAnswer === bankAnswer) {
         matchCount++
       }
     }

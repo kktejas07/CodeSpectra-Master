@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { getAPIUser } from '@/lib/route-auth'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -30,7 +31,7 @@ export async function POST(req: NextRequest) {
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   const ipKey = clientLimiterKeyFromRequest(req, user.id)
-  const ipCheck = rateLimitSlidingWindow(`support:ticket:${ipKey}`, 3, 60_000)
+  const ipCheck = await rateLimitRedis(`support:ticket:${ipKey}`, 3, 60_000)
   if (!ipCheck.ok) {
     return NextResponse.json({ error: `Too many requests. Try in ${ipCheck.retryAfterSec}s.` }, { status: 429 })
   }

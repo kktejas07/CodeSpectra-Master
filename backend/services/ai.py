@@ -65,7 +65,7 @@ DEFAULT_CHAT_SYSTEM = (
 
 async def handle_rag_embed(req: RagEmbedReq, request: Request) -> dict:
     """Generate an embedding vector for the given text using Gemini."""
-    check_rate_limit(f"rag-embed:{client_ip(request)}", 30, 60)
+    await check_rate_limit(f"rag-embed:{client_ip(request)}", 30, 60)
     vec = await generate_embedding(req.text[:8192], RAG_API_KEY)
     if vec is None:
         raise HTTPException(status_code=502, detail="Embedding generation failed")
@@ -78,7 +78,7 @@ async def handle_chat(
     request: Request, req: ChatStreamReq
 ) -> StreamingResponse:
     """SSE stream: chat with RAG context enrichment."""
-    check_rate_limit(f"chat:{client_ip(request)}", 30, 60)
+    await check_rate_limit(f"chat:{client_ip(request)}", 30, 60)
 
     rag_context: str | None = None
     if req.rag_enabled and RAG_API_KEY:
@@ -190,7 +190,7 @@ async def _search_rag(query: str, uri: str) -> str | None:
 
 async def handle_complete(request: Request, req: CompleteReq) -> dict[str, Any]:
     """Single-turn LLM completion, returns full text / JSON."""
-    check_rate_limit(f"complete:{client_ip(request)}", 60, 60)
+    await check_rate_limit(f"complete:{client_ip(request)}", 60, 60)
     chat = build_chat(
         req.model_role,
         req.session_id,
@@ -240,7 +240,7 @@ async def handle_complete(request: Request, req: CompleteReq) -> dict[str, Any]:
 
 async def handle_hints(request: Request, req: HintsReq) -> dict[str, Any]:
     """Progressive coding hints."""
-    check_rate_limit(f"hints:{client_ip(request)}", 120, 60)
+    await check_rate_limit(f"hints:{client_ip(request)}", 120, 60)
     level_brief = {
         1: "a SHORT non-spoiler nudge focused on the right data structure or insight — no algorithm name, no code, max 2 sentences.",
         2: "the high-level APPROACH — what algorithm/pattern fits, time/space complexity. No code yet.",
@@ -281,7 +281,7 @@ async def handle_hints(request: Request, req: HintsReq) -> dict[str, Any]:
 
 async def handle_code_review(request: Request, req: CodeReviewReq) -> dict[str, Any]:
     """Deep AI code review."""
-    check_rate_limit(f"code-review:{client_ip(request)}", 30, 60)
+    await check_rate_limit(f"code-review:{client_ip(request)}", 30, 60)
     system = (
         "You are a senior staff engineer doing a strict but constructive code review. "
         "Return JSON ONLY with keys: summary (string), strengths (string[]), "
@@ -326,7 +326,7 @@ async def handle_code_analysis(
     request: Request, req: CodeAnalysisReq
 ) -> dict[str, Any]:
     """Automated code analysis (time complexity, efficiency, edge cases)."""
-    check_rate_limit(f"code-analysis:{client_ip(request)}", 60, 60)
+    await check_rate_limit(f"code-analysis:{client_ip(request)}", 60, 60)
     system = (
         "You are an automated code analyzer. Given a candidate's submission, "
         "return JSON ONLY with keys: time_complexity (string like 'O(n log n)'), "
@@ -366,7 +366,7 @@ async def handle_code_analysis(
 
 async def handle_grade(request: Request, req: GradeReq) -> dict[str, Any]:
     """Grade a submission using a rubric."""
-    check_rate_limit(f"grade:{client_ip(request)}", 60, 60)
+    await check_rate_limit(f"grade:{client_ip(request)}", 60, 60)
     rubric_text = "\n".join(f"- {k} (max {v})" for k, v in req.rubric.items())
     system = (
         "You are an automated technical grader. Score the submission strictly using "
@@ -407,7 +407,7 @@ async def handle_generate_problem(
     request: Request, req: GenerateProblemReq
 ) -> dict[str, Any]:
     """Generate a coding interview problem using AI."""
-    check_rate_limit(f"generate-problem:{client_ip(request)}", 20, 60)
+    await check_rate_limit(f"generate-problem:{client_ip(request)}", 20, 60)
     topics_s = ", ".join(req.topics) if req.topics else "any data-structures / algorithms"
     system = (
         "You create production-quality coding interview problems. Return JSON ONLY "
@@ -452,7 +452,7 @@ async def handle_skill_insights(
     request: Request, req: SkillInsightsReq
 ) -> dict[str, Any]:
     """Analyze developer submissions and return skill insights."""
-    check_rate_limit(f"skill-insights:{client_ip(request)}", 30, 60)
+    await check_rate_limit(f"skill-insights:{client_ip(request)}", 30, 60)
     system = (
         "You are a skills coach analyzing a developer's coding submissions. "
         "Return JSON ONLY: { strengths:string[], weak_topics:string[], "
@@ -490,7 +490,7 @@ async def handle_identity_verify(
     request: Request, req: IdentityVerifyReq
 ) -> dict[str, Any]:
     """Compare selfie vs ID photo using Gemini vision."""
-    check_rate_limit(f"identity-verify:{client_ip(request)}", 10, 60)
+    await check_rate_limit(f"identity-verify:{client_ip(request)}", 10, 60)
 
     from ai_client import ImageContent
 
@@ -557,7 +557,7 @@ def _strip_data_url(data_url: str) -> str:
 
 async def handle_agent(request: Request, req: AgentReq) -> dict[str, Any]:
     """Multi-step agentic fix loop."""
-    check_rate_limit(f"agent:{client_ip(request)}", 10, 60)
+    await check_rate_limit(f"agent:{client_ip(request)}", 10, 60)
     system = (
         "You are an autonomous code-fixing agent. You will be called multiple times "
         "in a loop. Each call: 1) READ the goal + current code 2) IDENTIFY the single "

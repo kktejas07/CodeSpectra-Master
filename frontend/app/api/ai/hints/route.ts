@@ -3,7 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
 import { problems } from '@/lib/db/problems'
-import { rateLimitAI } from '@/lib/in-memory-rate-limit'
+import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -20,7 +20,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const { providerOverride, modelOverride, modelRole, endpointOverride } = await resolveModel(user.id, 'hints_model')
 
-  const rateCheck = rateLimitAI(req, user.id)
+  const rateCheck = await rateLimitAIRedis(req, user.id)
   if (!rateCheck.ok) {
     return NextResponse.json(
       { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },

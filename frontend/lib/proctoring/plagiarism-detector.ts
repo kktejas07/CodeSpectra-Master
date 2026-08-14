@@ -56,12 +56,18 @@ export async function detectPlagiarism(examId: string): Promise<PlagiarismResult
   }
 
   // For each question, find pairs with identical answers
+  // Limit to avoid O(n²) on large exams
+  const MAX_PAIRS_PER_QUESTION = 1000
   for (const q of questions) {
     const qAnswers = answerMap[q.id]
     const userIds = Object.keys(qAnswers)
+    let pairsChecked = 0
 
     for (let i = 0; i < userIds.length; i++) {
       for (let j = i + 1; j < userIds.length; j++) {
+        if (pairsChecked >= MAX_PAIRS_PER_QUESTION) break
+        pairsChecked++
+
         const ans1 = qAnswers[userIds[i]].toLowerCase()
         const ans2 = qAnswers[userIds[j]].toLowerCase()
 
@@ -104,20 +110,23 @@ export async function detectPlagiarism(examId: string): Promise<PlagiarismResult
           }
         }
       }
+      if (pairsChecked >= MAX_PAIRS_PER_QUESTION) break
     }
   }
 
-  // Check against question bank
+  // Check against question bank - create index for O(1) lookups
   try {
     const questionBank = await db.collection('question_bank').find({}).toArray()
     if (questionBank.length > 0) {
-      for (const q of questions) {
-        const bankEntry = questionBank.find(
-          (b: any) => b.question_id === q.id || b.question_text === q.question
-        )
-        if (!bankEntry) continue
+      // Build map for O(1) lookup: question_id or question_text -> answer
+      const bankMap = new Map<string, string>()
+      for (const b of questionBank) {
+        if (b.question_id) bankMap.set(b.question_id, String(b.answer || '').trim().toLowerCase())
+        if (b.question_text) bankMap.set(b.question_text, String(b.answer || '').trim().toLowerCase())
+      }
 
-        const bankAnswer = String(bankEntry.answer || '').trim().toLowerCase()
+      for (const q of questions) {
+        const bankAnswer = bankMap.get(q.id) || bankMap.get(q.question)
         if (!bankAnswer) continue
 
         for (const sub of submissions) {
@@ -151,9 +160,11 @@ export async function detectPlagiarism(examId: string): Promise<PlagiarismResult
     ? questionBankMatches.length / submissions.length
     : 0
 
+  // The weighted sum is already in 0-100 range (since ratios are 0-1 and weights sum to 100)
+  // No need for * 100 - that was a double-multiplication bug
   const score = Math.min(100, Math.round(
     (suspiciousRatio * 60) + (bankMatchRatio * 40)
-  ) * 100)
+  ))
 
   return {
     suspiciousPairs,

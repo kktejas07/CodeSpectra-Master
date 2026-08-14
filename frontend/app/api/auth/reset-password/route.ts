@@ -2,13 +2,14 @@ import { NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { getMongoDb } from '@/lib/mongodb'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 
 export async function POST(request: Request) {
   const ipKey = clientLimiterKeyFromRequest(request, null)
-  const ipCheck = rateLimitSlidingWindow(`reset-pw:ip:${ipKey}`, 5, 60_000)
+  const ipCheck = await rateLimitRedis(`reset-pw:ip:${ipKey}`, 5, 60_000)
   if (!ipCheck.ok) {
     return NextResponse.json(
       { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.` },

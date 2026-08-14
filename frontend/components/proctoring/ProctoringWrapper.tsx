@@ -158,6 +158,8 @@ export function ProctoringWrapper({
   // 4. Face Match — periodic camera snapshots vs ID photo
   useEffect(() => {
     if (proctoringLevel === 'none' || !idPhoto) return
+    // Reset mismatch count when ID photo changes
+    faceMismatchCountRef.current = 0
     let intervalId: any = null
 
     // Wait 10s for camera to warm up, then start periodic checks
@@ -207,8 +209,7 @@ export function ProctoringWrapper({
 
     const intervalId = setInterval(() => {
       const dynamics = tracker.getDynamics()
-      if (dynamics.totalKeystrokes > 10 && !keyboardSnapshotSent.current) {
-        keyboardSnapshotSent.current = true
+      if (dynamics.totalKeystrokes > 10) {
         sendEvent('keyboard_dynamics_snapshot', {
           avg_flight_time: dynamics.avgFlightTime,
           avg_dwell_time: dynamics.avgDwellTime,
@@ -222,9 +223,8 @@ export function ProctoringWrapper({
           setShowWarningBanner(true)
           setWarningMessage('Automated typing pattern detected. This session is flagged for review.')
         }
-        // Reset after sending (will send again in 60s with fresh data)
-        tracker.reset()
-        keyboardSnapshotSent.current = false
+        // Note: We don't reset the tracker here to avoid clearing ongoing keystroke data
+        // The tracker accumulates all keystrokes for comprehensive pattern analysis
       }
     }, 60000)
 
@@ -279,6 +279,11 @@ export function ProctoringWrapper({
   useEffect(() => {
     if (typeof window !== 'undefined') {
       (window as any).__proctorKeyboardTracker = keyboardRef.current
+
+      // Cleanup on unmount
+      return () => {
+        (window as any).__proctorKeyboardTracker = null
+      }
     }
   }, [])
 

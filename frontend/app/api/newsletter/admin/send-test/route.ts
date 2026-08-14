@@ -17,6 +17,10 @@ function clipWarning(html: string): string | undefined {
   return `This newsletter renders to ~${(bytes / 1024).toFixed(0)}KB of HTML. Gmail clips emails near 102KB ("[Message clipped]") — shorten the content or remove pasted styling/images.`
 }
 
+function htmlSizeKb(html: string): number {
+  return Math.round(Buffer.byteLength(html, 'utf8') / 1024)
+}
+
 export async function POST(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) {
@@ -43,7 +47,7 @@ export async function POST(req: NextRequest) {
       cta_text: body.cta_text,
       cta_url: body.cta_url,
     })
-    return NextResponse.json({ ok: true, html, warning: clipWarning(html) })
+    return NextResponse.json({ ok: true, html, sizeKb: htmlSizeKb(html), warning: clipWarning(html) })
   }
 
   // Send test email
@@ -72,7 +76,7 @@ export async function POST(req: NextRequest) {
     console.log('[newsletter] test send:', { to, subject, bodyLen: (body.body || '').length, htmlLen: html.length })
 
     const result = await sendEmail(to, { subject: `[Test] ${subject}`, html })
-    return NextResponse.json({ ok: true, sent: true, provider: result.provider, warning: clipWarning(html) })
+    return NextResponse.json({ ok: true, sent: true, provider: result.provider, sizeKb: htmlSizeKb(html), warning: clipWarning(html) })
   } catch (e) {
     console.error('[newsletter] test send error:', e)
     return NextResponse.json({ error: 'Failed to send test email' }, { status: 500 })

@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
+import { isIpInCidr } from '@/lib/db/security'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -53,12 +54,17 @@ export async function POST(
       return NextResponse.json({ error: 'Authentication or invitation token required' }, { status: 401 })
     }
 
-    // IP blocking check
+    // IP blocking check (supports CIDR notation) — reuse shared matcher from
+    // lib/db/security.ts instead of duplicating the bit-math inline.
     const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
     if (clientIp) {
-      const blocked = await db.collection('ip_blocklist').findOne({ ip: clientIp })
-      if (blocked) {
-        return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
+      const blockedEntries = await db.collection('ip_blocklist').find({
+        active: { $ne: false },
+      }).toArray()
+      for (const entry of blockedEntries) {
+        if (isIpInCidr(clientIp, String(entry.ip))) {
+          return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
+        }
       }
     }
 

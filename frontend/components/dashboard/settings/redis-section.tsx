@@ -4,7 +4,7 @@ import { useCallback, useEffect, useRef, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Label } from '@/components/ui/label'
-import { Loader2, Save, Database, Eye, EyeOff } from 'lucide-react'
+import { Loader2, Save, Database, Eye, EyeOff, PlugZap, CheckCircle2, XCircle } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 export function RedisSettingsSection() {
@@ -18,6 +18,8 @@ export function RedisSettingsSection() {
   const [revealedToken, setRevealedToken] = useState('')
   const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; text: string } | null>(null)
 
   const loadSettings = useCallback(() => {
     setLoading(true)
@@ -55,6 +57,34 @@ export function RedisSettingsSection() {
     loadSettings()
   }, [loadSettings])
 
+  const testConnection = useCallback(async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const body: Record<string, string> = {}
+      if (upstashUrl.trim()) body.url = upstashUrl.trim()
+      // Only send a token if the admin typed a new one; otherwise the server tests the saved token.
+      if (upstashToken.trim()) body.token = upstashToken.trim()
+      const res = await csrfFetch('/api/admin/redis/test', {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(body),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok && json.ok) {
+        const modeLabel = json.mode === 'redis' ? 'Self-hosted Redis' : 'Upstash REST'
+        setTestResult({ ok: true, text: `Connected (${modeLabel}) · ${json.latencyMs}ms · applying in real time.` })
+      } else {
+        setTestResult({ ok: false, text: json.error || 'Connection failed' })
+      }
+    } catch {
+      setTestResult({ ok: false, text: 'Connection failed' })
+    } finally {
+      setTesting(false)
+    }
+  }, [upstashUrl, upstashToken])
+
   const save = useCallback(async () => {
     setSaving(true)
     setMessage(null)
@@ -75,14 +105,16 @@ export function RedisSettingsSection() {
         setSavedUpstashUrl(json.secrets.upstash_redis_rest_url || '')
         setHasSavedToken(!!json.secrets.has_upstash_redis_rest_token)
       }
-      setMessage({ type: 'success', text: 'Upstash Redis settings saved. Rate limiting is now configured.' })
+      setMessage({ type: 'success', text: 'Redis settings saved. Verifying connectivity…' })
       loadSettings()
+      // Confirm the saved credentials actually work, right now.
+      await testConnection()
     } catch (e) {
       setMessage({ type: 'error', text: e instanceof Error ? e.message : 'Save failed' })
     } finally {
       setSaving(false)
     }
-  }, [upstashUrl, upstashToken, loadSettings])
+  }, [upstashUrl, upstashToken, loadSettings, testConnection])
 
   useEffect(() => {
     return () => { if (timerRef.current) clearTimeout(timerRef.current) }
@@ -100,8 +132,11 @@ export function RedisSettingsSection() {
             <Database className="h-5 w-5 text-primary" />
           </div>
           <div>
-            <h2 className="text-xl font-bold">Upstash Redis</h2>
-            <p className="text-sm text-muted-foreground">Distributed rate limiting for AI endpoints and API routes</p>
+            <h2 className="text-xl font-bold">Redis / Rate Limiting</h2>
+            <p className="text-sm text-muted-foreground">
+              Distributed rate limiting for AI endpoints and API routes — works with your own Docker /
+              Dokploy Redis (<code className="font-mono">redis://host:6379</code>) or Upstash REST (<code className="font-mono">https://…upstash.io</code>). Applied in real time after save.
+            </p>
           </div>
         </div>
         {savedUpstashUrl && hasSavedToken ? (
@@ -123,14 +158,14 @@ export function RedisSettingsSection() {
 
       <Card className="space-y-5 border-border/60 p-6">
         <div className="space-y-1.5">
-          <Label htmlFor="redis_url">Upstash Redis REST URL</Label>
+          <Label htmlFor="redis_url">Redis URL</Label>
           <input
             id="redis_url"
             type="text"
             value={upstashUrl}
             onChange={(e) => setUpstashUrl(e.target.value)}
             className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm focus:outline-none focus:ring-1 focus:ring-primary"
-            placeholder="https://us1-xxxx.upstash.io"
+            placeholder="redis://codespectra-redis:6379  or  https://us1-xxxx.upstash.io"
           />
           {savedUpstashUrl && (
             <p className="mt-2 text-xs text-muted-foreground">
@@ -140,7 +175,7 @@ export function RedisSettingsSection() {
         </div>
 
         <div className="space-y-1.5">
-          <Label htmlFor="redis_token">Upstash Redis REST Token</Label>
+          <Label htmlFor="redis_token">Token / Password</Label>
           <div className="relative">
             <input
               id="redis_token"
@@ -165,14 +200,27 @@ export function RedisSettingsSection() {
           )}
         </div>
 
+        {testResult && (
+          <div className={`rounded-lg border p-3 text-sm ${testResult.ok ? 'border-green-500/20 bg-green-500/5 text-green-600' : 'border-red-500/20 bg-red-500/5 text-red-500'}`}>
+            {testResult.ok ? <CheckCircle2 className="mr-1 inline h-4 w-4" /> : <XCircle className="mr-1 inline h-4 w-4" />}
+            {testResult.text}
+          </div>
+        )}
+
         <div className="flex items-center justify-between pt-2">
           <p className="text-xs text-muted-foreground">
-            Get your Upstash Redis REST URL and token from <a href="https://upstash.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Upstash Console</a>
+            Self-hosted: your Dokploy <code className="font-mono">redis</code> service name or host IP + its password. Managed: Upstash REST URL + token from <a href="https://upstash.com" target="_blank" rel="noopener noreferrer" className="text-primary hover:underline">Upstash Console</a>.
           </p>
-          <Button onClick={save} disabled={saving} className="gap-2">
-            {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-            Save
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={testConnection} disabled={testing} className="gap-2">
+              {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <PlugZap className="h-4 w-4" />}
+              Test Connection
+            </Button>
+            <Button onClick={save} disabled={saving} className="gap-2">
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save &amp; Test
+            </Button>
+          </div>
         </div>
       </Card>
     </div>

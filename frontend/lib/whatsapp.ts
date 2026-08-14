@@ -48,6 +48,7 @@ async function getConfig(): Promise<WhatsAppConfig | null> {
 
     if (!baseUrl || !apiKey || !sessionId) {
       _configCache = null
+      _configCacheTime = 0
       return null
     }
 
@@ -56,19 +57,21 @@ async function getConfig(): Promise<WhatsAppConfig | null> {
       api_key: apiKey,
       session_id: sessionId,
       default_country_code: secrets.openwa_default_country_code?.trim() || '91',
-      max_concurrency: parseInt(secrets.openwa_max_concurrency || '3') || 3,
-      send_delay_ms: parseInt(secrets.openwa_send_delay_ms || '400') || 400,
+      max_concurrency: parseInt(secrets.openwa_max_concurrency || '3', 10) || 3,
+      send_delay_ms: parseInt(secrets.openwa_send_delay_ms || '400', 10) || 400,
     }
     _configCacheTime = Date.now()
     return _configCache
   } catch {
+    _configCache = null
+    _configCacheTime = 0
     return null
   }
 }
 
 /**
  * Normalize a phone number to OpenWA format.
- * Accepts: "+919876543210", "919876543210", "9876543210"
+ * Accepts: "+919876543210", "919876543210", "9876543210", "09876543210"
  * Returns: "919876543210@c.us"
  */
 export function normalizePhone(phone: string, defaultCountryCode?: string): string | null {
@@ -77,7 +80,9 @@ export function normalizePhone(phone: string, defaultCountryCode?: string): stri
 
   let digits = cleaned.replace(/^\+/, '')
   // If it doesn't start with a country code, prepend the default
-  if (digits.length <= 10 && defaultCountryCode) {
+  // Handle numbers with leading zero (e.g., Indian "09876543210" -> 11 digits)
+  if ((digits.length <= 10 || (digits.length === 11 && digits.startsWith('0'))) && defaultCountryCode) {
+    digits = digits.replace(/^0/, '') // Remove leading zero if present
     digits = defaultCountryCode + digits
   }
 

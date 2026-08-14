@@ -21,6 +21,7 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
   const chunksRef = useRef<Blob[]>([])
   const chunkIdxRef = useRef(0)
   const flushTimerRef = useRef<NodeJS.Timeout | null>(null)
+  const audioCtxRef = useRef<AudioContext | null>(null)
 
   const uploadChunk = useCallback(async (blob: Blob, index: number, mimeType: string) => {
     try {
@@ -70,9 +71,10 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
 
       // Attempt screen capture — fall back gracefully if denied
       let combinedStream = webcamStream
+      let audioCtx: AudioContext | null = null
       try {
         const screenStream = await navigator.mediaDevices.getDisplayMedia({ video: true })
-        const audioCtx = new AudioContext()
+        audioCtx = new AudioContext()
         const dest = audioCtx.createMediaStreamDestination()
 
         for (const track of webcamStream.getAudioTracks()) {
@@ -88,6 +90,9 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
           ...dest.stream.getAudioTracks(),
         ])
         screenStream.getAudioTracks().forEach(t => t.stop())
+
+        // Store audioCtx for cleanup
+        audioCtxRef.current = audioCtx
       } catch {
         // Screen capture denied — webcam only
       }
@@ -149,6 +154,10 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
       clearInterval(flushTimerRef.current)
       flushTimerRef.current = null
     }
+    if (audioCtxRef.current) {
+      audioCtxRef.current.close().catch(() => {})
+      audioCtxRef.current = null
+    }
     setRecording(false)
   }, [])
 
@@ -176,6 +185,10 @@ export function SessionRecorder({ sessionId, sessionKind, enabled }: SessionReco
         streamRef.current.getTracks().forEach(t => t.stop())
       }
       if (flushTimerRef.current) clearInterval(flushTimerRef.current)
+      if (audioCtxRef.current) {
+        audioCtxRef.current.close().catch(() => {})
+        audioCtxRef.current = null
+      }
     }
   }, [])
 

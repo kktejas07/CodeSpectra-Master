@@ -102,6 +102,7 @@ export default function NewsletterPage() {
   // Preview state
   const [previewHtml, setPreviewHtml] = useState<string | null>(null)
   const [previewLoading, setPreviewLoading] = useState(false)
+  const [previewSizeKb, setPreviewSizeKb] = useState<number | null>(null)
 
   // Test send state
   const [testEmail, setTestEmail] = useState('')
@@ -205,6 +206,7 @@ export default function NewsletterPage() {
       })
       const data = await res.json()
       if (data.html) setPreviewHtml(data.html)
+      setPreviewSizeKb(typeof data.sizeKb === 'number' ? data.sizeKb : null)
       if (data.warning) addToast({ type: 'warning', title: data.warning })
     } catch { addToast({ type: 'error', title: 'Failed to generate preview' }) }
     finally { setPreviewLoading(false) }
@@ -385,7 +387,14 @@ export default function NewsletterPage() {
           {/* Preview & Test */}
           <div className="xl:col-span-2 space-y-6">
             <Card className="p-6">
-              <h2 className="font-semibold mb-4 flex items-center gap-2"><Eye className="h-4 w-4" /> Preview</h2>
+              <div className="flex items-center justify-between mb-4">
+                <h2 className="font-semibold flex items-center gap-2"><Eye className="h-4 w-4" /> Preview</h2>
+                {previewSizeKb !== null && (
+                  <Badge className={previewSizeKb > 95 ? 'bg-red-500/15 text-red-500 border-0' : previewSizeKb > 75 ? 'bg-amber-500/15 text-amber-500 border-0' : 'bg-green-500/15 text-green-500 border-0'}>
+                    {previewSizeKb}KB HTML {previewSizeKb > 95 ? '(Gmail clips near 102KB)' : ''}
+                  </Badge>
+                )}
+              </div>
               <Button variant="outline" onClick={handlePreview} disabled={previewLoading} className="w-full mb-4 gap-2">
                 {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Generate Preview
               </Button>

@@ -50,58 +50,87 @@ except ImportError:
     REDIS_AVAILABLE = False
     redis = None
 
-# Initialize Redis client if configured
+# Redis client singleton — created lazily, survives re-imports, reconnects when
+# the Mongo-backed config changes (checked at most every 15s).
 _redis_client: Optional[redis.Redis] = None
+_redis_url: str = ""
+_redis_token: str = ""
+_redis_config_checked_at: float = 0.0
+_REDIS_CONFIG_RECHECK_SECONDS = 15.0
+
+
+def _url_has_embedded_creds(url: str) -> bool:
+    """True when a `redis://user:pass@host` URL already carries credentials."""
+    m = url.split("://", 1)
+    return len(m) == 2 and "@" in m[1]
+
+
+async def _load_redis_config() -> tuple[str, str]:
+    """Return (url, token) from the Mongo server-secrets record (env fallback)."""
+    url = (settings.UPSTASH_REDIS_REST_URL or "").strip()
+    token = (settings.UPSTASH_REDIS_REST_TOKEN or "").strip()
+    try:
+        from core.database import get_collection
+        secrets_col = await get_collection("platform_settings")
+        doc = await secrets_col.find_one({"key": "secrets"})
+        if doc and isinstance(doc.get("value"), dict):
+            secrets = doc["value"]
+            url = str(secrets.get("upstash_redis_rest_url", "") or "").strip() or url
+            token = str(secrets.get("upstash_redis_rest_token", "") or "").strip() or token
+    except Exception:
+        pass
+    return url, token
+
+
+async def ensure_redis_client() -> Optional[redis.Redis]:
+    """Return a live Redis client, reconnecting when the config changes.
+
+    Re-reads the Mongo-backed secrets every 15s; when the URL/token differ from
+    the cached client, the old connection is dropped and a new one is created.
+    Returns None when Redis is unavailable or unconfigured — callers fall back
+    to the in-memory limiter.
+    """
+    global _redis_client, _redis_url, _redis_token, _redis_config_checked_at
+    if not REDIS_AVAILABLE:
+        return None
+
+    now = time.time()
+    if now - _redis_config_checked_at > _REDIS_CONFIG_RECHECK_SECONDS:
+        url, token = await _load_redis_config()
+        _redis_config_checked_at = now
+        if url != _redis_url or token != _redis_token:
+            if _redis_client:
+                try:
+                    await _redis_client.aclose()
+                except Exception:
+                    pass
+                _redis_client = None
+            _redis_url, _redis_token = url, token
+
+    if _redis_client:
+        return _redis_client
+    if not _redis_url or not _redis_token:
+        return None
+
+    try:
+        client = redis.from_url(
+            _redis_url,
+            # If the URL already embeds `:pass@`, don't double-supply the password.
+            password=None if _url_has_embedded_creds(_redis_url) else _redis_token,
+            socket_connect_timeout=5,
+        )
+        await client.ping()
+        _redis_client = client
+        return client
+    except Exception:
+        _redis_client = None
+        return None
 
 
 async def init_redis_client() -> Optional[redis.Redis]:
     """Initialize Redis client from DB cache or environment variables."""
-    if not REDIS_AVAILABLE:
-        return None
+    return await ensure_redis_client()
 
-    try:
-        # Try to get secrets from MongoDB cache first
-        from core.database import get_collection
-        secrets_col = await get_collection("platform_settings")
-        doc = await secrets_col.find_one({"key": "secrets"})
-
-        if doc and isinstance(doc.get("value"), dict):
-            secrets = doc["value"]
-            upstash_url = secrets.get("upstash_redis_rest_url", "").strip()
-            upstash_token = secrets.get("upstash_redis_rest_token", "").strip()
-
-            if upstash_url and upstash_token:
-                try:
-                    client = redis.from_url(
-                        upstash_url,
-                        password=upstash_token,
-                    )
-                    # Test connection
-                    await client.ping()
-                    return client
-                except Exception:
-                    pass  # Fall back to environment variables
-    except Exception:
-        pass  # Continue to environment variables fallback
-
-    # Fall back to environment variables
-    if settings.UPSTASH_REDIS_REST_URL and settings.UPSTASH_REDIS_REST_TOKEN:
-        try:
-            client = redis.from_url(
-                settings.UPSTASH_REDIS_REST_URL,
-                password=settings.UPSTASH_REDIS_REST_TOKEN,
-            )
-            # Test connection
-            await client.ping()
-            return client
-        except Exception:
-            return None
-
-    return None
-
-
-# Initialize Redis client (will be set during app startup)
-_redis_client: Optional[redis.Redis] = None
 
 # ── In-process rate limiter (fallback) ─────────────────────────────────────
 _rl: dict[str, list[float]] = defaultdict(list)
@@ -109,12 +138,13 @@ _rl: dict[str, list[float]] = defaultdict(list)
 
 async def check_rate_limit_redis(key: str, max_hits: int = 60, window_sec: int = 60) -> bool:
     """Check rate limit using Redis. Returns True if allowed, False if rate limited."""
-    if not _redis_client:
+    client = await ensure_redis_client()
+    if not client:
         return False  # Fall back to in-memory
 
     try:
         # Use Redis INCR with EXPIRE for sliding window
-        pipe = _redis_client.pipeline()
+        pipe = client.pipeline()
         pipe.incr(key)
         pipe.expire(key, window_sec)
         results = await pipe.execute()
@@ -124,20 +154,36 @@ async def check_rate_limit_redis(key: str, max_hits: int = 60, window_sec: int =
         return False  # Fall back to in-memory on error
 
 
-def check_rate_limit(
+async def check_rate_limit(
     key: str, max_hits: int = 60, window_sec: int = 60
 ) -> None:
     """Raise 429 if the caller has exceeded the request budget.
 
-    Uses Redis-backed rate limiting when available, falls back to in-process.
+    Uses Redis-backed rate limiting when available (async pipeline INCR/EXPIRE),
+    falls back to in-process sliding window.
     """
-    # Try Redis first if available
-    if _redis_client:
-        # Note: This is a simplified check. For production, you might want to make this async
-        # and handle it differently in the dependency injection. For now, we'll fall back
-        # to in-memory for synchronous context and document that async rate limiting
-        # should be used in async contexts.
-        pass
+    if REDIS_AVAILABLE:
+        client = await ensure_redis_client()
+        if client:
+            try:
+                pipe = client.pipeline()
+                pipe.incr(key)
+                pipe.expire(key, window_sec)
+                results = await pipe.execute()
+                current_count = results[0]
+                if current_count > max_hits:
+                    raise HTTPException(
+                        status_code=429,
+                        detail=(
+                            f"Rate limit exceeded. Try again in "
+                            f"{max(1, window_sec)}s."
+                        ),
+                    )
+                return  # Allowed — hit counted in Redis
+            except HTTPException:
+                raise
+            except Exception:
+                pass  # Fall back to in-memory on Redis error
 
     # Fall back to in-process rate limiting
     now = time.time()

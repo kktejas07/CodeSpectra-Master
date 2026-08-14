@@ -4,7 +4,8 @@ import { randomUUID } from 'node:crypto'
 import { getMongoDb } from '@/lib/mongodb'
 import { setSessionCookie } from '@/lib/session'
 import { normalizeUserRole } from '@/lib/rbac'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
@@ -16,7 +17,7 @@ export const runtime = 'nodejs'
 export async function POST(request: Request) {
   try {
     const ipKey = clientLimiterKeyFromRequest(request, null)
-    const ipCheck = rateLimitSlidingWindow(`signup:ip:${ipKey}`, 3, 3600_000)
+    const ipCheck = await rateLimitRedis(`signup:ip:${ipKey}`, 3, 3600_000)
     if (!ipCheck.ok) {
       return NextResponse.json(
         { error: `Too many accounts created from this location. Try again later.` },

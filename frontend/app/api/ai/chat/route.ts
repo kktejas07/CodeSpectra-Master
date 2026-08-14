@@ -10,7 +10,7 @@ import { backendChatStream } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
 import { getMongoDb } from '@/lib/mongodb'
 import { codeScans } from '@/lib/db/scans'
-import { rateLimitAI } from '@/lib/in-memory-rate-limit'
+import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -34,7 +34,7 @@ export async function POST(req: NextRequest): Promise<Response> {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
-  const rateCheck = rateLimitAI(req, user.id)
+  const rateCheck = await rateLimitAIRedis(req, user.id)
   if (!rateCheck.ok) {
     return NextResponse.json(
       { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },

@@ -1,5 +1,18 @@
 # CodeSpectra Development Rules
 
+## Multi-Session Coordination
+
+This repo is worked by MULTIPLE AI sessions at once (opencode tabs, claude-code, cursor). Collisions happen when sessions edit the same files without knowing. Follow this protocol in EVERY session, every task:
+
+1. **Read `WORKING.md` first** — it is the shared coordination ledger. Check what other sessions have claimed and their status.
+2. **Claim before you touch**: before editing, add a row to `WORKING.md` (session, task, files claimed, status, timestamp). Update it when done or abandoned.
+3. **Check the repo state** before starting: `git status`, `git log --oneline -5`, `git stash list`.
+4. **Commit small and often.** Uncommitted edits are invisible to other sessions — a large uncommitted diff is how collisions happen. After each atomic unit: commit + update `WORKING.md`.
+5. **Never revert/`git checkout`/`git stash`/force-overwrite files another session has claimed** without confirming that session is finished. If a file is claimed by someone else, wait or coordinate — do NOT clobber.
+6. **One writer per file at a time.** If you need a file another session owns, either wait for their claim to clear or use `/freeze` to scope your own edits and stay out of their files.
+7. **Never `git push --force` / `git reset --hard`** — other sessions are working from the same branch and losing commits breaks them.
+8. **At task end**: commit, update `WORKING.md` history row, and leave the working tree clean (nothing uncommitted).
+
 ## Permission System
 
 When adding a new dashboard page, follow this rule:
