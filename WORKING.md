@@ -11,7 +11,7 @@
 | opencode (port 49847) | Redis/rate-limiting wiring (v0.22.7) | backend/core/dependencies.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/components/dashboard/settings/redis-section.tsx, frontend/app/api/admin/redis/ | DONE — committed `4a12d61` | 2026-08-13 ~22:05 |
 | opencode (this session) | Deploying v0.22.7 batch to prod (frontend + backend) | server repos (rsync — server git tokens expired) | DONE — frontend + backend rebuilt, services converged, verified | 2026-08-13 ~22:25 |
 | opencode (this session) | Fix review findings F2 (routers/ai.py dedup) + F3 (submit route → shared isIpBlocked) | backend/routers/ai.py, frontend/app/api/exams/[id]/submit/route.ts | IN PROGRESS — claimed | 2026-08-13 ~22:22 |
-| opencode (this session) | v0.22.8 → Redis hardening: backend rate-limit fix + Redis-backed route limiters + scheduler lock (caches/edge SKIPPED — see AGENTS.md) | backend/core/dependencies.py, backend/services/ai.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/lib/scheduler.ts, frontend/app/api/** (20 route callers), docs/devops/02-Docker-Architecture.md | DONE — uncommitted in working tree, build verify + commit pending | 2026-08-13 ~23:10 |
+| opencode (this session) | v0.22.8/v0.22.9 → Redis hardening: backend rate-limit fix + Redis-backed route limiters + scheduler lock (caches/edge SKIPPED — see AGENTS.md) | backend/core/dependencies.py, backend/services/ai.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/lib/scheduler.ts, frontend/app/api/** (20 route callers), docs/devops/02-Docker-Architecture.md | DONE — committed `235d727` (v0.22.9), `yarn build` clean | 2026-08-13 ~23:40 |
 
 ## Rules (see AGENTS.md for full text)
 
@@ -30,6 +30,7 @@
 
 | Date | Session | What was done |
 |---|---|---|
+| 2026-08-14 | opencode (this session) | Committed v0.22.9 (`235d727`): Redis-backed route rate limiting across 20 API routes + distributed scheduler lock (`SET NX EX`, TTL 300s) + Redis ops-hardening docs. `yarn build` clean. |
 | 2026-08-13 | opencode (this session) | Deployed v0.22.7 to prod: frontend + backend images rebuilt & rolled (`:latest`), verified newsletter/system 200, redis/status 401 unauth, backend `ensure_redis_client` live. Note: server GitHub tokens expired — deploy used rsync of changed files. |
 | 2026-08-13 | opencode (this session) | Committed & pushed port-49847 session's Redis/rate-limit work as `4a12d61` (v0.22.7). |
 | 2026-08-13 | opencode (this session) | Newsletter preview overflow fix — `ab6aadf` + docs `c1830f2`, deployed & verified. |
