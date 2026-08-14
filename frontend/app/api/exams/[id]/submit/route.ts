@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
+import { isIpInCidr } from '@/lib/db/security'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -53,30 +54,16 @@ export async function POST(
       return NextResponse.json({ error: 'Authentication or invitation token required' }, { status: 401 })
     }
 
-    // IP blocking check (supports CIDR notation)
+    // IP blocking check (supports CIDR notation) — reuse shared matcher from
+    // lib/db/security.ts instead of duplicating the bit-math inline.
     const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
     if (clientIp) {
       const blockedEntries = await db.collection('ip_blocklist').find({
         active: { $ne: false },
       }).toArray()
       for (const entry of blockedEntries) {
-        const blockedIp = String(entry.ip)
-        if (blockedIp === clientIp || blockedIp.includes('/')) {
-          // Check CIDR match
-          const [network, prefixStr] = blockedIp.split('/')
-          const prefix = parseInt(prefixStr, 10)
-          if (!isNaN(prefix) && prefix >= 0 && prefix <= 32) {
-            const ipParts = clientIp.split('.').map(Number)
-            const netParts = network.split('.').map(Number)
-            if (ipParts.length === 4 && netParts.length === 4 && ipParts.every(p => !isNaN(p)) && netParts.every(p => !isNaN(p))) {
-              const ipNum = (ipParts[0] << 24 | ipParts[1] << 16 | ipParts[2] << 8 | ipParts[3]) >>> 0
-              const netNum = (netParts[0] << 24 | netParts[1] << 16 | netParts[2] << 8 | netParts[3]) >>> 0
-              const mask = prefix === 0 ? 0 : (~((1 << (32 - prefix)) - 1)) >>> 0
-              if ((ipNum & mask) === (netNum & mask)) {
-                return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
-              }
-            }
-          }
+        if (isIpInCidr(clientIp, String(entry.ip))) {
+          return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
         }
       }
     }

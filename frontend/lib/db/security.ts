@@ -57,7 +57,8 @@ function ipToNumber(ip: string): number | null {
   return (parts[0] << 24 | parts[1] << 16 | parts[2] << 8 | parts[3]) >>> 0
 }
 
-function isIpInCidr(ip: string, cidr: string): boolean {
+/** Check whether an IP matches a blocklist entry, supporting exact + CIDR. */
+export function isIpInCidr(ip: string, cidr: string): boolean {
   if (!cidr.includes('/')) {
     return ip === cidr
   }
