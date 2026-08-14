@@ -49,7 +49,10 @@ export async function executeCampaign(campaign: EmailCampaignDoc) {
       for (let i = 0; i < emailTasks.length; i += EMAIL_BATCH_SIZE) {
         const batch = emailTasks.slice(i, i + EMAIL_BATCH_SIZE)
         const results = await Promise.allSettled(
-          batch.map(({ email, html }) => sendEmail(email, { subject: campaign.subject, html }))
+          batch.map(({ email, html }) => sendEmail(email, { subject: campaign.subject, html }, undefined, {
+            category: 'newsletter',
+            campaignId: campaign.id,
+          }))
         )
         for (const r of results) {
           if (r.status === 'fulfilled') emailOk++

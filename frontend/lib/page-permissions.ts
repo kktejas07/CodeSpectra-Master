@@ -233,6 +233,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
   '/dashboard/admin/security': 'Security',
+  '/dashboard/admin/security/email-monitoring': 'Email Monitoring',
   '/dashboard/admin/settings': 'Platform Settings',
   '/dashboard/admin/settings/cloudflare': 'Cloudflare',
   '/dashboard/admin/settings/mobile': 'Mobile App',
