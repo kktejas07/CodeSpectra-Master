@@ -1016,7 +1016,7 @@ export default function ExamResultsPage() {
   const pendingGradingCount = results.filter(r => r.status === 'completed' && r.graded === false).length
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 p-6">
+    <div className="space-y-6 pb-12">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>

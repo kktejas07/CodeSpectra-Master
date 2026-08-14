@@ -58,7 +58,7 @@ export default function InterviewSetupPage() {
   return (
     <div className="min-h-screen bg-background">
       {stage === 'role-selection' && (
-        <div className="container max-w-7xl mx-auto py-12 px-4">
+        <div className="py-12">
           <InterviewRoleSelector
             onSelectRole={handleRoleSelect}
             completedRoles={completedRoles}
