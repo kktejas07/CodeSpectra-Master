@@ -16,6 +16,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import EmailPreviewFrame from '@/components/newsletter/email-preview-frame'
 
 interface Campaign {
   id: string
@@ -389,7 +390,7 @@ export default function NewsletterPage() {
                 {previewLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : <Eye className="h-4 w-4" />} Generate Preview
               </Button>
               {previewHtml ? (
-                <div className="border rounded-lg overflow-hidden"><iframe srcDoc={previewHtml} className="w-full h-[500px] border-0" title="Preview" /></div>
+                <div className="border rounded-lg overflow-hidden"><EmailPreviewFrame html={previewHtml} /></div>
               ) : (
                 <div className="border border-dashed rounded-lg p-8 text-center text-muted-foreground text-sm">Click "Generate Preview" to see your newsletter</div>
               )}
