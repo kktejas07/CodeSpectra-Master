@@ -113,11 +113,10 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     for (const [, inv] of latestInviteByEmail) {
       const sub = submissionsByUser[inv.user_id]
       const user = userMap[inv.user_id] || {}
-      let status = inv.status === 'used' ? 'completed' : inv.status
 
-      if (status !== 'completed' && sub) {
-        status = 'completed'
-      }
+      // Only mark as completed if there's an actual submission record
+      const hasSubmission = !!sub
+      let status = hasSubmission ? 'completed' : (inv.status === 'used' ? 'in_progress' : inv.status || 'pending')
 
       const email = inv.email || user.email || ''
       seenEmails.add(email.toLowerCase())
