@@ -70,6 +70,9 @@ export const NOTIFICATION_TYPES = {
   'certification.earned': { category: 'learning', icon: 'award', default_title: 'Certification Earned' },
   'certification.expiring': { category: 'learning', icon: 'clock', default_title: 'Certification Expiring' },
 
+  // Assessments / Exams
+  'assessment.results_released': { category: 'assessment', icon: 'check-circle', default_title: 'Results Released' },
+
   // XP / Gamification
   'xp.awarded': { category: 'learning', icon: 'star', default_title: 'XP Earned!' },
   'xp.level_up': { category: 'learning', icon: 'trophy', default_title: 'Level Up!' },

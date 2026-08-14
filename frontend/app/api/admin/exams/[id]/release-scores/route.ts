@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { nowIso } from '@/lib/db/ai'
-import { sendWhatsAppText } from '@/lib/whatsapp'
+import { notify } from '@/lib/notifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -33,23 +33,24 @@ export async function POST(
       { $set: { score_released: true, released_at: now } }
     )
 
-    // Send WhatsApp notifications if configured
+    // Notify candidates (in-app + WhatsApp via the shared notify helper)
     const exam = await db.collection('exams').findOne({ id: examId })
     const examTitle = exam?.title || 'Assessment'
 
     for (const sub of submissions) {
       if (!sub.user_id || sub.user_id.startsWith('candidate_')) continue
+      const scoreText = sub.max_score > 0
+        ? `${Math.round((sub.score / sub.max_score) * 100)}%`
+        : `${sub.score}`
       try {
-        const user = await db.collection('users').findOne({ id: sub.user_id })
-        if (user?.phone) {
-          const scoreText = sub.max_score > 0
-            ? `${Math.round((sub.score / sub.max_score) * 100)}%`
-            : `${sub.score}`
-          await sendWhatsAppText(
-            user.phone,
-            `Your results for "${examTitle}" have been released! Score: ${scoreText}. Check your dashboard for details.`
-          )
-        }
+        await notify({
+          user_id: sub.user_id,
+          type: 'assessment.results_released',
+          title: `Your results for "${examTitle}" are ready`,
+          message: `Score: ${scoreText}. Check your dashboard for details.`,
+          link: '/dashboard/assessments',
+          send_whatsapp: true,
+        })
       } catch {
         // Best-effort notification — don't fail the release
       }

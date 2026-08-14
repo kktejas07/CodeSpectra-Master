@@ -56,6 +56,66 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
     if (url) execCommand('insertImage', url)
   }, [execCommand])
 
+  // Compress pasted images via the native canvas so base64 screenshots pasted
+  // into contentEditable can't inflate an email past Gmail's ~102KB clip limit.
+  // ponytail: downscales to maxW (email renders at 600px, so 2x = retina-crisp)
+  // and re-encodes as JPEG (lossy, but alpha-free images lose nothing visible).
+  // Transparent images stay PNG. No server dependency; runs entirely in-browser.
+  const compressPastedImage = useCallback((file: File): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const url = URL.createObjectURL(file)
+      const img = new Image()
+      img.onload = () => {
+        try {
+          const maxW = 1200
+          const scale = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1
+          const canvas = document.createElement('canvas')
+          canvas.width = Math.round(img.naturalWidth * scale)
+          canvas.height = Math.round(img.naturalHeight * scale)
+          const ctx = canvas.getContext('2d')
+          if (!ctx) return reject(new Error('canvas unsupported'))
+          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
+
+          const hasAlpha = (() => {
+            try {
+              const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data
+              for (let i = 3; i < d.length; i += 4) {
+                if (d[i] < 250) return true
+              }
+            } catch { /* tainted canvas → assume JPEG */ }
+            return false
+          })()
+
+          const dataUrl = hasAlpha
+            ? canvas.toDataURL('image/png')
+            : canvas.toDataURL('image/jpeg', 0.82)
+          resolve(dataUrl)
+        } catch (e) {
+          reject(e)
+        } finally {
+          URL.revokeObjectURL(url)
+        }
+      }
+      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image decode failed')) }
+      img.src = url
+    })
+  }, [])
+
+  const handlePaste = useCallback((e: React.ClipboardEvent) => {
+    const items = Array.from(e.clipboardData?.items || [])
+    const images = items.filter(i => i.type.startsWith('image/')).map(i => i.getAsFile()).filter(Boolean) as File[]
+    if (images.length === 0) return
+    e.preventDefault()
+    void (async () => {
+      for (const file of images) {
+        try {
+          const dataUrl = await compressPastedImage(file)
+          execCommand('insertImage', dataUrl)
+        } catch { /* fall back to default paste of the original file */ }
+      }
+    })()
+  }, [compressPastedImage, execCommand])
+
   const toolbarButtons = [
     { icon: Bold, command: 'bold', tooltip: 'Bold (Ctrl+B)' },
     { icon: Italic, command: 'italic', tooltip: 'Italic (Ctrl+I)' },
@@ -171,6 +231,7 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
         style={{ minHeight: `${minHeight}px` }}
         onInput={syncContent}
         onBlur={syncContent}
+        onPaste={handlePaste}
         data-placeholder={placeholder}
       />
 

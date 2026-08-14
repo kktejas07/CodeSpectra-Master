@@ -10,7 +10,7 @@
 |---|---|---|---|---|
 | opencode (port 49847) | Redis/rate-limiting wiring (v0.22.7) | backend/core/dependencies.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/components/dashboard/settings/redis-section.tsx, frontend/app/api/admin/redis/ | DONE — committed `4a12d61` | 2026-08-13 ~22:05 |
 | opencode (this session) | Deploying v0.22.7 batch to prod (frontend + backend) | server repos (rsync — server git tokens expired) | DONE — frontend + backend rebuilt, services converged, verified | 2026-08-13 ~22:25 |
-| opencode (this session) | Fix review finding F6: release-scores WhatsApp dedup → route through notify() (also fixes wrong `users` collection) | frontend/lib/notifications.ts, frontend/app/api/admin/exams/[id]/release-scores/route.ts | DONE — committed | 2026-08-13 ~23:50 |
+| opencode (this session) | v0.22.10 → Newsletter image compression (canvas, auto on paste) + HTML size badge + F6 release-scores WhatsApp dedup via notify() | frontend/components/ui/rich-text-editor.tsx, frontend/app/dashboard/admin/newsletter/page.tsx, frontend/app/api/newsletter/admin/send-test/route.ts, frontend/lib/notifications.ts, frontend/app/api/admin/exams/[id]/release-scores/route.ts | DONE — committed | 2026-08-14 ~00:10 |
 | opencode (this session) | v0.22.8/v0.22.9 → Redis hardening: backend rate-limit fix + Redis-backed route limiters + scheduler lock (caches/edge SKIPPED — see AGENTS.md) | backend/core/dependencies.py, backend/services/ai.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/lib/scheduler.ts, frontend/app/api/** (20 route callers), docs/devops/02-Docker-Architecture.md | DONE — committed `235d727` (v0.22.9), `yarn build` clean | 2026-08-13 ~23:40 |
 
 ## Rules (see AGENTS.md for full text)
