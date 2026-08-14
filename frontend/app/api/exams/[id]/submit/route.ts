@@ -53,6 +53,26 @@ export async function POST(
       return NextResponse.json({ error: 'Authentication or invitation token required' }, { status: 401 })
     }
 
+    // IP blocking check
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+    if (clientIp) {
+      const blocked = await db.collection('ip_blocklist').findOne({ ip: clientIp })
+      if (blocked) {
+        return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
+      }
+    }
+
+    // Rate limiting: max 3 submissions per user per exam per hour
+    const submissions = db.collection('exam_submissions')
+    const recentSubmissions = await submissions.countDocuments({
+      exam_id: examId,
+      user_id: userId,
+      created_at: { $gte: new Date(Date.now() - 3600000).toISOString() }
+    })
+    if (recentSubmissions >= 3) {
+      return NextResponse.json({ error: 'Too many submission attempts. Please try again later.' }, { status: 429 })
+    }
+
     const exams = db.collection('exams')
     const exam = await exams.findOne({ id: examId })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
@@ -107,7 +127,6 @@ export async function POST(
     }
 
     // Save submission
-    const submissions = db.collection('exam_submissions')
     const submission = {
       id: newId(),
       exam_id: examId,
@@ -121,7 +140,12 @@ export async function POST(
       id_photo: body.idPhoto || null,
       face_photo: body.facePhoto || null,
       details,
-      device_info: { ua: req.headers.get('user-agent') || '', ...parseUserAgent(req.headers.get('user-agent') || ''), ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '' },
+      device_info: { 
+        ua: req.headers.get('user-agent') || '', 
+        ...parseUserAgent(req.headers.get('user-agent') || ''), 
+        ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '',
+        geo: req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || null
+      },
       created_at: nowIso(),
     }
     await submissions.insertOne(submission)

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
+import { detectPlagiarism } from '@/lib/proctoring/plagiarism-detector'
+import { detectLeaks } from '@/lib/proctoring/leak-detector'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAdmin()
@@ -149,6 +151,20 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       if (fetched.email) seenEmails.add(fetched.email.toLowerCase())
     }
 
+    // Run plagiarism and leak detection on submissions
+    let plagiarism = null
+    let leakDetection = null
+    try {
+      plagiarism = await detectPlagiarism(id)
+    } catch (e) {
+      console.error('[CodeSpectra] plagiarism detection failed:', e)
+    }
+    try {
+      leakDetection = await detectLeaks(id)
+    } catch (e) {
+      console.error('[CodeSpectra] leak detection failed:', e)
+    }
+
     return NextResponse.json({
       exam: {
         id: exam.id,
@@ -157,6 +173,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         duration: exam.duration || 0,
       },
       results,
+      plagiarism,
+      leakDetection,
       debug: { inviteCount: invites.length, submissionCount: submissions.length },
     })
   } catch (e: unknown) {

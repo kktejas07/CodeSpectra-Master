@@ -204,6 +204,7 @@ export default function NewsletterPage() {
       })
       const data = await res.json()
       if (data.html) setPreviewHtml(data.html)
+      if (data.warning) addToast({ type: 'warning', title: data.warning })
     } catch { addToast({ type: 'error', title: 'Failed to generate preview' }) }
     finally { setPreviewLoading(false) }
   }
@@ -220,6 +221,7 @@ export default function NewsletterPage() {
       })
       const data = await res.json()
       if (data.error) { addToast({ type: 'error', title: data.error }); return }
+      if (data.warning) addToast({ type: 'warning', title: data.warning })
       addToast({ type: 'success', title: `Test email sent to ${testEmail}` })
       setTestEmail('')
     } catch { addToast({ type: 'error', title: 'Failed to send test email' }) }
