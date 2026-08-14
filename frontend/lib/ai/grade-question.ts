@@ -157,6 +157,13 @@ MAX POINTS: ${maxPoints}
 CANDIDATE'S ANSWER:
 ${candidateAnswer}
 
+GRADING RULES:
+1. IGNORE whitespace and formatting differences. Multi-line vs single-line, extra spaces, indentation, line breaks — none of these affect correctness for code or SQL.
+2. For SQL specifically: "SELECT name FROM employees WHERE department = 'Sales' ORDER BY employee_id DESC" is IDENTICAL to a multi-line version with the same keywords. Focus on: correct SELECT columns, correct FROM table, correct WHERE conditions, correct ORDER BY, correct JOINs if any.
+3. For code: focus on logic correctness, not style. Variable names, indentation, and whitespace are irrelevant unless the question specifically asks about naming conventions.
+4. If the candidate's answer is semantically equivalent to the model answer (same logic, same result), give full marks regardless of formatting.
+5. Only deduct points for actual logic errors, missing requirements, or incorrect syntax — not for cosmetic differences.
+
 Respond ONLY as JSON with this exact shape:
 {
   "awarded": <integer 0..${maxPoints}>,  // points justified by the answer
