@@ -1286,11 +1286,15 @@ export default function ExamResultsPage() {
                                     <div className="flex flex-wrap items-center gap-3">
                                       <label className="text-xs font-medium text-muted-foreground shrink-0">Award Points:</label>
                                       <input
-                                        type="number"
-                                        min={0}
-                                        max={maxPoints}
-                                        value={manualGrades[q.id] ?? detail?.awarded ?? ''}
-                                        onChange={(e) => setManualGrades(prev => ({ ...prev, [q.id]: Math.min(maxPoints, Math.max(0, parseInt(e.target.value) || 0)) }))}
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        value={manualGrades[q.id] ?? detail?.awarded ?? (isPendingReview && !userAnswer ? 0 : '')}
+                                        onChange={(e) => {
+                                          const v = e.target.value.replace(/[^0-9]/g, '')
+                                          const num = v === '' ? 0 : Math.min(maxPoints, Math.max(0, parseInt(v) || 0))
+                                          setManualGrades(prev => ({ ...prev, [q.id]: num }))
+                                        }}
                                         className="w-20 h-8 px-2 text-sm border rounded-md bg-background"
                                         placeholder="0"
                                       />
@@ -1300,7 +1304,7 @@ export default function ExamResultsPage() {
                                         variant="outline"
                                         className="gap-1.5 text-xs h-8"
                                         onClick={() => aiGradeQuestion(q.id)}
-                                        disabled={aiGrading[q.id] || !userAnswer}
+                                        disabled={aiGrading[q.id]}
                                       >
                                         {aiGrading[q.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                                         {aiGrading[q.id] ? 'Grading…' : 'AI Grade'}
