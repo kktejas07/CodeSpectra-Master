@@ -79,6 +79,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       released: boolean
       deliveryStatus: string | null
       graded: boolean
+      source?: string
     }
 
     // Score is stored as raw points (e.g. 121/166). The admin UI displays it
@@ -160,6 +161,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         released: sub.released_at ? true : false,
         deliveryStatus: 'delivered',
         graded: sub.has_pending_review === false,
+        source: sub.source || 'public_link',
       })
       seenEmails.add(email.toLowerCase())
     }
@@ -184,6 +186,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         title: exam.title,
         level: exam.level || '',
         duration: exam.duration || 0,
+        publicLinkViews: exam.public_link_views || 0,
       },
       results,
       plagiarism,

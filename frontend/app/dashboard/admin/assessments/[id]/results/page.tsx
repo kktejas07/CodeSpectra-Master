@@ -42,6 +42,7 @@ interface CandidateResult {
   released?: boolean
   deliveryStatus?: string | null
   graded?: boolean
+  source?: string
 }
 
 interface Exam {
@@ -49,6 +50,7 @@ interface Exam {
   title: string
   level: string
   duration: number
+  publicLinkViews?: number
 }
 
 interface QuestionDetail {
@@ -856,6 +858,17 @@ export default function ExamResultsPage() {
       ),
     },
     {
+      key: 'source',
+      header: 'Source',
+      cell: (row: CandidateResult) => (
+        row.source === 'invite' ? (
+          <Badge variant="outline" className="text-xs"><Mail className="w-3 h-3 mr-1" />Invite</Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20"><Link className="w-3 h-3 mr-1" />Public</Badge>
+        )
+      ),
+    },
+    {
       key: 'status',
       header: 'Status',
       cell: (row: CandidateResult) => {
@@ -1019,6 +1032,12 @@ export default function ExamResultsPage() {
             <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">
               {results.length} Total Invited
             </Badge>
+            {(exam.publicLinkViews ?? 0) > 0 && (
+              <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
+                <Link className="w-3 h-3 mr-1" />
+                {exam.publicLinkViews} Public Link Views
+              </Badge>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
