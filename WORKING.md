@@ -8,8 +8,8 @@
 
 | Session | Task / Area | Files claimed | Status | Last updated |
 |---|---|---|---|---|
-| opencode (port 49847) | Redis/rate-limiting wiring (v0.22.7) | backend/core/dependencies.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/components/dashboard/settings/redis-section.tsx, frontend/app/api/admin/redis/ | DONE — idle since ~21:54; being committed | 2026-08-13 ~22:02 |
-| opencode (this session) | Reconciling & committing port-49847 session's v0.22.7 work + proctoring/WhatsApp fixes | (all files in the batch) | DONE — committed `4a12d61`, pushed | 2026-08-13 ~22:05 |
+| opencode (port 49847) | Redis/rate-limiting wiring (v0.22.7) | backend/core/dependencies.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/components/dashboard/settings/redis-section.tsx, frontend/app/api/admin/redis/ | DONE — committed `4a12d61` | 2026-08-13 ~22:05 |
+| opencode (this session) | Deploying v0.22.7 batch to prod (frontend + backend) | server repos (rsync — server git tokens expired) | IN PROGRESS — deploying | 2026-08-13 ~22:10 |
 
 ## Rules (see AGENTS.md for full text)
 
