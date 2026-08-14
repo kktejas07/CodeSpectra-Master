@@ -111,7 +111,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (body.preview_only) {
-      return NextResponse.json({ ok: true, campaign, preview: true })
+      // "Save Draft" — persist with status 'draft' (never scheduled/sent).
+      const col = await emailCampaigns()
+      await col.insertOne({ ...campaign, status: 'draft', send_at: null })
+      return NextResponse.json({ ok: true, campaign_id: campaign.campaign_id, recipients_count: subsCount, status: 'draft' })
     }
 
     // If send_at is in the future, schedule it

@@ -16,6 +16,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { compressHtmlImages } from '@/lib/image-compress'
 import EmailPreviewFrame from '@/components/newsletter/email-preview-frame'
 
 interface Campaign {
@@ -171,19 +172,26 @@ export default function NewsletterPage() {
     setHeroImagePreview('')
   }
 
+  // Retro-compress large base64 images already sitting in the draft body so a
+  // legacy draft (or PNGs) can't silently stay over Gmail's clip limit. Same
+  // canvas pipeline the editor runs on paste — identity when nothing to shrink.
+  const optimizedBody = useCallback(async () => compressHtmlImages(body), [body])
+
   const handleSend = async (asDraft = false) => {
     if (!subject.trim()) { addToast({ type: 'error', title: 'Subject is required' }); return }
     if (asDraft) setSavingDraft(true)
     else setSending(true)
     try {
+      const bodyHtml = await optimizedBody()
       const res = await csrfFetch('/api/newsletter/admin/campaigns', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           subject: subject.trim(), hero_image: heroImage, intro: intro.trim(),
-          body, cta_text: ctaText.trim(), cta_url: ctaUrl.trim(),
+          body: bodyHtml, cta_text: ctaText.trim(), cta_url: ctaUrl.trim(),
           channels: { email: sendEmail, push: sendPush, in_app: sendInApp, whatsapp: sendWhatsapp },
           send_at: scheduleAt || undefined,
+          preview_only: asDraft,
         }),
       })
       const data = await res.json()
@@ -199,10 +207,11 @@ export default function NewsletterPage() {
   const handlePreview = async () => {
     setPreviewLoading(true)
     try {
+      const bodyHtml = await optimizedBody()
       const res = await csrfFetch('/api/newsletter/admin/send-test', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action: 'preview', subject: subject || 'Preview', hero_image: heroImage, intro, body, cta_text: ctaText, cta_url: ctaUrl }),
+        body: JSON.stringify({ action: 'preview', subject: subject || 'Preview', hero_image: heroImage, intro, body: bodyHtml, cta_text: ctaText, cta_url: ctaUrl }),
       })
       const data = await res.json()
       if (data.html) setPreviewHtml(data.html)
@@ -217,10 +226,11 @@ export default function NewsletterPage() {
     if (!subject.trim()) { addToast({ type: 'error', title: 'Subject is required' }); return }
     setTestSending(true)
     try {
+      const bodyHtml = await optimizedBody()
       const res = await csrfFetch('/api/newsletter/admin/send-test', {
         method: 'POST', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ to: testEmail.trim(), subject: subject.trim(), hero_image: heroImage, intro, body, cta_text: ctaText, cta_url: ctaUrl }),
+        body: JSON.stringify({ to: testEmail.trim(), subject: subject.trim(), hero_image: heroImage, intro, body: bodyHtml, cta_text: ctaText, cta_url: ctaUrl }),
       })
       const data = await res.json()
       if (data.error) { addToast({ type: 'error', title: data.error }); return }

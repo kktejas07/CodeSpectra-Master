@@ -7,6 +7,7 @@ import {
   Heading1, Heading2, Link2, Image as ImageIcon, Quote, Code,
   Undo2, Redo2, Minus, RemoveFormatting
 } from 'lucide-react'
+import { compressImageDataUrl } from '@/lib/image-compress'
 
 interface RichTextEditorProps {
   value: string
@@ -64,40 +65,10 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
   const compressPastedImage = useCallback((file: File): Promise<string> => {
     return new Promise((resolve, reject) => {
       const url = URL.createObjectURL(file)
-      const img = new Image()
-      img.onload = () => {
-        try {
-          const maxW = 1200
-          const scale = img.naturalWidth > maxW ? maxW / img.naturalWidth : 1
-          const canvas = document.createElement('canvas')
-          canvas.width = Math.round(img.naturalWidth * scale)
-          canvas.height = Math.round(img.naturalHeight * scale)
-          const ctx = canvas.getContext('2d')
-          if (!ctx) return reject(new Error('canvas unsupported'))
-          ctx.drawImage(img, 0, 0, canvas.width, canvas.height)
-
-          const hasAlpha = (() => {
-            try {
-              const d = ctx.getImageData(0, 0, canvas.width, canvas.height).data
-              for (let i = 3; i < d.length; i += 4) {
-                if (d[i] < 250) return true
-              }
-            } catch { /* tainted canvas → assume JPEG */ }
-            return false
-          })()
-
-          const dataUrl = hasAlpha
-            ? canvas.toDataURL('image/png')
-            : canvas.toDataURL('image/jpeg', 0.82)
-          resolve(dataUrl)
-        } catch (e) {
-          reject(e)
-        } finally {
-          URL.revokeObjectURL(url)
-        }
-      }
-      img.onerror = () => { URL.revokeObjectURL(url); reject(new Error('image decode failed')) }
-      img.src = url
+      compressImageDataUrl(url)
+        .then(resolve)
+        .catch(reject)
+        .finally(() => URL.revokeObjectURL(url))
     })
   }, [])
 
