@@ -969,9 +969,9 @@ export default function DashboardLayout({
           </button>
         </div>
 
-        {/* Page Content — one max width for every dashboard route */}
+        {/* Page Content — full width with proper padding */}
         <main className="px-4 py-5 lg:px-6 lg:py-8">
-          <div className="mx-auto w-full max-w-7xl">
+          <div className="w-full">
             {currentPageLocked ? (
               <PageLocked routeName={lockedPageLabel || undefined} />
             ) : (

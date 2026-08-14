@@ -467,7 +467,7 @@ export default function ExamReviewPage() {
   if (!exam) return null
 
   return (
-    <div className="space-y-6 max-w-5xl mx-auto pb-12 p-6">
+    <div className="space-y-6 pb-12">
       <div className="flex items-center justify-between">
         <div className="space-y-1">
           <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>
