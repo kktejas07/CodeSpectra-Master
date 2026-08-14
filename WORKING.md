@@ -9,7 +9,7 @@
 | Session | Task / Area | Files claimed | Status | Last updated |
 |---|---|---|---|---|
 | opencode (port 49847) | Redis/rate-limiting wiring (v0.22.7) | backend/core/dependencies.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/components/dashboard/settings/redis-section.tsx, frontend/app/api/admin/redis/ | DONE — idle since ~21:54; being committed | 2026-08-13 ~22:02 |
-| opencode (this session) | Reconciling & committing port-49847 session's v0.22.7 work + proctoring/WhatsApp fixes | (all files in the batch) | IN PROGRESS — committing | 2026-08-13 ~22:02 |
+| opencode (this session) | Reconciling & committing port-49847 session's v0.22.7 work + proctoring/WhatsApp fixes | (all files in the batch) | DONE — committed `4a12d61`, pushed | 2026-08-13 ~22:05 |
 
 ## Rules (see AGENTS.md for full text)
 
@@ -28,5 +28,6 @@
 
 | Date | Session | What was done |
 |---|---|---|
+| 2026-08-13 | opencode (this session) | Committed & pushed port-49847 session's Redis/rate-limit work as `4a12d61` (v0.22.7). |
 | 2026-08-13 | opencode (this session) | Newsletter preview overflow fix — `ab6aadf` + docs `c1830f2`, deployed & verified. |
 | 2026-08-14 | opencode | OpenWA v0.18 WhatsApp fix + test connection — `31fb6a7` + docs `a7bf80e`. |
