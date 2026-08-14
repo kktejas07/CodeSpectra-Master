@@ -35,11 +35,11 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ ok: true, inserted: 0 })
   }
 
-  const db = await getMongoDb()
-  const col = db.collection('analytics_replays')
-  const now = nowIso()
-
   try {
+    const db = await getMongoDb()
+    const col = db.collection('analytics_replays')
+    const now = nowIso()
+
     // Upsert: append events to existing replay doc, or create new one
     const existing = await col.findOne({ session_id: sessionId })
     if (existing) {
@@ -81,25 +81,30 @@ export async function GET(req: NextRequest) {
   const limit = Math.min(parseInt(searchParams.get('limit') || '50'), 200)
   const replayId = searchParams.get('id')
 
-  const db = await getMongoDb()
-  const col = db.collection('analytics_replays')
+  try {
+    const db = await getMongoDb()
+    const col = db.collection('analytics_replays')
 
-  // Get single replay
-  if (replayId) {
-    const replay = await col.findOne({ id: replayId })
-    if (!replay) return NextResponse.json({ error: 'Not found' }, { status: 404 })
-    return NextResponse.json({ replay })
+    // Get single replay
+    if (replayId) {
+      const replay = await col.findOne({ id: replayId })
+      if (!replay) return NextResponse.json({ error: 'Not found' }, { status: 404 })
+      return NextResponse.json({ replay })
+    }
+
+    // List replays
+    const replays = await col
+      .find({})
+      .project({ events: 0 }) // exclude events from list for performance
+      .sort({ last_activity_at: -1 })
+      .limit(limit)
+      .toArray()
+
+    const total = await col.countDocuments({})
+
+    return NextResponse.json({ replays, total })
+  } catch (e) {
+    console.error('[replay] GET error:', e)
+    return NextResponse.json({ error: 'Failed to load replays' }, { status: 500 })
   }
-
-  // List replays
-  const replays = await col
-    .find({})
-    .project({ events: 0 }) // exclude events from list for performance
-    .sort({ last_activity_at: -1 })
-    .limit(limit)
-    .toArray()
-
-  const total = await col.countDocuments({})
-
-  return NextResponse.json({ replays, total })
 }

@@ -259,7 +259,7 @@ export default function AnalyticsPage() {
   const [newFfDesc, setNewFfDesc] = useState('')
   const [showFfForm, setShowFfForm] = useState(false)
 
-  const hiddenRef = useRef(document.hidden)
+  const hiddenRef = useRef(typeof document !== 'undefined' ? document.hidden : false)
   const overviewTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const liveTimer = useRef<ReturnType<typeof setInterval> | null>(null)
   const eventsTimer = useRef<ReturnType<typeof setInterval> | null>(null)

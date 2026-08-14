@@ -25,24 +25,23 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const col = await analyticsAiUsage()
-  const doc = {
-    id: newId(),
-    user_id: userId || (body.user_id as string) || undefined,
-    feature: String(body.feature || 'unknown').slice(0, 64),
-    provider: String(body.provider || 'unknown').slice(0, 32),
-    model: String(body.model || 'unknown').slice(0, 64),
-    input_tokens: Number(body.input_tokens) || 0,
-    output_tokens: Number(body.output_tokens) || 0,
-    total_tokens: Number(body.total_tokens) || 0,
-    estimated_cost: Number(body.estimated_cost) || 0,
-    latency_ms: Number(body.latency_ms) || 0,
-    success: body.success !== false,
-    error: body.error ? String(body.error).slice(0, 256) : undefined,
-    timestamp: nowIso(),
-  }
-
   try {
+    const col = await analyticsAiUsage()
+    const doc = {
+      id: newId(),
+      user_id: userId || (body.user_id as string) || undefined,
+      feature: String(body.feature || 'unknown').slice(0, 64),
+      provider: String(body.provider || 'unknown').slice(0, 32),
+      model: String(body.model || 'unknown').slice(0, 64),
+      input_tokens: Number(body.input_tokens) || 0,
+      output_tokens: Number(body.output_tokens) || 0,
+      total_tokens: Number(body.total_tokens) || 0,
+      estimated_cost: Number(body.estimated_cost) || 0,
+      latency_ms: Number(body.latency_ms) || 0,
+      success: body.success !== false,
+      error: body.error ? String(body.error).slice(0, 256) : undefined,
+      timestamp: nowIso(),
+    }
     await col.insertOne(doc as any)
   } catch (e) {
     console.error('[ai analytics] insert error:', e)
