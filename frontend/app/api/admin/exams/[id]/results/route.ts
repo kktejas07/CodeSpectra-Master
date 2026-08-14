@@ -51,6 +51,17 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       }
     }
 
+    // Also fetch users for submissions that don't have invites (public/share-link candidates)
+    const submissionUserIds = new Set<string>()
+    for (const sub of submissions) {
+      if (sub.user_id && !sub.user_id.startsWith('candidate_')) {
+        submissionUserIds.add(sub.user_id)
+      }
+    }
+    for (const uid of submissionUserIds) {
+      await fetchUser(uid)
+    }
+
     for (const inv of invites) {
       if (inv.user_id) await fetchUser(inv.user_id)
     }
@@ -127,8 +138,10 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     }
 
     for (const sub of submissions) {
-      const user = userMap[sub.user_id] || {}
-      const email = user.email || ''
+      // Skip if this submission belongs to an invite user (already handled above)
+      if (invites.some(inv => inv.user_id === sub.user_id)) continue
+
+      const email = sub.email || userMap[sub.user_id]?.email || ''
       if (!email || seenEmails.has(email.toLowerCase())) continue
 
       await fetchUser(sub.user_id)
@@ -137,8 +150,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       results.push({
         id: sub.id,
         userId: sub.user_id || '',
-        name: fetched.name || 'Unknown',
-        email: fetched.email || '',
+        name: fetched.name || sub.email?.split('@')[0] || 'Candidate',
+        email: email,
         status: 'completed',
         score: toPercent(sub.score, sub.max_score),
         maxScore: sub.max_score || null,
@@ -148,7 +161,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         deliveryStatus: 'delivered',
         graded: sub.has_pending_review === false,
       })
-      if (fetched.email) seenEmails.add(fetched.email.toLowerCase())
+      seenEmails.add(email.toLowerCase())
     }
 
     // Run plagiarism and leak detection on submissions

@@ -27,8 +27,9 @@ interface EmailLog {
   delivery_status: EmailStatus
   delivery_error?: string | null
   delivery_updated_at?: string | null
+  postal_message_id?: number | null
   sender_ip?: string | null
-  device_info?: { browser: { name: string }; os: { name: string }; device_type: string } | null
+  device_info?: { browser: { name: string; version?: string }; os: { name: string }; device_type: string } | null
   geo?: { country?: string; region?: string; city?: string; timezone?: string } | null
   created_at: string
 }
