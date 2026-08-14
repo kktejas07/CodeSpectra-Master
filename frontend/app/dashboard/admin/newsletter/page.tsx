@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import {
   Loader2, Mail, Send, Users as UsersIcon, CheckCircle, Eye, Clock,
   BarChart3, Trash2, Copy, ExternalLink, AlertCircle, Image as ImageIcon,
-  Megaphone, Calendar, XCircle, MessageCircle, Upload, X
+  Megaphone, Calendar, XCircle, MessageCircle, Upload, X, PencilLine
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -72,6 +72,14 @@ const TEMPLATES = [
   { id: 'feature', label: 'Feature Launch', body: '<h2>Introducing [Feature Name]</h2><p>We\'re excited to announce a powerful new feature that will transform your experience.</p><h3>What it does</h3><p>[Describe the feature and its benefits]</p><h3>How to use it</h3><ol><li>Step 1</li><li>Step 2</li><li>Step 3</li></ol><p>Start using [Feature Name] today!</p>' },
 ]
 
+/** Convert a stored timestamp to the local `<input type="datetime-local">` value. */
+function toLocalInput(value: string): string {
+  const d = new Date(value)
+  if (Number.isNaN(d.getTime())) return ''
+  const pad = (n: number) => String(n).padStart(2, '0')
+  return `${d.getFullYear()}-${pad(d.getMonth() + 1)}-${pad(d.getDate())}T${pad(d.getHours())}:${pad(d.getMinutes())}`
+}
+
 export default function NewsletterPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
@@ -98,6 +106,9 @@ export default function NewsletterPage() {
   const [scheduleAt, setScheduleAt] = useState('')
   const [sending, setSending] = useState(false)
   const [savingDraft, setSavingDraft] = useState(false)
+  // When set, the composer edits this existing draft/scheduled campaign
+  // (PATCH) instead of creating a new one (POST).
+  const [editingId, setEditingId] = useState<string | null>(null)
   const [uploadingImage, setUploadingImage] = useState(false)
 
   // Preview state
@@ -177,27 +188,60 @@ export default function NewsletterPage() {
   // canvas pipeline the editor runs on paste — identity when nothing to shrink.
   const optimizedBody = useCallback(async () => compressHtmlImages(body), [body])
 
+  // Load a saved draft/scheduled campaign back into the composer so work can
+  // continue exactly where it stopped. The composer re-mounts on tab switch,
+  // so the new `body` is picked up by the RichTextEditor's mount effect.
+  const resumeDraft = (c: Campaign) => {
+    setEditingId(c.id)
+    setSubject(c.subject || '')
+    setHeroImage(c.hero_image || '')
+    setHeroImagePreview(c.hero_image || '')
+    setIntro(c.intro || '')
+    setBody(c.body || '')
+    setCtaText(c.cta_text || '')
+    setCtaUrl(c.cta_url || '')
+    setSendEmail(!!c.channels?.email)
+    setSendPush(!!c.channels?.push)
+    setSendInApp(!!c.channels?.in_app)
+    setSendWhatsapp(!!c.channels?.whatsapp)
+    setScheduleAt(c.send_at ? toLocalInput(c.send_at) : '')
+    setActiveTab('compose')
+    addToast({ type: 'success', title: `Resumed ${c.status === 'scheduled' ? 'scheduled campaign' : 'draft'}` })
+  }
+
   const handleSend = async (asDraft = false) => {
     if (!subject.trim()) { addToast({ type: 'error', title: 'Subject is required' }); return }
     if (asDraft) setSavingDraft(true)
     else setSending(true)
     try {
       const bodyHtml = await optimizedBody()
-      const res = await csrfFetch('/api/newsletter/admin/campaigns', {
-        method: 'POST', credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          subject: subject.trim(), hero_image: heroImage, intro: intro.trim(),
-          body: bodyHtml, cta_text: ctaText.trim(), cta_url: ctaUrl.trim(),
-          channels: { email: sendEmail, push: sendPush, in_app: sendInApp, whatsapp: sendWhatsapp },
-          send_at: scheduleAt || undefined,
-          preview_only: asDraft,
-        }),
-      })
-      const data = await res.json()
+      const payload = {
+        subject: subject.trim(), hero_image: heroImage, intro: intro.trim(),
+        body: bodyHtml, cta_text: ctaText.trim(), cta_url: ctaUrl.trim(),
+        channels: { email: sendEmail, push: sendPush, in_app: sendInApp, whatsapp: sendWhatsapp },
+      }
+      let data: { error?: string; status?: string; recipients_count?: number }
+      if (editingId) {
+        const res = await csrfFetch(`/api/newsletter/admin/campaigns/${editingId}`, {
+          method: 'PATCH', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, send_at: asDraft ? undefined : (scheduleAt || undefined), send: !asDraft }),
+        })
+        data = await res.json()
+      } else {
+        const res = await csrfFetch('/api/newsletter/admin/campaigns', {
+          method: 'POST', credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, send_at: scheduleAt || undefined, preview_only: asDraft }),
+        })
+        data = await res.json()
+      }
       if (data.error) { addToast({ type: 'error', title: data.error }); return }
-      addToast({ type: 'success', title: asDraft ? 'Draft saved' : `Campaign ${data.status === 'scheduled' ? 'scheduled' : 'sent'} to ${data.recipients_count} subscribers` })
-      if (!asDraft) { setSubject(''); setHeroImage(''); setHeroImagePreview(''); setIntro(''); setBody(''); setCtaText(''); setCtaUrl(''); setScheduleAt('') }
+      addToast({ type: 'success', title: asDraft ? (editingId ? 'Draft updated' : 'Draft saved') : `Campaign ${data.status === 'scheduled' ? 'scheduled' : 'sent'} to ${data.recipients_count} subscribers` })
+      if (!asDraft || editingId) {
+        setSubject(''); setHeroImage(''); setHeroImagePreview(''); setIntro(''); setBody(''); setCtaText(''); setCtaUrl(''); setScheduleAt('')
+      }
+      setEditingId(null)
       setActiveTab('campaigns')
       load()
     } catch { addToast({ type: 'error', title: 'Failed to save campaign' }) }
@@ -305,7 +349,10 @@ export default function NewsletterPage() {
             {/* Compose */}
             <Card className="p-6">
               <div className="flex items-center justify-between mb-4">
-                <h2 className="font-semibold flex items-center gap-2"><Send className="h-4 w-4" /> Compose Newsletter</h2>
+                <h2 className="font-semibold flex items-center gap-2">
+                  <Send className="h-4 w-4" /> Compose Newsletter
+                  {editingId && <Badge className="bg-primary/10 text-primary border-0"><PencilLine className="h-3 w-3 mr-1" />Editing draft</Badge>}
+                </h2>
                 <select
                   className="text-xs border border-border/60 rounded-md px-2 py-1 bg-background"
                   onChange={e => {
@@ -462,6 +509,9 @@ export default function NewsletterPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {(c.status === 'draft' || c.status === 'scheduled') && (
+                          <Button size="sm" variant="ghost" title="Resume editing" onClick={() => resumeDraft(c)} className="text-primary hover:bg-primary/10"><PencilLine className="h-3.5 w-3.5" /></Button>
+                        )}
                         {c.status !== 'sending' && <Button size="sm" variant="ghost" onClick={() => handleDeleteCampaign(c.id)} className="text-destructive hover:bg-destructive/10"><Trash2 className="h-3.5 w-3.5" /></Button>}
                       </div>
                     </div>
