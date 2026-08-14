@@ -10,7 +10,7 @@
  * All offline / self-hosted. Zero cost, unlimited usage.
  */
 
-import { parsePhoneNumberFromString, isValidPhoneNumber } from 'libphonenumber-js'
+import { parsePhoneNumberFromString, isValidPhoneNumber, type CountryCode } from 'libphonenumber-js'
 import { UAParser } from 'ua-parser-js'
 
 // ── Email Verification ───────────────────────────────────────────────────────
@@ -82,7 +82,7 @@ export interface PhoneVerificationResult {
  * Normalize and validate a phone number.
  * Accepts any format, returns E.164 or error.
  */
-export function verifyPhone(phone: string, defaultCountry: string = 'IN'): PhoneVerificationResult {
+export function verifyPhone(phone: string, defaultCountry: CountryCode = 'IN'): PhoneVerificationResult {
   const cleaned = phone.replace(/[^0-9+]/g, '')
   if (!cleaned || cleaned.length < 7) {
     return { valid: false, reason: 'Too short' }
@@ -90,7 +90,7 @@ export function verifyPhone(phone: string, defaultCountry: string = 'IN'): Phone
 
   try {
     const parsed = parsePhoneNumberFromString(cleaned, defaultCountry)
-    if (!parsed || !isValidPhoneNumber(parsed.number)) {
+    if (!parsed || !isValidPhoneNumber(parsed.number as string)) {
       return { valid: false, reason: 'Invalid phone number' }
     }
     return {
