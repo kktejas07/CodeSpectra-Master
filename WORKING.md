@@ -9,7 +9,7 @@
 | Session | Task / Area | Files claimed | Status | Last updated |
 |---|---|---|---|---|
 | opencode (port 49847) | Redis/rate-limiting wiring (v0.22.7) | backend/core/dependencies.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/components/dashboard/settings/redis-section.tsx, frontend/app/api/admin/redis/ | DONE — committed `4a12d61` | 2026-08-13 ~22:05 |
-| opencode (this session) | Deploying v0.22.7 batch to prod (frontend + backend) | server repos (rsync — server git tokens expired) | IN PROGRESS — deploying | 2026-08-13 ~22:10 |
+| opencode (this session) | Deploying v0.22.7 batch to prod (frontend + backend) | server repos (rsync — server git tokens expired) | DONE — frontend + backend rebuilt, services converged, verified | 2026-08-13 ~22:25 |
 
 ## Rules (see AGENTS.md for full text)
 
@@ -28,6 +28,7 @@
 
 | Date | Session | What was done |
 |---|---|---|
+| 2026-08-13 | opencode (this session) | Deployed v0.22.7 to prod: frontend + backend images rebuilt & rolled (`:latest`), verified newsletter/system 200, redis/status 401 unauth, backend `ensure_redis_client` live. Note: server GitHub tokens expired — deploy used rsync of changed files. |
 | 2026-08-13 | opencode (this session) | Committed & pushed port-49847 session's Redis/rate-limit work as `4a12d61` (v0.22.7). |
 | 2026-08-13 | opencode (this session) | Newsletter preview overflow fix — `ab6aadf` + docs `c1830f2`, deployed & verified. |
 | 2026-08-14 | opencode | OpenWA v0.18 WhatsApp fix + test connection — `31fb6a7` + docs `a7bf80e`. |
