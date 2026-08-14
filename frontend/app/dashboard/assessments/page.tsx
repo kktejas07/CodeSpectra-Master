@@ -2,210 +2,203 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Input } from '@/components/ui/input'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
-import { Clock, BookOpen, Play, Loader2, CheckCircle, Search, Users, BarChart3 } from 'lucide-react'
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { Loader2, Trophy, BarChart3, CheckCircle, XCircle, FileText } from 'lucide-react'
 
-interface Exam {
+interface Attempt {
   id: string
+  exam_id: string
   title: string
-  subject: string
   level: string
-  duration: number
-  questions: number
-  access_type: string
-  published: boolean
-  cert_template?: string
-  degree_type?: string
-  branch?: string
-  screening_type?: string
-  techStack?: string[]
-  attempts: number
-  avgScore: number
+  score: number | null
+  total_questions: number
+  answered: number
+  passed: boolean
   status: string
-  score?: number
+  submitted_at: string
+  certificate_url?: string
 }
 
-export default function ExamsPage() {
+export default function MyAssessmentsPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
-  const [exams, setExams] = useState<Exam[]>([])
+  const [attempts, setAttempts] = useState<Attempt[]>([])
   const [loading, setLoading] = useState(true)
-  const [search, setSearch] = useState('')
-  const [levelFilter, setLevelFilter] = useState('all')
-  const [subjectFilter, setSubjectFilter] = useState('all')
-
-  // Tenant admins should manage assessments, not take them
-  useEffect(() => {
-    if (gate.ready && gate.user && (gate.user.role === 'tenant_admin' || gate.user.role === 'superadmin')) {
-      router.replace('/dashboard/admin/assessments')
-    }
-  }, [gate.ready, gate.user, router])
 
   useEffect(() => {
-    fetch('/api/exams', { credentials: 'include' })
+    if (!gate.ready) return
+    fetch('/api/user/assessments', { credentials: 'include' })
       .then(r => r.json())
-      .then(json => { if (json.data) setExams(json.data) })
+      .then(json => { if (json.data) setAttempts(json.data) })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
-
-  const subjects = [...new Set(exams.map(e => e.subject).filter(Boolean))].sort()
-  const levels = [...new Set(exams.map(e => e.level).filter(Boolean))].sort()
-
-  const filtered = exams.filter(exam => {
-    const q = search.trim().toLowerCase()
-    if (q && !(exam.title || '').toLowerCase().includes(q) && !(exam.subject || '').toLowerCase().includes(q)) return false
-    if (levelFilter !== 'all' && exam.level !== levelFilter) return false
-    if (subjectFilter !== 'all' && exam.subject !== subjectFilter) return false
-    return true
-  })
-
-  const getLevelColor = (level: string) => {
-    const l = (level || '').toLowerCase()
-    if (l === 'beginner') return 'bg-green-500/20 text-green-700'
-    if (l === 'intermediate') return 'bg-yellow-500/20 text-yellow-700'
-    if (l === 'advanced') return 'bg-red-500/20 text-red-700'
-    return 'bg-muted text-muted-foreground'
-  }
-
-  const stats = {
-    total: exams.length,
-    open: exams.filter(e => e.access_type === 'open').length,
-    inviteOnly: exams.filter(e => e.access_type === 'invite_only').length,
-  }
+  }, [gate.ready])
 
   if (!gate.ready) return null
 
-  if (loading) return (
-    <div className="flex justify-center py-20">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-    </div>
-  )
+  if (loading) {
+    return (
+      <div className="flex justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  const totalAttempts = attempts.length
+  const passedCount = attempts.filter(a => a.passed).length
+  const avgScore = totalAttempts > 0
+    ? Math.round(attempts.reduce((sum, a) => sum + (a.score ?? 0), 0) / totalAttempts)
+    : 0
+
+  const columns: DataTableColumn<Attempt>[] = [
+    {
+      key: 'title',
+      header: 'Assessment',
+      cell: (row) => (
+        <div>
+          <p className="font-medium text-foreground">{row.title}</p>
+          <p className="text-xs text-muted-foreground">ID: {row.exam_id.slice(0, 8)}</p>
+        </div>
+      ),
+    },
+    {
+      key: 'level',
+      header: 'Level',
+      cell: (row) => {
+        const l = (row.level || '').toLowerCase()
+        const color = l === 'beginner' ? 'bg-green-500/20 text-green-700'
+          : l === 'intermediate' ? 'bg-yellow-500/20 text-yellow-700'
+          : l === 'advanced' ? 'bg-red-500/20 text-red-700'
+          : 'bg-muted text-muted-foreground'
+        return <Badge variant="outline" className={`text-xs ${color}`}>{row.level}</Badge>
+      },
+    },
+    {
+      key: 'score',
+      header: 'Score',
+      cell: (row) => (
+        <span className="font-semibold tabular-nums">
+          {row.score != null ? `${row.score}%` : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'passed',
+      header: 'Status',
+      cell: (row) => (
+        <Badge variant="outline" className={`text-xs gap-1 ${
+          row.passed ? 'text-green-600 border-green-500/30' : 'text-red-600 border-red-500/30'
+        }`}>
+          {row.passed ? <CheckCircle className="h-3 w-3" /> : <XCircle className="h-3 w-3" />}
+          {row.passed ? 'Pass' : 'Fail'}
+        </Badge>
+      ),
+    },
+    {
+      key: 'submitted_at',
+      header: 'Date',
+      cell: (row) => (
+        <span className="text-xs text-muted-foreground">
+          {row.submitted_at ? new Date(row.submitted_at).toLocaleDateString('en-US', {
+            month: 'short', day: 'numeric', year: 'numeric',
+          }) : '—'}
+        </span>
+      ),
+    },
+    {
+      key: 'certificate_url',
+      header: 'Certificate',
+      cell: (row) => (
+        row.certificate_url ? (
+          <a href={row.certificate_url} target="_blank" rel="noopener noreferrer" className="text-xs text-primary hover:underline">
+            View
+          </a>
+        ) : (
+          <span className="text-xs text-muted-foreground">—</span>
+        )
+      ),
+    },
+  ]
 
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Assessments</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Take certification assessments to validate your skills</p>
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <FileText className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">My Assessments</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Your past assessment attempts and results</p>
+          </div>
         </div>
+        <Link href="/dashboard/assessments">
+          <Button variant="outline" size="sm" className="gap-2">
+            <BarChart3 className="h-4 w-4" /> Browse Assessments
+          </Button>
+        </Link>
       </div>
 
-      {/* Stats */}
+      {/* KPI Row */}
       <div className="grid gap-4 sm:grid-cols-3">
         <Card className="border-border/60 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-blue-500/10">
-              <BookOpen className="h-5 w-5 text-blue-600" />
+              <BarChart3 className="h-5 w-5 text-blue-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total assessments</p>
+              <p className="text-2xl font-bold text-foreground">{totalAttempts}</p>
+              <p className="text-xs text-muted-foreground">Total Attempts</p>
             </div>
           </div>
         </Card>
         <Card className="border-border/60 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-green-500/10">
-              <Play className="h-5 w-5 text-green-600" />
+              <CheckCircle className="h-5 w-5 text-green-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.open}</p>
-              <p className="text-xs text-muted-foreground">Open enrollment</p>
+              <p className="text-2xl font-bold text-foreground">{passedCount}</p>
+              <p className="text-xs text-muted-foreground">Passed</p>
             </div>
           </div>
         </Card>
         <Card className="border-border/60 p-4">
           <div className="flex items-center gap-3">
             <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-purple-500/10">
-              <Users className="h-5 w-5 text-purple-600" />
+              <Trophy className="h-5 w-5 text-purple-600" />
             </div>
             <div>
-              <p className="text-2xl font-bold text-foreground">{stats.inviteOnly}</p>
-              <p className="text-xs text-muted-foreground">Invite only</p>
+              <p className="text-2xl font-bold text-foreground">{avgScore}%</p>
+              <p className="text-xs text-muted-foreground">Average Score</p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-[200px]">
-          <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Search assessments..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
-        </div>
-        <Select value={levelFilter} onValueChange={setLevelFilter}>
-          <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="All levels" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All levels</SelectItem>
-            {levels.map(l => <SelectItem key={l} value={l} className="text-xs">{l}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={subjectFilter} onValueChange={setSubjectFilter}>
-          <SelectTrigger className="h-8 w-[160px] text-xs"><SelectValue placeholder="All subjects" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">All subjects</SelectItem>
-            {subjects.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <p className="text-xs text-muted-foreground">{filtered.length} assessment{filtered.length !== 1 ? 's' : ''}</p>
-      </div>
-
-      {/* Assessment Grid */}
-      {filtered.length === 0 ? (
+      {/* Attempts Table */}
+      {attempts.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
-          <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">{search || levelFilter !== 'all' || subjectFilter !== 'all' ? 'No assessments match your filters' : 'No assessments available yet.'}</p>
+          <FileText className="mx-auto h-10 w-10 text-muted-foreground/40" />
+          <p className="mt-3 text-muted-foreground">You haven't taken any assessments yet.</p>
+          <Link href="/dashboard/assessments">
+            <Button variant="outline" size="sm" className="mt-4">Browse Assessments</Button>
+          </Link>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
-          {filtered.map(exam => (
-            <Card key={exam.id} className="border-border/60 p-5 hover:shadow-md transition-shadow">
-              <div className="mb-3 flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h3 className="font-semibold text-foreground truncate">{exam.title}</h3>
-                  <p className="text-xs text-muted-foreground">{exam.subject}</p>
-                </div>
-                <Badge variant="outline" className={`text-[10px] shrink-0 ${getLevelColor(exam.level)}`}>{exam.level}</Badge>
-              </div>
-
-              <div className="mb-4 flex items-center gap-3 text-xs text-muted-foreground">
-                <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{exam.duration} min</span>
-                <span>{exam.questions} questions</span>
-                {exam.access_type === 'invite_only' && <Badge variant="secondary" className="text-[10px]">Invite</Badge>}
-              </div>
-
-              {exam.status === 'completed' ? (
-                <>
-                  <div className="mb-3 p-2 rounded-lg bg-green-500/10 border border-green-500/20 text-xs font-semibold text-green-600 flex items-center gap-1.5 justify-center">
-                    <CheckCircle className="h-3.5 w-3.5" /> Score: {exam.score}% — Completed
-                  </div>
-                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/assessments/${exam.id}`)}>
-                    <BookOpen className="h-3.5 w-3.5" /> View Results
-                  </Button>
-                </>
-              ) : exam.status === 'submitted' ? (
-                <>
-                  <div className="mb-3 p-2 rounded-lg bg-amber-500/10 border border-amber-500/20 text-xs font-semibold text-amber-600 flex items-center gap-1.5 justify-center">
-                    <Clock className="h-3.5 w-3.5" /> Submitted — Awaiting Review
-                  </div>
-                  <Button variant="outline" size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/assessments/${exam.id}`)}>
-                    <Clock className="h-3.5 w-3.5" /> View Status
-                  </Button>
-                </>
-              ) : (
-                <Button size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/assessments/${exam.id}`)}>
-                  <Play className="h-3.5 w-3.5" /> Start Assessment
-                </Button>
-              )}
-            </Card>
-          ))}
-        </div>
+        <DataTable
+          columns={columns}
+          data={attempts.map(a => ({ ...a, id: a.id }))}
+          searchPlaceholder="Search assessments..."
+          searchKeys={['title', 'level']}
+          pageSize={15}
+          emptyMessage="No attempts found"
+        />
       )}
     </div>
   )

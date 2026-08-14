@@ -255,6 +255,8 @@ export default function ExamResultsPage() {
   const [remarks, setRemarks] = useState<Record<string, string>>({})
   const [showProctorLog, setShowProctorLog] = useState(true)
   const [showRawProctorMeta, setShowRawProctorMeta] = useState(false)
+  const [exportingReport, setExportingReport] = useState(false)
+  const [showReleaseAllConfirm, setShowReleaseAllConfirm] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!params.id) return
@@ -438,84 +440,6 @@ export default function ExamResultsPage() {
       addToast({ type: 'error', title: `Failed to release score for ${name}` })
     } finally {
       setReleasing(null)
-    }
-  }
-
-  const releaseAll = async () => {
-    setBulkReleasing(true)
-    try {
-      const res = await csrfFetch(`/api/admin/exams/${params.id}/release`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      addToast({
-        type: json.skipped_pending > 0 ? 'warning' : 'success',
-        title: `${json.released} scores released`,
-        message: json.skipped_pending > 0 ? `${json.skipped_pending} skipped — grading still pending` : undefined,
-      })
-      setResults(prev => prev.map(r => r.status === 'completed' ? { ...r, released: true } : r))
-      if (reviewData) {
-        setReviewData(prev => prev ? { ...prev, submission: { ...prev.submission, released_at: new Date().toISOString() } } : null)
-      }
-    } catch {
-      addToast({ type: 'error', title: 'Bulk release failed' })
-    } finally {
-      setBulkReleasing(false)
-    }
-  }
-
-  const saveGrades = async () => {
-    if (!reviewCandidate || Object.keys(manualGrades).length === 0) return
-    setSavingGrades(true)
-    try {
-      const uid = reviewCandidate.userId || reviewCandidate.id
-      const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ grades: manualGrades, remarks }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      addToast({ type: 'success', title: 'Grades saved successfully' })
-      // Update local state
-      if (reviewData) {
-        const updatedDetails = reviewData.submission.details.map(d => {
-          if (manualGrades[d.qId] !== undefined) {
-            const remark = remarks[d.qId]
-            return {
-              ...d,
-              awarded: manualGrades[d.qId],
-              correct: manualGrades[d.qId] > 0,
-              pending_review: false,
-              ...(remark && remark.trim() ? { remarks: remark.trim() } : {}),
-            }
-          }
-          return d
-        })
-        setReviewData({
-          ...reviewData,
-          submission: { ...reviewData.submission, details: updatedDetails, score: json.score, has_pending_review: json.has_pending_review }
-        })
-      }
-      const savedMax = reviewData?.submission.max_score || 0
-      setResults(prev => prev.map(r => {
-        if ((r.userId || r.id) === uid) {
-          const max = r.maxScore || savedMax
-          const pct = max > 0 ? Math.min(100, Math.round((json.score / max) * 100)) : json.score
-          return { ...r, score: pct }
-        }
-        return r
-      }))
-setManualGrades({})
-      setRemarks({})
-      setAiFeedback({})
-    } catch {
-      addToast({ type: 'error', title: 'Failed to save grades' })
-    } finally {
-      setSavingGrades(false)
     }
   }
 
@@ -712,6 +636,212 @@ setManualGrades({})
     if (['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
     if (['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot'].includes(type)) return 'text-blue-400 border-blue-500/30 bg-blue-500/10'
     return 'text-muted-foreground border-border bg-muted/50'
+  }
+
+  const recordAuditLog = async (action: string, target: string, details: string) => {
+    try {
+      await csrfFetch('/api/admin/audit-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, target, details }),
+      })
+    } catch { /* audit log is best-effort */ }
+  }
+
+  const exportProctorReport = async () => {
+    if (!params.id) return
+    setExportingReport(true)
+    try {
+      const res = await fetch(`/api/admin/exams/${params.id}/proctor-report`, { credentials: 'include' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to fetch report')
+
+      const examData = json.exam
+      const candidates = json.candidates || []
+
+      const formatEvtType = (t: string) => PROCTOR_LABELS[t] || t.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+
+      let html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Proctor Report — ${examData.title}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 24px; color: #1a1a1a; font-size: 13px; }
+  h1 { font-size: 20px; margin-bottom: 4px; } h2 { font-size: 16px; margin: 24px 0 8px; border-bottom: 2px solid #e5e7eb; padding-bottom: 4px; }
+  h3 { font-size: 14px; margin: 16px 0 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; } th, td { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; font-size: 12px; }
+  th { background: #f9fafb; font-weight: 600; } .pass { color: #059669; } .fail { color: #dc2626; }
+  .evt { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin: 1px; }
+  .evt-red { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .evt-amber { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .evt-blue { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .evt-gray { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+  img { max-width: 120px; border-radius: 4px; border: 1px solid #e5e7eb; }
+  .meta { color: #6b7280; font-size: 11px; } .summary-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin: 8px 0; }
+  @media print { body { padding: 0; } .no-print { display: none; } }
+</style></head><body>
+<div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;background:#fff">Print / Save PDF</button></div>
+<h1>Proctor Report: ${examData.title}</h1>
+<p class="meta">Level: ${examData.level} | Duration: ${examData.duration} min | Generated: ${new Date().toLocaleString()}</p>
+<p class="meta">Total Candidates: ${json.total_candidates} | Total Proctor Events: ${json.total_events}</p>
+<h2>Event Type Summary</h2>
+<div class="summary-box"><table><tr><th>Event Type</th><th>Count</th></tr>`
+
+      for (const [type, count] of Object.entries(json.event_type_summary || {})) {
+        html += `<tr><td>${formatEvtType(type)}</td><td>${count}</td></tr>`
+      }
+      html += `</table></div>`
+
+      for (const c of candidates) {
+        const pct = c.max_score > 0 ? Math.round((c.score / c.max_score) * 100) : null
+        const passed = pct !== null && pct >= 50
+        const rating = (c.event_count || 0) === 0 ? 'Clean' : (c.event_count || 0) < 5 ? 'Low Risk' : (c.event_count || 0) < 15 ? 'Medium Risk' : 'High Risk'
+
+        html += `<h2>${c.name || 'Unknown'} <span class="meta">(${c.email || 'N/A'})</span></h2>`
+        html += `<div class="summary-box">`
+        html += `<table><tr><th>Score</th><th>Pass/Fail</th><th>Submitted</th><th>Integrity Events</th><th>Rating</th></tr>`
+        html += `<tr><td>${pct !== null ? pct + '%' : '--'}</td><td class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</td>`
+        html += `<td>${c.submitted_at ? new Date(c.submitted_at).toLocaleString() : '--'}</td>`
+        html += `<td>${c.event_count || 0}</td><td><strong>${rating}</strong></td></tr></table>`
+
+        if (c.id_photo || c.face_photo) {
+          html += `<div style="margin-top:8px">`
+          if (c.id_photo) html += `<div style="display:inline-block;margin-right:12px"><div class="meta">ID Photo</div><img src="${c.id_photo}" /></div>`
+          if (c.face_photo) html += `<div style="display:inline-block"><div class="meta">Face Photo</div><img src="${c.face_photo}" /></div>`
+          html += `</div>`
+        }
+
+        // Eye gaze / blink / head pose summary
+        const eyeBlinkEvts = (c.proctor_events || []).filter((e: any) => ['eye_blink_detected', 'eye_gaze_changed', 'head_pose_turned_away'].includes(e.event_type))
+        const kbEvts = (c.proctor_events || []).filter((e: any) => e.event_type === 'keyboard_dynamics_snapshot')
+        const fpEvts = (c.proctor_events || []).filter((e: any) => ['browser_fingerprint_captured', 'browser_fingerprint_changed'].includes(e.event_type))
+        const faceEvts = (c.proctor_events || []).filter((e: any) => ['face_match_mismatch', 'face_match_restored'].includes(e.event_type))
+        const answerEvts = (c.proctor_events || []).filter((e: any) => e.event_type === 'answer_pattern_score')
+
+        html += `<div style="margin-top:8px" class="meta">`
+        html += `Eye/Blink Events: ${eyeBlinkEvts.length} | `
+        html += `Typing Analysis: ${kbEvts.length} | `
+        html += `Device Fingerprint: ${fpEvts.length} | `
+        html += `Face Verification: ${faceEvts.length}`
+        if (answerEvts.length > 0) {
+          const lastAnswerEvt = answerEvts[answerEvts.length - 1]
+          const score = (lastAnswerEvt.meta as any)?.score
+          html += ` | Answer Pattern Score: ${score !== undefined ? score : 'N/A'}`
+        }
+        html += `</div></div>`
+
+        if (c.proctor_events && c.proctor_events.length > 0) {
+          html += `<h3>Proctoring Event Log</h3><table><tr><th>Event</th><th>Time</th><th>Details</th></tr>`
+          for (const evt of c.proctor_events) {
+            const evtType = formatEvtType(evt.event_type)
+            const time = evt.created_at ? new Date(evt.created_at).toLocaleString() : '--'
+            const meta = evt.meta || {}
+            const details = Object.entries(meta)
+              .filter(([k]) => !['ua', 'timestamp', 'id', 'user_id', 'session_id', 'created_at', 'event_type', 'session_kind', 'source', 'ip', 'browser', 'os', 'device'].includes(k))
+              .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+              .join('; ')
+            html += `<tr><td>${evtType}</td><td class="meta">${time}</td><td class="meta">${details}</td></tr>`
+          }
+          html += `</table>`
+        }
+      }
+
+      html += `</body></html>`
+
+      const win = window.open('', '_blank')
+      if (win) {
+        win.document.write(html)
+        win.document.close()
+      }
+      addToast({ type: 'success', title: 'Proctor report generated' })
+    } catch (e: any) {
+      addToast({ type: 'error', title: 'Failed to export report', message: e.message || '' })
+    } finally {
+      setExportingReport(false)
+    }
+  }
+
+  const releaseAllWithAudit = async () => {
+    setShowReleaseAllConfirm(false)
+    setBulkReleasing(true)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/release-scores`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+
+      addToast({
+        type: json.released === 0 ? 'info' : 'success',
+        title: json.released === 0 ? 'No unreleased scores found' : `${json.released} scores released`,
+      })
+
+      if (json.released > 0) {
+        await recordAuditLog('release_scores', String(params.id), `Released ${json.released} scores`)
+      }
+
+      // Refresh results
+      fetchData()
+    } catch {
+      addToast({ type: 'error', title: 'Bulk release failed' })
+    } finally {
+      setBulkReleasing(false)
+    }
+  }
+
+  const saveGradesWithAudit = async () => {
+    if (!reviewCandidate || Object.keys(manualGrades).length === 0) return
+    setSavingGrades(true)
+    try {
+      const uid = reviewCandidate.userId || reviewCandidate.id
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ grades: manualGrades, remarks }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      addToast({ type: 'success', title: 'Grades saved successfully' })
+
+      await recordAuditLog('grade_submission', String(params.id), `Graded user ${reviewCandidate.name || uid}`)
+
+      // Update local state
+      if (reviewData) {
+        const updatedDetails = reviewData.submission.details.map(d => {
+          if (manualGrades[d.qId] !== undefined) {
+            const remark = remarks[d.qId]
+            return {
+              ...d,
+              awarded: manualGrades[d.qId],
+              correct: manualGrades[d.qId] > 0,
+              pending_review: false,
+              ...(remark && remark.trim() ? { remarks: remark.trim() } : {}),
+            }
+          }
+          return d
+        })
+        setReviewData({
+          ...reviewData,
+          submission: { ...reviewData.submission, details: updatedDetails, score: json.score, has_pending_review: json.has_pending_review }
+        })
+      }
+      const savedMax = reviewData?.submission.max_score || 0
+      setResults(prev => prev.map(r => {
+        if ((r.userId || r.id) === uid) {
+          const max = r.maxScore || savedMax
+          const pct = max > 0 ? Math.min(100, Math.round((json.score / max) * 100)) : json.score
+          return { ...r, score: pct }
+        }
+        return r
+      }))
+      setManualGrades({})
+      setRemarks({})
+      setAiFeedback({})
+    } catch {
+      addToast({ type: 'error', title: 'Failed to save grades' })
+    } finally {
+      setSavingGrades(false)
+    }
   }
 
   const columns: DataTableColumn<CandidateResult>[] = [
@@ -912,13 +1042,22 @@ setManualGrades({})
             <Button
               variant="default"
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={releaseAll}
+              onClick={() => setShowReleaseAllConfirm(true)}
               disabled={bulkReleasing}
             >
               {bulkReleasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Release All ({unreleasedCount})
             </Button>
           )}
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={exportProctorReport}
+            disabled={exportingReport}
+          >
+            {exportingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Export Report
+          </Button>
           <Button variant="outline" className="gap-2" onClick={remindAllPending} disabled={bulkReminding}>
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
             Remind All Pending
@@ -1208,7 +1347,7 @@ setManualGrades({})
                         <Button
                           size="sm"
                           className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                          onClick={saveGrades}
+                          onClick={saveGradesWithAudit}
                           disabled={savingGrades}
                         >
                           {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
@@ -1365,6 +1504,26 @@ setManualGrades({})
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showReleaseAllConfirm} onOpenChange={setShowReleaseAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Release All Scores?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will release all unreleased scores to candidates. Candidates will be notified and able to view their results. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={releaseAllWithAudit}
+            >
+              Release All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

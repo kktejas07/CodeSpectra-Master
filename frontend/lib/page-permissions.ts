@@ -64,6 +64,10 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/question-generator',
   '/dashboard/admin/workflows',
 
+  // Analytics (superadmin only)
+  '/dashboard/admin/analytics/proctoring',
+  '/dashboard/admin/analytics/scores',
+
   // Infrastructure, Settings & Announcements
   '/dashboard/admin/settings',
   '/dashboard/admin/settings/cloudflare',
@@ -224,6 +228,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/roles': 'Roles',
   '/dashboard/admin/organizations': 'Organizations',
   '/dashboard/admin/analytics': 'Insights',
+  '/dashboard/admin/analytics/proctoring': 'Proctoring Analytics',
+  '/dashboard/admin/analytics/scores': 'Score Analytics',
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
   '/dashboard/admin/security': 'Security',

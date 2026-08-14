@@ -310,6 +310,8 @@ export default function DashboardLayout({
       [p.users]: Users,
       [p.roles]: Lock,
       [p.analytics]: BarChart3,
+      '/dashboard/admin/analytics/proctoring': BarChart3,
+      '/dashboard/admin/analytics/scores': BarChart3,
       [p.integrations]: Plug,
       [p.speedInsights]: Gauge,
       [p.cdn]: Globe2,

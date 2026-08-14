@@ -15,6 +15,7 @@ import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
+import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -105,6 +106,9 @@ export default function CandidateAssessmentPage() {
   const [showVerification, setShowVerification] = useState(false)
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
   const [facePhoto, setFacePhoto] = useState<string | null>(null)
+
+  // Recording Consent
+  const [recordingConsent, setRecordingConsent] = useState(false)
 
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
@@ -245,11 +249,46 @@ export default function CandidateAssessmentPage() {
     }
   }, [hasStarted, timeLeft, isSubmitted, isSubmitting])
 
+  // 30-minute warning
+  const hasWarned30Min = useRef(false)
+  useEffect(() => {
+    if (timeLeft === 1800 && !isSubmitted && !isSubmitting && !hasWarned30Min.current) {
+      hasWarned30Min.current = true
+      addToast({ type: 'warning', title: '30 minutes remaining!' })
+      csrfFetch('/api/proctor/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_kind: 'exam',
+          session_id: params.id,
+          event_type: 'timer_warning_30min',
+          meta: { time_left: 1800, timestamp: new Date().toISOString() },
+        }),
+      }).catch(() => {})
+    }
+  }, [timeLeft, isSubmitted, isSubmitting, params.id, addToast])
+
   useEffect(() => {
     if (exam && Object.keys(answers).length > 0) {
       localStorage.setItem(`codespectra_exam_draft_${exam.id}`, JSON.stringify(answers))
     }
   }, [answers, exam])
+
+  // Auto-save to server every 30 seconds (debounced)
+  useEffect(() => {
+    if (!exam || !hasStarted || Object.keys(answers).length === 0) return
+    const timer = setTimeout(async () => {
+      try {
+        await csrfFetch(`/api/exams/${exam.id}/save-draft`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers }),
+        })
+      } catch { /* fire-and-forget */ }
+    }, 30000)
+    return () => clearTimeout(timer)
+  }, [answers, exam, hasStarted])
 
   const handleStart = () => {
     if (!exam) return
@@ -424,6 +463,18 @@ export default function CandidateAssessmentPage() {
             </p>
           </div>
 
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-border bg-muted/20">
+            <input
+              type="checkbox"
+              checked={recordingConsent}
+              onChange={(e) => setRecordingConsent(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
+            />
+            <span className="text-xs text-muted-foreground leading-relaxed">
+              I consent to session recording (webcam and screen) during this assessment. The recording is used solely for proctoring integrity verification and will be stored securely.
+            </span>
+          </label>
+
           <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
             Start Assessment Now
           </Button>
@@ -475,6 +526,7 @@ export default function CandidateAssessmentPage() {
     <>
       <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined}>
       <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted}>
+      <SessionRecorder sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted && recordingConsent} />
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 border-b border-border bg-card px-6 py-3 flex items-center justify-between shadow-xs">
@@ -483,8 +535,18 @@ export default function CandidateAssessmentPage() {
           <p className="text-xs text-muted-foreground">Question {currentQIndex + 1} of {exam.questionList.length}</p>
         </div>
         <div className="flex items-center gap-4">
+          {recordingConsent && hasStarted && (
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-red-500">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+              </span>
+              Recording
+            </div>
+          )}
           <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border font-mono font-bold ${
-            (timeLeft || 0) < 300 ? 'bg-red-500/10 border-red-500/30 text-red-600' : 'bg-muted/50 border-border'
+            (timeLeft || 0) < 300 ? 'bg-red-500/10 border-red-500/30 text-red-600' :
+            (timeLeft || 0) <= 1800 ? 'bg-amber-500/10 border-amber-500/30 text-amber-600' : 'bg-muted/50 border-border'
           }`}>
             <Clock className="h-4 w-4" />
             {formatTime(timeLeft || 0)} Remaining
