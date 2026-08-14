@@ -68,7 +68,7 @@ export function calculateCheatingScore(events: AnswerEvent[]): CheatingScore {
     const times = answerEvents.map(e => e.timeSpent)
     const mean = times.reduce((a, b) => a + b, 0) / times.length
     const variance = times.reduce((a, b) => a + (b - mean) ** 2, 0) / times.length
-    const cv = Math.sqrt(variance) / (mean || 1) // coefficient of variation
+    const cv = mean === 0 ? 0 : Math.sqrt(variance) / mean // coefficient of variation
 
     if (cv < UNIFORM_TIMING_THRESHOLD) {
       patternScore = UNIFORM_TIMING_PENALTY

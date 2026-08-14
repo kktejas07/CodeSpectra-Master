@@ -48,17 +48,45 @@ export interface DeviceFingerprintDoc {
   blocked_reason?: string
 }
 
+/**
+ * Check if an IP address matches any blocked entry, supporting CIDR notation.
+ */
+function ipToNumber(ip: string): number | null {
+  const parts = ip.split('.').map(Number)
+  if (parts.length !== 4 || parts.some(isNaN)) return null
+  return (parts[0] << 24 | parts[1] << 16 | parts[2] << 8 | parts[3]) >>> 0
+}
+
+function isIpInCidr(ip: string, cidr: string): boolean {
+  if (!cidr.includes('/')) {
+    return ip === cidr
+  }
+  const [network, prefixStr] = cidr.split('/')
+  const prefix = parseInt(prefixStr, 10)
+  if (isNaN(prefix) || prefix < 0 || prefix > 32) return false
+
+  const ipNum = ipToNumber(ip)
+  const netNum = ipToNumber(network)
+  if (ipNum === null || netNum === null) return false
+
+  const mask = prefix === 0 ? 0 : (~((1 << (32 - prefix)) - 1)) >>> 0
+  return (ipNum & mask) === (netNum & mask)
+}
+
 /** Look up whether an IP is currently blocked. */
 export async function isIpBlocked(ip: string | null): Promise<boolean> {
   if (!ip) return false
   try {
     const db = await getMongoDb()
-    const hit = await db.collection('security_blocklist').findOne({
-      ip,
+    const entries = await db.collection('security_blocklist').find({
       active: true,
       $or: [{ expires_at: { $exists: false } }, { expires_at: null }, { expires_at: { $gt: nowIso() } }],
+    }).toArray()
+
+    return entries.some(entry => {
+      const blockedIp = String(entry.ip)
+      return isIpInCidr(ip, blockedIp)
     })
-    return Boolean(hit)
   } catch {
     return false
   }

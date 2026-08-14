@@ -12,7 +12,7 @@ from typing import Any
 from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-from core.dependencies import _redis_client, REDIS_AVAILABLE
+from core.dependencies import ensure_redis_client, REDIS_AVAILABLE
 
 import time
 from collections import defaultdict
@@ -28,26 +28,28 @@ async def rate_limit_ai_requests(request: Request) -> None:
     client_ip = client_ip.split(",")[0].strip()
 
     # Try Redis-backed rate limiting first if available
-    if REDIS_AVAILABLE and _redis_client:
-        try:
-            # Use a Redis key based on client IP
-            redis_key = f"ai_rate_limit:{client_ip}"
-            # Increment and check if we're over the limit
-            current = await _redis_client.incr(redis_key)
-            if current == 1:
-                # First request in this window, set expiration
-                await _redis_client.expire(redis_key, AI_RATE_WINDOW_SECONDS)
-            if current > AI_MAX_REQUESTS_PER_MINUTE:
-                # Calculate retry after based on TTL
-                ttl = await _redis_client.ttl(redis_key)
-                raise HTTPException(
-                    status_code=429,
-                    detail="Rate limit exceeded for AI endpoints. Please wait before retrying.",
-                )
-            return  # Success, rate limit check passed
-        except Exception:
-            # Fall back to in-memory rate limiting on Redis error
-            pass
+    if REDIS_AVAILABLE:
+        client = await ensure_redis_client()
+        if client:
+            try:
+                # Use a Redis key based on client IP
+                redis_key = f"ai_rate_limit:{client_ip}"
+                # Increment and check if we're over the limit
+                current = await client.incr(redis_key)
+                if current == 1:
+                    # First request in this window, set expiration
+                    await client.expire(redis_key, AI_RATE_WINDOW_SECONDS)
+                if current > AI_MAX_REQUESTS_PER_MINUTE:
+                    raise HTTPException(
+                        status_code=429,
+                        detail="Rate limit exceeded for AI endpoints. Please wait before retrying.",
+                    )
+                return  # Success, rate limit check passed
+            except HTTPException:
+                raise
+            except Exception:
+                # Fall back to in-memory rate limiting on Redis error
+                pass
 
     # Fall back to in-process rate limiting
     now = time.time()

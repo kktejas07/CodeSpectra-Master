@@ -127,8 +127,15 @@ export async function POST(req: NextRequest) {
     const col = await emailCampaigns()
     await col.insertOne(campaign)
 
-    // Execute campaign in background
-    executeCampaign(campaign).catch(e => console.error('[newsletter] campaign execution error:', e))
+    // Execute campaign with proper error handling
+    executeCampaign(campaign).catch(e => {
+      console.error('[newsletter] campaign execution error:', e)
+      // Update campaign status to failed on error
+      col.updateOne(
+        { id: campaign.id },
+        { $set: { status: 'failed', completed_at: nowIso() } }
+      ).catch(dbErr => console.error('[newsletter] failed to update campaign status:', dbErr))
+    })
 
     return NextResponse.json({ ok: true, campaign_id: campaign.campaign_id, recipients_count: subsCount, status: 'sending' })
   } catch (e) {
@@ -150,27 +157,38 @@ async function executeCampaign(campaign: EmailCampaignDoc) {
 
     let emailOk = 0, emailFail = 0, pushOk = 0, pushFail = 0, inAppOk = 0, whatsappOk = 0, whatsappFail = 0
 
-    // Email channel
+    // Email channel - batch sends with concurrency control
     if (campaign.channels.email) {
       const { renderNewsletterHtml } = await import('@/lib/newsletter-html')
       const hmacSecret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'codespectra-default-secret'
+      const EMAIL_BATCH_SIZE = 10
+      const EMAIL_CONCURRENCY = 5
+      // Pre-render HTML for each subscriber (personalized unsubscribe links)
+      const emailTasks: { email: string; html: string }[] = []
       for (const sub of subs) {
         const email = String(sub.email)
-        try {
-          const hmacToken = createHmac('sha256', hmacSecret).update(email.toLowerCase()).digest('hex').slice(0, 16)
-          const html = renderNewsletterHtml({
-            subject: campaign.subject,
-            hero_image: campaign.hero_image,
-            intro: campaign.intro,
-            body: campaign.body,
-            cta_text: campaign.cta_text,
-            cta_url: campaign.cta_url,
-          }).replace(/__EMAIL__/g, encodeURIComponent(email))
-            .replace(/unsubscribe\?email=[^"]*/, `unsubscribe?email=${encodeURIComponent(email)}&t=${hmacToken}`)
-          await sendEmail(email, { subject: campaign.subject, html })
-          emailOk++
-        } catch {
-          emailFail++
+        const hmacToken = createHmac('sha256', hmacSecret).update(email.toLowerCase()).digest('hex').slice(0, 16)
+        const html = renderNewsletterHtml({
+          subject: campaign.subject,
+          hero_image: campaign.hero_image,
+          intro: campaign.intro,
+          body: campaign.body,
+          cta_text: campaign.cta_text,
+          cta_url: campaign.cta_url,
+        }).replace(/__EMAIL__/g, encodeURIComponent(email))
+          .replace(/unsubscribe\?email=[^"]*/, `unsubscribe?email=${encodeURIComponent(email)}&t=${hmacToken}`)
+        emailTasks.push({ email, html })
+      }
+
+      // Process in concurrent batches
+      for (let i = 0; i < emailTasks.length; i += EMAIL_BATCH_SIZE) {
+        const batch = emailTasks.slice(i, i + EMAIL_BATCH_SIZE)
+        const results = await Promise.allSettled(
+          batch.map(({ email, html }) => sendEmail(email, { subject: campaign.subject, html }))
+        )
+        for (const r of results) {
+          if (r.status === 'fulfilled') emailOk++
+          else emailFail++
         }
       }
     }

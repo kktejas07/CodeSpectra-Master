@@ -5,7 +5,7 @@ import Link from 'next/link'
 import {
   Users, BarChart3, Shield, Activity, Server, Lock, Settings,
   Cpu, HardDrive, MemoryStick, Container, RefreshCw, Trash2,
-  Terminal, Zap, Clock
+  Terminal, Zap, Clock, Database, ArrowRight
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -31,6 +31,20 @@ interface ServerStats {
   containers: { count: number; list: Array<{ name: string; status: string; cpu: string; memory: string }> }
   piston: { status: string; runtimes: number; queue: number }
   node: { heapUsed: number; heapTotal: number; rss: number }
+}
+
+interface RedisStatus {
+  configured: boolean
+  connected: boolean
+  mode: 'redis' | 'upstash-rest' | null
+  latencyMs?: number
+  memoryUsedMb?: number
+  connectedClients?: number
+  opsPerSec?: number
+  uptimeSec?: number
+  keyspace?: number
+  rateLimitKeys?: { key: string; count: number; ttlSec: number }[]
+  error?: string
 }
 
 function fmtBytes(b: number): string {
@@ -67,6 +81,7 @@ export default function SystemAdminDashboard() {
   const [summary, setSummary] =
     useState<NonNullable<AnalyticsDashboardProps['summary']> | undefined>()
   const [server, setServer] = useState<ServerStats | null>(null)
+  const [redis, setRedis] = useState<RedisStatus | null>(null)
   const [refreshing, setRefreshing] = useState(false)
   const [clearing, setClearing] = useState<string | null>(null)
 
@@ -104,6 +119,14 @@ export default function SystemAdminDashboard() {
     finally { setRefreshing(false) }
   }, [])
 
+  const fetchRedisStatus = useCallback(async () => {
+    try {
+      const res = await fetch('/api/admin/redis/status', { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setRedis(json)
+    } catch { /* ignore */ }
+  }, [])
+
   const copyCmd = (cmd: string) => {
     navigator.clipboard.writeText(cmd).then(() => {
       addToast({ type: 'success', title: 'Copied', message: 'SSH command copied to clipboard' })
@@ -139,15 +162,18 @@ export default function SystemAdminDashboard() {
     if (!gate.ready) return
     let cancelled = false
     ; (async () => {
-      await Promise.all([fetchMetrics(), fetchServerStats()])
+      await Promise.all([fetchMetrics(), fetchServerStats(), fetchRedisStatus()])
       if (!cancelled) setLoading(false)
     })()
-    const interval = setInterval(fetchServerStats, 30000)
+    const interval = setInterval(() => {
+      fetchServerStats()
+      fetchRedisStatus()
+    }, 30000)
     return () => {
       cancelled = true
       clearInterval(interval)
     }
-  }, [gate.ready, fetchMetrics, fetchServerStats])
+  }, [gate.ready, fetchMetrics, fetchServerStats, fetchRedisStatus])
 
   const p = DASHBOARD_ROUTES.platform
 
@@ -355,6 +381,96 @@ export default function SystemAdminDashboard() {
                   </Button>
                 </div>
               </div>
+            </Card>
+
+            {/* Redis health + live rate-limit counters */}
+            <Card className="p-5 lg:col-span-2">
+              <div className="flex items-center justify-between mb-3">
+                <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
+                  <Database className="h-4 w-4 text-muted-foreground" /> Redis & rate limiting
+                </h3>
+                <div className="flex items-center gap-2">
+                  {redis?.configured && (
+                    <Badge
+                      variant={redis.connected ? 'default' : 'destructive'}
+                      className="text-[10px] px-1 py-0"
+                    >
+                      {redis.connected ? 'Connected' : 'Disconnected'}
+                    </Badge>
+                  )}
+                  <Button variant="ghost" size="icon" className="h-7 w-7" onClick={fetchRedisStatus}>
+                    <RefreshCw className={`h-3.5 w-3.5 ${refreshing ? 'animate-spin' : ''}`} />
+                  </Button>
+                </div>
+              </div>
+
+              {!redis ? (
+                <p className="text-xs text-muted-foreground">Loading Redis status…</p>
+              ) : !redis.configured ? (
+                <div className="rounded-md border border-dashed p-4 text-center">
+                  <p className="text-xs text-muted-foreground">Redis not configured.</p>
+                  <Link href="/dashboard/admin/settings?section=redis" className="mt-2 inline-flex items-center gap-1 text-xs text-primary hover:underline">
+                    Configure in settings <ArrowRight className="h-3 w-3" />
+                  </Link>
+                </div>
+              ) : redis.error ? (
+                <p className="text-xs text-destructive">Connection failed: {redis.error}</p>
+              ) : (
+                <div className="grid grid-cols-2 gap-3 md:grid-cols-5">
+                  <div className="rounded-md bg-muted/30 px-3 py-2">
+                    <p className="text-[10px] text-muted-foreground">Mode</p>
+                    <p className="text-sm font-medium text-foreground capitalize">{redis.mode === 'upstash-rest' ? 'Upstash REST' : 'Self-hosted'}</p>
+                  </div>
+                  <div className="rounded-md bg-muted/30 px-3 py-2">
+                    <p className="text-[10px] text-muted-foreground">Latency</p>
+                    <p className="text-sm font-medium text-foreground">{redis.latencyMs != null ? `${redis.latencyMs}ms` : '—'}</p>
+                  </div>
+                  {redis.memoryUsedMb != null && (
+                    <div className="rounded-md bg-muted/30 px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground">Memory</p>
+                      <p className="text-sm font-medium text-foreground">{redis.memoryUsedMb} MB</p>
+                    </div>
+                  )}
+                  {redis.connectedClients != null && (
+                    <div className="rounded-md bg-muted/30 px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground">Clients</p>
+                      <p className="text-sm font-medium text-foreground">{redis.connectedClients}</p>
+                    </div>
+                  )}
+                  {redis.opsPerSec != null && (
+                    <div className="rounded-md bg-muted/30 px-3 py-2">
+                      <p className="text-[10px] text-muted-foreground">Ops / sec</p>
+                      <p className="text-sm font-medium text-foreground">{redis.opsPerSec.toLocaleString()}</p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {redis?.connected && redis.keyspace != null && (
+                <div className="mt-4">
+                  <p className="mb-2 text-xs font-semibold text-foreground">
+                    Live rate-limit counters <span className="text-muted-foreground font-normal">({redis.keyspace} keys)</span>
+                  </p>
+                  {redis.rateLimitKeys && redis.rateLimitKeys.length > 0 ? (
+                    <div className="max-h-[220px] overflow-y-auto space-y-1.5">
+                      {redis.rateLimitKeys.map((k) => (
+                        <div key={k.key} className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-1.5 text-xs">
+                          <span className="font-mono truncate max-w-[55%]" title={k.key}>{k.key}</span>
+                          <div className="flex items-center gap-3 text-muted-foreground">
+                            <span>{k.count} hits</span>
+                            <span className="text-[10px]">{k.ttlSec}s TTL</span>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  ) : (
+                    <p className="text-xs text-muted-foreground">No active counters — no one is currently rate-limited.</p>
+                  )}
+                  <p className="mt-2 text-[10px] text-muted-foreground">
+                    Counters are ephemeral (fixed windows / 60s) and auto-expire. For historical usage stats, events are logged to MongoDB instead.
+                  </p>
+                </div>
+              )}
             </Card>
           </div>
         </div>

@@ -6,6 +6,16 @@ import { nowIso } from '@/lib/db/ai'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// Validate IP or CIDR notation
+function isValidIpOrCidr(ip: string): boolean {
+  const cidrRegex = /^(\d{1,3}\.){3}\d{1,3}(\/\d{1,2})?$/
+  if (cidrRegex.test(ip)) {
+    const parts = ip.split('/')[0].split('.').map(Number)
+    return parts.every(p => p >= 0 && p <= 255)
+  }
+  return false
+}
+
 export async function GET() {
   const gate = await requireAdmin()
   if ('error' in gate) {
@@ -41,6 +51,11 @@ export async function POST(req: Request) {
 
     if (!body.ip) {
       return NextResponse.json({ error: 'IP address is required' }, { status: 400 })
+    }
+
+    // Validate IP or CIDR format
+    if (!isValidIpOrCidr(body.ip)) {
+      return NextResponse.json({ error: 'Invalid IP or CIDR format (e.g., 192.168.1.1 or 192.168.1.0/24)' }, { status: 400 })
     }
 
     const db = await getMongoDb()
