@@ -145,6 +145,7 @@ export async function POST(
       exam_id: examId,
       user_id: userId,
       email: email,
+      source: inviteToken ? 'invite' : 'public_link',
       answers,
       score: totalScore,
       max_score: maxScore,

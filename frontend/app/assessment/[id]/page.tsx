@@ -188,6 +188,8 @@ export default function CandidateAssessmentPage() {
             return
           }
           // Logged in — allow access regardless of access_type
+          // Track public link view (fire-and-forget)
+          fetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
         } else if (accType === 'invite_only') {
           if (!inviteToken) {
             setAccessError('This assessment is invite-only. A valid invitation link is required.')
