@@ -22,7 +22,16 @@ export async function GET(
     const exam = owned.doc
 
     const submission = await db.collection('exam_submissions').findOne({ exam_id: examId, user_id: userId })
-    if (!submission) return NextResponse.json({ error: 'No submission found' }, { status: 404 })
+    if (!submission) {
+      // Exam exists but no submission — candidate may not have completed
+      return NextResponse.json({
+        examTitle: exam.title,
+        questions: Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : []),
+        submission: null,
+        proctorEvents: [],
+        candidate: { name: 'Unknown', email: '' },
+      })
+    }
 
     const events = await db.collection('proctor_events').find({
       user_id: userId,

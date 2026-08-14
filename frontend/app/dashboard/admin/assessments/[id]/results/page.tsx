@@ -295,6 +295,11 @@ export default function ExamResultsPage() {
       const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load review')
+      if (!json.submission) {
+        addToast({ type: 'info', title: 'No submission found — candidate may not have completed the assessment' })
+        setReviewCandidate(null)
+        return
+      }
       setReviewData(json)
     } catch {
       addToast({ type: 'error', title: 'Failed to load submission details' })
