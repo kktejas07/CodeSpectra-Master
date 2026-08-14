@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 
@@ -12,7 +12,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
-  const rateCheck = rateLimitSlidingWindow(`change-pw:${gate.user.id}`, 3, 60_000)
+  const rateCheck = await rateLimitRedis(`change-pw:${gate.user.id}`, 3, 60_000)
   if (!rateCheck.ok) {
     return NextResponse.json(
       { error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.` },

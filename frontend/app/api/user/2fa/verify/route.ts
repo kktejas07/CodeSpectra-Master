@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { TOTP } from 'otplib'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { rateLimitSlidingWindow } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export async function POST(req: NextRequest) {
   const gate = await requireAuth()
@@ -10,7 +10,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
-  const rateCheck = rateLimitSlidingWindow(`2fa:verify:${gate.user.id}`, 5, 60_000)
+  const rateCheck = await rateLimitRedis(`2fa:verify:${gate.user.id}`, 5, 60_000)
   if (!rateCheck.ok) {
     return NextResponse.json(
       { error: `Too many attempts. Try again in ${rateCheck.retryAfterSec}s.` },

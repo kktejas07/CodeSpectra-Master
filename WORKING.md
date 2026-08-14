@@ -10,6 +10,7 @@
 |---|---|---|---|---|
 | opencode (port 49847) | Redis/rate-limiting wiring (v0.22.7) | backend/core/dependencies.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/components/dashboard/settings/redis-section.tsx, frontend/app/api/admin/redis/ | DONE — committed `4a12d61` | 2026-08-13 ~22:05 |
 | opencode (this session) | Deploying v0.22.7 batch to prod (frontend + backend) | server repos (rsync — server git tokens expired) | DONE — frontend + backend rebuilt, services converged, verified | 2026-08-13 ~22:25 |
+| opencode (this session) | v0.22.8 → Redis hardening: backend rate-limit fix + Redis-backed route limiters + scheduler lock (caches/edge SKIPPED — see AGENTS.md) | backend/core/dependencies.py, backend/services/ai.py, backend/routers/ai.py, frontend/lib/upstash-rate-limit.ts, frontend/lib/scheduler.ts, frontend/app/api/** (20 route callers), docs/devops/02-Docker-Architecture.md | DONE — uncommitted in working tree, build verify + commit pending | 2026-08-13 ~23:10 |
 
 ## Rules (see AGENTS.md for full text)
 

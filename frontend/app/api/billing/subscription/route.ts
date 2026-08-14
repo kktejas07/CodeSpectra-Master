@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { PaymentService } from '@/lib/payment-service'
 import { billingSubscriptions, nowIso } from '@/lib/db/billing'
-import { rateLimitAI } from '@/lib/in-memory-rate-limit'
+import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -26,7 +26,7 @@ export async function PUT(req: NextRequest) {
     const user = await getAPIUser()
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-    const rateCheck = rateLimitAI(req, user.id)
+    const rateCheck = await rateLimitAIRedis(req, user.id)
     if (!rateCheck.ok) {
       return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
     }

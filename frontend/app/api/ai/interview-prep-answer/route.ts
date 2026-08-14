@@ -3,7 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { generateObject } from 'ai'
 import { openai } from '@ai-sdk/openai'
 import { z } from 'zod'
-import { rateLimitAI } from '@/lib/in-memory-rate-limit'
+import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  const rateCheck = rateLimitAI(req, user.id)
+  const rateCheck = await rateLimitAIRedis(req, user.id)
   if (!rateCheck.ok) {
     return NextResponse.json(
       { error: `Rate limit exceeded. Try again in ${rateCheck.retryAfterSec}s.` },

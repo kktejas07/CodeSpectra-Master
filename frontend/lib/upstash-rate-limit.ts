@@ -23,6 +23,8 @@ interface RedisClientLike {
   pipeline: () => any
   info?: () => Promise<string>
   scan?: (cursor: string | number, ...args: unknown[]) => Promise<[string, string[]]>
+  set?: (key: string, value: string, ...args: unknown[]) => Promise<'OK' | null>
+  del?: (...keys: string[]) => Promise<number>
 }
 
 let _redisClient: RedisClientLike | null = null
@@ -220,20 +222,18 @@ export async function redisStatus(): Promise<RedisStatus> {
 
 /**
  * Fixed-window limiter: at most `maxHits` per `windowMs` bucket (aligned to wall clock).
+ * Redis-backed when configured, degrades to the in-process sliding window on error.
+ * `redisKey` is the full key used in Redis (prefix + namespace + identity + bucket).
  */
-export async function rateLimitGenerateFixes(
-  request: Request,
-  userId: string | null,
+export async function rateLimitFixedWindow(
+  redisKey: string,
+  memoryKey: string,
+  maxHits: number,
+  windowMs: number,
 ): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
-  const windowMs = 10 * 60 * 1000
-  const maxHits = userId ? 24 : 10
-  const key = clientLimiterKeyFromRequest(request, userId)
-  const bucket = Math.floor(Date.now() / windowMs)
-  const redisKey = `codespectra:rl:generate-fixes:${key}:${bucket}`
-
   const { url, token } = await resolveConfig()
   if (!url || !token) {
-    return rateLimitSlidingWindow(`generate-fixes:${key}`, maxHits, windowMs)
+    return rateLimitSlidingWindow(memoryKey, maxHits, windowMs)
   }
   const ttlSec = Math.ceil(windowMs / 1000) + 30
 
@@ -273,6 +273,111 @@ export async function rateLimitGenerateFixes(
     return { ok: true }
   } catch (e) {
     console.warn('[CodeSpectra] Redis rate limit failed, using memory:', (e as Error).message)
-    return rateLimitSlidingWindow(`generate-fixes:${key}`, maxHits, windowMs)
+    return rateLimitSlidingWindow(memoryKey, maxHits, windowMs)
   }
+}
+
+/**
+ * Distributed lock via `SET NX EX` (set-if-not-exists with expiry). Returns
+ * true only if THIS process won the lock; the lock auto-releases after
+ * `ttlSec` or when the holder calls `releaseRedisLock`. Falls back to
+ * "lock acquired" (true) when Redis is unconfigured so single-instance /
+ * dev environments are unaffected.
+ */
+export async function acquireRedisLock(
+  key: string,
+  ttlSec: number,
+): Promise<boolean> {
+  const { url, token } = await resolveConfig()
+  if (!url || !token) return true
+
+  try {
+    if (/^https?:\/\//i.test(url)) {
+      const base = url.replace(/\/$/, '')
+      const res = await fetch(base, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([['SET', key, '1', 'NX', 'EX', ttlSec]]),
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!res.ok) return true // Redis issue → behave like a lock held by no one (proceed)
+      const json = (await res.json()) as { result?: unknown }
+      return json.result === 'OK'
+    }
+
+    const client = await getRedisClient(url, token)
+    const result = await client.set?.(key, '1', 'EX', ttlSec, 'NX')
+    return result === 'OK'
+  } catch (e) {
+    console.warn('[CodeSpectra] Redis lock failed, proceeding unlocked:', (e as Error).message)
+    return true
+  }
+}
+
+/**
+ * Release a lock previously held by this process (`DEL`). Best-effort — the
+ * TTL is the real safety net if this never runs.
+ */
+export async function releaseRedisLock(key: string): Promise<void> {
+  const { url, token } = await resolveConfig()
+  if (!url || !token) return
+  try {
+    if (/^https?:\/\//i.test(url)) {
+      const base = url.replace(/\/$/, '')
+      await fetch(base, {
+        method: 'POST',
+        headers: { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' },
+        body: JSON.stringify([['DEL', key]]),
+        signal: AbortSignal.timeout(8000),
+      })
+      return
+    }
+    const client = await getRedisClient(url, token)
+    await client.del?.(key)
+  } catch { /* best-effort */ }
+}
+
+/**
+ * Generic Redis-backed fixed-window limiter with the same signature as the
+ * in-process `rateLimitSlidingWindow`, so route handlers migrate by adding
+ * `await` and swapping the import. Key space: `codespectra:rl:{key}:{bucket}`.
+ *
+ * ponytail: this is a wall-clock-aligned FIXED window (atomic INCR/EXPIRE),
+ * not the timestamp list of the in-memory sliding window — a burst straddling
+ * a bucket boundary can pass up to 2x the limit. Acceptable for these auth/AI
+ * limits; upgrade path is the sliding-window Lua script if tighter bounds are
+ * ever needed.
+ */
+export async function rateLimitRedis(
+  key: string,
+  maxHits: number,
+  windowMs: number,
+): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
+  const bucket = Math.floor(Date.now() / windowMs)
+  const redisKey = `codespectra:rl:${key}:${bucket}`
+  return rateLimitFixedWindow(redisKey, key, maxHits, windowMs)
+}
+
+/**
+ * Generate-fixes limiter: 24 req / 10 min authenticated, 10 anonymous.
+ */
+export async function rateLimitGenerateFixes(
+  request: Request,
+  userId: string | null,
+): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
+  const windowMs = 10 * 60 * 1000
+  const maxHits = userId ? 24 : 10
+  const key = clientLimiterKeyFromRequest(request, userId)
+  return rateLimitRedis(`generate-fixes:${key}`, maxHits, windowMs)
+}
+
+/**
+ * AI limiter: 30 req/min authenticated, 5 anonymous. Redis-backed when configured.
+ */
+export async function rateLimitAIRedis(
+  request: Request,
+  userId: string | null,
+): Promise<{ ok: true } | { ok: false; retryAfterSec: number }> {
+  const key = clientLimiterKeyFromRequest(request, userId)
+  return rateLimitRedis(`ai:${key}`, userId ? 30 : 5, 60_000)
 }
