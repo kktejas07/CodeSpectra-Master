@@ -33,6 +33,7 @@ export function WhatsAppSettingsSection() {
     openwa_send_delay_ms: '400',
   })
   const [maskedApiKey, setMaskedApiKey] = useState<string | null>(null)
+  const [hasStoredApiKey, setHasStoredApiKey] = useState(false)
 
   useEffect(() => {
     async function load() {
@@ -48,8 +49,9 @@ export function WhatsAppSettingsSection() {
           openwa_max_concurrency: s.openwa_max_concurrency || '3',
           openwa_send_delay_ms: s.openwa_send_delay_ms || '400',
         })
-        if (s.openwa_api_key) {
-          setMaskedApiKey(s.openwa_api_key)
+        setHasStoredApiKey(Boolean(s.has_openwa_api_key))
+        if (s.openwa_api_key_masked) {
+          setMaskedApiKey(s.openwa_api_key_masked)
         }
       } catch { /* ignore */ }
       finally { setLoading(false) }
@@ -100,7 +102,11 @@ export function WhatsAppSettingsSection() {
     return <div className="flex items-center justify-center py-12 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>
   }
 
-  const isConfigured = !!(maskedApiKey || config.openwa_api_key)
+  const isConfigured = !!(
+    config.openwa_base_url.trim() &&
+    config.openwa_session_id.trim() &&
+    (hasStoredApiKey || maskedApiKey || config.openwa_api_key)
+  )
 
   return (
     <Card className="rounded-xl border-border/60 shadow-sm">

@@ -8,6 +8,15 @@ import { renderNewsletterHtml } from '@/lib/newsletter-html'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// Gmail truncates messages whose HTML gets close to 102KB. Warn well before.
+const GMAIL_CLIP_THRESHOLD_BYTES = 95 * 1024
+
+function clipWarning(html: string): string | undefined {
+  const bytes = Buffer.byteLength(html, 'utf8')
+  if (bytes < GMAIL_CLIP_THRESHOLD_BYTES) return undefined
+  return `This newsletter renders to ~${(bytes / 1024).toFixed(0)}KB of HTML. Gmail clips emails near 102KB ("[Message clipped]") — shorten the content or remove pasted styling/images.`
+}
+
 export async function POST(req: NextRequest) {
   const gate = await requireSuperAdmin()
   if ('error' in gate) {
@@ -34,7 +43,7 @@ export async function POST(req: NextRequest) {
       cta_text: body.cta_text,
       cta_url: body.cta_url,
     })
-    return NextResponse.json({ ok: true, html })
+    return NextResponse.json({ ok: true, html, warning: clipWarning(html) })
   }
 
   // Send test email
@@ -63,7 +72,7 @@ export async function POST(req: NextRequest) {
     console.log('[newsletter] test send:', { to, subject, bodyLen: (body.body || '').length, htmlLen: html.length })
 
     const result = await sendEmail(to, { subject: `[Test] ${subject}`, html })
-    return NextResponse.json({ ok: true, sent: true, provider: result.provider })
+    return NextResponse.json({ ok: true, sent: true, provider: result.provider, warning: clipWarning(html) })
   } catch (e) {
     console.error('[newsletter] test send error:', e)
     return NextResponse.json({ error: 'Failed to send test email' }, { status: 500 })

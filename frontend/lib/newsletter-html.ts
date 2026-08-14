@@ -14,8 +14,12 @@ export function renderNewsletterHtml(params: {
   const { subject, hero_image, intro, body, cta_text, cta_url } = params
 
   // Strip script tags for safety
-  const safeBody = (body || '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
-  const safeIntro = (intro || '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  const rawBody = (body || '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  const rawIntro = (intro || '').replace(/<script\b[^<]*(?:(?!<\/script>)<[^<]*)*<\/script>/gi, '')
+  // Minify pasted/editor HTML: pasting from web pages drags in huge inline
+  // style/class bloat that can push the email past Gmail's ~102KB clip limit.
+  const safeBody = minifyBody(rawBody)
+  const safeIntro = escapeHtml(rawIntro)
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -35,7 +39,7 @@ export function renderNewsletterHtml(params: {
         </td></tr>
 
         <!-- Hero Image -->
-        ${hero_image ? `<tr><td style="padding-bottom:24px"><img src="${hero_image}" alt="" style="width:100%;border-radius:12px;display:block" /></td></tr>` : ''}
+        ${hero_image ? `<tr><td style="padding-bottom:24px"><img src="${escapeHtml(hero_image)}" alt="" style="width:100%;border-radius:12px;display:block" /></td></tr>` : ''}
 
         <!-- Card -->
         <tr><td style="background-color:#ffffff;border-radius:12px;padding:32px;box-shadow:0 1px 3px rgba(0,0,0,0.08)">
@@ -43,7 +47,7 @@ export function renderNewsletterHtml(params: {
           <h1 style="font-size:22px;font-weight:700;color:#18181b;margin:0 0 16px;line-height:1.3;padding:0">${escapeHtml(subject)}</h1>
 
           <!-- Intro -->
-          ${safeIntro ? `<p style="font-size:15px;color:#52525b;line-height:1.65;margin:0 0 16px;padding:0">${escapeHtml(safeIntro)}</p>` : ''}
+          ${safeIntro ? `<p style="font-size:15px;color:#52525b;line-height:1.65;margin:0 0 16px;padding:0">${safeIntro}</p>` : ''}
 
           <!-- Body (HTML content from rich text editor) -->
           ${safeBody ? `<div style="font-size:15px;color:#18181b;line-height:1.65;margin:0 0 24px;padding:0">${safeBody}</div>` : ''}
@@ -86,4 +90,25 @@ function escapeHtml(str: string): string {
     .replace(/</g, '&lt;')
     .replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;')
+}
+
+/**
+ * Compact HTML produced by contentEditable pastes. Content pasted from web
+ * pages carries per-element style/class attributes that can inflate an email
+ * past Gmail's ~102KB clip threshold. The rich-text toolbar of this app only
+ * emits semantic tags (h1/h2/b/i/u/a/ul/li/blockquote/pre/img/hr), so removing
+ * presentational attributes and empty spans is safe here.
+ */
+function minifyBody(html: string): string {
+  // Attributes that carry presentational/paste noise and are safe to drop.
+  const bloated = /\s+(?:style|class|id|dir|contenteditable|spellcheck|role|width|height|border|cellpadding|cellspacing|align|valign|bgcolor|face|size|color)(?:\s*=\s*(?:"[^"]*"|'[^']*'|[^\s"'=<>`]+))?/gi
+  return html
+    .replace(/<!--[\s\S]*?-->/g, '')               // comments
+    .replace(/\s+xmlns(?:\s*=\s*(?:"[^"]*"|'[^']*'))?/gi, '') // Office paste namespaces
+    .replace(/\s+xml:[a-z-]+(?:\s*=\s*(?:"[^"]*"|'[^']*'))?/gi, '')
+    .replace(/<\/?o:p[^>]*>/gi, '')                 // Office paste tags
+    .replace(/<\/?span[^>]*>/gi, '')                // spans carry no semantics here
+    .replace(bloated, '')
+    .replace(/>\s+</g, '><')                        // collapse inter-tag whitespace
+    .trim()
 }

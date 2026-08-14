@@ -21,8 +21,9 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'openai_api_key',
   'groq_api_key',
   'opencode_api_key',
-  'nvidia_api_key',
   'openrouter_api_key',
+  'openwa_api_key',
+  'nvidia_api_key',
   'cloudflare_api_token',
   'phonepe_salt_key',
   'phonepe_webhook_secret',
@@ -54,6 +55,11 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'phonepe_merchant_id',
   'phonepe_salt_index',
   'upstash_redis_rest_url',
+  'openwa_base_url',
+  'openwa_session_id',
+  'openwa_default_country_code',
+  'openwa_max_concurrency',
+  'openwa_send_delay_ms',
 ]
 
 const ALL_FIELDS: (keyof ServerSecretsRecord)[] = [...SECRET_FIELDS, ...PLAIN_FIELDS]

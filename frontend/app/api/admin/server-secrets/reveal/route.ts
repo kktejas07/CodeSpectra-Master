@@ -13,6 +13,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'anthropic_api_key',
   'gemini_api_key',
   'openai_api_key',
+  'openwa_api_key',
   'cloudflare_api_token',
   'phonepe_salt_key',
   'phonepe_webhook_secret',
