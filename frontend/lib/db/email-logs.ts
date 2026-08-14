@@ -210,26 +210,27 @@ export async function getEmailDeliveryStats(filters: {
   const [byDomain, byCountry, byCategory, bounceReasons] = await Promise.all([
     col.aggregate([
       { $match: match },
-      { $group: { _id: { $substr: ['$to_email', 0, { $indexOfBytes: ['$to_email', '@'] }], count: { $sum: 1 } } },
+      { $addFields: { domain: { $arrayElemAt: [{ $split: ['$to_email', '@'] }, 1] } } },
+      { $group: { _id: '$domain', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 20 },
-    ]).toArray(),
+    ]).toArray() as Promise<{ _id: string; count: number }[]>,
     col.aggregate([
       { $match: { ...match, 'geo.country': { $exists: true, $ne: '' } } },
       { $group: { _id: '$geo.country', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 20 },
-    ]).toArray(),
+    ]).toArray() as Promise<{ _id: string; count: number }[]>,
     col.aggregate([
       { $match: match },
       { $group: { _id: '$category', count: { $sum: 1 } } },
-    ]).toArray(),
+    ]).toArray() as Promise<{ _id: string; count: number }[]>,
     col.aggregate([
       { $match: { ...match, delivery_status: { $in: ['bounced', 'failed'] }, delivery_error: { $exists: true, $ne: null } } },
       { $group: { _id: '$delivery_error', count: { $sum: 1 } } },
       { $sort: { count: -1 } },
       { $limit: 20 },
-    ]).toArray(),
+    ]).toArray() as Promise<{ _id: string; count: number }[]>,
   ])
 
   return {

@@ -54,6 +54,13 @@ export async function POST(
       return NextResponse.json({ error: 'Authentication or invitation token required' }, { status: 401 })
     }
 
+    // Ensure we have an identity for share-link / public-access candidates
+    if (!userId && !email) {
+      return NextResponse.json({ error: 'Unable to identify candidate. Please ensure you are logged in.' }, { status: 401 })
+    }
+    if (!userId) userId = `candidate_${email}`
+    if (!email) email = `user_${userId}@codespectra.local`
+
     // IP blocking check (supports CIDR notation) — reuse shared matcher from
     // lib/db/security.ts instead of duplicating the bit-math inline.
     const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
