@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, MessageCircle, Eye, EyeOff, Save } from 'lucide-react'
+import { Loader2, MessageCircle, Eye, EyeOff, Save, Wifi } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -34,6 +34,8 @@ export function WhatsAppSettingsSection() {
   })
   const [maskedApiKey, setMaskedApiKey] = useState<string | null>(null)
   const [hasStoredApiKey, setHasStoredApiKey] = useState(false)
+  const [testing, setTesting] = useState(false)
+  const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
 
   useEffect(() => {
     async function load() {
@@ -96,6 +98,27 @@ export function WhatsAppSettingsSection() {
     } catch {
       addToast({ type: 'error', title: 'Failed to save' })
     } finally { setSaving(false) }
+  }
+
+  const handleTestConnection = async () => {
+    setTesting(true)
+    setTestResult(null)
+    try {
+      const res = await fetch('/api/admin/whatsapp/test-connection', { credentials: 'include' })
+      const data = await res.json()
+      if (data.ok) {
+        setTestResult({
+          ok: true,
+          message: data.sessionStatus === 'ready'
+            ? `Connected to OpenWA gateway. Session "${data.sessionName}" is ready${data.phone ? ` (${data.phone})` : ''}. You can send WhatsApp messages.`
+            : `Gateway reachable, but session "${data.sessionId}" is ${data.sessionStatus}. Link it in the OpenWA dashboard first.`,
+        })
+      } else {
+        setTestResult({ ok: false, message: data.error || 'Connection test failed' })
+      }
+    } catch {
+      setTestResult({ ok: false, message: 'Could not reach the connection-test endpoint' })
+    } finally { setTesting(false) }
   }
 
   if (loading) {
@@ -186,12 +209,27 @@ export function WhatsAppSettingsSection() {
             />
           </div>
         </div>
-        <div className="flex justify-end pt-2">
+        <div className="flex justify-end pt-2 gap-2 flex-wrap">
+          <Button variant="outline" onClick={handleTestConnection} disabled={testing} className="gap-2">
+            {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : <Wifi className="h-4 w-4" />}
+            {testing ? 'Testing…' : 'Test Connection'}
+          </Button>
           <Button onClick={handleSave} disabled={saving} className="gap-2">
             {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
             Save WhatsApp Settings
           </Button>
         </div>
+        {testResult ? (
+          <div
+            className={`rounded-lg border px-4 py-3 text-sm ${
+              testResult.ok
+                ? 'border-green-500/30 bg-green-500/10 text-green-600'
+                : 'border-red-500/30 bg-red-500/10 text-red-600'
+            }`}
+          >
+            {testResult.message}
+          </div>
+        ) : null}
       </div>
     </Card>
   )
