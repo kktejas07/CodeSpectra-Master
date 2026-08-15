@@ -179,16 +179,16 @@ export default function CandidateAssessmentPage() {
         const inviteToken = searchParams.get('inviteToken')
         const inviteEmail = searchParams.get('inviteEmail')
 
-        // Share link: skip invite-only check, but require login
+        // All assessments require login — anonymous users see a login prompt
+        // and can never start (regardless of share / invite / open access).
+        if (!user) {
+          setExam(found)
+          setLoading(false)
+          return
+        }
+
+        // Share link: skip invite-only check. Track public link view.
         if (isShareLink) {
-          if (!user) {
-            // Not logged in — show login prompt (exam loads but can't start)
-            setExam(found)
-            setLoading(false)
-            return
-          }
-          // Logged in — allow access regardless of access_type
-          // Track public link view (fire-and-forget)
           fetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
         } else if (accType === 'invite_only') {
           if (!inviteToken) {
@@ -204,6 +204,11 @@ export default function CandidateAssessmentPage() {
             return
           }
           const verifyJson = await verifyRes.json()
+          if (verifyJson.email && verifyJson.email.toLowerCase() !== (user.email || '').toLowerCase()) {
+            setAccessError('This invitation belongs to a different account. Sign in with the invited email address to continue.')
+            setLoading(false)
+            return
+          }
           if (inviteEmail && verifyJson.email?.toLowerCase() !== inviteEmail.toLowerCase()) {
             setAccessError('Email mismatch — this invitation belongs to a different candidate.')
             setLoading(false)
@@ -237,7 +242,7 @@ export default function CandidateAssessmentPage() {
       }
     }
     if (params.id) fetchExam()
-  }, [params.id, router, searchParams])
+  }, [params.id, router, searchParams, user])
 
   // Timer Logic
   useEffect(() => {
@@ -403,8 +408,11 @@ export default function CandidateAssessmentPage() {
 
   // Pre-Start Screen
   if (!hasStarted) {
-    // Share link: prompt login if not authenticated
-    if (isShareLink && !user) {
+    // Any assessment type requires login to start — anonymous users (with or
+    // without the extension) always see the login prompt and can never begin.
+    if (!user) {
+      const fullQuery = searchParams.toString()
+      const loginRedirect = `/assessment/${params.id}${fullQuery ? `?${fullQuery}` : ''}`
       return (
         <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-primary/5 p-4">
           <Card className="max-w-md w-full p-8 text-center border-primary/20 space-y-6 shadow-xl">
@@ -421,10 +429,10 @@ export default function CandidateAssessmentPage() {
               <div className="flex justify-between"><span className="text-muted-foreground">Level:</span><span className="font-medium">{exam.level}</span></div>
             </div>
             <div className="space-y-2">
-              <Link href={`/auth/login?redirect=${encodeURIComponent(`/assessment/${params.id}?share=true`)}`}>
+              <Link href={`/auth/login?redirect=${encodeURIComponent(loginRedirect)}`}>
                 <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign In</Button>
               </Link>
-              <Link href={`/auth/signup?redirect=${encodeURIComponent(`/assessment/${params.id}?share=true`)}`}>
+              <Link href={`/auth/signup?redirect=${encodeURIComponent(loginRedirect)}`}>
                 <Button variant="outline" className="w-full gap-2"><User className="h-4 w-4" /> Create Account</Button>
               </Link>
             </div>
@@ -434,6 +442,7 @@ export default function CandidateAssessmentPage() {
     }
 
     return (
+      <ExtensionGate>
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-lg w-full p-8 border-primary/20 space-y-6">
           <div className="text-center">
@@ -495,6 +504,7 @@ export default function CandidateAssessmentPage() {
           />
         )}
       </div>
+      </ExtensionGate>
     )
   }
 

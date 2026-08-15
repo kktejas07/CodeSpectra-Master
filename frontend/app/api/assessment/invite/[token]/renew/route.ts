@@ -4,6 +4,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 import { newId, nowIso } from '@/lib/db/ai'
+import { requireAuth } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,6 +13,11 @@ export async function POST(
   _req: NextRequest,
   ctx: { params: Promise<{ token: string }> },
 ) {
+  const gate = await requireAuth().catch(() => null)
+  if (!gate || 'error' in gate) {
+    return NextResponse.json({ error: 'You must be signed in to renew an invitation' }, { status: 401 })
+  }
+
   const { token } = await ctx.params
   if (!token) {
     return NextResponse.json({ error: 'Token required' }, { status: 400 })
@@ -23,6 +29,11 @@ export async function POST(
 
     if (!invite) {
       return NextResponse.json({ error: 'Invitation not found' }, { status: 404 })
+    }
+
+    // The signed-in account must own this invitation
+    if (invite.email.toLowerCase() !== (gate.user.email || '').toLowerCase()) {
+      return NextResponse.json({ error: 'This invitation belongs to a different account' }, { status: 403 })
     }
 
     if (invite.status === 'used' || invite.status === 'active') {

@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
+import { requireAuth } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -8,6 +9,10 @@ export async function GET(
   _req: Request,
   ctx: { params: Promise<{ token: string }> },
 ) {
+  const gate = await requireAuth().catch(() => null)
+  if (!gate || 'error' in gate) {
+    return NextResponse.json({ error: 'Sign in required to verify a team' }, { status: 401 })
+  }
   const { token } = await ctx.params
 
   try {

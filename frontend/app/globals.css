@@ -725,6 +725,16 @@
   }
 }
 
+/* ============================================================================
+   Review overlay — responsive overflow handling for all screen sizes.
+   ============================================================================ */
+.print-review-overlay .prose { max-width: 100% !important; overflow-wrap: break-word !important; word-break: break-word !important; }
+.print-review-overlay .prose table { display: block !important; overflow-x: auto !important; max-width: 100% !important; }
+.print-review-overlay .prose img { max-width: 100% !important; height: auto !important; }
+.print-review-overlay .prose pre { overflow-x: auto !important; max-width: 100% !important; }
+.print-review-overlay .prose code { word-break: break-all !important; }
+.print-review-overlay pre { max-width: 100% !important; }
+.print-review-overlay table { display: block !important; overflow-x: auto !important; max-width: 100% !important; }
 
 /* ============================================================================
    Print — PDF export of the exam review modal.

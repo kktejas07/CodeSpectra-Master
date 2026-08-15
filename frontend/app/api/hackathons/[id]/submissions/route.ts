@@ -16,7 +16,16 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
 
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
   if (!hk) return NextResponse.json({ error: 'event not found' }, { status: 404 })
-  if (hk.status !== 'live') return NextResponse.json({ error: 'submissions only accepted during the live event' }, { status: 409 })
+  
+  // Check if submissions are allowed (live event OR within grace period)
+  const now = Date.now()
+  const ends = new Date(hk.ends_at).getTime()
+  const gracePeriod = (hk.grace_period_minutes || 0) * 60000
+  const canSubmit = hk.status === 'live' || (hk.status === 'closed' && hk.allow_late_submissions && now <= ends + gracePeriod)
+  
+  if (!canSubmit) {
+    return NextResponse.json({ error: 'submissions are closed' }, { status: 409 })
+  }
 
   const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
   if (!team) return NextResponse.json({ error: 'you are not on a team in this event' }, { status: 403 })

@@ -8,17 +8,20 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { toLocalDatetimeString } from '@/lib/datetime-local'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { toLocalDatetimeString } from '@/lib/datetime-local'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
   Trash2, HelpCircle, CheckSquare, ListChecks,
   Shield, GripVertical, Pencil, Wand2, BookOpen, Search,
   Sparkles, ChevronDown, ChevronUp, X, ArrowLeft,
+  Settings, FileText, Sliders,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EventStepIndicator } from '@/components/hackathons/event-step-indicator'
 
 interface ProblemOption { slug: string; title: string; difficulty: string; topics?: string[] }
 
@@ -46,6 +49,27 @@ export default function HackathonCreatePage() {
     solve_limit: 0,
     cert_template: 'classic' as 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic',
     banner_url: '',
+    features: {
+      team_formation: true,
+      claims_system: false,
+      demo_video: 'optional' as 'required' | 'optional' | 'disabled',
+      live_url: 'optional' as 'required' | 'optional' | 'disabled',
+      code_upload: true,
+      judging_rubrics: false,
+      rubric_criteria: [
+        { name: 'Innovation', weight: 25 },
+        { name: 'Technical Complexity', weight: 25 },
+        { name: 'Design/UX', weight: 20 },
+        { name: 'Impact', weight: 20 },
+        { name: 'Completeness', weight: 10 },
+      ],
+      leaderboard_visibility: 'public' as 'public' | 'private' | 'after_event',
+      project_showcase: true,
+      forum: false,
+      proctoring: false,
+      certificates: true,
+      sponsor_tracks: [] as { name: string; prize: string; description?: string }[],
+    },
   })
 
   const [problemSearch, setProblemSearch] = useState('')
@@ -218,6 +242,7 @@ export default function HackathonCreatePage() {
           scoring: form.scoring,
           banner_url: form.banner_url,
           cert_template: form.cert_template,
+          features: form.features,
         }),
       })
       const j = await res.json()
@@ -253,23 +278,17 @@ export default function HackathonCreatePage() {
 
       <Card className="space-y-6 p-6">
         {/* Step indicator */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-3 text-sm">
-            {[
-              { n: 1, label: 'Basics' },
-              { n: 2, label: 'Problems' },
-              { n: 3, label: 'Rules & Scoring' },
-            ].map((s) => (
-              <button key={s.n} onClick={() => setStep(s.n)}
-                className={`px-4 py-2 rounded-lg transition-colors ${step === s.n ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
-                {s.n}. {s.label}
-              </button>
-            ))}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {step < 3 ? `${3 - step} step${step < 2 ? 's' : ''} remaining` : 'Ready to create'}
-          </span>
-        </div>
+        <EventStepIndicator
+          steps={[
+            { n: 1, label: 'Basics', icon: FileText },
+            { n: 2, label: 'Problems', icon: ListChecks },
+            { n: 3, label: 'Rules & Scoring', icon: Sliders },
+            { n: 4, label: 'Features', icon: Settings },
+            { n: 5, label: 'Review', icon: CheckSquare },
+          ]}
+          currentStep={step}
+          onStepClick={(n) => setStep(n)}
+        />
 
         {/* Step 1: Basics */}
         {step === 1 && (
@@ -686,6 +705,280 @@ export default function HackathonCreatePage() {
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setStep(2)}>← Back</Button>
+              <Button onClick={() => setStep(4)}>Next: Features →</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Features */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-lg">Features & Visibility</h3>
+              <p className="text-sm text-muted-foreground mt-1">Toggle features on/off for this event. Participants will see and use only the enabled features.</p>
+            </div>
+
+            {/* Team & Participation */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Team & Participation</h4>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Team Formation</Label>
+                    <p className="text-xs text-muted-foreground">Allow participants to create and join teams</p>
+                  </div>
+                  <Switch checked={form.features.team_formation}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, team_formation: checked } }))} />
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Claims System</Label>
+                    <p className="text-xs text-muted-foreground">First-come lock on problems (5-minute claim timer)</p>
+                  </div>
+                  <Switch checked={form.features.claims_system}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, claims_system: checked } }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Submission Settings */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Submission Settings</h4>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">Demo Video</Label>
+                  <select value={form.features.demo_video}
+                    onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, demo_video: e.target.value as 'required' | 'optional' | 'disabled' } }))}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <option value="required">Required</option>
+                    <option value="optional">Optional</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">Live URL</Label>
+                  <select value={form.features.live_url}
+                    onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, live_url: e.target.value as 'required' | 'optional' | 'disabled' } }))}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <option value="required">Required</option>
+                    <option value="optional">Optional</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Code Upload (Editor)</Label>
+                    <p className="text-xs text-muted-foreground">Allow participants to write code in the built-in editor</p>
+                  </div>
+                  <Switch checked={form.features.code_upload}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, code_upload: checked } }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Judging */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Judging & Scoring</h4>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Judging Rubrics</Label>
+                    <p className="text-xs text-muted-foreground">Use weighted criteria instead of simple 0-100</p>
+                  </div>
+                  <Switch checked={form.features.judging_rubrics}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, judging_rubrics: checked } }))} />
+                </div>
+              </div>
+              {form.features.judging_rubrics && (
+                <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
+                  <p className="text-xs text-muted-foreground">Rubric criteria (weights should sum to 100):</p>
+                  {form.features.rubric_criteria.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input value={c.name} className="flex-1 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
+                        }))} />
+                      <Input type="number" value={c.weight} className="w-20 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, weight: Number(e.target.value) } : x) }
+                        }))} />
+                      <span className="text-xs text-muted-foreground">%</span>
+                      <Button size="sm" variant="ghost" className="text-destructive h-6"
+                        onClick={() => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.filter((_, idx) => idx !== i) }
+                        }))}>×</Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
+                    ...f, features: { ...f.features, rubric_criteria: [...f.features.rubric_criteria, { name: '', weight: 0 }] }
+                  }))}>+ Add Criterion</Button>
+                </div>
+              )}
+            </div>
+
+            {/* Visibility */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Visibility & Engagement</h4>
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                <Label className="text-sm font-medium">Leaderboard Visibility</Label>
+                <select value={form.features.leaderboard_visibility}
+                  onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, leaderboard_visibility: e.target.value as 'public' | 'private' | 'after_event' } }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                  <option value="public">Public (visible during event)</option>
+                  <option value="after_event">After Event Ends</option>
+                  <option value="private">Private (admin only)</option>
+                </select>
+              </div>
+              {[
+                { key: 'project_showcase' as const, label: 'Project Showcase', desc: 'Show submitted projects publicly after event ends' },
+                { key: 'forum' as const, label: 'Forum', desc: 'Q&A forum for participants during the event' },
+                { key: 'proctoring' as const, label: 'Proctoring', desc: 'Detect cheating (tab switch, copy, paste, etc.)' },
+                { key: 'certificates' as const, label: 'Certificates', desc: 'Generate certificates for participants' },
+              ].map((item) => (
+                <div key={item.key} className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">{item.label}</Label>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                    <Switch checked={form.features[item.key]}
+                      onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, [item.key]: checked } }))} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sponsor Tracks */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Sponsor Tracks</h4>
+                <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
+                  ...f, features: { ...f.features, sponsor_tracks: [...f.features.sponsor_tracks, { name: '', prize: '', description: '' }] }
+                }))}>+ Add Track</Button>
+              </div>
+              {form.features.sponsor_tracks.length > 0 && (
+                <div className="space-y-2">
+                  {form.features.sponsor_tracks.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                      <Input value={t.name} placeholder="Track name" className="flex-1 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
+                        }))} />
+                      <Input value={t.prize} placeholder="Prize" className="w-32 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, prize: e.target.value } : x) }
+                        }))} />
+                      <Button size="sm" variant="ghost" className="text-destructive h-6"
+                        onClick={() => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.filter((_, idx) => idx !== i) }
+                        }))}>×</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setStep(3)}>← Back</Button>
+              <Button onClick={() => setStep(5)}>Next: Review →</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Review */}
+        {step === 5 && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-lg">Review & Create</h3>
+              <p className="text-sm text-muted-foreground mt-1">Review your event configuration before creating.</p>
+            </div>
+
+            {/* Event Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Event Details</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{form.name || '—'}</span></div>
+                <div><span className="text-muted-foreground">Duration:</span> <span className="font-medium">{form.timeout_minutes} min</span></div>
+                <div><span className="text-muted-foreground">Teams:</span> <span className="font-medium">{form.num_teams} max</span></div>
+                <div><span className="text-muted-foreground">Per team:</span> <span className="font-medium">{form.max_per_team} members</span></div>
+                <div className="col-span-2"><span className="text-muted-foreground">Starts:</span> <span className="font-medium">{new Date(form.starts_at).toLocaleString()}</span></div>
+                {form.description && (
+                  <div className="col-span-2"><span className="text-muted-foreground">Description:</span> <span className="font-medium line-clamp-2">{form.description}</span></div>
+                )}
+              </div>
+            </div>
+
+            {/* Problems Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Problems ({form.tasks.length})</h4>
+              {form.tasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No problems added</p>
+              ) : (
+                <div className="space-y-2">
+                  {form.tasks.map((t, i) => (
+                    <div key={t.slug} className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Q{i + 1}</span>
+                        <span className="text-sm">{t.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-[10px] ${
+                          t.difficulty === 'hard' ? 'text-rose-500 border-rose-500/30' :
+                          t.difficulty === 'medium' ? 'text-amber-500 border-amber-500/30' :
+                          'text-emerald-500 border-emerald-500/30'
+                        }`}>{t.difficulty}</Badge>
+                        <span className="text-xs text-muted-foreground">{t.points} pts</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Rules Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Rules ({form.rules.length})</h4>
+              {form.rules.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No rules added</p>
+              ) : (
+                <div className="space-y-2">
+                  {form.rules.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">{r.type}</Badge>
+                      <span className="text-sm">{r.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Features Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Enabled Features</h4>
+              <div className="flex flex-wrap gap-2">
+                {form.features.team_formation && <Badge variant="secondary">Team Formation</Badge>}
+                {form.features.claims_system && <Badge variant="secondary">Claims System</Badge>}
+                {form.features.code_upload && <Badge variant="secondary">Code Editor</Badge>}
+                {form.features.judging_rubrics && <Badge variant="secondary">Rubric Judging</Badge>}
+                {form.features.project_showcase && <Badge variant="secondary">Showcase</Badge>}
+                {form.features.forum && <Badge variant="secondary">Forum</Badge>}
+                {form.features.proctoring && <Badge variant="secondary">Proctoring</Badge>}
+                {form.features.certificates && <Badge variant="secondary">Certificates</Badge>}
+                {form.features.demo_video !== 'disabled' && <Badge variant="secondary">Demo Video {form.features.demo_video}</Badge>}
+                {form.features.live_url !== 'disabled' && <Badge variant="secondary">Live URL {form.features.live_url}</Badge>}
+                {form.features.sponsor_tracks.length > 0 && <Badge variant="secondary">{form.features.sponsor_tracks.length} Sponsor Tracks</Badge>}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Leaderboard: <span className="font-medium">{form.features.leaderboard_visibility}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setStep(4)}>← Back</Button>
               <Button onClick={create} disabled={busy}>
                 {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trophy className="mr-1 h-3 w-3" />}
                 Create Hackathon

@@ -1143,27 +1143,28 @@ export default function ExamResultsPage() {
       </div>
 
       {reviewCandidate && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-sm pt-8 overflow-y-auto print-review-overlay">
-          <div className="max-w-4xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 mb-8 print-review-card">
-            <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-card z-10">
-              <div>
-                <h3 className="font-bold text-lg">Review: {reviewCandidate.name}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{reviewCandidate.email}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => { setReviewCandidate(null); setReviewData(null) }}>
-                <X className="h-4 w-4" />
-              </Button>
+        <div className="fixed inset-0 z-50 flex flex-col bg-background print-review-overlay overflow-hidden">
+          {/* Header — sticky */}
+          <div className="flex items-center justify-between border-b px-4 sm:px-6 py-3 sm:py-4 shrink-0 gap-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-base sm:text-lg truncate">Review: {reviewCandidate.name}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{reviewCandidate.email}</p>
             </div>
+            <Button variant="ghost" size="sm" onClick={() => { setReviewCandidate(null); setReviewData(null) }} className="gap-1.5 shrink-0">
+              <X className="h-4 w-4" /> <span className="hidden sm:inline">Close</span>
+            </Button>
+          </div>
 
-            {reviewLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading review data...
-              </div>
-            ) : reviewData ? (
-              <>
-                <div className="overflow-y-auto max-h-[60vh] pr-2 space-y-6 print-review-body">
+          {reviewLoading ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading review data...
+            </div>
+          ) : reviewData ? (
+            <>
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 print-review-body">
                   {/* Candidate Info */}
-                  <div className="grid grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
                       <span className="text-muted-foreground block text-xs">Score</span>
                       <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
@@ -1212,11 +1213,11 @@ export default function ExamResultsPage() {
                         const maxPoints = q.points || q.score || detail?.points || 10
 
                         return (
-                          <div key={q.id} className={`border rounded-lg p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
+                          <div key={q.id} className={`border rounded-lg p-3 sm:p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
+                            <div className="flex items-start justify-between gap-2 sm:gap-4">
+                              <div className="flex-1 min-w-0">
                                 <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
-                                <div className="text-sm font-medium mt-0.5 prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-pre:text-xs prose-code:text-xs">
+                                <div className="text-sm font-medium mt-0.5 prose prose-sm dark:prose-invert max-w-full overflow-hidden prose-p:text-sm prose-pre:text-xs prose-code:text-xs">
                                   <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     rehypePlugins={[rehypeHighlight]}
@@ -1238,7 +1239,7 @@ export default function ExamResultsPage() {
 
                             {/* MCQ-type options display */}
                             {isMcq && q.options && (
-                              <div className="flex flex-wrap gap-1.5 mt-1">
+                              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1.5 mt-1">
                                 {q.options.map((opt, oi) => {
                                   const optLower = opt.toLowerCase()
                                   // multiple_response stores a comma-separated set; compare as sets
@@ -1273,7 +1274,7 @@ export default function ExamResultsPage() {
                                 <div>
                                   <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
                                   {userAnswer ? (
-                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border">{userAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border break-words">{userAnswer}</pre>
                                   ) : (
                                     <span className="text-xs text-muted-foreground italic">No answer provided</span>
                                   )}
@@ -1281,14 +1282,14 @@ export default function ExamResultsPage() {
                                 {modelAnswer && (
                                   <div>
                                     <span className="text-xs font-medium text-emerald-500 block mb-1">Model Answer / Rubric:</span>
-                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">{modelAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto break-words">{modelAnswer}</pre>
                                   </div>
                                 )}
 
                                 {/* Manual grading input for pending review questions */}
                                 {(isPendingReview || isManuallyGraded) && (
                                   <div className="pt-3 border-t border-dashed space-y-3">
-                                    <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                       <label className="text-xs font-medium text-muted-foreground shrink-0">Award Points:</label>
                                       <input
                                         type="text"
@@ -1300,7 +1301,7 @@ export default function ExamResultsPage() {
                                           const num = v === '' ? 0 : Math.min(maxPoints, Math.max(0, parseInt(v) || 0))
                                           setManualGrades(prev => ({ ...prev, [q.id]: num }))
                                         }}
-                                        className="w-20 h-8 px-2 text-sm border rounded-md bg-background"
+                                        className="w-16 sm:w-20 h-8 px-2 text-sm border rounded-md bg-background"
                                         placeholder="0"
                                       />
                                       <span className="text-xs text-muted-foreground">/ {maxPoints}</span>
@@ -1387,14 +1388,14 @@ export default function ExamResultsPage() {
 
                   {/* Proctoring Events */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => setShowProctorLog(v => !v)}
                         className="flex items-center gap-2 font-semibold text-sm text-left flex-1 min-w-0"
                       >
-                        <ShieldAlert className="w-4 h-4 text-amber-500" /> Proctoring Log
-                        <Badge variant="outline" className="text-xs">{reviewData.proctorEvents.length} events</Badge>
+                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> <span className="truncate">Proctoring Log</span>
+                        <Badge variant="outline" className="text-xs shrink-0">{reviewData.proctorEvents.length} events</Badge>
                       </button>
                       <button
                         type="button"
@@ -1415,13 +1416,13 @@ export default function ExamResultsPage() {
                         <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
                       </div>
                     ) : (
-                      <div className="border rounded-lg max-h-96 overflow-y-auto">
+                      <div className="border rounded-lg max-h-96 overflow-y-auto overflow-x-hidden">
                         {reviewData.proctorEvents.map((evt, i) => (
                           <div key={i} className={`border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
-                            <div className="flex items-center gap-3 px-4 py-2 text-xs">
+                            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 text-xs">
                               <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
-                              <span className="shrink-0 font-medium">{formatProctorType(evt.event_type)}</span>
-                              <span className="text-muted-foreground ml-auto shrink-0">
+                              <span className="shrink-0 font-medium truncate">{formatProctorType(evt.event_type)}</span>
+                              <span className="text-muted-foreground ml-auto shrink-0 text-[10px] sm:text-xs">
                                 {evt.created_at ? new Date(evt.created_at).toLocaleString() : ''}
                               </span>
                             </div>
@@ -1442,7 +1443,7 @@ export default function ExamResultsPage() {
 
                   {/* Identity Photos */}
                   {(reviewData.submission.id_photo || reviewData.submission.face_photo) && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <span className="text-xs font-semibold text-muted-foreground block">ID Photo</span>
                         <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
@@ -1467,18 +1468,18 @@ export default function ExamResultsPage() {
                   )}
                 </div>
 
-                {/* Release Actions */}
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div className="text-xs text-muted-foreground">
+                {/* Footer — sticky */}
+                <div className="shrink-0 border-t px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-background">
+                  <div className="text-xs text-muted-foreground min-w-0">
                     {reviewData.submission.released_at ? (
                       <span className="text-emerald-500 flex items-center gap-1">
-                        <CheckCheck className="w-3.5 h-3.5" /> Score released on {new Date(reviewData.submission.released_at).toLocaleString()}
+                        <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Score released on {new Date(reviewData.submission.released_at).toLocaleString()}</span>
                       </span>
                     ) : (
                       'Score not yet released to candidate'
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
                     <Button variant="outline" onClick={downloadReviewPdf} className="gap-2">
                       <Download className="w-4 h-4" /> Download Report
                     </Button>
@@ -1503,11 +1504,10 @@ export default function ExamResultsPage() {
                 </div>
               </>
             ) : (
-              <div className="py-8 text-center text-muted-foreground text-sm">
+              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
                 No submission data found for this candidate.
               </div>
             )}
-          </div>
         </div>
       )}
 

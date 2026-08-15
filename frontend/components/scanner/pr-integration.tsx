@@ -2,7 +2,8 @@ import { useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, AlertCircle, XCircle, Github, ExternalLink } from 'lucide-react'
+import { CheckCircle2, AlertCircle, XCircle, ExternalLink } from 'lucide-react'
+import { Github } from '@/components/ui/brand-icons'
 
 interface PRAnalysis {
   id: string

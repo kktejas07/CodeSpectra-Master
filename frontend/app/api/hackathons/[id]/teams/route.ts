@@ -1,6 +1,6 @@
 /**
  * /api/hackathons/[id]/teams
- *   GET   -> list teams (with QR token + level + xp)
+ *   GET   -> list teams (level + xp). Join token only exposed to members/admins.
  *   POST  -> register a new team. Captain is the caller.
  *
  * The `id` segment accepts either the hackathon `id` (UUID) or the `slug`.
@@ -8,9 +8,9 @@
  * On POST we:
  *   1. Enforce `num_teams` capacity.
  *   2. Enforce the caller isn't already on another team in this event.
- *   3. Generate a unique QR token + slug.
+ *   3. Generate a unique join token + slug.
  *   4. Insert the team with xp=0, level=1, achievements=[].
- *   5. Return the team + QR SVG so the caller can show it immediately.
+ *   5. Return the team + share URL so the captain can invite teammates.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
@@ -22,7 +22,6 @@ import {
   nowIso,
   type HackathonTeamDoc,
 } from '@/lib/db/qr-events'
-import { generateQrSvg } from '@/lib/qr'
 
 export const runtime = 'nodejs'
 
@@ -63,10 +62,20 @@ export async function GET(
   const { id } = await ctx.params
   const hk = await resolveHackathon(id)
   if (!hk) return NextResponse.json({ error: 'hackathon not found' }, { status: 404 })
-  const items = await (await hackathonTeams())
+  const rows = await (await hackathonTeams())
     .find({ hackathon_id: hk.id }, { projection: { _id: 0 } })
     .sort({ xp: -1, created_at: 1 })
     .toArray()
+  // The join token powers the share link + email invite. Only members of a
+  // team (and admins) may read it; everyone else gets the team sans token.
+  const isAdmin = ['superadmin', 'admin', 'tenant_admin'].includes((user.role || '').toLowerCase())
+  const items = rows.map((t) => {
+    const isMember = Array.isArray(t.members) && t.members.some((m: { user_id?: string }) => m.user_id === user.id)
+    if (isAdmin || isMember) return t
+    const { qr_token: _q, ...safe } = t as typeof t & { qr_token?: string }
+    void _q
+    return safe
+  })
   return NextResponse.json({ items, hackathon: { id: hk.id, slug: hk.slug, name: hk.name } })
 }
 
@@ -136,12 +145,11 @@ export async function POST(
   }
   await teamsCol.insertOne(doc)
 
-  const qrUrl = `${absoluteOrigin(req)}/qr/${token}`
-  const qrSvg = await generateQrSvg(qrUrl, { size: 320 })
+  const shareUrl = `${absoluteOrigin(req)}/hackathons/${hk.slug}/join/${token}`
   const { _id: _omit, ...clean } = doc as HackathonTeamDoc & { _id?: unknown }
   void _omit
   return NextResponse.json(
-    { team: clean, qr_url: qrUrl, qr_svg: qrSvg },
+    { team: clean, share_url: shareUrl },
     { status: 201 },
   )
 }

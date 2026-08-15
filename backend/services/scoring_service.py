@@ -13,18 +13,6 @@ logger = logging.getLogger(__name__)
 
 
 class ScoringService:
-    # Unit conversion factors to base SI (mm, kg)
-    UNIT_CONVERSIONS = {
-        "mm": 1.0,
-        "cm": 10.0,
-        "m": 1000.0,
-        "inch": 25.4,
-        "ft": 304.8,
-        "kg": 1.0,
-        "g": 0.001,
-        "lb": 0.45359237,
-    }
-
     def evaluate_cad_submission(
         self,
         submission_file_meta: Dict[str, Any],

@@ -9,10 +9,18 @@ let _secret: Uint8Array | null = null
 function getSecret(): Uint8Array {
   if (_secret) return _secret
   const raw = process.env.SESSION_SECRET
+  // Hard fail: a publicly-known fallback key would let anyone forge a session
+  // cookie for any uid (full account impersonation). No silent dev secret.
   if (!raw || raw.length < 32) {
+    if (process.env.NODE_ENV === 'production') {
+      throw new Error(
+        '[session] SESSION_SECRET must be set to a 32+ char random string in production. ' +
+        'Refusing to start with a weak signing key.',
+      )
+    }
     console.warn(
       '[session] SESSION_SECRET not set or too short — using development fallback. ' +
-      'Set SESSION_SECRET (32+ chars) in your environment for production.',
+      'Set SESSION_SECRET (32+ chars) in your environment.',
     )
   }
   _secret = new TextEncoder().encode(raw || 'dev-secret-do-not-use-in-production-32chars')

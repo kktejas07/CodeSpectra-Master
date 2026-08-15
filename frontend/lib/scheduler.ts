@@ -16,6 +16,7 @@
  * executes each via the existing engine. Returns a per-workflow log.
  */
 import { executeWorkflow } from './workflow-engine'
+import { logger } from './logger'
 import {
   workflows,
   workflowRuns,
@@ -261,6 +262,6 @@ async function checkTrials(): Promise<void> {
   try {
     const { expireTrials } = await import('./coupon-service')
     const count = await expireTrials()
-    if (count > 0) console.log(`[trial] Expired ${count} trial subscription(s)`)
+    if (count > 0) logger.info(`[trial] Expired ${count} trial subscription(s)`)
   } catch { /* ignore */ }
 }

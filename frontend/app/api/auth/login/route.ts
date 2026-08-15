@@ -104,7 +104,7 @@ export async function POST(request: Request) {
 
     if (user.totp_enabled) {
       if (!totpToken) {
-        return NextResponse.json({ twoFactorRequired: true, uid })
+        return NextResponse.json({ twoFactorRequired: true })
       }
       const { TOTP } = await import('otplib')
       const totp = new TOTP()

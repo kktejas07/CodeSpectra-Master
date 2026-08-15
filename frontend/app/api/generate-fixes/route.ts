@@ -118,6 +118,12 @@ async function persistGeneratedFixes(params: {
 
 
 export async function POST(request: Request): Promise<NextResponse> {
+  const gate = await requireAuth().catch(() => null)
+  if (!gate || 'error' in gate) {
+    return NextResponse.json({ success: false, error: 'Sign in required to generate fixes' }, { status: 401 })
+  }
+  const authedUserId = gate.user.id
+
   let body: Record<string, unknown>
   try {
     body = (await request.json()) as Record<string, unknown>
@@ -136,15 +142,6 @@ export async function POST(request: Request): Promise<NextResponse> {
       { success: false, error: 'Code and issues are required' },
       { status: 400 },
     )
-  }
-
-  let authedUserId: string | null = null
-  if (wantsPersist) {
-    const gate = await requireAuth()
-    if ('error' in gate) {
-      return NextResponse.json({ success: false, error: gate.error }, { status: gate.status })
-    }
-    authedUserId = gate.user.id
   }
 
   const lim = await rateLimitGenerateFixes(request, authedUserId)

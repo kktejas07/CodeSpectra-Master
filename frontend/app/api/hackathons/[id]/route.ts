@@ -11,6 +11,8 @@ import {
   hackathonTeams,
   nowIso,
   type HackathonDoc,
+  type HackathonFeatures,
+  DEFAULT_FEATURES,
 } from '@/lib/db/qr-events'
 
 export const runtime = 'nodejs'
@@ -79,12 +81,53 @@ export async function PATCH(
   }
 
   const $set: Record<string, unknown> = { updated_at: nowIso() }
-  for (const k of ['name', 'description', 'num_teams', 'max_per_team', 'status', 'event_type', 'per_problem_time_minutes', 'cert_template', 'solve_limit'] as const) {
+  
+  // Fetch current document first for validation
+  const col = await hackathons()
+  const cur = await col.findOne({ id })
+  if (!cur) return NextResponse.json({ error: 'not found' }, { status: 404 })
+  
+  // tenant_admin can only mutate their own tenant's hackathons
+  if (user.role === 'tenant_admin' && user.tenantId && cur.tenant_id !== user.tenantId) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  
+  // Status changes with validation
+  if (body.status && typeof body.status === 'string') {
+    const validStatuses = ['draft', 'open', 'live', 'closed']
+    if (!validStatuses.includes(body.status)) {
+      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    }
+    const validTransitions: Record<string, string[]> = {
+      draft: ['open', 'closed'],
+      open: ['live', 'draft', 'closed'],
+      live: ['closed', 'open'],
+      closed: ['open'],
+    }
+    if (!validTransitions[cur.status]?.includes(body.status)) {
+      return NextResponse.json({ error: `Cannot change status from ${cur.status} to ${body.status}` }, { status: 409 })
+    }
+    $set.status = body.status
+  }
+
+  for (const k of ['name', 'description', 'num_teams', 'max_per_team', 'event_type', 'per_problem_time_minutes', 'cert_template', 'solve_limit', 'grace_period_minutes', 'allow_late_submissions'] as const) {
     if (k in body) $set[k] = body[k]
   }
   if (Array.isArray(body.judges)) {
     $set.judges = body.judges
   }
+  
+  // Lock tasks, rules, scoring during live/closed
+  const hasProtectedFields = body.tasks !== undefined || body.rules !== undefined || body.scoring !== undefined
+  if ((cur.status === 'live' || cur.status === 'closed') && hasProtectedFields) {
+    return NextResponse.json({ error: 'Cannot modify tasks, rules, or scoring during live/closed event' }, { status: 409 })
+  }
+  
+  // Lock features during live/closed
+  if ((cur.status === 'live' || cur.status === 'closed') && body.features) {
+    return NextResponse.json({ error: 'Cannot modify features during live/closed event' }, { status: 409 })
+  }
+  
   if (Array.isArray(body.tasks)) {
     $set.tasks = body.tasks.map((t: any, i: number) => ({
       problem_slug: String(t.problem_slug || ''),
@@ -115,18 +158,15 @@ export async function PATCH(
   if ('banner_url' in body) {
     $set.banner_url = typeof body.banner_url === 'string' ? body.banner_url : ''
   }
+  if (body.features && typeof body.features === 'object') {
+    $set.features = {
+      ...DEFAULT_FEATURES,
+      ...body.features,
+      rubric_criteria: body.features.rubric_criteria || DEFAULT_FEATURES.rubric_criteria,
+      sponsor_tracks: body.features.sponsor_tracks || DEFAULT_FEATURES.sponsor_tracks,
+    }
+  }
   // Recompute ends_at if timeout or starts_at changed.
-  const col = await hackathons()
-  const cur = await col.findOne({ id })
-  if (!cur) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  // tenant_admin can only mutate their own tenant's hackathons
-  if (user.role === 'tenant_admin' && user.tenantId && cur.tenant_id !== user.tenantId) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
-  const hasProtectedFields = body.tasks !== undefined || body.rules !== undefined || body.scoring !== undefined
-  if ((cur.status === 'live' || cur.status === 'closed') && hasProtectedFields) {
-    return NextResponse.json({ error: 'cannot modify tasks, rules, or scoring during or after the event' }, { status: 409 })
-  }
   const newTimeout = body.timeout_minutes ?? cur.timeout_minutes
   const newStart = body.starts_at ? new Date(body.starts_at) : new Date(cur.starts_at)
   if (body.timeout_minutes != null || body.starts_at != null) {

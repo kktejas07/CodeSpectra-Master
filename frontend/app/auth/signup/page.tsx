@@ -12,7 +12,6 @@ import {
   Code2,
   Eye,
   EyeOff,
-  Github,
   Loader2,
   Lock,
   Mail,
@@ -21,6 +20,7 @@ import {
   User,
   Zap,
 } from "lucide-react";
+import { Github } from "@/components/ui/brand-icons";
 import { useAuth } from "@/lib/auth-context";
 
 function SignupInner() {

@@ -12,7 +12,6 @@ import {
   CreditCard,
   FileText,
   Globe2,
-  Smartphone,
   ScrollText,
   Trophy,
   Shield,
@@ -34,7 +33,6 @@ const ITEMS: {
 }[] = [
   { id: 'branding', label: 'Branding & support', icon: Building2 },
   { id: 'cloudflare', label: 'Cloudflare', icon: Globe2 },
-  { id: 'mobile', label: 'Mobile App', icon: Smartphone },
   { id: 'mail', label: 'Mail & email APIs', icon: Mail },
   { id: 'ops', label: 'Operations', icon: Sliders },
   { id: 'product', label: 'Product & access', icon: Users },

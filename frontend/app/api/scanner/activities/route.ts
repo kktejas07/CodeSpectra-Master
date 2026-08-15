@@ -20,6 +20,10 @@ async function activities() {
 
 /** GET /api/scanner/activities — list activity events with date-range filtering. */
 export async function GET(req: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   try {
     const searchParams = req.nextUrl.searchParams
     const projectId = searchParams.get('projectId')
@@ -65,9 +69,13 @@ export async function GET(req: NextRequest) {
 
 /** POST /api/scanner/activities — create a new activity event. */
 export async function POST(req: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   try {
     const body = await req.json()
-    const { projectId, eventType, eventData, userId } = body as {
+    const { projectId, eventType, eventData } = body as {
       projectId?: string
       eventType?: string
       eventData?: Record<string, unknown>
@@ -84,7 +92,7 @@ export async function POST(req: NextRequest) {
     const doc: ScanActivityEventDoc = {
       id: newId(),
       project_id: projectId,
-      user_id: userId ?? null,
+      user_id: gate.user.id,
       event_type: eventType,
       event_data: eventData || {},
       created_at: nowIso(),

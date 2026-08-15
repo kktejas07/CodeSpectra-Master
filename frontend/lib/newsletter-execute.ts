@@ -79,7 +79,7 @@ export async function executeCampaign(campaign: EmailCampaignDoc) {
                 const response = await messaging.sendEachForMulticast({
                   tokens: batch,
                   notification: { title: campaign.subject, body: campaign.intro || 'New update from CodeSpectra' },
-                  data: { link: '/dashboard' },
+                  data: { link: '/dashboard/notifications' },
                 })
                 pushOk += response.successCount
                 pushFail += response.failureCount
@@ -106,7 +106,7 @@ export async function executeCampaign(campaign: EmailCampaignDoc) {
           message: campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 200) || 'New newsletter',
           type: 'newsletter',
           is_read: false,
-          link: '/dashboard',
+          link: '/dashboard/notifications',
           icon: 'mail',
           category: 'system',
           created_at: nowIso(),

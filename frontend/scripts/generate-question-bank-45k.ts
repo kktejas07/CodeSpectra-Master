@@ -16,8 +16,13 @@ import { normalizeBankQuestion, bankContentHash, type BankQuestionDoc } from '..
 // fingerprint is skipped.
 // ────────────────────────────────────────────────────────────────────────────
 
-const MONGO_URI = process.env.MONGODB_URI || 'mongodb://mongo:kfgXeV32FU2WPp1tERVs@127.0.0.1:27018/?authSource=admin&directConnection=true'
+const MONGO_URI = process.env.MONGODB_URI
+if (!MONGO_URI) {
+  console.error('MONGODB_URI environment variable is required')
+  process.exit(1)
+}
 const MONGO_DB = process.env.MONGODB_DB_NAME || 'codespectra'
+const MONGO_URI_ASSERTED: string = MONGO_URI
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const MODEL = process.env.MODEL || 'openai/gpt-4o-mini'
@@ -100,7 +105,7 @@ let opencodeKey = ''
 const SYSTEM_PROMPT = 'You are a meticulous technical assessment question writer for MNC campus hiring. You always respond with a valid JSON array of question objects and nothing else.'
 
 async function loadSecrets() {
-  const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
+  const client = new MongoClient(MONGO_URI_ASSERTED, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
   const secrets = (await client.db(MONGO_DB).collection('platform_settings').findOne({ key: 'secrets' }))?.value || {}
   openrouterKey = secrets.openrouter_api_key || secrets.openai_api_key || ''
@@ -256,7 +261,7 @@ function buildSoftPrompt(industry: (typeof SOFT_INDUSTRIES)[0], level: (typeof L
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-  const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
+  const client = new MongoClient(MONGO_URI_ASSERTED, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
   const col = client.db(MONGO_DB).collection<BankQuestionDoc>('question_bank')
   await loadSecrets()

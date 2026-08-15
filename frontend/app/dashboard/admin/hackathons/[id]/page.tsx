@@ -22,8 +22,6 @@ import {
   ArrowLeft,
   Sparkles,
   Plus,
-  Download,
-  ScanLine,
   Trash2,
   HelpCircle,
   CheckCircle,
@@ -80,7 +78,6 @@ export default function HackathonDetailPage({
   const [teams, setTeams] = useState<Team[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [qrCache, setQrCache] = useState<Record<string, string>>({})
   const [grant, setGrant] = useState<Record<string, GrantState>>({})
   const [busy, setBusy] = useState(false)
   const [judgeIds, setJudgeIds] = useState<string[]>([])
@@ -142,21 +139,6 @@ export default function HackathonDetailPage({
     return () => clearInterval(t)
   }, [load])
 
-  async function fetchQr(team: Team) {
-    if (qrCache[team.id]) return qrCache[team.id]
-    try {
-      const res = await fetch(`/api/hackathons/${id}/teams/${team.id}`, { cache: 'no-store', credentials: 'include' })
-      const j = await res.json()
-      if (res.ok && j.qr_svg) {
-        setQrCache((c) => ({ ...c, [team.id]: j.qr_svg as string }))
-        return j.qr_svg as string
-      }
-    } catch {
-      /* swallow */
-    }
-    return null
-  }
-
   function updateGrant(teamId: string, patch: Partial<GrantState>) {
     setGrant((g) => ({
       ...g,
@@ -195,18 +177,6 @@ export default function HackathonDetailPage({
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     }
-  }
-
-  function downloadQr(team: Team, svg: string) {
-    const blob = new Blob([svg], { type: 'image/svg+xml' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `team-${team.slug}.svg`
-    document.body.appendChild(a)
-    a.click()
-    a.remove()
-    URL.revokeObjectURL(url)
   }
 
   async function saveJudges() {
@@ -483,24 +453,6 @@ export default function HackathonDetailPage({
                 </div>
 
                 <div className="flex items-center gap-2">
-                  <Button
-                    size="sm"
-                    variant="ghost"
-                    onClick={async () => {
-                      const svg = await fetchQr(t)
-                      if (svg) downloadQr(t, svg)
-                    }}
-                    data-testid={`team-qr-download-${t.slug}`}
-                  >
-                    <Download className="mr-1 h-3 w-3" /> QR
-                  </Button>
-                  <Link
-                    href={`/qr/${t.qr_token}`}
-                    target="_blank"
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    <ScanLine className="h-3 w-3" /> Scoreboard
-                  </Link>
                   <Button
                     size="sm"
                     variant="ghost"

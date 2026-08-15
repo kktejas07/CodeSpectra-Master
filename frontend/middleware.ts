@@ -40,7 +40,7 @@ export function middleware(request: NextRequest) {
     '/api/billing/phonepe-webhook',
     '/api/webhooks/postal',
     '/api/admin/llm-test',
-    '/api/exams',
+    '/api/proctor/events',
     '/api/daily-login',
     '/api/kyc/didit/webhook',
   ]
@@ -98,15 +98,18 @@ export function middleware(request: NextRequest) {
   const origin = request.headers.get('origin')
   const allowedOrigins = [
     'https://codespectra.ai',
-    'http://localhost:3000',
-    'http://localhost:3001',
+    // localhost only in development
+    ...(process.env.NODE_ENV === 'development' ? ['http://localhost:3000', 'http://localhost:3001'] : []),
   ]
   const isAllowedOrigin = allowedOrigins.includes(origin || '')
-  response.headers.set('Access-Control-Allow-Origin', isAllowedOrigin ? (origin || '*') : allowedOrigins[0])
-  response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
-  response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token')
-  response.headers.set('Access-Control-Allow-Credentials', 'true')
-  response.headers.set('Access-Control-Max-Age', '86400')
+  // Only set CORS headers for allowed origins; block disallowed origins
+  if (isAllowedOrigin && origin) {
+    response.headers.set('Access-Control-Allow-Origin', origin)
+    response.headers.set('Access-Control-Allow-Methods', 'GET, POST, PUT, PATCH, DELETE, OPTIONS')
+    response.headers.set('Access-Control-Allow-Headers', 'Content-Type, Authorization, X-CSRF-Token')
+    response.headers.set('Access-Control-Allow-Credentials', 'true')
+    response.headers.set('Access-Control-Max-Age', '86400')
+  }
 
   // CSP only for HTML pages (not API/static responses)
   if (

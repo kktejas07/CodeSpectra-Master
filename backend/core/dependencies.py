@@ -35,12 +35,6 @@ from ai_client import (
     UserMessage,
 )
 from core.config import settings
-from rag import (
-    build_context,
-    chunk_text,
-    cosine_similarity,
-    generate_embedding,
-)
 
 # Try to import redis for Redis-backed rate limiting
 try:
@@ -134,24 +128,6 @@ async def init_redis_client() -> Optional[redis.Redis]:
 
 # ── In-process rate limiter (fallback) ─────────────────────────────────────
 _rl: dict[str, list[float]] = defaultdict(list)
-
-
-async def check_rate_limit_redis(key: str, max_hits: int = 60, window_sec: int = 60) -> bool:
-    """Check rate limit using Redis. Returns True if allowed, False if rate limited."""
-    client = await ensure_redis_client()
-    if not client:
-        return False  # Fall back to in-memory
-
-    try:
-        # Use Redis INCR with EXPIRE for sliding window
-        pipe = client.pipeline()
-        pipe.incr(key)
-        pipe.expire(key, window_sec)
-        results = await pipe.execute()
-        current_count = results[0]
-        return current_count <= max_hits
-    except Exception:
-        return False  # Fall back to in-memory on error
 
 
 async def check_rate_limit(
@@ -426,38 +402,3 @@ def parse_json_response(raw: str) -> Any:
         return json.loads(s)
     except Exception:
         return None
-
-
-# ── RAG helpers ─────────────────────────────────────────────────
-
-
-async def rag_search(
-    query: str,
-    embeddings_collection: AsyncIOMotorCollection,
-    api_key: str,
-    min_score: float = 0.65,
-    max_results: int = 5,
-) -> str | None:
-    """Search RAG embeddings for context relevant to `query`."""
-    query_emb = await generate_embedding(query, api_key)
-    if not query_emb:
-        return None
-
-    cands: list[dict] = []
-    async for doc in embeddings_collection.find(
-        {}, projection={"text": 1, "source": 1, "embedding": 1}
-    ):
-        vec = doc.get("embedding")
-        if vec and len(vec) == 768:
-            sim = cosine_similarity(query_emb, vec)
-            if sim > min_score:
-                cands.append(
-                    {
-                        "text": doc.get("text", ""),
-                        "source": doc.get("source", ""),
-                        "score": sim,
-                    }
-                )
-    cands.sort(key=lambda x: x["score"], reverse=True)
-    ctx = build_context(cands[:max_results])
-    return ctx if ctx else None

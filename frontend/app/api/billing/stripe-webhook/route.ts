@@ -5,6 +5,7 @@ import {
   syncSubscriptionFromStripe,
   syncInvoiceFromStripe,
 } from '@/lib/stripe-webhook-sync'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -57,7 +58,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
         break
       }
       default:
-        console.log('[stripe-webhook] unhandled event:', event.type)
+        logger.webhook('[stripe-webhook] unhandled event:', { type: event.type })
     }
 
     return NextResponse.json({ received: true })

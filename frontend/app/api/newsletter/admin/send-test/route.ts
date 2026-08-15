@@ -4,6 +4,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { renderNewsletterHtml } from '@/lib/newsletter-html'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -73,7 +74,7 @@ export async function POST(req: NextRequest) {
       cta_url: body.cta_url,
     })
 
-    console.log('[newsletter] test send:', { to, subject, bodyLen: (body.body || '').length, htmlLen: html.length })
+    logger.email('[newsletter] test send:', { to, subject })
 
     const result = await sendEmail(to, { subject: `[Test] ${subject}`, html })
     return NextResponse.json({ ok: true, sent: true, provider: result.provider, sizeKb: htmlSizeKb(html), warning: clipWarning(html) })
