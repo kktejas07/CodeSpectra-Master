@@ -84,8 +84,8 @@ export default function ExamsPage() {
     <div className="space-y-6">
       <div className="flex flex-wrap items-center justify-between gap-3">
         <div>
-          <h1 className="text-3xl font-bold text-foreground">Exams</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Take certification exams to validate your skills</p>
+          <h1 className="text-3xl font-bold text-foreground">Assessments</h1>
+          <p className="text-sm text-muted-foreground mt-0.5">Take certification assessments to validate your skills</p>
         </div>
       </div>
 
@@ -98,7 +98,7 @@ export default function ExamsPage() {
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{stats.total}</p>
-              <p className="text-xs text-muted-foreground">Total exams</p>
+              <p className="text-xs text-muted-foreground">Total assessments</p>
             </div>
           </div>
         </Card>
@@ -130,7 +130,7 @@ export default function ExamsPage() {
       <div className="flex flex-wrap items-center gap-3">
         <div className="relative max-w-sm flex-1 min-w-[200px]">
           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
-          <Input placeholder="Search exams..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
+          <Input placeholder="Search assessments..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
         </div>
         <Select value={levelFilter} onValueChange={setLevelFilter}>
           <SelectTrigger className="h-8 w-[130px] text-xs"><SelectValue placeholder="All levels" /></SelectTrigger>
@@ -146,14 +146,14 @@ export default function ExamsPage() {
             {subjects.map(s => <SelectItem key={s} value={s} className="text-xs">{s}</SelectItem>)}
           </SelectContent>
         </Select>
-        <p className="text-xs text-muted-foreground">{filtered.length} exam{filtered.length !== 1 ? 's' : ''}</p>
+        <p className="text-xs text-muted-foreground">{filtered.length} assessment{filtered.length !== 1 ? 's' : ''}</p>
       </div>
 
       {/* Exam Grid */}
       {filtered.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
           <BookOpen className="mx-auto h-10 w-10 text-muted-foreground/40" />
-          <p className="mt-3 text-muted-foreground">{search || levelFilter !== 'all' || subjectFilter !== 'all' ? 'No exams match your filters' : 'No exams available yet.'}</p>
+          <p className="mt-3 text-muted-foreground">{search || levelFilter !== 'all' || subjectFilter !== 'all' ? 'No assessments match your filters' : 'No assessments available yet.'}</p>
         </Card>
       ) : (
         <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
@@ -193,7 +193,7 @@ export default function ExamsPage() {
                 </>
               ) : (
                 <Button size="sm" className="w-full gap-2 text-xs" onClick={() => router.push(`/dashboard/assessments/${exam.id}`)}>
-                  <Play className="h-3.5 w-3.5" /> Start Exam
+                  <Play className="h-3.5 w-3.5" /> Start Assessment
                 </Button>
               )}
             </Card>

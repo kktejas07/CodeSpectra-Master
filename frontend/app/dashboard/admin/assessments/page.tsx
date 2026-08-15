@@ -153,7 +153,7 @@ export default function AdminExamsPage() {
           credentials: 'include',
           body: JSON.stringify({ id: editingExam.id, ...payload })
         })
-        addToast({ type: 'success', title: 'Exam updated successfully' })
+        addToast({ type: 'success', title: 'Assessment updated successfully' })
       } else {
         const createRes = await csrfFetch('/api/exams', {
           method: 'POST',
@@ -170,7 +170,7 @@ export default function AdminExamsPage() {
       setIsModalOpen(false)
       fetchExams()
     } catch {
-      addToast({ type: 'error', title: 'Failed to save exam' })
+      addToast({ type: 'error', title: 'Failed to save assessment' })
     } finally {
       setSaving(false)
     }
@@ -293,7 +293,7 @@ export default function AdminExamsPage() {
               <Eye className="h-4 w-4" /> View Results
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/edit`)} className="gap-2">
-              <Edit className="h-4 w-4" /> Edit Exam
+              <Edit className="h-4 w-4" /> Edit Assessment
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive focus:text-destructive">
               <Trash2 className="h-4 w-4" /> Delete
@@ -318,35 +318,35 @@ export default function AdminExamsPage() {
             <BookOpen className="h-6 w-6 text-primary" />
           </div>
           <div>
-            <h1 className="text-3xl font-bold text-foreground">Exam Management</h1>
-            <p className="text-muted-foreground text-sm">{exams.length} exams</p>
+            <h1 className="text-3xl font-bold text-foreground">Assessment Management</h1>
+            <p className="text-muted-foreground text-sm">{exams.length} assessments</p>
           </div>
         </div>
         <Button className="gap-2" onClick={openAddModal}>
-          <Plus className="w-4 h-4" />Add Exam
+          <Plus className="w-4 h-4" />Add Assessment
         </Button>
       </div>
 
       {loading ? (
         <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading exams...
+          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading assessments...
         </div>
       ) : (
         <DataTable
           columns={columns}
           data={exams}
-          searchPlaceholder="Search exams..."
+          searchPlaceholder="Search assessments..."
           searchKeys={['title', 'subject', 'level']}
           bulkActions={bulkActions}
           loading={loading}
-          emptyMessage="No exams. Click 'Add Exam' to create one."
+          emptyMessage="No assessments. Click 'Add Assessment' to create one."
         />
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
         <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
-            <DialogTitle>{editingExam ? 'Edit Exam' : 'Create Exam'}</DialogTitle>
+            <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
           </DialogHeader>
           <div className="grid gap-4 py-4">
             <div className="grid gap-2">
@@ -467,7 +467,7 @@ export default function AdminExamsPage() {
               {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
               {!editingExam && !saving && questions > 0 && <Wand2 className="mr-2 h-4 w-4" />}
               {!editingExam && !saving && questions === 0 && <Plus className="mr-2 h-4 w-4" />}
-              {editingExam ? 'Save Changes' : questions > 0 ? 'Generate with AI' : 'Create Blank Exam'}
+              {editingExam ? 'Save Changes' : questions > 0 ? 'Generate with AI' : 'Create Blank Assessment'}
             </Button>
           </DialogFooter>
         </DialogContent>

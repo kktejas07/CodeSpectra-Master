@@ -224,11 +224,11 @@ export default function ExamReviewPage() {
         setMetaBranch(found.branch || '')
         setMetaScreeningType(found.screening_type || 'mixed')
       } else {
-        addToast({ type: 'error', title: 'Exam not found' })
+        addToast({ type: 'error', title: 'Assessment not found' })
         router.push('/dashboard/admin/assessments')
       }
     } catch { 
-      addToast({ type: 'error', title: 'Failed to load exam' })
+      addToast({ type: 'error', title: 'Failed to load assessment' })
     } finally { 
       setLoading(false) 
     }
@@ -445,10 +445,10 @@ export default function ExamReviewPage() {
           published: true 
         })
       })
-      addToast({ type: 'success', title: 'Exam Published!' })
+      addToast({ type: 'success', title: 'Assessment Published!' })
       router.push('/dashboard/admin/assessments')
     } catch {
-      addToast({ type: 'error', title: 'Failed to publish exam' })
+      addToast({ type: 'error', title: 'Failed to publish assessment' })
     } finally {
       setPublishing(false)
     }
@@ -599,7 +599,7 @@ export default function ExamReviewPage() {
           <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>Save as Draft</Button>
           <Button onClick={handlePublish} disabled={publishing} className="bg-green-600 hover:bg-green-700 text-white">
             {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-            Publish Exam
+            Publish Assessment
           </Button>
         </div>
       </div>
