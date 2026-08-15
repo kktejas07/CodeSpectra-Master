@@ -1,7 +1,8 @@
 'use client'
 
 import { useState } from 'react'
-import { Github, GitBranch, Code2, ChevronRight, Loader } from 'lucide-react'
+import { GitBranch, Code2, ChevronRight, Loader } from 'lucide-react'
+import { Github } from '@/components/ui/brand-icons'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'

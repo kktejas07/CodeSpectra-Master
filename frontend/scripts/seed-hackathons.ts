@@ -9,7 +9,17 @@
  */
 import { getMongoDb } from '../lib/mongodb'
 import type { ProblemDoc } from '../lib/db/problems'
-import type { HackathonDoc, HackathonTeamDoc, HackathonSubmissionDoc } from '../lib/db/qr-events'
+import type { HackathonDoc, HackathonTeamDoc, HackathonSubmissionDoc, HackathonFeatures } from '../lib/db/qr-events'
+
+const DEFAULT_FEATURES: HackathonFeatures = {
+  team_formation: true, claims_system: false, demo_video: 'optional', live_url: 'optional',
+  code_upload: true, judging_rubrics: false, rubric_criteria: [
+    { name: 'Innovation', weight: 25 }, { name: 'Technical Complexity', weight: 25 },
+    { name: 'Design/UX', weight: 20 }, { name: 'Impact', weight: 20 }, { name: 'Completeness', weight: 10 },
+  ],
+  leaderboard_visibility: 'public', project_showcase: true, forum: false,
+  proctoring: false, certificates: true, sponsor_tracks: [],
+}
 
 const NOW = new Date()
 const H = (n: number) => new Date(NOW.getTime() + n * 3_600_000)
@@ -130,6 +140,7 @@ async function seed() {
       ],
       scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 10 },
       results_released: false, banner_url: '', color_theme: '#2563eb',
+      features: DEFAULT_FEATURES,
       created_by: 'seed', created_at: H(-48).toISOString(), updated_at: H(-1).toISOString(),
     },
     {
@@ -144,6 +155,7 @@ async function seed() {
       ],
       scoring: { auto_grade: true, points_per_problem: 200, bonus_time: 50, penalty_per_attempt: 5 },
       results_released: false, banner_url: '', color_theme: '#7c3aed',
+      features: DEFAULT_FEATURES,
       created_by: 'seed', created_at: H(-24).toISOString(), updated_at: NOW.toISOString(),
     },
     {
@@ -158,6 +170,7 @@ async function seed() {
       ],
       scoring: { auto_grade: true, points_per_problem: 150, bonus_time: 30, penalty_per_attempt: 15 },
       results_released: true, released_at: H(-60).toISOString(), banner_url: '', color_theme: '#f59e0b',
+      features: DEFAULT_FEATURES,
       created_by: 'seed', created_at: H(-96).toISOString(), updated_at: H(-70).toISOString(),
     },
     {
@@ -172,6 +185,7 @@ async function seed() {
       ],
       scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 10 },
       results_released: false, banner_url: '', color_theme: '#0ea5e9',
+      features: DEFAULT_FEATURES,
       created_by: 'seed', created_at: NOW.toISOString(), updated_at: NOW.toISOString(),
     },
   ]

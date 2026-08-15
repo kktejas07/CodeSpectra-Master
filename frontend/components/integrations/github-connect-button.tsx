@@ -3,7 +3,8 @@ import { useConfirm } from '@/lib/confirm-context'
 
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { Loader2, Github, CheckCircle2, Link as LinkIcon, Unlink } from 'lucide-react'
+import { Loader2, CheckCircle2, Link as LinkIcon, Unlink } from 'lucide-react'
+import { Github } from '@/components/ui/brand-icons'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface Status {

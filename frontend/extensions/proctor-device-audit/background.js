@@ -13,10 +13,40 @@
 const API_BASE = 'https://codespectra.ai'
 const POLL_INTERVAL_MS = 5000
 const STORAGE_KEY = 'cspectra_last_audit'
+const SESSION_KEY = 'cspectra_current_session'
+const DEVICES_KEY = 'cspectra_known_devices'
 
 let currentSession = null // { sessionKind, sessionId }
 let knownDevices = new Map() // key: id → device snapshot
 let pollTimer = null
+
+// ─── Session Persistence ─────────────────────────────────────────────────────
+
+async function saveSession() {
+  try {
+    await chrome.storage.local.set({ [SESSION_KEY]: currentSession })
+  } catch { /* ignore */ }
+}
+
+async function restoreSession() {
+  try {
+    const data = await chrome.storage.local.get([SESSION_KEY, DEVICES_KEY])
+    currentSession = data[SESSION_KEY] || null
+    if (currentSession) {
+      console.log('[cspectra] session restored from storage')
+    }
+    // Restore known devices for hotplug diffing
+    const devicesData = data[DEVICES_KEY]
+    if (devicesData && Array.isArray(devicesData)) {
+      for (const d of devicesData) {
+        knownDevices.set(d.id, d)
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+// Restore session on service worker startup
+restoreSession()
 
 // ─── Classification (duplicated from lib/classify.js — service worker can't import content_scripts) ──
 
@@ -214,6 +244,11 @@ async function runFullAudit() {
     knownDevices.set(d.id, d)
   }
 
+  // Save known devices to storage
+  try {
+    await chrome.storage.local.set({ [DEVICES_KEY]: Array.from(knownDevices.values()) })
+  } catch { /* ignore */ }
+
   // Notify content script
   notifyContentScript({ type: 'audit-result', audit })
 
@@ -246,6 +281,11 @@ async function diffAndReport() {
   for (const d of current) {
     knownDevices.set(d.id, d)
   }
+
+  // Save known devices to storage for persistence across restarts
+  try {
+    await chrome.storage.local.set({ [DEVICES_KEY]: Array.from(knownDevices.values()) })
+  } catch { /* ignore */ }
 
   // Update cache
   try {
@@ -316,6 +356,7 @@ function notifyContentScript(msg) {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'start-audit') {
     currentSession = { sessionKind: msg.sessionKind, sessionId: msg.sessionId }
+    saveSession() // Persist session to storage
     runFullAudit().then((audit) => {
       startHotplugWatcher()
       sendResponse({ ok: true, audit })
@@ -336,6 +377,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'stop-audit') {
     stopHotplugWatcher()
     currentSession = null
+    saveSession() // Clear session from storage
     sendResponse({ ok: true })
     return false
   }

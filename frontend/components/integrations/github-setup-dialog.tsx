@@ -12,7 +12,8 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { PasswordInput } from '@/components/ui/password-input'
 import { Card } from '@/components/ui/card'
-import { Github, ExternalLink } from 'lucide-react'
+import { ExternalLink } from 'lucide-react'
+import { Github } from '@/components/ui/brand-icons'
 
 interface GitHubIntegrationSetupProps {
   open: boolean

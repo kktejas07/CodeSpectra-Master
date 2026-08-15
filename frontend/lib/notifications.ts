@@ -41,6 +41,9 @@ export const NOTIFICATION_TYPES = {
   'hackathon.ending_soon': { category: 'hackathon', icon: 'clock', default_title: 'Ending Soon' },
   'hackathon.team_invite': { category: 'hackathon', icon: 'users', default_title: 'Team Invitation' },
   'hackathon.submission_graded': { category: 'hackathon', icon: 'check-circle', default_title: 'Submission Reviewed' },
+  'hackathon.submission_status': { category: 'hackathon', icon: 'send', default_title: 'Submission Status Update' },
+  'hackathon.submission_accepted': { category: 'hackathon', icon: 'check-circle', default_title: 'Submission Accepted' },
+  'hackathon.submission_rejected': { category: 'hackathon', icon: 'x-circle', default_title: 'Submission Not Selected' },
 
   // Interviews
   'interview.scheduled': { category: 'interview', icon: 'video', default_title: 'Interview Scheduled' },
@@ -229,5 +232,56 @@ export async function getUnreadCount(userId: string): Promise<number> {
     return col.countDocuments({ user_id: userId, is_read: false })
   } catch {
     return 0
+  }
+}
+
+/**
+ * Notify team members about submission status changes.
+ * Sends in-app, email, WhatsApp, and push notifications.
+ */
+export async function notifySubmissionStatusChange(
+  hackathonId: string,
+  hackathonName: string,
+  submissionId: string,
+  problemSlug: string,
+  teamMembers: Array<{ user_id: string; name: string }>,
+  newStatus: string,
+  rejectionReason?: string,
+) {
+  const statusMessages: Record<string, string> = {
+    under_review: 'Your submission is now under review',
+    review_completed: 'Your submission review is complete',
+    accepted: 'Your submission has been accepted!',
+    rejected: `Your submission was not selected${rejectionReason ? `: ${rejectionReason}` : ''}`,
+    released: 'Your score has been released!',
+  }
+
+  const statusTypes: Record<string, string> = {
+    under_review: 'hackathon.submission_status',
+    review_completed: 'hackathon.submission_status',
+    accepted: 'hackathon.submission_accepted',
+    rejected: 'hackathon.submission_rejected',
+    released: 'hackathon.results',
+  }
+
+  const message = statusMessages[newStatus] || `Submission status updated to ${newStatus}`
+  const type = statusTypes[newStatus] || 'hackathon.submission_status'
+
+  for (const member of teamMembers) {
+    await notify({
+      user_id: member.user_id,
+      type: type as any,
+      title: `${hackathonName} — ${problemSlug}`,
+      message,
+      link: `/dashboard/events/${hackathonId}`,
+      metadata: {
+        hackathon_id: hackathonId,
+        submission_id: submissionId,
+        status: newStatus,
+        problem_slug: problemSlug,
+      },
+      send_email: true,
+      send_whatsapp: true,
+    })
   }
 }

@@ -76,7 +76,7 @@ import { Celebration } from '@/components/gamification/celebration'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
-import { Activity } from 'lucide-react'
+import { Activity, Zap } from 'lucide-react'
 import { WebVitalsReporter } from '@/components/dashboard/web-vitals-reporter'
 import { AnalyticsTracker } from '@/components/dashboard/analytics-tracker'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
@@ -353,6 +353,7 @@ export default function DashboardLayout({
       '/dashboard/status': Activity,
       '/dashboard/support': MessageSquare,
       '/dashboard/codeathons': Trophy,
+      '/dashboard/events': Zap,
       '/dashboard/challenges': CodeIcon,
       '/dashboard/interviews': Users,
       '/dashboard/jobs': Briefcase,

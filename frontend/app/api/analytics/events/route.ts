@@ -8,6 +8,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth, requireSuperAdmin } from '@/lib/route-auth'
 import { analyticsEvents, analyticsSessions, newId, nowIso } from '@/lib/db/analytics'
+import { sanitizeRegex } from '@/lib/sanitize'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -134,7 +135,7 @@ export async function GET(req: NextRequest) {
 
   const filter: Record<string, unknown> = {}
   if (event) filter.event = event
-  if (path) filter.path = { $regex: path, $options: 'i' }
+  if (path) filter.path = { $regex: sanitizeRegex(path), $options: 'i' }
   if (userId) filter.user_id = userId
   if (since) filter.timestamp = { $gte: since }
 

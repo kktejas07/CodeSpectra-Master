@@ -1,7 +1,8 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Github, HelpCircle, KeyRound, Plug, ShieldAlert } from 'lucide-react'
+import { HelpCircle, KeyRound, Plug, ShieldAlert } from 'lucide-react'
+import { Github } from '@/components/ui/brand-icons'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'

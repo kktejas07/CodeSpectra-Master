@@ -831,7 +831,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={devicePie} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  <Pie data={devicePie} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}>
                     {devicePie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip />
@@ -850,7 +850,7 @@ function OverviewTab({ data, loading }: { data: OverviewData | null; loading: bo
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
-                  <Pie data={browserPie} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  <Pie data={browserPie} cx="50%" cy="50%" outerRadius={70} dataKey="value" label={({ name, percent }: any) => `${name} ${((percent || 0) * 100).toFixed(0)}%`}>
                     {browserPie.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip />
@@ -1068,7 +1068,7 @@ function PagesTab({ data, loading }: { data: PagesData | null; loading: boolean 
                 <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" domain={[0, 100]} />
                 <Tooltip
                   contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-                  formatter={(val: number) => [`${val}%`, 'Bounce Rate']}
+                  formatter={(val: any) => [`${val}%`, 'Bounce Rate']}
                 />
                 <Bar dataKey="rate" radius={[4, 4, 0, 0]}>
                   {data.bounceRate.slice(0, 10).map((entry, i) => (
@@ -1853,7 +1853,7 @@ function PerformanceTab({ data, loading }: { data: WebVitalsSummary | null; load
               <YAxis tick={{ fontSize: 11 }} stroke="hsl(var(--muted-foreground))" />
               <Tooltip
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-                formatter={(val: number, name: string) => {
+                formatter={(val: any, name: any) => {
                   const metricName = chartData[0]?.name || 'LCP'
                   return [fmtVitalValue(name, val), 'p75']
                 }}

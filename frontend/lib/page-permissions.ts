@@ -94,7 +94,7 @@ export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
 export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Dashboard', firstRoute: '/dashboard' },
   { label: 'Practice', firstRoute: '/dashboard/arena' },
-  { label: 'Events', firstRoute: '/dashboard/codeathons' },
+  { label: 'Events', firstRoute: '/dashboard/events' },
   { label: 'Learning', firstRoute: '/dashboard/learning' },
   { label: 'Career', firstRoute: '/dashboard/jobs' },
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
@@ -141,6 +141,8 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/100-days',
 
   // Events & Competitions
+  '/dashboard/events',
+  '/dashboard/events/[id]',
   '/dashboard/codeathons',
   '/dashboard/hackathons',
   
@@ -287,6 +289,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/status': 'System Status',
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',
+  '/dashboard/events': 'Events',
   '/dashboard/jobs': 'Jobs',
   '/dashboard/assessments': 'Assessments',
   '/dashboard/resumes': 'Resumes',

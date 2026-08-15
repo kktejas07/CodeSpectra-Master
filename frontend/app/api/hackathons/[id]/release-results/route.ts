@@ -23,19 +23,19 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
   }
 
-  // Release results — from under_review to released
-  // WARNING: pending (never-reviewed) submissions are auto-scored as 0
+  // Release results — from submitted/under_review/review_completed to released
+  // WARNING: unreviewed submissions are auto-scored as 0
   const subsCol = await hackathonSubmissions()
   const now = nowIso()
-  const pendingCount = await subsCol.countDocuments({ hackathon_id: hk.id, status: 'pending' })
-  if (pendingCount > 0) {
+  const unreviewedCount = await subsCol.countDocuments({ hackathon_id: hk.id, status: { $in: ['submitted', 'under_review'] } })
+  if (unreviewedCount > 0) {
     await subsCol.updateMany(
-      { hackathon_id: hk.id, status: 'pending' },
+      { hackathon_id: hk.id, status: { $in: ['submitted', 'under_review'] } },
       { $set: { status: 'released', score: 0, reviewed_at: now } },
     )
   }
   const updateResult = await subsCol.updateMany(
-    { hackathon_id: hk.id, status: 'under_review' },
+    { hackathon_id: hk.id, status: 'review_completed' },
     { $set: { status: 'released', reviewed_at: now } },
   )
 
@@ -52,7 +52,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
   for (let i = 0; i < affectedTeams.length; i++) {
     const team = affectedTeams[i]
     const rank = i + 1
-    const resultsUrl = `${appUrl}/hackathons/${hk.slug}/results`
+    const resultsUrl = `/hackathons/${hk.slug}/results`
 
     const memberIds = team.members.map((m) => m.user_id).filter(Boolean)
     const notified = await notifyMany(memberIds, {
@@ -70,7 +70,7 @@ export async function POST(_req: Request, ctx: { params: Promise<{ id: string }>
     ok: true,
     released_at: releasedAt,
     submissions_updated: updateResult.modifiedCount,
-    pending_auto_scored: pendingCount,
+    pending_auto_scored: unreviewedCount,
     teams_affected: affectedTeams.length,
     emails_sent: emailsSent,
   })

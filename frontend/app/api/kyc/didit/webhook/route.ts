@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import crypto from 'node:crypto'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 
@@ -154,10 +155,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       })
     }
 
-    console.log(`[Didit webhook] Session ${parsed.session_id} → ${status}`)
+    logger.webhook(`[Didit webhook] Session ${parsed.session_id} → ${status}`)
     return NextResponse.json({ ok: true })
   } catch (e) {
-    console.error('[Didit webhook]', e)
+    logger.error('[Didit webhook]', e)
     return NextResponse.json({ error: 'Webhook processing failed' }, { status: 500 })
   }
 }

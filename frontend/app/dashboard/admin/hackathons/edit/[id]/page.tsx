@@ -8,18 +8,21 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
 import { toLocalDatetimeString, fromZonedDatetimeString } from '@/lib/datetime-local'
 import { usePlatformTimezone } from '@/lib/use-platform-timezone'
-import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
   Trash2, HelpCircle, CheckSquare, ListChecks,
   Shield, GripVertical, Pencil, Wand2, BookOpen, Search,
   Sparkles, ChevronDown, ChevronUp, X, ArrowLeft,
+  Settings, FileText, Sliders,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EventStepIndicator } from '@/components/hackathons/event-step-indicator'
 
 interface ProblemOption { slug: string; title: string; difficulty: string; topics?: string[] }
 
@@ -41,6 +44,9 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     max_per_team: 4,
     timeout_minutes: 60,
     starts_at: '',
+    status: 'open' as 'draft' | 'open' | 'live' | 'closed',
+    grace_period_minutes: 0,
+    allow_late_submissions: false,
     tasks: [] as { slug: string; title: string; points: number; difficulty: string; required: boolean }[],
     rules: [
       { type: 'scoring' as const, title: 'Scoring', description: 'Points are awarded based on test cases passed and code quality.' },
@@ -51,6 +57,27 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     solve_limit: 0,
     cert_template: 'classic' as 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic',
     banner_url: '',
+    features: {
+      team_formation: true,
+      claims_system: false,
+      demo_video: 'optional' as 'required' | 'optional' | 'disabled',
+      live_url: 'optional' as 'required' | 'optional' | 'disabled',
+      code_upload: true,
+      judging_rubrics: false,
+      rubric_criteria: [
+        { name: 'Innovation', weight: 25 },
+        { name: 'Technical Complexity', weight: 25 },
+        { name: 'Design/UX', weight: 20 },
+        { name: 'Impact', weight: 20 },
+        { name: 'Completeness', weight: 10 },
+      ],
+      leaderboard_visibility: 'public' as 'public' | 'private' | 'after_event',
+      project_showcase: true,
+      forum: false,
+      proctoring: false,
+      certificates: true,
+      sponsor_tracks: [] as { name: string; prize: string; description?: string }[],
+    },
   })
 
   useEffect(() => {
@@ -67,6 +94,9 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
           max_per_team: Number(doc.max_per_team) || 4,
           timeout_minutes: Number(doc.timeout_minutes) || 60,
           starts_at: toLocalDatetimeString(startsAt),
+          status: (['draft', 'open', 'live', 'closed'].includes(doc.status) ? doc.status : 'open') as 'draft' | 'open' | 'live' | 'closed',
+          grace_period_minutes: Number(doc.grace_period_minutes) || 0,
+          allow_late_submissions: doc.allow_late_submissions === true,
           tasks: (Array.isArray(doc.tasks) ? doc.tasks : []).map((t: any) => ({
             slug: String(t.problem_slug || t.slug || ''),
             title: String(t.problem_title || t.title || ''),
@@ -92,6 +122,27 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
           solve_limit: Number(doc.solve_limit) || 0,
           banner_url: typeof doc.banner_url === 'string' ? doc.banner_url : '',
           cert_template: (doc.cert_template as 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic') || 'classic',
+          features: doc.features && typeof doc.features === 'object'
+            ? {
+                team_formation: doc.features.team_formation !== false,
+                claims_system: doc.features.claims_system === true,
+                demo_video: (['required', 'optional', 'disabled'].includes(doc.features.demo_video) ? doc.features.demo_video : 'optional') as 'required' | 'optional' | 'disabled',
+                live_url: (['required', 'optional', 'disabled'].includes(doc.features.live_url) ? doc.features.live_url : 'optional') as 'required' | 'optional' | 'disabled',
+                code_upload: doc.features.code_upload !== false,
+                judging_rubrics: doc.features.judging_rubrics === true,
+                rubric_criteria: Array.isArray(doc.features.rubric_criteria) && doc.features.rubric_criteria.length > 0
+                  ? doc.features.rubric_criteria.map((c: any) => ({ name: String(c.name || ''), weight: Number(c.weight) || 0 }))
+                  : form.features.rubric_criteria,
+                leaderboard_visibility: (['public', 'private', 'after_event'].includes(doc.features.leaderboard_visibility) ? doc.features.leaderboard_visibility : 'public') as 'public' | 'private' | 'after_event',
+                project_showcase: doc.features.project_showcase !== false,
+                forum: doc.features.forum === true,
+                proctoring: doc.features.proctoring === true,
+                certificates: doc.features.certificates !== false,
+                sponsor_tracks: Array.isArray(doc.features.sponsor_tracks)
+                  ? doc.features.sponsor_tracks.map((t: any) => ({ name: String(t.name || ''), prize: String(t.prize || ''), description: String(t.description || '') }))
+                  : [],
+              }
+            : form.features,
         })
       })
       .catch(e => setError(e instanceof Error ? e.message : String(e)))
@@ -240,7 +291,8 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     if (!form.name.trim()) return
     setBusy(true); setError(null)
     try {
-      const isLocked = eventStatus === 'live' || eventStatus === 'closed'
+      // Use form.status for locked checks (the status being set)
+      const isLocked = form.status === 'live' || form.status === 'closed'
       const body: Record<string, unknown> = {
         name: form.name,
         description: form.description,
@@ -248,9 +300,13 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         max_per_team: form.max_per_team,
         timeout_minutes: form.timeout_minutes,
         starts_at: fromZonedDatetimeString(form.starts_at, tz),
+        status: form.status,
+        grace_period_minutes: form.grace_period_minutes,
+        allow_late_submissions: form.allow_late_submissions,
         banner_url: form.banner_url,
         cert_template: form.cert_template,
         solve_limit: form.solve_limit || undefined,
+        features: form.features,
       }
       if (!isLocked) {
         body.tasks = form.tasks.map((t) => ({
@@ -301,27 +357,17 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
 
       <Card className="space-y-6 p-6">
         {/* Step indicator */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-3 text-sm">
-              {[
-                  { n: 1, label: 'Basics' },
-                  { n: 2, label: 'Problems' },
-                  { n: 3, label: 'Rules & Scoring' },
-                ].map((s) => {
-                  const locked = (eventStatus === 'live' || eventStatus === 'closed') && s.n >= 2
-                  return (
-                    <button key={s.n} onClick={() => setStep(s.n)}
-                      disabled={locked}
-                      className={`px-4 py-2 rounded-lg transition-colors ${step === s.n ? 'bg-primary text-primary-foreground font-medium' : locked ? 'bg-muted text-muted-foreground/40 cursor-not-allowed' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
-                      {s.n}. {s.label} {locked ? '🔒' : ''}
-                    </button>
-                  )
-                })}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {step < 3 ? `${3 - step} step${step < 2 ? 's' : ''} remaining` : 'Ready to update'}
-          </span>
-        </div>
+        <EventStepIndicator
+          steps={[
+            { n: 1, label: 'Basics', icon: FileText },
+            { n: 2, label: 'Problems', icon: ListChecks },
+            { n: 3, label: 'Rules & Scoring', icon: Sliders },
+            { n: 4, label: 'Features', icon: Settings },
+            { n: 5, label: 'Review', icon: CheckSquare },
+          ]}
+          currentStep={step}
+          onStepClick={(n) => setStep(n)}
+        />
 
         {/* Step 1: Basics */}
         {step === 1 && (
@@ -394,7 +440,46 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               />
             </div>
             </div>
-            <Button onClick={() => setStep(2)} disabled={eventStatus === 'live' || eventStatus === 'closed'}>Next: Problems →</Button>
+
+            {/* Event Status */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-4">
+              <h4 className="text-sm font-semibold">Event Status</h4>
+              <div className="grid gap-4 md:grid-cols-2">
+                <div className="space-y-2">
+                  <Label>Status</Label>
+                  <select value={form.status}
+                    onChange={(e) => setForm((f) => ({ ...f, status: e.target.value as 'draft' | 'open' | 'live' | 'closed' }))}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <option value="draft">Draft</option>
+                    <option value="open">Open (Registration)</option>
+                    <option value="live">Live (In Progress)</option>
+                    <option value="closed">Closed</option>
+                  </select>
+                  {form.status === 'live' && (
+                    <p className="text-xs text-amber-600">⚠ Live events have locked problems, rules, and features.</p>
+                  )}
+                  {form.status === 'closed' && (
+                    <p className="text-xs text-muted-foreground">Closed events can be reopened to "open" status.</p>
+                  )}
+                </div>
+                <div className="space-y-2">
+                  <Label>Grace Period (minutes)</Label>
+                  <Input type="number" min={0} max={1440} value={form.grace_period_minutes || 0}
+                    onChange={(e) => setForm((f) => ({ ...f, grace_period_minutes: Number(e.target.value) }))} />
+                  <p className="text-xs text-muted-foreground">Allow submissions after event ends (0 = disabled, max 24h)</p>
+                </div>
+              </div>
+              <div className="flex items-center justify-between">
+                <div>
+                  <Label>Late Submissions</Label>
+                  <p className="text-xs text-muted-foreground">Allow submissions during grace period</p>
+                </div>
+                <Switch checked={form.allow_late_submissions || false}
+                  onCheckedChange={(checked) => setForm((f) => ({ ...f, allow_late_submissions: checked }))} />
+              </div>
+            </div>
+
+            <Button onClick={() => setStep(2)} disabled={form.status === 'live' || form.status === 'closed'}>Next: Problems →</Button>
           </div>
         )}
 
@@ -402,9 +487,9 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         {step === 2 && (
           <div className="space-y-6">
             <h3 className="font-semibold text-lg">Assign Problems</h3>
-            {(eventStatus === 'live' || eventStatus === 'closed') && (
+            {(form.status === 'live' || form.status === 'closed') && (
               <Card className="border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>⚠ Locked</strong> — Problems cannot be modified while the event is {eventStatus}. Go back to Basics to update other settings.
+                <strong>⚠ Locked</strong> — Problems cannot be modified while the event is {form.status}. Go back to Basics to update other settings.
               </Card>
             )}
             <p className="text-sm text-muted-foreground">
@@ -673,7 +758,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>← Back</Button>
-              <Button onClick={() => setStep(3)} disabled={eventStatus === 'live' || eventStatus === 'closed'}>Next: Rules →</Button>
+              <Button onClick={() => setStep(3)} disabled={form.status === 'live' || form.status === 'closed'}>Next: Rules →</Button>
             </div>
           </div>
         )}
@@ -682,9 +767,9 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         {step === 3 && (
           <div className="space-y-6">
             <h3 className="font-semibold text-lg">Rules & Scoring</h3>
-            {(eventStatus === 'live' || eventStatus === 'closed') && (
+            {(form.status === 'live' || form.status === 'closed') && (
               <Card className="border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>⚠ Locked</strong> — Rules & Scoring cannot be modified while the event is {eventStatus}. Go back to Basics to update other settings.
+                <strong>⚠ Locked</strong> — Rules & Scoring cannot be modified while the event is {form.status}. Go back to Basics to update other settings.
               </Card>
             )}
 
@@ -768,6 +853,266 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setStep(2)}>← Back</Button>
+              <Button onClick={() => setStep(4)}>Next: Features →</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Features */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-lg">Features & Visibility</h3>
+              <p className="text-sm text-muted-foreground mt-1">Toggle features on/off for this event.</p>
+            </div>
+
+            {(form.status === 'live' || form.status === 'closed') && (
+              <Card className="border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
+                <strong>⚠ Features Locked</strong> — Cannot change features during {form.status} event.
+              </Card>
+            )}
+
+            {/* Team & Participation */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Team & Participation</h4>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Team Formation</Label>
+                    <p className="text-xs text-muted-foreground">Allow participants to create and join teams</p>
+                  </div>
+                  <Switch checked={form.features.team_formation}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, team_formation: checked } }))} />
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Claims System</Label>
+                    <p className="text-xs text-muted-foreground">First-come lock on problems (5-minute claim timer)</p>
+                  </div>
+                  <Switch checked={form.features.claims_system}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, claims_system: checked } }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Submission Settings */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Submission Settings</h4>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">Demo Video</Label>
+                  <select value={form.features.demo_video}
+                    onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, demo_video: e.target.value as 'required' | 'optional' | 'disabled' } }))}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <option value="required">Required</option>
+                    <option value="optional">Optional</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">Live URL</Label>
+                  <select value={form.features.live_url}
+                    onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, live_url: e.target.value as 'required' | 'optional' | 'disabled' } }))}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <option value="required">Required</option>
+                    <option value="optional">Optional</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Code Upload (Editor)</Label>
+                    <p className="text-xs text-muted-foreground">Allow participants to write code in the built-in editor</p>
+                  </div>
+                  <Switch checked={form.features.code_upload}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, code_upload: checked } }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Judging */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Judging & Scoring</h4>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Judging Rubrics</Label>
+                    <p className="text-xs text-muted-foreground">Use weighted criteria instead of simple 0-100</p>
+                  </div>
+                  <Switch checked={form.features.judging_rubrics}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, judging_rubrics: checked } }))} />
+                </div>
+              </div>
+              {form.features.judging_rubrics && (
+                <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
+                  <p className="text-xs text-muted-foreground">Rubric criteria (weights should sum to 100):</p>
+                  {form.features.rubric_criteria.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input value={c.name} className="flex-1 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
+                        }))} />
+                      <Input type="number" value={c.weight} className="w-20 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, weight: Number(e.target.value) } : x) }
+                        }))} />
+                      <span className="text-xs text-muted-foreground">%</span>
+                      <Button size="sm" variant="ghost" className="text-destructive h-6"
+                        onClick={() => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.filter((_, idx) => idx !== i) }
+                        }))}>×</Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
+                    ...f, features: { ...f.features, rubric_criteria: [...f.features.rubric_criteria, { name: '', weight: 0 }] }
+                  }))}>+ Add Criterion</Button>
+                </div>
+              )}
+            </div>
+
+            {/* Visibility */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Visibility & Engagement</h4>
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                <Label className="text-sm font-medium">Leaderboard Visibility</Label>
+                <select value={form.features.leaderboard_visibility}
+                  onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, leaderboard_visibility: e.target.value as 'public' | 'private' | 'after_event' } }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                  <option value="public">Public (visible during event)</option>
+                  <option value="after_event">After Event Ends</option>
+                  <option value="private">Private (admin only)</option>
+                </select>
+              </div>
+              {[
+                { key: 'project_showcase' as const, label: 'Project Showcase', desc: 'Show submitted projects publicly after event ends' },
+                { key: 'forum' as const, label: 'Forum', desc: 'Q&A forum for participants during the event' },
+                { key: 'proctoring' as const, label: 'Proctoring', desc: 'Detect cheating (tab switch, copy, paste, etc.)' },
+                { key: 'certificates' as const, label: 'Certificates', desc: 'Generate certificates for participants' },
+              ].map((item) => (
+                <div key={item.key} className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">{item.label}</Label>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                    <Switch checked={form.features[item.key]}
+                      onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, [item.key]: checked } }))} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sponsor Tracks */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Sponsor Tracks</h4>
+                <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
+                  ...f, features: { ...f.features, sponsor_tracks: [...f.features.sponsor_tracks, { name: '', prize: '', description: '' }] }
+                }))}>+ Add Track</Button>
+              </div>
+              {form.features.sponsor_tracks.length > 0 && (
+                <div className="space-y-2">
+                  {form.features.sponsor_tracks.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                      <Input value={t.name} placeholder="Track name" className="flex-1 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
+                        }))} />
+                      <Input value={t.prize} placeholder="Prize" className="w-32 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, prize: e.target.value } : x) }
+                        }))} />
+                      <Button size="sm" variant="ghost" className="text-destructive h-6"
+                        onClick={() => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.filter((_, idx) => idx !== i) }
+                        }))}>×</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setStep(3)}>← Back</Button>
+              <Button onClick={() => setStep(5)}>Next: Review →</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Review */}
+        {step === 5 && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-lg">Review & Update</h3>
+              <p className="text-sm text-muted-foreground mt-1">Review your changes before updating.</p>
+            </div>
+
+            {/* Event Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Event Details</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{form.name || '—'}</span></div>
+                <div><span className="text-muted-foreground">Duration:</span> <span className="font-medium">{form.timeout_minutes} min</span></div>
+                <div><span className="text-muted-foreground">Teams:</span> <span className="font-medium">{form.num_teams} max</span></div>
+                <div><span className="text-muted-foreground">Per team:</span> <span className="font-medium">{form.max_per_team} members</span></div>
+                <div className="col-span-2"><span className="text-muted-foreground">Starts:</span> <span className="font-medium">{new Date(form.starts_at).toLocaleString()}</span></div>
+              </div>
+            </div>
+
+            {/* Problems Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Problems ({form.tasks.length})</h4>
+              {form.tasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No problems added</p>
+              ) : (
+                <div className="space-y-2">
+                  {form.tasks.map((t, i) => (
+                    <div key={t.slug} className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Q{i + 1}</span>
+                        <span className="text-sm">{t.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-[10px] ${
+                          t.difficulty === 'hard' ? 'text-rose-500 border-rose-500/30' :
+                          t.difficulty === 'medium' ? 'text-amber-500 border-amber-500/30' :
+                          'text-emerald-500 border-emerald-500/30'
+                        }`}>{t.difficulty}</Badge>
+                        <span className="text-xs text-muted-foreground">{t.points} pts</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Features Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Enabled Features</h4>
+              <div className="flex flex-wrap gap-2">
+                {form.features.team_formation && <Badge variant="secondary">Team Formation</Badge>}
+                {form.features.claims_system && <Badge variant="secondary">Claims System</Badge>}
+                {form.features.code_upload && <Badge variant="secondary">Code Editor</Badge>}
+                {form.features.judging_rubrics && <Badge variant="secondary">Rubric Judging</Badge>}
+                {form.features.project_showcase && <Badge variant="secondary">Showcase</Badge>}
+                {form.features.forum && <Badge variant="secondary">Forum</Badge>}
+                {form.features.proctoring && <Badge variant="secondary">Proctoring</Badge>}
+                {form.features.certificates && <Badge variant="secondary">Certificates</Badge>}
+                {form.features.demo_video !== 'disabled' && <Badge variant="secondary">Demo Video {form.features.demo_video}</Badge>}
+                {form.features.live_url !== 'disabled' && <Badge variant="secondary">Live URL {form.features.live_url}</Badge>}
+                {form.features.sponsor_tracks.length > 0 && <Badge variant="secondary">{form.features.sponsor_tracks.length} Sponsor Tracks</Badge>}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Leaderboard: <span className="font-medium">{form.features.leaderboard_visibility}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setStep(4)}>← Back</Button>
               <Button onClick={update} disabled={busy}>
                 {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trophy className="mr-1 h-3 w-3" />}
                 Update Event

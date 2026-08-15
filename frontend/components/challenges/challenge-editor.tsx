@@ -19,13 +19,13 @@ import {
   Loader2,
   HelpCircle,
   BookOpen,
-  Github,
   ChevronUp,
   Star,
   MessageSquare,
   Share2,
   Trophy,
 } from 'lucide-react'
+import { Github } from '@/components/ui/brand-icons'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { csrfFetch } from '@/lib/csrf-fetch'

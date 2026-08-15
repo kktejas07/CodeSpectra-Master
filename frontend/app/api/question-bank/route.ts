@@ -2,6 +2,7 @@ import { NextResponse, type NextRequest } from 'next/server'
 import { requireAuth, requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { normalizeBankQuestion, questionBank, type BankQuestionDoc } from '@/lib/question-bank'
+import { sanitizeRegex } from '@/lib/sanitize'
 import type { Filter } from 'mongodb'
 
 export const runtime = 'nodejs'
@@ -28,16 +29,17 @@ export async function GET(request: NextRequest) {
     if (degree_type) filter.degree_type = degree_type.toLowerCase()
     if (difficulty) filter.difficulty = difficulty as BankQuestionDoc['difficulty']
     if (type) filter.type = type.toLowerCase() as BankQuestionDoc['type']
-    if (subject) filter.subject = { $regex: subject, $options: 'i' } as unknown as string
+    if (subject) filter.subject = { $regex: sanitizeRegex(subject), $options: 'i' } as unknown as string
     if (industry) filter.industry = industry.toLowerCase()
     if (level) filter.level = level.toLowerCase()
     if (category) filter.assessment_category = category.toLowerCase()
     if (q) {
+      const safeQ = sanitizeRegex(q)
       filter.$or = [
-        { title: { $regex: q, $options: 'i' } } as never,
-        { question: { $regex: q, $options: 'i' } } as never,
-        { subject: { $regex: q, $options: 'i' } } as never,
-        { tags: { $regex: q, $options: 'i' } } as never,
+        { title: { $regex: safeQ, $options: 'i' } } as never,
+        { question: { $regex: safeQ, $options: 'i' } } as never,
+        { subject: { $regex: safeQ, $options: 'i' } } as never,
+        { tags: { $regex: safeQ, $options: 'i' } } as never,
       ]
     }
 
