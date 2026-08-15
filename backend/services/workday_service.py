@@ -36,18 +36,6 @@ class WorkdayService:
             "invited_at": datetime.now(timezone.utc).isoformat(),
         }
 
-    async def sync_candidate_status(
-        self, workday_candidate_id: str, status: str, details: Optional[Dict[str, Any]] = None
-    ) -> Dict[str, Any]:
-        """Sync assessment status (invited / started / completed / expired) back to Workday."""
-        logger.info(f"[Workday] Syncing status '{status}' for candidate {workday_candidate_id}")
-        return {
-            "ok": True,
-            "workday_candidate_id": workday_candidate_id,
-            "synced_status": status,
-            "timestamp": datetime.now(timezone.utc).isoformat(),
-        }
-
     async def write_back_results(
         self,
         workday_candidate_id: str,

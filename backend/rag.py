@@ -52,21 +52,6 @@ def cosine_similarity(a: list[float], b: list[float]) -> float:
     return dot / (na * nb)
 
 
-# --- chunking ---
-
-def chunk_text(text: str, max_chars: int = 1024, overlap: int = 128) -> list[str]:
-    """Split text into overlapping chunks for embedding."""
-    if len(text) <= max_chars:
-        return [text]
-    chunks: list[str] = []
-    start = 0
-    while start < len(text):
-        end = min(start + max_chars, len(text))
-        chunks.append(text[start:end])
-        start += max_chars - overlap
-    return chunks
-
-
 # --- context building ---
 
 def build_context(results: list[dict[str, Any]], max_chars: int = 4000) -> str:

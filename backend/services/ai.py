@@ -28,7 +28,6 @@ from core.dependencies import (
     check_rate_limit,
     client_ip,
     parse_json_response,
-    rag_search,
 )
 from core.config import settings
 from models.ai import (
@@ -537,13 +536,6 @@ async def handle_identity_verify(
             "reasoning": f"vision-unavailable: {e}",
             "warnings": ["Vision comparison failed — manual review required."],
         }
-
-    return {
-        "match": False,
-        "confidence": 0,
-        "reasoning": "Vision comparison unsupported in this environment.",
-        "warnings": ["Manual review required."],
-    }
 
 
 def _strip_data_url(data_url: str) -> str:

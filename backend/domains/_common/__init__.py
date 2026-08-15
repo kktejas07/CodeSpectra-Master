@@ -1,5 +1,5 @@
 """Shared domain plugin scaffolding and guardrails."""
-from backend.domains._common.media import MediaRef, get_presigned_media_url
+from backend.domains._common.media import MediaRef
 from backend.domains._common.partial_credit import (
     kendall_tau_distance,
     multi_select_partial_credit,
@@ -12,7 +12,6 @@ from backend.domains._common.tolerance import is_within_tolerance
 
 __all__ = [
     "MediaRef",
-    "get_presigned_media_url",
     "multi_select_partial_credit",
     "kendall_tau_distance",
     "MissingAnswerKeysGuardrailError",
