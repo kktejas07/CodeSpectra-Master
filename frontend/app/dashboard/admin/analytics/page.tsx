@@ -13,15 +13,13 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   BarChart3, Users, Eye, Activity, Globe, Monitor, Smartphone, Tablet,
-  Clock, RefreshCw, Loader2, TrendingUp, ArrowUp, ArrowDown,
+  RefreshCw, Loader2, TrendingUp, ArrowUp, ArrowDown,
   Search, Download, Trash2, Zap, MousePointer, Gauge, Filter, UserCheck,
-  Play, Film,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
   Tooltip, ResponsiveContainer, Legend, PieChart, Pie, Cell,
 } from 'recharts'
-import { ReplayViewer } from '@/components/analytics/replay-viewer'
 
 // ─── Interfaces ──────────────────────────────────────────────────────────────
 
@@ -241,12 +239,6 @@ export default function AnalyticsPage() {
   const [retentionData, setRetentionData] = useState<RetentionData | null>(null)
   const [retentionLoading, setRetentionLoading] = useState(false)
 
-  const [replays, setReplays] = useState<any[]>([])
-  const [replaysLoading, setReplaysLoading] = useState(false)
-  const [selectedReplay, setSelectedReplay] = useState<any>(null)
-  const [replayEvents, setReplayEvents] = useState<any[]>([])
-  const [replayEventsLoading, setReplayEventsLoading] = useState(false)
-
   const [aiData, setAiData] = useState<any>(null)
   const [aiLoading, setAiLoading] = useState(false)
 
@@ -384,31 +376,6 @@ export default function AnalyticsPage() {
     finally { setRetentionLoading(false) }
   }, [gate.ready])
 
-  const loadReplays = useCallback(async () => {
-    if (!gate.ready) return
-    setReplaysLoading(true)
-    try {
-      const res = await fetch('/api/analytics/replay?limit=50', { credentials: 'include' })
-      const json = await res.json()
-      if (res.ok) setReplays(json.replays || [])
-    } catch { /* ignore */ }
-    finally { setReplaysLoading(false) }
-  }, [gate.ready])
-
-  const loadReplayEvents = useCallback(async (replayId: string) => {
-    if (!gate.ready) return
-    setReplayEventsLoading(true)
-    try {
-      const res = await fetch(`/api/analytics/replay?id=${replayId}`, { credentials: 'include' })
-      const json = await res.json()
-      if (res.ok) {
-        setSelectedReplay(json.replay)
-        setReplayEvents(json.replay?.events || [])
-      }
-    } catch { /* ignore */ }
-    finally { setReplayEventsLoading(false) }
-  }, [gate.ready])
-
   const loadAiData = useCallback(async () => {
     if (!gate.ready) return
     setAiLoading(true)
@@ -497,9 +464,6 @@ export default function AnalyticsPage() {
     }
     if (activeTab === 'retention' && !retentionData && gate.ready) {
       void loadRetention()
-    }
-    if (activeTab === 'replays' && replays.length === 0 && gate.ready) {
-      void loadReplays()
     }
     if (activeTab === 'ai' && !aiData && gate.ready) {
       void loadAiData()
@@ -592,7 +556,7 @@ export default function AnalyticsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-11">
+        <TabsList className="grid w-full grid-cols-10">
           <TabsTrigger value="overview" className="gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
           </TabsTrigger>
@@ -610,9 +574,6 @@ export default function AnalyticsPage() {
           </TabsTrigger>
           <TabsTrigger value="retention" className="gap-1.5">
             <UserCheck className="h-4 w-4" /> Retention
-          </TabsTrigger>
-          <TabsTrigger value="replays" className="gap-1.5">
-            <Film className="h-4 w-4" /> Replays
           </TabsTrigger>
           <TabsTrigger value="ai" className="gap-1.5">
             <Zap className="h-4 w-4" /> AI
@@ -685,30 +646,17 @@ export default function AnalyticsPage() {
           <RetentionTab data={retentionData} loading={retentionLoading} />
         </TabsContent>
 
-        {/* ─── Tab 7: Replays ────────────────────────────────────────────── */}
-        <TabsContent value="replays" className="space-y-6">
-          <ReplaysTab
-            replays={replays}
-            loading={replaysLoading}
-            selectedReplay={selectedReplay}
-            replayEvents={replayEvents}
-            replayEventsLoading={replayEventsLoading}
-            onSelectReplay={loadReplayEvents}
-            onClearSelection={() => { setSelectedReplay(null); setReplayEvents([]) }}
-          />
-        </TabsContent>
-
-        {/* ─── Tab 8: AI Analytics ────────────────────────────────────────── */}
+        {/* ─── Tab 7: AI Analytics ────────────────────────────────────────── */}
         <TabsContent value="ai" className="space-y-6">
           <AiAnalyticsTab data={aiData} loading={aiLoading} />
         </TabsContent>
 
-        {/* ─── Tab 9: Revenue ──────────────────────────────────────────────── */}
+        {/* ─── Tab 8: Revenue ──────────────────────────────────────────────── */}
         <TabsContent value="revenue" className="space-y-6">
           <RevenueTab data={revenueData} loading={revenueLoading} />
         </TabsContent>
 
-        {/* ─── Tab 10: Feature Flags ───────────────────────────────────────── */}
+        {/* ─── Tab 9: Feature Flags ───────────────────────────────────────── */}
         <TabsContent value="flags" className="space-y-6">
           <FeatureFlagsTab
             flags={featureFlags}
@@ -1383,78 +1331,6 @@ function RetentionTab({ data, loading }: { data: RetentionData | null; loading: 
           </tbody>
         </table>
       </Card>
-    </div>
-  )
-}
-
-// ─── Tab: Replays ────────────────────────────────────────────────────────────
-
-function ReplaysTab({ replays, loading, selectedReplay, replayEvents, replayEventsLoading, onSelectReplay, onClearSelection }: {
-  replays: any[]; loading: boolean; selectedReplay: any; replayEvents: any[]; replayEventsLoading: boolean
-  onSelectReplay: (id: string) => void; onClearSelection: () => void
-}) {
-  if (selectedReplay) {
-    return (
-      <div className="space-y-4">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="sm" onClick={onClearSelection}>← Back to list</Button>
-          <h2 className="text-lg font-bold">{selectedReplay.user_id || selectedReplay.session_id}</h2>
-          <Badge variant="outline">{selectedReplay.event_count} events</Badge>
-        </div>
-        {replayEventsLoading ? (
-          <div className="flex min-h-[30vh] items-center justify-center text-muted-foreground">
-            <Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading replay events…
-          </div>
-        ) : (
-          <ReplayViewer events={replayEvents} onClose={onClearSelection} />
-        )}
-      </div>
-    )
-  }
-
-  return (
-    <div className="space-y-6">
-      <div>
-        <h2 className="text-xl font-bold">Session Replays</h2>
-        <p className="text-sm text-muted-foreground">Watch user sessions to understand behavior and debug issues</p>
-      </div>
-
-      {loading ? (
-        <div className="flex min-h-[20vh] items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading replays…
-        </div>
-      ) : replays.length === 0 ? (
-        <Card className="p-12 border-dashed border-muted-foreground/30 text-center text-sm text-muted-foreground">
-          <Film className="mx-auto h-8 w-8 text-muted-foreground/40 mb-2" />
-          <p>No session replays yet. Replays are recorded automatically for dashboard users.</p>
-        </Card>
-      ) : (
-        <div className="space-y-2">
-          {replays.map((r: any) => (
-            <Card
-              key={r.id}
-              className="p-4 border-border/60 hover:border-primary/40 cursor-pointer transition-colors"
-              onClick={() => onSelectReplay(r.id)}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-4">
-                  <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
-                    <Play className="h-5 w-5 text-primary" />
-                  </div>
-                  <div>
-                    <p className="text-sm font-medium">{r.user_id || 'Anonymous'}</p>
-                    <p className="text-xs text-muted-foreground">{r.page || 'Unknown page'}</p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                  <span className="flex items-center gap-1"><Clock className="h-3 w-3" />{new Date(r.started_at).toLocaleString()}</span>
-                  <Badge variant="outline" className="text-[10px]">{r.event_count} events</Badge>
-                </div>
-              </div>
-            </Card>
-          ))}
-        </div>
-      )}
     </div>
   )
 }
