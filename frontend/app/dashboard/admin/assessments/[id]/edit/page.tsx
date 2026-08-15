@@ -599,7 +599,7 @@ export default function ExamReviewPage() {
           <Button variant="outline" onClick={() => router.push('/dashboard/admin/assessments')}>Save as Draft</Button>
           <Button onClick={handlePublish} disabled={publishing} className="bg-green-600 hover:bg-green-700 text-white">
             {publishing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle className="mr-2 h-4 w-4" />}
-            Publish Exam
+            Publish Assessment
           </Button>
         </div>
       </div>
