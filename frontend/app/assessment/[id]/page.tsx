@@ -434,6 +434,7 @@ export default function CandidateAssessmentPage() {
     }
 
     return (
+      <ExtensionGate>
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-lg w-full p-8 border-primary/20 space-y-6">
           <div className="text-center">
@@ -495,6 +496,7 @@ export default function CandidateAssessmentPage() {
           />
         )}
       </div>
+      </ExtensionGate>
     )
   }
 

@@ -90,6 +90,26 @@ export async function POST(
     const exam = await exams.findOne({ id: examId })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
+    // Extension enforcement: a logged-in candidate must have a hardware_port_audit
+    // event recorded for this exam (the Device Audit extension posts it on page
+    // load). Without it, the submit is rejected — no extension, no assessment.
+    // ponytail: ceiling — anonymous invite candidates (candidate_*) are skipped
+    // because the proctor API can't attribute their extension events without a
+    // session cookie; they're still blocked by the client-side ExtensionGate.
+    if (userId && !userId.startsWith('candidate_')) {
+      const auditEvents = await db.collection('proctor_events').countDocuments({
+        user_id: userId,
+        session_id: examId,
+        event_type: 'hardware_port_audit',
+        created_at: { $gte: new Date(Date.now() - 24 * 3600 * 1000).toISOString() },
+      })
+      if (auditEvents === 0) {
+        return NextResponse.json({
+          error: 'Device Audit extension not detected. Install the CodeSpectra Device Audit Chrome extension, reload this page, and try again.',
+        }, { status: 403 })
+      }
+    }
+
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
     const answers = body.answers || {}
     let totalScore = 0

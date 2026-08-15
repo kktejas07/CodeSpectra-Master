@@ -40,6 +40,7 @@ export function middleware(request: NextRequest) {
     '/api/billing/phonepe-webhook',
     '/api/webhooks/postal',
     '/api/admin/llm-test',
+    '/api/proctor/events',
     '/api/exams',
     '/api/daily-login',
     '/api/kyc/didit/webhook',

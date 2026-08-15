@@ -140,21 +140,31 @@ async function enumerateAll() {
 
 async function reportToApi(eventType, meta) {
   if (!currentSession) return
-  try {
-    await fetch(`${API_BASE}/api/proctor/events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        session_kind: currentSession.sessionKind,
-        session_id: currentSession.sessionId,
-        event_type: eventType,
-        meta: { ...meta, source: 'chrome-extension' },
-      }),
-    })
-  } catch (e) {
-    console.warn('[cspectra] API report failed:', e)
+  const payload = {
+    session_kind: currentSession.sessionKind,
+    session_id: currentSession.sessionId,
+    event_type: eventType,
+    meta: { ...meta, source: 'chrome-extension' },
   }
+  // Retry transient failures — the server enforces a hardware_port_audit event
+  // before accepting a submission, so a single dropped POST must not block a
+  // legitimate candidate.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/api/proctor/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) return true
+      console.warn(`[cspectra] API report ${eventType} failed (${res.status}), attempt ${attempt + 1}`)
+    } catch (e) {
+      console.warn(`[cspectra] API report ${eventType} failed (network), attempt ${attempt + 1}:`, e)
+    }
+    await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
+  }
+  return false
 }
 
 // ─── Audit ───────────────────────────────────────────────────────────────────
