@@ -282,6 +282,26 @@ export default function ExamResultsPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  // Real-time polling for proctor events when review modal is open
+  useEffect(() => {
+    if (!reviewCandidate) return
+    const pollProctorEvents = async () => {
+      try {
+        const uid = reviewCandidate.userId || reviewCandidate.id
+        const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
+        if (res.ok) {
+          const json = await res.json()
+          if (json.proctorEvents && reviewData) {
+            setReviewData(prev => prev ? { ...prev, proctorEvents: json.proctorEvents } : null)
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    // Poll every 5 seconds while review modal is open
+    const interval = setInterval(pollProctorEvents, 5000)
+    return () => clearInterval(interval)
+  }, [reviewCandidate, params.id])
+
   const openReview = async (row: CandidateResult) => {
     setReviewCandidate(row)
     setReviewData(null)
