@@ -50,7 +50,6 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloudflare-section'
 import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
 import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
-import { MobileSettingsPage } from '@/app/dashboard/admin/settings/mobile/mobile-settings-page'
 import KycSettingsSection from '@/app/dashboard/admin/settings/kyc/page'
 import { useToast } from '@/lib/toast-context'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
@@ -2189,10 +2188,6 @@ function SystemSettingsInner() {
                 </Button>
               </div>
             </Card>
-          ) : null}
-
-          {section === 'mobile' ? (
-            <MobileSettingsPage />
           ) : null}
 
           {section === 'llm' ? (

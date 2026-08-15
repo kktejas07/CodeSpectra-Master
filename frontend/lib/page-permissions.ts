@@ -71,7 +71,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   // Infrastructure, Settings & Announcements
   '/dashboard/admin/settings',
   '/dashboard/admin/settings/cloudflare',
-  '/dashboard/admin/settings/mobile',
   '/dashboard/admin/integrations',
   '/dashboard/admin/cdn',
   '/dashboard/admin/speed-insights',
@@ -236,7 +235,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/security/email-monitoring': 'Email Monitoring',
   '/dashboard/admin/settings': 'Platform Settings',
   '/dashboard/admin/settings/cloudflare': 'Cloudflare',
-  '/dashboard/admin/settings/mobile': 'Mobile App',
   '/dashboard/admin/settings/kyc': 'KYC Providers',
   '/dashboard/admin/jobs': 'Jobs',
   '/dashboard/admin/resumes': 'Resumes',

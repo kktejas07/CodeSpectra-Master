@@ -3,13 +3,13 @@
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { ExternalLink, GitBranch, Award, BookOpen, ShieldCheck, Code2 } from 'lucide-react'
+import { ExternalLink, Award, BookOpen, ShieldCheck, Code2 } from 'lucide-react'
 
 /**
  * /open-source — public attribution page.
  *
  * Lists every open-source dependency, curriculum source, and tool used by
- * the certification + audit + mobile features. Linked from the footer of
+ * the certification + audit features. Linked from the footer of
  * every certification page so candidates and employers can audit the
  * supply chain in one click.
  */
@@ -45,13 +45,6 @@ const TOOLS: Item[] = [
   { name: 'pip-audit', license: 'Apache-2.0', url: 'https://github.com/pypa/pip-audit', use: 'Python dependency vulnerability scanning' },
   { name: 'npm audit', license: 'Artistic-2.0', url: 'https://docs.npmjs.com/cli/v10/commands/npm-audit', use: 'Node dependency vulnerability scanning' },
   { name: 'Piston', license: 'MIT', url: 'https://github.com/engineer-man/piston', use: 'Code sandbox execution engine' },
-]
-
-const MOBILE: Item[] = [
-  { name: 'SwiftUI', license: 'Apple SDK (free)', url: 'https://developer.apple.com/xcode/swiftui/', use: 'iOS scaffold UI' },
-  { name: 'Jetpack Compose', license: 'Apache-2.0', url: 'https://developer.android.com/jetpack/compose', use: 'Android scaffold UI' },
-  { name: 'OkHttp', license: 'Apache-2.0', url: 'https://github.com/square/okhttp', use: 'Android HTTP client' },
-  { name: 'kotlinx.serialization', license: 'Apache-2.0', url: 'https://github.com/Kotlin/kotlinx.serialization', use: 'Android JSON decoding' },
 ]
 
 function Section({ icon: Icon, title, subtitle, items, testid }: {
@@ -132,14 +125,6 @@ export default function OpenSourcePage() {
           subtitle="Vulnerability scanners and code sandbox engines."
           items={TOOLS}
           testid="oss-tools"
-        />
-
-        <Section
-          icon={GitBranch}
-          title="Mobile scaffolds"
-          subtitle="Native iOS + Android starter projects bundled in /app/mobile."
-          items={MOBILE}
-          testid="oss-mobile"
         />
 
         <Card className="p-6 bg-emerald-500/5 border-emerald-500/20 text-center">

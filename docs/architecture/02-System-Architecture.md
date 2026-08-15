@@ -208,10 +208,6 @@ codespectra/
 │   ├── Dockerfile                     # Production container
 │   └── tests/                         # Python test suites
 │
-├── mobile/                            # React Native mobile app
-│   ├── android/
-│   └── ios/
-│
 ├── docs/                              # Documentation
 │   ├── Architecture/                  # Architecture docs
 │   ├── API/                           # API reference

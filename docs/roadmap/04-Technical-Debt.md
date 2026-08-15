@@ -67,7 +67,6 @@
 | **L07** | **Architecture** | No prompt injection detection — user input is sent directly to LLM. | `backend/ai_client.py` | 3d | Prompt injection attacks |
 | **L08** | **Architecture** | No model fallback chain — each endpoint uses a single model. No failover if provider is down. | `backend/ai_router.py:37-41` | 2d | AI features unavailable during provider outage |
 | **L09** | **Code Quality** | `local-executor.ts` runs untrusted code in-process — documented as "NOT a sandbox" but relies only on auth gating. | `frontend/lib/local-executor.ts:20` | 2d | RCE if auth is bypassed |
-| **L10** | **Missing** | Mobile apps are empty — `mobile/android/` and `mobile/ios/` have only README. | `mobile/` | — | No mobile strategy |
 | **L11** | **Missing** | No bundle analysis — large scanner component tree not code-split. | `frontend/app/dashboard/scanner/page.tsx` | 1d | Slow page loads |
 | **L12** | **Code Quality** | `pricing-catalog.ts` and `billing-catalog.ts` likely duplicate — two plan catalogs. | `frontend/lib/` | 1d | Pricing drift between files |
 

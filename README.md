@@ -64,7 +64,6 @@ The platform will be available at `http://localhost:3000`. Refer to `docs/public
 ```
 /frontend         — Next.js application (pages, API routes, components, lib)
 /backend          — FastAPI proxy service + AI orchestration
-/mobile           — iOS and Android companion apps
 /docs             — Documentation organized by audience
   /public         — Getting started, features, pricing, tutorials
   /user           — User guides, admin guides, feature docs
