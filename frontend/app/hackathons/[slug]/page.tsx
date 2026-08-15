@@ -8,9 +8,9 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
 import {
-  Loader2, Trophy, Users, Clock, CalendarDays, QrCode,
+  Loader2, Trophy, Users, Clock, CalendarDays,
   Sparkles, CheckCircle, ListChecks, Shield,
-  Copy, ExternalLink, Timer, LogIn, Send, ArrowRightCircle,
+  Copy, Timer, LogIn, Send,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -55,7 +55,6 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   const [error, setError] = useState<string | null>(null)
   const [newTeamName, setNewTeamName] = useState('')
   const [creating, setCreating] = useState(false)
-  const [newQrSvg, setNewQrSvg] = useState<string | null>(null)
   const [inviteUrl, setInviteUrl] = useState<string | null>(null)
   const [myTeam, setMyTeam] = useState<Team | null>(null)
   const [copied, setCopied] = useState(false)
@@ -93,7 +92,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   }, [load])
 
   async function createTeam() {
-    setCreating(true); setError(null); setNewQrSvg(null); setInviteUrl(null)
+    setCreating(true); setError(null); setInviteUrl(null)
     try {
       const res = await csrfFetch(`/api/hackathons/${slug}/teams`, {
         method: 'POST',
@@ -103,8 +102,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'failed')
       setNewTeamName('')
-      setNewQrSvg(j.qr_svg as string)
-      setInviteUrl(j.qr_url as string)
+      setInviteUrl(j.share_url as string)
       await load()
     } catch (e) { setError(e instanceof Error ? e.message : String(e)) }
     finally { setCreating(false) }
@@ -142,12 +140,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
     finally { setSendingInvite(false) }
   }
 
-  const getQrSvg = (team: Team) => {
-    return null
-  }
-
   if (!gate.ready) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>
-
   if (!gate.allowed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -302,15 +295,6 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                     </Button>
                   </div>
                 )}
-
-                {/* Saved QR (from registration) */}
-                {newQrSvg && (
-                  <div className="rounded-lg border border-primary/40 bg-primary/5 p-3 mt-2">
-                    <p className="text-xs font-semibold text-primary mb-2">Team QR Code — share with members</p>
-                    <div className="mx-auto inline-block rounded-md bg-white p-2" style={{ width: 160 }}
-                      dangerouslySetInnerHTML={{ __html: newQrSvg }} />
-                  </div>
-                )}
               </div>
             ) : (
               <div>
@@ -388,9 +372,6 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                     <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" /> {t.achievements.length}</Badge>
                   )}
                   <Badge className="gap-1"><Trophy className="h-3 w-3" /> {t.xp} XP · Lv {t.level}</Badge>
-                  <Link href={`/qr/${t.qr_token}`} className="text-muted-foreground hover:text-foreground" title="Open team QR">
-                    <ArrowRightCircle className="h-4 w-4" />
-                  </Link>
                 </div>
               ))}
             </Card>
