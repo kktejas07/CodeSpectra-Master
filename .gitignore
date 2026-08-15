@@ -18,6 +18,8 @@ node_modules/
 
 # Testing
 /coverage
+frontend/screenshots/
+frontend/test-results/
 
 # Next.js
 /.next/
