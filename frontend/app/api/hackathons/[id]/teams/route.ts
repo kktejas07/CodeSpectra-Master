@@ -64,7 +64,7 @@ export async function GET(
   const hk = await resolveHackathon(id)
   if (!hk) return NextResponse.json({ error: 'hackathon not found' }, { status: 404 })
   const items = await (await hackathonTeams())
-    .find({ hackathon_id: hk.id }, { projection: { _id: 0 } })
+    .find({ hackathon_id: hk.id }, { projection: { _id: 0, qr_token: 0 } })
     .sort({ xp: -1, created_at: 1 })
     .toArray()
   return NextResponse.json({ items, hackathon: { id: hk.id, slug: hk.slug, name: hk.name } })

@@ -46,7 +46,7 @@ export async function POST(req: NextRequest) {
     const docs = events.slice(0, 50).map((e: Record<string, unknown>) => ({
       id: newId(),
       event: String(e.event || 'unknown').slice(0, 128),
-      user_id: userId || (body.user_id as string) || undefined,
+      user_id: userId || undefined,
       anonymous_id: anonymousId || undefined,
       session_id: sessionId || undefined,
       timestamp: String(e.timestamp || now),

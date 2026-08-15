@@ -12,23 +12,35 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     const doc = await col.findOne({ id })
     if (!doc) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
-    if (gate && !('error' in gate)) {
-      const db = await getMongoDb()
-      const submission = await db.collection('exam_submissions').findOne({
-        exam_id: id,
-        user_id: gate.user.id
-      })
-      if (submission) {
-        return NextResponse.json({
-          ...doc,
-          submission: {
-            score: submission.score,
-            total: submission.max_score,
-            details: submission.details,
-            released: !!submission.score_released
-          }
-        })
+    // No loophole: anonymous callers must not receive answer keys. The exam
+    // content (questionList.answer / .correct_answer) is only released to an
+    // authenticated user; pre-login we return a sanitized copy (title/duration
+    // metadata) so the assessment page can render the login prompt.
+    if (!gate || 'error' in gate) {
+      const safe = {
+        ...doc,
+        questionList: [],
+        questions: [],
+        submission: null,
       }
+      return NextResponse.json(safe)
+    }
+
+    const db = await getMongoDb()
+    const submission = await db.collection('exam_submissions').findOne({
+      exam_id: id,
+      user_id: gate.user.id
+    })
+    if (submission) {
+      return NextResponse.json({
+        ...doc,
+        submission: {
+          score: submission.score,
+          total: submission.max_score,
+          details: submission.details,
+          released: !!submission.score_released
+        }
+      })
     }
 
     return NextResponse.json(doc)

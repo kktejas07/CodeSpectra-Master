@@ -1162,9 +1162,9 @@ export default function ExamResultsPage() {
           ) : reviewData ? (
             <>
               {/* Scrollable content */}
-              <div className="flex-1 overflow-y-auto px-6 py-6 space-y-6 print-review-body">
+              <div className="flex-1 overflow-y-auto overflow-x-hidden px-6 py-6 space-y-6 print-review-body">
                   {/* Candidate Info */}
-                  <div className="grid grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
                       <span className="text-muted-foreground block text-xs">Score</span>
                       <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
@@ -1217,7 +1217,7 @@ export default function ExamResultsPage() {
                             <div className="flex items-start justify-between gap-4">
                               <div className="flex-1">
                                 <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
-                                <div className="text-sm font-medium mt-0.5 prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-pre:text-xs prose-code:text-xs">
+                                <div className="text-sm font-medium mt-0.5 prose prose-sm dark:prose-invert max-w-full overflow-hidden prose-p:text-sm prose-pre:text-xs prose-code:text-xs">
                                   <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     rehypePlugins={[rehypeHighlight]}

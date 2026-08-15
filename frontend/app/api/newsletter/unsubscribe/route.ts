@@ -2,7 +2,9 @@
  * POST /api/newsletter/unsubscribe — public (used by the email footer link).
  * Supports ?email= query param OR JSON body so the unsubscribe link in
  * newsletter emails works without JS.
- * Supports optional HMAC token (t=) for secure unsubscribe links.
+ * REQUIRES the HMAC token (t=) — every newsletter link carries it, and it
+ * prevents an attacker from unsubscribing arbitrary emails or probing which
+ * addresses are subscribed.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { newsletterSubscribers, nowIso } from '@/lib/db/newsletter'
@@ -17,11 +19,6 @@ function verifyHmacToken(email: string, token: string): boolean {
   return token === expected
 }
 
-function generateHmacToken(email: string): string {
-  const secret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'codespectra-default-secret'
-  return createHmac('sha256', secret).update(email.toLowerCase()).digest('hex').slice(0, 16)
-}
-
 export async function POST(req: NextRequest) {
   const url = new URL(req.url)
   const body = await req.json().catch(() => ({})) as { email?: string }
@@ -32,8 +29,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'A valid email is required' }, { status: 400 })
   }
 
-  // If token is provided, verify it
-  if (token && !verifyHmacToken(email, token)) {
+  if (!token || !verifyHmacToken(email, token)) {
     return NextResponse.json({ error: 'Invalid unsubscribe token' }, { status: 403 })
   }
 
@@ -58,8 +54,7 @@ export async function GET(req: NextRequest) {
 
   if (!email) return NextResponse.json({ error: 'email required' }, { status: 400 })
 
-  // If token is provided, verify it
-  if (token && !verifyHmacToken(email, token)) {
+  if (!token || !verifyHmacToken(email, token)) {
     return NextResponse.json({ error: 'Invalid unsubscribe token' }, { status: 403 })
   }
 

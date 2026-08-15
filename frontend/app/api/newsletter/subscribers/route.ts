@@ -54,6 +54,7 @@ export async function POST(req: NextRequest) {
 
     const { emailTemplates } = await import('@/lib/email-templates')
     const { sendEmail } = await import('@/lib/send-email')
+    const { createHmac } = await import('node:crypto')
     const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
 
     let sent = 0
@@ -61,9 +62,13 @@ export async function POST(req: NextRequest) {
     for (const sub of subs) {
       const email = String(sub.email)
       try {
+        const hmacSecret = process.env.JWT_SECRET || process.env.NEXTAUTH_SECRET || 'codespectra-default-secret'
+        const hmacToken = createHmac('sha256', hmacSecret).update(email.toLowerCase()).digest('hex').slice(0, 16)
         const tpl = emailTemplates.newsletter({ subject, body: content })
-        // Inject each recipient's email into the per-recipient unsubscribe link.
-        const html = tpl.html.split('__EMAIL__').join(encodeURIComponent(email))
+        // Inject each recipient's email + HMAC token into the per-recipient unsubscribe link.
+        const html = tpl.html
+          .split('__EMAIL__').join(encodeURIComponent(email))
+          .replace(/unsubscribe\?email=[^"]*/, `unsubscribe?email=${encodeURIComponent(email)}&t=${hmacToken}`)
         await sendEmail(email, { subject: tpl.subject, html })
         sent++
       } catch {

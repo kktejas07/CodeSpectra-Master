@@ -1,15 +1,17 @@
 /**
  * GET /api/qr/[token]
  *
- * Public scan-resolution endpoint. Given a QR token, returns the kind
+ * Scan-resolution endpoint. Given a QR token, returns the kind
  * (`user` or `team`) and a *fresh* dashboard payload. The QR URL itself
  * lives at `/qr/{token}` (the page) — this is the JSON backend.
  *
- * No auth required — the QR is the token. Revoked tokens return 410 Gone.
+ * Requires login — the QR token alone must not expose PII to anonymous
+ * callers. Revoked tokens return 410 Gone.
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
+import { requireAuth } from '@/lib/route-auth'
 import {
   idCardTokens,
   hackathonTeams,
@@ -42,6 +44,11 @@ export async function GET(
 ) {
   const { token } = await ctx.params
   if (!token) return NextResponse.json({ error: 'missing token' }, { status: 400 })
+
+  const gate = await requireAuth().catch(() => null)
+  if (!gate || 'error' in gate) {
+    return NextResponse.json({ error: 'Sign in required to scan this QR code' }, { status: 401 })
+  }
 
   // ---- 1. Try id-card tokens ------------------------------------------
   const idCol = await idCardTokens()

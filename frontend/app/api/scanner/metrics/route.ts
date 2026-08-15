@@ -22,6 +22,10 @@ async function fileMetrics() {
 }
 
 export async function GET(request: NextRequest) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
   try {
     const { searchParams } = new URL(request.url)
     const projectId = searchParams.get('projectId')
@@ -29,7 +33,7 @@ export async function GET(request: NextRequest) {
     const page = parseInt(searchParams.get('page') || '1')
     const limit = parseInt(searchParams.get('limit') || '20')
 
-    const filter: Filter<FileMetricDoc> = {}
+    const filter: Filter<FileMetricDoc> = { user_id: gate.user.id }
     if (projectId) filter.project_id = projectId
     if (scanId) filter.scan_id = scanId
 

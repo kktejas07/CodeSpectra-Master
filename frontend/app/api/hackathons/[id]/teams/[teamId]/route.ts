@@ -59,6 +59,17 @@ export async function GET(
   const { id, teamId } = await ctx.params
   const team = await resolveTeam(id, teamId)
   if (!team) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  // QR token is a bearer credential for joining/verifying — only admins or
+  // members of the team may see it. Everyone else gets the team sans QR.
+  const isMember = Array.isArray(team.members) && team.members.some((m: { user_id?: string }) => m.user_id === user.id)
+  if (!isAdmin(user.role) && !isMember) {
+    const { qr_token: _qr, _id: _omit, ...clean } = team as typeof team & { _id?: unknown; qr_token?: string }
+    void _qr
+    void _omit
+    return NextResponse.json({ team: clean })
+  }
+
   const qrUrl = `${absoluteOrigin(req)}/qr/${team.qr_token}`
   const qrSvg = await generateQrSvg(qrUrl, { size: 320 })
   const { _id: _omit, ...clean } = team as typeof team & { _id?: unknown }

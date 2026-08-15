@@ -295,8 +295,6 @@ function notifyContentScript(msg) {
     'https://codespectra.ai/assessment/*',
     'https://codespectra.ai/dashboard/assessments/*',
     'https://codespectra.ai/dashboard/admin/assessments/*',
-    'http://localhost:3000/assessment/*',
-    'http://localhost:3000/dashboard/assessments/*',
   ]
   try {
     chrome.tabs.query({ url: urlPatterns }, (tabs) => {

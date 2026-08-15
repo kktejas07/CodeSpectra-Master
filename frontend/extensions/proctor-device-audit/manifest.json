@@ -12,8 +12,7 @@
     "storage"
   ],
   "host_permissions": [
-    "https://codespectra.ai/*",
-    "http://localhost:3000/*"
+    "https://codespectra.ai/*"
   ],
   "background": {
     "service_worker": "background.js"
@@ -24,9 +23,7 @@
         "https://codespectra.ai/assessment/*",
         "https://codespectra.ai/assessment/invite/*",
         "https://codespectra.ai/dashboard/assessments/*",
-        "https://codespectra.ai/dashboard/admin/assessments/*",
-        "http://localhost:3000/assessment/*",
-        "http://localhost:3000/dashboard/assessments/*"
+        "https://codespectra.ai/dashboard/admin/assessments/*"
       ],
       "js": ["lib/classify.js", "content.js"],
       "run_at": "document_idle"

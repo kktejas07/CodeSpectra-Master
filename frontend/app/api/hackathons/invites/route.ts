@@ -8,6 +8,9 @@ export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
 export async function GET(req: NextRequest) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
   const { searchParams } = new URL(req.url)
   const token = searchParams.get('token')
   if (!token) return NextResponse.json({ error: 'Token required' }, { status: 400 })

@@ -54,6 +54,11 @@ function injectCompileErrors(payload: ClientAnalysisPayload, stderr: string): Cl
 
 export async function POST(request: NextRequest): Promise<NextResponse> {
   try {
+    const user = await getAPIUser()
+    if (!user) {
+      return NextResponse.json({ error: 'Sign in required to analyze code' }, { status: 401 })
+    }
+
     let body: AnalysisRequest
     try {
       body = await request.json()
@@ -104,52 +109,49 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
       (isGithubFile ? `https://github.com/${ghOwner}/${ghName}` : null)
 
     let scanId: string | null = null
-    const user = await getAPIUser()
-    if (user) {
-      try {
-        const snippet = code.length > 50_000 ? code.slice(0, 50_000) : code
-        const scan = await insertScan({
-          user_id: user.id,
-          scan_type: isGithubFile ? 'github_file' : 'manual',
-          code_snippet: snippet,
-          language: language || 'typescript',
-          scan_status: 'completed',
-          scan_duration_ms: Math.round(payload.timeMs),
-          completed_at: new Date().toISOString(),
-          ...(isGithubFile && {
-            github_repo_url,
-            github_repo_owner: ghOwner,
-            github_repo_name: ghName,
-            branch: githubMeta.github_branch?.trim() || 'HEAD',
-            commit_hash: githubMeta.github_commit_hash?.trim() || null,
-            file_path: fp,
-          }),
-        })
-        scanId = scan.id
-        await insertMetrics({
-          scan_id: scan.id,
-          overall_quality_score: payload.quality,
-          bugs: payload.bugs,
-          vulnerabilities: payload.vulnerabilities,
-          security_hotspots: payload.securityHotspots,
-          code_smells: payload.codeSmells,
-          duplicated_code_percentage: payload.duplicatePercentage,
-          complexity_score: Math.min(100, Math.round(payload.complexityScore)),
-          maintainability_index: Math.round(payload.maintainabilityIndex),
-          test_coverage_percentage: Number(payload.testCoveragePercentage.toFixed(2)),
-          metrics_json: {
-            ...payload,
-            storedScanId: scan.id,
-            scannerLanguage: language || 'typescript',
-            scanSource: isGithubFile ? 'github_file' : 'manual',
-            githubFilePath: isGithubFile ? fp : undefined,
-            githubRepoUrl: github_repo_url ?? undefined,
-            codeSnippet: snippet,
-          },
-        })
-      } catch (e) {
-        console.error('[CodeSpectra] analyze-code persist:', e)
-      }
+    try {
+      const snippet = code.length > 50_000 ? code.slice(0, 50_000) : code
+      const scan = await insertScan({
+        user_id: user.id,
+        scan_type: isGithubFile ? 'github_file' : 'manual',
+        code_snippet: snippet,
+        language: language || 'typescript',
+        scan_status: 'completed',
+        scan_duration_ms: Math.round(payload.timeMs),
+        completed_at: new Date().toISOString(),
+        ...(isGithubFile && {
+          github_repo_url,
+          github_repo_owner: ghOwner,
+          github_repo_name: ghName,
+          branch: githubMeta.github_branch?.trim() || 'HEAD',
+          commit_hash: githubMeta.github_commit_hash?.trim() || null,
+          file_path: fp,
+        }),
+      })
+      scanId = scan.id
+      await insertMetrics({
+        scan_id: scan.id,
+        overall_quality_score: payload.quality,
+        bugs: payload.bugs,
+        vulnerabilities: payload.vulnerabilities,
+        security_hotspots: payload.securityHotspots,
+        code_smells: payload.codeSmells,
+        duplicated_code_percentage: payload.duplicatePercentage,
+        complexity_score: Math.min(100, Math.round(payload.complexityScore)),
+        maintainability_index: Math.round(payload.maintainabilityIndex),
+        test_coverage_percentage: Number(payload.testCoveragePercentage.toFixed(2)),
+        metrics_json: {
+          ...payload,
+          storedScanId: scan.id,
+          scannerLanguage: language || 'typescript',
+          scanSource: isGithubFile ? 'github_file' : 'manual',
+          githubFilePath: isGithubFile ? fp : undefined,
+          githubRepoUrl: github_repo_url ?? undefined,
+          codeSnippet: snippet,
+        },
+      })
+    } catch (e) {
+      console.error('[CodeSpectra] analyze-code persist:', e)
     }
 
     return NextResponse.json(
