@@ -18,6 +18,44 @@ let currentSession = null // { sessionKind, sessionId }
 let knownDevices = new Map() // key: id → device snapshot
 let pollTimer = null
 
+// ─── Classification (duplicated from lib/classify.js — service worker can't import content_scripts) ──
+
+const BLOCKED_USB_CLASSES = new Set([0x08])
+const SAFE_USB_CLASSES    = new Set([0x03, 0x09])
+const SAFE_HID_USAGES     = new Set([0x01])
+const WARN_HID_USAGES     = new Set([0x0d])
+
+const USB_CLASS_NAMES = {
+  0x01: 'Audio', 0x02: 'CDC/Serial', 0x03: 'HID', 0x07: 'Printer',
+  0x08: 'Mass Storage', 0x09: 'Hub', 0x0e: 'Video', 0xff: 'Vendor-specific',
+}
+
+const STORAGE_TYPE_NAMES = {
+  usb: 'USB Storage', fixed: 'Internal Storage',
+  removable: 'Removable Media', unknown: 'Unknown Storage',
+}
+
+function classifyUsbClass(classCode) {
+  if (classCode === undefined || classCode === null) return { verdict: 'warn', reason: 'Unknown device class' }
+  if (BLOCKED_USB_CLASSES.has(classCode)) return { verdict: 'blocked', reason: `Mass storage / pen drive (class 0x${classCode.toString(16)})` }
+  if (SAFE_USB_CLASSES.has(classCode)) return { verdict: 'safe', reason: USB_CLASS_NAMES[classCode] || 'Known safe class' }
+  return { verdict: 'warn', reason: `Unrecognized USB class (0x${classCode.toString(16)})` }
+}
+
+function classifyHidUsage(usagePage) {
+  if (usagePage === undefined || usagePage === null) return { verdict: 'safe', reason: 'Default HID' }
+  if (SAFE_HID_USAGES.has(usagePage)) return { verdict: 'safe', reason: 'Mouse / Keyboard' }
+  if (WARN_HID_USAGES.has(usagePage)) return { verdict: 'warn', reason: 'Pen digitizer / drawing tablet' }
+  return { verdict: 'warn', reason: `Unrecognized HID usage (0x${usagePage.toString(16)})` }
+}
+
+function classifyStorageType(type) {
+  if (type === 'usb') return { verdict: 'blocked', reason: 'USB removable storage detected' }
+  if (type === 'fixed') return { verdict: 'safe', reason: 'Internal storage' }
+  if (type === 'removable') return { verdict: 'warn', reason: 'Removable media (CD/floppy)' }
+  return { verdict: 'warn', reason: 'Unknown storage type' }
+}
+
 // ─── Enumeration ─────────────────────────────────────────────────────────────
 
 async function enumerateAll() {
@@ -243,11 +281,26 @@ function stopHotplugWatcher() {
 // ─── Content script bridge ───────────────────────────────────────────────────
 
 function notifyContentScript(msg) {
-  chrome.tabs.query({ url: ['*://codespectra.ai/assessment/*', '*://codespectra.ai/dashboard/assessments/*', '*://localhost:3000/assessment/*', '*://localhost:3000/dashboard/assessments/*'] }, (tabs) => {
-    for (const tab of tabs) {
-      chrome.tabs.sendMessage(tab.id, msg).catch(() => null)
-    }
-  })
+  const urlPatterns = [
+    'https://codespectra.ai/assessment/*',
+    'https://codespectra.ai/dashboard/assessments/*',
+    'https://codespectra.ai/dashboard/admin/assessments/*',
+    'http://localhost:3000/assessment/*',
+    'http://localhost:3000/dashboard/assessments/*',
+  ]
+  try {
+    chrome.tabs.query({ url: urlPatterns }, (tabs) => {
+      if (chrome.runtime.lastError || !tabs) return
+      if (!Array.isArray(tabs)) return
+      for (const tab of tabs) {
+        if (tab?.id) {
+          chrome.tabs.sendMessage(tab.id, msg).catch(() => null)
+        }
+      }
+    })
+  } catch (e) {
+    console.warn('[cspectra] notifyContentScript failed:', e)
+  }
 }
 
 // ─── Message handler ─────────────────────────────────────────────────────────
