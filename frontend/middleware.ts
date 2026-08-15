@@ -33,7 +33,6 @@ export function middleware(request: NextRequest) {
   const CSRF_EXEMPT = [
     '/api/analytics/web-vitals',
     '/api/analytics/events',
-    '/api/analytics/replay',
     '/api/github/webhook',
     '/api/billing/webhook',
     '/api/billing/stripe-webhook',
