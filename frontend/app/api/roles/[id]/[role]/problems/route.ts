@@ -61,14 +61,6 @@ const ROLE_CONFIGS: Record<string, RoleConfig> = {
     categories: ['Scripting', 'Infrastructure', 'CI/CD', 'Monitoring'],
     description: 'Infrastructure and automation problems',
   },
-  'mobile-developer': {
-    id: 'mobile-developer',
-    title: 'Mobile Developer',
-    topics: ['ios', 'android', 'react-native', 'flutter', 'mobile-ui', 'offline-sync', 'push-notifications'],
-    difficultyRange: ['easy', 'medium'],
-    categories: ['Mobile UI', 'Data Sync', 'Platform APIs'],
-    description: 'Mobile app development problems',
-  },
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
