@@ -1,8 +1,8 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
-import { Loader2, Shield, AlertTriangle } from 'lucide-react'
+import { Loader2, Shield, AlertTriangle, RefreshCw } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ProctorEvent {
@@ -44,19 +44,38 @@ const EVENT_COLORS: Record<string, string> = {
   developer_tools: '#ef4444',
 }
 
+const POLL_INTERVAL = 10000 // 10 seconds
+
 export default function ProctoringAnalyticsPage() {
   const gate = usePageGuard('superadmin')
   const [data, setData] = useState<ProctoringData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
+  const [autoRefresh, setAutoRefresh] = useState(true)
+
+  const fetchData = useCallback(async () => {
+    if (!gate.ready) return
+    try {
+      const res = await fetch('/api/admin/analytics/proctoring', { credentials: 'include' })
+      const json = await res.json()
+      if (json) {
+        setData(json)
+        setLastUpdated(new Date())
+      }
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [gate.ready])
 
   useEffect(() => {
-    if (!gate.ready) return
-    fetch('/api/admin/analytics/proctoring', { credentials: 'include' })
-      .then(r => r.json())
-      .then(json => { if (json) setData(json) })
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }, [gate.ready])
+    void fetchData()
+  }, [fetchData])
+
+  // Auto-refresh polling
+  useEffect(() => {
+    if (!autoRefresh || !gate.ready) return
+    const interval = setInterval(() => void fetchData(), POLL_INTERVAL)
+    return () => clearInterval(interval)
+  }, [autoRefresh, gate.ready, fetchData])
 
   if (!gate.ready) return null
 
@@ -88,13 +107,38 @@ export default function ProctoringAnalyticsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
-          <Shield className="h-5 w-5 text-primary" />
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <Shield className="h-5 w-5 text-primary" />
+          </div>
+          <div>
+            <h1 className="text-3xl font-bold text-foreground">Proctoring Analytics</h1>
+            <p className="text-sm text-muted-foreground mt-0.5">Proctoring flags and event distribution across assessments</p>
+          </div>
         </div>
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Proctoring Analytics</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">Proctoring flags and event distribution across assessments</p>
+        <div className="flex items-center gap-3">
+          {lastUpdated && (
+            <span className="text-xs text-muted-foreground">
+              Updated: {lastUpdated.toLocaleTimeString()}
+            </span>
+          )}
+          <button
+            onClick={() => void fetchData()}
+            className="flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors"
+          >
+            <RefreshCw className={`h-3.5 w-3.5 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
+          </button>
+          <label className="flex items-center gap-2 text-xs text-muted-foreground cursor-pointer">
+            <input
+              type="checkbox"
+              checked={autoRefresh}
+              onChange={(e) => setAutoRefresh(e.target.checked)}
+              className="rounded border-border"
+            />
+            Auto-refresh
+          </label>
         </div>
       </div>
 
