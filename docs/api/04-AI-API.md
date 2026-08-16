@@ -230,7 +230,8 @@ With `publish: true`, the generated problem is automatically inserted into the `
     "test_cases": [...],
     "starter_code": { "python": "...", "javascript": "...", "cpp": "...", "java": "..." }
   },
-  "published_problem_id": "uuid" // null if not published
+  "published_problem_id": "uuid", // null if not published
+  "published_problem_slug": "unique-problem-slug" // deduped slug actually inserted (null if not published) — use this, not problem.slug, when referencing the published problem
 }
 ```
 

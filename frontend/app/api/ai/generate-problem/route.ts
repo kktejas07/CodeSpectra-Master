@@ -20,7 +20,7 @@ const FALLBACK_PROVIDERS = [
   { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
   { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
   { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', endpoint: undefined },
-  { provider: 'opencode', model: 'deepseek-v4-pro', endpoint: undefined },
+  { provider: 'opencode', model: 'deepseek-v4-flash-free', endpoint: undefined },
 ]
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -71,6 +71,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const gens = await aiGeneratedProblems()
   let publishedProblemId: string | null = null
+  let publishedProblemSlug: string | null = null
 
   if (body.publish && result && typeof result === 'object') {
     try {
@@ -120,6 +121,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       await probsCol.insertOne(doc as unknown as never)
       publishedProblemId = id
+      publishedProblemSlug = slug
     } catch (e) {
       console.error('[generate-problem] publish failed', e)
     }
@@ -133,5 +135,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     created_at: nowIso(),
   })
 
-  return NextResponse.json({ problem: result, published_problem_id: publishedProblemId })
+  return NextResponse.json({ problem: result, published_problem_id: publishedProblemId, published_problem_slug: publishedProblemSlug })
 }
