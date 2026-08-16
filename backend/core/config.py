@@ -81,6 +81,15 @@ class Settings:
     CORS_ORIGINS: str = os.environ.get("CORS_ORIGINS", "http://localhost:3000")
     INTERNAL_BACKEND_SECRET: str = os.environ.get("INTERNAL_BACKEND_SECRET", "")
 
+    # ─── ATS Webhooks ──────────────────────────────────────────
+    # Shared secret used to HMAC-sign outbound ATS webhook events. When set,
+    # /api/webhooks/dispatch verifies the x-webhook-signature header against it.
+    ATS_WEBHOOK_SECRET: str = os.environ.get("ATS_WEBHOOK_SECRET", "")
+    # Comma-separated allowlist of outbound webhook target URLs (SSRF guard).
+    ATS_WEBHOOK_ALLOWLIST: str = os.environ.get(
+        "ATS_WEBHOOK_ALLOWLIST", "https://api.merge.dev/v1/ats/webhooks"
+    )
+
     # ─── Public ────────────────────────────────────────────────
     NEXT_PUBLIC_APP_URL: str = os.environ.get(
         "NEXT_PUBLIC_APP_URL", "https://codespectra.ai"

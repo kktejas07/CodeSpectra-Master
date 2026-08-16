@@ -9,6 +9,9 @@ def client():
     return TestClient(app)
 
 
+AUTH = {"x-internal-secret": "test-internal-secret"}
+
+
 def test_cad_evaluate_4_layer_api(client):
     payload = {
         "task_type": "T1_PART_MODELLING",
@@ -17,7 +20,7 @@ def test_cad_evaluate_4_layer_api(client):
         "region_standard": "ISO",
         "unit_system": "metric",
     }
-    response = client.post("/api/assessment-platform/cad/evaluate-4-layer", json=payload)
+    response = client.post("/api/assessment-platform/cad/evaluate-4-layer", json=payload, headers=AUTH)
     assert response.status_code == 200
     data = response.json()
     assert "raw_points" in data

@@ -19,6 +19,8 @@ os.environ.setdefault("NEXTJS_INTERNAL_URL", "http://localhost:8001")
 os.environ.setdefault("ANTHROPIC_API_KEY", "test-key")
 os.environ.setdefault("GEMINI_API_KEY", "test-key")
 os.environ.setdefault("OPENAI_API_KEY", "test-key")
+os.environ.setdefault("INTERNAL_BACKEND_SECRET", "test-internal-secret")
+os.environ.setdefault("ATS_WEBHOOK_SECRET", "test-webhook-secret")
 
 
 from server import app  # noqa: E402
