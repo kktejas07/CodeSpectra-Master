@@ -108,10 +108,11 @@ async function loadSecrets() {
   const client = new MongoClient(MONGO_URI_ASSERTED, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
   const secrets = (await client.db(MONGO_DB).collection('platform_settings').findOne({ key: 'secrets' }))?.value || {}
-  openrouterKey = secrets.openrouter_api_key || secrets.openai_api_key || ''
-  groqKey = secrets.groq_api_key || ''
-  nvidiaKey = secrets.nvidia_api_key || ''
-  opencodeKey = secrets.opencode_api_key || ''
+  // Env vars override stored secrets (a script run should not need a Mongo write).
+  openrouterKey = process.env.OPENROUTER_API_KEY || secrets.openrouter_api_key || secrets.openai_api_key || ''
+  groqKey = process.env.GROQ_API_KEY || secrets.groq_api_key || ''
+  nvidiaKey = process.env.NVIDIA_API_KEY || secrets.nvidia_api_key || ''
+  opencodeKey = process.env.OPENCODE_API_KEY || secrets.opencode_api_key || ''
   await client.close()
   if (!groqKey && !nvidiaKey && !openrouterKey && !opencodeKey) throw new Error('No provider keys found in platform_settings')
   console.log(`Keys: opencode=${opencodeKey.slice(0, 8)}... groq=${groqKey.slice(0, 8)}... nvidia=${nvidiaKey.slice(0, 8)}... openrouter=${openrouterKey.slice(0, 8)}...`)
