@@ -1259,7 +1259,7 @@ export default function ExamResultsPage() {
 
                             {/* MCQ-type options display */}
                             {isMcq && q.options && (
-                              <div className="flex flex-col sm:flex-row sm:flex-wrap gap-1.5 mt-1">
+                              <div className="flex flex-col items-start gap-1.5 mt-1">
                                 {q.options.map((opt, oi) => {
                                   const optLower = opt.toLowerCase()
                                   // multiple_response stores a comma-separated set; compare as sets
@@ -1272,17 +1272,22 @@ export default function ExamResultsPage() {
                                     : [correctAns.toLowerCase()]
                                   const isSelected = userSet.includes(optLower)
                                   const isCorrectAnswer = correctSet.includes(optLower)
+                                  const optClass = isSelected && isCorrectAnswer
+                                    ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40'
+                                    : isSelected && !isCorrectAnswer
+                                      ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through'
+                                      : !isSelected && isCorrectAnswer
+                                        ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20'
+                                        : 'text-muted-foreground'
                                   return (
-                                    <Badge key={oi} variant="outline" className={`text-xs ${
-                                      isSelected && isCorrectAnswer ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40' :
-                                      isSelected && !isCorrectAnswer ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through' :
-                                      !isSelected && isCorrectAnswer ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20' :
-                                      'text-muted-foreground'
-                                    }`}>
+                                    <span
+                                      key={oi}
+                                      className={`text-xs rounded-md border px-2.5 py-1 break-words w-full sm:w-auto max-w-full text-left ${optClass}`}
+                                    >
                                       {opt}
                                       {isSelected ? ' (selected)' : ''}
                                       {!isSelected && isCorrectAnswer ? ' (correct)' : ''}
-                                    </Badge>
+                                    </span>
                                   )
                                 })}
                               </div>
