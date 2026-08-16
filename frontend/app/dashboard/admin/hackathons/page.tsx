@@ -31,7 +31,8 @@ interface Hackathon {
   starts_at: string; ends_at: string; status: string
   tasks: { problem_slug: string; problem_title: string; points: number; difficulty: string; required: boolean }[]
   rules: { type: string; title: string; description: string }[]
-  scoring: { auto_grade: boolean; points_per_problem: number; bonus_time: number; penalty_per_attempt: number }
+  scoring: { auto_grade: boolean; points_per_problem: number; bonus_time: number; penalty_per_attempt: number };
+  solve_limit: number
   results_released: boolean
   created_at: string
 }
@@ -66,6 +67,7 @@ export default function HackathonsAdminPage() {
       { type: 'conduct' as const, title: 'Code of Conduct', description: 'Plagiarism or collusion with other teams will result in disqualification.' },
     ],
     scoring: { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
+    solve_limit: 0,
     banner_url: '',
   })
   const [editing, setEditing] = useState<Hackathon | null>(null)
@@ -245,6 +247,7 @@ export default function HackathonsAdminPage() {
           })),
           rules: form.rules,
           scoring: form.scoring,
+          solve_limit: form.solve_limit || undefined,
           banner_url: form.banner_url,
         }),
       })
@@ -278,6 +281,7 @@ export default function HackathonsAdminPage() {
           })),
           rules: form.rules,
           scoring: form.scoring,
+          solve_limit: form.solve_limit || undefined,
           banner_url: form.banner_url,
         }),
       })
@@ -313,6 +317,7 @@ export default function HackathonsAdminPage() {
         { type: 'conduct' as const, title: 'Code of Conduct', description: 'Plagiarism or collusion with other teams will result in disqualification.' },
       ]) as typeof form.rules,
       scoring: hk.scoring || { auto_grade: true, points_per_problem: 100, bonus_time: 0, penalty_per_attempt: 0 },
+      solve_limit: Number((hk as any).solve_limit) || 0,
       banner_url: (hk as any).banner_url || '',
     })
   }
@@ -823,7 +828,7 @@ export default function HackathonsAdminPage() {
 
               <div className="rounded border p-4 space-y-4">
                 <h4 className="text-sm font-semibold">Scoring Configuration</h4>
-                <div className="grid gap-3 md:grid-cols-3">
+                <div className="grid gap-3 md:grid-cols-4">
                   <NumberField
                     label="Points per problem"
                     value={form.scoring.points_per_problem}
@@ -853,6 +858,14 @@ export default function HackathonsAdminPage() {
                     step={5}
                     unit="pts"
                     hint="Points deducted for each wrong submission."
+                  />
+                  <NumberField
+                    label="Solve limit"
+                    value={form.solve_limit}
+                    onChange={(v) => setForm((f) => ({ ...f, solve_limit: v }))}
+                    min={0}
+                    max={500}
+                    hint="Max problems a team can attempt. 0 = no limit."
                   />
                 </div>
                 <div className="flex items-center gap-2">
