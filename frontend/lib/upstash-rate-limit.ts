@@ -25,6 +25,7 @@ interface RedisClientLike {
   scan?: (cursor: string | number, ...args: unknown[]) => Promise<[string, string[]]>
   set?: (key: string, value: string, ...args: unknown[]) => Promise<'OK' | null>
   del?: (...keys: string[]) => Promise<number>
+  keys?: (pattern: string) => Promise<string[]>
 }
 
 let _redisClient: RedisClientLike | null = null
@@ -274,6 +275,59 @@ export async function rateLimitFixedWindow(
   } catch (e) {
     console.warn('[CodeSpectra] Redis rate limit failed, using memory:', (e as Error).message)
     return rateLimitSlidingWindow(memoryKey, maxHits, windowMs)
+  }
+}
+
+/**
+ * Delete all live rate-limit counters (frontend `codespectra:rl:*` + backend
+ * `ai_rate_limit:*`). Admin maintenance action — the counters are ephemeral by
+ * design, so removing them only resets in-flight limits, never user data.
+ * Returns the number of keys actually removed.
+ */
+export async function flushRateLimitKeys(): Promise<{ flushed: number; error?: string }> {
+  const { url, token } = await resolveConfig()
+  if (!url || !token) return { flushed: 0, error: 'Redis is not configured.' }
+
+  const patterns = ['codespectra:rl:*', 'ai_rate_limit:*']
+  try {
+    if (/^https?:\/\//i.test(url)) {
+      // Upstash REST: KEYS each pattern, then a single DEL.
+      const base = url.replace(/\/$/, '')
+      const headers = { Authorization: `Bearer ${token}`, 'Content-Type': 'application/json' }
+      const keys: string[] = []
+      for (const pattern of patterns) {
+        const res = await fetch(base, {
+          method: 'POST',
+          headers,
+          body: JSON.stringify([['KEYS', pattern]]),
+          signal: AbortSignal.timeout(8000),
+        })
+        if (!res.ok) continue
+        const json = await res.json().catch(() => null) as { result?: string[] } | null
+        if (Array.isArray(json?.result)) keys.push(...json!.result!)
+      }
+      if (!keys.length) return { flushed: 0 }
+      const res = await fetch(base, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify([['DEL', ...keys]]),
+        signal: AbortSignal.timeout(8000),
+      })
+      if (!res.ok) return { flushed: 0, error: `Delete failed (HTTP ${res.status})` }
+      const json = await res.json().catch(() => null) as { result?: number } | null
+      return { flushed: Number(json?.result ?? 0) }
+    }
+
+    // Self-hosted Redis — KEYS is fine here: rate-limit keys are few + short-TTL.
+    const client = await getRedisClient(url, token)
+    let flushed = 0
+    for (const pattern of patterns) {
+      const keys = (await client.keys?.(pattern)) ?? []
+      if (keys.length) flushed += (await client.del?.(...keys)) ?? 0
+    }
+    return { flushed }
+  } catch (e) {
+    return { flushed: 0, error: (e as Error).message }
   }
 }
 
