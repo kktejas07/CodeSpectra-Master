@@ -163,16 +163,18 @@ async function aiComplete(prompt: string, active: string[] = PROVIDERS): Promise
           signal: AbortSignal.timeout(p.timeoutMs),
         })
         const text = await res.text()
-        if (res.status === 429 || res.status === 402) {
+        if (res.status === 429) {
           retries++
           // Groq free tier throttles hard; cap its retries low so we fall to a working provider fast.
-          const cap = p.id === 'groq' ? 2 : MAX_429_RETRIES
+          const cap = p.id === 'groq' ? 4 : MAX_429_RETRIES
           if (retries > cap) { lastErr.push(`${p.id}: ${res.status} exhausted`); break }
           const waitMs = 8000 + Math.floor(Math.random() * 8000)
           console.log(`    [${p.id} ${res.status}] rate/credit limited, retry ${retries}/${cap} in ${Math.round(waitMs / 1000)}s...`)
           await sleep(waitMs)
           continue
         }
+        // 402 = account has no credits — permanent, retrying just wastes time.
+        if (res.status === 402) { lastErr.push(`${p.id}: 402 no credits`); break }
         if (res.status === 401) { lastErr.push(`${p.id}: 401 invalid key`); break }
         if (!res.ok) { lastErr.push(`${p.id}: HTTP ${res.status}`); break }
         let json: unknown
