@@ -20,7 +20,7 @@ const FALLBACK_PROVIDERS = [
   { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
   { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
   { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', endpoint: undefined },
-  { provider: 'opencode', model: 'deepseek-v4-pro', endpoint: undefined },
+  { provider: 'opencode', model: 'deepseek-v4-flash-free', endpoint: undefined },
 ]
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
