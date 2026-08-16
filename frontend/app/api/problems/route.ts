@@ -1,6 +1,6 @@
 import { NextResponse, NextRequest } from 'next/server'
 import { requireAuth, requireAdmin } from '@/lib/route-auth'
-import { problems, nowIso, type ProblemDoc } from '@/lib/db/problems'
+import { problems, nowIso, newId, type ProblemDoc } from '@/lib/db/problems'
 import { SEED_PROBLEMS } from '@/lib/db/seed-problems'
 import { SEED_PROBLEMS_BULK } from '@/scripts/seed-problems-bulk'
 import { sanitizeRegex } from '@/lib/sanitize'
@@ -26,10 +26,12 @@ async function ensureSeeded() {
 export async function GET(request: NextRequest) {
   const { searchParams } = new URL(request.url)
   const difficulty = searchParams.get('difficulty') as ProblemDoc['difficulty'] | null
-  const search = searchParams.get('q')?.trim()
+  // Accept both `q` (canonical) and `search` (alias used by hackathon pickers)
+  const search = searchParams.get('q')?.trim() || searchParams.get('search')?.trim()
   const topicsParam = searchParams.get('topics')?.trim()
   const includeHidden = searchParams.get('include_hidden') === 'true'
   const forHackathon = searchParams.get('for_hackathon') === 'true'
+  const limitParam = Math.min(50, Math.max(1, Number(searchParams.get('limit')) || 0))
 
   const isAdmin = await (async () => {
     const gate = await requireAdmin()
@@ -59,6 +61,7 @@ export async function GET(request: NextRequest) {
     const list = await col
       .find(filter, { projection: { test_cases: 0, starter_code: 0, statement_md: 0 } })
       .sort({ created_at: 1 })
+      .limit(limitParam || 0)
       .toArray()
     if (list.length > 0) {
       return NextResponse.json({ data: list, count: list.length })
@@ -68,7 +71,7 @@ export async function GET(request: NextRequest) {
   }
 
   // Fallback to in-memory seed (only public problems)
-  const seedList = SEED_PROBLEMS.filter((p) => {
+  const list = SEED_PROBLEMS.filter((p) => {
     if (!p.is_published) return false
     if (difficulty && p.difficulty !== difficulty) return false
     if (search && !(p.title || '').toLowerCase().includes(search.toLowerCase())) return false
@@ -81,6 +84,7 @@ export async function GET(request: NextRequest) {
     ...rest,
     _source: 'seed' as const,
   }))
+  const seedList = limitParam > 0 ? list.slice(0, limitParam) : list
 
   return NextResponse.json({ data: seedList, count: seedList.length })
 }
@@ -92,13 +96,24 @@ export async function POST(request: NextRequest) {
   }
   try {
     const body = (await request.json()) as Partial<ProblemDoc>
-    if (!body.title || !body.slug) {
-      return NextResponse.json({ error: 'title and slug are required' }, { status: 400 })
+    if (!body.title) {
+      return NextResponse.json({ error: 'title is required' }, { status: 400 })
+    }
+    const col = await problems()
+    // Dedupe slug against the unique index (append -n) so common titles like
+    // "Two Sum" don't 500 with an E11000 duplicate-key error.
+    const baseSlug = (body.slug || body.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+      .replace(/\s+/g, '_').toLowerCase()
+    let slug = baseSlug || `p_${Date.now()}`
+    let n = 0
+    while (await col.findOne({ slug })) {
+      n += 1
+      slug = `${baseSlug}-${n}`
     }
     const now = nowIso()
     const doc: ProblemDoc = {
-      id: body.id || `p_${body.slug.replace(/\s+/g, '_').toLowerCase()}`,
-      slug: body.slug,
+      id: newId(),
+      slug,
       title: body.title,
       difficulty: body.difficulty || 'easy',
       topics: body.topics || [],
@@ -118,7 +133,6 @@ export async function POST(request: NextRequest) {
       created_at: now,
       updated_at: now,
     }
-    const col = await problems()
     await col.insertOne(doc)
     return NextResponse.json(doc, { status: 201 })
   } catch (error) {

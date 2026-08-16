@@ -183,7 +183,6 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
   const [creatingOwnError, setCreatingOwnError] = useState<string | null>(null)
 
   const searchProblems = useCallback(async (q: string) => {
-    if (!q.trim()) { setProblemResults([]); return }
     setSearchingProblems(true)
     try {
       const res = await fetch(`/api/problems?search=${encodeURIComponent(q)}&limit=10`)
@@ -192,6 +191,8 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     } catch { setProblemResults([]) }
     finally { setSearchingProblems(false) }
   }, [])
+
+  useEffect(() => { searchProblems('') }, [searchProblems])
 
   async function generateAiProblems() {
     setGenerating(true); setGeneratingError(null)
@@ -211,8 +212,10 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'Generation failed')
       const prob = j.problem as Record<string, unknown>
-      const slug = typeof prob.slug === 'string' ? prob.slug
-        : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const slug = typeof j.published_problem_slug === 'string' && j.published_problem_slug
+        ? j.published_problem_slug
+        : (typeof prob.slug === 'string' ? prob.slug
+          : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
       const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
         ? prob.difficulty : 'medium') as string
       const title = String(prob.title || slug)
@@ -271,7 +274,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
       setForm((f) => ({
         ...f,
         tasks: [...f.tasks, {
-          slug,
+          slug: j.slug || slug,
           title: ownForm.title,
           points: ownForm.points,
           difficulty: ownForm.difficulty,

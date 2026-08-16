@@ -116,7 +116,6 @@ export default function HackathonsAdminPage() {
   useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
 
   const searchProblems = useCallback(async (q: string) => {
-    if (!q.trim()) { setProblemResults([]); return }
     setSearchingProblems(true)
     try {
       const res = await fetch(`/api/problems?search=${encodeURIComponent(q)}&limit=10`)
@@ -144,8 +143,10 @@ export default function HackathonsAdminPage() {
       const j = await res.json()
       if (!res.ok) throw new Error(j.error || 'Generation failed')
       const prob = j.problem as Record<string, unknown>
-      const slug = typeof prob.slug === 'string' ? prob.slug
-        : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
+      const slug = typeof j.published_problem_slug === 'string' && j.published_problem_slug
+        ? j.published_problem_slug
+        : (typeof prob.slug === 'string' ? prob.slug
+          : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
       const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
         ? prob.difficulty : 'medium') as string
       const title = String(prob.title || slug)
@@ -204,7 +205,7 @@ export default function HackathonsAdminPage() {
       setForm((f) => ({
         ...f,
         tasks: [...f.tasks, {
-          slug,
+          slug: j.slug || slug,
           title: ownForm.title,
           points: ownForm.points,
           difficulty: ownForm.difficulty,
