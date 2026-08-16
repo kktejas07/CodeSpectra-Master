@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb'
 import { createHash } from 'crypto'
-import { normalizeBankQuestion, bankContentHash, type BankQuestionDoc } from '../lib/question-bank'
+import { normalizeBankQuestion, bankContentHash, deriveTitleFromQuestion, type BankQuestionDoc } from '../lib/question-bank'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Local 45k question-bank generator.
@@ -221,6 +221,39 @@ function pickDifficulty(mix: [number, number, number]): string {
   return 'Hard'
 }
 
+/** Default tech stacks per branch for coding questions the LLM omits it on. */
+const BRANCH_TECH_STACK: Record<string, string[]> = {
+  cse: ['Python', 'Java', 'C++'],
+  it: ['JavaScript', 'SQL', 'Python'],
+  ai_ds: ['Python', 'SQL'],
+  ece: ['C', 'Embedded C'],
+  eee: ['C', 'Python'],
+  mech: ['MATLAB', 'Python'],
+  civil: ['Python', 'AutoCAD'],
+  chem: ['Python', 'MATLAB'],
+}
+
+/** Enforce unique, non-numbered titles and coding metadata on a batch of docs. */
+function enforceQuality(docs: BankQuestionDoc[], seenTitles: Set<string>): BankQuestionDoc[] {
+  const out: BankQuestionDoc[] = []
+  for (const doc of docs) {
+    if (doc.type === 'coding') {
+      if (!doc.tech_stack?.length) doc.tech_stack = BRANCH_TECH_STACK[doc.branch || ''] || ['Python']
+    }
+    let titleKey = (doc.title || '').toLowerCase().replace(/\s+/g, ' ').trim()
+    if (titleKey && seenTitles.has(titleKey)) {
+      // Title collision → re-derive from the question text; still unique per
+      // question because the fingerprint dedupe already rules out duplicates.
+      doc.title = deriveTitleFromQuestion(doc.question)
+      titleKey = (doc.title || '').toLowerCase().replace(/\s+/g, ' ').trim()
+      if (seenTitles.has(titleKey)) continue
+    }
+    seenTitles.add(titleKey)
+    out.push(doc)
+  }
+  return out
+}
+
 function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVELS)[0], topic: string, count: number, typeList: string[], degree: string, industry?: string): string {
   const perType = Math.max(1, Math.floor(count / typeList.length))
   const typeSpec = typeList.map((t) => `${t}:~${perType}`).join(', ')
@@ -235,7 +268,7 @@ function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVEL
     `Focus subject/topic: ${topic}.`,
     `Degree level of candidate: ${degree.toUpperCase()}.`,
     `Question types (approximate counts): ${typeSpec}.`,
-    `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers comma-separated. 'true_false' = options ["True","False"]. 'fill_blanks' = question has a ____ blank + 4 candidate fill-ins as options. 'coding' = empty options, answer is a short approach outline (no full solution). 'descriptive' = empty options, answer is a model-answer paragraph.`,
+    `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers comma-separated. 'true_false' = options ["True","False"]. 'fill_blanks' = question has a ____ blank + 4 candidate fill-ins as options. 'coding' = empty options, answer is a short approach outline (no full solution), MUST include "tech_stack" (array of 1-3 programming languages) and "test_cases" (array of 2-4 objects {"input": "...", "output": "..."} that verify the approach). 'descriptive' = empty options, answer is a model-answer paragraph.`,
     `TITLE RULE (mandatory): the "title" field MUST be a concise human-readable summary of that specific question (e.g. "Binary Search worst-case time complexity", "Banker's algorithm safe-state check"), 4-12 words, unique per question. NEVER use "Q1", "Question 2", "1.1", or any numbering scheme as a title — a numbered title is an automatic rejection.`,
     `Vary concepts: do NOT repeat the same concept twice in one batch.`,
     `${authNote}${hardNote}`,
@@ -269,6 +302,7 @@ async function main() {
   const existing = await col.find({}, { projection: { _id: 0 } }).toArray()
   const seenHashes = new Set<string>()
   const seenFp = new Set<string>()
+  const seenTitles = new Set<string>()
   let dupExisting = 0
   for (const d of existing) {
     const h = bankContentHash(d)
@@ -276,6 +310,7 @@ async function main() {
     if (seenHashes.has(h) || seenFp.has(f)) dupExisting++
     seenHashes.add(h)
     seenFp.add(f)
+    seenTitles.add((d.title || '').toLowerCase().replace(/\s+/g, ' ').trim())
   }
   console.log(`Loaded ${existing.length} existing docs. ${seenHashes.size} unique hashes, ${seenFp.size} unique fingerprints (${dupExisting} near-duplicates already in DB).`)
 
@@ -301,7 +336,7 @@ async function main() {
       seenFp.add(f)
       out.push(doc)
     }
-    return out
+    return enforceQuality(out, seenTitles)
   }
 
   // Technical industries: 10 × 3 levels × 1000 = 30k
