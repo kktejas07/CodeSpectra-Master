@@ -1,5 +1,6 @@
 import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
+import { answersEqual, multisetEqual, canonicalObjectiveType } from '@/lib/grading'
 
 export const OBJECTIVE_TYPES = ['multiple-choice', 'mcq', 'true_false', 'multiple_response', 'fill_blanks']
 
@@ -61,6 +62,11 @@ function normalizeSet(value: string): Set<string> {
   return new Set(value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))
 }
 
+/** Split a comma list into non-empty trimmed parts. */
+function parts(value: string): string[] {
+  return (value || '').split(',').map(s => s.trim()).filter(Boolean)
+}
+
 /** Extract a JSON object from an LLM response that may contain prose/markdown. */
 function extractJson(raw: string): Record<string, unknown> | null {
   if (!raw) return null
@@ -95,17 +101,19 @@ export async function gradeAnswer(input: {
   modelAnswer: string
   type: string
   maxPoints: number
+  options?: string[]
 }): Promise<GradeResult> {
-  const { questionText, candidateAnswer, modelAnswer, type, maxPoints } = input
+  const { questionText, candidateAnswer, modelAnswer, type, maxPoints, options } = input
   const t = (type || '').toLowerCase()
-  const isObjective = OBJECTIVE_TYPES.includes(t)
+  const objective = canonicalObjectiveType(t)
+  const isObjective = objective !== 'free_text'
 
   if (isObjective) {
     const userSet = normalizeSet(candidateAnswer)
     const correctSet = normalizeSet(modelAnswer)
 
-    if (t === 'multiple_response') {
-      const correct = userSet.size > 0 && userSet.size === correctSet.size && [...userSet].every(v => correctSet.has(v))
+    if (objective === 'multiple_response') {
+      const correct = multisetEqual(candidateAnswer, modelAnswer, options)
       return {
         recommended: correct ? maxPoints : 0,
         verdict: correct ? 'correct' : 'incorrect',
@@ -113,28 +121,30 @@ export async function gradeAnswer(input: {
           ? 'All correct choices selected.'
           : userSet.size === 0
             ? 'No choice selected for a multi-select question.'
-            : [...userSet].filter(v => !correctSet.has(v)).length > 0
+            : parts(candidateAnswer).some(v => !correctSet.has(v.toLowerCase().trim()))
               ? 'One or more selected choices are not part of the correct answer.'
               : 'An incomplete selection — some correct choices were missed.',
       }
     }
 
-    if (t === 'fill_blanks' || t === 'fill-blank' || t === 'fill_blank') {
-      const ok = userSet.size === correctSet.size ? [...correctSet].every(v => userSet.has(v)) : false
-      const partial = [...correctSet].filter(v => userSet.has(v)).length
-      const recommended = ok ? maxPoints : partial > 0 ? Math.max(1, Math.round((partial / Math.max(1, correctSet.size)) * maxPoints)) : 0
+    if (objective === 'fill_blanks') {
+      const userP = parts(candidateAnswer)
+      const correctP = parts(modelAnswer)
+      const matched = correctP.filter((c) => userP.some((u) => answersEqual(u, c, options))).length
+      const full = correctP.length > 0 && matched === correctP.length && userP.length === correctP.length
+      const recommended = full ? maxPoints : matched > 0 ? Math.max(1, Math.round((matched / Math.max(1, correctP.length)) * maxPoints)) : 0
       return {
         recommended,
-        verdict: ok ? 'correct' : partial > 0 ? 'partial' : 'incorrect',
-        feedback: ok
+        verdict: full ? 'correct' : matched > 0 ? 'partial' : 'incorrect',
+        feedback: full
           ? 'Fill-in-the-blank answer matches the expected value.'
-          : partial > 0
-            ? `Partially correct — matches ${partial} of ${correctSet.size} expected value(s).`
+          : matched > 0
+            ? `Partially correct — matches ${matched} of ${correctP.length} expected value(s).`
             : 'Blank answer does not match the expected value.',
       }
     }
 
-    const correct = userSet.size === 1 && correctSet.size > 0 && userSet.has([...correctSet][0])
+    const correct = answersEqual(candidateAnswer, modelAnswer, options)
     return {
       recommended: correct ? maxPoints : 0,
       verdict: correct ? 'correct' : 'incorrect',

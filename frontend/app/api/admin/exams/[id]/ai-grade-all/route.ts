@@ -81,6 +81,7 @@ export async function POST(
               modelAnswer: String(q.answer || q.correct_answer || '').trim(),
               type: q.type || '',
               maxPoints: q.points || q.score || d.points || 10,
+              options: Array.isArray(q.options) ? q.options.map(String) : undefined,
             })
           } catch (e: unknown) {
             // Wait out a rate limit (60 req/min) then retry once; otherwise fail this question.
@@ -94,6 +95,7 @@ export async function POST(
                   modelAnswer: String(q.answer || q.correct_answer || '').trim(),
                   type: q.type || '',
                   maxPoints: q.points || q.score || d.points || 10,
+                  options: Array.isArray(q.options) ? q.options.map(String) : undefined,
                 })
               } catch (e2) {
                 failList.push(d.qId)

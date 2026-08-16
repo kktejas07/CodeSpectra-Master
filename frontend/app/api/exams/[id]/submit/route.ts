@@ -4,6 +4,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
 import { isIpInCidr } from '@/lib/db/security'
+import { answersEqual, multisetEqual, canonicalObjectiveType } from '@/lib/grading'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -114,27 +115,16 @@ export async function POST(
       let pendingReview = false
 
       const qType = (q.type || '').toLowerCase().replace(/[-_]/g, '')
+      const objective = canonicalObjectiveType(qType)
 
-      if (['mcq', 'multiplechoice', 'truefalse'].includes(qType)) {
-        // Exact match (case-insensitive)
-        if (correctAns) {
-          correct = userAnswer.toLowerCase() === correctAns.toLowerCase()
-        }
-      } else if (qType === 'multipleresponse') {
-        // Compare sets of comma-separated answers
-        if (correctAns) {
-          const expected = new Set(correctAns.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean))
-          const given = new Set(userAnswer.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean))
-          correct = expected.size === given.size && [...expected].every(v => given.has(v))
-        }
-      } else if (qType === 'fillblanks' || qType === 'fillinthe blanks' || qType === 'fillintheblanks') {
-        // Case-insensitive match against answer key
-        if (correctAns) {
-          correct = userAnswer.toLowerCase() === correctAns.toLowerCase()
-        }
-      } else if (['coding', 'descriptive'].includes(qType)) {
-        // These require manual grading by admin — but only when the candidate
-        // actually submitted something. A blank answer is an automatic 0.
+      if (['mcq', 'true_false'].includes(objective)) {
+        correct = answersEqual(userAnswer, correctAns, q.options)
+      } else if (objective === 'multiple_response') {
+        correct = multisetEqual(userAnswer, correctAns, q.options)
+      } else if (objective === 'fill_blanks') {
+        correct = multisetEqual(userAnswer, correctAns)
+      } else {
+        // coding / descriptive — manual (or AI) grading, unless blank.
         if (userAnswer) {
           pendingReview = true
           hasPendingReview = true
