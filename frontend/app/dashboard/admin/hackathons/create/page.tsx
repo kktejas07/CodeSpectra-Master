@@ -17,12 +17,13 @@ import {
   Trash2, HelpCircle, CheckSquare, ListChecks,
   Shield, GripVertical, Pencil, Wand2, BookOpen, Search,
   Sparkles, ChevronDown, ChevronUp, X, ArrowLeft,
-  Settings, FileText, Sliders,
+  Settings, FileText, Sliders, Eye,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { EventStepIndicator } from '@/components/hackathons/event-step-indicator'
+import { ProblemViewDialog } from '@/components/problems/problem-view-dialog'
 
 interface ProblemOption { slug: string; title: string; difficulty: string; topics?: string[] }
 
@@ -105,6 +106,9 @@ export default function HackathonCreatePage() {
   ])
   const [creatingOwn, setCreatingOwn] = useState(false)
   const [creatingOwnError, setCreatingOwnError] = useState<string | null>(null)
+  const [viewSlug, setViewSlug] = useState<string | null>(null)
+  const [editingSlug, setEditingSlug] = useState<string | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
 
   useEffect(() => {
     fetch('/api/admin/platform-settings', { credentials: 'include' })
@@ -175,6 +179,36 @@ export default function HackathonCreatePage() {
     setGenerating(false)
   }
 
+  async function editProblem(slug: string) {
+    setEditLoading(true)
+    try {
+      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}`, { cache: 'no-store' })
+      const j = await res.json()
+      if (!res.ok || !j.title) throw new Error(j.error || 'Problem not found')
+      setOwnForm({
+        title: j.title || '',
+        difficulty: (['easy', 'medium', 'hard'].includes(j.difficulty) ? j.difficulty : 'medium') as 'easy' | 'medium' | 'hard',
+        topics: Array.isArray(j.topics) ? j.topics.join(', ') : '',
+        statement_md: j.statement_md || '',
+        input_format: j.input_format || '',
+        output_format: j.output_format || '',
+        constraints: j.constraints || '',
+        points: 100,
+      })
+      setOwnTestCases((((j as Record<string, unknown>).test_cases as { stdin?: string; expected_stdout?: string; is_sample?: boolean }[]) || []).map((tc) => ({
+        stdin: String(tc.stdin ?? ''),
+        expected: String(tc.expected_stdout ?? ''),
+        is_sample: Boolean(tc.is_sample),
+      })))
+      setEditingSlug(slug)
+      setProblemSource('own')
+    } catch (e) {
+      setCreatingOwnError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setEditLoading(false)
+    }
+  }
+
   async function createOwnProblem() {
     setCreatingOwn(true); setCreatingOwnError(null)
     try {
@@ -188,36 +222,50 @@ export default function HackathonCreatePage() {
           expected_stdout: tc.expected,
           is_sample: tc.is_sample,
         }))
-      const res = await csrfFetch('/api/problems', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug,
-          title: ownForm.title,
-          difficulty: ownForm.difficulty,
-          topics,
-          statement_md: ownForm.statement_md,
-          input_format: ownForm.input_format || null,
-          output_format: ownForm.output_format || null,
-          constraints: ownForm.constraints || null,
-          test_cases,
-          starter_code: {},
-          visibility: 'hackathon_only',
-          is_published: true,
-        }),
-      })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j.error || 'Failed to create problem')
-      setForm((f) => ({
-        ...f,
-        tasks: [...f.tasks, {
-          slug: j.slug || slug,
-          title: ownForm.title,
-          points: ownForm.points,
-          difficulty: ownForm.difficulty,
-          required: true,
-        }],
-      }))
+      const payload = {
+        title: ownForm.title,
+        difficulty: ownForm.difficulty,
+        topics,
+        statement_md: ownForm.statement_md,
+        input_format: ownForm.input_format || null,
+        output_format: ownForm.output_format || null,
+        constraints: ownForm.constraints || null,
+        test_cases,
+      }
+      if (editingSlug) {
+        const res = await csrfFetch(`/api/problems/${encodeURIComponent(editingSlug)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const j = await res.json()
+        if (!res.ok) throw new Error(j.error || 'Failed to update problem')
+        setForm((f) => ({
+          ...f,
+          tasks: f.tasks.map((t) => t.slug === editingSlug
+            ? { ...t, title: ownForm.title, difficulty: ownForm.difficulty }
+            : t),
+        }))
+        setEditingSlug(null)
+      } else {
+        const res = await csrfFetch('/api/problems', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, slug, starter_code: {}, visibility: 'hackathon_only', is_published: true }),
+        })
+        const j = await res.json()
+        if (!res.ok) throw new Error(j.error || 'Failed to create problem')
+        setForm((f) => ({
+          ...f,
+          tasks: [...f.tasks, {
+            slug: j.slug || slug,
+            title: ownForm.title,
+            points: ownForm.points,
+            difficulty: ownForm.difficulty,
+            required: true,
+          }],
+        }))
+      }
       setOwnForm({ title: '', difficulty: 'medium', topics: '', statement_md: '', input_format: '', output_format: '', constraints: '', points: 100 })
       setOwnTestCases([{ stdin: '', expected: '', is_sample: true }])
     } catch (e) {
@@ -460,13 +508,19 @@ export default function HackathonCreatePage() {
                             <p className="text-sm truncate">{p.title}</p>
                             <p className="text-xs text-muted-foreground">{p.slug} · {p.difficulty}</p>
                           </div>
-                          {added ? (
-                            <Badge variant="outline" className="shrink-0">Added</Badge>
-                          ) : (
-                            <Button size="sm" variant="ghost" onClick={() => setForm((f) => ({
-                              ...f, tasks: [...f.tasks, { slug: p.slug, title: p.title, points: 100, difficulty: p.difficulty, required: true }]
-                            }))}>Add</Button>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0"
+                              onClick={() => setViewSlug(p.slug)} aria-label={`View ${p.title}`}>
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            {added ? (
+                              <Badge variant="outline">Added</Badge>
+                            ) : (
+                              <Button size="sm" variant="ghost" onClick={() => setForm((f) => ({
+                                ...f, tasks: [...f.tasks, { slug: p.slug, title: p.title, points: 100, difficulty: p.difficulty, required: true }]
+                              }))}>Add</Button>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -479,7 +533,10 @@ export default function HackathonCreatePage() {
             {problemSource === 'own' && (
               <div className="space-y-4 rounded-lg border border-border/60 bg-card/40 p-5">
                 <div className="space-y-3">
-                  <p className="text-sm font-semibold">Write your own problem</p>
+                  <p className="text-sm font-semibold">
+                    {editingSlug ? 'Edit problem' : 'Write your own problem'}
+                    {editingSlug && <span className="ml-2 text-xs text-muted-foreground">editing {editingSlug}</span>}
+                  </p>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="md:col-span-2 space-y-1.5">
                       <Label>Problem title *</Label>
@@ -590,10 +647,21 @@ export default function HackathonCreatePage() {
                   </div>
 
                   {creatingOwnError && <p className="text-xs text-destructive">{creatingOwnError}</p>}
-                  <Button onClick={createOwnProblem} disabled={creatingOwn || !ownForm.title.trim()}>
-                    {creatingOwn ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Plus className="mr-1 h-3 w-3" />}
-                    Add to problems
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button onClick={createOwnProblem} disabled={creatingOwn || !ownForm.title.trim() || editLoading}>
+                      {creatingOwn ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (editingSlug ? <Pencil className="mr-1 h-3 w-3" /> : <Plus className="mr-1 h-3 w-3" />)}
+                      {creatingOwn ? 'Saving…' : editingSlug ? 'Save changes' : 'Add to problems'}
+                    </Button>
+                    {editingSlug && (
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setEditingSlug(null)
+                        setOwnForm({ title: '', difficulty: 'medium', topics: '', statement_md: '', input_format: '', output_format: '', constraints: '', points: 100 })
+                        setOwnTestCases([{ stdin: '', expected: '', is_sample: true }])
+                      }} disabled={editLoading}>
+                        Cancel edit
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -675,6 +743,14 @@ export default function HackathonCreatePage() {
                         const points = Number(e.target.value)
                         setForm((f) => ({ ...f, tasks: f.tasks.map((x, idx) => idx === i ? { ...x, points } : x) }))
                       }} />
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0"
+                      onClick={() => setViewSlug(t.slug)} aria-label={`View ${t.title}`}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0"
+                      onClick={() => editProblem(t.slug)} aria-label={`Edit ${t.title}`} disabled={editLoading}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                     <Button size="sm" variant="ghost" className="text-destructive"
                       onClick={() => setForm((f) => ({ ...f, tasks: f.tasks.filter((_, idx) => idx !== i) }))}>
                       Remove
@@ -1056,6 +1132,7 @@ export default function HackathonCreatePage() {
           </div>
         )}
       </Card>
+        <ProblemViewDialog open={viewSlug !== null} slug={viewSlug} onClose={() => setViewSlug(null)} />
     </div>
   )
 }

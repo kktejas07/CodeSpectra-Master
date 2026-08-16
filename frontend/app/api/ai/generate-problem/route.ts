@@ -76,11 +76,15 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
   if (body.publish && result && typeof result === 'object') {
     try {
       const probsCol = await problems()
+      const rawTitle = String(result.title ?? '').trim()
+      const statement = String(result.statement_md ?? '').trim()
+      const topics = Array.isArray(result.topics) ? result.topics.map(String).filter(Boolean) : []
+      const title = rawTitle
+        || statement.split('\n').filter(l => l.trim()).map(l => l.trim()).shift()?.slice(0, 80) || ''
+        || (topics.length ? `${topics.join(', ')} Challenge` : `${result.difficulty || 'Medium'} Coding Challenge`)
       const baseSlug =
-        (typeof result.slug === 'string' ? result.slug : '') ||
-        (typeof result.title === 'string'
-          ? result.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-          : `gen-${Date.now()}`)
+        (typeof result.slug === 'string' ? result.slug.trim() : '') ||
+        title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
       let slug = baseSlug
       let n = 1
       while (await probsCol.findOne({ slug })) {
@@ -100,7 +104,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const doc = {
         id,
         slug,
-        title: String(result.title ?? slug),
+        title,
         difficulty: (['easy', 'medium', 'hard'].includes(String(result.difficulty))
           ? String(result.difficulty)
           : 'medium') as 'easy' | 'medium' | 'hard',

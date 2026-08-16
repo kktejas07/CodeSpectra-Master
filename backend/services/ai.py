@@ -442,6 +442,25 @@ async def handle_generate_problem(
         elif isinstance(ev, StreamDone):
             break
     parsed = parse_json_response("".join(buf)) or {}
+
+    # Normalize so a title/slug are ALWAYS readable — never `gen-<ts>`.
+    # Some models drop the `title`/`slug` keys when the response is
+    # truncated or lightly malformed; derive from the statement or topics
+    # instead of the frontend's gen-<timestamp> fallback (ponytail: single
+    # guard here covers every caller of this endpoint).
+    if isinstance(parsed, dict):
+        title = str(parsed.get("title") or "").strip()
+        slug = str(parsed.get("slug") or "").strip()
+        if not title:
+            title = str(parsed.get("statement_md") or "").strip().splitlines()[0][:80] if parsed.get("statement_md") else ""
+        if not title:
+            topics = parsed.get("topics") if isinstance(parsed.get("topics"), list) else []
+            joined = ", ".join(str(t) for t in topics)
+            title = f"{joined} Challenge".strip() if joined else f"{req.difficulty or 'medium'} coding challenge"
+        if not slug:
+            slug = title.lower().replace(" ", "-").replace("[^a-z0-9-]", "")
+        parsed["title"] = title
+        parsed["slug"] = slug
     return parsed
 
 
