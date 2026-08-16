@@ -8,10 +8,31 @@ from backend.core.engine.blueprint_engine import (
     InsufficientItemBankError,
 )
 from backend.core.registry import all_manifests, get, register
-from backend.core.sandbox.runner_client import runner_client
+from backend.core.sandbox.runner_client import ExecutionResult, runner_client
 from backend.domains.cad_step.schema import CadConstraint, CadStepItemPayload
 from backend.domains.code_exec.schema import CodeExecItemPayload, CodeExecTestCase
 from backend.domains.sql.schema import SqlItemPayload
+
+
+class FakeExecRunner:
+    """Executor-shaped sandbox for grading tests. Emits the expected stdout on
+    a clean run, or a caller-chosen wrong/timeout result so the correctness
+    comparison in the grader is exercised deterministically."""
+
+    def __init__(self, stdout_override: str | None = None, timed_out: bool = False, exit_code: int = 0):
+        self.stdout_override = stdout_override
+        self.timed_out = timed_out
+        self.exit_code = exit_code
+
+    async def execute(self, image: str, code: str, language: str, stdin: str, expected_stdout: str, timeout_s: int):
+        return ExecutionResult(
+            exit_code=self.exit_code,
+            stdout=self.stdout_override
+            if self.stdout_override is not None
+            else (expected_stdout + "\n"),
+            stderr="" if not self.timed_out else "timed out",
+            timed_out=self.timed_out,
+        )
 
 
 @pytest.mark.asyncio
@@ -60,13 +81,59 @@ async def test_code_exec_plugin_grading():
         attempt_item_id="att-101",
         payload={"code": "print(sum(map(int, input().split())))", "language": "python"},
     )
-    ctx = GradingContext(sandbox=runner_client, cortex=None, storage=None, trace_id="trace-101")
+    ctx = GradingContext(sandbox=FakeExecRunner(), cortex=None, storage=None, trace_id="trace-101")
 
     report = await code_plugin.grade(payload, submission, ctx)
     assert report.raw_points == 2.0
     assert len(report.criteria) == 2
     assert report.criteria[0].key == "correctness"
     assert report.criteria[0].points == 1.0
+
+
+@pytest.mark.asyncio
+async def test_code_exec_plugin_rejects_wrong_stdout():
+    """Regression: grader must compare expected_stdout — a clean exit_code with
+    the wrong output is NOT a pass."""
+    code_plugin = get("code_exec")
+    payload = CodeExecItemPayload(
+        prompt="Sum two numbers",
+        language="python",
+        test_cases=[
+            CodeExecTestCase(stdin="1 2", expected_stdout="3", is_sample=True),
+            CodeExecTestCase(stdin="5 5", expected_stdout="10", is_sample=False),
+        ],
+    )
+    submission = Submission(
+        attempt_item_id="att-101",
+        payload={"code": "print('wrong')", "language": "python"},
+    )
+    ctx = GradingContext(sandbox=FakeExecRunner(stdout_override="99"), cortex=None, storage=None, trace_id="trace-101b")
+
+    report = await code_plugin.grade(payload, submission, ctx)
+    assert report.criteria[0].points == 0.0
+    assert report.needs_human_review is True
+
+
+@pytest.mark.asyncio
+async def test_code_exec_plugin_timed_out_is_failure():
+    code_plugin = get("code_exec")
+    payload = CodeExecItemPayload(
+        prompt="Infinite loop",
+        language="python",
+        test_cases=[
+            CodeExecTestCase(stdin="1 2", expected_stdout="3", is_sample=True),
+            CodeExecTestCase(stdin="5 5", expected_stdout="10", is_sample=False),
+        ],
+    )
+    submission = Submission(
+        attempt_item_id="att-104",
+        payload={"code": "while True: pass", "language": "python"},
+    )
+    ctx = GradingContext(sandbox=FakeExecRunner(timed_out=True), cortex=None, storage=None, trace_id="trace-104")
+
+    report = await code_plugin.grade(payload, submission, ctx)
+    assert report.criteria[0].points == 0.0
+    assert report.raw_points == 0.5  # only quality criterion partial credit remains
 
 
 @pytest.mark.asyncio

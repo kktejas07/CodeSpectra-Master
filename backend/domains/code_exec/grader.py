@@ -13,6 +13,26 @@ from backend.domains.code_exec.manifest import code_exec_manifest
 from backend.domains.code_exec.schema import CodeExecItemPayload
 
 
+from backend.core.sandbox.runner_client import ExecutionResult
+
+
+def _stdout_matches(actual: str, expected: str) -> bool:
+    """Compare execution stdout, tolerant of trailing newlines/space."""
+    return (actual or "").rstrip("\r\n ").strip() == (expected or "").rstrip("\r\n ").strip()
+
+
+def _test_case_passed(res: ExecutionResult, expected_stdout: str) -> bool:
+    """A test case only passes when the process ran cleanly AND printed the
+    expected output. exit_code==0 alone is NOT proof of correctness (the
+    pre-fix behaviour could mark stdout-mismatched runs as passed)."""
+    if res.exit_code != 0 or res.timed_out or res.memory_exceeded:
+        return False
+    if not (expected_stdout or "").strip():
+        # No expected output defined — exit-code-0 is the only signal available.
+        return True
+    return _stdout_matches(res.stdout, expected_stdout)
+
+
 class CodeExecPlugin(DomainPlugin):
     manifest = code_exec_manifest
 
@@ -63,7 +83,7 @@ class CodeExecPlugin(DomainPlugin):
                 expected_stdout=tc.expected_stdout,
                 timeout_s=self.manifest.max_wall_clock_s,
             )
-            if res.exit_code == 0:
+            if _test_case_passed(res, tc.expected_stdout):
                 passed_count += 1
 
         correctness_ratio = passed_count / total_count
