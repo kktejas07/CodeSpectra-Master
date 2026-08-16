@@ -6,6 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberField } from '@/components/ui/number-field'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
@@ -195,47 +196,49 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
   useEffect(() => { searchProblems('') }, [searchProblems])
 
   async function generateAiProblems() {
+    const requested = Math.min(5, Math.max(1, aiConfig.count || 1))
     setGenerating(true); setGeneratingError(null)
-    try {
-      const topics = aiConfig.topics.split(',').map((t) => t.trim()).filter(Boolean)
-      const res = await csrfFetch('/api/ai/generate-problem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: aiConfig.role,
-          difficulty: aiConfig.difficulty,
-          topics,
-          language_hint: aiConfig.language_hint,
-          publish: true,
-        }),
-      })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j.error || 'Generation failed')
-      const prob = j.problem as Record<string, unknown>
-      const slug = typeof j.published_problem_slug === 'string' && j.published_problem_slug
-        ? j.published_problem_slug
-        : (typeof prob.slug === 'string' ? prob.slug
-          : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
-      const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
-        ? prob.difficulty : 'medium') as string
-      const title = String(prob.title || slug)
-      const points = prob.points || aiConfig.count > 1 ? 100 : (prob.points || 100)
-      setForm((f) => ({
-        ...f,
-        tasks: [...f.tasks, {
-          slug,
-          title,
-          points: typeof points === 'number' ? points : 100,
-          difficulty,
-          required: true,
-        }],
-      }))
-      setAiConfig((c) => ({ ...c, count: Math.max(1, c.count - 1) }))
-    } catch (e) {
-      setGeneratingError(e instanceof Error ? e.message : String(e))
-    } finally {
-      setGenerating(false)
+    for (let i = 0; i < requested; i++) {
+      try {
+        const topics = aiConfig.topics.split(',').map((t) => t.trim()).filter(Boolean)
+        const res = await csrfFetch('/api/ai/generate-problem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            role: aiConfig.role,
+            difficulty: aiConfig.difficulty,
+            topics,
+            language_hint: aiConfig.language_hint,
+            publish: true,
+          }),
+        })
+        const j = await res.json()
+        if (!res.ok) throw new Error(j.error || 'Generation failed')
+        const prob = j.problem as Record<string, unknown>
+        const slug = typeof j.published_problem_slug === 'string' && j.published_problem_slug
+          ? j.published_problem_slug
+          : (typeof prob.slug === 'string' ? prob.slug
+            : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+        const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
+          ? prob.difficulty : 'medium') as string
+        const title = String(prob.title || slug)
+        const points = prob.points || 100
+        setForm((f) => ({
+          ...f,
+          tasks: [...f.tasks, {
+            slug,
+            title,
+            points: typeof points === 'number' ? points : 100,
+            difficulty,
+            required: true,
+          }],
+        }))
+      } catch (e) {
+        setGeneratingError(e instanceof Error ? e.message : String(e))
+        break
+      }
     }
+    setGenerating(false)
   }
 
   async function createOwnProblem() {
@@ -385,17 +388,53 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               <Textarea rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the event, theme, and what participants will build..." />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label>Teams allowed</Label>
-                <Input type="number" min={1} max={500} value={form.num_teams} onChange={(e) => setForm((f) => ({ ...f, num_teams: Number(e.target.value) }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Max per team</Label>
-                <Input type="number" min={1} max={20} value={form.max_per_team} onChange={(e) => setForm((f) => ({ ...f, max_per_team: Number(e.target.value) }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Duration (minutes)</Label>
-                <Input type="number" min={5} value={form.timeout_minutes} onChange={(e) => setForm((f) => ({ ...f, timeout_minutes: Number(e.target.value) }))} />
+              <NumberField
+                label="Teams allowed"
+                value={form.num_teams}
+                onChange={(v) => setForm((f) => ({ ...f, num_teams: v }))}
+                min={1}
+                max={500}
+                hint="Total number of teams that can compete in this event."
+              />
+              <NumberField
+                label="Max per team"
+                value={form.max_per_team}
+                onChange={(v) => setForm((f) => ({ ...f, max_per_team: v }))}
+                min={1}
+                max={20}
+                hint="How many members can join a single team (1 = solo)."
+              />
+              <div className="space-y-1.5">
+                <NumberField
+                  label="Duration (minutes)"
+                  value={form.timeout_minutes}
+                  onChange={(v) => setForm((f) => ({ ...f, timeout_minutes: v }))}
+                  min={5}
+                  max={10080}
+                  step={5}
+                  hint="Total time window for the event."
+                />
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {[
+                    { label: '1h', mins: 60 },
+                    { label: '3h', mins: 180 },
+                    { label: '1 day', mins: 1440 },
+                    { label: '3 days', mins: 4320 },
+                  ].map((p) => (
+                    <button
+                      key={p.mins}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, timeout_minutes: p.mins }))}
+                      className={`rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                        form.timeout_minutes === p.mins
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="grid gap-6 md:grid-cols-2 mt-6">
@@ -583,8 +622,8 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                     </div>
                     <div className="space-y-1.5">
                       <Label>Points</Label>
-                      <Input type="number" value={ownForm.points} min={10}
-                        onChange={(e) => setOwnForm((f) => ({ ...f, points: Number(e.target.value) }))} />
+                      <NumberField value={ownForm.points} min={10} max={1000} step={10} unit="pts"
+                        onChange={(v) => setOwnForm((f) => ({ ...f, points: v }))} />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
                       <Label>Topics (comma-separated)</Label>
@@ -721,12 +760,21 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                           onChange={(e) => setAiConfig((c) => ({ ...c, topics: e.target.value }))}
                           placeholder="arrays, strings, sorting" />
                       </div>
+                      <NumberField
+                        label="How many to generate"
+                        value={aiConfig.count}
+                        onChange={(v) => setAiConfig((c) => ({ ...c, count: v }))}
+                        min={1}
+                        max={5}
+                        unit="problems"
+                        hint="Each problem takes a few seconds. Checked problems are added to the event and saved to your library."
+                      />
                     </div>
                     {generatingError && <p className="text-xs text-destructive">{generatingError}</p>}
                     <div className="flex gap-2">
                       <Button onClick={generateAiProblems} disabled={generating}>
                         {generating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1 h-3 w-3" />}
-                        {generating ? 'Generating…' : `Generate problem${aiConfig.count > 1 ? ` (${aiConfig.count} left)` : ''}`}
+                        {generating ? 'Generating…' : aiConfig.count > 1 ? `Generate ${aiConfig.count} problems` : 'Generate problem'}
                       </Button>
                     </div>
                   </div>
@@ -803,29 +851,47 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               }))}>+ Add Rule</Button>
             </div>
 
-            <div className="rounded border p-4 space-y-3">
+            <div className="rounded border p-4 space-y-4">
               <h4 className="text-sm font-semibold">Scoring Configuration</h4>
               <div className="grid gap-4 md:grid-cols-4">
-                <div className="space-y-2">
-                  <Label>Points per problem</Label>
-                  <Input type="number" value={form.scoring.points_per_problem}
-                    onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, points_per_problem: Number(e.target.value) } }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Bonus time (early submit)</Label>
-                  <Input type="number" value={form.scoring.bonus_time}
-                    onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, bonus_time: Number(e.target.value) } }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Penalty per attempt</Label>
-                  <Input type="number" value={form.scoring.penalty_per_attempt}
-                    onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, penalty_per_attempt: Number(e.target.value) } }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Solve Limit (0 = All)</Label>
-                  <Input type="number" value={form.solve_limit} min={0}
-                    onChange={(e) => setForm((f) => ({ ...f, solve_limit: Number(e.target.value) }))} />
-                </div>
+                <NumberField
+                  label="Points per problem"
+                  value={form.scoring.points_per_problem}
+                  onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, points_per_problem: v } }))}
+                  min={10}
+                  max={1000}
+                  step={10}
+                  unit="pts"
+                  hint="Base score for a fully correct solution."
+                />
+                <NumberField
+                  label="Bonus (early submit)"
+                  value={form.scoring.bonus_time}
+                  onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, bonus_time: v } }))}
+                  min={0}
+                  max={2000}
+                  step={5}
+                  unit="pts"
+                  hint="Extra points per remaining minute on early submissions."
+                />
+                <NumberField
+                  label="Penalty per attempt"
+                  value={form.scoring.penalty_per_attempt}
+                  onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, penalty_per_attempt: v } }))}
+                  min={0}
+                  max={2000}
+                  step={5}
+                  unit="pts"
+                  hint="Points deducted for each wrong submission."
+                />
+                <NumberField
+                  label="Solve limit"
+                  value={form.solve_limit}
+                  onChange={(v) => setForm((f) => ({ ...f, solve_limit: v }))}
+                  min={0}
+                  max={500}
+                  hint="Max problems a team can attempt. 0 = no limit."
+                />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="auto_grade" checked={form.scoring.auto_grade}
