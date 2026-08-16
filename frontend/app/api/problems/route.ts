@@ -31,7 +31,10 @@ export async function GET(request: NextRequest) {
   const topicsParam = searchParams.get('topics')?.trim()
   const includeHidden = searchParams.get('include_hidden') === 'true'
   const forHackathon = searchParams.get('for_hackathon') === 'true'
-  const limitParam = Math.min(50, Math.max(1, Number(searchParams.get('limit')) || 0))
+  const rawLimit = searchParams.get('limit')
+  const limitParam = rawLimit === null
+    ? 0
+    : Math.min(50, Math.max(1, Number(rawLimit) || 0))
 
   const isAdmin = await (async () => {
     const gate = await requireAdmin()
