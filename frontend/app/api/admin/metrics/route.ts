@@ -1,7 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/api-auth'
 import { users } from '@/lib/db/admin'
-import { codeScans } from '@/lib/db/scans'
+import { submissions } from '@/lib/db/problems'
 
 export async function GET() {
   const gate = await requireSuperAdmin()
@@ -26,8 +26,8 @@ export async function GET() {
     const since = new Date(Date.now() - 15 * 60 * 1000)
     const activeNow = await userCol.countDocuments({ updatedAt: { $gte: since } })
 
-    const scanCol = await codeScans()
-    const submissionsCount = await scanCol.estimatedDocumentCount()
+    const subCol = await submissions()
+    const submissionsCount = await subCol.countDocuments()
 
     const signupsByMonth: { date: string; users: number }[] = []
     const now = new Date()
@@ -41,6 +41,7 @@ export async function GET() {
       signupsByMonth.push({ date: label, users: n })
     }
 
+    // Accepted submissions per day (UTC, last 7 days) — `submissions` docs with status 'accepted'.
     const submissionsByDay = await Promise.all(
       Array.from({ length: 7 }, async (_, i) => {
         const day = new Date(now)
@@ -48,14 +49,13 @@ export async function GET() {
         day.setUTCHours(0, 0, 0, 0)
         const next = new Date(day)
         next.setUTCDate(next.getUTCDate() + 1)
-        const c = await scanCol.countDocuments({
+        const c = await subCol.countDocuments({
+          status: 'accepted',
           created_at: { $gte: day.toISOString(), $lt: next.toISOString() },
         })
         return {
           date: day.toLocaleDateString('en-US', { weekday: 'short' }),
-          challenges: 0,
-          interviews: 0,
-          scans: c,
+          accepted: c,
         }
       })
     )
