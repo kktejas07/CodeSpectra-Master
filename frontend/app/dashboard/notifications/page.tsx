@@ -37,6 +37,30 @@ const CATEGORIES = [
   { id: 'security', label: 'Security' },
 ]
 
+const DEFAULT_LINKS: Record<string, string> = {
+  'auth.login': '/dashboard/admin/security',
+  'auth.signup': '/dashboard',
+  'auth.2fa_enabled': '/dashboard/admin/settings',
+  'auth.password_changed': '/dashboard/admin/settings',
+  'xp.awarded': '/dashboard/leaderboard',
+  'xp.level_up': '/dashboard/leaderboard',
+  'hackathon.results': '/dashboard/events',
+  'hackathon.started': '/dashboard/events',
+  'hackathon.ending_soon': '/dashboard/events',
+  'hackathon.team_invite': '/dashboard/events',
+  'hackathon.submission_status': '/dashboard/events',
+  'hackathon.submission_accepted': '/dashboard/events',
+  'hackathon.submission_rejected': '/dashboard/events',
+  'assessment.results_released': '/dashboard/assessments',
+  'interview.scheduled': '/dashboard/interviews',
+  'interview.completed': '/dashboard/interviews',
+  'certification.earned': '/dashboard/certifications',
+  'certificate.issued': '/dashboard/certifications',
+  'scan.completed': '/dashboard/projects',
+  'team.invite': '/dashboard/team',
+  'team.joined': '/dashboard/team',
+}
+
 export default function NotificationsPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
@@ -127,14 +151,15 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {filtered.map((n) => {
             const Icon = IconComponent(n.icon || 'bell') as React.ComponentType<{ className?: string }>
+            const resolvedLink = n.link || DEFAULT_LINKS[n.type] || '/dashboard'
             return (
               <div key={n.id} className={`rounded-lg border transition-colors ${
                 n.is_read ? 'border-border bg-card hover:bg-muted/30' : 'border-primary/30 bg-primary/10 hover:bg-primary/15'
               }`}>
-                <div className={`flex items-start gap-3 p-4 ${n.link ? 'cursor-pointer' : ''}`}
+                <div className="flex items-start gap-3 p-4 cursor-pointer"
                   onClick={async () => {
                     if (!n.is_read) await markRead(n.id)
-                    if (n.link) router.push(n.link)
+                    router.push(resolvedLink)
                   }}>
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                     n.is_read ? 'bg-muted' : 'bg-primary/15'
@@ -153,11 +178,9 @@ export default function NotificationsPage() {
                     {n.message && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>}
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/60 text-muted-foreground">{n.type}</span>
-                      {n.link && (
-                        <span className="text-[10px] text-primary">
-                          Tap to view →
-                        </span>
-                      )}
+                      <span className="text-[10px] text-primary">
+                        Tap to view →
+                      </span>
                     </div>
                   </div>
                 </div>

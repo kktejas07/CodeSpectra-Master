@@ -23,67 +23,67 @@ import type { Document, Filter } from 'mongodb'
 
 export const NOTIFICATION_TYPES = {
   // Auth & Account
-  'auth.login': { category: 'account', icon: 'log-in', default_title: 'New Login' },
-  'auth.signup': { category: 'account', icon: 'user-plus', default_title: 'Welcome!' },
-  'auth.2fa_enabled': { category: 'security', icon: 'shield', default_title: '2FA Enabled' },
-  'auth.password_changed': { category: 'security', icon: 'key', default_title: 'Password Changed' },
+  'auth.login': { category: 'account', icon: 'log-in', default_title: 'New Login', default_link: '/dashboard/admin/security' },
+  'auth.signup': { category: 'account', icon: 'user-plus', default_title: 'Welcome!', default_link: '/dashboard' },
+  'auth.2fa_enabled': { category: 'security', icon: 'shield', default_title: '2FA Enabled', default_link: '/dashboard/admin/settings' },
+  'auth.password_changed': { category: 'security', icon: 'key', default_title: 'Password Changed', default_link: '/dashboard/admin/settings' },
 
   // Billing
-  'billing.subscription_created': { category: 'billing', icon: 'credit-card', default_title: 'Subscription Created' },
-  'billing.subscription_cancelled': { category: 'billing', icon: 'credit-card', default_title: 'Subscription Cancelled' },
-  'billing.payment_success': { category: 'billing', icon: 'check-circle', default_title: 'Payment Successful' },
-  'billing.payment_failed': { category: 'billing', icon: 'alert-circle', default_title: 'Payment Failed' },
-  'billing.invoice_ready': { category: 'billing', icon: 'file-text', default_title: 'Invoice Ready' },
+  'billing.subscription_created': { category: 'billing', icon: 'credit-card', default_title: 'Subscription Created', default_link: '/dashboard/billing' },
+  'billing.subscription_cancelled': { category: 'billing', icon: 'credit-card', default_title: 'Subscription Cancelled', default_link: '/dashboard/billing' },
+  'billing.payment_success': { category: 'billing', icon: 'check-circle', default_title: 'Payment Successful', default_link: '/dashboard/billing' },
+  'billing.payment_failed': { category: 'billing', icon: 'alert-circle', default_title: 'Payment Failed', default_link: '/dashboard/billing' },
+  'billing.invoice_ready': { category: 'billing', icon: 'file-text', default_title: 'Invoice Ready', default_link: '/dashboard/billing' },
 
   // Hackathons
-  'hackathon.results': { category: 'hackathon', icon: 'trophy', default_title: 'Results Released' },
-  'hackathon.started': { category: 'hackathon', icon: 'play', default_title: 'Event Started' },
-  'hackathon.ending_soon': { category: 'hackathon', icon: 'clock', default_title: 'Ending Soon' },
-  'hackathon.team_invite': { category: 'hackathon', icon: 'users', default_title: 'Team Invitation' },
-  'hackathon.submission_graded': { category: 'hackathon', icon: 'check-circle', default_title: 'Submission Reviewed' },
-  'hackathon.submission_status': { category: 'hackathon', icon: 'send', default_title: 'Submission Status Update' },
-  'hackathon.submission_accepted': { category: 'hackathon', icon: 'check-circle', default_title: 'Submission Accepted' },
-  'hackathon.submission_rejected': { category: 'hackathon', icon: 'x-circle', default_title: 'Submission Not Selected' },
+  'hackathon.results': { category: 'hackathon', icon: 'trophy', default_title: 'Results Released', default_link: '/dashboard/events' },
+  'hackathon.started': { category: 'hackathon', icon: 'play', default_title: 'Event Started', default_link: '/dashboard/events' },
+  'hackathon.ending_soon': { category: 'hackathon', icon: 'clock', default_title: 'Ending Soon', default_link: '/dashboard/events' },
+  'hackathon.team_invite': { category: 'hackathon', icon: 'users', default_title: 'Team Invitation', default_link: '/dashboard/events' },
+  'hackathon.submission_graded': { category: 'hackathon', icon: 'check-circle', default_title: 'Submission Reviewed', default_link: '/dashboard/events' },
+  'hackathon.submission_status': { category: 'hackathon', icon: 'send', default_title: 'Submission Status Update', default_link: '/dashboard/events' },
+  'hackathon.submission_accepted': { category: 'hackathon', icon: 'check-circle', default_title: 'Submission Accepted', default_link: '/dashboard/events' },
+  'hackathon.submission_rejected': { category: 'hackathon', icon: 'x-circle', default_title: 'Submission Not Selected', default_link: '/dashboard/events' },
 
   // Interviews
-  'interview.scheduled': { category: 'interview', icon: 'video', default_title: 'Interview Scheduled' },
-  'interview.reminder': { category: 'interview', icon: 'clock', default_title: 'Interview Reminder' },
-  'interview.completed': { category: 'interview', icon: 'check-circle', default_title: 'Interview Completed' },
-  'interview.feedback_ready': { category: 'interview', icon: 'bar-chart', default_title: 'Feedback Ready' },
+  'interview.scheduled': { category: 'interview', icon: 'video', default_title: 'Interview Scheduled', default_link: '/dashboard/interviews' },
+  'interview.reminder': { category: 'interview', icon: 'clock', default_title: 'Interview Reminder', default_link: '/dashboard/interviews' },
+  'interview.completed': { category: 'interview', icon: 'check-circle', default_title: 'Interview Completed', default_link: '/dashboard/interviews' },
+  'interview.feedback_ready': { category: 'interview', icon: 'bar-chart', default_title: 'Feedback Ready', default_link: '/dashboard/interviews' },
 
   // Code Quality
-  'scan.completed': { category: 'code', icon: 'search', default_title: 'Scan Complete' },
-  'scan.critical_issue': { category: 'code', icon: 'alert-triangle', default_title: 'Critical Issue Found' },
-  'scan.quality_gate_passed': { category: 'code', icon: 'check-circle', default_title: 'Quality Gate Passed' },
-  'scan.quality_gate_failed': { category: 'code', icon: 'x-circle', default_title: 'Quality Gate Failed' },
-  'scan.dependency_vuln': { category: 'code', icon: 'shield', default_title: 'Vulnerability Found' },
-  'scan.secret_detected': { category: 'code', icon: 'key', default_title: 'Secret Detected' },
+  'scan.completed': { category: 'code', icon: 'search', default_title: 'Scan Complete', default_link: '/dashboard/projects' },
+  'scan.critical_issue': { category: 'code', icon: 'alert-triangle', default_title: 'Critical Issue Found', default_link: '/dashboard/projects' },
+  'scan.quality_gate_passed': { category: 'code', icon: 'check-circle', default_title: 'Quality Gate Passed', default_link: '/dashboard/projects' },
+  'scan.quality_gate_failed': { category: 'code', icon: 'x-circle', default_title: 'Quality Gate Failed', default_link: '/dashboard/projects' },
+  'scan.dependency_vuln': { category: 'code', icon: 'shield', default_title: 'Vulnerability Found', default_link: '/dashboard/projects' },
+  'scan.secret_detected': { category: 'code', icon: 'key', default_title: 'Secret Detected', default_link: '/dashboard/projects' },
 
   // Reviews
-  'review.requested': { category: 'code', icon: 'message-square', default_title: 'Review Requested' },
-  'review.completed': { category: 'code', icon: 'check-circle', default_title: 'Review Completed' },
-  'review.comment_added': { category: 'code', icon: 'message-circle', default_title: 'New Comment' },
+  'review.requested': { category: 'code', icon: 'message-square', default_title: 'Review Requested', default_link: '/dashboard/projects' },
+  'review.completed': { category: 'code', icon: 'check-circle', default_title: 'Review Completed', default_link: '/dashboard/projects' },
+  'review.comment_added': { category: 'code', icon: 'message-circle', default_title: 'New Comment', default_link: '/dashboard/projects' },
 
   // Team & Organization
-  'team.invite': { category: 'team', icon: 'user-plus', default_title: 'Team Invitation' },
-  'team.joined': { category: 'team', icon: 'users', default_title: 'Joined Team' },
-  'org.invite': { category: 'team', icon: 'building', default_title: 'Organization Invitation' },
+  'team.invite': { category: 'team', icon: 'user-plus', default_title: 'Team Invitation', default_link: '/dashboard/team' },
+  'team.joined': { category: 'team', icon: 'users', default_title: 'Joined Team', default_link: '/dashboard/team' },
+  'org.invite': { category: 'team', icon: 'building', default_title: 'Organization Invitation', default_link: '/dashboard/team' },
 
   // Certifications
-  'certification.earned': { category: 'learning', icon: 'award', default_title: 'Certification Earned' },
-  'certification.expiring': { category: 'learning', icon: 'clock', default_title: 'Certification Expiring' },
+  'certification.earned': { category: 'learning', icon: 'award', default_title: 'Certification Earned', default_link: '/dashboard/certifications' },
+  'certification.expiring': { category: 'learning', icon: 'clock', default_title: 'Certification Expiring', default_link: '/dashboard/certifications' },
 
   // Assessments / Exams
-  'assessment.results_released': { category: 'assessment', icon: 'check-circle', default_title: 'Results Released' },
+  'assessment.results_released': { category: 'assessment', icon: 'check-circle', default_title: 'Results Released', default_link: '/dashboard/assessments' },
 
   // XP / Gamification
-  'xp.awarded': { category: 'learning', icon: 'star', default_title: 'XP Earned!' },
-  'xp.level_up': { category: 'learning', icon: 'trophy', default_title: 'Level Up!' },
-  'certificate.issued': { category: 'learning', icon: 'award', default_title: 'Certificate Issued' },
+  'xp.awarded': { category: 'learning', icon: 'star', default_title: 'XP Earned!', default_link: '/dashboard/leaderboard' },
+  'xp.level_up': { category: 'learning', icon: 'trophy', default_title: 'Level Up!', default_link: '/dashboard/leaderboard' },
+  'certificate.issued': { category: 'learning', icon: 'award', default_title: 'Certificate Issued', default_link: '/dashboard/certifications' },
 
   // General
-  'system.announcement': { category: 'system', icon: 'megaphone', default_title: 'Announcement' },
-  'system.maintenance': { category: 'system', icon: 'tool', default_title: 'Maintenance Notice' },
+  'system.announcement': { category: 'system', icon: 'megaphone', default_title: 'Announcement', default_link: '/dashboard' },
+  'system.maintenance': { category: 'system', icon: 'tool', default_title: 'Maintenance Notice', default_link: '/dashboard' },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
@@ -121,7 +121,7 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
       message: input.message || '',
       type: input.type,
       is_read: false,
-      link: input.link || '',
+      link: input.link || typeInfo?.default_link || '',
       icon: input.icon || typeInfo?.icon || 'bell',
       category: typeInfo?.category || 'general',
       metadata: (input.metadata || {}) as Record<string, string>,
