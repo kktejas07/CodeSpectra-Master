@@ -209,6 +209,28 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Pointer cursor on all interactive elements — sitewide fix */
+  button,
+  [role='button'],
+  a[href],
+  label[for],
+  select,
+  summary,
+  [type='checkbox'],
+  [type='radio'],
+  [type='submit'],
+  [type='reset'],
+  [type='file'] {
+    cursor: pointer;
+  }
+  /* Disabled elements should stay default, not pointer */
+  button:disabled,
+  [role='button'][aria-disabled='true'],
+  input:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
+
   /* Tint native form controls (checkboxes, radios, range, progress) with the brand. */
   input,
   textarea,
