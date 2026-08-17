@@ -138,6 +138,11 @@ export async function PATCH(request: Request) {
     'privacy_policy_url',
     'terms_of_service_url',
     'certificate_template',
+    'video_player_primary_color',
+    'video_player_autoplay',
+    'video_player_muted',
+    'video_player_logo_url',
+    'video_player_logo_link_url',
   ] as const
 
   try {
@@ -156,7 +161,9 @@ export async function PATCH(request: Request) {
         k === 'require_email_verification' ||
         k === 'show_public_leaderboard' ||
         k === 'enable_sso_login' ||
-        k === 'enable_chatbot'
+        k === 'enable_chatbot' ||
+        k === 'video_player_autoplay' ||
+        k === 'video_player_muted'
       ) {
         next[k] = Boolean(v)
         continue

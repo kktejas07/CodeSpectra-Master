@@ -44,6 +44,7 @@ from models.ai import (
     CodeAnalysisReq,
     CodeReviewReq,
     CompleteReq,
+    GenerateCourseReq,
     GenerateProblemReq,
     GradeReq,
     HintsReq,

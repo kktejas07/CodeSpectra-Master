@@ -17,6 +17,7 @@ import {
   Shield,
   Database,
   MessageCircle,
+  Video,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -32,6 +33,7 @@ const ITEMS: {
   icon: typeof Building2
 }[] = [
   { id: 'branding', label: 'Branding & support', icon: Building2 },
+  { id: 'media', label: 'Media Player', icon: Video },
   { id: 'cloudflare', label: 'Cloudflare', icon: Globe2 },
   { id: 'mail', label: 'Mail & email APIs', icon: Mail },
   { id: 'ops', label: 'Operations', icon: Sliders },

@@ -1,5 +1,6 @@
 export const PLATFORM_SETTINGS_SECTIONS = [
   'branding',
+  'media',
   'cloudflare',
   'mail',
   'ops',
