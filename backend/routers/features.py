@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from services.features import AchievementsService, IntegrationsService, ScannerService
+from core.auth import require_auth
 
 achievement_router = APIRouter(prefix="/internal/achievements", tags=["achievements"])
 scanner_router = APIRouter(prefix="/internal/scanner", tags=["scanner"])
@@ -41,6 +42,6 @@ async def list_integrations() -> Dict[str, Any]:
 
 
 @integration_router.post("/github/scan")
-async def trigger_github_scan(body: Dict[str, Any]) -> Dict[str, Any]:
+async def trigger_github_scan(body: Dict[str, Any], auth = Depends(require_auth)) -> Dict[str, Any]:
     repo = body.get("repo_url", "")
     return await int_svc.trigger_github_scan(repo)

@@ -3,7 +3,8 @@ import bcrypt from 'bcryptjs'
 import { getMongoDb } from '@/lib/mongodb'
 import { setSessionCookie } from '@/lib/session'
 import { normalizeUserRole } from '@/lib/rbac'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 import { writeAuditLog } from '@/lib/db/misc'
 import { notify } from '@/lib/notifications'
 import { sendEmail } from '@/lib/send-email'
@@ -17,7 +18,7 @@ export const runtime = 'nodejs'
 export async function POST(request: Request) {
   try {
     const ipKey = clientLimiterKeyFromRequest(request, null)
-    const ipCheck = rateLimitSlidingWindow(`login:ip:${ipKey}`, 10, 60_000)
+    const ipCheck = await rateLimitRedis(`login:ip:${ipKey}`, 10, 60_000)
     if (!ipCheck.ok) {
       return NextResponse.json(
         { error: `Too many attempts. Try again in ${ipCheck.retryAfterSec}s.` },
@@ -74,7 +75,7 @@ export async function POST(request: Request) {
 
     const valid = await bcrypt.compare(password, user.passwordHash)
     if (!valid) {
-      const emailCheck = rateLimitSlidingWindow(`login:email:${normalizedEmail}`, 5, 60_000)
+      const emailCheck = await rateLimitRedis(`login:email:${normalizedEmail}`, 5, 60_000)
       if (!emailCheck.ok) {
         await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'warning', detail: 'rate limited', user_id: normalizedEmail })
         return NextResponse.json(
@@ -85,7 +86,7 @@ export async function POST(request: Request) {
       await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'info', detail: 'wrong password', user_id: normalizedEmail })
 
       // Brute-force escalation: 3+ distinct failed attempts from one IP in 10 min → block the IP.
-      const failWindow = rateLimitSlidingWindow(`login:fail:${rawIp}`, 3, 600_000)
+      const failWindow = await rateLimitRedis(`login:fail:${rawIp}`, 3, 600_000)
       if (!failWindow.ok) {
         await blockIp({ ip: rawIp, reason: 'Brute-force: 3+ failed logins in 10 minutes', actor: 'system' })
         await recordSecurityEvent({
@@ -103,7 +104,7 @@ export async function POST(request: Request) {
 
     if (user.totp_enabled) {
       if (!totpToken) {
-        return NextResponse.json({ twoFactorRequired: true, uid })
+        return NextResponse.json({ twoFactorRequired: true })
       }
       const { TOTP } = await import('otplib')
       const totp = new TOTP()

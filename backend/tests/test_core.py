@@ -63,10 +63,12 @@ def test_dependencies_resolve_key():
 
 def test_dependencies_check_rate_limit(capsys):
     """Rate limiter accepts first call."""
+    import asyncio
+
     from core.dependencies import check_rate_limit
 
     # First hit should pass
-    check_rate_limit("test-key-1", 10, 60)
+    asyncio.run(check_rate_limit("test-key-1", 10, 60))
     # Should not raise
 
 

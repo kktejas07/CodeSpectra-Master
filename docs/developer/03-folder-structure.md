@@ -51,9 +51,6 @@ CodeSpectra-Master/
 │   ├── Dockerfile
 │   └── requirements.txt
 │
-├── mobile/                    # Android native app
-│   └── android/
-│
 ├── docs/                      # Documentation
 │   ├── AI/                    # AI architecture docs
 │   ├── Standards/             # Standards docs
@@ -75,7 +72,6 @@ graph TB
         
         Root --> Frontend["frontend/ (Next.js)"]
         Root --> Backend["backend/ (FastAPI)"]
-        Root --> Mobile["mobile/ (Android)"]
         Root --> Docs["docs/"]
         Root --> Scripts["scripts/"]
         Root --> Config["docker-compose.yml, README.md"]

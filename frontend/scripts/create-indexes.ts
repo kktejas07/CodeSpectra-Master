@@ -99,9 +99,6 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   user_roles: [
     { key: { user_id: 1, organization_id: 1 }, unique: true },
   ],
-  certifications: [
-    { key: { slug: 1 }, unique: true },
-  ],
   certification_attempts: [
     { key: { verify_token: 1 }, unique: true },
     { key: { user_id: 1, certification_id: 1 } },
@@ -219,11 +216,6 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   analytics_funnels: [
     { key: { id: 1 }, unique: true },
     { key: { created_at: -1 } },
-  ],
-  analytics_replays: [
-    { key: { session_id: 1 }, unique: true },
-    { key: { user_id: 1, last_activity_at: -1 } },
-    { key: { last_activity_at: -1 } },
   ],
   analytics_ai_usage: [
     { key: { timestamp: -1 } },

@@ -12,7 +12,6 @@ import {
   Code2,
   Eye,
   EyeOff,
-  Github,
   Loader2,
   Lock,
   Mail,
@@ -21,7 +20,9 @@ import {
   Zap,
   ShieldCheck,
 } from "lucide-react";
+import { Github } from "@/components/ui/brand-icons";
 import { useAuth, getLastLogin } from "@/lib/auth-context";
+import { FaceCamera } from "@/components/auth/face-camera";
 
 function LoginInner() {
   const router = useRouter();
@@ -38,6 +39,7 @@ function LoginInner() {
   const [totpRequired, setTotpRequired] = useState(false);
   const [totpCode, setTotpCode] = useState("");
   const [ssoMode, setSsoMode] = useState(false);
+  const [faceMode, setFaceMode] = useState(false);
   const [platformSettings, setPlatformSettings] = useState<{ enable_sso_login?: boolean }>({});
 
   useEffect(() => {
@@ -120,6 +122,34 @@ function LoginInner() {
       const msg = err instanceof Error ? err.message : "GitHub sign-in failed";
       setError(msg);
     } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleFaceLogin(descriptor: Float32Array) {
+    setError(null);
+    setLoading(true);
+    try {
+      if (!email) {
+        throw new Error("Please enter your email to use Face Login.");
+      }
+
+      const res = await fetch("/api/auth/face-verify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email: email.trim().toLowerCase(),
+          descriptor: Array.from(descriptor)
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "Biometric login failed");
+      
+      router.push(redirectTo);
+      router.refresh();
+    } catch (err: any) {
+      setError(err.message);
       setLoading(false);
     }
   }
@@ -264,7 +294,7 @@ function LoginInner() {
           {platformSettings.enable_sso_login && (
             <Button
               variant="outline"
-              onClick={() => setSsoMode(!ssoMode)}
+              onClick={() => { setSsoMode(true); setFaceMode(false); }}
               className="w-full h-11 gap-2 relative overflow-visible"
             >
               {lastLogin?.method === 'sso' && (
@@ -276,6 +306,15 @@ function LoginInner() {
               Continue with SSO
             </Button>
           )}
+
+          <Button
+            variant="outline"
+            onClick={() => { setFaceMode(true); setSsoMode(false); }}
+            className="w-full h-11 gap-2 relative overflow-visible"
+          >
+            <ShieldCheck className="w-4 h-4 text-emerald-500" />
+            Face Login
+          </Button>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
@@ -296,7 +335,43 @@ function LoginInner() {
 
 
           <form onSubmit={onSubmit} className="space-y-4">
-            {ssoMode ? (
+            {faceMode ? (
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="face_email">Email</Label>
+                  <div className="relative">
+                    <Mail className="absolute left-3 top-3 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      id="face_email"
+                      type="email"
+                      placeholder="you@example.com"
+                      value={email}
+                      onChange={(e) => setEmail(e.target.value)}
+                      className="pl-9 h-11"
+                      required
+                      autoComplete="email"
+                    />
+                  </div>
+                </div>
+                {email ? (
+                  <FaceCamera 
+                    mode="verify" 
+                    onCapture={handleFaceLogin}
+                    onError={(err) => setError(err.message)}
+                  />
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center">Please enter your email above first.</p>
+                )}
+                <Button
+                  type="button"
+                  variant="ghost"
+                  className="w-full text-xs text-muted-foreground"
+                  onClick={() => setFaceMode(false)}
+                >
+                  Back to standard sign in
+                </Button>
+              </div>
+            ) : ssoMode ? (
               <div className="space-y-4">
                 <div className="space-y-2">
                   <Label htmlFor="sso_email">Work Email</Label>

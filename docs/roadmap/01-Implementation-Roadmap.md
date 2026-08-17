@@ -190,8 +190,7 @@ gantt
 codespectra/
 ├── apps/
 │   ├── frontend/          # Next.js 16 application
-│   ├── backend/           # FastAPI proxy + AI router
-│   └── mobile/            # React Native (future)
+│   └── backend/           # FastAPI proxy + AI router
 ├── packages/
 │   ├── shared-types/      # Zod schemas, TypeScript interfaces
 │   ├── ai-client/         # Shared AI SDK (used by frontend + backend)

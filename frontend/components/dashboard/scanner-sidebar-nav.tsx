@@ -6,7 +6,6 @@ import { useSearchParams } from 'next/navigation'
 import {
   ArrowLeft,
   Code2,
-  Github,
   Plus,
   BarChart3,
   FileText,
@@ -21,6 +20,7 @@ import {
   Package,
   Key,
 } from 'lucide-react'
+import { Github } from '@/components/ui/brand-icons'
 import { cn } from '@/lib/utils'
 import { parseScannerMode, scannerHref, type ScannerMode } from '@/lib/scanner-modes'
 

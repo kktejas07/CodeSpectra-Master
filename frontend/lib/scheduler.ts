@@ -16,6 +16,7 @@
  * executes each via the existing engine. Returns a per-workflow log.
  */
 import { executeWorkflow } from './workflow-engine'
+import { logger } from './logger'
 import {
   workflows,
   workflowRuns,
@@ -23,6 +24,7 @@ import {
   nowIso,
   type WorkflowDoc,
 } from './db/leaderboard'
+import { acquireRedisLock, releaseRedisLock } from './upstash-rate-limit'
 
 interface ParsedField {
   values: Set<number>
@@ -133,69 +135,81 @@ export async function runDueWorkflows(
   tickMinute.setUTCSeconds(0, 0)
   const minuteKey = tickMinute.toISOString().slice(0, 16) // YYYY-MM-DDTHH:MM
 
-  const active = (await wfCol
-    .find({ trigger: 'schedule', is_active: true })
-    .toArray()) as WorkflowDoc[]
-
-  const triggered: SchedulerTickReport['triggered'] = []
-
-  for (const wf of active) {
-    if (!wf.cron_expression || !isDue(wf.cron_expression, tickMinute)) continue
-
-    // Skip if already fired this minute.
-    const dup = await runsCol.findOne({
-      workflow_id: wf.id,
-      cron_minute_key: minuteKey,
-    })
-    if (dup) continue
-
-    const started = nowIso()
-    let result
-    try {
-      result = await executeWorkflow(wf)
-    } catch (e) {
-      result = {
-        status: 'failed' as const,
-        steps: [
-          {
-            node_id: 'scheduler',
-            label: 'scheduler',
-            ok: false,
-            error: e instanceof Error ? e.message : String(e),
-            duration_ms: 0,
-          },
-        ],
-        duration_ms: 0,
-      }
-    }
-    const finished = nowIso()
-    const runId = newId()
-    await runsCol.insertOne({
-      id: runId,
-      workflow_id: wf.id,
-      user_id: 'scheduler',
-      status: result.status,
-      started_at: started,
-      finished_at: finished,
-      steps: result.steps,
-      duration_ms: result.duration_ms,
-      // Extra field used for idempotency — not in the WorkflowRunDoc type
-      // but Mongo is happy storing extras.
-      cron_minute_key: minuteKey,
-    } as never)
-    triggered.push({
-      workflowId: wf.id,
-      name: wf.name,
-      runId,
-      status: result.status,
-      duration_ms: result.duration_ms,
-    })
+  // Distributed lock: only one replica runs the tick for this minute when
+  // Redis is configured. The lock TTL is 5 minutes (longer than the 60s tick)
+  // so a slow workflow tick can't be double-run by a sibling replica.
+  const lockKey = `codespectra:lock:scheduler:${minuteKey}`
+  const lockHeld = await acquireRedisLock(lockKey, 300)
+  if (!lockHeld) {
+    return { ranAt: tickMinute.toISOString(), evaluated: 0, triggered: [] }
   }
+  try {
+    const active = (await wfCol
+      .find({ trigger: 'schedule', is_active: true })
+      .toArray()) as WorkflowDoc[]
 
-  return {
-    ranAt: tickMinute.toISOString(),
-    evaluated: active.length,
-    triggered,
+    const triggered: SchedulerTickReport['triggered'] = []
+
+    for (const wf of active) {
+      if (!wf.cron_expression || !isDue(wf.cron_expression, tickMinute)) continue
+
+      // Skip if already fired this minute.
+      const dup = await runsCol.findOne({
+        workflow_id: wf.id,
+        cron_minute_key: minuteKey,
+      })
+      if (dup) continue
+
+      const started = nowIso()
+      let result
+      try {
+        result = await executeWorkflow(wf)
+      } catch (e) {
+        result = {
+          status: 'failed' as const,
+          steps: [
+            {
+              node_id: 'scheduler',
+              label: 'scheduler',
+              ok: false,
+              error: e instanceof Error ? e.message : String(e),
+              duration_ms: 0,
+            },
+          ],
+          duration_ms: 0,
+        }
+      }
+      const finished = nowIso()
+      const runId = newId()
+      await runsCol.insertOne({
+        id: runId,
+        workflow_id: wf.id,
+        user_id: 'scheduler',
+        status: result.status,
+        started_at: started,
+        finished_at: finished,
+        steps: result.steps,
+        duration_ms: result.duration_ms,
+        // Extra field used for idempotency — not in the WorkflowRunDoc type
+        // but Mongo is happy storing extras.
+        cron_minute_key: minuteKey,
+      } as never)
+      triggered.push({
+        workflowId: wf.id,
+        name: wf.name,
+        runId,
+        status: result.status,
+        duration_ms: result.duration_ms,
+      })
+    }
+
+    return {
+      ranAt: tickMinute.toISOString(),
+      evaluated: active.length,
+      triggered,
+    }
+  } finally {
+    await releaseRedisLock(lockKey)
   }
 }
 
@@ -248,6 +262,6 @@ async function checkTrials(): Promise<void> {
   try {
     const { expireTrials } = await import('./coupon-service')
     const count = await expireTrials()
-    if (count > 0) console.log(`[trial] Expired ${count} trial subscription(s)`)
+    if (count > 0) logger.info(`[trial] Expired ${count} trial subscription(s)`)
   } catch { /* ignore */ }
 }

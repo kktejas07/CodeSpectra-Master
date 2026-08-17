@@ -61,10 +61,10 @@ export function checkCsrf(request: Request): { pass: boolean; token?: string } {
   return { pass: true }
 }
 
-export { CSRF_COOKIE, CSRF_HEADER }
-
 const CSRF_COOKIE = 'csrf_token'
 const CSRF_HEADER = 'x-csrf-token'
+
+export { CSRF_COOKIE, CSRF_HEADER }
 
 function parseCookie(raw: string, name: string): string | null {
   for (const part of raw.split(';')) {

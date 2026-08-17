@@ -128,3 +128,42 @@ async def get_item_analytics(item_id: str):
         "flagged_for_review": is_out_of_range,
         "flag_reason": "Out of range psychometric metrics" if is_out_of_range else None,
     }
+
+
+class GenerateCadItemReq(BaseModel):
+    title: str = "CAD Part Modeling Challenge"
+    prompt: str
+    region_standard: str = "ISO"
+    unit_system: str = "metric"
+    viva_required: bool = True
+    points: float = 100.0
+
+
+@router.post("/cad-step/generate")
+async def generate_cad_step_item(req: GenerateCadItemReq):
+    """Generate a cad_step item payload from text prompt and stage as draft item."""
+    from backend.domains.cad_step.generator import generate_cad_step_payload_from_prompt
+
+    payload = generate_cad_step_payload_from_prompt(
+        prompt=req.prompt,
+        region_standard=req.region_standard,
+        unit_system=req.unit_system,
+        viva_required=req.viva_required,
+    )
+
+    item = {
+        "id": f"item-cad-{abs(hash(req.prompt)) % 10**6}",
+        "domain_key": "cad_step",
+        "title": req.title,
+        "status": "draft",
+        "points": req.points,
+        "skill_tags": ["mech.gdt.feature_control_frame"],
+        "payload": payload,
+        "created_at": datetime.now(timezone.utc).isoformat(),
+    }
+
+    return {
+        "ok": True,
+        "item": item,
+    }
+

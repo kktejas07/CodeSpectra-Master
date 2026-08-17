@@ -1,5 +1,6 @@
 'use client'
 import { useConfirm } from '@/lib/confirm-context'
+import { useAuth } from '@/lib/auth-context'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -12,10 +13,10 @@ import {
   Select,
   SelectContent,
   SelectItem,
-  SelectTrigger,
   SelectValue,
+  SelectTrigger,
 } from '@/components/ui/select'
-import { Settings, Moon, Sun, Palette, Bell, Shield, ChevronRight, Loader2, CheckCircle2, XCircle, Key, Download, Trash2 } from 'lucide-react'
+import { Settings, Moon, Sun, Palette, Bell, Shield, ChevronRight, Loader2, CheckCircle2, XCircle, Key, Download, Trash2, Camera } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useToast } from '@/lib/toast-context'
 import {
@@ -58,6 +59,7 @@ function readLsBool(key: string, fallback: boolean) {
 export default function SettingsPage() {
   const confirmDialog = useConfirm()
   const gate = usePageGuard('user')
+  const { user } = useAuth()
 
   const addToast = useToast()
   const { theme: nextTheme, setTheme } = useTheme()
@@ -383,6 +385,32 @@ export default function SettingsPage() {
                 </Button>
               </div>
             )}
+            <Separator className="mx-6 w-auto" />
+            <div className="flex items-center justify-between gap-4 px-6 py-5">
+              <div className="min-w-0 space-y-0.5">
+                <p className="font-medium text-foreground">Face Biometrics</p>
+                <p className="text-sm text-muted-foreground">
+                  {user?.has_enrolled_face 
+                    ? 'Enrolled — identity verified for proctored assessments'
+                    : 'Not enrolled — required for proctored assessments'}
+                </p>
+              </div>
+              <div className="flex items-center gap-2">
+                {user?.has_enrolled_face ? (
+                  <CheckCircle2 className="h-5 w-5 text-green-500" />
+                ) : (
+                  <XCircle className="h-5 w-5 text-amber-500" />
+                )}
+              </div>
+            </div>
+            <div className="px-6 pb-4">
+              <Button variant="outline" size="sm" asChild className="gap-2 shrink-0">
+                <Link href="/auth/enroll-face?redirect=/dashboard/settings">
+                  <Camera className="h-4 w-4" />
+                  {user?.has_enrolled_face ? 'Update face biometrics' : 'Enroll face biometrics'}
+                </Link>
+              </Button>
+            </div>
             <Separator className="mx-6 w-auto" />
             <div className="flex items-center justify-between gap-4 px-6 py-5">
               <div className="min-w-0 space-y-0.5">

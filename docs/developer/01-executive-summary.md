@@ -124,7 +124,6 @@
 | No vector search / RAG index for problem corpus | Medium | Only prompt-based hints, no proper embedding retrieval |
 | No audit log for non-admin user actions | Low | Admin audit logs exist at API level |
 | No SSO / OIDC support (beyond GitHub OAuth) | Medium | Only GitHub OAuth for integration, not auth |
-| Mobile apps are empty shells | Low | `mobile/` has Android and iOS directories with only README |
 | No webhook system for external consumers | Low | GitHub webhooks inward only |
 | No webSocket/polling for real-time scan updates | Low | All REST-based |
 | No database migration tooling for MongoDB | Low | Collections created lazily on first write |
@@ -146,11 +145,10 @@
 8. **Implement proper RAG**: Add vector embeddings for problem corpus, submission errors, and documentation
 
 ### Medium-term (60–90 days)
-9. **Complete mobile apps**: Implement React Native or consider PWA-only strategy
-10. **Add SSO/OIDC**: Support SAML, Google Workspace, Microsoft Entra ID for enterprise customers
-11. **Build webhook system**: Allow external services to subscribe to CodeSpectra events
-12. **Implement database migration tooling**: MongoDB schema versioning and migration scripts
-13. **Expand test coverage**: Aim for >60% coverage on core services
+9. **Add SSO/OIDC**: Support SAML, Google Workspace, Microsoft Entra ID for enterprise customers
+10. **Build webhook system**: Allow external services to subscribe to CodeSpectra events
+11. **Implement database migration tooling**: MongoDB schema versioning and migration scripts
+12. **Expand test coverage**: Aim for >60% coverage on core services
 
 ---
 

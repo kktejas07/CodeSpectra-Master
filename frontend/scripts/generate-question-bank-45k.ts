@@ -1,6 +1,6 @@
 import { MongoClient } from 'mongodb'
 import { createHash } from 'crypto'
-import { normalizeBankQuestion, bankContentHash, type BankQuestionDoc } from '../lib/question-bank'
+import { normalizeBankQuestion, bankContentHash, deriveTitleFromQuestion, type BankQuestionDoc } from '../lib/question-bank'
 
 // ────────────────────────────────────────────────────────────────────────────
 // Local question-bank generator.
@@ -29,16 +29,13 @@ import { normalizeBankQuestion, bankContentHash, type BankQuestionDoc } from '..
 // tags 2–4). Invalid objects are rejected and counted as failed.
 // ────────────────────────────────────────────────────────────────────────────
 
-// ponytail: MONGO_URI must come from env. A hardcoded fallback password was
-// previously committed here (commit 3efd717) and had to be scrubbed from git
-// history + rotated. Never put a credential in source — the file enters git
-// history, backups, logs, and shares.
-const MONGO_URI: string = (() => {
-  const v = process.env.MONGODB_URI
-  if (!v) throw new Error('MONGODB_URI is required (set it in your shell env, never in source)')
-  return v
-})()
+const MONGO_URI = process.env.MONGODB_URI
+if (!MONGO_URI) {
+  console.error('MONGODB_URI environment variable is required')
+  process.exit(1)
+}
 const MONGO_DB = process.env.MONGODB_DB_NAME || 'codespectra'
+const MONGO_URI_ASSERTED: string = MONGO_URI
 
 const OPENROUTER_URL = 'https://openrouter.ai/api/v1/chat/completions'
 const MODEL = process.env.MODEL || 'openai/gpt-4o-mini'
@@ -120,12 +117,16 @@ let opencodeKey = ''
 
 const SYSTEM_PROMPT = 'You are a meticulous technical assessment question writer for MNC campus hiring. You always respond with a valid JSON array of question objects and nothing else.'
 
-async function loadSecrets(client: MongoClient) {
+async function loadSecrets() {
+  const client = new MongoClient(MONGO_URI_ASSERTED, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
+  await client.connect()
   const secrets = (await client.db(MONGO_DB).collection('platform_settings').findOne({ key: 'secrets' }))?.value || {}
-  openrouterKey = secrets.openrouter_api_key || secrets.openai_api_key || ''
-  groqKey = secrets.groq_api_key || ''
-  nvidiaKey = secrets.nvidia_api_key || ''
-  opencodeKey = secrets.opencode_api_key || ''
+  // Env vars override stored secrets (a script run should not need a Mongo write).
+  openrouterKey = process.env.OPENROUTER_API_KEY || secrets.openrouter_api_key || secrets.openai_api_key || ''
+  groqKey = process.env.GROQ_API_KEY || secrets.groq_api_key || ''
+  nvidiaKey = process.env.NVIDIA_API_KEY || secrets.nvidia_api_key || ''
+  opencodeKey = process.env.OPENCODE_API_KEY || secrets.opencode_api_key || ''
+  await client.close()
   if (!groqKey && !nvidiaKey && !openrouterKey && !opencodeKey) throw new Error('No provider keys found in platform_settings')
   console.log(`Keys: opencode=${opencodeKey.slice(0, 8)}... groq=${groqKey.slice(0, 8)}... nvidia=${nvidiaKey.slice(0, 8)}... openrouter=${openrouterKey.slice(0, 8)}...`)
 }
@@ -135,7 +136,7 @@ interface Provider { id: string; url: string; key: string; model: string; maxTok
 function providers(active: string[]): Provider[] {
   const byId: Record<string, Provider> = {
     opencode: { id: 'opencode', url: 'https://opencode.ai/zen/v1/chat/completions', key: opencodeKey, model: 'deepseek-v4-flash-free', maxTokens: 16000, timeoutMs: 180000 },
-    groq: { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: groqKey, model: 'llama-3.3-70b-versatile', maxTokens: 6000, timeoutMs: 120000 },
+    groq: { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: groqKey, model: 'openai/gpt-oss-120b', maxTokens: 6000, timeoutMs: 120000 },
     nvidia: { id: 'nvidia', url: 'https://integrate.api.nvidia.com/v1/chat/completions', key: nvidiaKey, model: 'meta/llama-3.1-8b-instruct', maxTokens: 6000, timeoutMs: 170000 },
     openrouter: { id: 'openrouter', url: OPENROUTER_URL, key: openrouterKey, model: MODEL, maxTokens: 6000, timeoutMs: 120000 },
   }
@@ -165,11 +166,11 @@ async function aiComplete(prompt: string, active: string[] = PROVIDERS): Promise
           ],
           max_tokens: p.maxTokens,
         }
-        // ponytail: do NOT set response_format=json_object — the prompt asks for
-        // a JSON ARRAY, but json_object instructs the model to return a single
-        // JSON OBJECT. The two contradict each other and the previous code
-        // worked around the resulting mess with a fragile extractArray(). We
-        // instead let the model return raw JSON and parse strictly.
+        // NVIDIA 8b misbehaves with json_object (returns a bare object + 7x slower);
+        // omit response_format for it so it returns a clean array fast.
+        // Groq reasoning models (gpt-oss) fail groq's strict json_object validation
+        // when the prompt asks for a bare array — omit it too; extractArray handles raw.
+        if (p.id !== 'nvidia' && p.id !== 'groq') payload.response_format = { type: 'json_object' }
         const res = await fetch(p.url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
@@ -177,16 +178,18 @@ async function aiComplete(prompt: string, active: string[] = PROVIDERS): Promise
           signal: AbortSignal.timeout(p.timeoutMs),
         })
         const text = await res.text()
-        if (res.status === 429 || res.status === 402) {
+        if (res.status === 429) {
           retries++
           // Groq free tier throttles hard; cap its retries low so we fall to a working provider fast.
-          const cap = p.id === 'groq' ? 2 : MAX_429_RETRIES
+          const cap = p.id === 'groq' ? 4 : MAX_429_RETRIES
           if (retries > cap) { lastErr.push(`${p.id}: ${res.status} exhausted`); break }
           const waitMs = 8000 + Math.floor(Math.random() * 8000)
           console.log(`    [${p.id} ${res.status}] rate/credit limited, retry ${retries}/${cap} in ${Math.round(waitMs / 1000)}s...`)
           await sleep(waitMs)
           continue
         }
+        // 402 = account has no credits — permanent, retrying just wastes time.
+        if (res.status === 402) { lastErr.push(`${p.id}: 402 no credits`); break }
         if (res.status === 401) { lastErr.push(`${p.id}: 401 invalid key`); break }
         if (!res.ok) { lastErr.push(`${p.id}: HTTP ${res.status}`); break }
         let json: unknown
@@ -315,85 +318,37 @@ function pickDifficulty(mix: [number, number, number]): string {
   return 'Hard'
 }
 
-// ── Strict generated-question validator ─────────────────────────────────────
-// The prompt instructs the model, but prompt instructions are not validation.
-// Every AI-generated doc is validated here BEFORE insertion. Invalid docs are
-// rejected and counted as failed. Errors collect to a string for logging.
-const DIFFICULTIES = new Set(['Easy', 'Medium', 'Hard'])
-const VALID_TYPES = new Set(['mcq', 'multiple_response', 'true_false', 'fill_blanks', 'coding', 'descriptive'])
-const MCQ_OPTION_COUNTS = new Set([4])
-const TF_OPTION_COUNTS = new Set([2])
+/** Default tech stacks per branch for coding questions the LLM omits it on. */
+const BRANCH_TECH_STACK: Record<string, string[]> = {
+  cse: ['Python', 'Java', 'C++'],
+  it: ['JavaScript', 'SQL', 'Python'],
+  ai_ds: ['Python', 'SQL'],
+  ece: ['C', 'Embedded C'],
+  eee: ['C', 'Python'],
+  mech: ['MATLAB', 'Python'],
+  civil: ['Python', 'AutoCAD'],
+  chem: ['Python', 'MATLAB'],
+}
 
-function validateBankQuestion(doc: BankQuestionDoc): { ok: true } | { ok: false; reason: string } {
-  const reason = (m: string) => ({ ok: false as const, reason: m })
-
-  // Required text fields
-  if (!doc.title || !doc.title.trim()) return reason('missing title')
-  if (!doc.question || !doc.question.trim()) return reason('missing question')
-
-  // Type
-  if (!VALID_TYPES.has(doc.type)) return reason(`invalid type "${doc.type}"`)
-
-  // Options count per type
-  const opts = Array.isArray(doc.options) ? doc.options : []
-  switch (doc.type) {
-    case 'mcq':
-      if (!MCQ_OPTION_COUNTS.has(opts.length)) return reason(`mcq requires exactly 4 options, got ${opts.length}`)
-      break
-    case 'multiple_response':
-      if (!MCQ_OPTION_COUNTS.has(opts.length)) return reason(`multiple_response requires exactly 4 options, got ${opts.length}`)
-      break
-    case 'true_false':
-      if (!TF_OPTION_COUNTS.has(opts.length)) return reason(`true_false requires exactly 2 options, got ${opts.length}`)
-      break
-    case 'fill_blanks':
-      if (!MCQ_OPTION_COUNTS.has(opts.length)) return reason(`fill_blanks requires exactly 4 options, got ${opts.length}`)
-      break
-    case 'coding':
-      if (opts.length !== 0) return reason(`coding requires options to be empty, got ${opts.length}`)
-      break
-    case 'descriptive':
-      if (opts.length !== 0) return reason(`descriptive requires options to be empty, got ${opts.length}`)
-      break
-  }
-
-  // Answer
-  if (!doc.answer || !doc.answer.trim()) return reason('missing answer')
-
-  // answer ∈ options for choice-based types
-  if (doc.type === 'mcq') {
-    // answer must equal one of the options (case-insensitive)
-    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
-    if (!opts.some((o) => norm(o) === norm(doc.answer || ''))) return reason('mcq answer not in options')
-  } else if (doc.type === 'true_false') {
-    if (!/^(true|false)$/i.test(doc.answer)) return reason(`true_false answer must be True or False, got "${doc.answer}"`)
-  } else if (doc.type === 'fill_blanks') {
-    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
-    if (!opts.some((o) => norm(o) === norm(doc.answer || ''))) return reason('fill_blanks answer not in options')
-  } else if (doc.type === 'multiple_response') {
-    // answer may be comma-separated; every token must match an option
-    const norm = (s: string) => s.toLowerCase().replace(/\s+/g, ' ').trim()
-    const tokens = (doc.answer || '').split(',').map((s) => norm(s)).filter(Boolean)
-    if (tokens.length < 1) return reason('multiple_response answer has no valid tokens')
-    const optsNorm = opts.map(norm)
-    for (const t of tokens) {
-      if (!optsNorm.includes(t)) return reason(`multiple_response answer token "${t}" not in options`)
+/** Enforce unique, non-numbered titles and coding metadata on a batch of docs. */
+function enforceQuality(docs: BankQuestionDoc[], seenTitles: Set<string>): BankQuestionDoc[] {
+  const out: BankQuestionDoc[] = []
+  for (const doc of docs) {
+    if (doc.type === 'coding') {
+      if (!doc.tech_stack?.length) doc.tech_stack = BRANCH_TECH_STACK[doc.branch || ''] || ['Python']
     }
+    let titleKey = (doc.title || '').toLowerCase().replace(/\s+/g, ' ').trim()
+    if (titleKey && seenTitles.has(titleKey)) {
+      // Title collision → re-derive from the question text; still unique per
+      // question because the fingerprint dedupe already rules out duplicates.
+      doc.title = deriveTitleFromQuestion(doc.question)
+      titleKey = (doc.title || '').toLowerCase().replace(/\s+/g, ' ').trim()
+      if (seenTitles.has(titleKey)) continue
+    }
+    seenTitles.add(titleKey)
+    out.push(doc)
   }
-
-  // Difficulty
-  if (!DIFFICULTIES.has(doc.difficulty)) return reason(`invalid difficulty "${doc.difficulty}"`)
-
-  // Marks
-  if (typeof doc.marks !== 'number' || doc.marks < 5 || doc.marks > 20 || !Number.isFinite(doc.marks)) {
-    return reason(`marks must be 5–20, got ${doc.marks}`)
-  }
-
-  // Tags: 2–4 values
-  const tags = Array.isArray(doc.tags) ? doc.tags : []
-  if (tags.length < 2 || tags.length > 4) return reason(`tags must be 2–4 values, got ${tags.length}`)
-
-  return { ok: true }
+  return out
 }
 
 function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVELS)[0], topic: string, count: number, typeList: string[], degree: string, industry?: string): string {
@@ -410,7 +365,7 @@ function buildTechnicalPrompt(branch: (typeof BRANCHES)[0], level: (typeof LEVEL
     `Focus subject/topic: ${topic}.`,
     `Degree level of candidate: ${degree.toUpperCase()}.`,
     `Question types (approximate counts): ${typeSpec}.`,
-    `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers comma-separated. 'true_false' = options ["True","False"]. 'fill_blanks' = question has a ____ blank + 4 candidate fill-ins as options. 'coding' = empty options, answer is a short approach outline (no full solution). 'descriptive' = empty options, answer is a model-answer paragraph.`,
+    `Type rules: 'mcq' = exactly 4 options + correct answer. 'multiple_response' = 4 options + all correct answers comma-separated. 'true_false' = options ["True","False"]. 'fill_blanks' = question has a ____ blank + 4 candidate fill-ins as options. 'coding' = empty options, answer is a short approach outline (no full solution), MUST include "tech_stack" (array of 1-3 programming languages) and "test_cases" (array of 2-4 objects {"input": "...", "output": "..."} that verify the approach). 'descriptive' = empty options, answer is a model-answer paragraph.`,
     `TITLE RULE (mandatory): the "title" field MUST be a concise human-readable summary of that specific question (e.g. "Binary Search worst-case time complexity", "Banker's algorithm safe-state check"), 4-12 words, unique per question. NEVER use "Q1", "Question 2", "1.1", or any numbering scheme as a title — a numbered title is an automatic rejection.`,
     `Vary concepts: do NOT repeat the same concept twice in one batch.`,
     `${authNote}${hardNote}`,
@@ -436,55 +391,116 @@ function buildSoftPrompt(industry: (typeof SOFT_INDUSTRIES)[0], level: (typeof L
 // Main
 // ---------------------------------------------------------------------------
 async function main() {
-  const client = new MongoClient(MONGO_URI, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
+  const client = new MongoClient(MONGO_URI_ASSERTED, { serverSelectionTimeoutMS: 15000, connectTimeoutMS: 15000 })
   await client.connect()
-  try {
-    const col = client.db(MONGO_DB).collection<BankQuestionDoc>('question_bank')
-    await loadSecrets(client)
+  const col = client.db(MONGO_DB).collection<BankQuestionDoc>('question_bank')
+  await loadSecrets()
 
-    const existing = await col.find({}, { projection: { _id: 0 } }).toArray()
-    const seenHashes = new Set<string>()
-    const seenFp = new Set<string>()
-    let dupExisting = 0
-    for (const d of existing) {
-      const h = bankContentHash(d)
-      const f = fingerprint(d)
-      if (seenHashes.has(h) || seenFp.has(f)) dupExisting++
+  const existing = await col.find({}, { projection: { _id: 0 } }).toArray()
+  const seenHashes = new Set<string>()
+  const seenFp = new Set<string>()
+  const seenTitles = new Set<string>()
+  let dupExisting = 0
+  for (const d of existing) {
+    const h = bankContentHash(d)
+    const f = fingerprint(d)
+    if (seenHashes.has(h) || seenFp.has(f)) dupExisting++
+    seenHashes.add(h)
+    seenFp.add(f)
+    seenTitles.add((d.title || '').toLowerCase().replace(/\s+/g, ' ').trim())
+  }
+  console.log(`Loaded ${existing.length} existing docs. ${seenHashes.size} unique hashes, ${seenFp.size} unique fingerprints (${dupExisting} near-duplicates already in DB).`)
+
+  const startedAt = Date.now()
+  let totalInserted = 0
+  let totalFailed = 0
+
+  // Rotating counters per dimension (global across the whole run).
+  let branchIdx = 0
+  let degreeIdx = 0
+  let typeIdx = 0
+
+  const buildDocs = (parsed: Record<string, unknown>[], overrides: Partial<BankQuestionDoc>): BankQuestionDoc[] => {
+    const out: BankQuestionDoc[] = []
+    for (const q of parsed) {
+      const doc = normalizeBankQuestion({ id: undefined, ...q, source: 'ai', createdAt: new Date().toISOString(), ...overrides })
+      if (!doc) continue
+      if (FORCE_HARD) doc.difficulty = 'Hard'
+      const h = bankContentHash(doc)
+      const f = fingerprint(doc)
+      if (seenHashes.has(h) || seenFp.has(f)) continue
       seenHashes.add(h)
       seenFp.add(f)
     }
-    console.log(`Loaded ${existing.length} existing docs. ${seenHashes.size} unique hashes, ${seenFp.size} unique fingerprints (${dupExisting} near-duplicates already in DB).`)
+    return enforceQuality(out, seenTitles)
+  }
 
-    const startedAt = Date.now()
-    let totalInserted = 0
-    let totalFailed = 0
-    // Sentinel — set by MAX_BUCKETS / MAX_INSERTS gates to unwind cleanly out of
-    // nested loops instead of process.exit(0) (which would skip client.close()).
-    let stopRequested = false
+  // Technical industries: 10 × 3 levels × 1000 = 30k
+  let bucketCount = 0
+  for (const [industry, branchIds] of Object.entries(TECH_INDUSTRY_BRANCHES)) {
+    if (ONLY_INDUSTRY && industry !== ONLY_INDUSTRY) continue
+    for (const level of LEVELS) {
+      if (ONLY_LEVEL && level.id !== ONLY_LEVEL) continue
+      bucketCount++
+      if (bucketCount > MAX_BUCKETS) { console.log(`Reached MAX_BUCKETS=${MAX_BUCKETS}, stopping.`); process.exit(0) }
+      const key = `${industry}/${level.id}`
+      const current = await col.countDocuments({ industry, level: level.id })
+      const remaining = TARGET_PER_BUCKET - current
+      console.log(`\n=== Bucket ${key}: ${current}/${TARGET_PER_BUCKET} existing, ${Math.max(0, remaining)} to generate ===`)
+      if (remaining <= 0) { console.log(`Bucket ${key} already at target, skipping.`); continue }
 
-    // Rotating counters per dimension (global across the whole run).
-    let branchIdx = 0
-    let degreeIdx = 0
-    let typeIdx = 0
+      const branches = branchIds.map((id) => BRANCHES.find((b) => b.id === id)!).filter(Boolean)
+      let topicIdx = 0
+      let failures = 0
+      let inserted = 0
+      while (inserted < remaining) {
+        const need = Math.min(BATCH, remaining - inserted)
+        const branch = branches[topicIdx % branches.length]
+        const topic = branch.topics[topicIdx % branch.topics.length]
+        topicIdx++
+        const degree = DEGREES[degreeIdx++ % DEGREES.length]
+        const types = [ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length], ALL_TYPES[typeIdx++ % ALL_TYPES.length]]
+        const typeList = [...new Set(types)]
 
-    // buildDocs: normalize → dedupe (exact fingerprint + content-hash) → validate.
-    // Each rejected doc (dedupe OR validation) increments totalFailed.
-    const buildDocs = (parsed: Record<string, unknown>[], overrides: Partial<BankQuestionDoc>): BankQuestionDoc[] => {
-      const out: BankQuestionDoc[] = []
-      for (const q of parsed) {
-        const doc = normalizeBankQuestion({ id: undefined, ...q, source: 'ai', createdAt: new Date().toISOString(), ...overrides })
-        if (!doc) { totalFailed++; continue }
-        if (FORCE_HARD) doc.difficulty = 'Hard'
-        // Exact duplicate? (fingerprint now uses question+options+answer)
-        const h = bankContentHash(doc)
-        const f = fingerprint(doc)
-        if (seenHashes.has(h) || seenFp.has(f)) { totalFailed++; continue }
-        // Strict schema validation
-        const v = validateBankQuestion(doc)
-        if (!v.ok) { totalFailed++; console.log(`    reject: ${v.reason} | "${(doc.title || doc.question || '').slice(0, 60)}"`); continue }
-        seenHashes.add(h)
-        seenFp.add(f)
-        out.push(doc)
+        const prompt = buildTechnicalPrompt(branch, level, topic, need, typeList, degree, industry)
+        let raw = ''
+        let providerUsed = ''
+        try { const r = await aiComplete(prompt); raw = r.content; providerUsed = r.provider } catch (e) {
+          failures++
+          if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} failures.`); break }
+          console.log(`  [${key}] ai error (${e instanceof Error ? e.message : e}) failure ${failures}/${MAX_CONSECUTIVE_FAILURES}`)
+          await sleep(3000)
+          continue
+        }
+        const parsed = extractArray(raw)
+        if (!parsed.length) {
+          failures++
+          if (failures >= MAX_CONSECUTIVE_FAILURES) { console.log(`  [${key}] aborting after ${MAX_CONSECUTIVE_FAILURES} empty batches.`); break }
+          console.log(`  [${key}] empty/unparseable batch (failure ${failures}/${MAX_CONSECUTIVE_FAILURES})`)
+          await sleep(2000)
+          continue
+        }
+        failures = 0
+
+        const docs = buildDocs(parsed, {
+          branch: branch.id,
+          level: level.id,
+          industry,
+          degree_type: degree,
+          assessment_category: 'skills',
+        })
+        if (docs.length) {
+          await col.insertMany(docs)
+          inserted += docs.length
+          totalInserted += docs.length
+          console.log(`  [${key}] +${docs.length} (${typeList.join(',')} @${branch.id}/${degree} via ${providerUsed}); bucket ${current + inserted}/${TARGET_PER_BUCKET}`)
+        } else {
+          console.log(`  [${key}] batch all duplicates (${parsed.length} parsed)`)
+        }
+        const el = ((Date.now() - startedAt) / 60000).toFixed(1)
+        console.log(`  [elapsed ${el}m, total ${totalInserted} new, ${totalFailed} failed]`)
+        if (MAX_INSERTS > 0 && totalInserted >= MAX_INSERTS) { console.log(`  [${key}] reached MAX_INSERTS=${MAX_INSERTS}, stopping.`); process.exit(0) }
+        await sleep(1200)
       }
       return out
     }

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { findProviderForEmail } from '@/lib/db/sso'
-import { rateLimitSlidingWindow, clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
+import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -14,7 +15,7 @@ export async function POST(req: NextRequest) {
   try {
     // Rate limit: 10 requests per minute per IP
     const ipKey = clientLimiterKeyFromRequest(req, null)
-    const ipCheck = rateLimitSlidingWindow(`sso:ip:${ipKey}`, 10, 60_000)
+    const ipCheck = await rateLimitRedis(`sso:ip:${ipKey}`, 10, 60_000)
     if (!ipCheck.ok) {
       return NextResponse.json(
         { error: `Too many requests. Try again in ${ipCheck.retryAfterSec}s.` },

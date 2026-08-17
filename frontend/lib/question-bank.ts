@@ -11,6 +11,12 @@ import type { Collection } from 'mongodb'
 
 export type BankQuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
 
+/** Sample inputs + expected outputs used to verify a coding question. */
+export interface BankTestCase {
+  input: string
+  output: string
+}
+
 export interface BankQuestionDoc {
   id: string
   /** Short question label (for tables/lists). */
@@ -28,6 +34,8 @@ export interface BankQuestionDoc {
   subject?: string
   tech_stack?: string[]
   tags?: string[]
+  /** Sample test cases (coding questions). */
+  test_cases?: BankTestCase[]
   /** Industry vertical (e.g. 'software', 'manufacturing'). */
   industry?: string
   /** Role seniority level (e.g. 'entry', 'mid', 'senior'). */
@@ -140,6 +148,18 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     ? techStackRaw.map((t) => normString(t, 60)).filter(Boolean)
     : normString(techStackRaw, 500).split(',').map((s) => s.trim()).filter(Boolean)
 
+  // test_cases — LLMs emit varied shapes; accept all and normalize.
+  const testCases: BankTestCase[] = []
+  if (Array.isArray(raw.test_cases)) {
+    for (const tc of raw.test_cases as Array<Record<string, unknown>>) {
+      if (tc && typeof tc === 'object') {
+        const input = normString(tc.input ?? tc.stdin, 1000)
+        const output = normString(tc.output ?? tc.expected_output ?? tc.expected_stdout ?? tc.answer, 2000)
+        if (input !== '' || output !== '') testCases.push({ input, output })
+      }
+    }
+  }
+
   const branch = normString(raw.branch || raw.domain, 60).toLowerCase()
   const degreeType = normString(raw.degree_type, 40).toLowerCase()
   const subject = normString(raw.subject || raw.topic, 120)
@@ -164,6 +184,7 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     branch: branch || undefined,
     subject: subject || undefined,
     tech_stack: techStack.length ? techStack : undefined,
+    test_cases: testCases.length ? testCases : undefined,
     tags: tags.length ? tags : undefined,
     industry: industry || undefined,
     level: level || undefined,

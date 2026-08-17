@@ -7,6 +7,8 @@
  * Edge bundle).
  */
 
+import { logger } from './logger'
+
 let bootPromise: Promise<void> | null = null
 
 export function bootSchedulerOnce(): void {
@@ -19,9 +21,9 @@ export function bootSchedulerOnce(): void {
       const mod = await import('./scheduler')
       mod.startSchedulerLoop()
       mod.startTrialExpiryLoop()
-      console.log('[CodeSpectra] scheduler loop booted lazily on first request')
+      logger.info('[CodeSpectra] scheduler loop booted lazily on first request')
     } catch (e) {
-      console.warn('[CodeSpectra] scheduler bootstrap skipped:', e)
+      logger.warn('[CodeSpectra] scheduler bootstrap skipped:', e)
       bootPromise = null
     }
   })()

@@ -209,6 +209,28 @@
     -moz-osx-font-smoothing: grayscale;
   }
 
+  /* Pointer cursor on all interactive elements — sitewide fix */
+  button,
+  [role='button'],
+  a[href],
+  label[for],
+  select,
+  summary,
+  [type='checkbox'],
+  [type='radio'],
+  [type='submit'],
+  [type='reset'],
+  [type='file'] {
+    cursor: pointer;
+  }
+  /* Disabled elements should stay default, not pointer */
+  button:disabled,
+  [role='button'][aria-disabled='true'],
+  input:disabled,
+  select:disabled {
+    cursor: not-allowed;
+  }
+
   /* Tint native form controls (checkboxes, radios, range, progress) with the brand. */
   input,
   textarea,
@@ -725,6 +747,16 @@
   }
 }
 
+/* ============================================================================
+   Review overlay — responsive overflow handling for all screen sizes.
+   ============================================================================ */
+.print-review-overlay .prose { max-width: 100% !important; overflow-wrap: break-word !important; word-break: break-word !important; }
+.print-review-overlay .prose table { display: block !important; overflow-x: auto !important; max-width: 100% !important; }
+.print-review-overlay .prose img { max-width: 100% !important; height: auto !important; }
+.print-review-overlay .prose pre { overflow-x: auto !important; max-width: 100% !important; }
+.print-review-overlay .prose code { word-break: break-all !important; }
+.print-review-overlay pre { max-width: 100% !important; }
+.print-review-overlay table { display: block !important; overflow-x: auto !important; max-width: 100% !important; }
 
 /* ============================================================================
    Print — PDF export of the exam review modal.

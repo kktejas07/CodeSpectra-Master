@@ -126,7 +126,7 @@ export default function CdnAdminPage() {
   }, [toast])
 
   return (
-    <div className="space-y-8 p-6 max-w-7xl mx-auto">
+    <div className="space-y-8">
       {/* Title Header */}
       <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
         <div>

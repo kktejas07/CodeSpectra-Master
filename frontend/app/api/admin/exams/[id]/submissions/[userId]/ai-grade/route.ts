@@ -47,7 +47,15 @@ export async function POST(
     const maxPoints = q.points || q.score || 10
 
     if (!candidateAnswer) {
-      return NextResponse.json({ error: 'Candidate provided no answer for this question' }, { status: 400 })
+      // No answer = automatic 0 — no LLM round-trip needed
+      return NextResponse.json({
+        qId: body.qId,
+        awarded: 0,
+        recommended: 0,
+        max_points: maxPoints,
+        verdict: 'incorrect',
+        feedback: 'No answer provided.',
+      })
     }
 
     const result = await gradeAnswer({

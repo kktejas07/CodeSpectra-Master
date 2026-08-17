@@ -25,15 +25,19 @@ function loadEnv() {
 loadEnv()
 
 const DEV_ACCOUNTS = [
-  { email: 'superadmin@codespectra.com', password: 'SuperAdmin123!', role: 'superadmin', name: 'Super Admin' },
-  { email: 'admin@codespectra.com', password: 'TenantAdmin123!', role: 'tenant_admin', name: 'Tenant Admin' },
-  { email: 'demo@codespectra.com', password: 'DemoPass123!', role: 'user', name: 'Demo User' },
-  { email: 'qa@codespectra.ai', password: 'QAAdmin123!', role: 'superadmin', name: 'QA Admin' },
+  { email: 'superadmin@codespectra.com', password: process.env.SEED_SUPERADMIN_PASS || 'ChangeMe123!', role: 'superadmin', name: 'Super Admin' },
+  { email: 'admin@codespectra.com', password: process.env.SEED_ADMIN_PASS || 'ChangeMe123!', role: 'tenant_admin', name: 'Tenant Admin' },
+  { email: 'demo@codespectra.com', password: process.env.SEED_DEMO_PASS || 'ChangeMe123!', role: 'user', name: 'Demo User' },
+  { email: 'qa@codespectra.ai', password: process.env.SEED_QA_PASS || 'ChangeMe123!', role: 'superadmin', name: 'QA Admin' },
 ]
 
 async function main() {
-  const uri = process.env.MONGODB_URI || 'mongodb://localhost:27017/codespectra'
-  console.log(`Connecting to ${uri} …`)
+  const uri = process.env.MONGODB_URI
+  if (!uri) {
+    console.error('MONGODB_URI environment variable is required')
+    process.exit(1)
+  }
+  console.log(`Connecting to ${uri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')} …`)
   const client = new MongoClient(uri)
   await client.connect()
   const db = client.db()

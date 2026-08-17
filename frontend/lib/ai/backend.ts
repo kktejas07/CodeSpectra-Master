@@ -38,9 +38,22 @@ async function getBackendSecrets(): Promise<{
   }
 }
 
+async function getInternalSecret(): Promise<string> {
+  const fromEnv = process.env.INTERNAL_BACKEND_SECRET?.trim() || ''
+  if (fromEnv) return fromEnv
+  try {
+    const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
+    const secrets = await readServerSecrets()
+    const stored = typeof secrets.internal_backend_secret === 'string' ? secrets.internal_backend_secret.trim() : ''
+    return stored && !isMaskedSecret(stored) ? stored : ''
+  } catch {
+    return ''
+  }
+}
+
 async function backendHeaders(opts?: { apiKeyOverride?: string }): Promise<Record<string, string>> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
-  const internalSecret = process.env.INTERNAL_BACKEND_SECRET
+  const internalSecret = await getInternalSecret()
   if (internalSecret) h['x-internal-secret'] = internalSecret
   if (opts?.apiKeyOverride) {
     h['x-api-key'] = opts.apiKeyOverride
@@ -113,30 +126,97 @@ export async function backendComplete(args: {
   modelOverride?: string
   endpointOverride?: string
   apiKeyOverride?: string
-}): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string }> {
-  const headers = await backendHeaders({ apiKeyOverride: args.apiKeyOverride })
-  const res = await fetch(`${BACKEND}/internal/ai/complete`, {
-    method: 'POST',
-    headers,
-    body: JSON.stringify({
-      session_id: args.sessionId ?? 'default',
-      system_message: args.systemMessage,
-      user_message: args.userMessage,
-      model_role: args.modelRole ?? 'fast',
-      response_format: args.responseFormat ?? 'text',
-      ...(args.providerOverride && args.modelOverride ? {
-        provider_override: args.providerOverride,
-        model_override: args.modelOverride,
-        endpoint_override: args.endpointOverride || '',
-      } : {}),
-      ...(args.apiKeyOverride ? { api_key_override: args.apiKeyOverride } : {}),
-    }),
+  feature?: string
+  userId?: string
+}): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string; usage?: { input_tokens: number, output_tokens: number } }> {
+  const start = Date.now()
+  let success = true
+  let error: string | undefined
+  let parsedRes: any
+
+  try {
+    const headers = await backendHeaders({ apiKeyOverride: args.apiKeyOverride })
+    const res = await fetch(`${BACKEND}/internal/ai/complete`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        session_id: args.sessionId ?? 'default',
+        system_message: args.systemMessage,
+        user_message: args.userMessage,
+        model_role: args.modelRole ?? 'fast',
+        response_format: args.responseFormat ?? 'text',
+        ...(args.providerOverride && args.modelOverride ? {
+          provider_override: args.providerOverride,
+          model_override: args.modelOverride,
+          endpoint_override: args.endpointOverride || '',
+        } : {}),
+        ...(args.apiKeyOverride ? { api_key_override: args.apiKeyOverride } : {}),
+      }),
+    })
+    
+    if (!res.ok) {
+      const text = await res.text()
+      success = false
+      error = text
+      return { ok: false, text }
+    }
+    
+    parsedRes = await res.json()
+    return parsedRes
+  } catch (e) {
+    success = false
+    error = e instanceof Error ? e.message : 'Unknown error'
+    throw e
+  } finally {
+    const latencyMs = Date.now() - start
+    if (args.feature) {
+      import('@/lib/db/analytics').then(async ({ analyticsAiUsage, estimateAiCost, newId, nowIso }) => {
+        try {
+          const inputTokens = parsedRes?.usage?.input_tokens || parsedRes?.prompt_tokens || 0
+          const outputTokens = parsedRes?.usage?.output_tokens || parsedRes?.completion_tokens || 0
+          const model = args.modelOverride || 'unknown'
+          const provider = args.providerOverride || 'unknown'
+          const totalTokens = inputTokens + outputTokens
+          const cost = estimateAiCost(model, inputTokens, outputTokens)
+
+          const col = await analyticsAiUsage()
+          await col.insertOne({
+            id: newId(),
+            user_id: args.userId,
+            feature: args.feature,
+            provider,
+            model,
+            input_tokens: inputTokens,
+            output_tokens: outputTokens,
+            total_tokens: totalTokens,
+            estimated_cost: cost,
+            latency_ms: latencyMs,
+            success,
+            error,
+            timestamp: nowIso(),
+          } as any)
+        } catch {
+          // Silent
+        }
+      }).catch(() => null)
+    }
+  }
+}
+
+export async function backendGet<T = unknown>(
+  path: string,
+  headers?: HeadersInit
+): Promise<T> {
+  const h = await backendHeaders()
+  const allHeaders = { ...h, ...headers }
+  const res = await fetch(`${BACKEND}${path}`, {
+    method: 'GET',
+    headers: allHeaders,
   })
   if (!res.ok) {
-    const text = await res.text()
-    return { ok: false, text }
+    throw new Error(`backend ${path} returned ${res.status}: ${await res.text()}`)
   }
-  return (await res.json()) as { ok: boolean; text?: string; json?: unknown; raw?: string }
+  return (await res.json()) as T
 }
 
 export async function backendPost<T = unknown>(

@@ -22,6 +22,8 @@ import {
   type HackathonDoc,
   type HackathonTask,
   type HackathonRule,
+  type HackathonFeatures,
+  DEFAULT_FEATURES,
 } from '@/lib/db/qr-events'
 import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 
@@ -52,6 +54,16 @@ function slugify(s: string): string {
 
 function isAdmin(role?: string | null): boolean {
   return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
+}
+
+function mergeFeatures(defaults: HackathonFeatures, overrides?: Partial<HackathonFeatures>): HackathonFeatures {
+  if (!overrides) return defaults
+  return {
+    ...defaults,
+    ...overrides,
+    rubric_criteria: overrides.rubric_criteria || defaults.rubric_criteria,
+    sponsor_tracks: overrides.sponsor_tracks || defaults.sponsor_tracks,
+  }
 }
 
 export async function GET(req: NextRequest) {
@@ -164,6 +176,7 @@ export async function POST(req: NextRequest) {
     results_released: false,
     banner_url: body.banner_url || '',
     cert_template: body.cert_template || (await getGeneralSettings()).certificate_template,
+    features: mergeFeatures(DEFAULT_FEATURES, body.features),
     created_by: user.id,
     tenant_id: user.tenantId || null,
     created_at: nowIso(),

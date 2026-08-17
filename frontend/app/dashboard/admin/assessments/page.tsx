@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users } from 'lucide-react'
+import {   BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users, Link2 } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
@@ -34,6 +34,12 @@ interface Exam {
   degree_type?: string
   branch?: string
   screening_type?: string
+  tenant_id?: string | null
+}
+
+interface Tenant {
+  id: string
+  name: string
 }
 
 export default function AdminExamsPage() {
@@ -41,6 +47,7 @@ export default function AdminExamsPage() {
   const addToast = useToast()
   const router = useRouter()
   const [exams, setExams] = useState<Exam[]>([])
+  const [tenants, setTenants] = useState<Tenant[]>([])
   const [loading, setLoading] = useState(true)
 
   const [isModalOpen, setIsModalOpen] = useState(false)
@@ -78,9 +85,14 @@ export default function AdminExamsPage() {
   const fetchExams = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/exams', { credentials: 'include' })
-      const json = await res.json()
-      setExams(json.data || [])
+      const [examsRes, tenantsRes] = await Promise.all([
+        fetch('/api/exams', { credentials: 'include' }),
+        fetch('/api/admin/tenants', { credentials: 'include' }),
+      ])
+      const examsJson = await examsRes.json()
+      const tenantsJson = await tenantsRes.json()
+      setExams(examsJson.data || [])
+      setTenants(tenantsJson.data || [])
     } catch { /* ignore */ }
     finally { setLoading(false) }
   }
@@ -263,7 +275,11 @@ export default function AdminExamsPage() {
   const columns: DataTableColumn<Exam>[] = [
     { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
     { key: 'subject', header: 'Subject', cell: (r) => r.subject },
-    { key: 'degree', header: 'Degree', cell: (r) => r.degree_type ? DEGREE_TYPES.find(d => d.id === r.degree_type)?.label || r.degree_type : '—' },
+    { key: 'tenant', header: 'Organization', cell: (r) => {
+      if (!r.tenant_id) return <span className="text-muted-foreground">Platform</span>
+      const tenant = tenants.find(t => t.id === r.tenant_id)
+      return tenant?.name || <span className="text-muted-foreground">Unknown</span>
+    }},
     { key: 'branch', header: 'Branch', cell: (r) => r.branch ? BRANCHES.find(b => b.id === r.branch)?.short || r.branch : 'General' },
     { key: 'screening', header: 'Screening', cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
     { key: 'level', header: 'Level', cell: (r) => r.level },
@@ -292,6 +308,15 @@ export default function AdminExamsPage() {
             <DropdownMenuItem onClick={() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }} disabled={!r.published} className="gap-2">
               <Users className="h-4 w-4" /> Bulk Invite
             </DropdownMenuItem>
+            {r.published && (
+              <DropdownMenuItem onClick={() => {
+                const url = `${window.location.origin}/assessment/${r.id}?share=true`
+                navigator.clipboard.writeText(url)
+                addToast({ type: 'success', title: 'Public link copied!' })
+              }} className="gap-2">
+                <Link2 className="h-4 w-4" /> Copy Public Link
+              </DropdownMenuItem>
+            )}
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/results`)} className="gap-2">
               <Eye className="h-4 w-4" /> View Results
             </DropdownMenuItem>
@@ -339,7 +364,7 @@ export default function AdminExamsPage() {
           columns={columns}
           data={exams}
           searchPlaceholder="Search assessments..."
-          searchKeys={['title', 'subject', 'level']}
+          searchKeys={['title', 'subject', 'level', 'tenant_id']}
           bulkActions={bulkActions}
           loading={loading}
           emptyMessage="No assessments. Click 'Add Assessment' to create one."

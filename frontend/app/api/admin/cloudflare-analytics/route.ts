@@ -32,8 +32,8 @@ export async function GET() {
   }
 
   const secrets = await readServerSecrets()
-  const zoneId = process.env.CLOUDFLARE_ZONE_ID?.trim() || (secrets.cloudflare_zone_id?.trim() || '')
-  const apiToken = process.env.CLOUDFLARE_API_TOKEN?.trim() || (secrets.cloudflare_api_token?.trim() || '')
+  const zoneId = (secrets.cloudflare_zone_id?.trim() || '') || process.env.CLOUDFLARE_ZONE_ID?.trim() || ''
+  const apiToken = (secrets.cloudflare_api_token?.trim() || '') || process.env.CLOUDFLARE_API_TOKEN?.trim() || ''
   if (!zoneId || !apiToken) {
     return NextResponse.json({ configured: false, error: 'Cloudflare not configured' })
   }

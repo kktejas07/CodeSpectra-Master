@@ -70,6 +70,7 @@ export default function ExamPage() {
   const [submitting, setSubmitting] = useState(false)
   const [results, setResults] = useState<{ score: number; total: number; details: Array<{ qId: string; correct: boolean; points: number; answer?: string }> } | null>(null)
   const [showSubmitConfirm, setShowSubmitConfirm] = useState(false)
+  const [extVerified, setExtVerified] = useState(false)
 
   useEffect(() => {
     fetch(`/api/exams/${examId}`)
@@ -115,9 +116,9 @@ export default function ExamPage() {
     }
   }, [answers, exam, submitted])
 
-  // Timer with auto-submit
+  // Timer with auto-submit (only runs once the Device Audit extension is verified)
   useEffect(() => {
-    if (!exam || submitted || timeRemaining <= 0) return
+    if (!exam || submitted || !extVerified || timeRemaining <= 0) return
     const timer = setInterval(() => {
       setTimeRemaining(prev => {
         if (prev <= 1) {
@@ -129,7 +130,7 @@ export default function ExamPage() {
       })
     }, 1000)
     return () => clearInterval(timer)
-  }, [exam, submitted, timeRemaining])
+  }, [exam, submitted, extVerified, timeRemaining])
 
   const toggleMultiOption = (qId: string, opt: string) => {
     setAnswers(a => {
@@ -347,7 +348,7 @@ export default function ExamPage() {
   }
 
   return (
-    <ExtensionGate>
+    <ExtensionGate onVerified={() => setExtVerified(true)}>
     <>
       <div className="h-[calc(100vh-4rem)] flex flex-col overflow-hidden">
       <ProctorMonitor

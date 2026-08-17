@@ -9,7 +9,6 @@ import {
   YAxis,
   CartesianGrid,
   Tooltip,
-  Legend,
   ResponsiveContainer,
   PieChart,
   Pie,
@@ -21,7 +20,7 @@ import { BarChart3, TrendingUp, Users, Activity } from 'lucide-react'
 export interface AnalyticsDashboardProps {
   userGrowth: Array<{ date: string; users: number }>
   usersByRole: Array<{ name: string; value: number }>
-  activityTrend: Array<{ date: string; challenges: number; interviews: number; scans: number }>
+  activityTrend: Array<{ date: string; accepted: number }>
   summary?: {
     totalUsers: number
     activeNow: number
@@ -40,7 +39,7 @@ export function AnalyticsDashboard({
 }: AnalyticsDashboardProps) {
   const hasGrowth = userGrowth.some((d) => d.users > 0)
   const hasRoleData = usersByRole.some((d) => d.value > 0)
-  const hasActivity = activityTrend.some((d) => d.challenges + d.interviews + d.scans > 0)
+  const hasActivity = activityTrend.some((d) => d.accepted > 0)
 
   return (
     <div className="space-y-6">
@@ -151,7 +150,10 @@ export function AnalyticsDashboard({
       </div>
 
       <Card className="p-6">
-        <h3 className="text-lg font-semibold text-foreground mb-4">Accepted submissions (UTC, last 7 days)</h3>
+        <h3 className="text-lg font-semibold text-foreground mb-4 flex items-center gap-2">
+          <TrendingUp className="w-5 h-5 text-primary" />
+          Accepted submissions (UTC, last 7 days)
+        </h3>
         {hasActivity ? (
           <ResponsiveContainer width="100%" height={300}>
             <BarChart data={activityTrend}>
@@ -162,13 +164,12 @@ export function AnalyticsDashboard({
                 cursor={{ fill: 'hsl(var(--muted))', opacity: 0.2 }}
                 contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', color: 'hsl(var(--foreground))' }} labelStyle={{ color: 'hsl(var(--foreground))' }} itemStyle={{ color: 'hsl(var(--foreground))' }}
               />
-              <Legend wrapperStyle={{ color: 'hsl(var(--foreground))' }} />
-              <Bar dataKey="challenges" name="Submissions" fill="#3b82f6" />
+              <Bar dataKey="accepted" name="Accepted" fill="#22c55e" radius={[4, 4, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         ) : (
           <p className="py-12 text-center text-sm text-muted-foreground">
-            No submission activity in this window.
+            No accepted submissions in this window.
           </p>
         )}
       </Card>

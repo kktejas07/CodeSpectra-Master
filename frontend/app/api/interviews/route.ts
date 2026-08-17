@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { interviewSessions, createInterviewSession, newId, nowIso } from '@/lib/db/interviews'
-import { rateLimitAI } from '@/lib/in-memory-rate-limit'
+import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -27,7 +27,7 @@ export async function POST(req: NextRequest) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
-  const rateCheck = rateLimitAI(req, gate.user.id)
+  const rateCheck = await rateLimitAIRedis(req, gate.user.id)
   if (!rateCheck.ok) {
     return NextResponse.json({ error: `Rate limit. Try in ${rateCheck.retryAfterSec}s.` }, { status: 429 })
   }

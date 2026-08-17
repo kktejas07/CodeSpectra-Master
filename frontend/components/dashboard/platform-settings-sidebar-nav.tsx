@@ -12,10 +12,12 @@ import {
   CreditCard,
   FileText,
   Globe2,
-  Smartphone,
   ScrollText,
   Trophy,
   Shield,
+  Database,
+  MessageCircle,
+  Video,
 } from 'lucide-react'
 import { Sparkles } from 'lucide-react'
 import { cn } from '@/lib/utils'
@@ -31,8 +33,8 @@ const ITEMS: {
   icon: typeof Building2
 }[] = [
   { id: 'branding', label: 'Branding & support', icon: Building2 },
+  { id: 'media', label: 'Media Player', icon: Video },
   { id: 'cloudflare', label: 'Cloudflare', icon: Globe2 },
-  { id: 'mobile', label: 'Mobile App', icon: Smartphone },
   { id: 'mail', label: 'Mail & email APIs', icon: Mail },
   { id: 'ops', label: 'Operations', icon: Sliders },
   { id: 'product', label: 'Product & access', icon: Users },
@@ -43,6 +45,8 @@ const ITEMS: {
   { id: 'llm', label: 'AI & LLM Keys', icon: Sparkles },
   { id: 'gamification', label: 'Gamification & XP', icon: Trophy },
   { id: 'kyc', label: 'KYC Providers', icon: Shield },
+  { id: 'redis', label: 'Redis / Rate Limiting', icon: Database },
+  { id: 'whatsapp', label: 'WhatsApp (OpenWA)', icon: MessageCircle },
 ]
 
 export function PlatformSettingsSidebarNav({

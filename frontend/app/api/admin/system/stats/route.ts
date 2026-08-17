@@ -44,22 +44,29 @@ export async function GET() {
   // Uptime
   const uptime = os.uptime()
 
-  // Docker stats
+  // Docker stats — the frontend container ships with the docker CLI but no
+  // daemon socket by default, so `docker ps` would silently return 0. Probe the
+  // daemon first and only attempt a listing when it's actually reachable.
+  let dockerAvailable = false
   let containerCount = 0
   let containers: Array<{ name: string; status: string; cpu: string; memory: string }> = []
   try {
-    const ps = safeExec("docker ps --format '{{.Names}}\t{{.Status}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}' --no-trunc")
-    const lines = ps.split('\n').filter(Boolean)
-    containerCount = lines.length
-    containers = lines.slice(0, 30).map((line) => {
-      const [name, status, cpu, memUsage, memPerc] = line.split('\t')
-      return {
-        name: name?.replace(/\.1\..*/, '') || 'unknown',
-        status: status || '',
-        cpu: cpu || '0%',
-        memory: memUsage || '0MiB',
-      }
-    })
+    const info = safeExec('docker info --format "{{.ServerVersion}}"')
+    dockerAvailable = info.length > 0
+    if (dockerAvailable) {
+      const ps = safeExec("docker ps --format '{{.Names}}\t{{.Status}}\t{{.CPUPerc}}\t{{.MemUsage}}\t{{.MemPerc}}' --no-trunc")
+      const lines = ps.split('\n').filter(Boolean)
+      containerCount = lines.length
+      containers = lines.slice(0, 30).map((line) => {
+        const [name, status, cpu, memUsage, memPerc] = line.split('\t')
+        return {
+          name: name?.replace(/\.1\..*/, '') || 'unknown',
+          status: status || '',
+          cpu: cpu || '0%',
+          memory: memUsage || '0MiB',
+        }
+      })
+    }
   } catch { /* ignore */ }
 
   // Piston status
@@ -111,6 +118,7 @@ export async function GET() {
     },
     uptime,
     containers: {
+      available: dockerAvailable,
       count: containerCount,
       list: containers,
     },

@@ -27,6 +27,11 @@ export async function GET() {
         privacy_policy_url: merged.privacy_policy_url,
         terms_of_service_url: merged.terms_of_service_url,
         platform_currency: merged.platform_currency,
+        video_player_primary_color: merged.video_player_primary_color,
+        video_player_autoplay: merged.video_player_autoplay,
+        video_player_muted: merged.video_player_muted,
+        video_player_logo_url: merged.video_player_logo_url,
+        video_player_logo_link_url: merged.video_player_logo_link_url,
       }
     })
   } catch (e) {

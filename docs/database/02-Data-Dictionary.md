@@ -589,7 +589,7 @@
 | `hackathon_id` | string | ✓ | FK | → `hackathons.id` |
 | `name` | string | ✓ | | |
 | `slug` | string | ✓ | | |
-| `qr_token` | string | ✓ | | |
+| `qr_token` | string | ✓ | | join/invite token for the share link + email invite (no QR code is generated for hackathons) |
 | `members` | array | ✓ | | `[{user_id, name, role}]` |
 | `xp` | number | ✓ | | |
 | `level` | number | ✓ | | |

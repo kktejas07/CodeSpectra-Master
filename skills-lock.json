@@ -1,0 +1,11 @@
+{
+  "version": 1,
+  "skills": {
+    "penetration-testing-with-strix": {
+      "source": "usestrix/strix",
+      "sourceType": "github",
+      "skillPath": "skills/penetration-testing-with-strix/SKILL.md",
+      "computedHash": "a85180d7e270c4da46cb559aba5320d93cd69b259df62d747e2b5e8662f04f32"
+    }
+  }
+}

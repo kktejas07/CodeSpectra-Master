@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
   Loader2, Trophy, ArrowLeft, Users, Medal, Download,
-  Share2, Linkedin, FileText, Award, Sparkles, CheckCircle, LogIn,
-  Lock, Clock, Copy, Twitter, ChevronDown, ChevronUp,
+  Share2, FileText, Award, Sparkles, CheckCircle, LogIn,
+  Lock, Clock, Copy, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { Linkedin, Twitter } from '@/components/ui/brand-icons'
 import { useAuth } from '@/lib/auth-context'
 import QRCode from 'qrcode'
 import { usePageGuard } from '@/lib/use-page-guard'

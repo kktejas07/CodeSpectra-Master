@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import {
   CheckCircle2, Loader2, ExternalLink, ShieldCheck, AlertTriangle,
-  Info, RefreshCcw, Globe, FileCheck, Eye, Clock
+  Info, RefreshCcw, Globe, FileCheck, Eye, Clock, RotateCcw
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -319,9 +319,12 @@ export default function IdentityVerificationPage() {
             </p>
           )}
 
-          <div className="text-center mt-4">
+          <div className="flex items-center justify-center gap-2 mt-4">
             <Button variant="outline" size="sm" onClick={refreshStatus}>
               <RefreshCcw className="h-4 w-4 mr-1" />Refresh Status
+            </Button>
+            <Button size="sm" onClick={startVerification}>
+              <RotateCcw className="h-4 w-4 mr-1" />Retake Verification
             </Button>
           </div>
         </div>

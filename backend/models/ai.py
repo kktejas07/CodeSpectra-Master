@@ -122,6 +122,18 @@ class SkillInsightsReq(BaseModel):
     submissions_summary: List[Dict[str, Any]]
 
 
+# ── Course Generation ──────────────────────────────────────────
+
+class GenerateCourseReq(BaseModel):
+    technology: str  # e.g., "Java", "Python", "JavaScript"
+    level: str       # e.g., "Beginner", "Intermediate", "Advanced"
+    goal: Optional[str] = None  # e.g., "Become job-ready", "Pass certification"
+    duration_hours: Optional[int] = None  # Target duration in hours
+    include_projects: bool = True
+    include_assessments: bool = True
+    include_certificate: bool = True
+
+
 # ── Identity Verification ──────────────────────────────────────
 
 class IdentityVerifyReq(BaseModel):
@@ -137,6 +149,19 @@ class AgentReq(BaseModel):
     code: str
     language: str = "python"
     max_steps: int = 3
+    model_role: Optional[str] = None
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
+
+
+# ── Text-to-CAD Generator ───────────────────────────────────────
+
+class TextToCadReq(BaseModel):
+    prompt: str
+    region_standard: str = "ISO"
+    unit_system: str = "metric"
+    viva_required: bool = True
     model_role: Optional[str] = None
     provider_override: Optional[str] = None
     model_override: Optional[str] = None

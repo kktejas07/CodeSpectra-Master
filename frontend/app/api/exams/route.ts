@@ -130,8 +130,12 @@ export async function GET() {
         : 0
 
       const isReleased = userSub?.score_released === true
+      const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
+      // Non-admins must never receive answer keys via the list endpoint.
+      const { questionList: _q, ...safeExam } = isAdmin ? exam : { ...exam, questionList: [] }
+      void _q
       return {
-        ...exam,
+        ...safeExam,
         attempts: examStats.attempts,
         avgScore: avgPercent,
         status: userSub ? (isReleased ? 'completed' : 'submitted') : 'pending',

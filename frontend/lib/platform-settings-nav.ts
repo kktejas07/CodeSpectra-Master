@@ -1,7 +1,7 @@
 export const PLATFORM_SETTINGS_SECTIONS = [
   'branding',
+  'media',
   'cloudflare',
-  'mobile',
   'mail',
   'ops',
   'product',
@@ -12,6 +12,8 @@ export const PLATFORM_SETTINGS_SECTIONS = [
   'llm',
   'gamification',
   'kyc',
+  'redis',
+  'whatsapp',
 ] as const
 
 export type PlatformSettingsSection = (typeof PLATFORM_SETTINGS_SECTIONS)[number]

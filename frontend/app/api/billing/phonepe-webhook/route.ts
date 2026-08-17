@@ -13,6 +13,7 @@ import { getPlatformCurrency } from '@/lib/server-currency'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 import { getMongoDb } from '@/lib/mongodb'
+import { logger } from '@/lib/logger'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -48,7 +49,7 @@ export async function POST(req: NextRequest) {
 
   const { merchantTransactionId, state, transactionId, amount } = payload
 
-  console.log(`[PhonePe] Webhook: ${merchantTransactionId} -> ${state}`)
+  logger.webhook(`[PhonePe] Webhook: ${merchantTransactionId} -> ${state}`)
 
   try {
     const orders = await billingOrders()
@@ -134,7 +135,7 @@ export async function POST(req: NextRequest) {
         })
       }
 
-      console.log(`[PhonePe] Payment completed for order: ${merchantTransactionId}`)
+      logger.webhook(`[PhonePe] Payment completed for order: ${merchantTransactionId}`)
       return NextResponse.json({ success: true })
 
     } else if (state === 'FAILED') {

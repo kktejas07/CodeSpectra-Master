@@ -41,6 +41,9 @@ export const NOTIFICATION_TYPES = {
   'hackathon.ending_soon': { category: 'hackathon', icon: 'clock', default_title: 'Ending Soon' },
   'hackathon.team_invite': { category: 'hackathon', icon: 'users', default_title: 'Team Invitation' },
   'hackathon.submission_graded': { category: 'hackathon', icon: 'check-circle', default_title: 'Submission Reviewed' },
+  'hackathon.submission_status': { category: 'hackathon', icon: 'send', default_title: 'Submission Status Update' },
+  'hackathon.submission_accepted': { category: 'hackathon', icon: 'check-circle', default_title: 'Submission Accepted' },
+  'hackathon.submission_rejected': { category: 'hackathon', icon: 'x-circle', default_title: 'Submission Not Selected' },
 
   // Interviews
   'interview.scheduled': { category: 'interview', icon: 'video', default_title: 'Interview Scheduled' },
@@ -70,6 +73,9 @@ export const NOTIFICATION_TYPES = {
   'certification.earned': { category: 'learning', icon: 'award', default_title: 'Certification Earned' },
   'certification.expiring': { category: 'learning', icon: 'clock', default_title: 'Certification Expiring' },
 
+  // Assessments / Exams
+  'assessment.results_released': { category: 'assessment', icon: 'check-circle', default_title: 'Results Released' },
+
   // XP / Gamification
   'xp.awarded': { category: 'learning', icon: 'star', default_title: 'XP Earned!' },
   'xp.level_up': { category: 'learning', icon: 'trophy', default_title: 'Level Up!' },
@@ -94,6 +100,10 @@ interface NotifyInput {
   send_email?: boolean
   /** Skip the FCM push fan-out for this notification. */
   skip_push?: boolean
+  /** Send WhatsApp notification (if configured and user has phone). */
+  send_whatsapp?: boolean
+  /** WhatsApp phone number override (if not in user profile). */
+  whatsapp_phone?: string
 }
 
 /**
@@ -169,6 +179,31 @@ export async function notify(input: NotifyInput): Promise<NotificationDoc | null
       } catch { /* email is optional */ }
     }
 
+    // Optional WhatsApp delivery
+    if (input.send_whatsapp || input.whatsapp_phone) {
+      try {
+        const { isWhatsAppConfigured, sendWhatsAppText, normalizePhone } = await import('@/lib/whatsapp')
+        if (await isWhatsAppConfigured()) {
+          let phone = input.whatsapp_phone || ''
+          if (!phone) {
+            const { getMongoDb } = await import('@/lib/mongodb')
+            const db = await getMongoDb()
+            const user = await db.collection('user').findOne(
+              { $or: [{ id: input.user_id }, { _id: input.user_id }] } as Filter<Document>,
+              { projection: { phone: 1, phone_number: 1, whatsapp: 1 } },
+            )
+            phone = String(user?.phone || user?.phone_number || user?.whatsapp || '')
+          }
+          if (phone) {
+            const base = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+            let text = `*${doc.title}*\n\n${doc.message}`
+            if (doc.link) text += `\n\n${base}${doc.link}`
+            void sendWhatsAppText(phone, text) // fire-and-forget
+          }
+        }
+      } catch { /* whatsapp is optional */ }
+    }
+
     return doc
   } catch (e) {
     console.error('[notifications] Failed: notifications', e)
@@ -197,5 +232,56 @@ export async function getUnreadCount(userId: string): Promise<number> {
     return col.countDocuments({ user_id: userId, is_read: false })
   } catch {
     return 0
+  }
+}
+
+/**
+ * Notify team members about submission status changes.
+ * Sends in-app, email, WhatsApp, and push notifications.
+ */
+export async function notifySubmissionStatusChange(
+  hackathonId: string,
+  hackathonName: string,
+  submissionId: string,
+  problemSlug: string,
+  teamMembers: Array<{ user_id: string; name: string }>,
+  newStatus: string,
+  rejectionReason?: string,
+) {
+  const statusMessages: Record<string, string> = {
+    under_review: 'Your submission is now under review',
+    review_completed: 'Your submission review is complete',
+    accepted: 'Your submission has been accepted!',
+    rejected: `Your submission was not selected${rejectionReason ? `: ${rejectionReason}` : ''}`,
+    released: 'Your score has been released!',
+  }
+
+  const statusTypes: Record<string, string> = {
+    under_review: 'hackathon.submission_status',
+    review_completed: 'hackathon.submission_status',
+    accepted: 'hackathon.submission_accepted',
+    rejected: 'hackathon.submission_rejected',
+    released: 'hackathon.results',
+  }
+
+  const message = statusMessages[newStatus] || `Submission status updated to ${newStatus}`
+  const type = statusTypes[newStatus] || 'hackathon.submission_status'
+
+  for (const member of teamMembers) {
+    await notify({
+      user_id: member.user_id,
+      type: type as any,
+      title: `${hackathonName} — ${problemSlug}`,
+      message,
+      link: `/dashboard/events/${hackathonId}`,
+      metadata: {
+        hackathon_id: hackathonId,
+        submission_id: submissionId,
+        status: newStatus,
+        problem_slug: problemSlug,
+      },
+      send_email: true,
+      send_whatsapp: true,
+    })
   }
 }

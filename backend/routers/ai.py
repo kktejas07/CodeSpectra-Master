@@ -9,14 +9,12 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
-import time
-from collections import defaultdict
+from core.dependencies import check_rate_limit
 
 # Sliding window rate limiter for AI backend routes (60 requests / minute per client IP)
-_ai_rate_limits: dict[str, list[float]] = defaultdict(list)
 AI_MAX_REQUESTS_PER_MINUTE = 60
 AI_RATE_WINDOW_SECONDS = 60.0
 
@@ -24,18 +22,13 @@ AI_RATE_WINDOW_SECONDS = 60.0
 async def rate_limit_ai_requests(request: Request) -> None:
     client_ip = request.headers.get("x-forwarded-for") or (request.client.host if request.client else "unknown")
     client_ip = client_ip.split(",")[0].strip()
-    now = time.time()
-    cutoff = now - AI_RATE_WINDOW_SECONDS
-
-    # Prune timestamps older than cutoff
-    history = [t for t in _ai_rate_limits[client_ip] if t > cutoff]
-    if len(history) >= AI_MAX_REQUESTS_PER_MINUTE:
-        raise HTTPException(
-            status_code=429,
-            detail="Rate limit exceeded for AI endpoints. Please wait before retrying.",
-        )
-    history.append(now)
-    _ai_rate_limits[client_ip] = history
+    # Delegate to the shared Redis+in-memory rate limiter (same key prefix as
+    # the previous inline implementation, so existing counters carry over).
+    await check_rate_limit(
+        f"ai_rate_limit:{client_ip}",
+        AI_MAX_REQUESTS_PER_MINUTE,
+        int(AI_RATE_WINDOW_SECONDS),
+    )
 
 
 router = APIRouter(
@@ -51,12 +44,14 @@ from models.ai import (
     CodeAnalysisReq,
     CodeReviewReq,
     CompleteReq,
+    GenerateCourseReq,
     GenerateProblemReq,
     GradeReq,
     HintsReq,
     IdentityVerifyReq,
     RagEmbedReq,
     SkillInsightsReq,
+    TextToCadReq,
 )
 from services.ai import (
     handle_agent,
@@ -64,16 +59,19 @@ from services.ai import (
     handle_code_analysis,
     handle_code_review,
     handle_complete,
+    handle_generate_course,
     handle_generate_problem,
     handle_grade,
     handle_hints,
     handle_identity_verify,
     handle_rag_embed,
     handle_skill_insights,
+    handle_text_to_cad,
 )
 
 import functools
 import traceback
+
 
 def safe_ai_endpoint(fn):
     @functools.wraps(fn)
@@ -87,6 +85,7 @@ def safe_ai_endpoint(fn):
                 status_code=500,
             )
     return wrapper
+
 
 @router.post("/rag/embed")
 @safe_ai_endpoint
@@ -162,3 +161,18 @@ async def identity_verify(request: Request, req: IdentityVerifyReq) -> dict[str,
 async def agentic_fix(request: Request, req: AgentReq) -> dict[str, Any]:
     """Multi-step agentic code-fix loop."""
     return await handle_agent(request, req)
+
+
+@router.post("/generate-course")
+@safe_ai_endpoint
+async def generate_course(request: Request, req: GenerateCourseReq) -> dict[str, Any]:
+    """Generate a complete learning course with modules, lessons, and assessments."""
+    return await handle_generate_course(request, req)
+
+
+@router.post("/cad/generate-text-to-cad")
+@safe_ai_endpoint
+async def generate_text_to_cad(request: Request, req: TextToCadReq) -> dict[str, Any]:
+    """Synthesize CAD brief, geometric constraints, parametric code, and item payload from text prompt."""
+    return await handle_text_to_cad(request, req)
+

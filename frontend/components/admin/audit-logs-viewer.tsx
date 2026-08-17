@@ -62,7 +62,7 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
         data={logs}
         tableId="audit-logs-overview"
         searchPlaceholder="Search actor, action, resource..."
-        searchKeys={['actor', 'action', 'resource'] as (keyof AuditRow)[]}
+        searchKeys={['actor', 'action', 'resource', 'resourceType', 'detail'] as (keyof AuditRow)[]}
         filters={[
           {
             label: 'Severity', key: 'severity',

@@ -8,7 +8,7 @@ import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
-import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown } from 'lucide-react'
+import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -42,6 +42,7 @@ interface CandidateResult {
   released?: boolean
   deliveryStatus?: string | null
   graded?: boolean
+  source?: string
 }
 
 interface Exam {
@@ -49,6 +50,7 @@ interface Exam {
   title: string
   level: string
   duration: number
+  publicLinkViews?: number
 }
 
 interface QuestionDetail {
@@ -59,6 +61,8 @@ interface QuestionDetail {
   pending_review?: boolean
   awarded?: number
   remarks?: string
+  requires_human_review?: boolean
+  confidence?: number
 }
 
 interface ReviewData {
@@ -110,6 +114,15 @@ const PROCTOR_LABELS: Record<string, string> = {
   tab_focus_lost: 'Tab Switch',
   copy_paste_attempt: 'Copy-Paste Attempt',
   hardware_port_anomaly: 'Hardware Port Anomaly',
+  eye_blink_detected: 'Eye Blink Detected',
+  eye_gaze_changed: 'Eye Gaze Changed',
+  head_pose_turned_away: 'Head Turned Away',
+  browser_fingerprint_captured: 'Device Fingerprint Captured',
+  browser_fingerprint_changed: 'Device Change Detected',
+  face_match_mismatch: 'Face Mismatch',
+  face_match_restored: 'Face Verified',
+  keyboard_dynamics_snapshot: 'Typing Pattern Analysis',
+  answer_pattern_score: 'Answer Pattern Score',
 }
 
 const PROCTOR_ICONS: Record<string, React.ReactNode> = {
@@ -117,7 +130,21 @@ const PROCTOR_ICONS: Record<string, React.ReactNode> = {
   tab_focus: <Maximize2 className="w-3 h-3" />,
   copy: <Copy className="w-3 h-3" />,
   paste: <Copy className="w-3 h-3" />,
+  eye_blink_detected: <Eye className="w-3 h-3" />,
+  eye_gaze_changed: <Eye className="w-3 h-3" />,
+  head_pose_turned_away: <AlertTriangle className="w-3 h-3" />,
+  browser_fingerprint_captured: <Fingerprint className="w-3 h-3" />,
+  browser_fingerprint_changed: <Fingerprint className="w-3 h-3" />,
+  face_match_mismatch: <Camera className="w-3 h-3" />,
+  face_match_restored: <Camera className="w-3 h-3" />,
+  keyboard_dynamics_snapshot: <Keyboard className="w-3 h-3" />,
+  answer_pattern_score: <ShieldAlert className="w-3 h-3" />,
 }
+
+const PROCTOR_RISK_HIGH = new Set(['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked', 'face_match_mismatch', 'answer_pattern_score'])
+const PROCTOR_RISK_WARN = new Set(['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed'])
+const PROCTOR_RISK_INFO = new Set(['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot'])
+
 
 // Keys every event carries that are noise for a human reviewer.
 const PROCTOR_META_HIDDEN = new Set(['ua', 'timestamp', 'id', 'user_id', 'session_id', 'created_at', 'event_type', 'session_kind', 'source'])
@@ -133,6 +160,18 @@ const PROCTOR_META_LABELS: Record<string, string> = {
   trackKinds: 'Stream Type', state: 'Permission State', count: 'Count',
   removedCount: 'Removed', audioLevelDb: 'Audio Level', speechDetected: 'Speech',
   key: 'Key', label: 'Shortcut',
+  blink_count: 'Total Blinks', new_blinks: 'New Blinks', gaze_direction: 'Gaze Direction',
+  yaw: 'Head Yaw', pitch: 'Head Pitch',
+  hash: 'Fingerprint Hash', original_hash: 'Original Hash', current_hash: 'Current Hash',
+  original_screen: 'Original Screen', current_screen: 'Current Screen',
+  score: 'Score', mismatch_count: 'Mismatch Count', threshold: 'Threshold',
+  avg_flight_time: 'Avg Flight Time', avg_dwell_time: 'Avg Dwell Time',
+  typing_speed_cpm: 'Typing Speed (CPM)', rhythm_variance: 'Rhythm Variance',
+  total_keystrokes: 'Total Keystrokes', backspace_ratio: 'Backspace Ratio',
+  is_suspicious: 'Suspicious?', flags: 'Flags', breakdown: 'Breakdown',
+  paste_score: 'Paste Score', speed_score: 'Speed Score',
+  pattern_score: 'Pattern Score', clipboard_score: 'Clipboard Score',
+  total_answers: 'Total Answers', total_pastes: 'Total Pastes',
 }
 
 const humanize = (k: string): string =>
@@ -225,6 +264,9 @@ export default function ExamResultsPage() {
   const [remarks, setRemarks] = useState<Record<string, string>>({})
   const [showProctorLog, setShowProctorLog] = useState(true)
   const [showRawProctorMeta, setShowRawProctorMeta] = useState(false)
+  const [proctorFilter, setProctorFilter] = useState<'all' | 'high' | 'warn' | 'info'>('all')
+  const [exportingReport, setExportingReport] = useState(false)
+  const [showReleaseAllConfirm, setShowReleaseAllConfirm] = useState(false)
 
   const fetchData = useCallback(async () => {
     if (!params.id) return
@@ -248,6 +290,26 @@ export default function ExamResultsPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
 
+  // Real-time polling for proctor events when review modal is open
+  useEffect(() => {
+    if (!reviewCandidate) return
+    const pollProctorEvents = async () => {
+      try {
+        const uid = reviewCandidate.userId || reviewCandidate.id
+        const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
+        if (res.ok) {
+          const json = await res.json()
+          if (json.proctorEvents && reviewData) {
+            setReviewData(prev => prev ? { ...prev, proctorEvents: json.proctorEvents } : null)
+          }
+        }
+      } catch { /* ignore */ }
+    }
+    // Poll every 5 seconds while review modal is open
+    const interval = setInterval(pollProctorEvents, 5000)
+    return () => clearInterval(interval)
+  }, [reviewCandidate, params.id])
+
   const openReview = async (row: CandidateResult) => {
     setReviewCandidate(row)
     setReviewData(null)
@@ -261,6 +323,11 @@ export default function ExamResultsPage() {
       const res = await fetch(`/api/admin/exams/${params.id}/submissions/${uid}`, { credentials: 'include' })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to load review')
+      if (!json.submission) {
+        addToast({ type: 'info', title: 'No submission found — candidate may not have completed the assessment' })
+        setReviewCandidate(null)
+        return
+      }
       setReviewData(json)
     } catch {
       addToast({ type: 'error', title: 'Failed to load submission details' })
@@ -408,84 +475,6 @@ export default function ExamResultsPage() {
       addToast({ type: 'error', title: `Failed to release score for ${name}` })
     } finally {
       setReleasing(null)
-    }
-  }
-
-  const releaseAll = async () => {
-    setBulkReleasing(true)
-    try {
-      const res = await csrfFetch(`/api/admin/exams/${params.id}/release`, {
-        method: 'POST',
-        credentials: 'include',
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      addToast({
-        type: json.skipped_pending > 0 ? 'warning' : 'success',
-        title: `${json.released} scores released`,
-        message: json.skipped_pending > 0 ? `${json.skipped_pending} skipped — grading still pending` : undefined,
-      })
-      setResults(prev => prev.map(r => r.status === 'completed' ? { ...r, released: true } : r))
-      if (reviewData) {
-        setReviewData(prev => prev ? { ...prev, submission: { ...prev.submission, released_at: new Date().toISOString() } } : null)
-      }
-    } catch {
-      addToast({ type: 'error', title: 'Bulk release failed' })
-    } finally {
-      setBulkReleasing(false)
-    }
-  }
-
-  const saveGrades = async () => {
-    if (!reviewCandidate || Object.keys(manualGrades).length === 0) return
-    setSavingGrades(true)
-    try {
-      const uid = reviewCandidate.userId || reviewCandidate.id
-      const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ grades: manualGrades, remarks }),
-      })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error)
-      addToast({ type: 'success', title: 'Grades saved successfully' })
-      // Update local state
-      if (reviewData) {
-        const updatedDetails = reviewData.submission.details.map(d => {
-          if (manualGrades[d.qId] !== undefined) {
-            const remark = remarks[d.qId]
-            return {
-              ...d,
-              awarded: manualGrades[d.qId],
-              correct: manualGrades[d.qId] > 0,
-              pending_review: false,
-              ...(remark && remark.trim() ? { remarks: remark.trim() } : {}),
-            }
-          }
-          return d
-        })
-        setReviewData({
-          ...reviewData,
-          submission: { ...reviewData.submission, details: updatedDetails, score: json.score, has_pending_review: json.has_pending_review }
-        })
-      }
-      const savedMax = reviewData?.submission.max_score || 0
-      setResults(prev => prev.map(r => {
-        if ((r.userId || r.id) === uid) {
-          const max = r.maxScore || savedMax
-          const pct = max > 0 ? Math.min(100, Math.round((json.score / max) * 100)) : json.score
-          return { ...r, score: pct }
-        }
-        return r
-      }))
-setManualGrades({})
-      setRemarks({})
-      setAiFeedback({})
-    } catch {
-      addToast({ type: 'error', title: 'Failed to save grades' })
-    } finally {
-      setSavingGrades(false)
     }
   }
 
@@ -678,9 +667,216 @@ setManualGrades({})
   const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 
   const proctorColor = (type: string): string => {
-    if (['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked'].includes(type)) return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
-    if (['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
-    return 'text-muted-foreground border-border bg-muted/50'
+    if (PROCTOR_RISK_HIGH.has(type)) return 'border-l-[3px] border-l-rose-500 text-rose-400 border-border/50 bg-rose-500/5'
+    if (PROCTOR_RISK_WARN.has(type)) return 'border-l-[3px] border-l-amber-500 text-amber-400 border-border/50 bg-amber-500/5'
+    if (PROCTOR_RISK_INFO.has(type)) return 'border-l-[3px] border-l-blue-500 text-blue-400 border-border/50 bg-blue-500/5'
+    return 'border-l-[3px] border-l-muted-foreground text-muted-foreground border-border/50 bg-muted/20'
+  }
+
+  const recordAuditLog = async (action: string, target: string, details: string) => {
+    try {
+      await csrfFetch('/api/admin/audit-log', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action, target, details }),
+      })
+    } catch { /* audit log is best-effort */ }
+  }
+
+  const exportProctorReport = async () => {
+    if (!params.id) return
+    setExportingReport(true)
+    try {
+      const res = await fetch(`/api/admin/exams/${params.id}/proctor-report`, { credentials: 'include' })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to fetch report')
+
+      const examData = json.exam
+      const candidates = json.candidates || []
+
+      const formatEvtType = (t: string) => PROCTOR_LABELS[t] || t.replace(/_/g, ' ').replace(/\b\w/g, (c: string) => c.toUpperCase())
+
+      let html = `<!DOCTYPE html>
+<html><head><meta charset="utf-8"><title>Proctor Report — ${examData.title}</title>
+<style>
+  body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif; margin: 0; padding: 24px; color: #1a1a1a; font-size: 13px; }
+  h1 { font-size: 20px; margin-bottom: 4px; } h2 { font-size: 16px; margin: 24px 0 8px; border-bottom: 2px solid #e5e7eb; padding-bottom: 4px; }
+  h3 { font-size: 14px; margin: 16px 0 6px; }
+  table { width: 100%; border-collapse: collapse; margin: 8px 0; } th, td { border: 1px solid #e5e7eb; padding: 6px 10px; text-align: left; font-size: 12px; }
+  th { background: #f9fafb; font-weight: 600; } .pass { color: #059669; } .fail { color: #dc2626; }
+  .evt { display: inline-block; padding: 2px 6px; border-radius: 4px; font-size: 11px; margin: 1px; }
+  .evt-red { background: #fef2f2; color: #b91c1c; border: 1px solid #fecaca; }
+  .evt-amber { background: #fffbeb; color: #92400e; border: 1px solid #fde68a; }
+  .evt-blue { background: #eff6ff; color: #1e40af; border: 1px solid #bfdbfe; }
+  .evt-gray { background: #f3f4f6; color: #374151; border: 1px solid #d1d5db; }
+  img { max-width: 120px; border-radius: 4px; border: 1px solid #e5e7eb; }
+  .meta { color: #6b7280; font-size: 11px; } .summary-box { background: #f9fafb; border: 1px solid #e5e7eb; border-radius: 6px; padding: 12px; margin: 8px 0; }
+  @media print { body { padding: 0; } .no-print { display: none; } }
+</style></head><body>
+<div class="no-print" style="text-align:right;margin-bottom:12px"><button onclick="window.print()" style="padding:6px 16px;border:1px solid #d1d5db;border-radius:6px;cursor:pointer;background:#fff">Print / Save PDF</button></div>
+<h1>Proctor Report: ${examData.title}</h1>
+<p class="meta">Level: ${examData.level} | Duration: ${examData.duration} min | Generated: ${new Date().toLocaleString()}</p>
+<p class="meta">Total Candidates: ${json.total_candidates} | Total Proctor Events: ${json.total_events}</p>
+<h2>Event Type Summary</h2>
+<div class="summary-box"><table><tr><th>Event Type</th><th>Count</th></tr>`
+
+      for (const [type, count] of Object.entries(json.event_type_summary || {})) {
+        html += `<tr><td>${formatEvtType(type)}</td><td>${count}</td></tr>`
+      }
+      html += `</table></div>`
+
+      for (const c of candidates) {
+        const pct = c.max_score > 0 ? Math.round((c.score / c.max_score) * 100) : null
+        const passed = pct !== null && pct >= 50
+        const rating = (c.event_count || 0) === 0 ? 'Clean' : (c.event_count || 0) < 5 ? 'Low Risk' : (c.event_count || 0) < 15 ? 'Medium Risk' : 'High Risk'
+
+        html += `<h2>${c.name || 'Unknown'} <span class="meta">(${c.email || 'N/A'})</span></h2>`
+        html += `<div class="summary-box">`
+        html += `<table><tr><th>Score</th><th>Pass/Fail</th><th>Submitted</th><th>Integrity Events</th><th>Rating</th></tr>`
+        html += `<tr><td>${pct !== null ? pct + '%' : '--'}</td><td class="${passed ? 'pass' : 'fail'}">${passed ? 'PASS' : 'FAIL'}</td>`
+        html += `<td>${c.submitted_at ? new Date(c.submitted_at).toLocaleString() : '--'}</td>`
+        html += `<td>${c.event_count || 0}</td><td><strong>${rating}</strong></td></tr></table>`
+
+        if (c.id_photo || c.face_photo) {
+          html += `<div style="margin-top:8px">`
+          if (c.id_photo) html += `<div style="display:inline-block;margin-right:12px"><div class="meta">ID Photo</div><img src="${c.id_photo}" /></div>`
+          if (c.face_photo) html += `<div style="display:inline-block"><div class="meta">Face Photo</div><img src="${c.face_photo}" /></div>`
+          html += `</div>`
+        }
+
+        // Eye gaze / blink / head pose summary
+        const eyeBlinkEvts = (c.proctor_events || []).filter((e: any) => ['eye_blink_detected', 'eye_gaze_changed', 'head_pose_turned_away'].includes(e.event_type))
+        const kbEvts = (c.proctor_events || []).filter((e: any) => e.event_type === 'keyboard_dynamics_snapshot')
+        const fpEvts = (c.proctor_events || []).filter((e: any) => ['browser_fingerprint_captured', 'browser_fingerprint_changed'].includes(e.event_type))
+        const faceEvts = (c.proctor_events || []).filter((e: any) => ['face_match_mismatch', 'face_match_restored'].includes(e.event_type))
+        const answerEvts = (c.proctor_events || []).filter((e: any) => e.event_type === 'answer_pattern_score')
+
+        html += `<div style="margin-top:8px" class="meta">`
+        html += `Eye/Blink Events: ${eyeBlinkEvts.length} | `
+        html += `Typing Analysis: ${kbEvts.length} | `
+        html += `Device Fingerprint: ${fpEvts.length} | `
+        html += `Face Verification: ${faceEvts.length}`
+        if (answerEvts.length > 0) {
+          const lastAnswerEvt = answerEvts[answerEvts.length - 1]
+          const score = (lastAnswerEvt.meta as any)?.score
+          html += ` | Answer Pattern Score: ${score !== undefined ? score : 'N/A'}`
+        }
+        html += `</div></div>`
+
+        if (c.proctor_events && c.proctor_events.length > 0) {
+          html += `<h3>Proctoring Event Log</h3><table><tr><th>Event</th><th>Time</th><th>Details</th></tr>`
+          for (const evt of c.proctor_events) {
+            const evtType = formatEvtType(evt.event_type)
+            const time = evt.created_at ? new Date(evt.created_at).toLocaleString() : '--'
+            const meta = evt.meta || {}
+            const details = Object.entries(meta)
+              .filter(([k]) => !['ua', 'timestamp', 'id', 'user_id', 'session_id', 'created_at', 'event_type', 'session_kind', 'source', 'ip', 'browser', 'os', 'device'].includes(k))
+              .map(([k, v]) => `${k.replace(/_/g, ' ')}: ${typeof v === 'object' ? JSON.stringify(v) : String(v)}`)
+              .join('; ')
+            html += `<tr><td>${evtType}</td><td class="meta">${time}</td><td class="meta">${details}</td></tr>`
+          }
+          html += `</table>`
+        }
+      }
+
+      html += `</body></html>`
+
+      const win = window.open('', '_blank')
+      if (win) {
+        win.document.write(html)
+        win.document.close()
+      }
+      addToast({ type: 'success', title: 'Proctor report generated' })
+    } catch (e: any) {
+      addToast({ type: 'error', title: 'Failed to export report', message: e.message || '' })
+    } finally {
+      setExportingReport(false)
+    }
+  }
+
+  const releaseAllWithAudit = async () => {
+    setShowReleaseAllConfirm(false)
+    setBulkReleasing(true)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/release-scores`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+
+      addToast({
+        type: json.released === 0 ? 'info' : 'success',
+        title: json.released === 0 ? 'No unreleased scores found' : `${json.released} scores released`,
+      })
+
+      if (json.released > 0) {
+        await recordAuditLog('release_scores', String(params.id), `Released ${json.released} scores`)
+      }
+
+      // Refresh results
+      fetchData()
+    } catch {
+      addToast({ type: 'error', title: 'Bulk release failed' })
+    } finally {
+      setBulkReleasing(false)
+    }
+  }
+
+  const saveGradesWithAudit = async () => {
+    if (!reviewCandidate || Object.keys(manualGrades).length === 0) return
+    setSavingGrades(true)
+    try {
+      const uid = reviewCandidate.userId || reviewCandidate.id
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/submissions/${uid}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ grades: manualGrades, remarks }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error)
+      addToast({ type: 'success', title: 'Grades saved successfully' })
+
+      await recordAuditLog('grade_submission', String(params.id), `Graded user ${reviewCandidate.name || uid}`)
+
+      // Update local state
+      if (reviewData) {
+        const updatedDetails = reviewData.submission.details.map(d => {
+          if (manualGrades[d.qId] !== undefined) {
+            const remark = remarks[d.qId]
+            return {
+              ...d,
+              awarded: manualGrades[d.qId],
+              correct: manualGrades[d.qId] > 0,
+              pending_review: false,
+              ...(remark && remark.trim() ? { remarks: remark.trim() } : {}),
+            }
+          }
+          return d
+        })
+        setReviewData({
+          ...reviewData,
+          submission: { ...reviewData.submission, details: updatedDetails, score: json.score, has_pending_review: json.has_pending_review }
+        })
+      }
+      const savedMax = reviewData?.submission.max_score || 0
+      setResults(prev => prev.map(r => {
+        if ((r.userId || r.id) === uid) {
+          const max = r.maxScore || savedMax
+          const pct = max > 0 ? Math.min(100, Math.round((json.score / max) * 100)) : json.score
+          return { ...r, score: pct }
+        }
+        return r
+      }))
+      setManualGrades({})
+      setRemarks({})
+      setAiFeedback({})
+    } catch {
+      addToast({ type: 'error', title: 'Failed to save grades' })
+    } finally {
+      setSavingGrades(false)
+    }
   }
 
   const columns: DataTableColumn<CandidateResult>[] = [
@@ -692,6 +888,17 @@ setManualGrades({})
           <div className="font-medium text-foreground">{row.name}</div>
           <div className="text-xs text-muted-foreground">{row.email}</div>
         </div>
+      ),
+    },
+    {
+      key: 'source',
+      header: 'Source',
+      cell: (row: CandidateResult) => (
+        row.source === 'invite' ? (
+          <Badge variant="outline" className="text-xs"><Mail className="w-3 h-3 mr-1" />Invite</Badge>
+        ) : (
+          <Badge variant="outline" className="text-xs bg-blue-500/10 text-blue-600 border-blue-500/20"><Link className="w-3 h-3 mr-1" />Public</Badge>
+        )
       ),
     },
     {
@@ -842,7 +1049,7 @@ setManualGrades({})
   const pendingGradingCount = results.filter(r => r.status === 'completed' && r.graded === false).length
 
   return (
-    <div className="space-y-6 max-w-7xl mx-auto pb-12 p-6">
+    <div className="space-y-6 pb-12">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm mb-2" onClick={() => router.push('/dashboard/admin/assessments')}>
@@ -858,6 +1065,12 @@ setManualGrades({})
             <Badge variant="secondary" className="bg-amber-500/10 text-amber-600">
               {results.length} Total Invited
             </Badge>
+            {(exam.publicLinkViews ?? 0) > 0 && (
+              <Badge variant="secondary" className="bg-blue-500/10 text-blue-600">
+                <Link className="w-3 h-3 mr-1" />
+                {exam.publicLinkViews} Public Link Views
+              </Badge>
+            )}
           </div>
         </div>
         <div className="flex flex-wrap items-center gap-2 lg:justify-end">
@@ -881,13 +1094,22 @@ setManualGrades({})
             <Button
               variant="default"
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={releaseAll}
+              onClick={() => setShowReleaseAllConfirm(true)}
               disabled={bulkReleasing}
             >
               {bulkReleasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
               Release All ({unreleasedCount})
             </Button>
           )}
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={exportProctorReport}
+            disabled={exportingReport}
+          >
+            {exportingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
+            Export Report
+          </Button>
           <Button variant="outline" className="gap-2" onClick={remindAllPending} disabled={bulkReminding}>
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
             Remind All Pending
@@ -949,27 +1171,28 @@ setManualGrades({})
       </div>
 
       {reviewCandidate && (
-        <div className="fixed inset-0 z-50 flex items-start justify-center bg-black/75 p-4 backdrop-blur-sm pt-8 overflow-y-auto print-review-overlay">
-          <div className="max-w-4xl w-full rounded-xl border border-border bg-card p-6 shadow-2xl space-y-4 mb-8 print-review-card">
-            <div className="flex items-center justify-between border-b pb-3 sticky top-0 bg-card z-10">
-              <div>
-                <h3 className="font-bold text-lg">Review: {reviewCandidate.name}</h3>
-                <p className="text-xs text-muted-foreground mt-0.5">{reviewCandidate.email}</p>
-              </div>
-              <Button variant="ghost" size="sm" onClick={() => { setReviewCandidate(null); setReviewData(null) }}>
-                <X className="h-4 w-4" />
-              </Button>
+        <div className="fixed inset-0 z-50 flex flex-col bg-background print-review-overlay overflow-hidden">
+          {/* Header — sticky */}
+          <div className="flex items-center justify-between border-b px-4 sm:px-6 py-3 sm:py-4 shrink-0 gap-2">
+            <div className="min-w-0 flex-1">
+              <h3 className="font-bold text-base sm:text-lg truncate">Review: {reviewCandidate.name}</h3>
+              <p className="text-xs text-muted-foreground mt-0.5 truncate">{reviewCandidate.email}</p>
             </div>
+            <Button variant="ghost" size="sm" onClick={() => { setReviewCandidate(null); setReviewData(null) }} className="gap-1.5 shrink-0">
+              <X className="h-4 w-4" /> <span className="hidden sm:inline">Close</span>
+            </Button>
+          </div>
 
-            {reviewLoading ? (
-              <div className="flex items-center justify-center py-16 text-muted-foreground">
-                <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading review data...
-              </div>
-            ) : reviewData ? (
-              <>
-                <div className="overflow-y-auto max-h-[60vh] pr-2 space-y-6 print-review-body">
+          {reviewLoading ? (
+            <div className="flex-1 flex items-center justify-center text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading review data...
+            </div>
+          ) : reviewData ? (
+            <>
+              {/* Scrollable content */}
+              <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 print-review-body">
                   {/* Candidate Info */}
-                  <div className="grid grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
                       <span className="text-muted-foreground block text-xs">Score</span>
                       <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
@@ -1018,11 +1241,11 @@ setManualGrades({})
                         const maxPoints = q.points || q.score || detail?.points || 10
 
                         return (
-                          <div key={q.id} className={`border rounded-lg p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
-                            <div className="flex items-start justify-between gap-4">
-                              <div className="flex-1">
+                          <div key={q.id} className={`border rounded-lg p-3 sm:p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
+                            <div className="flex items-start justify-between gap-2 sm:gap-4">
+                              <div className="flex-1 min-w-0">
                                 <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
-                                <div className="text-sm font-medium mt-0.5 prose prose-sm dark:prose-invert max-w-none prose-p:text-sm prose-pre:text-xs prose-code:text-xs">
+                                <div className="text-sm font-medium mt-0.5 prose prose-sm dark:prose-invert max-w-full overflow-hidden prose-p:text-sm prose-pre:text-xs prose-code:text-xs">
                                   <ReactMarkdown
                                     remarkPlugins={[remarkGfm]}
                                     rehypePlugins={[rehypeHighlight]}
@@ -1032,19 +1255,33 @@ setManualGrades({})
                                 </div>
                               </div>
                               {isPendingReview ? (
-                                <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 shrink-0">
-                                  <Clock className="w-3 h-3 mr-1" /> Pending
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {detail?.requires_human_review && (
+                                    <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0">
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> AI Uncertain
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 shrink-0">
+                                    <Clock className="w-3 h-3 mr-1" /> Pending
+                                  </Badge>
+                                </div>
                               ) : (
-                                <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
-                                  {isManuallyGraded ? `+${detail.awarded}/${maxPoints}` : detail?.correct ? `+${detail.points}` : '0'}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {detail?.requires_human_review && (
+                                    <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0" title="AI Confidence was low, human review is recommended">
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> Review Recommended
+                                    </Badge>
+                                  )}
+                                  <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
+                                    {isManuallyGraded ? `+${detail.awarded}/${maxPoints}` : detail?.correct ? `+${detail.points}` : '0'}
+                                  </Badge>
+                                </div>
                               )}
                             </div>
 
                             {/* MCQ-type options display */}
                             {isMcq && q.options && (
-                              <div className="flex flex-wrap gap-1.5 mt-1">
+                              <div className="flex flex-col items-start gap-1.5 mt-1 w-full">
                                 {q.options.map((opt, oi) => {
                                   const optLower = opt.toLowerCase()
                                   // multiple_response stores a comma-separated set; compare as sets
@@ -1057,17 +1294,22 @@ setManualGrades({})
                                     : [correctAns.toLowerCase()]
                                   const isSelected = userSet.includes(optLower)
                                   const isCorrectAnswer = correctSet.includes(optLower)
+                                  const optClass = isSelected && isCorrectAnswer
+                                    ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40'
+                                    : isSelected && !isCorrectAnswer
+                                      ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through'
+                                      : !isSelected && isCorrectAnswer
+                                        ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20'
+                                        : 'text-muted-foreground'
                                   return (
-                                    <Badge key={oi} variant="outline" className={`text-xs ${
-                                      isSelected && isCorrectAnswer ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/40' :
-                                      isSelected && !isCorrectAnswer ? 'bg-rose-500/20 text-rose-500 border-rose-500/40 line-through' :
-                                      !isSelected && isCorrectAnswer ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20' :
-                                      'text-muted-foreground'
-                                    }`}>
+                                    <div
+                                      key={oi}
+                                      className={`text-xs rounded-md border px-2.5 py-1 break-words whitespace-pre-wrap w-full text-left ${optClass}`}
+                                    >
                                       {opt}
                                       {isSelected ? ' (selected)' : ''}
                                       {!isSelected && isCorrectAnswer ? ' (correct)' : ''}
-                                    </Badge>
+                                    </div>
                                   )
                                 })}
                               </div>
@@ -1079,7 +1321,7 @@ setManualGrades({})
                                 <div>
                                   <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
                                   {userAnswer ? (
-                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border">{userAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border break-words">{userAnswer}</pre>
                                   ) : (
                                     <span className="text-xs text-muted-foreground italic">No answer provided</span>
                                   )}
@@ -1087,22 +1329,26 @@ setManualGrades({})
                                 {modelAnswer && (
                                   <div>
                                     <span className="text-xs font-medium text-emerald-500 block mb-1">Model Answer / Rubric:</span>
-                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto">{modelAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto break-words">{modelAnswer}</pre>
                                   </div>
                                 )}
 
                                 {/* Manual grading input for pending review questions */}
                                 {(isPendingReview || isManuallyGraded) && (
                                   <div className="pt-3 border-t border-dashed space-y-3">
-                                    <div className="flex flex-wrap items-center gap-3">
+                                    <div className="flex flex-wrap items-center gap-2 sm:gap-3">
                                       <label className="text-xs font-medium text-muted-foreground shrink-0">Award Points:</label>
                                       <input
-                                        type="number"
-                                        min={0}
-                                        max={maxPoints}
-                                        value={manualGrades[q.id] ?? detail?.awarded ?? ''}
-                                        onChange={(e) => setManualGrades(prev => ({ ...prev, [q.id]: Math.min(maxPoints, Math.max(0, parseInt(e.target.value) || 0)) }))}
-                                        className="w-20 h-8 px-2 text-sm border rounded-md bg-background"
+                                        type="text"
+                                        inputMode="numeric"
+                                        pattern="[0-9]*"
+                                        value={manualGrades[q.id] ?? detail?.awarded ?? (isPendingReview && !userAnswer ? 0 : '')}
+                                        onChange={(e) => {
+                                          const v = e.target.value.replace(/[^0-9]/g, '')
+                                          const num = v === '' ? 0 : Math.min(maxPoints, Math.max(0, parseInt(v) || 0))
+                                          setManualGrades(prev => ({ ...prev, [q.id]: num }))
+                                        }}
+                                        className="w-16 sm:w-20 h-8 px-2 text-sm border rounded-md bg-background"
                                         placeholder="0"
                                       />
                                       <span className="text-xs text-muted-foreground">/ {maxPoints}</span>
@@ -1111,7 +1357,7 @@ setManualGrades({})
                                         variant="outline"
                                         className="gap-1.5 text-xs h-8"
                                         onClick={() => aiGradeQuestion(q.id)}
-                                        disabled={aiGrading[q.id] || !userAnswer}
+                                        disabled={aiGrading[q.id]}
                                       >
                                         {aiGrading[q.id] ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Sparkles className="w-3.5 h-3.5" />}
                                         {aiGrading[q.id] ? 'Grading…' : 'AI Grade'}
@@ -1122,6 +1368,11 @@ setManualGrades({})
                                       <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-2">
                                         <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                                           <Sparkles className="w-3.5 h-3.5" /> AI Feedback — review & edit before saving
+                                          {detail?.confidence !== undefined && (
+                                            <span className="ml-2 font-normal opacity-80">
+                                              (Confidence: {Math.round(detail.confidence * 100)}%)
+                                            </span>
+                                          )}
                                         </span>
                                         <textarea
                                           value={aiFeedback[q.id]}
@@ -1177,7 +1428,7 @@ setManualGrades({})
                         <Button
                           size="sm"
                           className="w-full bg-blue-600 hover:bg-blue-700 text-white gap-2"
-                          onClick={saveGrades}
+                          onClick={saveGradesWithAudit}
                           disabled={savingGrades}
                         >
                           {savingGrades ? <Loader2 className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
@@ -1189,14 +1440,14 @@ setManualGrades({})
 
                   {/* Proctoring Events */}
                   <div className="space-y-3">
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 flex-wrap">
                       <button
                         type="button"
                         onClick={() => setShowProctorLog(v => !v)}
                         className="flex items-center gap-2 font-semibold text-sm text-left flex-1 min-w-0"
                       >
-                        <ShieldAlert className="w-4 h-4 text-amber-500" /> Proctoring Log
-                        <Badge variant="outline" className="text-xs">{reviewData.proctorEvents.length} events</Badge>
+                        <ShieldAlert className="w-4 h-4 text-amber-500 shrink-0" /> <span className="truncate">Proctoring Log</span>
+                        <Badge variant="outline" className="text-xs shrink-0">{reviewData.proctorEvents.length} events</Badge>
                       </button>
                       <button
                         type="button"
@@ -1211,40 +1462,125 @@ setManualGrades({})
                         className={`w-4 h-4 text-muted-foreground shrink-0 cursor-pointer transition-transform ${showProctorLog ? '' : '-rotate-90'}`}
                       />
                     </div>
-                    {showProctorLog && (reviewData.proctorEvents.length === 0 ? (
-                      <div className="border rounded-lg p-6 text-center">
-                        <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
-                        <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
-                      </div>
-                    ) : (
-                      <div className="border rounded-lg max-h-96 overflow-y-auto">
-                        {reviewData.proctorEvents.map((evt, i) => (
-                          <div key={i} className={`border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
-                            <div className="flex items-center gap-3 px-4 py-2 text-xs">
-                              <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
-                              <span className="shrink-0 font-medium">{formatProctorType(evt.event_type)}</span>
-                              <span className="text-muted-foreground ml-auto shrink-0">
-                                {evt.created_at ? new Date(evt.created_at).toLocaleString() : ''}
-                              </span>
-                            </div>
-                            {evt.meta && Object.keys(evt.meta).length > 0 && (
-                              showRawProctorMeta ? (
-                                <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
-                                  {JSON.stringify(evt.meta, null, 2)}
-                                </pre>
+                    {showProctorLog && (
+                      <>
+                        {(() => {
+                          const allEvents = reviewData.proctorEvents
+                          const highRisk = allEvents.filter(e => PROCTOR_RISK_HIGH.has(e.event_type))
+                          const warnRisk = allEvents.filter(e => PROCTOR_RISK_WARN.has(e.event_type))
+                          const infoRisk = allEvents.filter(e => PROCTOR_RISK_INFO.has(e.event_type))
+                          
+                          const tabSwitches = allEvents.filter(e => ['tab_blur', 'visibility_change', 'alt_tab_detected', 'window_blur'].includes(e.event_type)).length
+                          const copyPaste = allEvents.filter(e => ['copy', 'paste', 'clipboard_copy', 'clipboard_paste', 'copy_paste_attempt'].includes(e.event_type)).length
+                          const aiProxy = allEvents.filter(e => ['prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started'].includes(e.event_type)).length
+                          const hwAnomalies = allEvents.filter(e => ['usb_device_plugged', 'secondary_voice_detected', 'face_match_mismatch', 'browser_fingerprint_changed'].includes(e.event_type)).length
+
+                          const filteredEvents = allEvents.filter(e => {
+                            if (proctorFilter === 'high') return PROCTOR_RISK_HIGH.has(e.event_type)
+                            if (proctorFilter === 'warn') return PROCTOR_RISK_WARN.has(e.event_type)
+                            if (proctorFilter === 'info') return PROCTOR_RISK_INFO.has(e.event_type)
+                            return true
+                          })
+                          
+                          return (
+                            <div className="space-y-3">
+                              {allEvents.length > 0 && (
+                                <div className="grid grid-cols-4 gap-2">
+                                  <div 
+                                    onClick={() => setProctorFilter('all')}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'all' ? 'bg-muted border-foreground/30' : 'bg-card hover:bg-muted/50'}`}
+                                  >
+                                    <div className="text-lg font-bold">{allEvents.length}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total</div>
+                                  </div>
+                                  <div 
+                                    onClick={() => setProctorFilter('high')}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'high' ? 'bg-rose-500/10 border-rose-500/40' : 'bg-card hover:bg-rose-500/5'}`}
+                                  >
+                                    <div className="text-lg font-bold text-rose-500">{highRisk.length}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-rose-500/70 font-semibold">High Risk</div>
+                                  </div>
+                                  <div 
+                                    onClick={() => setProctorFilter('warn')}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'warn' ? 'bg-amber-500/10 border-amber-500/40' : 'bg-card hover:bg-amber-500/5'}`}
+                                  >
+                                    <div className="text-lg font-bold text-amber-500">{warnRisk.length}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-amber-500/70 font-semibold">Warnings</div>
+                                  </div>
+                                  <div 
+                                    onClick={() => setProctorFilter('info')}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'info' ? 'bg-blue-500/10 border-blue-500/40' : 'bg-card hover:bg-blue-500/5'}`}
+                                  >
+                                    <div className="text-lg font-bold text-blue-500">{infoRisk.length}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-blue-500/70 font-semibold">Info</div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {allEvents.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/50 mt-2">
+                                  <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
+                                    <div className="text-sm font-bold text-foreground">{tabSwitches}</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">Tab Switches</div>
+                                  </div>
+                                  <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
+                                    <div className="text-sm font-bold text-foreground">{copyPaste}</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">Copy/Paste</div>
+                                  </div>
+                                  <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
+                                    <div className="text-sm font-bold text-foreground">{aiProxy}</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">AI & Proxies</div>
+                                  </div>
+                                  <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
+                                    <div className="text-sm font-bold text-foreground">{hwAnomalies}</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">Anomalies</div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {allEvents.length === 0 ? (
+                                <div className="border rounded-lg p-6 text-center">
+                                  <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
+                                  <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
+                                </div>
+                              ) : filteredEvents.length === 0 ? (
+                                <div className="border rounded-lg p-6 text-center">
+                                  <p className="text-sm text-muted-foreground">No events match the selected filter.</p>
+                                </div>
                               ) : (
-                                <ProctorMetaDetails event_type={evt.event_type} meta={evt.meta} />
-                              )
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                                <div className="border rounded-lg max-h-96 overflow-y-auto overflow-x-hidden bg-card">
+                                  {filteredEvents.map((evt, i) => (
+                                    <div key={i} className={`border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
+                                      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 text-xs">
+                                        <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
+                                        <span className="shrink-0 font-medium truncate">{formatProctorType(evt.event_type)}</span>
+                                        <span className="text-muted-foreground ml-auto shrink-0 text-[10px] sm:text-xs">
+                                          {evt.created_at ? new Date(evt.created_at).toLocaleString() : ''}
+                                        </span>
+                                      </div>
+                                      {evt.meta && Object.keys(evt.meta).length > 0 && (
+                                        showRawProctorMeta ? (
+                                          <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
+                                            {JSON.stringify(evt.meta, null, 2)}
+                                          </pre>
+                                        ) : (
+                                          <ProctorMetaDetails event_type={evt.event_type} meta={evt.meta} />
+                                        )
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </>
+                    )}
                   </div>
 
                   {/* Identity Photos */}
                   {(reviewData.submission.id_photo || reviewData.submission.face_photo) && (
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-1">
                         <span className="text-xs font-semibold text-muted-foreground block">ID Photo</span>
                         <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted flex items-center justify-center">
@@ -1269,18 +1605,18 @@ setManualGrades({})
                   )}
                 </div>
 
-                {/* Release Actions */}
-                <div className="flex items-center justify-between pt-4 border-t">
-                  <div className="text-xs text-muted-foreground">
+                {/* Footer — sticky */}
+                <div className="shrink-0 border-t px-4 sm:px-6 py-3 sm:py-4 flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-3 bg-background">
+                  <div className="text-xs text-muted-foreground min-w-0">
                     {reviewData.submission.released_at ? (
                       <span className="text-emerald-500 flex items-center gap-1">
-                        <CheckCheck className="w-3.5 h-3.5" /> Score released on {new Date(reviewData.submission.released_at).toLocaleString()}
+                        <CheckCheck className="w-3.5 h-3.5 shrink-0" /> <span className="truncate">Score released on {new Date(reviewData.submission.released_at).toLocaleString()}</span>
                       </span>
                     ) : (
                       'Score not yet released to candidate'
                     )}
                   </div>
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2 sm:gap-3 flex-wrap shrink-0">
                     <Button variant="outline" onClick={downloadReviewPdf} className="gap-2">
                       <Download className="w-4 h-4" /> Download Report
                     </Button>
@@ -1305,11 +1641,10 @@ setManualGrades({})
                 </div>
               </>
             ) : (
-              <div className="py-8 text-center text-muted-foreground text-sm">
+              <div className="flex-1 flex items-center justify-center text-muted-foreground text-sm">
                 No submission data found for this candidate.
               </div>
             )}
-          </div>
         </div>
       )}
 
@@ -1334,6 +1669,26 @@ setManualGrades({})
               }}
             >
               Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={showReleaseAllConfirm} onOpenChange={setShowReleaseAllConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Release All Scores?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will release all unreleased scores to candidates. Candidates will be notified and able to view their results. This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-emerald-600 hover:bg-emerald-700 text-white"
+              onClick={releaseAllWithAudit}
+            >
+              Release All
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

@@ -3,10 +3,9 @@
 import { useEffect } from 'react'
 import { usePathname } from 'next/navigation'
 import { csAnalytics } from '@/lib/analytics'
-import { startReplayRecording } from '@/lib/analytics/replay-recorder'
 
 /**
- * Initializes the CodeSpectra Analytics SDK and session replay recorder.
+ * Initializes the CodeSpectra Analytics SDK.
  * Tracks page views on route changes. Mounted once in the dashboard layout.
  */
 export function AnalyticsTracker() {
@@ -14,7 +13,6 @@ export function AnalyticsTracker() {
 
   useEffect(() => {
     csAnalytics.init()
-    startReplayRecording()
   }, [])
 
   useEffect(() => {

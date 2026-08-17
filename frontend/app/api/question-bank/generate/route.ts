@@ -1,7 +1,7 @@
 import { NextResponse, type NextRequest } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
-import { normalizeBankQuestion, questionBank, bankContentHash, type BankQuestionDoc } from '@/lib/question-bank'
+import { normalizeBankQuestion, questionBank, bankContentHash, deriveTitleFromQuestion, type BankQuestionDoc } from '@/lib/question-bank'
 import { BRANCHES, DEGREE_TYPES } from '@/lib/engineering-catalog'
 
 export const runtime = 'nodejs'
@@ -37,7 +37,8 @@ function buildPrompt(body: GenBody): string {
     `Focus subject/topic: ${topic}.`,
     `Difficulty: ${difficulty}. Question types allowed: ${types.join(', ')}.`,
     `Generate exactly ${count} distinct, MNC-interview-standard questions.`,
-    `For 'mcq' include 4 options and the correct answer. For 'true_false' include exactly options ["True","False"] and answer "True"/"False". For 'coding' include answer as a short explanation or sample approach (no full solution). For 'descriptive' leave options empty.`,
+    `TITLE RULE (mandatory): the "title" field MUST be a concise human-readable summary of that specific question (4-12 words, e.g. "Binary Search worst-case time complexity"), unique per question. NEVER use "Q1", "Question 2", "1.1" or any numbering scheme as a title — a numbered title is an automatic rejection.`,
+    `For 'mcq' include 4 options and the correct answer. For 'true_false' include exactly options ["True","False"] and answer "True"/"False". For 'coding' include answer as a short explanation or sample approach (no full solution), plus "tech_stack" (array of 1-3 languages) and "test_cases" (2-4 objects {"input": "...", "output": "..."}). For 'descriptive' leave options empty.`,
     `Respond with a JSON array ONLY (no markdown fences). Each object: {"title": short label, "question": full prompt, "type", "options": [string], "answer": correct answer or explanation, "explanation": brief explanation, "difficulty": "Easy"|"Medium"|"Hard", "marks": number 5-20, "subject": "${topic}", "branch": "${body.branch || ''}", "degree_type": "${body.degree_type || ''}", "tags": [topic tags]}.`,
   ].join('\n')
 }
@@ -71,6 +72,7 @@ export async function POST(request: NextRequest) {
     const col = await questionBank()
     const existing = await col.find({}, { projection: { _id: 0 } }).toArray()
     const seen = new Set(existing.map((d: any) => bankContentHash(d)))
+    const seenTitles = new Set(existing.map((d: any) => (d.title || '').toLowerCase().replace(/\s+/g, ' ').trim()))
 
     const inserted: BankQuestionDoc[] = []
     let skipped = 0
@@ -126,9 +128,17 @@ export async function POST(request: NextRequest) {
       const doc = normalizeBankQuestion({ ...(item as Record<string, unknown>), source: 'ai' })
       if (!doc) { skipped++; continue }
       doc.source = 'ai'
+      if (doc.type === 'coding' && !doc.tech_stack?.length) {
+        doc.tech_stack = { cse: ['Python', 'Java', 'C++'], it: ['JavaScript', 'SQL'], ai_ds: ['Python', 'SQL'] }[doc.branch || ''] || ['Python']
+      }
+      const titleKey = (doc.title || '').toLowerCase().replace(/\s+/g, ' ').trim()
+      if (titleKey && seenTitles.has(titleKey)) {
+        doc.title = deriveTitleFromQuestion(doc.question)
+      }
       const hash = bankContentHash(doc)
       if (seen.has(hash)) { skipped++; continue }
       seen.add(hash)
+      seenTitles.add((doc.title || '').toLowerCase().replace(/\s+/g, ' ').trim())
       toInsert.push(doc)
     }
     if (toInsert.length) await col.insertMany(toInsert)

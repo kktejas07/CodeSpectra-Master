@@ -1,17 +1,22 @@
 'use client'
 
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef, useMemo, useCallback } from 'react'
 import { useRouter, useParams, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
-import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX } from 'lucide-react'
+import { Loader2, Clock, AlertTriangle, Send, CheckCircle2, ChevronRight, ChevronLeft, LockKeyhole, ShieldX, User, LogIn } from 'lucide-react'
 import { useToast } from '@/lib/toast-context'
+import { useAuth } from '@/lib/auth-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { calculateCheatingScore, type AnswerEvent } from '@/lib/proctoring/answer-pattern'
 import { ProctoringWrapper } from '@/components/proctoring/ProctoringWrapper'
 import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
+import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
+import { CodingQuestionEditor } from '@/components/assessment/CodingQuestionEditor'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -32,6 +37,16 @@ interface Question {
   title: string
   prompt: string
   options?: string[]
+  test_cases?: TestCase[]
+  starter_code?: string
+  language?: string
+}
+
+interface TestCase {
+  input: string
+  output: string
+  explanation?: string
+  isSample?: boolean
 }
 
 // ponytail: Fisher-Yates shuffle with optional seed for reproducibility.
@@ -78,6 +93,9 @@ export default function CandidateAssessmentPage() {
   const router = useRouter()
   const params = useParams()
   const searchParams = useSearchParams()
+  const { user } = useAuth()
+  
+  const isShareLink = searchParams.get('share') === 'true'
   
   const [exam, setExam] = useState<Exam | null>(null)
   const [loading, setLoading] = useState(true)
@@ -100,8 +118,59 @@ export default function CandidateAssessmentPage() {
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
   const [facePhoto, setFacePhoto] = useState<string | null>(null)
 
+  // Recording Consent
+  const [recordingConsent, setRecordingConsent] = useState(false)
+
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // Code execution state
+  const [runResult, setRunResult] = useState<RunResult | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
+
+  // Answer pattern tracking
+  const answerEventsRef = useRef<AnswerEvent[]>([])
+  const questionViewTimeRef = useRef<number>(Date.now())
+  const questionViewIdRef = useRef<string>('')
+
+interface RunResult {
+  passed: boolean
+  results: Array<{
+    passed: boolean
+    input: string
+    expected: string
+    output: string
+    stderr: string
+    isSample: boolean
+  }>
+  execution_time_ms: number
+}
+
+  const trackQuestionView = useCallback((qId: string) => {
+    // Record time spent on previous question
+    if (questionViewIdRef.current && questionViewIdRef.current !== qId) {
+      const timeSpent = Date.now() - questionViewTimeRef.current
+      answerEventsRef.current.push({
+        questionId: questionViewIdRef.current,
+        timestamp: Date.now(),
+        action: 'skip',
+        timeSpent,
+      })
+    }
+    questionViewIdRef.current = qId
+    questionViewTimeRef.current = Date.now()
+  }, [])
+
+  const trackAnswer = useCallback((qId: string, action: 'answer' | 'paste' = 'answer') => {
+    const timeSpent = Date.now() - questionViewTimeRef.current
+    answerEventsRef.current.push({
+      questionId: qId,
+      timestamp: Date.now(),
+      action,
+      timeSpent,
+      answerLength: (answers[qId] || '').length,
+    })
+  }, [answers])
 
   // Shuffle options once when exam loads or starts
   const sessionSeed = useRef(Math.floor(Math.random() * 2147483647))
@@ -138,7 +207,18 @@ export default function CandidateAssessmentPage() {
         const inviteToken = searchParams.get('inviteToken')
         const inviteEmail = searchParams.get('inviteEmail')
 
-        if (accType === 'invite_only') {
+        // All assessments require login — anonymous users see a login prompt
+        // and can never start (regardless of share / invite / open access).
+        if (!user) {
+          setExam(found)
+          setLoading(false)
+          return
+        }
+
+        // Share link: skip invite-only check. Track public link view.
+        if (isShareLink) {
+          fetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
+        } else if (accType === 'invite_only') {
           if (!inviteToken) {
             setAccessError('This assessment is invite-only. A valid invitation link is required.')
             setLoading(false)
@@ -152,6 +232,11 @@ export default function CandidateAssessmentPage() {
             return
           }
           const verifyJson = await verifyRes.json()
+          if (verifyJson.email && verifyJson.email.toLowerCase() !== (user.email || '').toLowerCase()) {
+            setAccessError('This invitation belongs to a different account. Sign in with the invited email address to continue.')
+            setLoading(false)
+            return
+          }
           if (inviteEmail && verifyJson.email?.toLowerCase() !== inviteEmail.toLowerCase()) {
             setAccessError('Email mismatch — this invitation belongs to a different candidate.')
             setLoading(false)
@@ -185,7 +270,7 @@ export default function CandidateAssessmentPage() {
       }
     }
     if (params.id) fetchExam()
-  }, [params.id, router, searchParams])
+  }, [params.id, router, searchParams, user])
 
   // Timer Logic
   useEffect(() => {
@@ -199,11 +284,46 @@ export default function CandidateAssessmentPage() {
     }
   }, [hasStarted, timeLeft, isSubmitted, isSubmitting])
 
+  // 30-minute warning
+  const hasWarned30Min = useRef(false)
+  useEffect(() => {
+    if (timeLeft === 1800 && !isSubmitted && !isSubmitting && !hasWarned30Min.current) {
+      hasWarned30Min.current = true
+      addToast({ type: 'warning', title: '30 minutes remaining!' })
+      csrfFetch('/api/proctor/events', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          session_kind: 'exam',
+          session_id: params.id,
+          event_type: 'timer_warning_30min',
+          meta: { time_left: 1800, timestamp: new Date().toISOString() },
+        }),
+      }).catch(() => {})
+    }
+  }, [timeLeft, isSubmitted, isSubmitting, params.id, addToast])
+
   useEffect(() => {
     if (exam && Object.keys(answers).length > 0) {
       localStorage.setItem(`codespectra_exam_draft_${exam.id}`, JSON.stringify(answers))
     }
   }, [answers, exam])
+
+  // Auto-save to server every 30 seconds (debounced)
+  useEffect(() => {
+    if (!exam || !hasStarted || Object.keys(answers).length === 0) return
+    const timer = setTimeout(async () => {
+      try {
+        await csrfFetch(`/api/exams/${exam.id}/save-draft`, {
+          method: 'POST',
+          credentials: 'include',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ answers }),
+        })
+      } catch { /* fire-and-forget */ }
+    }, 30000)
+    return () => clearTimeout(timer)
+  }, [answers, exam, hasStarted])
 
   const handleStart = () => {
     if (!exam) return
@@ -219,6 +339,65 @@ export default function CandidateAssessmentPage() {
 
   const handleManualSubmit = () => {
     setShowSubmitConfirm(true)
+  }
+
+  const handleRunCode = async () => {
+    if (!exam) return
+    const currentQ = exam.questionList[currentQIndex]
+
+    let codeValue = ''
+    let codeLang = 'python'
+    if (answers[currentQ.id]) {
+      try {
+        const parsed = JSON.parse(answers[currentQ.id] as string)
+        if (parsed && typeof parsed === 'object') {
+          codeValue = parsed.code || ''
+          codeLang = parsed.language || 'python'
+        } else {
+          codeValue = answers[currentQ.id] as string
+        }
+      } catch {
+        codeValue = answers[currentQ.id] as string
+      }
+    }
+
+    if (!codeValue.trim()) {
+      addToast({ type: 'warning', title: 'No code to run' })
+      return
+    }
+
+    setIsRunning(true)
+    setRunResult(null)
+
+    try {
+      const testCases = (currentQ as any).test_cases || []
+      const sampleCases = testCases.filter((tc: TestCase) => tc.isSample !== false)
+
+      const res = await fetch('/api/execute-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          language: codeLang,
+          source: codeValue,
+          test_cases: sampleCases,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Execution failed')
+
+      setRunResult({
+        passed: data.passed,
+        results: data.results || [],
+        execution_time_ms: data.execution_time_ms || 0,
+      })
+    } catch (e: any) {
+      addToast({ type: 'error', title: 'Run failed', message: e.message })
+      setRunResult(null)
+    } finally {
+      setIsRunning(false)
+    }
   }
 
   const submitAssessment = async (autoSubmitted = false) => {
@@ -249,6 +428,28 @@ export default function CandidateAssessmentPage() {
       if (typeof window !== 'undefined') {
         localStorage.removeItem(`codespectra_exam_draft_${exam.id}`)
       }
+
+      // Send answer pattern scoring
+      try {
+        const cheatingScore = calculateCheatingScore(answerEventsRef.current)
+        await csrfFetch('/api/proctor/events', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            session_kind: 'exam',
+            session_id: exam.id,
+            event_type: 'answer_pattern_score',
+            meta: {
+              score: cheatingScore.total,
+              flags: cheatingScore.flags,
+              breakdown: cheatingScore.breakdown,
+              total_answers: answerEventsRef.current.filter(e => e.action === 'answer').length,
+              total_pastes: answerEventsRef.current.filter(e => e.action === 'paste').length,
+              timestamp: new Date().toISOString(),
+            },
+          }),
+        })
+      } catch { /* fire-and-forget */ }
       addToast({ type: 'success', title: 'Assessment submitted successfully!' })
     } catch (e: any) {
       addToast({ type: 'error', title: 'Failed to submit', message: e.message || '' })
@@ -294,7 +495,41 @@ export default function CandidateAssessmentPage() {
 
   // Pre-Start Screen
   if (!hasStarted) {
+    // Any assessment type requires login to start — anonymous users (with or
+    // without the extension) always see the login prompt and can never begin.
+    if (!user) {
+      const fullQuery = searchParams.toString()
+      const loginRedirect = `/assessment/${params.id}${fullQuery ? `?${fullQuery}` : ''}`
+      return (
+        <div className="min-h-screen flex items-center justify-center bg-linear-to-br from-background via-background to-primary/5 p-4">
+          <Card className="max-w-md w-full p-8 text-center border-primary/20 space-y-6 shadow-xl">
+            <div className="flex h-14 w-14 items-center justify-center rounded-full bg-primary/10 mx-auto">
+              <User className="h-7 w-7 text-primary" />
+            </div>
+            <div>
+              <h1 className="text-xl font-bold">{exam.title}</h1>
+              <p className="text-sm text-muted-foreground mt-1">Sign in or create an account to take this assessment</p>
+            </div>
+            <div className="bg-muted/30 rounded-lg p-4 text-sm text-left space-y-2">
+              <div className="flex justify-between"><span className="text-muted-foreground">Duration:</span><span className="font-medium">{exam.duration} min</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Questions:</span><span className="font-medium">{exam.questionList.length}</span></div>
+              <div className="flex justify-between"><span className="text-muted-foreground">Level:</span><span className="font-medium">{exam.level}</span></div>
+            </div>
+            <div className="space-y-2">
+              <Link href={`/auth/login?redirect=${encodeURIComponent(loginRedirect)}`}>
+                <Button className="w-full gap-2"><LogIn className="h-4 w-4" /> Sign In</Button>
+              </Link>
+              <Link href={`/auth/signup?redirect=${encodeURIComponent(loginRedirect)}`}>
+                <Button variant="outline" className="w-full gap-2"><User className="h-4 w-4" /> Create Account</Button>
+              </Link>
+            </div>
+          </Card>
+        </div>
+      )
+    }
+
     return (
+      <ExtensionGate>
       <div className="min-h-screen flex items-center justify-center bg-background p-4">
         <Card className="max-w-lg w-full p-8 border-primary/20 space-y-6">
           <div className="text-center">
@@ -326,9 +561,36 @@ export default function CandidateAssessmentPage() {
             </p>
           </div>
 
-          <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
-            Start Assessment Now
-          </Button>
+          <label className="flex items-start gap-3 cursor-pointer p-3 rounded-lg border border-border bg-muted/20">
+            <input
+              type="checkbox"
+              checked={recordingConsent}
+              onChange={(e) => setRecordingConsent(e.target.checked)}
+              className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
+            />
+            <span className="text-xs text-muted-foreground leading-relaxed">
+              I consent to session recording (webcam and screen) during this assessment. The recording is used solely for proctoring integrity verification and will be stored securely.
+            </span>
+          </label>
+
+          {user?.has_enrolled_face === false ? (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-lg flex flex-col items-center gap-3 text-sm">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <p className="text-center">
+                <strong>Biometric Enrollment Required</strong><br />
+                You must enroll your face biometrics before taking this assessment.
+              </p>
+              <Button asChild variant="destructive" className="mt-2">
+                <Link href={`/auth/enroll-face?redirect=/assessment/${params.id}`}>
+                  Enroll Face Biometrics Now
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
+              Start Assessment Now
+            </Button>
+          )}
         </Card>
 
         {showVerification && (
@@ -344,6 +606,7 @@ export default function CandidateAssessmentPage() {
           />
         )}
       </div>
+      </ExtensionGate>
     )
   }
 
@@ -375,8 +638,9 @@ export default function CandidateAssessmentPage() {
   return (
     <ExtensionGate>
     <>
-      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)}>
+      <ProctoringWrapper proctoringLevel="strict_lockdown" candidateName="Candidate" sessionKind="exam" sessionId={String(params.id)} idPhoto={idPhoto || undefined}>
       <RealTimeProctor sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted}>
+      <SessionRecorder sessionKind="exam" sessionId={String(params.id)} enabled={hasStarted && recordingConsent} />
       <div className="h-screen bg-background flex flex-col overflow-hidden">
         {/* Top Navbar */}
         <header className="sticky top-0 z-30 border-b border-border bg-card px-6 py-3 flex items-center justify-between shadow-xs">
@@ -385,8 +649,18 @@ export default function CandidateAssessmentPage() {
           <p className="text-xs text-muted-foreground">Question {currentQIndex + 1} of {exam.questionList.length}</p>
         </div>
         <div className="flex items-center gap-4">
+          {recordingConsent && hasStarted && (
+            <div className="flex items-center gap-1.5 text-[11px] font-medium text-red-500">
+              <span className="relative flex h-2.5 w-2.5">
+                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75" />
+                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-red-500" />
+              </span>
+              Recording
+            </div>
+          )}
           <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border font-mono font-bold ${
-            (timeLeft || 0) < 300 ? 'bg-red-500/10 border-red-500/30 text-red-600' : 'bg-muted/50 border-border'
+            (timeLeft || 0) < 300 ? 'bg-red-500/10 border-red-500/30 text-red-600' :
+            (timeLeft || 0) <= 1800 ? 'bg-amber-500/10 border-amber-500/30 text-amber-600' : 'bg-muted/50 border-border'
           }`}>
             <Clock className="h-4 w-4" />
             {formatTime(timeLeft || 0)} Remaining
@@ -535,6 +809,42 @@ export default function CandidateAssessmentPage() {
                     </div>
                   )
                 })()
+              ) : currentQ.type === 'coding' ? (
+                <CodingQuestionEditor
+                  question={currentQ as any}
+                  answer={typeof answers[currentQ.id] === 'string'
+                    ? (() => {
+                        try {
+                          const parsed = JSON.parse(answers[currentQ.id] as string)
+                          return parsed?.code || ''
+                        } catch {
+                          return answers[currentQ.id] as string
+                        }
+                      })()
+                    : ''}
+                  onChange={(code) => {
+                    let lang = 'python'
+                    if (answers[currentQ.id]) {
+                      try {
+                        const parsed = JSON.parse(answers[currentQ.id] as string)
+                        lang = parsed?.language || 'python'
+                      } catch {}
+                    }
+                    setAnswers(prev => ({ ...prev, [currentQ.id]: JSON.stringify({ language: lang, code }) }))
+                  }}
+                  language={(() => {
+                    if (answers[currentQ.id]) {
+                      try {
+                        const parsed = JSON.parse(answers[currentQ.id] as string)
+                        return parsed?.language || 'python'
+                      } catch {}
+                    }
+                    return currentQ.language || 'python'
+                  })()}
+                  isRunning={isRunning}
+                  runResult={runResult}
+                  onRun={handleRunCode}
+                />
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -542,10 +852,10 @@ export default function CandidateAssessmentPage() {
                     <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
                   </div>
                   <textarea 
-                    value={answers[currentQ.id] || ''}
+                    value={(answers[currentQ.id] as string) || ''}
                     onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
-                    placeholder="// Write your solution here..."
-                    className="w-full h-96 p-4 font-mono text-sm bg-zinc-950 text-zinc-50 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                    placeholder="Write your response here..."
+                    className="w-full h-96 p-4 text-sm bg-card text-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                     spellCheck={false}
                   />
                 </div>

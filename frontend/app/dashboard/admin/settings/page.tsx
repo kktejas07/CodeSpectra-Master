@@ -1,4 +1,5 @@
 'use client'
+import { AiAnalyticsDashboard } from "./AiAnalyticsDashboard"
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -34,6 +35,7 @@ import {
   XCircle,
   ScrollText,
   Trophy,
+  Video,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -48,7 +50,8 @@ import {
 } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloudflare-section'
-import { MobileSettingsPage } from '@/app/dashboard/admin/settings/mobile/mobile-settings-page'
+import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
+import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
 import KycSettingsSection from '@/app/dashboard/admin/settings/kyc/page'
 import { useToast } from '@/lib/toast-context'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
@@ -136,6 +139,7 @@ const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'ma
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
 const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
+const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_logo_url', 'video_player_logo_link_url']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
   postal_recovery: 'Postal — password reset link',
@@ -179,6 +183,7 @@ type SecretsDraft = {
   opencode_api_key: string
   openrouter_api_key: string
   nvidia_api_key: string
+  internal_backend_secret: string
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
@@ -218,6 +223,7 @@ const emptySecretsDraft = (): SecretsDraft => ({
   opencode_api_key: '',
   openrouter_api_key: '',
   nvidia_api_key: '',
+  internal_backend_secret: '',
 })
 
 function EmailTemplatesSection() {
@@ -293,7 +299,7 @@ function SystemSettingsInner() {
   const addToast = useToast()
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState<
-    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | 'gamification' | null
+    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | 'gamification' | 'redis' | 'media' | null
   >(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [form, setForm] = useState<General>(defaults)
@@ -471,7 +477,7 @@ function SystemSettingsInner() {
   }, [loading, secretsMeta])
 
   const saveKeys = useCallback(
-    async (keys: GeneralKey[], section: 'branding' | 'ops' | 'product' | 'certificates') => {
+    async (keys: GeneralKey[], section: 'branding' | 'ops' | 'product' | 'certificates' | 'media') => {
       setSavingKey(section)
       try {
         const body: Record<string, unknown> = {}
@@ -666,8 +672,7 @@ function SystemSettingsInner() {
             </p>
                   </div>
                 </div>
-
-              </div>
+      </div>
 
       {loadError ? (
         <Alert variant="destructive" className="border-destructive/40">
@@ -678,6 +683,7 @@ function SystemSettingsInner() {
 
       <div className="min-w-0 space-y-6">
           {section === 'branding' ? (
+        <div className="space-y-6">
         <Card className="rounded-xl border-border/60 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
@@ -917,11 +923,117 @@ function SystemSettingsInner() {
             </Button>
           </div>
         </Card>
-          ) : null}
+        </div>
+      ) : null}
 
-           {section === 'cloudflare' ? (
-             <CloudflareSettingsSection />
-           ) : null}
+      {section === 'media' ? (
+        <Card className="rounded-xl border-border/60 bg-card p-6 shadow-sm">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Media Player Settings</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configure global defaults for the Vidstack video player.
+              </p>
+            </div>
+            <div className="rounded-full bg-primary/10 p-2 text-primary">
+              <Video className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <Label htmlFor="video_player_primary_color">Primary Theme Color (Hex)</Label>
+              <Input
+                id="video_player_primary_color"
+                value={form.video_player_primary_color}
+                onChange={(e) => setForm((f) => ({ ...f, video_player_primary_color: e.target.value }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background"
+                placeholder="#34d399"
+              />
+            </div>
+            <div className="flex flex-col justify-center space-y-4">
+              <div className="flex items-center justify-between mt-6">
+                <div className="space-y-0.5">
+                  <Label>Autoplay by Default</Label>
+                  <p className="text-sm text-muted-foreground">Start videos automatically when loaded</p>
+                </div>
+                <Switch
+                  checked={form.video_player_autoplay}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_autoplay: c }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Muted by Default</Label>
+                  <p className="text-sm text-muted-foreground">Start videos with sound off</p>
+                </div>
+                <Switch
+                  checked={form.video_player_muted}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_muted: c }))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 space-y-4 border-t border-border/40 pt-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branding overlay</p>
+            <div>
+              <Label htmlFor="video_player_logo_url">Player logo / watermark URL</Label>
+              <Input
+                id="video_player_logo_url"
+                type="url"
+                value={form.video_player_logo_url}
+                onChange={(e) => setForm((f) => ({ ...f, video_player_logo_url: e.target.value }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                placeholder="https://codespectra.ai/logo.png"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Shown in the player controls (top-left). Leave empty to hide.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="video_player_logo_link_url">Logo link URL (optional)</Label>
+              <Input
+                id="video_player_logo_link_url"
+                type="url"
+                value={form.video_player_logo_link_url}
+                onChange={(e) => setForm((f) => ({ ...f, video_player_logo_link_url: e.target.value }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                placeholder="https://codespectra.ai"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Where the player logo links when clicked. Leave empty for no link.
+              </p>
+            </div>
+            {form.video_player_logo_url ? (
+              <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 p-3">
+                <img src={form.video_player_logo_url} alt="player logo preview" className="h-8 w-auto rounded object-contain" />
+                <p className="text-xs text-muted-foreground">Logo preview</p>
+              </div>
+            ) : null}
+          </div>
+          <div className="mt-6 flex justify-end">
+            <Button
+              className="gap-2 rounded-lg"
+              onClick={() => void saveKeys(MEDIA_KEYS, 'media')}
+              disabled={savingKey !== null}
+            >
+              {savingKey === 'media' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save media settings
+            </Button>
+          </div>
+        </Card>
+      ) : null}
+
+      {section === 'cloudflare' ? (
+        <CloudflareSettingsSection />
+      ) : null}
+
+            {section === 'redis' ? (
+              <RedisSettingsSection />
+            ) : null}
+
+            {section === 'whatsapp' ? (
+              <WhatsAppSettingsSection />
+            ) : null}
 
            {section === 'mail' ? (
         <Card className="rounded-xl border-border/60 shadow-sm">
@@ -1502,6 +1614,54 @@ function SystemSettingsInner() {
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                     >
                       {visibleFields.github_app_token ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Internal backend auth secret (frontend copy of INTERNAL_BACKEND_SECRET) */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="internal-secret-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Internal backend auth secret</p>
+                    <div className="flex items-center gap-2">
+                      {secretsMeta.has_internal_backend_secret ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                      )}
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Shared secret sent as <code>x-internal-secret</code> on server-to-server calls
+                    to the FastAPI backend (<code>/internal/*</code> routes). <strong>Must match the
+                    backend's <code>INTERNAL_BACKEND_SECRET</code> environment variable</strong> set in
+                    Dokploy — this field only controls the frontend's copy and takes effect on the
+                    next request after save.
+                  </p>
+                  {secretsMeta.has_internal_backend_secret ? (
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      Current key: {String(secretsMeta.internal_backend_secret_masked ?? '—')}
+                    </p>
+                  ) : null}
+                  <div className="relative">
+                    <Input
+                      id="sec_internal_backend_secret"
+                      type={visibleFields.internal_backend_secret ? 'text' : 'password'}
+                      value={visibleFields.internal_backend_secret ? (revealedValues.internal_backend_secret ?? '') : '••••••••'}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, internal_backend_secret: e.target.value }))
+                      }
+                      placeholder="Leave blank to keep Dokploy env value"
+                      className="font-mono pr-10"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => handleRevealToggle('internal_backend_secret')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
+                    >
+                      {visibleFields.internal_backend_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
@@ -2181,10 +2341,6 @@ function SystemSettingsInner() {
             </Card>
           ) : null}
 
-          {section === 'mobile' ? (
-            <MobileSettingsPage />
-          ) : null}
-
           {section === 'llm' ? (
             <div className="space-y-0" data-testid="llm-section">
               <Card className="rounded-xl border-border/60 p-6">
@@ -2268,6 +2424,7 @@ function SystemSettingsInner() {
                   </Button>
                 </div>
               </Card>
+              <AiAnalyticsDashboard />
             </div>
           ) : section === 'gamification' ? (
             <Card className="rounded-xl border-border/60 shadow-sm">

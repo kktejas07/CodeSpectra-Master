@@ -16,23 +16,11 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/api-auth'
 import { hackathons, hackathonTeams, newId, nowIso, xpToLevel, type HackathonAchievement } from '@/lib/db/qr-events'
-import { generateQrSvg } from '@/lib/qr'
 
 export const runtime = 'nodejs'
 
 function isAdmin(role?: string | null): boolean {
   return ['superadmin', 'admin', 'tenant_admin'].includes((role || '').toLowerCase())
-}
-
-function absoluteOrigin(req: NextRequest): string {
-  const env = process.env.NEXT_PUBLIC_APP_URL?.replace(/\/+$/, '')
-  if (env) return env
-  const proto = req.headers.get('x-forwarded-proto') || 'https'
-  const host =
-    req.headers.get('x-forwarded-host') ||
-    req.headers.get('host') ||
-    'localhost:3000'
-  return `${proto}://${host}`
 }
 
 async function resolveTeam(hackathonIdOrSlug: string, teamIdOrSlug: string) {
@@ -51,7 +39,7 @@ async function resolveTeam(hackathonIdOrSlug: string, teamIdOrSlug: string) {
 }
 
 export async function GET(
-  req: NextRequest,
+  _req: NextRequest,
   ctx: { params: Promise<{ id: string; teamId: string }> },
 ) {
   const user = await getAPIUser()
@@ -59,11 +47,20 @@ export async function GET(
   const { id, teamId } = await ctx.params
   const team = await resolveTeam(id, teamId)
   if (!team) return NextResponse.json({ error: 'not found' }, { status: 404 })
-  const qrUrl = `${absoluteOrigin(req)}/qr/${team.qr_token}`
-  const qrSvg = await generateQrSvg(qrUrl, { size: 320 })
+
+  // Join token is a bearer credential for the share link — only admins or
+  // members of the team may read it. Everyone else gets the team sans token.
+  const isMember = Array.isArray(team.members) && team.members.some((m: { user_id?: string }) => m.user_id === user.id)
+  if (!isAdmin(user.role) && !isMember) {
+    const { qr_token: _qr, _id: _omit, ...clean } = team as typeof team & { _id?: unknown; qr_token?: string }
+    void _qr
+    void _omit
+    return NextResponse.json({ team: clean })
+  }
+
   const { _id: _omit, ...clean } = team as typeof team & { _id?: unknown }
   void _omit
-  return NextResponse.json({ team: clean, qr_url: qrUrl, qr_svg: qrSvg })
+  return NextResponse.json({ team: clean })
 }
 
 export async function PATCH(

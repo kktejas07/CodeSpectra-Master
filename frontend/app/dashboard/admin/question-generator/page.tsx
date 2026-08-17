@@ -220,19 +220,33 @@ export default function QuestionGeneratorPage() {
                   </div>
                 )}
 
-                {(result.problem as { starter_code?: string }).starter_code && (
-                  <div className="rounded-lg border border-border/60 overflow-hidden">
-                    <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-3 py-2 bg-muted/30 border-b border-border/60">
-                      Starter Code
-                      {(result.problem as { language?: string }).language && (
-                        <span className="ml-2 normal-case tracking-normal">{(result.problem as { language?: string }).language}</span>
+                {result.problem && (() => {
+                  const sc = (result.problem as unknown as { starter_code?: Record<string, string> | string }).starter_code
+                  const isMap = typeof sc === 'object' && sc !== null
+                  if (!sc || (typeof sc === 'string' && !sc.trim()) || (isMap && Object.keys(sc).length === 0)) return null
+                  return (
+                    <div className="rounded-lg border border-border/60 overflow-hidden">
+                      <p className="text-[10px] uppercase tracking-wider font-semibold text-muted-foreground px-3 py-2 bg-muted/30 border-b border-border/60">
+                        Starter Code
+                        {!isMap && (result.problem as unknown as { language?: string }).language && (
+                          <span className="ml-2 normal-case tracking-normal">{(result.problem as unknown as { language?: string }).language}</span>
+                        )}
+                      </p>
+                      {isMap ? (
+                        <div className="divide-y divide-border/60">
+                          {Object.entries(sc as Record<string, string>).map(([lang, code]) => (
+                            <div key={lang}>
+                              <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2">{lang}</p>
+                              <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap break-words">{code || '(no starter)'}</pre>
+                            </div>
+                          ))}
+                        </div>
+                      ) : (
+                        <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap break-words">{sc as string}</pre>
                       )}
-                    </p>
-                    <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap break-words">
-                      {(result.problem as { starter_code?: string }).starter_code}
-                    </pre>
-                  </div>
-                )}
+                    </div>
+                  )
+                })()}
 
                 {!((result.problem as { title?: string }).title) && (
                   <pre

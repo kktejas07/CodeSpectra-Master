@@ -115,11 +115,11 @@
 
 ---
 
-## ADR-006: Monorepo Structure (frontend/ + backend/ + mobile/)
+## ADR-006: Monorepo Structure (frontend/ + backend/)
 
 **Status:** Accepted
 
-**Context:** CodeSpectra consists of a Next.js TypeScript application, a FastAPI Python service, and a React Native mobile app. These share no runtime code but are developed, tested, and deployed together. The team needed to decide between a monorepo and multiple repositories.
+**Context:** CodeSpectra consists of a Next.js TypeScript application and a FastAPI Python service. These share no runtime code but are developed, tested, and deployed together. The team needed to decide between a monorepo and multiple repositories.
 
 **Decision:** Use a monorepo with separate directories for each application, without a shared package manager workspace.
 
@@ -134,22 +134,17 @@ codespectra/
 │   ├── requirements.txt  # pip-managed
 │   ├── Dockerfile
 │   └── ...
-├── mobile/           # React Native
-│   ├── android/
-│   ├── ios/
-│   └── ...
 ├── docker-compose.yml
 └── docs/
 ```
 
 **Rationale:**
-- Single repository simplifies cross-team visibility — frontend, backend, and mobile developers see all changes
+- Single repository simplifies cross-team visibility — frontend and backend developers see all changes
 - No shared package manager workspace overhead — each sub-project manages its own dependencies independently
 - Single `docker-compose.yml` orchestrates all services for local development
 - Shared documentation in `docs/` and development conventions in `AGENTS.md`
 - CI/CD can be unified (single pipeline build all services) or per-service (separate Docker builds)
 
 **Consequences:**
-- **Positive:** Easy to see the full system state in one checkout. Single PRs can span frontend and backend changes. Docker Compose orchestrates all three services for local development. No cross-package version conflicts.
-- **Negative:** No shared TypeScript types between frontend and mobile (they copy types as needed). Git history includes all projects, which can be noisy. Monorepo tooling (changesets, Turborepo) was evaluated but not adopted — the team preferred simplicity over workspace tooling.
-- **Future consideration:** If the mobile app grows significantly, it could be split into a separate repository with shared types published as an npm package. The current `AGENTS.md` rules (RBAC, CRUD, null safety) apply to the frontend only, with no equivalent rules for mobile yet.
+- **Positive:** Easy to see the full system state in one checkout. Single PRs can span frontend and backend changes. Docker Compose orchestrates both services for local development. No cross-package version conflicts.
+- **Negative:** Git history includes all projects, which can be noisy. Monorepo tooling (changesets, Turborepo) was evaluated but not adopted — the team preferred simplicity over workspace tooling.

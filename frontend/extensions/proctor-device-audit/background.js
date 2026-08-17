@@ -13,10 +13,78 @@
 const API_BASE = 'https://codespectra.ai'
 const POLL_INTERVAL_MS = 5000
 const STORAGE_KEY = 'cspectra_last_audit'
+const SESSION_KEY = 'cspectra_current_session'
+const DEVICES_KEY = 'cspectra_known_devices'
 
 let currentSession = null // { sessionKind, sessionId }
 let knownDevices = new Map() // key: id → device snapshot
 let pollTimer = null
+
+// ─── Session Persistence ─────────────────────────────────────────────────────
+
+async function saveSession() {
+  try {
+    await chrome.storage.local.set({ [SESSION_KEY]: currentSession })
+  } catch { /* ignore */ }
+}
+
+async function restoreSession() {
+  try {
+    const data = await chrome.storage.local.get([SESSION_KEY, DEVICES_KEY])
+    currentSession = data[SESSION_KEY] || null
+    if (currentSession) {
+      console.log('[cspectra] session restored from storage')
+    }
+    // Restore known devices for hotplug diffing
+    const devicesData = data[DEVICES_KEY]
+    if (devicesData && Array.isArray(devicesData)) {
+      for (const d of devicesData) {
+        knownDevices.set(d.id, d)
+      }
+    }
+  } catch { /* ignore */ }
+}
+
+// Restore session on service worker startup
+restoreSession()
+
+// ─── Classification (duplicated from lib/classify.js — service worker can't import content_scripts) ──
+
+const BLOCKED_USB_CLASSES = new Set([0x08])
+const SAFE_USB_CLASSES    = new Set([0x03, 0x09])
+const SAFE_HID_USAGES     = new Set([0x01])
+const WARN_HID_USAGES     = new Set([0x0d])
+
+const USB_CLASS_NAMES = {
+  0x01: 'Audio', 0x02: 'CDC/Serial', 0x03: 'HID', 0x07: 'Printer',
+  0x08: 'Mass Storage', 0x09: 'Hub', 0x0e: 'Video', 0xff: 'Vendor-specific',
+}
+
+const STORAGE_TYPE_NAMES = {
+  usb: 'USB Storage', fixed: 'Internal Storage',
+  removable: 'Removable Media', unknown: 'Unknown Storage',
+}
+
+function classifyUsbClass(classCode) {
+  if (classCode === undefined || classCode === null) return { verdict: 'warn', reason: 'Unknown device class' }
+  if (BLOCKED_USB_CLASSES.has(classCode)) return { verdict: 'blocked', reason: `Mass storage / pen drive (class 0x${classCode.toString(16)})` }
+  if (SAFE_USB_CLASSES.has(classCode)) return { verdict: 'safe', reason: USB_CLASS_NAMES[classCode] || 'Known safe class' }
+  return { verdict: 'warn', reason: `Unrecognized USB class (0x${classCode.toString(16)})` }
+}
+
+function classifyHidUsage(usagePage) {
+  if (usagePage === undefined || usagePage === null) return { verdict: 'safe', reason: 'Default HID' }
+  if (SAFE_HID_USAGES.has(usagePage)) return { verdict: 'safe', reason: 'Mouse / Keyboard' }
+  if (WARN_HID_USAGES.has(usagePage)) return { verdict: 'warn', reason: 'Pen digitizer / drawing tablet' }
+  return { verdict: 'warn', reason: `Unrecognized HID usage (0x${usagePage.toString(16)})` }
+}
+
+function classifyStorageType(type) {
+  if (type === 'usb') return { verdict: 'blocked', reason: 'USB removable storage detected' }
+  if (type === 'fixed') return { verdict: 'safe', reason: 'Internal storage' }
+  if (type === 'removable') return { verdict: 'warn', reason: 'Removable media (CD/floppy)' }
+  return { verdict: 'warn', reason: 'Unknown storage type' }
+}
 
 // ─── Enumeration ─────────────────────────────────────────────────────────────
 
@@ -102,21 +170,31 @@ async function enumerateAll() {
 
 async function reportToApi(eventType, meta) {
   if (!currentSession) return
-  try {
-    await fetch(`${API_BASE}/api/proctor/events`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      credentials: 'include',
-      body: JSON.stringify({
-        session_kind: currentSession.sessionKind,
-        session_id: currentSession.sessionId,
-        event_type: eventType,
-        meta: { ...meta, source: 'chrome-extension' },
-      }),
-    })
-  } catch (e) {
-    console.warn('[cspectra] API report failed:', e)
+  const payload = {
+    session_kind: currentSession.sessionKind,
+    session_id: currentSession.sessionId,
+    event_type: eventType,
+    meta: { ...meta, source: 'chrome-extension' },
   }
+  // Retry transient failures — the server enforces a hardware_port_audit event
+  // before accepting a submission, so a single dropped POST must not block a
+  // legitimate candidate.
+  for (let attempt = 0; attempt < 3; attempt++) {
+    try {
+      const res = await fetch(`${API_BASE}/api/proctor/events`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(payload),
+      })
+      if (res.ok) return true
+      console.warn(`[cspectra] API report ${eventType} failed (${res.status}), attempt ${attempt + 1}`)
+    } catch (e) {
+      console.warn(`[cspectra] API report ${eventType} failed (network), attempt ${attempt + 1}:`, e)
+    }
+    await new Promise((r) => setTimeout(r, 1000 * (attempt + 1)))
+  }
+  return false
 }
 
 // ─── Audit ───────────────────────────────────────────────────────────────────
@@ -166,6 +244,11 @@ async function runFullAudit() {
     knownDevices.set(d.id, d)
   }
 
+  // Save known devices to storage
+  try {
+    await chrome.storage.local.set({ [DEVICES_KEY]: Array.from(knownDevices.values()) })
+  } catch { /* ignore */ }
+
   // Notify content script
   notifyContentScript({ type: 'audit-result', audit })
 
@@ -198,6 +281,11 @@ async function diffAndReport() {
   for (const d of current) {
     knownDevices.set(d.id, d)
   }
+
+  // Save known devices to storage for persistence across restarts
+  try {
+    await chrome.storage.local.set({ [DEVICES_KEY]: Array.from(knownDevices.values()) })
+  } catch { /* ignore */ }
 
   // Update cache
   try {
@@ -243,11 +331,24 @@ function stopHotplugWatcher() {
 // ─── Content script bridge ───────────────────────────────────────────────────
 
 function notifyContentScript(msg) {
-  chrome.tabs.query({ url: ['*://codespectra.ai/assessment/*', '*://codespectra.ai/dashboard/assessments/*', '*://localhost:3000/assessment/*', '*://localhost:3000/dashboard/assessments/*'] }, (tabs) => {
-    for (const tab of tabs) {
-      chrome.tabs.sendMessage(tab.id, msg).catch(() => null)
-    }
-  })
+  const urlPatterns = [
+    'https://codespectra.ai/assessment/*',
+    'https://codespectra.ai/dashboard/assessments/*',
+    'https://codespectra.ai/dashboard/admin/assessments/*',
+  ]
+  try {
+    chrome.tabs.query({ url: urlPatterns }, (tabs) => {
+      if (chrome.runtime.lastError || !tabs) return
+      if (!Array.isArray(tabs)) return
+      for (const tab of tabs) {
+        if (tab?.id) {
+          chrome.tabs.sendMessage(tab.id, msg).catch(() => null)
+        }
+      }
+    })
+  } catch (e) {
+    console.warn('[cspectra] notifyContentScript failed:', e)
+  }
 }
 
 // ─── Message handler ─────────────────────────────────────────────────────────
@@ -255,6 +356,7 @@ function notifyContentScript(msg) {
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'start-audit') {
     currentSession = { sessionKind: msg.sessionKind, sessionId: msg.sessionId }
+    saveSession() // Persist session to storage
     runFullAudit().then((audit) => {
       startHotplugWatcher()
       sendResponse({ ok: true, audit })
@@ -275,6 +377,7 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === 'stop-audit') {
     stopHotplugWatcher()
     currentSession = null
+    saveSession() // Clear session from storage
     sendResponse({ ok: true })
     return false
   }

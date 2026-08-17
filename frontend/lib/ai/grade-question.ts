@@ -1,5 +1,7 @@
 import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
+import { answersEqual, multisetEqual, canonicalObjectiveType } from '@/lib/grading'
+import { executeOnce } from '@/lib/piston'
 
 export const OBJECTIVE_TYPES = ['multiple-choice', 'mcq', 'true_false', 'multiple_response', 'fill_blanks']
 
@@ -55,10 +57,17 @@ export interface GradeResult {
   recommended: number
   verdict: 'correct' | 'partial' | 'incorrect'
   feedback: string
+  confidence?: number
+  requires_human_review?: boolean
 }
 
 function normalizeSet(value: string): Set<string> {
   return new Set(value.split(',').map(s => s.trim().toLowerCase()).filter(Boolean))
+}
+
+/** Split a comma list into non-empty trimmed parts. */
+function parts(value: string): string[] {
+  return (value || '').split(',').map(s => s.trim()).filter(Boolean)
 }
 
 /** Extract a JSON object from an LLM response that may contain prose/markdown. */
@@ -95,17 +104,20 @@ export async function gradeAnswer(input: {
   modelAnswer: string
   type: string
   maxPoints: number
+  options?: string[]
+  testCases?: { input: string; output: string }[]
 }): Promise<GradeResult> {
-  const { questionText, candidateAnswer, modelAnswer, type, maxPoints } = input
+  const { questionText, candidateAnswer, modelAnswer, type, maxPoints, options, testCases } = input
   const t = (type || '').toLowerCase()
-  const isObjective = OBJECTIVE_TYPES.includes(t)
+  const objective = canonicalObjectiveType(t)
+  const isObjective = objective !== 'free_text'
 
   if (isObjective) {
     const userSet = normalizeSet(candidateAnswer)
     const correctSet = normalizeSet(modelAnswer)
 
-    if (t === 'multiple_response') {
-      const correct = userSet.size > 0 && userSet.size === correctSet.size && [...userSet].every(v => correctSet.has(v))
+    if (objective === 'multiple_response') {
+      const correct = multisetEqual(candidateAnswer, modelAnswer, options)
       return {
         recommended: correct ? maxPoints : 0,
         verdict: correct ? 'correct' : 'incorrect',
@@ -113,28 +125,30 @@ export async function gradeAnswer(input: {
           ? 'All correct choices selected.'
           : userSet.size === 0
             ? 'No choice selected for a multi-select question.'
-            : [...userSet].filter(v => !correctSet.has(v)).length > 0
+            : parts(candidateAnswer).some(v => !correctSet.has(v.toLowerCase().trim()))
               ? 'One or more selected choices are not part of the correct answer.'
               : 'An incomplete selection — some correct choices were missed.',
       }
     }
 
-    if (t === 'fill_blanks' || t === 'fill-blank' || t === 'fill_blank') {
-      const ok = userSet.size === correctSet.size ? [...correctSet].every(v => userSet.has(v)) : false
-      const partial = [...correctSet].filter(v => userSet.has(v)).length
-      const recommended = ok ? maxPoints : partial > 0 ? Math.max(1, Math.round((partial / Math.max(1, correctSet.size)) * maxPoints)) : 0
+    if (objective === 'fill_blanks') {
+      const userP = parts(candidateAnswer)
+      const correctP = parts(modelAnswer)
+      const matched = correctP.filter((c) => userP.some((u) => answersEqual(u, c, options))).length
+      const full = correctP.length > 0 && matched === correctP.length && userP.length === correctP.length
+      const recommended = full ? maxPoints : matched > 0 ? Math.max(1, Math.round((matched / Math.max(1, correctP.length)) * maxPoints)) : 0
       return {
         recommended,
-        verdict: ok ? 'correct' : partial > 0 ? 'partial' : 'incorrect',
-        feedback: ok
+        verdict: full ? 'correct' : matched > 0 ? 'partial' : 'incorrect',
+        feedback: full
           ? 'Fill-in-the-blank answer matches the expected value.'
-          : partial > 0
-            ? `Partially correct — matches ${partial} of ${correctSet.size} expected value(s).`
+          : matched > 0
+            ? `Partially correct — matches ${matched} of ${correctP.length} expected value(s).`
             : 'Blank answer does not match the expected value.',
       }
     }
 
-    const correct = userSet.size === 1 && correctSet.size > 0 && userSet.has([...correctSet][0])
+    const correct = answersEqual(candidateAnswer, modelAnswer, options)
     return {
       recommended: correct ? maxPoints : 0,
       verdict: correct ? 'correct' : 'incorrect',
@@ -144,12 +158,79 @@ export async function gradeAnswer(input: {
 
   // ── Free-text (code / descriptive): grade with the configured LLM ──
   const isCoding = t.replace(/[-_]/g, '') === 'coding' || t === 'code'
-  const prompt = `You are a strict, fair technical examiner. Grade the candidate's ${isCoding ? 'code' : 'written'} answer against the model answer and the question.
+  
+  let finalAwarded: number | undefined = undefined
+  let prompt = ''
+
+  if (isCoding && testCases && testCases.length > 0) {
+    let codeValue = candidateAnswer
+    let codeLang = 'python'
+    try {
+      const parsed = JSON.parse(candidateAnswer)
+      if (parsed && typeof parsed === 'object') {
+        codeValue = parsed.code || ''
+        codeLang = parsed.language || 'python'
+      }
+    } catch {
+      // Ignore, leave as text
+    }
+
+    let passed = 0
+    const results = []
+    for (const tc of testCases) {
+      try {
+        const runRes = await executeOnce({
+          language: codeLang,
+          source: codeValue,
+          stdin: tc.input || ''
+        })
+        const out = (runRes.run.stdout || '').trim()
+        const expected = (tc.output || '').trim()
+        
+        if (runRes.run.code === 0 && out === expected) {
+          passed++
+          results.push({ input: tc.input, expected, actual: out, pass: true })
+        } else {
+          results.push({ input: tc.input, expected, actual: out, error: runRes.run.stderr, pass: false })
+        }
+      } catch (err) {
+        results.push({ input: tc.input, expected: tc.output, actual: '', error: String(err), pass: false })
+      }
+    }
+    
+    finalAwarded = Math.round((passed / testCases.length) * maxPoints)
+
+    prompt = `You are a strict, fair technical examiner evaluating a candidate's code.
+The code was physically executed against ${testCases.length} hidden test cases and passed ${passed}.
+
+Code Language: ${codeLang}
+Code:
+${codeValue}
+
+Test Results:
+${JSON.stringify(results, null, 2)}
+
+Provide concise feedback (2-3 sentences) on why the code failed (if any) and its overall quality/time-complexity.
+Since the score is auto-calculated based on test passes, you MUST output "awarded": ${finalAwarded}.
+Determine a confidence score (0.0 to 1.0) on your feedback.
+If the code is malicious or highly suspicious, set requires_human_review to true.
+
+Respond ONLY as JSON with this exact shape:
+{
+  "awarded": ${finalAwarded},
+  "verdict": "${finalAwarded === maxPoints ? 'correct' : finalAwarded > 0 ? 'partial' : 'incorrect'}",
+  "feedback": "<concise feedback>",
+  "confidence": <float 0.0-1.0>,
+  "requires_human_review": <boolean>
+}`
+  } else {
+    prompt = `You are a strict, fair technical examiner. Your task is to evaluate a candidate's ${isCoding ? 'code' : 'written'} answer.
+DO NOT simply compare strings. Instead, evaluate the underlying concepts.
 
 QUESTION:
 ${questionText}
 
-MODEL ANSWER / RUBRIC:
+MODEL ANSWER / REFERENCE:
 ${modelAnswer || '(No model answer provided — judge based on the question and general correctness.)'}
 
 MAX POINTS: ${maxPoints}
@@ -157,14 +238,30 @@ MAX POINTS: ${maxPoints}
 CANDIDATE'S ANSWER:
 ${candidateAnswer}
 
+EVALUATION PROCESS:
+1. Identify the core concepts, required knowledge, and potential incorrect claims from the Reference.
+2. Evaluate if the Candidate's Answer demonstrates understanding of those core concepts, even if they use different words.
+3. Determine a confidence score (0.0 to 1.0). If the answer is highly ambiguous, confusing, or you are unsure if a concept maps correctly, output a lower confidence.
+4. If confidence is below 0.75, set requires_human_review to true.
+5. Provide concise feedback explaining what concepts were missing or incorrect.
+
+GRADING RULES:
+- IGNORE whitespace, formatting, variable naming (unless explicitly asked).
+- Deduct points ONLY for missing concepts or factually incorrect statements.
+- For SQL specifically: Focus on logic equivalence (SELECT, FROM, WHERE, JOINs) rather than formatting.
+- If the candidate's answer is semantically equivalent to the model answer, award full points.
+
 Respond ONLY as JSON with this exact shape:
 {
-  "awarded": <integer 0..${maxPoints}>,  // points justified by the answer
+  "awarded": <integer 0..${maxPoints}>,
   "verdict": "correct" | "partial" | "incorrect",
-  "feedback": "<2-4 sentences explaining where the answer went right/wrong, what is missing, and how to improve>"
+  "feedback": "<2-4 sentences explaining missing/incorrect concepts>",
+  "confidence": <float 0.0-1.0>,
+  "requires_human_review": <boolean>
 }
 
 Be strict but fair. Grade what is actually there, not potential. If it is code, check it actually compiles/runs and solves the task — note errors, edge cases missed, and correctness.`
+  }
 
   const res = await backendComplete({
     systemMessage: 'You are a strict, accurate technical examiner that grades candidate answers. Return only valid JSON.',
@@ -184,18 +281,24 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
   }
 
   const parsed = (res.ok && res.json ? res.json as Record<string, unknown> : null) || extractJson(res.raw || res.text || '')
-  const awarded = Number((parsed as any)?.awarded)
+  
+  // Use finalAwarded if set (for executed code), otherwise parsed awarded
+  const awarded = finalAwarded !== undefined ? finalAwarded : Number((parsed as any)?.awarded)
   const recommended = Number.isFinite(awarded) ? Math.max(0, Math.min(maxPoints, Math.round(awarded))) : 0
+  
   const feedback = String((parsed as any)?.feedback || '').trim()
   const verdict = ['correct', 'partial', 'incorrect'].includes(String((parsed as any)?.verdict))
     ? String((parsed as any)?.verdict)
     : recommended >= maxPoints ? 'correct' : recommended > 0 ? 'partial' : 'incorrect'
 
+  const confidence = typeof (parsed as any)?.confidence === 'number' ? (parsed as any).confidence : 1.0
+  const requires_human_review = !!(parsed as any)?.requires_human_review || confidence < 0.75
+
   if (!feedback && !Number.isFinite(awarded)) {
     // Graceful fallback — return 0 points instead of crashing the whole review page
     console.warn('[ai-grade] LLM returned unstructured response, falling back to 0')
-    return { recommended: 0, verdict: 'incorrect', feedback: 'AI could not evaluate this answer — manual review recommended.' }
+    return { recommended: 0, verdict: 'incorrect', feedback: 'AI could not evaluate this answer — manual review recommended.', confidence: 0.0, requires_human_review: true }
   }
 
-  return { recommended, verdict: verdict as GradeResult['verdict'], feedback }
+  return { recommended, verdict: verdict as GradeResult['verdict'], feedback, confidence, requires_human_review }
 }

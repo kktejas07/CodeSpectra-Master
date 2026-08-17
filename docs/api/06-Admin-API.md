@@ -302,6 +302,12 @@ Platform-wide metrics (aggregate scan counts, active users).
 ### GET /api/admin/server-secrets
 List server secrets (encrypted keys).
 
+### POST /api/admin/redis/test
+Verify the configured Redis connection (superadmin). Body may include `{ url, token }` to test before saving; otherwise the saved server-secret config is used. Returns `{ ok, mode, latencyMs?, error? }` where `mode` is `redis` (native RESP) or `upstash-rest`.
+
+### GET /api/admin/redis/status
+Live Redis health + rate-limit counters (superadmin). Returns `{ configured, connected, mode, latencyMs?, memoryUsedMb?, connectedClients?, opsPerSec?, uptimeSec?, keyspace?, rateLimitKeys?, error? }`. For native `redis://` mode it runs `INFO` (memory, clients, ops/sec, uptime) and `SCAN`s both `codespectra:rl:*` (frontend generate-fixes) and `ai_rate_limit:*` (backend AI router) to surface the current live rate-limit counters (top 25 by hit count with TTL). Upstash REST mode returns connectivity + latency only.
+
 ### POST /api/admin/server-secrets
 Set a server secret.
 
@@ -379,6 +385,8 @@ Body: `{ branch?, subject?, difficulty?: 'Easy'|'Medium'|'Hard'|'mixed', types?:
 | `/api/admin/system/cache` | GET, POST | superadmin | in-memory |
 | `/api/admin/metrics` | GET | superadmin | multiple |
 | `/api/admin/server-secrets` | GET, POST | superadmin | `server_secrets` |
+| `/api/admin/redis/test` | POST | superadmin | Redis |
+| `/api/admin/redis/status` | GET | superadmin | Redis |
 | `/api/admin/test-emails` | POST | superadmin | N/A (Postal) |
 | `/api/newsletter/subscribers` | GET, POST | superadmin | `newsletter_subscribers` |
 | `/api/question-bank` | GET, POST, PATCH, DELETE | GET auth, rest superadmin | `question_bank` |

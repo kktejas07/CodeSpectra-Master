@@ -11,6 +11,8 @@ interface ExtensionGateProps {
   children: React.ReactNode
   /** If true, skip the gate (for non-strict assessments). */
   bypass?: boolean
+  /** Fired once the extension is confirmed present (useful to gate timers). */
+  onVerified?: () => void
 }
 
 /**
@@ -20,12 +22,12 @@ interface ExtensionGateProps {
  * For `bypass=true` the gate always passes — used for ai_flagged / focus_only
  * where the extension is recommended but not required.
  */
-export function ExtensionGate({ children, bypass = false }: ExtensionGateProps) {
+export function ExtensionGate({ children, bypass = false, onVerified }: ExtensionGateProps) {
   const [installed, setInstalled] = useState(bypass)
   const [checking, setChecking] = useState(!bypass)
 
   useEffect(() => {
-    if (bypass) { setInstalled(true); setChecking(false); return }
+    if (bypass) { setInstalled(true); setChecking(false); onVerified?.(); return }
 
     let elapsed = 0
     const timer = setInterval(() => {
@@ -34,6 +36,7 @@ export function ExtensionGate({ children, bypass = false }: ExtensionGateProps) 
       if (found) {
         setInstalled(true)
         setChecking(false)
+        onVerified?.()
         clearInterval(timer)
       } else if (elapsed >= CHECK_TIMEOUT_MS) {
         setChecking(false)
@@ -54,6 +57,7 @@ export function ExtensionGate({ children, bypass = false }: ExtensionGateProps) 
       if (found) {
         setInstalled(true)
         setChecking(false)
+        onVerified?.()
         clearInterval(timer)
       } else if (elapsed >= CHECK_TIMEOUT_MS) {
         setChecking(false)

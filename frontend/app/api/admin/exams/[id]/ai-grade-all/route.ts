@@ -57,7 +57,7 @@ export async function POST(
     for (const submission of submissions) {
       const userId = submission.user_id
       const details = (submission.details || []) as Array<{
-        qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number; remarks?: string
+        qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number; remarks?: string; requires_human_review?: boolean; confidence?: number
       }>
       const answers = (submission.answers || {}) as Record<string, string>
       const failList: string[] = []
@@ -81,6 +81,8 @@ export async function POST(
               modelAnswer: String(q.answer || q.correct_answer || '').trim(),
               type: q.type || '',
               maxPoints: q.points || q.score || d.points || 10,
+              options: Array.isArray(q.options) ? q.options.map(String) : undefined,
+              testCases: q.test_cases || q.testCases,
             })
           } catch (e: unknown) {
             // Wait out a rate limit (60 req/min) then retry once; otherwise fail this question.
@@ -94,6 +96,8 @@ export async function POST(
                   modelAnswer: String(q.answer || q.correct_answer || '').trim(),
                   type: q.type || '',
                   maxPoints: q.points || q.score || d.points || 10,
+                  options: Array.isArray(q.options) ? q.options.map(String) : undefined,
+                  testCases: q.test_cases || q.testCases,
                 })
               } catch (e2) {
                 failList.push(d.qId)
@@ -113,8 +117,10 @@ export async function POST(
               ...d,
               awarded: res.recommended,
               correct: res.recommended > 0,
-              pending_review: false,
+              pending_review: !!res.requires_human_review,
               remarks: res.feedback,
+              requires_human_review: res.requires_human_review,
+              confidence: res.confidence
             })
             totalGraded++
             gradedInSub++

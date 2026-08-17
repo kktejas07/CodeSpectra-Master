@@ -1,13 +1,16 @@
 /**
  * GET /api/users/[slug]
  *
- * Public-ish profile endpoint. `slug` can be either the user `id` or the
- * email local-part (text before `@`). Returns profile + XP + recent solves.
+ * Profile endpoint. `slug` can be either the user `id` or the email
+ * local-part (text before `@`). Returns profile + XP + recent solves.
+ * Requires login — anonymous callers must not enumerate users or read
+ * profiles/emails.
  */
 import { NextResponse } from 'next/server'
 import { ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 import { getUserXp } from '@/lib/db/leaderboard'
+import { requireAuth } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 
@@ -41,6 +44,10 @@ export async function GET(
   _req: Request,
   ctx: { params: Promise<{ slug: string }> },
 ) {
+  const gate = await requireAuth().catch(() => null)
+  if (!gate || 'error' in gate) {
+    return NextResponse.json({ error: 'Sign in required to view profiles' }, { status: 401 })
+  }
   const { slug } = await ctx.params
   const decoded = decodeURIComponent(slug || '').trim()
   if (!decoded) {

@@ -3,6 +3,8 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { newId, nowIso } from '@/lib/db/ai'
 import { parseUserAgent } from '@/lib/db/sessions'
+import { isIpInCidr } from '@/lib/db/security'
+import { answersEqual, multisetEqual, canonicalObjectiveType } from '@/lib/grading'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -21,20 +23,19 @@ export async function POST(
   }
 
   const gate = await requireAuth().catch(() => null)
-  let userId = ''
-  let email = ''
+  if (!gate || 'error' in gate) {
+    return NextResponse.json({ error: 'You must be signed in to take this assessment.' }, { status: 401 })
+  }
+  const userId = gate.user.id
+  const email = gate.user.email
 
   try {
     const db = await getMongoDb()
 
     const inviteToken = body.inviteToken || req.headers.get('x-invite-token')
 
-    if (gate && !('error' in gate)) {
-      userId = gate.user.id
-      email = gate.user.email
-    }
-
-    // If an invite token is provided, validate it and mark as used on submission
+    // If an invite token is provided, validate it, ensure the signed-in account
+    // owns it, and mark it used on submission.
     if (inviteToken) {
       const invite = await db.collection('candidate_invites').findOne({ token: inviteToken })
       if (!invite) {
@@ -43,19 +44,58 @@ export async function POST(
       if (invite.status === 'used') {
         return NextResponse.json({ error: 'This invitation has already been used' }, { status: 403 })
       }
-      if (!userId) userId = `candidate_${invite.email}`
-      if (!email) email = invite.email
+      if (invite.email.toLowerCase() !== email.toLowerCase()) {
+        return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different account.' }, { status: 403 })
+      }
       await db.collection('candidate_invites').updateOne(
         { token: inviteToken },
         { $set: { status: 'used', updatedAt: nowIso() } }
       )
-    } else if (!gate || 'error' in gate) {
-      return NextResponse.json({ error: 'Authentication or invitation token required' }, { status: 401 })
+    }
+
+    // IP blocking check (supports CIDR notation) — reuse shared matcher from
+    // lib/db/security.ts instead of duplicating the bit-math inline.
+    const clientIp = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+    if (clientIp) {
+      const blockedEntries = await db.collection('ip_blocklist').find({
+        active: { $ne: false },
+      }).toArray()
+      for (const entry of blockedEntries) {
+        if (isIpInCidr(clientIp, String(entry.ip))) {
+          return NextResponse.json({ error: 'This IP address has been blocked.' }, { status: 403 })
+        }
+      }
+    }
+
+    // Rate limiting: max 3 submissions per user per exam per hour
+    const submissions = db.collection('exam_submissions')
+    const recentSubmissions = await submissions.countDocuments({
+      exam_id: examId,
+      user_id: userId,
+      created_at: { $gte: new Date(Date.now() - 3600000).toISOString() }
+    })
+    if (recentSubmissions >= 3) {
+      return NextResponse.json({ error: 'Too many submission attempts. Please try again later.' }, { status: 429 })
     }
 
     const exams = db.collection('exams')
     const exam = await exams.findOne({ id: examId })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
+
+    // Extension enforcement: every candidate must have a hardware_port_audit
+    // event recorded for this exam (the Device Audit extension posts it on page
+    // load). Without it, the submit is rejected — no extension, no assessment.
+    const auditEvents = await db.collection('proctor_events').countDocuments({
+      user_id: userId,
+      session_id: examId,
+      event_type: 'hardware_port_audit',
+      created_at: { $gte: new Date(Date.now() - 24 * 3600 * 1000).toISOString() },
+    })
+    if (auditEvents === 0) {
+      return NextResponse.json({
+        error: 'Device Audit extension not detected. Install the CodeSpectra Device Audit Chrome extension, reload this page, and try again.',
+      }, { status: 403 })
+    }
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
     const answers = body.answers || {}
@@ -75,27 +115,16 @@ export async function POST(
       let pendingReview = false
 
       const qType = (q.type || '').toLowerCase().replace(/[-_]/g, '')
+      const objective = canonicalObjectiveType(qType)
 
-      if (['mcq', 'multiplechoice', 'truefalse'].includes(qType)) {
-        // Exact match (case-insensitive)
-        if (correctAns) {
-          correct = userAnswer.toLowerCase() === correctAns.toLowerCase()
-        }
-      } else if (qType === 'multipleresponse') {
-        // Compare sets of comma-separated answers
-        if (correctAns) {
-          const expected = new Set(correctAns.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean))
-          const given = new Set(userAnswer.toLowerCase().split(',').map((s: string) => s.trim()).filter(Boolean))
-          correct = expected.size === given.size && [...expected].every(v => given.has(v))
-        }
-      } else if (qType === 'fillblanks' || qType === 'fillinthe blanks' || qType === 'fillintheblanks') {
-        // Case-insensitive match against answer key
-        if (correctAns) {
-          correct = userAnswer.toLowerCase() === correctAns.toLowerCase()
-        }
-      } else if (['coding', 'descriptive'].includes(qType)) {
-        // These require manual grading by admin — but only when the candidate
-        // actually submitted something. A blank answer is an automatic 0.
+      if (['mcq', 'true_false'].includes(objective)) {
+        correct = answersEqual(userAnswer, correctAns, q.options)
+      } else if (objective === 'multiple_response') {
+        correct = multisetEqual(userAnswer, correctAns, q.options)
+      } else if (objective === 'fill_blanks') {
+        correct = multisetEqual(userAnswer, correctAns)
+      } else {
+        // coding / descriptive — manual (or AI) grading, unless blank.
         if (userAnswer) {
           pendingReview = true
           hasPendingReview = true
@@ -107,12 +136,12 @@ export async function POST(
     }
 
     // Save submission
-    const submissions = db.collection('exam_submissions')
     const submission = {
       id: newId(),
       exam_id: examId,
       user_id: userId,
       email: email,
+      source: inviteToken ? 'invite' : 'public_link',
       answers,
       score: totalScore,
       max_score: maxScore,
@@ -121,14 +150,19 @@ export async function POST(
       id_photo: body.idPhoto || null,
       face_photo: body.facePhoto || null,
       details,
-      device_info: { ua: req.headers.get('user-agent') || '', ...parseUserAgent(req.headers.get('user-agent') || ''), ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '' },
+      device_info: { 
+        ua: req.headers.get('user-agent') || '', 
+        ...parseUserAgent(req.headers.get('user-agent') || ''), 
+        ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '',
+        geo: req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || null
+      },
       created_at: nowIso(),
     }
     await submissions.insertOne(submission)
 
-    // Award XP + real-time notification for real platform users (invite-only
-    // candidates are not platform accounts). Idempotent per submission.
-    if (userId && !userId.startsWith('candidate_') && maxScore > 0 && totalScore > 0) {
+    // Award XP + real-time notification (invite-only candidates are real
+    // accounts now that login is mandatory). Idempotent per submission.
+    if (maxScore > 0 && totalScore > 0) {
       try {
         const { awardXpWithLevelUp } = await import('@/lib/xp-service')
         const { getXpRewards } = await import('@/lib/db/leaderboard')

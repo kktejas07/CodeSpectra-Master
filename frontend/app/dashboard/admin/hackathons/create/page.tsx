@@ -6,19 +6,24 @@ import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
+import { NumberField } from '@/components/ui/number-field'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
-import { toLocalDatetimeString } from '@/lib/datetime-local'
 import { Badge } from '@/components/ui/badge'
+import { Switch } from '@/components/ui/switch'
+import { toLocalDatetimeString } from '@/lib/datetime-local'
 import {
   Loader2, Plus, CalendarDays, Users, Timer, Trophy,
   Trash2, HelpCircle, CheckSquare, ListChecks,
   Shield, GripVertical, Pencil, Wand2, BookOpen, Search,
   Sparkles, ChevronDown, ChevronUp, X, ArrowLeft,
+  Settings, FileText, Sliders, Eye,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EventStepIndicator } from '@/components/hackathons/event-step-indicator'
+import { ProblemViewDialog } from '@/components/problems/problem-view-dialog'
 
 interface ProblemOption { slug: string; title: string; difficulty: string; topics?: string[] }
 
@@ -46,6 +51,27 @@ export default function HackathonCreatePage() {
     solve_limit: 0,
     cert_template: 'classic' as 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic',
     banner_url: '',
+    features: {
+      team_formation: true,
+      claims_system: false,
+      demo_video: 'optional' as 'required' | 'optional' | 'disabled',
+      live_url: 'optional' as 'required' | 'optional' | 'disabled',
+      code_upload: true,
+      judging_rubrics: false,
+      rubric_criteria: [
+        { name: 'Innovation', weight: 25 },
+        { name: 'Technical Complexity', weight: 25 },
+        { name: 'Design/UX', weight: 20 },
+        { name: 'Impact', weight: 20 },
+        { name: 'Completeness', weight: 10 },
+      ],
+      leaderboard_visibility: 'public' as 'public' | 'private' | 'after_event',
+      project_showcase: true,
+      forum: false,
+      proctoring: false,
+      certificates: true,
+      sponsor_tracks: [] as { name: string; prize: string; description?: string }[],
+    },
   })
 
   const [problemSearch, setProblemSearch] = useState('')
@@ -80,6 +106,9 @@ export default function HackathonCreatePage() {
   ])
   const [creatingOwn, setCreatingOwn] = useState(false)
   const [creatingOwnError, setCreatingOwnError] = useState<string | null>(null)
+  const [viewSlug, setViewSlug] = useState<string | null>(null)
+  const [editingSlug, setEditingSlug] = useState<string | null>(null)
+  const [editLoading, setEditLoading] = useState(false)
 
   useEffect(() => {
     fetch('/api/admin/platform-settings', { credentials: 'include' })
@@ -93,7 +122,6 @@ export default function HackathonCreatePage() {
   }, [])
 
   const searchProblems = useCallback(async (q: string) => {
-    if (!q.trim()) { setProblemResults([]); return }
     setSearchingProblems(true)
     try {
       const res = await fetch(`/api/problems?search=${encodeURIComponent(q)}&limit=10`)
@@ -103,45 +131,81 @@ export default function HackathonCreatePage() {
     finally { setSearchingProblems(false) }
   }, [])
 
+  useEffect(() => { searchProblems('') }, [searchProblems])
+
   async function generateAiProblems() {
+    const requested = Math.min(5, Math.max(1, aiConfig.count || 1))
     setGenerating(true); setGeneratingError(null)
+    for (let i = 0; i < requested; i++) {
+      try {
+        const topics = aiConfig.topics.split(',').map((t) => t.trim()).filter(Boolean)
+        const res = await csrfFetch('/api/ai/generate-problem', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            role: aiConfig.role,
+            difficulty: aiConfig.difficulty,
+            topics,
+            language_hint: aiConfig.language_hint,
+            publish: true,
+          }),
+        })
+        const j = await res.json()
+        if (!res.ok) throw new Error(j.error || 'Generation failed')
+        const prob = j.problem as Record<string, unknown>
+        const slug = typeof j.published_problem_slug === 'string' && j.published_problem_slug
+          ? j.published_problem_slug
+          : (typeof prob.slug === 'string' ? prob.slug
+            : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, ''))
+        const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
+          ? prob.difficulty : 'medium') as string
+        const title = String(prob.title || slug)
+        const points = prob.points || 100
+        setForm((f) => ({
+          ...f,
+          tasks: [...f.tasks, {
+            slug,
+            title,
+            points: typeof points === 'number' ? points : 100,
+            difficulty,
+            required: true,
+          }],
+        }))
+      } catch (e) {
+        setGeneratingError(e instanceof Error ? e.message : String(e))
+        break
+      }
+    }
+    setGenerating(false)
+  }
+
+  async function editProblem(slug: string) {
+    setEditLoading(true)
     try {
-      const topics = aiConfig.topics.split(',').map((t) => t.trim()).filter(Boolean)
-      const res = await csrfFetch('/api/ai/generate-problem', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          role: aiConfig.role,
-          difficulty: aiConfig.difficulty,
-          topics,
-          language_hint: aiConfig.language_hint,
-          publish: true,
-        }),
-      })
+      const res = await fetch(`/api/problems/${encodeURIComponent(slug)}`, { cache: 'no-store' })
       const j = await res.json()
-      if (!res.ok) throw new Error(j.error || 'Generation failed')
-      const prob = j.problem as Record<string, unknown>
-      const slug = typeof prob.slug === 'string' ? prob.slug
-        : (prob.title as string || '').toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-      const difficulty = (['easy', 'medium', 'hard'].includes(prob.difficulty as string)
-        ? prob.difficulty : 'medium') as string
-      const title = String(prob.title || slug)
-      const points = prob.points || aiConfig.count > 1 ? 100 : (prob.points || 100)
-      setForm((f) => ({
-        ...f,
-        tasks: [...f.tasks, {
-          slug,
-          title,
-          points: typeof points === 'number' ? points : 100,
-          difficulty,
-          required: true,
-        }],
-      }))
-      setAiConfig((c) => ({ ...c, count: Math.max(1, c.count - 1) }))
+      if (!res.ok || !j.title) throw new Error(j.error || 'Problem not found')
+      setOwnForm({
+        title: j.title || '',
+        difficulty: (['easy', 'medium', 'hard'].includes(j.difficulty) ? j.difficulty : 'medium') as 'easy' | 'medium' | 'hard',
+        topics: Array.isArray(j.topics) ? j.topics.join(', ') : '',
+        statement_md: j.statement_md || '',
+        input_format: j.input_format || '',
+        output_format: j.output_format || '',
+        constraints: j.constraints || '',
+        points: 100,
+      })
+      setOwnTestCases((((j as Record<string, unknown>).test_cases as { stdin?: string; expected_stdout?: string; is_sample?: boolean }[]) || []).map((tc) => ({
+        stdin: String(tc.stdin ?? ''),
+        expected: String(tc.expected_stdout ?? ''),
+        is_sample: Boolean(tc.is_sample),
+      })))
+      setEditingSlug(slug)
+      setProblemSource('own')
     } catch (e) {
-      setGeneratingError(e instanceof Error ? e.message : String(e))
+      setCreatingOwnError(e instanceof Error ? e.message : String(e))
     } finally {
-      setGenerating(false)
+      setEditLoading(false)
     }
   }
 
@@ -158,36 +222,50 @@ export default function HackathonCreatePage() {
           expected_stdout: tc.expected,
           is_sample: tc.is_sample,
         }))
-      const res = await csrfFetch('/api/problems', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          slug,
-          title: ownForm.title,
-          difficulty: ownForm.difficulty,
-          topics,
-          statement_md: ownForm.statement_md,
-          input_format: ownForm.input_format || null,
-          output_format: ownForm.output_format || null,
-          constraints: ownForm.constraints || null,
-          test_cases,
-          starter_code: {},
-          visibility: 'hackathon_only',
-          is_published: true,
-        }),
-      })
-      const j = await res.json()
-      if (!res.ok) throw new Error(j.error || 'Failed to create problem')
-      setForm((f) => ({
-        ...f,
-        tasks: [...f.tasks, {
-          slug,
-          title: ownForm.title,
-          points: ownForm.points,
-          difficulty: ownForm.difficulty,
-          required: true,
-        }],
-      }))
+      const payload = {
+        title: ownForm.title,
+        difficulty: ownForm.difficulty,
+        topics,
+        statement_md: ownForm.statement_md,
+        input_format: ownForm.input_format || null,
+        output_format: ownForm.output_format || null,
+        constraints: ownForm.constraints || null,
+        test_cases,
+      }
+      if (editingSlug) {
+        const res = await csrfFetch(`/api/problems/${encodeURIComponent(editingSlug)}`, {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload),
+        })
+        const j = await res.json()
+        if (!res.ok) throw new Error(j.error || 'Failed to update problem')
+        setForm((f) => ({
+          ...f,
+          tasks: f.tasks.map((t) => t.slug === editingSlug
+            ? { ...t, title: ownForm.title, difficulty: ownForm.difficulty }
+            : t),
+        }))
+        setEditingSlug(null)
+      } else {
+        const res = await csrfFetch('/api/problems', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ ...payload, slug, starter_code: {}, visibility: 'hackathon_only', is_published: true }),
+        })
+        const j = await res.json()
+        if (!res.ok) throw new Error(j.error || 'Failed to create problem')
+        setForm((f) => ({
+          ...f,
+          tasks: [...f.tasks, {
+            slug: j.slug || slug,
+            title: ownForm.title,
+            points: ownForm.points,
+            difficulty: ownForm.difficulty,
+            required: true,
+          }],
+        }))
+      }
       setOwnForm({ title: '', difficulty: 'medium', topics: '', statement_md: '', input_format: '', output_format: '', constraints: '', points: 100 })
       setOwnTestCases([{ stdin: '', expected: '', is_sample: true }])
     } catch (e) {
@@ -218,6 +296,7 @@ export default function HackathonCreatePage() {
           scoring: form.scoring,
           banner_url: form.banner_url,
           cert_template: form.cert_template,
+          features: form.features,
         }),
       })
       const j = await res.json()
@@ -253,23 +332,17 @@ export default function HackathonCreatePage() {
 
       <Card className="space-y-6 p-6">
         {/* Step indicator */}
-        <div className="flex items-center justify-between">
-          <div className="flex gap-3 text-sm">
-            {[
-              { n: 1, label: 'Basics' },
-              { n: 2, label: 'Problems' },
-              { n: 3, label: 'Rules & Scoring' },
-            ].map((s) => (
-              <button key={s.n} onClick={() => setStep(s.n)}
-                className={`px-4 py-2 rounded-lg transition-colors ${step === s.n ? 'bg-primary text-primary-foreground font-medium' : 'bg-muted text-muted-foreground hover:bg-muted/80'}`}>
-                {s.n}. {s.label}
-              </button>
-            ))}
-          </div>
-          <span className="text-xs text-muted-foreground">
-            {step < 3 ? `${3 - step} step${step < 2 ? 's' : ''} remaining` : 'Ready to create'}
-          </span>
-        </div>
+        <EventStepIndicator
+          steps={[
+            { n: 1, label: 'Basics', icon: FileText },
+            { n: 2, label: 'Problems', icon: ListChecks },
+            { n: 3, label: 'Rules & Scoring', icon: Sliders },
+            { n: 4, label: 'Features', icon: Settings },
+            { n: 5, label: 'Review', icon: CheckSquare },
+          ]}
+          currentStep={step}
+          onStepClick={(n) => setStep(n)}
+        />
 
         {/* Step 1: Basics */}
         {step === 1 && (
@@ -284,17 +357,53 @@ export default function HackathonCreatePage() {
               <Textarea rows={4} value={form.description} onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))} placeholder="Describe the event, theme, and what participants will build..." />
             </div>
             <div className="grid gap-4 md:grid-cols-3">
-              <div className="space-y-2">
-                <Label>Teams allowed</Label>
-                <Input type="number" min={1} max={500} value={form.num_teams} onChange={(e) => setForm((f) => ({ ...f, num_teams: Number(e.target.value) }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Max per team</Label>
-                <Input type="number" min={1} max={20} value={form.max_per_team} onChange={(e) => setForm((f) => ({ ...f, max_per_team: Number(e.target.value) }))} />
-              </div>
-              <div className="space-y-2">
-                <Label>Duration (minutes)</Label>
-                <Input type="number" min={5} value={form.timeout_minutes} onChange={(e) => setForm((f) => ({ ...f, timeout_minutes: Number(e.target.value) }))} />
+              <NumberField
+                label="Teams allowed"
+                value={form.num_teams}
+                onChange={(v) => setForm((f) => ({ ...f, num_teams: v }))}
+                min={1}
+                max={500}
+                hint="Total number of teams that can compete in this event."
+              />
+              <NumberField
+                label="Max per team"
+                value={form.max_per_team}
+                onChange={(v) => setForm((f) => ({ ...f, max_per_team: v }))}
+                min={1}
+                max={20}
+                hint="How many members can join a single team (1 = solo)."
+              />
+              <div className="space-y-1.5">
+                <NumberField
+                  label="Duration (minutes)"
+                  value={form.timeout_minutes}
+                  onChange={(v) => setForm((f) => ({ ...f, timeout_minutes: v }))}
+                  min={5}
+                  max={10080}
+                  step={5}
+                  hint="Total time window for the event."
+                />
+                <div className="flex flex-wrap gap-1 pt-1">
+                  {[
+                    { label: '1h', mins: 60 },
+                    { label: '3h', mins: 180 },
+                    { label: '1 day', mins: 1440 },
+                    { label: '3 days', mins: 4320 },
+                  ].map((p) => (
+                    <button
+                      key={p.mins}
+                      type="button"
+                      onClick={() => setForm((f) => ({ ...f, timeout_minutes: p.mins }))}
+                      className={`rounded-md border px-2 py-0.5 text-[11px] font-medium transition-colors ${
+                        form.timeout_minutes === p.mins
+                          ? 'border-primary bg-primary/10 text-primary'
+                          : 'border-border text-muted-foreground hover:bg-muted/50'
+                      }`}
+                    >
+                      {p.label}
+                    </button>
+                  ))}
+                </div>
               </div>
             </div>
             <div className="grid gap-6 md:grid-cols-2 mt-6">
@@ -399,13 +508,19 @@ export default function HackathonCreatePage() {
                             <p className="text-sm truncate">{p.title}</p>
                             <p className="text-xs text-muted-foreground">{p.slug} · {p.difficulty}</p>
                           </div>
-                          {added ? (
-                            <Badge variant="outline" className="shrink-0">Added</Badge>
-                          ) : (
-                            <Button size="sm" variant="ghost" onClick={() => setForm((f) => ({
-                              ...f, tasks: [...f.tasks, { slug: p.slug, title: p.title, points: 100, difficulty: p.difficulty, required: true }]
-                            }))}>Add</Button>
-                          )}
+                          <div className="flex items-center gap-1 shrink-0">
+                            <Button size="sm" variant="ghost" className="h-8 w-8 p-0"
+                              onClick={() => setViewSlug(p.slug)} aria-label={`View ${p.title}`}>
+                              <Eye className="h-3.5 w-3.5" />
+                            </Button>
+                            {added ? (
+                              <Badge variant="outline">Added</Badge>
+                            ) : (
+                              <Button size="sm" variant="ghost" onClick={() => setForm((f) => ({
+                                ...f, tasks: [...f.tasks, { slug: p.slug, title: p.title, points: 100, difficulty: p.difficulty, required: true }]
+                              }))}>Add</Button>
+                            )}
+                          </div>
                         </div>
                       )
                     })}
@@ -418,7 +533,10 @@ export default function HackathonCreatePage() {
             {problemSource === 'own' && (
               <div className="space-y-4 rounded-lg border border-border/60 bg-card/40 p-5">
                 <div className="space-y-3">
-                  <p className="text-sm font-semibold">Write your own problem</p>
+                  <p className="text-sm font-semibold">
+                    {editingSlug ? 'Edit problem' : 'Write your own problem'}
+                    {editingSlug && <span className="ml-2 text-xs text-muted-foreground">editing {editingSlug}</span>}
+                  </p>
                   <div className="grid gap-3 md:grid-cols-2">
                     <div className="md:col-span-2 space-y-1.5">
                       <Label>Problem title *</Label>
@@ -438,8 +556,8 @@ export default function HackathonCreatePage() {
                     </div>
                     <div className="space-y-1.5">
                       <Label>Points</Label>
-                      <Input type="number" value={ownForm.points} min={10}
-                        onChange={(e) => setOwnForm((f) => ({ ...f, points: Number(e.target.value) }))} />
+                      <NumberField value={ownForm.points} min={10} max={1000} step={10} unit="pts"
+                        onChange={(v) => setOwnForm((f) => ({ ...f, points: v }))} />
                     </div>
                     <div className="md:col-span-2 space-y-1.5">
                       <Label>Topics (comma-separated)</Label>
@@ -529,10 +647,21 @@ export default function HackathonCreatePage() {
                   </div>
 
                   {creatingOwnError && <p className="text-xs text-destructive">{creatingOwnError}</p>}
-                  <Button onClick={createOwnProblem} disabled={creatingOwn || !ownForm.title.trim()}>
-                    {creatingOwn ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Plus className="mr-1 h-3 w-3" />}
-                    Add to problems
-                  </Button>
+                  <div className="flex items-center gap-2">
+                    <Button onClick={createOwnProblem} disabled={creatingOwn || !ownForm.title.trim() || editLoading}>
+                      {creatingOwn ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : (editingSlug ? <Pencil className="mr-1 h-3 w-3" /> : <Plus className="mr-1 h-3 w-3" />)}
+                      {creatingOwn ? 'Saving…' : editingSlug ? 'Save changes' : 'Add to problems'}
+                    </Button>
+                    {editingSlug && (
+                      <Button variant="ghost" size="sm" onClick={() => {
+                        setEditingSlug(null)
+                        setOwnForm({ title: '', difficulty: 'medium', topics: '', statement_md: '', input_format: '', output_format: '', constraints: '', points: 100 })
+                        setOwnTestCases([{ stdin: '', expected: '', is_sample: true }])
+                      }} disabled={editLoading}>
+                        Cancel edit
+                      </Button>
+                    )}
+                  </div>
                 </div>
               </div>
             )}
@@ -576,12 +705,21 @@ export default function HackathonCreatePage() {
                           onChange={(e) => setAiConfig((c) => ({ ...c, topics: e.target.value }))}
                           placeholder="arrays, strings, sorting" />
                       </div>
+                      <NumberField
+                        label="How many to generate"
+                        value={aiConfig.count}
+                        onChange={(v) => setAiConfig((c) => ({ ...c, count: v }))}
+                        min={1}
+                        max={5}
+                        unit="problems"
+                        hint="Each problem takes a few seconds. Checked problems are added to the event and saved to your library."
+                      />
                     </div>
                     {generatingError && <p className="text-xs text-destructive">{generatingError}</p>}
                     <div className="flex gap-2">
                       <Button onClick={generateAiProblems} disabled={generating}>
                         {generating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Wand2 className="mr-1 h-3 w-3" />}
-                        {generating ? 'Generating…' : `Generate problem${aiConfig.count > 1 ? ` (${aiConfig.count} left)` : ''}`}
+                        {generating ? 'Generating…' : aiConfig.count > 1 ? `Generate ${aiConfig.count} problems` : 'Generate problem'}
                       </Button>
                     </div>
                   </div>
@@ -605,6 +743,14 @@ export default function HackathonCreatePage() {
                         const points = Number(e.target.value)
                         setForm((f) => ({ ...f, tasks: f.tasks.map((x, idx) => idx === i ? { ...x, points } : x) }))
                       }} />
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0"
+                      onClick={() => setViewSlug(t.slug)} aria-label={`View ${t.title}`}>
+                      <Eye className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button size="sm" variant="ghost" className="h-8 w-8 p-0"
+                      onClick={() => editProblem(t.slug)} aria-label={`Edit ${t.title}`} disabled={editLoading}>
+                      <Pencil className="h-3.5 w-3.5" />
+                    </Button>
                     <Button size="sm" variant="ghost" className="text-destructive"
                       onClick={() => setForm((f) => ({ ...f, tasks: f.tasks.filter((_, idx) => idx !== i) }))}>
                       Remove
@@ -653,29 +799,47 @@ export default function HackathonCreatePage() {
               }))}>+ Add Rule</Button>
             </div>
 
-            <div className="rounded border p-4 space-y-3">
+            <div className="rounded border p-4 space-y-4">
               <h4 className="text-sm font-semibold">Scoring Configuration</h4>
               <div className="grid gap-4 md:grid-cols-4">
-                <div className="space-y-2">
-                  <Label>Points per problem</Label>
-                  <Input type="number" value={form.scoring.points_per_problem}
-                    onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, points_per_problem: Number(e.target.value) } }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Bonus time (early submit)</Label>
-                  <Input type="number" value={form.scoring.bonus_time}
-                    onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, bonus_time: Number(e.target.value) } }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Penalty per attempt</Label>
-                  <Input type="number" value={form.scoring.penalty_per_attempt}
-                    onChange={(e) => setForm((f) => ({ ...f, scoring: { ...f.scoring, penalty_per_attempt: Number(e.target.value) } }))} />
-                </div>
-                <div className="space-y-2">
-                  <Label>Solve Limit (0 = All)</Label>
-                  <Input type="number" value={form.solve_limit} min={0}
-                    onChange={(e) => setForm((f) => ({ ...f, solve_limit: Number(e.target.value) }))} />
-                </div>
+                <NumberField
+                  label="Points per problem"
+                  value={form.scoring.points_per_problem}
+                  onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, points_per_problem: v } }))}
+                  min={10}
+                  max={1000}
+                  step={10}
+                  unit="pts"
+                  hint="Base score for a fully correct solution."
+                />
+                <NumberField
+                  label="Bonus (early submit)"
+                  value={form.scoring.bonus_time}
+                  onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, bonus_time: v } }))}
+                  min={0}
+                  max={2000}
+                  step={5}
+                  unit="pts"
+                  hint="Extra points per remaining minute on early submissions."
+                />
+                <NumberField
+                  label="Penalty per attempt"
+                  value={form.scoring.penalty_per_attempt}
+                  onChange={(v) => setForm((f) => ({ ...f, scoring: { ...f.scoring, penalty_per_attempt: v } }))}
+                  min={0}
+                  max={2000}
+                  step={5}
+                  unit="pts"
+                  hint="Points deducted for each wrong submission."
+                />
+                <NumberField
+                  label="Solve limit"
+                  value={form.solve_limit}
+                  onChange={(v) => setForm((f) => ({ ...f, solve_limit: v }))}
+                  min={0}
+                  max={500}
+                  hint="Max problems a team can attempt. 0 = no limit."
+                />
               </div>
               <div className="flex items-center gap-2">
                 <input type="checkbox" id="auto_grade" checked={form.scoring.auto_grade}
@@ -686,6 +850,280 @@ export default function HackathonCreatePage() {
 
             <div className="flex gap-2 pt-2">
               <Button variant="outline" onClick={() => setStep(2)}>← Back</Button>
+              <Button onClick={() => setStep(4)}>Next: Features →</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 4: Features */}
+        {step === 4 && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-lg">Features & Visibility</h3>
+              <p className="text-sm text-muted-foreground mt-1">Toggle features on/off for this event. Participants will see and use only the enabled features.</p>
+            </div>
+
+            {/* Team & Participation */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Team & Participation</h4>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Team Formation</Label>
+                    <p className="text-xs text-muted-foreground">Allow participants to create and join teams</p>
+                  </div>
+                  <Switch checked={form.features.team_formation}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, team_formation: checked } }))} />
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Claims System</Label>
+                    <p className="text-xs text-muted-foreground">First-come lock on problems (5-minute claim timer)</p>
+                  </div>
+                  <Switch checked={form.features.claims_system}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, claims_system: checked } }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Submission Settings */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Submission Settings</h4>
+              <div className="grid gap-3 md:grid-cols-2">
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">Demo Video</Label>
+                  <select value={form.features.demo_video}
+                    onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, demo_video: e.target.value as 'required' | 'optional' | 'disabled' } }))}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <option value="required">Required</option>
+                    <option value="optional">Optional</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+                <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                  <Label className="text-sm font-medium">Live URL</Label>
+                  <select value={form.features.live_url}
+                    onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, live_url: e.target.value as 'required' | 'optional' | 'disabled' } }))}
+                    className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                    <option value="required">Required</option>
+                    <option value="optional">Optional</option>
+                    <option value="disabled">Disabled</option>
+                  </select>
+                </div>
+              </div>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Code Upload (Editor)</Label>
+                    <p className="text-xs text-muted-foreground">Allow participants to write code in the built-in editor</p>
+                  </div>
+                  <Switch checked={form.features.code_upload}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, code_upload: checked } }))} />
+                </div>
+              </div>
+            </div>
+
+            {/* Judging */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Judging & Scoring</h4>
+              <div className="rounded-lg border bg-muted/30 p-4">
+                <div className="flex items-center justify-between">
+                  <div className="space-y-0.5">
+                    <Label className="text-sm font-medium">Judging Rubrics</Label>
+                    <p className="text-xs text-muted-foreground">Use weighted criteria instead of simple 0-100</p>
+                  </div>
+                  <Switch checked={form.features.judging_rubrics}
+                    onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, judging_rubrics: checked } }))} />
+                </div>
+              </div>
+              {form.features.judging_rubrics && (
+                <div className="ml-4 pl-4 border-l-2 border-primary/20 space-y-3">
+                  <p className="text-xs text-muted-foreground">Rubric criteria (weights should sum to 100):</p>
+                  {form.features.rubric_criteria.map((c, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Input value={c.name} className="flex-1 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
+                        }))} />
+                      <Input type="number" value={c.weight} className="w-20 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.map((x, idx) => idx === i ? { ...x, weight: Number(e.target.value) } : x) }
+                        }))} />
+                      <span className="text-xs text-muted-foreground">%</span>
+                      <Button size="sm" variant="ghost" className="text-destructive h-6"
+                        onClick={() => setForm((f) => ({
+                          ...f, features: { ...f.features, rubric_criteria: f.features.rubric_criteria.filter((_, idx) => idx !== i) }
+                        }))}>×</Button>
+                    </div>
+                  ))}
+                  <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
+                    ...f, features: { ...f.features, rubric_criteria: [...f.features.rubric_criteria, { name: '', weight: 0 }] }
+                  }))}>+ Add Criterion</Button>
+                </div>
+              )}
+            </div>
+
+            {/* Visibility */}
+            <div className="space-y-3">
+              <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Visibility & Engagement</h4>
+              <div className="rounded-lg border bg-muted/30 p-4 space-y-2">
+                <Label className="text-sm font-medium">Leaderboard Visibility</Label>
+                <select value={form.features.leaderboard_visibility}
+                  onChange={(e) => setForm((f) => ({ ...f, features: { ...f.features, leaderboard_visibility: e.target.value as 'public' | 'private' | 'after_event' } }))}
+                  className="w-full rounded-md border border-border bg-background px-3 py-2 text-sm">
+                  <option value="public">Public (visible during event)</option>
+                  <option value="after_event">After Event Ends</option>
+                  <option value="private">Private (admin only)</option>
+                </select>
+              </div>
+              {[
+                { key: 'project_showcase' as const, label: 'Project Showcase', desc: 'Show submitted projects publicly after event ends' },
+                { key: 'forum' as const, label: 'Forum', desc: 'Q&A forum for participants during the event' },
+                { key: 'proctoring' as const, label: 'Proctoring', desc: 'Detect cheating (tab switch, copy, paste, etc.)' },
+                { key: 'certificates' as const, label: 'Certificates', desc: 'Generate certificates for participants' },
+              ].map((item) => (
+                <div key={item.key} className="rounded-lg border bg-muted/30 p-4">
+                  <div className="flex items-center justify-between">
+                    <div className="space-y-0.5">
+                      <Label className="text-sm font-medium">{item.label}</Label>
+                      <p className="text-xs text-muted-foreground">{item.desc}</p>
+                    </div>
+                    <Switch checked={form.features[item.key]}
+                      onCheckedChange={(checked) => setForm((f) => ({ ...f, features: { ...f.features, [item.key]: checked } }))} />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Sponsor Tracks */}
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <h4 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider">Sponsor Tracks</h4>
+                <Button variant="outline" size="sm" onClick={() => setForm((f) => ({
+                  ...f, features: { ...f.features, sponsor_tracks: [...f.features.sponsor_tracks, { name: '', prize: '', description: '' }] }
+                }))}>+ Add Track</Button>
+              </div>
+              {form.features.sponsor_tracks.length > 0 && (
+                <div className="space-y-2">
+                  {form.features.sponsor_tracks.map((t, i) => (
+                    <div key={i} className="flex items-center gap-2 rounded-lg border bg-muted/30 p-3">
+                      <Input value={t.name} placeholder="Track name" className="flex-1 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, name: e.target.value } : x) }
+                        }))} />
+                      <Input value={t.prize} placeholder="Prize" className="w-32 h-8 text-xs"
+                        onChange={(e) => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.map((x, idx) => idx === i ? { ...x, prize: e.target.value } : x) }
+                        }))} />
+                      <Button size="sm" variant="ghost" className="text-destructive h-6"
+                        onClick={() => setForm((f) => ({
+                          ...f, features: { ...f.features, sponsor_tracks: f.features.sponsor_tracks.filter((_, idx) => idx !== i) }
+                        }))}>×</Button>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setStep(3)}>← Back</Button>
+              <Button onClick={() => setStep(5)}>Next: Review →</Button>
+            </div>
+          </div>
+        )}
+
+        {/* Step 5: Review */}
+        {step === 5 && (
+          <div className="space-y-6">
+            <div>
+              <h3 className="font-semibold text-lg">Review & Create</h3>
+              <p className="text-sm text-muted-foreground mt-1">Review your event configuration before creating.</p>
+            </div>
+
+            {/* Event Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Event Details</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <div><span className="text-muted-foreground">Name:</span> <span className="font-medium">{form.name || '—'}</span></div>
+                <div><span className="text-muted-foreground">Duration:</span> <span className="font-medium">{form.timeout_minutes} min</span></div>
+                <div><span className="text-muted-foreground">Teams:</span> <span className="font-medium">{form.num_teams} max</span></div>
+                <div><span className="text-muted-foreground">Per team:</span> <span className="font-medium">{form.max_per_team} members</span></div>
+                <div className="col-span-2"><span className="text-muted-foreground">Starts:</span> <span className="font-medium">{new Date(form.starts_at).toLocaleString()}</span></div>
+                {form.description && (
+                  <div className="col-span-2"><span className="text-muted-foreground">Description:</span> <span className="font-medium line-clamp-2">{form.description}</span></div>
+                )}
+              </div>
+            </div>
+
+            {/* Problems Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Problems ({form.tasks.length})</h4>
+              {form.tasks.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No problems added</p>
+              ) : (
+                <div className="space-y-2">
+                  {form.tasks.map((t, i) => (
+                    <div key={t.slug} className="flex items-center justify-between py-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-xs text-muted-foreground">Q{i + 1}</span>
+                        <span className="text-sm">{t.title}</span>
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Badge variant="outline" className={`text-[10px] ${
+                          t.difficulty === 'hard' ? 'text-rose-500 border-rose-500/30' :
+                          t.difficulty === 'medium' ? 'text-amber-500 border-amber-500/30' :
+                          'text-emerald-500 border-emerald-500/30'
+                        }`}>{t.difficulty}</Badge>
+                        <span className="text-xs text-muted-foreground">{t.points} pts</span>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Rules Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Rules ({form.rules.length})</h4>
+              {form.rules.length === 0 ? (
+                <p className="text-xs text-muted-foreground">No rules added</p>
+              ) : (
+                <div className="space-y-2">
+                  {form.rules.map((r, i) => (
+                    <div key={i} className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-[10px]">{r.type}</Badge>
+                      <span className="text-sm">{r.title}</span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+
+            {/* Features Summary */}
+            <div className="rounded-lg border bg-muted/30 p-4 space-y-3">
+              <h4 className="text-sm font-semibold">Enabled Features</h4>
+              <div className="flex flex-wrap gap-2">
+                {form.features.team_formation && <Badge variant="secondary">Team Formation</Badge>}
+                {form.features.claims_system && <Badge variant="secondary">Claims System</Badge>}
+                {form.features.code_upload && <Badge variant="secondary">Code Editor</Badge>}
+                {form.features.judging_rubrics && <Badge variant="secondary">Rubric Judging</Badge>}
+                {form.features.project_showcase && <Badge variant="secondary">Showcase</Badge>}
+                {form.features.forum && <Badge variant="secondary">Forum</Badge>}
+                {form.features.proctoring && <Badge variant="secondary">Proctoring</Badge>}
+                {form.features.certificates && <Badge variant="secondary">Certificates</Badge>}
+                {form.features.demo_video !== 'disabled' && <Badge variant="secondary">Demo Video {form.features.demo_video}</Badge>}
+                {form.features.live_url !== 'disabled' && <Badge variant="secondary">Live URL {form.features.live_url}</Badge>}
+                {form.features.sponsor_tracks.length > 0 && <Badge variant="secondary">{form.features.sponsor_tracks.length} Sponsor Tracks</Badge>}
+              </div>
+              <div className="text-xs text-muted-foreground">
+                Leaderboard: <span className="font-medium">{form.features.leaderboard_visibility}</span>
+              </div>
+            </div>
+
+            <div className="flex gap-2 pt-2">
+              <Button variant="outline" onClick={() => setStep(4)}>← Back</Button>
               <Button onClick={create} disabled={busy}>
                 {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : <Trophy className="mr-1 h-3 w-3" />}
                 Create Hackathon
@@ -694,6 +1132,7 @@ export default function HackathonCreatePage() {
           </div>
         )}
       </Card>
+        <ProblemViewDialog open={viewSlug !== null} slug={viewSlug} onClose={() => setViewSlug(null)} />
     </div>
   )
 }

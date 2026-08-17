@@ -57,6 +57,9 @@ export type ServerSecretsRecord = {
   opencode_api_key?: string     // OpenCode API key
   groq_api_key?: string           // Groq API key (fast inference)
   nvidia_api_key?: string        // NVIDIA NIM API key
+  // --- Upstash Redis (rate limiting) -------------------------------------
+  upstash_redis_rest_url?: string
+  upstash_redis_rest_token?: string
   // --- Cloudflare --------------------------------------------------------
   cloudflare_zone_id?: string
   cloudflare_api_token?: string
@@ -65,6 +68,17 @@ export type ServerSecretsRecord = {
   phonepe_salt_key?: string
   phonepe_salt_index?: string
   phonepe_webhook_secret?: string
+  // --- OpenWA / WhatsApp -------------------------------------------------
+  openwa_base_url?: string        // e.g. https://your-openwa-server.com
+  openwa_api_key?: string         // API key for authentication
+  openwa_session_id?: string      // WhatsApp session ID
+  openwa_default_country_code?: string // e.g. 91 for India
+  openwa_max_concurrency?: string // Max concurrent sends (default: 3)
+  openwa_send_delay_ms?: string   // Delay between sends in ms (default: 400)
+  // --- Internal backend auth (frontend-side copy of INTERNAL_BACKEND_SECRET) --
+  // Sent as `x-internal-secret` on server->server calls to the FastAPI backend.
+  // Must match the backend's INTERNAL_BACKEND_SECRET env var (set in Dokploy).
+  internal_backend_secret?: string
 }
 
 interface PlatformSettingDoc {

@@ -2,6 +2,8 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
+import { detectPlagiarism } from '@/lib/proctoring/plagiarism-detector'
+import { detectLeaks } from '@/lib/proctoring/leak-detector'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAdmin()
@@ -49,6 +51,17 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       }
     }
 
+    // Also fetch users for submissions that don't have invites (public/share-link candidates)
+    const submissionUserIds = new Set<string>()
+    for (const sub of submissions) {
+      if (sub.user_id && !sub.user_id.startsWith('candidate_')) {
+        submissionUserIds.add(sub.user_id)
+      }
+    }
+    for (const uid of submissionUserIds) {
+      await fetchUser(uid)
+    }
+
     for (const inv of invites) {
       if (inv.user_id) await fetchUser(inv.user_id)
     }
@@ -66,6 +79,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       released: boolean
       deliveryStatus: string | null
       graded: boolean
+      source?: string
     }
 
     // Score is stored as raw points (e.g. 121/166). The admin UI displays it
@@ -99,11 +113,10 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     for (const [, inv] of latestInviteByEmail) {
       const sub = submissionsByUser[inv.user_id]
       const user = userMap[inv.user_id] || {}
-      let status = inv.status === 'used' ? 'completed' : inv.status
 
-      if (status !== 'completed' && sub) {
-        status = 'completed'
-      }
+      // Only mark as completed if there's an actual submission record
+      const hasSubmission = !!sub
+      let status = hasSubmission ? 'completed' : (inv.status === 'used' ? 'in_progress' : inv.status || 'pending')
 
       const email = inv.email || user.email || ''
       seenEmails.add(email.toLowerCase())
@@ -125,8 +138,10 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     }
 
     for (const sub of submissions) {
-      const user = userMap[sub.user_id] || {}
-      const email = user.email || ''
+      // Skip if this submission belongs to an invite user (already handled above)
+      if (invites.some(inv => inv.user_id === sub.user_id)) continue
+
+      const email = sub.email || userMap[sub.user_id]?.email || ''
       if (!email || seenEmails.has(email.toLowerCase())) continue
 
       await fetchUser(sub.user_id)
@@ -135,8 +150,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       results.push({
         id: sub.id,
         userId: sub.user_id || '',
-        name: fetched.name || 'Unknown',
-        email: fetched.email || '',
+        name: fetched.name || sub.email?.split('@')[0] || 'Candidate',
+        email: email,
         status: 'completed',
         score: toPercent(sub.score, sub.max_score),
         maxScore: sub.max_score || null,
@@ -145,8 +160,23 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         released: sub.released_at ? true : false,
         deliveryStatus: 'delivered',
         graded: sub.has_pending_review === false,
+        source: sub.source || 'public_link',
       })
-      if (fetched.email) seenEmails.add(fetched.email.toLowerCase())
+      seenEmails.add(email.toLowerCase())
+    }
+
+    // Run plagiarism and leak detection on submissions
+    let plagiarism = null
+    let leakDetection = null
+    try {
+      plagiarism = await detectPlagiarism(id)
+    } catch (e) {
+      console.error('[CodeSpectra] plagiarism detection failed:', e)
+    }
+    try {
+      leakDetection = await detectLeaks(id)
+    } catch (e) {
+      console.error('[CodeSpectra] leak detection failed:', e)
     }
 
     return NextResponse.json({
@@ -155,8 +185,11 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         title: exam.title,
         level: exam.level || '',
         duration: exam.duration || 0,
+        publicLinkViews: exam.public_link_views || 0,
       },
       results,
+      plagiarism,
+      leakDetection,
       debug: { inviteCount: invites.length, submissionCount: submissions.length },
     })
   } catch (e: unknown) {

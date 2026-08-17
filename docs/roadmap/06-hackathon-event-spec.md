@@ -67,10 +67,13 @@ interface HackathonSubmission {   // NEW collection
 ### Team Registration
 - User visits `/hackathons/[slug]`
 - Clicks "Create Team" → names the team → becomes captain
-- Captain shares team invite link (QR code or URL)
-- Other users join via QR scan → added as `members[]`
+- Captain invites teammates two ways (QR codes are NOT used for hackathons):
+  1. **Share link**: `/hackathons/[slug]/join/[token]` — copy button on team panel
+  2. **Email invite**: captain enters an email, system emails the invite link
+- Other users join via the link → added as `members[]`
 - Max members enforced by `max_per_team`
 - No double-registration enforced (API already checks)
+- The join `token` is exposed only to team members and admins via the API
 
 ### Task Assignment Display
 - After registration, team sees assigned problems in order

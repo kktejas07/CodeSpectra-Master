@@ -20,7 +20,7 @@ const FALLBACK_PROVIDERS = [
   { provider: 'gemini', model: 'gemini-2.0-flash', endpoint: undefined },
   { provider: 'openai', model: 'gpt-4o-mini', endpoint: undefined },
   { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet', endpoint: undefined },
-  { provider: 'opencode', model: 'deepseek-v4-pro', endpoint: undefined },
+  { provider: 'opencode', model: 'deepseek-v4-flash-free', endpoint: undefined },
 ]
 
 export async function POST(req: NextRequest): Promise<NextResponse> {
@@ -71,15 +71,20 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
 
   const gens = await aiGeneratedProblems()
   let publishedProblemId: string | null = null
+  let publishedProblemSlug: string | null = null
 
   if (body.publish && result && typeof result === 'object') {
     try {
       const probsCol = await problems()
+      const rawTitle = String(result.title ?? '').trim()
+      const statement = String(result.statement_md ?? '').trim()
+      const topics = Array.isArray(result.topics) ? result.topics.map(String).filter(Boolean) : []
+      const title = rawTitle
+        || statement.split('\n').filter(l => l.trim()).map(l => l.trim()).shift()?.slice(0, 80) || ''
+        || (topics.length ? `${topics.join(', ')} Challenge` : `${result.difficulty || 'Medium'} Coding Challenge`)
       const baseSlug =
-        (typeof result.slug === 'string' ? result.slug : '') ||
-        (typeof result.title === 'string'
-          ? result.title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
-          : `gen-${Date.now()}`)
+        (typeof result.slug === 'string' ? result.slug.trim() : '') ||
+        title.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '')
       let slug = baseSlug
       let n = 1
       while (await probsCol.findOne({ slug })) {
@@ -99,7 +104,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const doc = {
         id,
         slug,
-        title: String(result.title ?? slug),
+        title,
         difficulty: (['easy', 'medium', 'hard'].includes(String(result.difficulty))
           ? String(result.difficulty)
           : 'medium') as 'easy' | 'medium' | 'hard',
@@ -120,6 +125,7 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       }
       await probsCol.insertOne(doc as unknown as never)
       publishedProblemId = id
+      publishedProblemSlug = slug
     } catch (e) {
       console.error('[generate-problem] publish failed', e)
     }
@@ -133,5 +139,5 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     created_at: nowIso(),
   })
 
-  return NextResponse.json({ problem: result, published_problem_id: publishedProblemId })
+  return NextResponse.json({ problem: result, published_problem_id: publishedProblemId, published_problem_slug: publishedProblemSlug })
 }

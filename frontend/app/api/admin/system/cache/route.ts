@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { invalidateServerSecretsCache } from '@/lib/server-secrets-cache'
+import { flushRateLimitKeys } from '@/lib/upstash-rate-limit'
 import { execSync } from 'child_process'
 import fs from 'fs'
 import path from 'path'
@@ -16,13 +17,38 @@ function safeExec(cmd: string, timeout = 15000): { ok: boolean; output: string }
   }
 }
 
+/**
+ * True only when a Docker daemon is actually reachable. The frontend container
+ * ships with the docker CLI but no socket by default — the daemon is only
+ * reachable after the Docker socket is mounted (Dokploy → service → volumes →
+ * `docker.sock` → `/var/run/docker.sock`).
+ */
 function hasDocker(): boolean {
   try {
-    execSync('docker ps', { timeout: 3000, stdio: 'ignore' })
+    execSync('docker info --format "{{.ServerVersion}}"', { timeout: 5000, stdio: 'pipe' })
     return true
   } catch {
     return false
   }
+}
+
+function clearNextBuildCache(): void {
+  const cacheDir = path.join(process.cwd(), '.next', 'cache')
+  if (fs.existsSync(cacheDir)) {
+    fs.rmSync(cacheDir, { recursive: true, force: true })
+  }
+  const serverDir = path.join(process.cwd(), '.next', 'server')
+  const removeMeta = (dir: string) => {
+    if (!fs.existsSync(dir)) return
+    for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name)
+      if (entry.isDirectory()) removeMeta(full)
+      else if (entry.name.endsWith('.meta') || entry.name.endsWith('.html')) {
+        try { fs.unlinkSync(full) } catch { /* race */ }
+      }
+    }
+  }
+  removeMeta(serverDir)
 }
 
 export async function POST(request: Request) {
@@ -41,28 +67,9 @@ export async function POST(request: Request) {
   switch (type) {
     case 'next': {
       try {
-        const cacheDir = path.join(process.cwd(), '.next', 'cache')
-        if (fs.existsSync(cacheDir)) {
-          fs.rmSync(cacheDir, { recursive: true, force: true })
-        }
-        const serverDir = path.join(process.cwd(), '.next', 'server')
-        const removeMeta = (dir: string) => {
-          if (!fs.existsSync(dir)) return
-          for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
-            const full = path.join(dir, entry.name)
-            if (entry.isDirectory()) removeMeta(full)
-            else if (entry.name.endsWith('.meta') || entry.name.endsWith('.html')) {
-              try { fs.unlinkSync(full) } catch { /* race */ }
-            }
-          }
-        }
-        removeMeta(serverDir)
+        clearNextBuildCache()
         invalidateServerSecretsCache()
-        // Also try Docker system prune if available
-        if (hasDocker()) {
-          try { execSync('docker system prune -f --filter "until=24h" 2>/dev/null', { timeout: 30000, stdio: 'ignore' }) } catch { /* optional */ }
-        }
-        return NextResponse.json({ message: 'Next.js cache + secrets cache cleared' })
+        return NextResponse.json({ message: 'Next.js build cache + secrets cache cleared' })
       } catch (e: any) {
         return NextResponse.json({ error: e.message }, { status: 500 })
       }
@@ -75,7 +82,9 @@ export async function POST(request: Request) {
 
     case 'piston': {
       if (!hasDocker()) {
-        return NextResponse.json({ error: 'Docker not available in this container' }, { status: 500 })
+        return NextResponse.json({
+          error: 'Docker daemon is not reachable from this container, so Piston cannot be restarted here.',
+        }, { status: 500 })
       }
       const { ok, output } = safeExec(
         'docker restart codespectra-piston 2>&1',
@@ -86,19 +95,57 @@ export async function POST(request: Request) {
     }
 
     case 'system': {
-      const mem = process.memoryUsage()
+      // Real on-server cleanup: build cache + secrets cache + Redis rate-limit
+      // counters, then docker prune when the daemon is reachable.
+      const cleared: string[] = []
+      try {
+        clearNextBuildCache()
+        cleared.push('Next.js build cache')
+      } catch (e: any) {
+        return NextResponse.json({ error: `Failed to clear build cache: ${e.message}` }, { status: 500 })
+      }
+      invalidateServerSecretsCache()
+      cleared.push('server secrets cache')
+
+      let flushed = 0
+      try {
+        const r = await flushRateLimitKeys()
+        flushed = r.flushed
+        cleared.push(`rate-limit counters (${flushed} reset)`)
+      } catch (e: any) {
+        cleared.push('rate-limit counters (skipped — Redis error)')
+      }
+
+      const dockerAvailable = hasDocker()
+      let pruned = false
+      if (dockerAvailable) {
+        const { ok: prunedOk } = safeExec('docker system prune -a -f --filter "until=24h"', 60000)
+        pruned = prunedOk
+      }
+
       return NextResponse.json({
-        message: 'Memory usage reported. Docker is not available inside the frontend container.',
-        nodeMemory: { heapUsed: Math.round(mem.heapUsed / 1024 / 1024) + 'MB', rss: Math.round(mem.rss / 1024 / 1024) + 'MB' },
-        dockerCommand: 'ssh server-host "docker system prune -f"',
+        message: `Cleared ${cleared.join(' + ')}${pruned ? ' + pruned orphaned Docker resources (24h)' : ''}.`,
+        cleared,
+        rateLimitFlushed: flushed,
+        dockerAvailable,
+        dockerPruned: pruned,
+        dockerCommand: dockerAvailable ? '' : 'docker system prune -a -f --filter "until=24h"',
       })
     }
 
     case 'docker': {
-      return NextResponse.json({
-        message: 'Docker is not available inside this container. Run the command below on your server host.',
-        dockerCommand: 'docker system prune -f --volumes',
-      })
+      if (!hasDocker()) {
+        return NextResponse.json(
+          {
+            error: 'Docker daemon is not reachable from this container. Mount the Docker socket (Dokploy → service → volumes → add /var/run/docker.sock) to run one-click pruning.',
+            dockerCommand: 'docker system prune -a -f --filter "until=24h"',
+          },
+          { status: 500 },
+        )
+      }
+      const { ok, output } = safeExec('docker system prune -a -f --filter "until=24h"', 60000)
+      if (!ok) return NextResponse.json({ error: output }, { status: 500 })
+      return NextResponse.json({ message: 'Docker system prune completed — unused images & build cache reclaimed. (Docker volumes are never touched.)' })
     }
 
     default:

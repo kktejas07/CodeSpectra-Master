@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from services.features import HackathonsService
+from core.auth import require_auth
 
 router = APIRouter(prefix="/internal/hackathons", tags=["hackathons"])
 svc = HackathonsService()
@@ -26,13 +27,13 @@ async def get_hackathon(hackathon_id: str) -> Dict[str, Any]:
 
 
 @router.post("")
-async def create_hackathon(body: Dict[str, Any]) -> Dict[str, Any]:
+async def create_hackathon(body: Dict[str, Any], auth = Depends(require_auth)) -> Dict[str, Any]:
     _id = await svc.create(body)
     return {"ok": True, "id": _id}
 
 
 @router.put("/{hackathon_id}")
-async def update_hackathon(hackathon_id: str, body: Dict[str, Any]) -> Dict[str, Any]:
+async def update_hackathon(hackathon_id: str, body: Dict[str, Any], auth = Depends(require_auth)) -> Dict[str, Any]:
     doc = await svc.update(hackathon_id, body)
     if not doc:
         raise HTTPException(status_code=404, detail="Hackathon not found")
@@ -40,7 +41,7 @@ async def update_hackathon(hackathon_id: str, body: Dict[str, Any]) -> Dict[str,
 
 
 @router.delete("/{hackathon_id}")
-async def delete_hackathon(hackathon_id: str) -> Dict[str, Any]:
+async def delete_hackathon(hackathon_id: str, auth = Depends(require_auth)) -> Dict[str, Any]:
     ok = await svc.delete(hackathon_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Hackathon not found")

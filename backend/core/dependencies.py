@@ -1,7 +1,7 @@
 """
 Shared FastAPI dependencies — extracted from inline code in `ai_router.py`.
 
-* Rate limiting (in-process)
+* Rate limiting (Redis-backed with in-process fallback)
 * Client IP extraction
 * LLM key resolution & chat client construction
 * RAG embedding / search helpers
@@ -35,21 +35,133 @@ from ai_client import (
     UserMessage,
 )
 from core.config import settings
-from rag import (
-    build_context,
-    chunk_text,
-    cosine_similarity,
-    generate_embedding,
-)
 
-# ── In-process rate limiter ─────────────────────────────────────
+# Try to import redis for Redis-backed rate limiting
+try:
+    import redis.asyncio as redis
+    REDIS_AVAILABLE = True
+except ImportError:
+    REDIS_AVAILABLE = False
+    redis = None
+
+# Redis client singleton — created lazily, survives re-imports, reconnects when
+# the Mongo-backed config changes (checked at most every 15s).
+_redis_client: Optional[redis.Redis] = None
+_redis_url: str = ""
+_redis_token: str = ""
+_redis_config_checked_at: float = 0.0
+_REDIS_CONFIG_RECHECK_SECONDS = 15.0
+
+
+def _url_has_embedded_creds(url: str) -> bool:
+    """True when a `redis://user:pass@host` URL already carries credentials."""
+    m = url.split("://", 1)
+    return len(m) == 2 and "@" in m[1]
+
+
+async def _load_redis_config() -> tuple[str, str]:
+    """Return (url, token) from the Mongo server-secrets record (env fallback)."""
+    url = (settings.UPSTASH_REDIS_REST_URL or "").strip()
+    token = (settings.UPSTASH_REDIS_REST_TOKEN or "").strip()
+    try:
+        from core.database import get_collection
+        secrets_col = await get_collection("platform_settings")
+        doc = await secrets_col.find_one({"key": "secrets"})
+        if doc and isinstance(doc.get("value"), dict):
+            secrets = doc["value"]
+            url = str(secrets.get("upstash_redis_rest_url", "") or "").strip() or url
+            token = str(secrets.get("upstash_redis_rest_token", "") or "").strip() or token
+    except Exception:
+        pass
+    return url, token
+
+
+async def ensure_redis_client() -> Optional[redis.Redis]:
+    """Return a live Redis client, reconnecting when the config changes.
+
+    Re-reads the Mongo-backed secrets every 15s; when the URL/token differ from
+    the cached client, the old connection is dropped and a new one is created.
+    Returns None when Redis is unavailable or unconfigured — callers fall back
+    to the in-memory limiter.
+    """
+    global _redis_client, _redis_url, _redis_token, _redis_config_checked_at
+    if not REDIS_AVAILABLE:
+        return None
+
+    now = time.time()
+    if now - _redis_config_checked_at > _REDIS_CONFIG_RECHECK_SECONDS:
+        url, token = await _load_redis_config()
+        _redis_config_checked_at = now
+        if url != _redis_url or token != _redis_token:
+            if _redis_client:
+                try:
+                    await _redis_client.aclose()
+                except Exception:
+                    pass
+                _redis_client = None
+            _redis_url, _redis_token = url, token
+
+    if _redis_client:
+        return _redis_client
+    if not _redis_url or not _redis_token:
+        return None
+
+    try:
+        client = redis.from_url(
+            _redis_url,
+            # If the URL already embeds `:pass@`, don't double-supply the password.
+            password=None if _url_has_embedded_creds(_redis_url) else _redis_token,
+            socket_connect_timeout=5,
+        )
+        await client.ping()
+        _redis_client = client
+        return client
+    except Exception:
+        _redis_client = None
+        return None
+
+
+async def init_redis_client() -> Optional[redis.Redis]:
+    """Initialize Redis client from DB cache or environment variables."""
+    return await ensure_redis_client()
+
+
+# ── In-process rate limiter (fallback) ─────────────────────────────────────
 _rl: dict[str, list[float]] = defaultdict(list)
 
 
-def check_rate_limit(
+async def check_rate_limit(
     key: str, max_hits: int = 60, window_sec: int = 60
 ) -> None:
-    """Raise 429 if the caller has exceeded the request budget."""
+    """Raise 429 if the caller has exceeded the request budget.
+
+    Uses Redis-backed rate limiting when available (async pipeline INCR/EXPIRE),
+    falls back to in-process sliding window.
+    """
+    if REDIS_AVAILABLE:
+        client = await ensure_redis_client()
+        if client:
+            try:
+                pipe = client.pipeline()
+                pipe.incr(key)
+                pipe.expire(key, window_sec)
+                results = await pipe.execute()
+                current_count = results[0]
+                if current_count > max_hits:
+                    raise HTTPException(
+                        status_code=429,
+                        detail=(
+                            f"Rate limit exceeded. Try again in "
+                            f"{max(1, window_sec)}s."
+                        ),
+                    )
+                return  # Allowed — hit counted in Redis
+            except HTTPException:
+                raise
+            except Exception:
+                pass  # Fall back to in-memory on Redis error
+
+    # Fall back to in-process rate limiting
     now = time.time()
     hits = [t for t in _rl.get(key, []) if now - t < window_sec]
     if len(hits) >= max_hits:
@@ -290,38 +402,3 @@ def parse_json_response(raw: str) -> Any:
         return json.loads(s)
     except Exception:
         return None
-
-
-# ── RAG helpers ─────────────────────────────────────────────────
-
-
-async def rag_search(
-    query: str,
-    embeddings_collection: AsyncIOMotorCollection,
-    api_key: str,
-    min_score: float = 0.65,
-    max_results: int = 5,
-) -> str | None:
-    """Search RAG embeddings for context relevant to `query`."""
-    query_emb = await generate_embedding(query, api_key)
-    if not query_emb:
-        return None
-
-    cands: list[dict] = []
-    async for doc in embeddings_collection.find(
-        {}, projection={"text": 1, "source": 1, "embedding": 1}
-    ):
-        vec = doc.get("embedding")
-        if vec and len(vec) == 768:
-            sim = cosine_similarity(query_emb, vec)
-            if sim > min_score:
-                cands.append(
-                    {
-                        "text": doc.get("text", ""),
-                        "source": doc.get("source", ""),
-                        "score": sim,
-                    }
-                )
-    cands.sort(key=lambda x: x["score"], reverse=True)
-    ctx = build_context(cands[:max_results])
-    return ctx if ctx else None

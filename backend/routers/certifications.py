@@ -3,9 +3,10 @@ from __future__ import annotations
 
 from typing import Any, Dict
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 
 from services.features import CertificationsService
+from core.auth import require_auth
 
 router = APIRouter(prefix="/internal/certifications", tags=["certifications"])
 svc = CertificationsService()
@@ -26,7 +27,7 @@ async def get_certification(cert_id: str) -> Dict[str, Any]:
 
 
 @router.post("")
-async def start_certification(body: Dict[str, Any]) -> Dict[str, Any]:
+async def start_certification(body: Dict[str, Any], auth = Depends(require_auth)) -> Dict[str, Any]:
     _id = await svc.create(body)
     return {"ok": True, "id": _id}
 

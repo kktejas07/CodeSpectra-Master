@@ -4,7 +4,7 @@ from __future__ import annotations
 from datetime import datetime, timezone
 from typing import Any, Dict, List, Optional
 
-from fastapi import APIRouter, HTTPException, Query
+from fastapi import APIRouter, Depends, HTTPException, Query, Request
 from pydantic import BaseModel
 
 from models.question_bank import QuestionItem, QuestionItemCreate, QuestionItemUpdate
@@ -12,24 +12,29 @@ from models.requisition import Requisition, RequisitionCreate, RequisitionUpdate
 from services.scoring_service import scoring_service
 from services.workday_service import workday_service
 from services import assessment_service as store
+from core.auth import require_auth
 
 router = APIRouter(prefix="/api/assessment-platform", tags=["Engineering Assessment Platform"])
 
 
 # --- REQUISITIONS CRUD (MongoDB-backed) ---
 @router.post("/requisitions", response_model=Requisition)
-async def create_requisition(req: RequisitionCreate):
+async def create_requisition(req: RequisitionCreate, auth = Depends(require_auth)):
     return await store.create_requisition(req.model_dump())
 
 
 @router.get("/requisitions", response_model=List[Requisition])
-async def list_requisitions(region: Optional[str] = None, discipline: Optional[str] = None):
+async def list_requisitions(
+    region: Optional[str] = None,
+    discipline: Optional[str] = None,
+    auth = Depends(require_auth),
+):
     results = await store.list_requisitions(region, discipline)
     return results
 
 
 @router.get("/requisitions/{req_id}", response_model=Requisition)
-async def get_requisition(req_id: str):
+async def get_requisition(req_id: str, auth = Depends(require_auth)):
     record = await store.get_requisition(req_id)
     if not record:
         raise HTTPException(status_code=404, detail="Requisition not found")
@@ -37,7 +42,7 @@ async def get_requisition(req_id: str):
 
 
 @router.patch("/requisitions/{req_id}", response_model=Requisition)
-async def update_requisition(req_id: str, patch: RequisitionUpdate):
+async def update_requisition(req_id: str, patch: RequisitionUpdate, auth = Depends(require_auth)):
     record = await store.get_requisition(req_id)
     if not record:
         raise HTTPException(status_code=404, detail="Requisition not found")
@@ -47,7 +52,7 @@ async def update_requisition(req_id: str, patch: RequisitionUpdate):
 
 
 @router.delete("/requisitions/{req_id}")
-async def delete_requisition(req_id: str):
+async def delete_requisition(req_id: str, auth = Depends(require_auth)):
     ok = await store.delete_requisition(req_id)
     if not ok:
         raise HTTPException(status_code=404, detail="Requisition not found")
@@ -56,7 +61,7 @@ async def delete_requisition(req_id: str):
 
 # --- QUESTION BANK CRUD (MongoDB-backed) ---
 @router.post("/question-bank", response_model=QuestionItem)
-async def create_question_item(item: QuestionItemCreate):
+async def create_question_item(item: QuestionItemCreate, auth = Depends(require_auth)):
     return await store.create_question_item(item.model_dump())
 
 
@@ -66,13 +71,14 @@ async def list_question_items(
     competency: Optional[str] = None,
     experience_band: Optional[str] = None,
     modality: Optional[str] = None,
+    auth = Depends(require_auth),
 ):
     results = await store.list_question_items(discipline, competency, experience_band, modality)
     return results
 
 
 @router.get("/question-bank/{item_id}", response_model=QuestionItem)
-async def get_question_item(item_id: str):
+async def get_question_item(item_id: str, auth = Depends(require_auth)):
     record = await store.get_question_item(item_id)
     if not record:
         raise HTTPException(status_code=404, detail="Question item not found")
@@ -80,7 +86,7 @@ async def get_question_item(item_id: str):
 
 
 @router.patch("/question-bank/{item_id}", response_model=QuestionItem)
-async def update_question_item(item_id: str, patch: QuestionItemUpdate):
+async def update_question_item(item_id: str, patch: QuestionItemUpdate, auth = Depends(require_auth)):
     record = await store.get_question_item(item_id)
     if not record:
         raise HTTPException(status_code=404, detail="Question item not found")
@@ -90,7 +96,7 @@ async def update_question_item(item_id: str, patch: QuestionItemUpdate):
 
 
 @router.delete("/question-bank/{item_id}")
-async def delete_question_item(item_id: str):
+async def delete_question_item(item_id: str, auth = Depends(require_auth)):
     record = await store.get_question_item(item_id)
     if not record:
         raise HTTPException(status_code=404, detail="Question item not found")
@@ -107,7 +113,7 @@ class WorkdayTriggerPayload(BaseModel):
 
 
 @router.post("/workday/trigger-invite")
-async def workday_trigger_invite(payload: WorkdayTriggerPayload):
+async def workday_trigger_invite(payload: WorkdayTriggerPayload, auth = Depends(require_auth)):
     return await workday_service.trigger_invitation(
         candidate_email=payload.candidate_email,
         candidate_name=payload.candidate_name,
@@ -126,7 +132,7 @@ class WorkdayWritebackPayload(BaseModel):
 
 
 @router.post("/workday/writeback")
-async def workday_writeback(payload: WorkdayWritebackPayload):
+async def workday_writeback(payload: WorkdayWritebackPayload, auth = Depends(require_auth)):
     return await workday_service.write_back_results(
         workday_candidate_id=payload.workday_candidate_id,
         requisition_code=payload.requisition_code,
@@ -138,7 +144,7 @@ async def workday_writeback(payload: WorkdayWritebackPayload):
 
 
 @router.post("/workday/reconcile")
-async def workday_reconcile_failed_syncs():
+async def workday_reconcile_failed_syncs(auth = Depends(require_auth)):
     """Manual & automated reconciliation endpoint for failed Workday integrations (IR-06)."""
     return {
         "ok": True,
@@ -150,7 +156,10 @@ async def workday_reconcile_failed_syncs():
 
 # --- BI & ANALYTICS API EXPORT (FR-40) ---
 @router.get("/export/bi")
-async def export_bi_analytics_data(format: str = Query("json", description="'json' or 'csv'")):
+async def export_bi_analytics_data(
+    format: str = Query("json", description="'json' or 'csv'"),
+    auth = Depends(require_auth),
+):
     """REST API access for client BI tools (PowerBI, Tableau) and downstream analytics (FR-40)."""
     requisitions = await store.list_requisitions()
     records = []
@@ -176,7 +185,7 @@ class CADEvaluatePayload(BaseModel):
 
 
 @router.post("/cad/evaluate")
-async def evaluate_cad(payload: CADEvaluatePayload):
+async def evaluate_cad(payload: CADEvaluatePayload, auth = Depends(require_auth)):
     return scoring_service.evaluate_cad_submission(
         submission_file_meta={"file_name": payload.file_name, "file_size": payload.file_size_bytes},
         constraints=payload.constraints,
@@ -194,7 +203,7 @@ class CAD4LayerEvaluatePayload(BaseModel):
 
 
 @router.post("/cad/evaluate-4-layer")
-async def evaluate_cad_4_layer(payload: CAD4LayerEvaluatePayload):
+async def evaluate_cad_4_layer(payload: CAD4LayerEvaluatePayload, auth = Depends(require_auth)):
     """Perform 4-layer CAD evaluation via the cad_step domain plugin."""
     from backend.core.contracts.domain import GradingContext, Submission
     from backend.core.registry import get
@@ -230,7 +239,7 @@ class AdverseImpactPayload(BaseModel):
 
 
 @router.post("/adverse-impact")
-async def calculate_adverse_impact(payload: AdverseImpactPayload):
+async def calculate_adverse_impact(payload: AdverseImpactPayload, auth = Depends(require_auth)):
     """EEOC 4/5ths (80%) Rule Adverse Impact Calculator for legal compliance & auditing."""
     return scoring_service.compute_adverse_impact_ratio(
         group_a_pass_rate=payload.majority_group_pass_rate,
@@ -240,7 +249,7 @@ async def calculate_adverse_impact(payload: AdverseImpactPayload):
 
 # --- ASSESSMENT ANALYTICS & CSV EXPORTS (Section 10 of Spec) ---
 @router.get("/assessments/{assessment_id}/analytics")
-async def get_assessment_analytics(assessment_id: str):
+async def get_assessment_analytics(assessment_id: str, auth = Depends(require_auth)):
     """Get assessment drop-off rates, item difficulty distribution, and p95 completion time."""
     return {
         "ok": True,
@@ -259,7 +268,7 @@ async def get_assessment_analytics(assessment_id: str):
 
 
 @router.get("/exports/{assessment_id}.csv")
-async def export_assessment_results_csv(assessment_id: str):
+async def export_assessment_results_csv(assessment_id: str, auth = Depends(require_auth)):
     """Export normalized candidate assessment attempt results as CSV (Section 10)."""
     from fastapi.responses import Response
 

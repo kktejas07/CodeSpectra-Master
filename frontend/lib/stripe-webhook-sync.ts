@@ -86,7 +86,8 @@ export async function syncSubscriptionFromStripe(subscription: Stripe.Subscripti
 
   const mappedStatus = statusMap[subscription.status] || 'expired'
   const existing = await subs.findOne({ user_id: userId, status: 'active' })
-  const endsAt = new Date((subscription.current_period_end || 0) * 1000).toISOString()
+  const sub = subscription as any
+  const endsAt = new Date((sub.current_period_end || 0) * 1000).toISOString()
 
   if (existing) {
     await subs.updateOne(
@@ -99,7 +100,7 @@ export async function syncSubscriptionFromStripe(subscription: Stripe.Subscripti
       user_id: userId,
       plan_id: String(subscription.metadata?.plan_id || 'pro_monthly'),
       status: mappedStatus,
-      started_at: new Date((subscription.current_period_start || 0) * 1000).toISOString(),
+      started_at: new Date((sub.current_period_start || 0) * 1000).toISOString(),
       ends_at: endsAt,
       created_at: nowIso(),
     })
@@ -108,7 +109,8 @@ export async function syncSubscriptionFromStripe(subscription: Stripe.Subscripti
 
 /** Sync an invoice.paid / invoice.payment_failed event */
 export async function syncInvoiceFromStripe(invoice: Stripe.Invoice): Promise<void> {
-  const subscriptionId = String(invoice.subscription || '')
+  const inv = invoice as any
+  const subscriptionId = String(inv.subscription || '')
   const userId = String(invoice.metadata?.user_id || '')
   if (!userId && !subscriptionId) return
 
@@ -139,7 +141,7 @@ export async function syncInvoiceFromStripe(invoice: Stripe.Invoice): Promise<vo
         id: newId(),
         user_id: userId || 'system',
         order_id: orderId,
-        razorpay_payment_id: `stripe_${invoice.payment_intent || invoice.id}`,
+        razorpay_payment_id: `stripe_${inv.payment_intent || invoice.id}`,
         status: 'captured',
         amount_paise: invoice.amount_paid,
         created_at: nowIso(),

@@ -25,10 +25,18 @@ The browser WebUSB API **blocklists mass-storage devices (pen drives) and HID mi
 
 ### On exam start
 1. The content script injects a `<meta name="cspectra-audit">` tag on assessment/exam pages.
-2. The exam page checks for this tag. If missing, a **"Install Extension"** modal is shown.
+2. The exam page checks for this tag. If missing, a **"Install Extension"** modal is shown and the assessment **cannot be started** (both the pre-start screen and the active exam UI are gated).
 3. The content script extracts the session ID from the URL and requests a full audit from the background service worker.
 4. The background enumerates all USB/HID/storage devices, classifies each (safe/warn/blocked), and reports to `POST /api/proctor/events`.
 5. The exam page receives the audit result and displays it.
+6. The submit API **rejects submissions** for logged-in candidates who have no `hardware_port_audit` event recorded for that exam (no extension → no assessment, even via direct API calls).
+
+### How users get updates
+Chrome extensions **do not update from git**. The store only serves what you upload:
+1. Bump `version` in `manifest.json`.
+2. Zip: `cd frontend/extensions/proctor-device-audit && zip -r code-spectra-device-audit-vX.Y.Z.zip .`
+3. Upload at https://chrome.google.com/webstore/devconsole → the existing item → **Upload new package**.
+4. Submit for review → once published, all users auto-update within ~5h.
 
 ### During the exam
 - **Hotplug watcher** runs in the background: `chrome.system.storage.onAttached` fires instantly when a pen drive is inserted. USB/HID polling runs every 5 seconds.
@@ -58,6 +66,7 @@ Click the extension icon to see:
 | `hid` | Enumerate HID devices (mice, keyboards, game controllers) |
 | `usb` | Enumerate other USB devices |
 | `activeTab` | Read current tab URL for session extraction |
+| `tabs` | `chrome.tabs.query` by URL pattern to notify open exam pages |
 | `storage` | Cache last audit for popup display |
 
 ## Publishing to Chrome Web Store
