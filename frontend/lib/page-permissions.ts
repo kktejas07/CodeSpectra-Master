@@ -67,8 +67,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/cron-jobs',
 
   // Analytics (superadmin only)
-  '/dashboard/admin/analytics/proctoring',
-  '/dashboard/admin/analytics/scores',
+  '/dashboard/admin/analytics',
 
   // Infrastructure, Settings & Announcements
   '/dashboard/admin/settings',
@@ -232,8 +231,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/roles': 'Roles',
   '/dashboard/admin/organizations': 'Organizations',
   '/dashboard/admin/analytics': 'Insights',
-  '/dashboard/admin/analytics/proctoring': 'Proctoring Analytics',
-  '/dashboard/admin/analytics/scores': 'Score Analytics',
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
   '/dashboard/admin/security': 'Security',

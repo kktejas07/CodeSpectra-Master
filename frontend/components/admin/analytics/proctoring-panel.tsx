@@ -1,9 +1,8 @@
 'use client'
 
-import { useEffect, useState, useCallback, useMemo } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
-import { Loader2, Shield, AlertTriangle, RefreshCw, AlertCircle, Eye, MonitorOff, HelpCircle } from 'lucide-react'
-import { usePageGuard } from '@/lib/use-page-guard'
+import { Loader2, Shield, AlertTriangle, RefreshCw, AlertCircle, Eye } from 'lucide-react'
 import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts'
 
 interface ProctorEvent {
@@ -47,15 +46,13 @@ const EVENT_COLORS: Record<string, string> = {
 
 const POLL_INTERVAL = 10000 // 10 seconds
 
-export default function ProctoringAnalyticsPage() {
-  const gate = usePageGuard('superadmin')
+export function ProctoringPanel() {
   const [data, setData] = useState<ProctoringData | null>(null)
   const [loading, setLoading] = useState(true)
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null)
   const [autoRefresh, setAutoRefresh] = useState(true)
 
   const fetchData = useCallback(async () => {
-    if (!gate.ready) return
     try {
       const res = await fetch('/api/admin/analytics/proctoring', { credentials: 'include' })
       const json = await res.json()
@@ -65,20 +62,17 @@ export default function ProctoringAnalyticsPage() {
       }
     } catch { /* ignore */ }
     finally { setLoading(false) }
-  }, [gate.ready])
+  }, [])
 
   useEffect(() => {
     void fetchData()
   }, [fetchData])
 
-  // Auto-refresh polling
   useEffect(() => {
-    if (!autoRefresh || !gate.ready) return
+    if (!autoRefresh) return
     const interval = setInterval(() => void fetchData(), POLL_INTERVAL)
     return () => clearInterval(interval)
-  }, [autoRefresh, gate.ready, fetchData])
-
-  if (!gate.ready) return null
+  }, [autoRefresh, fetchData])
 
   if (loading) {
     return (
@@ -92,7 +86,6 @@ export default function ProctoringAnalyticsPage() {
   const maxCount = Math.max(...Object.values(eventsByType), 1)
   const sortedTypes = Object.entries(eventsByType).sort((a, b) => b[1] - a[1])
 
-  // Aggregate exam-level data from events
   const examMap = new Map<string, { title: string; total: number }>()
   for (const evt of data?.events || []) {
     for (const ex of evt.exams || []) {
@@ -106,10 +99,9 @@ export default function ProctoringAnalyticsPage() {
     .sort((a, b) => b.total - a.total)
   const maxExamFlags = Math.max(...examFlags.map(e => e.total), 1)
 
-  // Categorize Risk Levels
   const highRiskEvents = new Set([
-    'alt_tab_detected', 'screen_share_started', 'screen_capture_detected', 
-    'prohibited_app_detected', 'remote_desktop_detected', 'copy_paste_attempt', 
+    'alt_tab_detected', 'screen_share_started', 'screen_capture_detected',
+    'prohibited_app_detected', 'remote_desktop_detected', 'copy_paste_attempt',
     'navigate_away_attempt', 'secondary_voice_detected', 'hardware_port_anomaly'
   ])
 
@@ -119,11 +111,10 @@ export default function ProctoringAnalyticsPage() {
   const pieData = sortedTypes.map(([type, count]) => {
     if (highRiskEvents.has(type)) highRiskCount += count
     else lowRiskCount += count
-    
+
     return { name: type, value: count, color: EVENT_COLORS[type] || '#6b7280' }
   })
 
-  // Risk categorization data
   const riskPieData = [
     { name: 'High Risk', value: highRiskCount, color: '#ef4444' },
     { name: 'Low/Medium Risk', value: lowRiskCount, color: '#f59e0b' }
@@ -215,7 +206,6 @@ export default function ProctoringAnalyticsPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Risk Distribution Chart */}
         <Card className="border-border/60 p-6 flex flex-col">
           <h2 className="text-lg font-semibold text-foreground mb-4">Risk Distribution</h2>
           <div className="flex-1 min-h-[250px]">
@@ -235,7 +225,7 @@ export default function ProctoringAnalyticsPage() {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <RechartsTooltip 
+                  <RechartsTooltip
                     contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
                     itemStyle={{ color: 'hsl(var(--foreground))' }}
                   />
@@ -248,7 +238,6 @@ export default function ProctoringAnalyticsPage() {
           </div>
         </Card>
 
-        {/* Flags per Exam - Bar Chart */}
         <Card className="border-border/60 p-6 flex flex-col">
           <h2 className="text-lg font-semibold text-foreground mb-4">Top Flags per Exam</h2>
           {examFlags.length === 0 ? (
@@ -274,7 +263,6 @@ export default function ProctoringAnalyticsPage() {
         </Card>
       </div>
 
-      {/* Flags by Event Type - Summary Table */}
       <Card className="border-border/60 overflow-hidden">
         <div className="px-6 py-4 border-b border-border/60">
           <h2 className="text-lg font-semibold text-foreground">Flags by Event Type</h2>

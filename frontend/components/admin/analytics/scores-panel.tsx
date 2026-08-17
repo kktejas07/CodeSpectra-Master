@@ -3,7 +3,6 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Loader2, BarChart3, TrendingUp, Hash } from 'lucide-react'
-import { usePageGuard } from '@/lib/use-page-guard'
 
 interface ScoresData {
   distribution: { bucket: string; count: number }[]
@@ -19,21 +18,17 @@ const BUCKET_COLORS: Record<string, string> = {
   '80-100': '#10b981',
 }
 
-export default function ScoresAnalyticsPage() {
-  const gate = usePageGuard('superadmin')
+export function ScoresPanel() {
   const [data, setData] = useState<ScoresData | null>(null)
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    if (!gate.ready) return
     fetch('/api/admin/analytics/scores', { credentials: 'include' })
       .then(r => r.json())
       .then(json => { if (json) setData(json) })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [gate.ready])
-
-  if (!gate.ready) return null
+  }, [])
 
   if (loading) {
     return (

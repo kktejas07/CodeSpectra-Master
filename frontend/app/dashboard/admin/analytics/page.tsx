@@ -11,10 +11,13 @@ import { Switch } from '@/components/ui/switch'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { ScoresPanel } from '@/components/admin/analytics/scores-panel'
+import { ProctoringPanel } from '@/components/admin/analytics/proctoring-panel'
 import {
   BarChart3, Users, Eye, Activity, Globe, Monitor, Smartphone, Tablet,
   RefreshCw, Loader2, TrendingUp, ArrowUp, ArrowDown,
   Search, Download, Trash2, Zap, MousePointer, Gauge, Filter, UserCheck,
+  Award, Shield,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis, CartesianGrid,
@@ -556,7 +559,7 @@ export default function AnalyticsPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-        <TabsList className="grid w-full grid-cols-10">
+        <TabsList className="grid w-full grid-cols-12">
           <TabsTrigger value="overview" className="gap-1.5">
             <BarChart3 className="h-4 w-4" /> Overview
           </TabsTrigger>
@@ -586,6 +589,12 @@ export default function AnalyticsPage() {
           </TabsTrigger>
           <TabsTrigger value="performance" className="gap-1.5">
             <Gauge className="h-4 w-4" /> Perf
+          </TabsTrigger>
+          <TabsTrigger value="scores" className="gap-1.5">
+            <Award className="h-4 w-4" /> Scores
+          </TabsTrigger>
+          <TabsTrigger value="proctoring" className="gap-1.5">
+            <Shield className="h-4 w-4" /> Proctoring
           </TabsTrigger>
         </TabsList>
 
@@ -676,6 +685,16 @@ export default function AnalyticsPage() {
         {/* ─── Tab 11: Performance ──────────────────────────────────────────── */}
         <TabsContent value="performance" className="space-y-6">
           <PerformanceTab data={vitalsData} loading={vitalsLoading} />
+        </TabsContent>
+
+        {/* ─── Tab 12: Scores ───────────────────────────────────────────────── */}
+        <TabsContent value="scores" className="space-y-6">
+          <ScoresPanel />
+        </TabsContent>
+
+        {/* ─── Tab 13: Proctoring ──────────────────────────────────────────── */}
+        <TabsContent value="proctoring" className="space-y-6">
+          <ProctoringPanel />
         </TabsContent>
       </Tabs>
     </div>

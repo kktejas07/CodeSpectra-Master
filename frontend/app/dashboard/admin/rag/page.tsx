@@ -10,8 +10,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
-  Database, Search, RefreshCw, Loader2, FileText, Zap,
-  CheckCircle2, AlertTriangle, Info, Play,
+  Database, Search, RefreshCw, Loader2, Info, Play,
 } from 'lucide-react'
 
 export default function RagAdminPage() {
@@ -23,12 +22,16 @@ export default function RagAdminPage() {
   const [searchQuery, setSearchQuery] = useState('')
   const [searchResults, setSearchResults] = useState<Array<{ text: string; source: string; score: number }> | null>(null)
   const [searching, setSearching] = useState(false)
+  const [statsError, setStatsError] = useState('')
+  const [searchError, setSearchError] = useState('')
 
   const loadStats = useCallback(async () => {
     try {
       const r = await fetch('/api/admin/rag/stats', { credentials: 'include' })
       const d = await r.json()
+      if (!r.ok) { setStatsError(d.error || `Failed (${r.status})`); setStats(null); return }
       setStats(d)
+      setStatsError('')
     } catch {
       toast({ type: 'error', title: 'Failed to load RAG stats' })
     } finally {
@@ -46,7 +49,7 @@ export default function RagAdminPage() {
     try {
       const r = await csrfFetch('/api/admin/rag/reindex', { method: 'POST', credentials: 'include' })
       const d = await r.json()
-      toast({ type: d.ok ? 'success' : 'error', title: d.ok ? `Re-indexed: ${d.count} items` : 'Re-index failed' })
+      toast({ type: d.ok ? 'success' : 'error', title: d.ok ? `Re-indexed: ${d.count} items` : `Re-index failed: ${d.error || ''}` })
       loadStats()
     } catch {
       toast({ type: 'error', title: 'Re-index request failed' })
@@ -59,6 +62,7 @@ export default function RagAdminPage() {
     if (!searchQuery.trim()) return
     setSearching(true)
     setSearchResults(null)
+    setSearchError('')
     try {
       const r = await csrfFetch('/api/admin/rag/search', {
         method: 'POST',
@@ -67,6 +71,7 @@ export default function RagAdminPage() {
         body: JSON.stringify({ query: searchQuery }),
       })
       const d = await r.json()
+      if (!r.ok) { setSearchError(d.error || `Search failed (${r.status})`); return }
       setSearchResults(d.results || [])
     } catch {
       toast({ type: 'error', title: 'Search failed' })
@@ -95,6 +100,12 @@ export default function RagAdminPage() {
         </div>
       </div>
 
+      {statsError && (
+        <Card className="p-4 border-destructive/40 bg-destructive/5">
+          <p className="text-sm text-destructive">{statsError}</p>
+        </Card>
+      )}
+
       {stats && (
         <Card className="p-6 border-border/60">
           <h2 className="text-sm font-semibold mb-4">Index Overview</h2>
@@ -121,6 +132,9 @@ export default function RagAdminPage() {
             {searching ? <Loader2 className="h-4 w-4 animate-spin" /> : <Search className="h-4 w-4" />}
           </Button>
         </div>
+        {searchError && (
+          <p className="mb-4 text-sm text-destructive bg-destructive/5 border border-destructive/30 rounded-lg px-3 py-2">{searchError}</p>
+        )}
         {searchResults && (
           <div className="space-y-2 max-h-80 overflow-y-auto">
             {searchResults.length === 0 ? (
