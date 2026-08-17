@@ -99,9 +99,6 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   user_roles: [
     { key: { user_id: 1, organization_id: 1 }, unique: true },
   ],
-  certifications: [
-    { key: { slug: 1 }, unique: true },
-  ],
   certification_attempts: [
     { key: { verify_token: 1 }, unique: true },
     { key: { user_id: 1, certification_id: 1 } },
