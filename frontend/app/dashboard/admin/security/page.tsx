@@ -8,7 +8,7 @@ import { Switch } from '@/components/ui/switch'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Input } from '@/components/ui/input'
 import { DataTable, type BulkAction } from '@/components/ui/data-table'
-import { auditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
+import { unmaskedAuditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
@@ -800,7 +800,7 @@ export default function Security() {
               </Card>
             </div>
             <DataTable
-              columns={auditLogColumns}
+              columns={unmaskedAuditLogColumns}
               data={auditLogs}
               tableId="security-audit-logs"
               searchPlaceholder="Search actor, action, resource..."

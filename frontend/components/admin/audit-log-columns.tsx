@@ -23,6 +23,8 @@ export type AuditRow = {
   severity: Severity
   outcome: Outcome
   detail?: string
+  /** Optional display name — populated by security API for unmasked view. */
+  actorName?: string
 }
 
 /* ─── Human-readable action labels ─────────────────────────────────────── */
@@ -67,7 +69,7 @@ function actionIcon(action: string): ReactNode {
   return <ScrollText className="h-3.5 w-3.5" />
 }
 
-/* ─── PII masking (never render raw emails / full IPs in the UI) ────────── */
+/* ─── PII masking (configurable — superadmin security page shows real values) ── */
 
 export function maskEmail(email: string): string {
   const at = email.indexOf('@')
@@ -82,7 +84,7 @@ export function maskEmail(email: string): string {
 export function maskIp(ip: string): string {
   const v4 = ip.split('.')
   if (v4.length === 4 && v4.every((n) => /^\d+$/.test(n))) {
-    return `${v4[0]}.${v4[1]}.${v4[2]}.•`
+    return `${v4[0]}.${v4[1]}.${v4[2]}.***`
   }
   return ip.length > 4 ? `${ip.slice(0, 4)}••••` : '••••'
 }
@@ -96,17 +98,24 @@ function maskIdentity(value: string): string {
   return value
 }
 
+/** Unmasked identity — for superadmin security pages that need full detail. */
+function unmaskIdentity(value: string): string {
+  if (!value || value === 'unknown') return 'Unknown'
+  return value
+}
+
 /** Split `email/foo@bar.com` style resources into a friendly label + masked id. */
-export function parseResource(resource: string): { label: string; value: string } {
+export function parseResource(resource: string, unmasked = false): { label: string; value: string } {
   if (!resource || resource === 'unknown') return { label: 'Unknown resource', value: '' }
   const slash = resource.indexOf('/')
   if (slash <= 0) return { label: 'Resource', value: resource }
 
   const type = resource.slice(0, slash)
   const id = resource.slice(slash + 1)
+  const maskFn = unmasked ? (v: string) => v : maskEmail
   switch (type) {
-    case 'email': return { label: 'Account email', value: maskEmail(id) }
-    case 'ip': return { label: 'IP address', value: maskIp(id) }
+    case 'email': return { label: 'Account email', value: unmasked ? id : maskEmail(id) }
+    case 'ip': return { label: 'IP address', value: unmasked ? id : maskIp(id) }
     case 'user': return { label: 'User account', value: id }
     case 'team': return { label: 'Team', value: id }
     case 'org': case 'organization': return { label: 'Organization', value: id }
@@ -205,6 +214,82 @@ export const auditLogColumns: DataTableColumn<AuditRow>[] = [
     key: 'resource', header: 'Resource',
     cell: (row) => {
       const { label, value } = parseResource(row.resource)
+      return (
+        <div className="flex items-start gap-2">
+          <span className="mt-0.5 shrink-0 text-muted-foreground">{resourceIcon(row.resourceType)}</span>
+          <div className="min-w-0">
+            <p className="truncate text-xs font-medium text-foreground">{value || label}</p>
+            <p className="truncate text-[11px] text-muted-foreground">{label}</p>
+            {row.detail ? (
+              <p className="mt-1 truncate text-[11px] text-muted-foreground/80" title={row.detail}>
+                {row.detail}
+              </p>
+            ) : null}
+          </div>
+        </div>
+      )
+    },
+  },
+  {
+    key: 'severity', header: 'Severity',
+    cell: (row) => <Badge variant="outline" className={`font-normal ${severityBadge(row.severity)}`}>{row.severity}</Badge>,
+  },
+  {
+    key: 'outcome', header: 'Outcome',
+    cell: (row) => (
+      <div className="flex items-center gap-2">
+        {outcomeIcon(row.outcome)}
+        <span className="text-xs capitalize text-muted-foreground">{row.outcome}</span>
+      </div>
+    ),
+  },
+]
+
+/** Unmasked columns for superadmin security page — shows full emails, IPs, and names. */
+export const unmaskedAuditLogColumns: DataTableColumn<AuditRow>[] = [
+  {
+    key: 'ts', header: 'Time',
+    cell: (row) => (
+      <div className="whitespace-nowrap text-xs text-muted-foreground" title={row.ts ? `${row.ts.replace('T', ' ').replace('.000Z', ' UTC')} UTC` : undefined}>
+        <Clock className="mr-1 inline h-3.5 w-3.5 opacity-70" />
+        {timeAgo(row.ts)}
+      </div>
+    ),
+  },
+  {
+    key: 'actor', header: 'Actor',
+    cell: (row) => (
+      <div className="space-y-0.5">
+        <p className="font-medium text-foreground">
+          {row.actorName || unmaskIdentity(row.actor)}
+        </p>
+        {row.actorName && row.actor !== row.actorName ? (
+          <p className="text-xs text-muted-foreground font-mono">{row.actor}</p>
+        ) : null}
+        {row.actorIp ? (
+          <p className="flex items-center gap-1 text-xs text-muted-foreground">
+            <MapPin className="h-3 w-3" /> {row.actorIp}
+          </p>
+        ) : null}
+      </div>
+    ),
+  },
+  {
+    key: 'action', header: 'Action',
+    cell: (row) => (
+      <div className="flex items-center gap-2">
+        <span className="text-muted-foreground">{actionIcon(row.action)}</span>
+        <div>
+          <p className="font-medium text-foreground">{actionLabel(row.action)}</p>
+          <p className="text-[11px] text-muted-foreground capitalize">{resourceHeader(row.resourceType)}</p>
+        </div>
+      </div>
+    ),
+  },
+  {
+    key: 'resource', header: 'Resource',
+    cell: (row) => {
+      const { label, value } = parseResource(row.resource, true)
       return (
         <div className="flex items-start gap-2">
           <span className="mt-0.5 shrink-0 text-muted-foreground">{resourceIcon(row.resourceType)}</span>

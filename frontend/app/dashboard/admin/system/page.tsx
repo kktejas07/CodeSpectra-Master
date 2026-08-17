@@ -116,7 +116,7 @@ function maskIdentity(value: string): string {
   }
   const v4 = value.split('.')
   if (v4.length === 4 && v4.every((n) => /^\d+$/.test(n))) {
-    return `${v4[0]}.${v4[1]}.${v4[2]}.•`
+    return `${v4[0]}.${v4[1]}.${v4[2]}.***`
   }
   return value.length > 24 ? value.slice(0, 18) + '…' : value
 }

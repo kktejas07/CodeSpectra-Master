@@ -123,10 +123,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lastLoginAt: data.user.lastLoginAt,
             createdAt: data.user.createdAt,
           }))
-          setLoading(false)
         }
+        setLoading(false)
       })
-      .catch(() => {})
+      .catch(() => { setLoading(false) })
   }, [])
 
   // Sync Firebase token → session cookie (silent refresh)
