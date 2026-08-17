@@ -1,6 +1,7 @@
 'use client'
 
 import { useCallback, useEffect, useState } from 'react'
+import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -38,6 +39,7 @@ const CATEGORIES = [
 
 export default function NotificationsPage() {
   const gate = usePageGuard('user')
+  const router = useRouter()
 
   const [items, setItems] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -132,6 +134,7 @@ export default function NotificationsPage() {
                 <div className={`flex items-start gap-3 p-4 ${n.link ? 'cursor-pointer' : ''}`}
                   onClick={async () => {
                     if (!n.is_read) await markRead(n.id)
+                    if (n.link) router.push(n.link)
                   }}>
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                     n.is_read ? 'bg-muted' : 'bg-primary/15'
@@ -151,9 +154,9 @@ export default function NotificationsPage() {
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/60 text-muted-foreground">{n.type}</span>
                       {n.link && (
-                        <Link href={n.link} className="text-[10px] text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
-                          View details →
-                        </Link>
+                        <span className="text-[10px] text-primary">
+                          Tap to view →
+                        </span>
                       )}
                     </div>
                   </div>

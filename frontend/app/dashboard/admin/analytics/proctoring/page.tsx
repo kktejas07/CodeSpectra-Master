@@ -1,9 +1,10 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useMemo } from 'react'
 import { Card } from '@/components/ui/card'
-import { Loader2, Shield, AlertTriangle, RefreshCw } from 'lucide-react'
+import { Loader2, Shield, AlertTriangle, RefreshCw, AlertCircle, Eye, MonitorOff, HelpCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip as RechartsTooltip, Legend } from 'recharts'
 
 interface ProctorEvent {
   event_type: string
@@ -105,6 +106,29 @@ export default function ProctoringAnalyticsPage() {
     .sort((a, b) => b.total - a.total)
   const maxExamFlags = Math.max(...examFlags.map(e => e.total), 1)
 
+  // Categorize Risk Levels
+  const highRiskEvents = new Set([
+    'alt_tab_detected', 'screen_share_started', 'screen_capture_detected', 
+    'prohibited_app_detected', 'remote_desktop_detected', 'copy_paste_attempt', 
+    'navigate_away_attempt', 'secondary_voice_detected', 'hardware_port_anomaly'
+  ])
+
+  let highRiskCount = 0
+  let lowRiskCount = 0
+
+  const pieData = sortedTypes.map(([type, count]) => {
+    if (highRiskEvents.has(type)) highRiskCount += count
+    else lowRiskCount += count
+    
+    return { name: type, value: count, color: EVENT_COLORS[type] || '#6b7280' }
+  })
+
+  // Risk categorization data
+  const riskPieData = [
+    { name: 'High Risk', value: highRiskCount, color: '#ef4444' },
+    { name: 'Low/Medium Risk', value: lowRiskCount, color: '#f59e0b' }
+  ]
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -143,7 +167,7 @@ export default function ProctoringAnalyticsPage() {
       </div>
 
       {/* KPI Row */}
-      <div className="grid gap-4 sm:grid-cols-2">
+      <div className="grid gap-4 sm:grid-cols-4">
         <Card className="border-border/60 p-5">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
@@ -157,41 +181,98 @@ export default function ProctoringAnalyticsPage() {
         </Card>
         <Card className="border-border/60 p-5">
           <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-red-500/10">
+              <AlertCircle className="h-5 w-5 text-red-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{highRiskCount}</p>
+              <p className="text-xs text-muted-foreground">High Risk Events</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="border-border/60 p-5">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-orange-500/10">
+              <Eye className="h-5 w-5 text-orange-600" />
+            </div>
+            <div>
+              <p className="text-2xl font-bold text-foreground">{lowRiskCount}</p>
+              <p className="text-xs text-muted-foreground">Low Risk Events</p>
+            </div>
+          </div>
+        </Card>
+        <Card className="border-border/60 p-5">
+          <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-purple-500/10">
               <Shield className="h-5 w-5 text-purple-600" />
             </div>
             <div>
               <p className="text-2xl font-bold text-foreground">{sortedTypes.length}</p>
-              <p className="text-xs text-muted-foreground">Unique Event Types</p>
+              <p className="text-xs text-muted-foreground">Unique Types</p>
             </div>
           </div>
         </Card>
       </div>
 
-      {/* Flags per Exam - Bar Chart */}
-      <Card className="border-border/60 p-6">
-        <h2 className="text-lg font-semibold text-foreground mb-4">Flags per Exam</h2>
-        {examFlags.length === 0 ? (
-          <p className="text-sm text-muted-foreground">No proctoring data available.</p>
-        ) : (
-          <div className="space-y-3">
-            {examFlags.map(exam => (
-              <div key={exam.id} className="flex items-center gap-3">
-                <span className="w-48 text-sm text-muted-foreground truncate" title={exam.title}>
-                  {exam.title}
-                </span>
-                <div className="flex-1 h-6 rounded-full bg-muted/50 overflow-hidden">
-                  <div
-                    className="h-full rounded-full bg-red-500/60 transition-all"
-                    style={{ width: `${(exam.total / maxExamFlags) * 100}%` }}
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Risk Distribution Chart */}
+        <Card className="border-border/60 p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Risk Distribution</h2>
+          <div className="flex-1 min-h-[250px]">
+            {riskPieData.some(d => d.value > 0) ? (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={riskPieData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {riskPieData.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={entry.color} />
+                    ))}
+                  </Pie>
+                  <RechartsTooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', borderColor: 'hsl(var(--border))', borderRadius: '8px' }}
+                    itemStyle={{ color: 'hsl(var(--foreground))' }}
                   />
-                </div>
-                <span className="text-sm font-semibold tabular-nums w-12 text-right">{exam.total}</span>
-              </div>
-            ))}
+                  <Legend verticalAlign="bottom" height={36} />
+                </PieChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No data</div>
+            )}
           </div>
-        )}
-      </Card>
+        </Card>
+
+        {/* Flags per Exam - Bar Chart */}
+        <Card className="border-border/60 p-6 flex flex-col">
+          <h2 className="text-lg font-semibold text-foreground mb-4">Top Flags per Exam</h2>
+          {examFlags.length === 0 ? (
+            <div className="flex h-full items-center justify-center text-muted-foreground text-sm">No proctoring data available.</div>
+          ) : (
+            <div className="space-y-4 overflow-y-auto max-h-[250px] pr-2">
+              {examFlags.slice(0, 5).map(exam => (
+                <div key={exam.id} className="flex items-center gap-3">
+                  <span className="w-48 text-sm text-muted-foreground truncate" title={exam.title}>
+                    {exam.title}
+                  </span>
+                  <div className="flex-1 h-6 rounded-full bg-muted/50 overflow-hidden">
+                    <div
+                      className="h-full rounded-full bg-red-500/60 transition-all"
+                      style={{ width: `${(exam.total / maxExamFlags) * 100}%` }}
+                    />
+                  </div>
+                  <span className="text-sm font-semibold tabular-nums w-12 text-right">{exam.total}</span>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
+      </div>
 
       {/* Flags by Event Type - Summary Table */}
       <Card className="border-border/60 overflow-hidden">

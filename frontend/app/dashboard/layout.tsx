@@ -67,6 +67,7 @@ import {
   Mail,
   ScanSearch,
   UserPlus,
+  AlertCircle,
   Timer,
   type LucideIcon,
 } from 'lucide-react'
@@ -959,6 +960,22 @@ export default function DashboardLayout({
       >
         {/* Impersonation notice — superadmin acting as another user */}
         <ImpersonationBanner />
+
+        {/* Face biometric enrollment warning */}
+        {userRole === 'user' && fbUser?.has_enrolled_face === false && (
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 flex items-center justify-between text-sm">
+            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+              <AlertCircle className="h-5 w-5 shrink-0" />
+              <p><strong>Action Required:</strong> Please complete your face biometric enrollment to take proctored assessments.</p>
+            </div>
+            <Link 
+              href="/auth/enroll-face?redirect=/dashboard" 
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md font-medium text-xs whitespace-nowrap transition-colors"
+            >
+              Enroll Now
+            </Link>
+          </div>
+        )}
 
         {/* Breadcrumbs + mobile menu (no top profile — account lives in sidebar footer) */}
         <div className="sticky top-0 z-20 flex h-12 items-center justify-between gap-3 border-b border-border/20 bg-background/80 px-4 backdrop-blur-xl lg:px-6">

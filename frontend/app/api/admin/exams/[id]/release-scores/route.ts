@@ -48,7 +48,7 @@ export async function POST(
           type: 'assessment.results_released',
           title: `Your results for "${examTitle}" are ready`,
           message: `Score: ${scoreText}. Check your dashboard for details.`,
-          link: '/dashboard/assessments',
+          link: `/dashboard/assessments/${examId}`,
           send_whatsapp: true,
         })
       } catch {

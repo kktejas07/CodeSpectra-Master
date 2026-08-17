@@ -1,10 +1,11 @@
 'use client'
 
 import { useRef, useState, useEffect } from 'react'
-import { Camera, Check, ShieldAlert, FileText, User, ArrowRight, RefreshCw, X, AlertCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/lib/toast-context'
+import { FaceCamera } from '@/components/auth/face-camera'
+import { X, ShieldAlert, ArrowRight, FileText, AlertCircle, RefreshCw, Camera, User, Check, Loader2 } from "lucide-react"
 
 interface IdentityVerificationProps {
   onComplete: (data: { idPhoto: string; facePhoto: string }) => void
@@ -25,8 +26,11 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
   const streamRef = useRef<MediaStream | null>(null)
   const [idPhoto, setIdPhoto] = useState<string | null>(null)
   const [facePhoto, setFacePhoto] = useState<string | null>(null)
+  const [faceDescriptor, setFaceDescriptor] = useState<Float32Array | null>(null)
   const [cameraError, setCameraError] = useState<string | null>(null)
+  const [verificationError, setVerificationError] = useState<string | null>(null)
   const [isCameraLoading, setIsCameraLoading] = useState(false)
+  const [isVerifying, setIsVerifying] = useState(false)
 
   // Clean up camera on unmount or step change
   useEffect(() => {
@@ -104,12 +108,31 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
     }
   }
 
-  const handleNextFromId = () => {
+  const [isIdVerifying, setIsIdVerifying] = useState(false)
+  const [idError, setIdError] = useState<string | null>(null)
+
+  const handleNextFromId = async () => {
     if (idPhoto) {
-      setStep('capture_face')
-      // Make sure camera is running
-      if (!streamRef.current) {
-        startCamera()
+      setIsIdVerifying(true)
+      setIdError(null)
+      try {
+        const res = await fetch('/api/assessment/id-ocr', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ imageBase64: idPhoto })
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to verify ID')
+        }
+        
+        addToast({ type: 'success', title: 'ID Verified', message: 'Name matches account profile.' })
+        stopCamera()
+        setStep('capture_face')
+      } catch (err: any) {
+        setIdError(err.message)
+      } finally {
+        setIsIdVerifying(false)
       }
     }
   }
@@ -121,8 +144,28 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
     }
   }
 
-  const handleFinish = () => {
-    if (idPhoto && facePhoto) {
+  const handleFinish = async () => {
+    if (idPhoto && facePhoto && faceDescriptor) {
+      setIsVerifying(true)
+      try {
+        const res = await fetch('/api/assessment/face-verify', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ descriptor: Array.from(faceDescriptor), examId: examTitle })
+        })
+        const data = await res.json()
+        if (!res.ok) {
+          throw new Error(data.error || 'Verification failed')
+        }
+        onComplete({ idPhoto, facePhoto })
+      } catch (err: any) {
+        setVerificationError(err.message)
+        setStep('capture_face') // Go back on error
+      } finally {
+        setIsVerifying(false)
+      }
+    } else if (idPhoto && facePhoto) {
+      // Fallback if no descriptor
       onComplete({ idPhoto, facePhoto })
     }
   }
@@ -254,27 +297,68 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
               )}
             </div>
 
-            <div className="flex justify-center gap-3 pt-2">
-              {idPhoto ? (
-                <Button variant="outline" onClick={() => retakePhoto('id')} className="gap-2">
-                  <RefreshCw className="h-4 w-4" /> Retake Photo
-                </Button>
-              ) : (
-                <Button 
-                  onClick={() => capturePhoto('id')} 
-                  disabled={isCameraLoading || !!cameraError}
-                  className="gap-2"
-                >
-                  <Camera className="h-4 w-4" /> Capture ID Photo
-                </Button>
+            <div className="flex flex-col items-center gap-3 pt-2">
+              <div className="flex justify-center gap-3">
+                {idPhoto ? (
+                  <Button variant="outline" onClick={() => retakePhoto('id')} className="gap-2">
+                    <RefreshCw className="h-4 w-4" /> Retake Photo
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={() => capturePhoto('id')} 
+                    disabled={isCameraLoading || !!cameraError}
+                    className="gap-2"
+                  >
+                    <Camera className="h-4 w-4" /> Capture ID Photo
+                  </Button>
+                )}
+              </div>
+              
+              {!idPhoto && (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground w-full max-w-sm">
+                  <div className="flex-1 border-b border-border"></div>
+                  <span className="text-xs uppercase">or upload</span>
+                  <div className="flex-1 border-b border-border"></div>
+                </div>
+              )}
+
+              {!idPhoto && (
+                <label className="flex items-center justify-center w-full max-w-sm cursor-pointer h-10 border rounded-md hover:bg-muted/50 transition-colors">
+                  <span className="text-sm font-medium">Upload ID Document</span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    className="hidden"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0]
+                      if (file) {
+                        const reader = new FileReader()
+                        reader.onload = (e) => setIdPhoto(e.target?.result as string)
+                        reader.readAsDataURL(file)
+                      }
+                    }}
+                  />
+                </label>
               )}
             </div>
 
-            <div className="flex justify-end gap-3 border-t pt-4">
-              <Button variant="outline" onClick={() => { stopCamera(); setStep('consent'); }}>Back</Button>
-              <Button onClick={handleNextFromId} disabled={!idPhoto} className="gap-2">
-                Next: Face Capture <ArrowRight className="h-4 w-4" />
-              </Button>
+            <div className="flex flex-col gap-3 border-t pt-4">
+              {idError && (
+                <div className="flex items-center gap-2 text-sm text-red-500 bg-red-500/10 p-3 rounded-md">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <p>{idError}</p>
+                </div>
+              )}
+              <div className="flex justify-end gap-3">
+                <Button variant="outline" onClick={() => { stopCamera(); setStep('consent'); }} disabled={isIdVerifying}>Back</Button>
+                <Button onClick={handleNextFromId} disabled={!idPhoto || isIdVerifying} className="gap-2">
+                  {isIdVerifying ? (
+                    <><Loader2 className="h-4 w-4 animate-spin" /> Verifying...</>
+                  ) : (
+                    <>Next: Face Capture <ArrowRight className="h-4 w-4" /></>
+                  )}
+                </Button>
+              </div>
             </div>
           </div>
         )}
@@ -284,61 +368,35 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-base flex items-center justify-center gap-2">
-                <User className="h-5 w-5 text-primary" /> Take a Live Selfie
+                <User className="h-5 w-5 text-primary" /> Biometric Identity Verification
               </h3>
               <p className="text-xs text-muted-foreground">
-                Look directly into the camera. Ensure your face is fully visible and well-lit.
+                Look directly into the camera to capture and verify your face.
               </p>
             </div>
 
-            {cameraError && (
+            {verificationError && (
               <div className="p-3 bg-destructive/10 border border-destructive/20 rounded-lg text-destructive text-xs flex items-start gap-2">
                 <AlertCircle className="h-4 w-4 shrink-0 mt-0.5" />
-                <span>{cameraError}</span>
+                <span>{verificationError}</span>
               </div>
             )}
 
-            <div className="relative mx-auto max-w-sm aspect-4/3 rounded-lg border-2 border-dashed border-muted-foreground/30 bg-muted/20 overflow-hidden flex items-center justify-center">
-              {facePhoto ? (
-                <img src={facePhoto} alt="Captured Face" className="w-full h-full object-cover" />
-              ) : (
-                <>
-                  <video 
-                    ref={videoRef} 
-                    autoPlay 
-                    playsInline 
-                    muted 
-                    className="w-full h-full object-cover" 
-                  />
-                  {/* Face oval guide */}
-                  <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
-                    <div className="w-[60%] h-[75%] border-2 border-dashed border-primary rounded-full" />
-                  </div>
-                </>
-              )}
-            </div>
-
-            <div className="flex justify-center gap-3 pt-2">
-              {facePhoto ? (
-                <Button variant="outline" onClick={() => retakePhoto('face')} className="gap-2">
-                  <RefreshCw className="h-4 w-4" /> Retake Photo
-                </Button>
-              ) : (
-                <Button 
-                  onClick={() => capturePhoto('face')} 
-                  disabled={isCameraLoading || !!cameraError}
-                  className="gap-2"
-                >
-                  <Camera className="h-4 w-4" /> Capture Selfie
-                </Button>
-              )}
+            <div className="py-2">
+              <FaceCamera 
+                mode="verify" 
+                onCapture={(descriptor, base64) => {
+                  setFaceDescriptor(descriptor)
+                  setFacePhoto(base64)
+                  setVerificationError(null)
+                  setStep('confirm')
+                }}
+                onError={(err) => setVerificationError(err.message)}
+              />
             </div>
 
             <div className="flex justify-end gap-3 border-t pt-4">
               <Button variant="outline" onClick={() => { setStep('capture_id'); startCamera(); }}>Back</Button>
-              <Button onClick={handleNextFromFace} disabled={!facePhoto} className="gap-2">
-                Next: Review <ArrowRight className="h-4 w-4" />
-              </Button>
             </div>
           </div>
         )}
@@ -369,16 +427,16 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                 <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted">
                   {facePhoto && <img src={facePhoto} alt="Face Preview" className="w-full h-full object-cover" />}
                 </div>
-                <Button variant="ghost" size="sm" onClick={() => { setStep('capture_face'); startCamera(); }} className="w-full text-xs">
+                <Button variant="ghost" size="sm" onClick={() => { setStep('capture_face'); }} className="w-full text-xs">
                   Retake Selfie
                 </Button>
               </div>
             </div>
 
             <div className="flex justify-end gap-3 border-t pt-4">
-              <Button variant="outline" onClick={() => { setStep('capture_face'); startCamera(); }}>Back</Button>
-              <Button onClick={handleFinish} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
-                <Check className="h-4 w-4" /> Start Assessment Now
+              <Button variant="outline" onClick={() => { setStep('capture_face'); }}>Back</Button>
+              <Button onClick={handleFinish} disabled={isVerifying} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
+                {isVerifying ? 'Verifying...' : <><Check className="h-4 w-4" /> Start Assessment Now</>}
               </Button>
             </div>
           </div>

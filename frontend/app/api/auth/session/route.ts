@@ -169,6 +169,8 @@ export async function GET() {
             fullName: profile?.fullName || profile?.name || decoded.name || null,
             lastLoginMethod: profile?.lastLoginMethod || null,
             lastLoginAt: profile?.lastLoginAt || null,
+            createdAt: profile?.createdAt || null,
+            has_enrolled_face: !!(profile as any)?.facial_biometric_template,
           },
         })
       }
@@ -192,6 +194,8 @@ export async function GET() {
         fullName: profile?.fullName || profile?.name || null,
         lastLoginMethod: profile?.lastLoginMethod || null,
         lastLoginAt: profile?.lastLoginAt || null,
+        createdAt: profile?.createdAt || null,
+        has_enrolled_face: !!(profile as any)?.facial_biometric_template,
       },
     })
   }

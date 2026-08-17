@@ -16,6 +16,7 @@ import { RealTimeProctor } from '@/components/proctoring/RealTimeProctor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
+import { CodingQuestionEditor } from '@/components/assessment/CodingQuestionEditor'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -36,6 +37,16 @@ interface Question {
   title: string
   prompt: string
   options?: string[]
+  test_cases?: TestCase[]
+  starter_code?: string
+  language?: string
+}
+
+interface TestCase {
+  input: string
+  output: string
+  explanation?: string
+  isSample?: boolean
 }
 
 // ponytail: Fisher-Yates shuffle with optional seed for reproducibility.
@@ -113,10 +124,27 @@ export default function CandidateAssessmentPage() {
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
+  // Code execution state
+  const [runResult, setRunResult] = useState<RunResult | null>(null)
+  const [isRunning, setIsRunning] = useState(false)
+
   // Answer pattern tracking
   const answerEventsRef = useRef<AnswerEvent[]>([])
   const questionViewTimeRef = useRef<number>(Date.now())
   const questionViewIdRef = useRef<string>('')
+
+interface RunResult {
+  passed: boolean
+  results: Array<{
+    passed: boolean
+    input: string
+    expected: string
+    output: string
+    stderr: string
+    isSample: boolean
+  }>
+  execution_time_ms: number
+}
 
   const trackQuestionView = useCallback((qId: string) => {
     // Record time spent on previous question
@@ -313,6 +341,65 @@ export default function CandidateAssessmentPage() {
     setShowSubmitConfirm(true)
   }
 
+  const handleRunCode = async () => {
+    if (!exam) return
+    const currentQ = exam.questionList[currentQIndex]
+
+    let codeValue = ''
+    let codeLang = 'python'
+    if (answers[currentQ.id]) {
+      try {
+        const parsed = JSON.parse(answers[currentQ.id] as string)
+        if (parsed && typeof parsed === 'object') {
+          codeValue = parsed.code || ''
+          codeLang = parsed.language || 'python'
+        } else {
+          codeValue = answers[currentQ.id] as string
+        }
+      } catch {
+        codeValue = answers[currentQ.id] as string
+      }
+    }
+
+    if (!codeValue.trim()) {
+      addToast({ type: 'warning', title: 'No code to run' })
+      return
+    }
+
+    setIsRunning(true)
+    setRunResult(null)
+
+    try {
+      const testCases = (currentQ as any).test_cases || []
+      const sampleCases = testCases.filter((tc: TestCase) => tc.isSample !== false)
+
+      const res = await fetch('/api/execute-code', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          language: codeLang,
+          source: codeValue,
+          test_cases: sampleCases,
+        }),
+      })
+
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Execution failed')
+
+      setRunResult({
+        passed: data.passed,
+        results: data.results || [],
+        execution_time_ms: data.execution_time_ms || 0,
+      })
+    } catch (e: any) {
+      addToast({ type: 'error', title: 'Run failed', message: e.message })
+      setRunResult(null)
+    } finally {
+      setIsRunning(false)
+    }
+  }
+
   const submitAssessment = async (autoSubmitted = false) => {
     if (!exam) return
     setIsSubmitting(true)
@@ -486,9 +573,24 @@ export default function CandidateAssessmentPage() {
             </span>
           </label>
 
-          <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
-            Start Assessment Now
-          </Button>
+          {user?.has_enrolled_face === false ? (
+            <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-lg flex flex-col items-center gap-3 text-sm">
+              <AlertTriangle className="h-5 w-5 shrink-0" />
+              <p className="text-center">
+                <strong>Biometric Enrollment Required</strong><br />
+                You must enroll your face biometrics before taking this assessment.
+              </p>
+              <Button asChild variant="destructive" className="mt-2">
+                <Link href={`/auth/enroll-face?redirect=/assessment/${params.id}`}>
+                  Enroll Face Biometrics Now
+                </Link>
+              </Button>
+            </div>
+          ) : (
+            <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
+              Start Assessment Now
+            </Button>
+          )}
         </Card>
 
         {showVerification && (
@@ -707,6 +809,42 @@ export default function CandidateAssessmentPage() {
                     </div>
                   )
                 })()
+              ) : currentQ.type === 'coding' ? (
+                <CodingQuestionEditor
+                  question={currentQ as any}
+                  answer={typeof answers[currentQ.id] === 'string'
+                    ? (() => {
+                        try {
+                          const parsed = JSON.parse(answers[currentQ.id] as string)
+                          return parsed?.code || ''
+                        } catch {
+                          return answers[currentQ.id] as string
+                        }
+                      })()
+                    : ''}
+                  onChange={(code) => {
+                    let lang = 'python'
+                    if (answers[currentQ.id]) {
+                      try {
+                        const parsed = JSON.parse(answers[currentQ.id] as string)
+                        lang = parsed?.language || 'python'
+                      } catch {}
+                    }
+                    setAnswers(prev => ({ ...prev, [currentQ.id]: JSON.stringify({ language: lang, code }) }))
+                  }}
+                  language={(() => {
+                    if (answers[currentQ.id]) {
+                      try {
+                        const parsed = JSON.parse(answers[currentQ.id] as string)
+                        return parsed?.language || 'python'
+                      } catch {}
+                    }
+                    return currentQ.language || 'python'
+                  })()}
+                  isRunning={isRunning}
+                  runResult={runResult}
+                  onRun={handleRunCode}
+                />
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
@@ -714,10 +852,10 @@ export default function CandidateAssessmentPage() {
                     <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
                   </div>
                   <textarea 
-                    value={answers[currentQ.id] || ''}
+                    value={(answers[currentQ.id] as string) || ''}
                     onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
-                    placeholder="// Write your solution here..."
-                    className="w-full h-96 p-4 font-mono text-sm bg-zinc-950 text-zinc-50 rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
+                    placeholder="Write your response here..."
+                    className="w-full h-96 p-4 text-sm bg-card text-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                     spellCheck={false}
                   />
                 </div>

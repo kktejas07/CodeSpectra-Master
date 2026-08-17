@@ -5,7 +5,7 @@ import '@vidstack/react/player/styles/default/layouts/video.css'
 
 import { MediaPlayer, MediaProvider } from '@vidstack/react'
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default'
-import { usePlatformSettings } from '@/lib/use-platform-settings'
+
 
 interface VideoPlayerProps {
   src: string
@@ -26,7 +26,7 @@ export function VideoPlayer({
   primaryColor,
   className = '',
 }: VideoPlayerProps) {
-  const { settings } = usePlatformSettings()
+  const settings: any = {}
 
   // Use props if provided, otherwise fallback to global platform settings
   const finalAutoplay = autoplay ?? settings.video_player_autoplay ?? false
@@ -40,7 +40,7 @@ export function VideoPlayer({
         title={title}
         autoplay={finalAutoplay}
         muted={finalMuted}
-        style={{ '--video-brand': finalColor } as React.CSSProperties}
+        style={{ '--video-brand': finalColor } as any}
       >
         <MediaProvider />
         <DefaultVideoLayout

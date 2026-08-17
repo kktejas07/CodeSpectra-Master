@@ -61,6 +61,8 @@ interface QuestionDetail {
   pending_review?: boolean
   awarded?: number
   remarks?: string
+  requires_human_review?: boolean
+  confidence?: number
 }
 
 interface ReviewData {
@@ -138,6 +140,11 @@ const PROCTOR_ICONS: Record<string, React.ReactNode> = {
   keyboard_dynamics_snapshot: <Keyboard className="w-3 h-3" />,
   answer_pattern_score: <ShieldAlert className="w-3 h-3" />,
 }
+
+const PROCTOR_RISK_HIGH = new Set(['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked', 'face_match_mismatch', 'answer_pattern_score'])
+const PROCTOR_RISK_WARN = new Set(['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed'])
+const PROCTOR_RISK_INFO = new Set(['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot'])
+
 
 // Keys every event carries that are noise for a human reviewer.
 const PROCTOR_META_HIDDEN = new Set(['ua', 'timestamp', 'id', 'user_id', 'session_id', 'created_at', 'event_type', 'session_kind', 'source'])
@@ -257,6 +264,7 @@ export default function ExamResultsPage() {
   const [remarks, setRemarks] = useState<Record<string, string>>({})
   const [showProctorLog, setShowProctorLog] = useState(true)
   const [showRawProctorMeta, setShowRawProctorMeta] = useState(false)
+  const [proctorFilter, setProctorFilter] = useState<'all' | 'high' | 'warn' | 'info'>('all')
   const [exportingReport, setExportingReport] = useState(false)
   const [showReleaseAllConfirm, setShowReleaseAllConfirm] = useState(false)
 
@@ -659,10 +667,10 @@ export default function ExamResultsPage() {
   const formatProctorType = (type: string): string => PROCTOR_LABELS[type] || type.replace(/_/g, ' ').replace(/\b\w/g, l => l.toUpperCase())
 
   const proctorColor = (type: string): string => {
-    if (['copy', 'paste', 'right_click', 'clipboard_copy', 'clipboard_paste', 'right_click_blocked', 'copy_paste_attempt', 'keyboard_shortcut_blocked', 'face_match_mismatch', 'answer_pattern_score'].includes(type)) return 'text-rose-400 border-rose-500/30 bg-rose-500/10'
-    if (['tab_blur', 'tab_focus_lost', 'fullscreen_exit', 'window_blur', 'visibility_change', 'alt_tab_detected', 'prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started', 'screen_capture_detected', 'secondary_voice_detected', 'volume_anomaly_detected', 'rapid_window_resize', 'usb_device_plugged', 'head_pose_turned_away', 'browser_fingerprint_changed'].includes(type)) return 'text-amber-400 border-amber-500/30 bg-amber-500/10'
-    if (['eye_blink_detected', 'eye_gaze_changed', 'face_match_restored', 'browser_fingerprint_captured', 'keyboard_dynamics_snapshot'].includes(type)) return 'text-blue-400 border-blue-500/30 bg-blue-500/10'
-    return 'text-muted-foreground border-border bg-muted/50'
+    if (PROCTOR_RISK_HIGH.has(type)) return 'border-l-[3px] border-l-rose-500 text-rose-400 border-border/50 bg-rose-500/5'
+    if (PROCTOR_RISK_WARN.has(type)) return 'border-l-[3px] border-l-amber-500 text-amber-400 border-border/50 bg-amber-500/5'
+    if (PROCTOR_RISK_INFO.has(type)) return 'border-l-[3px] border-l-blue-500 text-blue-400 border-border/50 bg-blue-500/5'
+    return 'border-l-[3px] border-l-muted-foreground text-muted-foreground border-border/50 bg-muted/20'
   }
 
   const recordAuditLog = async (action: string, target: string, details: string) => {
@@ -1247,19 +1255,33 @@ export default function ExamResultsPage() {
                                 </div>
                               </div>
                               {isPendingReview ? (
-                                <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 shrink-0">
-                                  <Clock className="w-3 h-3 mr-1" /> Pending
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {detail?.requires_human_review && (
+                                    <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0">
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> AI Uncertain
+                                    </Badge>
+                                  )}
+                                  <Badge variant="outline" className="text-amber-500 bg-amber-500/10 border-amber-500/30 shrink-0">
+                                    <Clock className="w-3 h-3 mr-1" /> Pending
+                                  </Badge>
+                                </div>
                               ) : (
-                                <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
-                                  {isManuallyGraded ? `+${detail.awarded}/${maxPoints}` : detail?.correct ? `+${detail.points}` : '0'}
-                                </Badge>
+                                <div className="flex items-center gap-2">
+                                  {detail?.requires_human_review && (
+                                    <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0" title="AI Confidence was low, human review is recommended">
+                                      <AlertTriangle className="w-3 h-3 mr-1" /> Review Recommended
+                                    </Badge>
+                                  )}
+                                  <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>
+                                    {isManuallyGraded ? `+${detail.awarded}/${maxPoints}` : detail?.correct ? `+${detail.points}` : '0'}
+                                  </Badge>
+                                </div>
                               )}
                             </div>
 
                             {/* MCQ-type options display */}
                             {isMcq && q.options && (
-                              <div className="flex flex-col items-start gap-1.5 mt-1">
+                              <div className="flex flex-col items-start gap-1.5 mt-1 w-full">
                                 {q.options.map((opt, oi) => {
                                   const optLower = opt.toLowerCase()
                                   // multiple_response stores a comma-separated set; compare as sets
@@ -1280,14 +1302,14 @@ export default function ExamResultsPage() {
                                         ? 'bg-emerald-500/10 text-emerald-500/70 border-emerald-500/20'
                                         : 'text-muted-foreground'
                                   return (
-                                    <span
+                                    <div
                                       key={oi}
-                                      className={`text-xs rounded-md border px-2.5 py-1 break-words w-full sm:w-auto max-w-full text-left ${optClass}`}
+                                      className={`text-xs rounded-md border px-2.5 py-1 break-words whitespace-pre-wrap w-full text-left ${optClass}`}
                                     >
                                       {opt}
                                       {isSelected ? ' (selected)' : ''}
                                       {!isSelected && isCorrectAnswer ? ' (correct)' : ''}
-                                    </span>
+                                    </div>
                                   )
                                 })}
                               </div>
@@ -1346,6 +1368,11 @@ export default function ExamResultsPage() {
                                       <div className="rounded-lg border border-blue-500/30 bg-blue-500/10 p-3 space-y-2">
                                         <span className="text-xs font-semibold text-blue-600 dark:text-blue-400 flex items-center gap-1.5">
                                           <Sparkles className="w-3.5 h-3.5" /> AI Feedback — review & edit before saving
+                                          {detail?.confidence !== undefined && (
+                                            <span className="ml-2 font-normal opacity-80">
+                                              (Confidence: {Math.round(detail.confidence * 100)}%)
+                                            </span>
+                                          )}
                                         </span>
                                         <textarea
                                           value={aiFeedback[q.id]}
@@ -1435,35 +1462,120 @@ export default function ExamResultsPage() {
                         className={`w-4 h-4 text-muted-foreground shrink-0 cursor-pointer transition-transform ${showProctorLog ? '' : '-rotate-90'}`}
                       />
                     </div>
-                    {showProctorLog && (reviewData.proctorEvents.length === 0 ? (
-                      <div className="border rounded-lg p-6 text-center">
-                        <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
-                        <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
-                      </div>
-                    ) : (
-                      <div className="border rounded-lg max-h-96 overflow-y-auto overflow-x-hidden">
-                        {reviewData.proctorEvents.map((evt, i) => (
-                          <div key={i} className={`border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
-                            <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 text-xs">
-                              <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
-                              <span className="shrink-0 font-medium truncate">{formatProctorType(evt.event_type)}</span>
-                              <span className="text-muted-foreground ml-auto shrink-0 text-[10px] sm:text-xs">
-                                {evt.created_at ? new Date(evt.created_at).toLocaleString() : ''}
-                              </span>
-                            </div>
-                            {evt.meta && Object.keys(evt.meta).length > 0 && (
-                              showRawProctorMeta ? (
-                                <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
-                                  {JSON.stringify(evt.meta, null, 2)}
-                                </pre>
+                    {showProctorLog && (
+                      <>
+                        {(() => {
+                          const allEvents = reviewData.proctorEvents
+                          const highRisk = allEvents.filter(e => PROCTOR_RISK_HIGH.has(e.event_type))
+                          const warnRisk = allEvents.filter(e => PROCTOR_RISK_WARN.has(e.event_type))
+                          const infoRisk = allEvents.filter(e => PROCTOR_RISK_INFO.has(e.event_type))
+                          
+                          const tabSwitches = allEvents.filter(e => ['tab_blur', 'visibility_change', 'alt_tab_detected', 'window_blur'].includes(e.event_type)).length
+                          const copyPaste = allEvents.filter(e => ['copy', 'paste', 'clipboard_copy', 'clipboard_paste', 'copy_paste_attempt'].includes(e.event_type)).length
+                          const aiProxy = allEvents.filter(e => ['prohibited_app_detected', 'remote_desktop_detected', 'screen_share_started'].includes(e.event_type)).length
+                          const hwAnomalies = allEvents.filter(e => ['usb_device_plugged', 'secondary_voice_detected', 'face_match_mismatch', 'browser_fingerprint_changed'].includes(e.event_type)).length
+
+                          const filteredEvents = allEvents.filter(e => {
+                            if (proctorFilter === 'high') return PROCTOR_RISK_HIGH.has(e.event_type)
+                            if (proctorFilter === 'warn') return PROCTOR_RISK_WARN.has(e.event_type)
+                            if (proctorFilter === 'info') return PROCTOR_RISK_INFO.has(e.event_type)
+                            return true
+                          })
+                          
+                          return (
+                            <div className="space-y-3">
+                              {allEvents.length > 0 && (
+                                <div className="grid grid-cols-4 gap-2">
+                                  <div 
+                                    onClick={() => setProctorFilter('all')}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'all' ? 'bg-muted border-foreground/30' : 'bg-card hover:bg-muted/50'}`}
+                                  >
+                                    <div className="text-lg font-bold">{allEvents.length}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-muted-foreground font-semibold">Total</div>
+                                  </div>
+                                  <div 
+                                    onClick={() => setProctorFilter('high')}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'high' ? 'bg-rose-500/10 border-rose-500/40' : 'bg-card hover:bg-rose-500/5'}`}
+                                  >
+                                    <div className="text-lg font-bold text-rose-500">{highRisk.length}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-rose-500/70 font-semibold">High Risk</div>
+                                  </div>
+                                  <div 
+                                    onClick={() => setProctorFilter('warn')}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'warn' ? 'bg-amber-500/10 border-amber-500/40' : 'bg-card hover:bg-amber-500/5'}`}
+                                  >
+                                    <div className="text-lg font-bold text-amber-500">{warnRisk.length}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-amber-500/70 font-semibold">Warnings</div>
+                                  </div>
+                                  <div 
+                                    onClick={() => setProctorFilter('info')}
+                                    className={`p-2 rounded-lg border text-center cursor-pointer transition-colors ${proctorFilter === 'info' ? 'bg-blue-500/10 border-blue-500/40' : 'bg-card hover:bg-blue-500/5'}`}
+                                  >
+                                    <div className="text-lg font-bold text-blue-500">{infoRisk.length}</div>
+                                    <div className="text-[10px] uppercase tracking-wider text-blue-500/70 font-semibold">Info</div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {allEvents.length > 0 && (
+                                <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 pt-2 border-t border-border/50 mt-2">
+                                  <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
+                                    <div className="text-sm font-bold text-foreground">{tabSwitches}</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">Tab Switches</div>
+                                  </div>
+                                  <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
+                                    <div className="text-sm font-bold text-foreground">{copyPaste}</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">Copy/Paste</div>
+                                  </div>
+                                  <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
+                                    <div className="text-sm font-bold text-foreground">{aiProxy}</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">AI & Proxies</div>
+                                  </div>
+                                  <div className="flex flex-col p-2 rounded-lg bg-card border border-border/40">
+                                    <div className="text-sm font-bold text-foreground">{hwAnomalies}</div>
+                                    <div className="text-[10px] text-muted-foreground font-medium">Anomalies</div>
+                                  </div>
+                                </div>
+                              )}
+
+                              {allEvents.length === 0 ? (
+                                <div className="border rounded-lg p-6 text-center">
+                                  <CheckCircle2 className="w-8 h-8 mx-auto text-emerald-500 mb-2" />
+                                  <p className="text-sm text-muted-foreground">No proctoring violations detected</p>
+                                </div>
+                              ) : filteredEvents.length === 0 ? (
+                                <div className="border rounded-lg p-6 text-center">
+                                  <p className="text-sm text-muted-foreground">No events match the selected filter.</p>
+                                </div>
                               ) : (
-                                <ProctorMetaDetails event_type={evt.event_type} meta={evt.meta} />
-                              )
-                            )}
-                          </div>
-                        ))}
-                      </div>
-                    ))}
+                                <div className="border rounded-lg max-h-96 overflow-y-auto overflow-x-hidden bg-card">
+                                  {filteredEvents.map((evt, i) => (
+                                    <div key={i} className={`border-b last:border-b-0 ${proctorColor(evt.event_type)}`}>
+                                      <div className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-2 text-xs">
+                                        <span className="shrink-0">{PROCTOR_ICONS[evt.event_type] || <AlertTriangle className="w-3 h-3" />}</span>
+                                        <span className="shrink-0 font-medium truncate">{formatProctorType(evt.event_type)}</span>
+                                        <span className="text-muted-foreground ml-auto shrink-0 text-[10px] sm:text-xs">
+                                          {evt.created_at ? new Date(evt.created_at).toLocaleString() : ''}
+                                        </span>
+                                      </div>
+                                      {evt.meta && Object.keys(evt.meta).length > 0 && (
+                                        showRawProctorMeta ? (
+                                          <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
+                                            {JSON.stringify(evt.meta, null, 2)}
+                                          </pre>
+                                        ) : (
+                                          <ProctorMetaDetails event_type={evt.event_type} meta={evt.meta} />
+                                        )
+                                      )}
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                            </div>
+                          )
+                        })()}
+                      </>
+                    )}
                   </div>
 
                   {/* Identity Photos */}

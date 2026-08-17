@@ -25,6 +25,8 @@ export interface AuthUser {
   photoURL: string | null
   lastLoginMethod?: 'google' | 'github' | 'email' | 'sso' | null
   lastLoginAt?: string | null
+  createdAt?: string | null
+  has_enrolled_face?: boolean
 }
 
 interface LastLoginInfo {
@@ -74,8 +76,8 @@ interface AuthContextValue {
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-function toAuthUser(u: { uid: string; email: string | null; displayName?: string | null; photoURL?: string | null; lastLoginMethod?: string | null; lastLoginAt?: string | null }): AuthUser {
-  return { uid: u.uid, email: u.email, displayName: u.displayName || null, photoURL: u.photoURL || null, lastLoginMethod: u.lastLoginMethod as AuthUser['lastLoginMethod'], lastLoginAt: u.lastLoginAt || null }
+function toAuthUser(u: { uid: string; email: string | null; displayName?: string | null; photoURL?: string | null; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string | null }): AuthUser {
+  return { uid: u.uid, email: u.email, displayName: u.displayName || null, photoURL: u.photoURL || null, lastLoginMethod: u.lastLoginMethod as AuthUser['lastLoginMethod'], lastLoginAt: u.lastLoginAt || null, createdAt: u.createdAt || null }
 }
 
 async function recordLoginMethod(uid: string, method: 'google' | 'github' | 'email' | 'sso') {
@@ -119,6 +121,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             displayName: data.user.fullName,
             lastLoginMethod: data.user.lastLoginMethod,
             lastLoginAt: data.user.lastLoginAt,
+            createdAt: data.user.createdAt,
           }))
           setLoading(false)
         }
@@ -154,6 +157,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   displayName: data.user.fullName,
                   lastLoginMethod: data.user.lastLoginMethod,
                   lastLoginAt: data.user.lastLoginAt,
+                  createdAt: data.user.createdAt,
                 }))
               }
             } catch { /* keep current user */ }
@@ -184,6 +188,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   displayName: data.user.fullName,
                   lastLoginMethod: data.user.lastLoginMethod,
                   lastLoginAt: data.user.lastLoginAt,
+                  createdAt: data.user.createdAt,
                 }))
               } else {
                 setUser(null)

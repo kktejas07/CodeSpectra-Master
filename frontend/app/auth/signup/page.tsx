@@ -84,7 +84,8 @@ function SignupInner() {
     try {
       await signUpWithEmail(email.trim().toLowerCase(), password, name.trim());
       await applyReferral();
-      router.push(redirectTo);
+      // Redirect to Face Biometric Enrollment step
+      router.push(`/auth/enroll-face?redirect=${encodeURIComponent(redirectTo)}`);
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Sign up failed";
@@ -100,7 +101,7 @@ function SignupInner() {
     try {
       await signInWithGoogle();
       await applyReferral();
-      router.push(redirectTo);
+      router.push(`/auth/enroll-face?redirect=${encodeURIComponent(redirectTo)}`);
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Google sign-up failed";
@@ -116,7 +117,7 @@ function SignupInner() {
     try {
       await signInWithGithub();
       await applyReferral();
-      router.push(redirectTo);
+      router.push(`/auth/enroll-face?redirect=${encodeURIComponent(redirectTo)}`);
       router.refresh();
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "GitHub sign-up failed";

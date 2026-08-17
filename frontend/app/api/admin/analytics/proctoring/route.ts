@@ -49,14 +49,35 @@ export async function GET() {
     }
 
     // Totals across all exams
-    const totals: Record<string, number> = {}
-    for (const entry of Object.values(heatmapMap)) {
-      for (const [type, count] of Object.entries(entry.eventTypes)) {
-        totals[type] = (totals[type] || 0) + count
+    const eventsByType: Record<string, number> = {}
+    let totalFlags = 0
+
+    const eventsMap: Record<string, { event_type: string; count: number; exams: { exam_id: string; exam_title: string; count: number }[] }> = {}
+
+    for (const r of raw) {
+      const examId = subToExam.get(r._id?.exam_id) || r._id?.exam_id || 'unknown'
+      const eventType = r._id?.event_type || 'unknown'
+      const count = r.count
+
+      eventsByType[eventType] = (eventsByType[eventType] || 0) + count
+      totalFlags += count
+
+      if (!eventsMap[eventType]) {
+        eventsMap[eventType] = { event_type: eventType, count: 0, exams: [] }
       }
+      eventsMap[eventType].count += count
+      
+      const examTitle = examMap.get(examId) || 'Unknown'
+      eventsMap[eventType].exams.push({ exam_id: examId, exam_title: examTitle, count })
     }
 
-    return NextResponse.json({ heatmap: Object.values(heatmapMap), totals })
+    const events = Object.values(eventsMap).sort((a, b) => b.count - a.count)
+
+    return NextResponse.json({ 
+      events, 
+      total_flags: totalFlags, 
+      events_by_type: eventsByType 
+    })
   } catch (e) {
     console.error('[analytics proctoring] error:', e)
     return NextResponse.json({ error: 'Failed to compute proctoring analytics' }, { status: 500 })
