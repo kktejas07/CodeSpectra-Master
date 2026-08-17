@@ -45,7 +45,9 @@ from models.ai import (
     IdentityVerifyReq,
     RagEmbedReq,
     SkillInsightsReq,
+    TextToCadReq,
 )
+from backend.domains.cad_step.generator import generate_cad_step_payload_from_prompt
 from rag import generate_embedding
 
 RAG_API_KEY = settings.GEMINI_API_KEY
@@ -962,3 +964,61 @@ async def handle_agent(request: Request, req: AgentReq) -> dict[str, Any]:
         await asyncio.sleep(0.05)
 
     return {"final_code": code, "steps": steps, "summary": final_summary}
+
+
+# ── Text-to-CAD Synthesis ───────────────────────────────────────
+
+async def handle_text_to_cad(request: Request, req: TextToCadReq) -> dict[str, Any]:
+    """Synthesize CAD brief, geometric constraints, parametric code, and item payload from text prompt."""
+    await check_rate_limit(f"text-to-cad:{client_ip(request)}", 20, 60)
+    
+    system = (
+        "You are an expert mechanical engineering CAD designer and AI authoring tool. "
+        "Given a user prompt for a 3D mechanical part, generate JSON ONLY with these fields:\n"
+        "- cad_brief: Detailed technical drafting brief with GD&T requirements\n"
+        "- constraints: array of objects with { name: string, target_value: float, tolerance: float, unit: string }\n"
+        "- parametric_code: executable build123d/CadQuery Python script\n"
+    )
+    
+    user_prompt = (
+        f"Prompt: {req.prompt}\n"
+        f"Standard: {req.region_standard}\n"
+        f"Unit System: {req.unit_system}\n"
+        f"Return ONLY valid JSON."
+    )
+    
+    ai_parsed = None
+    try:
+        chat = build_chat(
+            req.model_role or "reasoning",
+            f"text-to-cad:{abs(hash(req.prompt)) % 10**8}",
+            system,
+            request.headers,
+            provider_override=req.provider_override,
+            model_override=req.model_override,
+            endpoint_override=req.endpoint_override,
+        )
+        buf: list[str] = []
+        async for ev in chat.stream_message(UserMessage(text=user_prompt)):
+            if isinstance(ev, TextDelta):
+                buf.append(ev.content)
+            elif isinstance(ev, StreamDone):
+                break
+        ai_parsed = parse_json_response("".join(buf))
+    except Exception:
+        ai_parsed = None
+
+    item_payload = generate_cad_step_payload_from_prompt(
+        prompt=req.prompt,
+        region_standard=req.region_standard,
+        unit_system=req.unit_system,
+        viva_required=req.viva_required,
+        ai_generated_data=ai_parsed,
+    )
+    
+    return {
+        "ok": True,
+        "domain_key": "cad_step",
+        "prompt": req.prompt,
+        "item_payload": item_payload,
+    }

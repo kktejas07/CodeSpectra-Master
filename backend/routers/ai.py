@@ -51,6 +51,7 @@ from models.ai import (
     IdentityVerifyReq,
     RagEmbedReq,
     SkillInsightsReq,
+    TextToCadReq,
 )
 from services.ai import (
     handle_agent,
@@ -58,13 +59,14 @@ from services.ai import (
     handle_code_analysis,
     handle_code_review,
     handle_complete,
+    handle_generate_course,
     handle_generate_problem,
     handle_grade,
     handle_hints,
     handle_identity_verify,
     handle_rag_embed,
     handle_skill_insights,
-    handle_generate_course,
+    handle_text_to_cad,
 )
 
 import functools
@@ -166,3 +168,11 @@ async def agentic_fix(request: Request, req: AgentReq) -> dict[str, Any]:
 async def generate_course(request: Request, req: GenerateCourseReq) -> dict[str, Any]:
     """Generate a complete learning course with modules, lessons, and assessments."""
     return await handle_generate_course(request, req)
+
+
+@router.post("/cad/generate-text-to-cad")
+@safe_ai_endpoint
+async def generate_text_to_cad(request: Request, req: TextToCadReq) -> dict[str, Any]:
+    """Synthesize CAD brief, geometric constraints, parametric code, and item payload from text prompt."""
+    return await handle_text_to_cad(request, req)
+
