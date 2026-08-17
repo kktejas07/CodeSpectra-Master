@@ -123,7 +123,7 @@ interface Provider { id: string; url: string; key: string; model: string; maxTok
 function providers(active: string[]): Provider[] {
   const byId: Record<string, Provider> = {
     opencode: { id: 'opencode', url: 'https://opencode.ai/zen/v1/chat/completions', key: opencodeKey, model: 'deepseek-v4-flash-free', maxTokens: 16000, timeoutMs: 180000 },
-    groq: { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: groqKey, model: 'llama-3.3-70b-versatile', maxTokens: 6000, timeoutMs: 120000 },
+    groq: { id: 'groq', url: 'https://api.groq.com/openai/v1/chat/completions', key: groqKey, model: 'openai/gpt-oss-120b', maxTokens: 6000, timeoutMs: 120000 },
     nvidia: { id: 'nvidia', url: 'https://integrate.api.nvidia.com/v1/chat/completions', key: nvidiaKey, model: 'meta/llama-3.1-8b-instruct', maxTokens: 6000, timeoutMs: 170000 },
     openrouter: { id: 'openrouter', url: OPENROUTER_URL, key: openrouterKey, model: MODEL, maxTokens: 6000, timeoutMs: 120000 },
   }
@@ -155,7 +155,9 @@ async function aiComplete(prompt: string, active: string[] = PROVIDERS): Promise
         }
         // NVIDIA 8b misbehaves with json_object (returns a bare object + 7x slower);
         // omit response_format for it so it returns a clean array fast.
-        if (p.id !== 'nvidia') payload.response_format = { type: 'json_object' }
+        // Groq reasoning models (gpt-oss) fail groq's strict json_object validation
+        // when the prompt asks for a bare array — omit it too; extractArray handles raw.
+        if (p.id !== 'nvidia' && p.id !== 'groq') payload.response_format = { type: 'json_object' }
         const res = await fetch(p.url, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${p.key}` },
