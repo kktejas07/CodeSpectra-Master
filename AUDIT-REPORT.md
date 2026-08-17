@@ -20,8 +20,8 @@ CodeSpectra is a full-stack coding platform with AI-powered features, assessment
 **File:** `frontend/.env.local` (lines 1-8)
 
 Contains real Firebase credentials and a MongoDB URI with a plaintext password:
-- `MONGODB_URI=mongodb://mongo:kfgXeV32FU2WPp1tERVs@...` — plaintext DB password
-- `NEXT_PUBLIC_FIREBASE_API_KEY=AIzaSyBQjn804nQWAx83LAE9OeKWrkyRCd4Ps0M` — real Firebase key
+- `MONGODB_URI=mongodb://mongo:<redacted>@...` — plaintext DB password (rotate; value redacted from this report)
+- `NEXT_PUBLIC_FIREBASE_API_KEY=<redacted>` — Firebase web API key (value redacted from this report; Firebase web keys are safe-public, but rotate if any non-public Firebase credential was also exposed)
 
 **Severity:** CRITICAL
 **Status: ⚠️ YOU NEED TO DO —** Rotate the MongoDB password and Firebase API key immediately. Check `git log --all -- frontend/.env.local` to ensure it was never committed.
