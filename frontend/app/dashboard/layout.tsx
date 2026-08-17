@@ -384,7 +384,6 @@ export default function DashboardLayout({
       '/dashboard/jobs': Briefcase,
       '/dashboard/assessments': FileText,
       '/dashboard/resumes': FileText,
-      '/dashboard/analytics': BarChart3,
       '/dashboard/interview-prep': BookOpen,
       '/dashboard/judge': Shield,
       '/dashboard/admin/requisitions': Briefcase,

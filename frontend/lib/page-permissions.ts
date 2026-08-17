@@ -167,7 +167,6 @@ export const ALL_USER_ROUTES: string[] = [
   // Stats & Progress
   '/dashboard/leaderboard',
   '/dashboard/achievements',
-  '/dashboard/analytics',
   '/dashboard/skill-analytics',
 
   // User & Account
@@ -296,7 +295,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/assessments': 'Assessments',
   '/dashboard/resumes': 'Resumes',
   '/dashboard/100-days': '100 Days',
-  '/dashboard/analytics': 'Analytics',
   '/dashboard/judge': 'Judge Dashboard',
   '/dashboard/cad': 'CAD Editor',
   '/dashboard/admin/billing': 'Billing Admin',

@@ -101,7 +101,6 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
   '/dashboard/jobs': Briefcase,
   '/dashboard/assessments': FileText,
   '/dashboard/resumes': FileText,
-  '/dashboard/analytics': BarChart3,
   '/dashboard/interview-prep': BookOpen,
   '/dashboard/judge': Shield,
   '/dashboard/100-days': Flame,
