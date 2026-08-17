@@ -20,6 +20,14 @@ import { FloatingCodeParticles } from '@/components/landing/floating-code-partic
 import { NewsletterSubscribe } from '@/components/landing/newsletter-subscribe'
 import { TiltCard } from '@/components/ui/tilt-card'
 import { useScrollReveal } from '@/hooks/use-scroll-reveal'
+import {
+  IsometricModelGraphic,
+  IsometricClusterGraphic,
+  IsometricComputeGraphic,
+  PostgresStackIllustration,
+  ComputeChipIllustration,
+} from '@/components/landing/prisma-vectors'
+import { TechStackSection } from '@/components/landing/tech-stack-section'
 
 export default function Home() {
   const hasSession = useHasUserSession()
@@ -150,18 +158,21 @@ export async function bootstrap() {
 
       {/* Hero — 3D globe backdrop with code particles overlay */}
       <section className="relative isolate overflow-hidden pt-28 pb-20 lg:pt-36 lg:pb-28 min-h-[90vh] flex items-center">
-        {/* Globe fills the hero frame responsively (square bounded by viewport) */}
+        {/* Floating code particles floating in the background behind globe */}
+        <FloatingCodeParticles count={22} />
+
+        {/* Globe fills the hero frame responsively */}
         <div
-          className="absolute inset-0 z-0 flex items-center justify-center pointer-events-none select-none px-4 pb-8 pt-20 sm:px-6 sm:pt-24 lg:px-8"
+          className="absolute inset-0 z-1 flex items-center justify-center pointer-events-none select-none px-4 pb-8 pt-20 sm:px-6 sm:pt-24 lg:px-8"
           aria-hidden
         >
           <div className="relative aspect-square w-[min(94vw,calc(100dvh-11rem),880px)] sm:w-[min(92vw,calc(100dvh-10rem),900px)] lg:w-[min(88vw,min(82dvh,920px))] max-h-[min(82dvh,920px)] max-w-full opacity-90 dark:opacity-100">
             <Globe3D
-              particleCount={1100}
+              particleCount={1200}
               dotRadius={4.25}
               rotationSpeed={0.00011}
-              radiusFactor={0.7}
-              fieldOfViewFactor={0.8}
+              radiusFactor={0.8}
+              fieldOfViewFactor={0.85}
               interactive={false}
               parallaxIntensity={6}
               fillContainer
@@ -169,80 +180,171 @@ export async function bootstrap() {
           </div>
         </div>
 
-        {/* Floating code particles */}
-        <FloatingCodeParticles count={22} />
-
         {/* Soft scrim — keeps text readable while letting the globe shine through */}
         <div
-          className="absolute inset-0 z-1 bg-linear-to-b from-background/40 via-background/10 to-background/55 dark:from-background/35 dark:via-background/5 dark:to-background/50 pointer-events-none"
+          className="absolute inset-0 z-2 bg-linear-to-b from-background/40 via-background/10 to-background/55 dark:from-background/35 dark:via-background/5 dark:to-background/50 pointer-events-none"
           aria-hidden
         />
 
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 relative z-10 w-full">
           <div className="max-w-4xl mx-auto text-center">
-            <p data-reveal data-revealed="true" className="text-sm text-muted-foreground mb-8 animate-fade-in drop-shadow-sm">
-              Learn, scan, fix, and interview—with guidance and AI support in one workspace
-            </p>
-
             <h1
               data-reveal
               data-revealed="true"
-              className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-bold tracking-tight mb-8 leading-[1.1] text-foreground [text-shadow:0_0_48px_var(--background),0_2px_16px_var(--background)]"
+              className="text-5xl sm:text-6xl lg:text-7xl xl:text-8xl font-black tracking-tight mb-6 leading-[1.02] text-white [text-shadow:0_0_64px_rgba(0,197,115,0.15)]"
               style={{ transitionDelay: '120ms' }}
             >
-              The platform
+              Agent Infrastructure
               <br />
-              to{' '}
-              <span className="text-primary inline-grid justify-items-center mx-auto">
-                <span
-                  className="col-start-1 row-start-1 invisible pointer-events-none select-none"
-                  aria-hidden
-                >
-                  {widestWord}
-                </span>
-                <span className="col-start-1 row-start-1 inline-flex items-center gap-1 justify-self-center pb-2 border-b-4 border-primary">
-                  {displayedText}
-                  <span className="inline-block animate-pulse">|</span>
-                </span>
-              </span>
+              <span className="text-white">for TypeScript</span>
             </h1>
 
             <p
               data-reveal
               data-revealed="true"
-              className="text-lg text-muted-foreground max-w-2xl mx-auto mb-12 leading-relaxed [text-shadow:0_0_36px_var(--background),0_1px_10px_var(--background)]"
+              className="text-lg sm:text-xl text-slate-300 max-w-2xl mx-auto mb-10 leading-relaxed font-normal"
               style={{ transitionDelay: '240ms' }}
             >
-              CodeSpectra gives you access to tools that help you learn: scan the code you build, understand errors and
-              issues, get AI-assisted fixes, practice in challenges and arenas, follow courses and assessments, train for interviews,
-              manage resumes, earn certificates, and explore roles—all from your account.
+              Build, deploy, and iterate end-to-end in one conversation, with
+              ORM, Postgres, and Compute designed to work together natively.
             </p>
 
             <div
               data-reveal
               data-revealed="true"
-              className="flex flex-col sm:flex-row gap-4 justify-center"
+              className="flex flex-col sm:flex-row gap-4 justify-center items-center"
               style={{ transitionDelay: '360ms' }}
             >
-              <Button size="lg" asChild className="h-12 px-8 text-base gap-2 rounded-full shadow-lg shadow-background/20">
-                <Link href={hasSession ? DASHBOARD_HREF : '/auth/signup'}>
-                  {hasSession ? 'Go to dashboard' : 'Get started free'}
-                  <ArrowRight className="w-4 h-4" />
-                </Link>
-              </Button>
-              <Button size="lg" variant="outline" asChild className="h-12 px-8 text-base gap-2 rounded-full bg-background/60 backdrop-blur-sm">
-                <Link href="/features">
-                  <Library className="w-4 h-4" />
-                  Browse features
-                </Link>
-              </Button>
+              <Link
+                href={hasSession ? DASHBOARD_HREF : '/auth/signup'}
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00c573] hover:bg-[#3ecf8e] text-slate-950 font-bold px-8 py-3.5 text-base transition-all shadow-xl shadow-[#00c573]/20 hover:shadow-[#00c573]/40 hover:scale-[1.02]"
+              >
+                {hasSession ? 'Go to dashboard' : 'Try CodeSpectra'}
+                <ArrowRight className="w-4 h-4" />
+              </Link>
             </div>
           </div>
         </div>
 
         {/* Subtle bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-linear-to-t from-background to-transparent z-10 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none" />
       </section>
+
+      {/* One platform section (Prisma path showcase) */}
+      <section className="relative border-t border-slate-800/80 bg-[#080c14] py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+          <div className="max-w-3xl mx-auto text-center mb-16">
+            <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight mb-4">
+              One platform for the full TypeScript path.
+            </h2>
+            <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
+              Start with <strong className="text-white underline decoration-teal-500 underline-offset-4">Prisma ORM</strong> for type-safe database access, add <strong className="text-white underline decoration-teal-500 underline-offset-4">Prisma Postgres</strong> for managed PostgreSQL, and deploy TypeScript apps for APIs and AI agents on <strong className="text-white underline decoration-teal-500 underline-offset-4">Prisma Compute</strong>.
+            </p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
+            {/* Card 1: Schema to client */}
+            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-[340px]">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h3 className="text-xl font-bold text-white">Schema to client</h3>
+                  <span className="inline-flex items-center gap-1 bg-teal-950/80 text-teal-400 border border-teal-800/60 px-2.5 py-0.5 rounded-md text-[11px] font-mono font-semibold uppercase">
+                    &lt;/&gt; MODEL
+                  </span>
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                  Define once, generate the primitives your app uses every day.
+                </p>
+              </div>
+
+              {/* Vector Graphic */}
+              <IsometricModelGraphic />
+            </div>
+
+            {/* Card 2: Postgres for modern deploys */}
+            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-[340px]">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h3 className="text-xl font-bold text-white">Postgres for modern deploys</h3>
+                  <span className="inline-flex items-center gap-1 bg-emerald-950/80 text-emerald-400 border border-emerald-800/60 px-2.5 py-0.5 rounded-md text-[11px] font-mono font-semibold uppercase">
+                    STORE
+                  </span>
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                  Standard PostgreSQL, pooling included, ready for production.
+                </p>
+              </div>
+
+              {/* Vector Graphic */}
+              <IsometricClusterGraphic />
+            </div>
+
+            {/* Card 3: Compute for your app */}
+            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-[340px]">
+              <div>
+                <div className="flex items-center justify-between gap-2 mb-4">
+                  <h3 className="text-xl font-bold text-white">Compute for your app</h3>
+                  <span className="inline-flex items-center gap-1 bg-cyan-950/80 text-cyan-400 border border-cyan-800/60 px-2.5 py-0.5 rounded-md text-[11px] font-mono font-semibold uppercase">
+                    RUN
+                  </span>
+                </div>
+                <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                  Deploy TypeScript apps with fewer serverless constraints.
+                </p>
+              </div>
+
+              {/* Vector Graphic */}
+              <IsometricComputeGraphic />
+            </div>
+          </div>
+        </div>
+      </section>
+
+      {/* Managed Postgres & Compute Product Feature Showcase (Prisma Screenshot 1 layout) */}
+      <section className="relative border-t border-slate-800/80 bg-[#050810] py-24 lg:py-32">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-20 lg:space-y-28">
+          {/* Row 1: Prisma Postgres */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            {/* Left: 3D Cylinder Disk Towers */}
+            <PostgresStackIllustration />
+
+            {/* Right: Copy & Text */}
+            <div>
+              <span className="text-xs font-mono font-bold text-teal-400 tracking-widest uppercase mb-3 block">
+                PRISMA POSTGRES
+              </span>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mb-5 leading-tight">
+                Managed Postgres for modern deployments.
+              </h2>
+              <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
+                Prisma Postgres gives you standard PostgreSQL with built-in pooling and support for modern deployment environments. Use it on its own, or pair it with Prisma ORM and Prisma Compute for a more integrated experience.
+              </p>
+            </div>
+          </div>
+
+          {/* Row 2: Prisma Compute */}
+          <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 lg:gap-16 items-center">
+            {/* Left: Copy & Text */}
+            <div>
+              <span className="text-xs font-mono font-bold text-cyan-400 tracking-widest uppercase mb-3 block">
+                PRISMA COMPUTE
+              </span>
+              <h2 className="text-3xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight mb-5 leading-tight">
+                Run TypeScript the way it actually works.
+              </h2>
+              <p className="text-slate-300 text-base sm:text-lg leading-relaxed">
+                Prisma Compute deploys TypeScript apps as long-lived processes near your database. A good fit for APIs and AI agents, with fewer serverless constraints and no extra infrastructure to stitch together.
+              </p>
+            </div>
+
+            {/* Right: Microchip Processor Vector Card */}
+            <ComputeChipIllustration />
+          </div>
+        </div>
+      </section>
+
+      {/* Tech Stack Icons Section */}
+      <TechStackSection />
 
       {/* Scrolling highlights — full-width animated dot canvas band */}
       <section className="relative h-64 overflow-hidden border-b border-border/40 bg-muted/5 dark:bg-muted/10">
@@ -267,18 +369,18 @@ export async function bootstrap() {
       <ProcessShowcase steps={processSteps} />
 
       {/* Platform — copy + SVG side by side from md; stats full width below */}
-      <section className="overflow-hidden border-t border-border/40 py-24 lg:py-32">
+      <section className="overflow-hidden border-t border-slate-800/80 py-16 sm:py-20 lg:py-24">
         <div ref={platformRef as React.RefObject<HTMLDivElement>} className="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <p data-reveal className="mb-6 text-sm text-muted-foreground md:mb-8">Platform</p>
+          <p data-reveal className="mb-4 text-xs font-mono font-bold text-teal-400 uppercase tracking-widest">Platform</p>
 
           <div className="grid grid-cols-1 items-start gap-8 min-[480px]:grid-cols-[minmax(0,1fr)_min(42%,200px)] min-[480px]:gap-6 md:grid-cols-[minmax(0,1fr)_min(40%,min(340px,38vw))] md:gap-10 lg:gap-14">
             <div data-reveal className="min-w-0">
-              <h2 className="text-4xl font-bold sm:text-5xl">
+              <h2 className="text-4xl font-black text-white sm:text-5xl tracking-tight">
                 Built for learners
                 <br />
-                <span className="text-muted-foreground">and serious practice.</span>
+                <span className="text-slate-300 font-normal">and serious practice.</span>
               </h2>
-              <p className="mt-5 max-w-xl leading-relaxed text-muted-foreground md:mt-6">
+              <p className="mt-4 max-w-xl leading-relaxed text-slate-300">
                 Your progress, scans, courses, interviews, and certificates stay tied to your account. The experience is
                 delivered through a modern web app with secure sign-in, dedicated dashboards for each area, and integrations
                 like GitHub when you want your real projects in the loop.
@@ -292,15 +394,15 @@ export async function bootstrap() {
             </div>
           </div>
 
-          <div className="mx-auto mt-10 grid w-full max-w-3xl grid-cols-1 gap-4 sm:max-w-4xl sm:grid-cols-3 md:mt-12 lg:max-w-5xl">
+          <div className="mx-auto mt-8 grid w-full max-w-3xl grid-cols-1 gap-4 sm:max-w-4xl sm:grid-cols-3 lg:max-w-5xl">
             {['One login', 'Guided quality', 'Career prep'].map((title, i) => (
               <div
                 key={title}
                 data-reveal
-                className="flex h-full flex-col items-center justify-center rounded-xl border border-border/40 bg-card/50 p-5 text-center transition-all duration-300 hover:border-primary/30 hover:bg-primary/[0.02] hover:shadow-lg"
+                className="flex h-full flex-col items-center justify-center rounded-xl border border-slate-800 bg-[#090d16]/80 p-4 text-center transition-all duration-300 hover:border-teal-500/40 hover:bg-[#0b101c]"
               >
-                <p className={`text-2xl font-bold ${i === 2 ? 'text-primary' : 'text-foreground'}`}>{title}</p>
-                <p className="mt-1 text-xs text-muted-foreground">
+                <p className={`text-xl font-bold ${i === 2 ? 'text-teal-400' : 'text-white'}`}>{title}</p>
+                <p className="mt-1 text-xs text-slate-400">
                   {i === 0 && 'Scanner, learning, interviews & more'}
                   {i === 1 && 'Issues, gates, and AI-assisted fixes'}
                   {i === 2 && 'Certs, roles, and interview training'}
@@ -314,16 +416,16 @@ export async function bootstrap() {
       <PipelineFlow />
 
       {/* Integrations Section */}
-      <section id="integrations" className="py-24 lg:py-32 border-t border-border/40 scroll-mt-24">
+      <section id="integrations" className="py-16 sm:py-20 lg:py-24 border-t border-slate-800/80 bg-[#050810] scroll-mt-24">
         <div ref={integrationsRef as React.RefObject<HTMLDivElement>} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div data-reveal className="text-center mb-16">
-            <p className="text-sm text-muted-foreground mb-3">Integrations</p>
-            <h2 className="text-4xl sm:text-5xl font-bold">
+          <div data-reveal className="text-center mb-10 max-w-3xl mx-auto">
+            <span className="text-xs font-mono font-bold text-teal-400 tracking-widest uppercase mb-3 block">INTEGRATIONS</span>
+            <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
               Connect the services
               <br />
-              <span className="text-muted-foreground">you already rely on.</span>
+              <span className="text-slate-300 font-normal">you already rely on.</span>
             </h2>
-            <p className="text-muted-foreground mt-6 max-w-2xl mx-auto">
+            <p className="text-slate-300 mt-4 max-w-2xl mx-auto text-sm sm:text-base leading-relaxed">
               Connect your code repositories from GitHub or GitLab, sign in with Google, get notifications in Slack,
               and use your favorite IDE with CodeSpectra.
             </p>
@@ -337,14 +439,14 @@ export async function bootstrap() {
                 <TiltCard key={integration.name} maxTilt={6} glare={false}>
                   <div
                     data-reveal
-                    className="integration-card group relative h-full flex flex-col items-center justify-between p-5 border border-border/40 rounded-xl text-center cursor-default transition-all duration-300 hover:border-primary/40 hover:bg-primary/5"
+                    className="integration-card group relative h-full flex flex-col items-center justify-between p-4 border border-slate-800 bg-[#090d16]/90 rounded-xl text-center cursor-default transition-all duration-300 hover:border-teal-500/50 hover:bg-[#0d1424]"
                   >
-                    <div className="w-12 h-12 bg-muted rounded-xl mx-auto mb-4 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:bg-primary/10 shrink-0">
-                      <IconEl className="w-6 h-6 text-muted-foreground transition-colors duration-300 group-hover:text-primary" />
+                    <div className="w-11 h-11 bg-slate-900 border border-slate-800 rounded-xl mx-auto mb-3 flex items-center justify-center transition-transform duration-300 group-hover:scale-110 group-hover:border-teal-500/40 shrink-0">
+                      <IconEl className="w-5 h-5 text-slate-300 transition-colors duration-300 group-hover:text-teal-300" />
                     </div>
-                    <div className="flex flex-col items-center gap-1 flex-1">
-                      <p className="text-sm font-medium transition-colors duration-300 group-hover:text-primary">{integration.name}</p>
-                      <p className="text-xs text-muted-foreground">{integration.category}</p>
+                    <div className="flex flex-col items-center gap-0.5 flex-1">
+                      <p className="text-xs font-bold text-white transition-colors duration-300 group-hover:text-teal-300">{integration.name}</p>
+                      <p className="text-[11px] text-slate-400">{integration.category}</p>
                     </div>
                   </div>
                 </TiltCard>
@@ -355,25 +457,25 @@ export async function bootstrap() {
       </section>
 
       {/* Security Section */}
-      <section id="trust" className="scroll-mt-24 border-t border-border/40 py-24 lg:py-32">
+      <section id="trust" className="scroll-mt-24 border-t border-slate-800/80 py-16 sm:py-20 lg:py-24 bg-[#060912]">
         <div ref={trustRef as React.RefObject<HTMLDivElement>} className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-          <div data-reveal className="mb-16">
-            <p className="text-sm text-muted-foreground mb-3">Security & access</p>
-            <h2 className="text-4xl sm:text-5xl font-bold">
+          <div data-reveal className="mb-10 max-w-3xl">
+            <span className="text-xs font-mono font-bold text-teal-400 tracking-widest uppercase mb-3 block">SECURITY & ACCESS</span>
+            <h2 className="text-4xl sm:text-5xl font-black text-white tracking-tight">
               Your work stays
               <br />
-              <span className="text-muted-foreground">in the right hands.</span>
+              <span className="text-slate-300 font-normal">in the right hands.</span>
             </h2>
-            <p className="text-muted-foreground mt-6 max-w-2xl leading-relaxed">
+            <p className="text-slate-300 mt-4 max-w-2xl leading-relaxed text-sm sm:text-base">
               Accounts are protected with secure sign-in, dashboard areas require an active session, and team or admin roles
               control who can change sensitive settings. Third-party connections (like GitHub or AI providers) only run with the
               permissions you approve.
             </p>
           </div>
 
-          <div data-reveal className="flex flex-wrap gap-3 mb-12">
+          <div data-reveal className="flex flex-wrap gap-2.5 mb-8">
             {['Secure sign-in', 'Session-aware dashboards', 'Role-based access', 'Controlled integrations'].map((badge) => (
-              <span key={badge} className="px-4 py-2 bg-muted rounded-full text-sm font-medium transition-all duration-300 hover:bg-primary/10 hover:text-primary">
+              <span key={badge} className="px-3.5 py-1.5 bg-[#090d16] border border-slate-800 text-slate-300 rounded-full text-xs font-medium transition-all duration-300 hover:border-teal-500/50 hover:text-white">
                 {badge}
               </span>
             ))}
@@ -411,43 +513,80 @@ export async function bootstrap() {
         </div>
       </section>
 
-      {/* CTA Section */}
-      <section className="py-24 lg:py-32 border-t border-border/40 relative overflow-hidden">
-        {/* Subtle radial glow */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-80 w-80 rounded-full bg-primary/5 blur-3xl" />
-        <div ref={ctaRef as React.RefObject<HTMLDivElement>} className="max-w-3xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
-          <h2 data-reveal className="text-4xl sm:text-5xl font-bold mb-6 tracking-tight">
-            Start using
-            <br />
-            <span className="text-muted-foreground">the full toolkit.</span>
-          </h2>
-          <p data-reveal className="text-lg text-muted-foreground mb-10 leading-relaxed">
-            {hasSession
-              ? "You're signed in—open your dashboard to pick up scanning, courses, interviews, and everything tied to your account."
-              : 'Create your CodeSpectra account to access scanning, learning paths, AI-assisted guidance, interview practice, certificates, and career tools—built for people who want to learn, improve, and show what they can do.'}
-          </p>
-          <div data-reveal className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Button size="lg" asChild className="h-12 px-8 text-base gap-2 rounded-full shadow-lg shadow-primary/20 hover:shadow-xl hover:shadow-primary/30 transition-all duration-300">
-              <Link href={hasSession ? DASHBOARD_HREF : '/auth/signup'}>
-                {hasSession ? 'Go to dashboard' : 'Get started free'}
-                <ArrowRight className="w-4 h-4" />
-              </Link>
-            </Button>
-            <Button size="lg" variant="outline" asChild className="h-12 px-8 text-base rounded-full">
-              <Link href="/contact">Questions? Contact us</Link>
-            </Button>
+      {/* CTA Section (Prisma gradient spotlight & grid mesh style) */}
+      <section className="relative py-10 sm:py-12 lg:py-14 border-t border-slate-800/80 bg-[#050811] overflow-hidden">
+        {/* Background Grid Mesh */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-45"
+          style={{
+            backgroundImage: `linear-gradient(rgba(0, 197, 115, 0.15) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 197, 115, 0.15) 1px, transparent 1px)`,
+            backgroundSize: '48px 48px',
+          }}
+        />
+
+        {/* Ambient Teal Radial Spotlight Glow */}
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[320px] w-[640px] rounded-full bg-gradient-radial from-[#00c573]/25 via-[#0d3830]/15 to-transparent blur-3xl" />
+
+        <div ref={ctaRef as React.RefObject<HTMLDivElement>} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
+          {/* Simple Tech Icons Row */}
+          <div data-reveal className="flex items-center justify-center gap-4 mb-4">
+            <span className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-teal-400">
+              <Code2 className="w-4 h-4" />
+            </span>
+            <span className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-cyan-400">
+              <Braces className="w-4 h-4" />
+            </span>
+            <span className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-emerald-400">
+              <Github className="w-4 h-4" />
+            </span>
+            <span className="p-2 rounded-xl bg-slate-900/80 border border-slate-800 text-amber-400">
+              <Slack className="w-4 h-4" />
+            </span>
           </div>
-          <p data-reveal className="text-sm text-muted-foreground mt-6">
-            Your account unlocks the scanners, lessons, interview trainers, and certificate flows described above.
+
+          <h2 data-reveal className="text-3xl sm:text-5xl lg:text-6xl font-black mb-3 tracking-tight text-white leading-[1.1]">
+            Start with CodeSpectra.
+            <br />
+            <span className="text-white">Expand when you need more.</span>
+          </h2>
+
+          <p data-reveal className="text-sm sm:text-base text-slate-300 mb-6 max-w-2xl mx-auto leading-relaxed">
+            Begin with CodeSpectra Scanner, add CodeSpectra AI when you need managed infrastructure, and deploy your app on CodeSpectra Compute.
           </p>
 
-          {/* Newsletter signup */}
-          <div data-reveal className="mx-auto mt-12 max-w-md rounded-2xl border border-border/40 bg-muted/10 p-6 text-left">
-            <h3 className="text-sm font-semibold text-foreground">Get product updates</h3>
-            <p className="mb-4 text-xs text-muted-foreground">
-              New challenges, assessments, hackathons and features — straight to your inbox. Unsubscribe anytime.
-            </p>
-            <NewsletterSubscribe source="landing-page" />
+          <div data-reveal className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-2">
+            <Link
+              href={hasSession ? DASHBOARD_HREF : '/auth/signup'}
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00c573] hover:bg-[#3ecf8e] text-slate-950 font-bold px-8 py-3.5 text-sm sm:text-base transition-all shadow-2xl shadow-[#00c573]/30 hover:shadow-[#00c573]/50 hover:scale-105"
+            >
+              {hasSession ? 'Try it out in the Console' : 'Try it out in the Console'}
+              <ArrowRight className="w-4 h-4" />
+            </Link>
+          </div>
+
+          <p data-reveal className="text-xs text-slate-400 font-medium mb-6">
+            Free to get started, no credit card needed.
+          </p>
+
+          {/* Newsletter signup module wrapped to full webpage container size */}
+          <div data-reveal className="mx-auto max-w-5xl w-full rounded-2xl border border-slate-800/80 bg-[#090e18]/90 p-5 sm:p-6 text-left backdrop-blur-md shadow-2xl">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+              <div className="md:max-w-md">
+                <div className="flex items-center gap-2 mb-1">
+                  <h3 className="text-base font-bold text-white">Get product updates</h3>
+                  <span className="text-[10px] font-mono text-teal-400 bg-teal-950/80 border border-teal-800/60 px-2.5 py-0.5 rounded-full uppercase">
+                    NO SPAM
+                  </span>
+                </div>
+                <p className="text-xs text-slate-300">
+                  New challenges, assessments, hackathons and features — straight to your inbox.
+                </p>
+              </div>
+
+              <div className="md:flex-1 md:max-w-lg">
+                <NewsletterSubscribe source="landing-page" compact={true} />
+              </div>
+            </div>
           </div>
         </div>
       </section>

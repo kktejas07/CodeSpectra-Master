@@ -78,6 +78,27 @@
   /* Inverted marketing band (e.g. Process / how-it-works) — near-black + light text in light & dark */
   --marketing-band-bg: 240 10% 4%;
   --marketing-band-fg: 0 0% 98%;
+
+  /* Refero / Supabase Extended Design Tokens */
+  --color-phosphor-green: #3ecf8e;
+  --color-mint-pulse: #00c573;
+  --color-forest-depth: #1f4b37;
+  --color-midnight-emerald: #006239;
+  --color-snow: #fafafa;
+  --color-silver-mist: #b4b4b4;
+  --color-smoke: #898989;
+  --color-graphite: #4d4d4d;
+  --color-slate: #393939;
+  --color-charcoal: #2e2e2e;
+  --color-ash: #242424;
+  --color-obsidian: #121212;
+
+  --font-circular: 'Circular', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-source-code-pro: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --surface-obsidian-canvas: #121212;
+  --surface-ash-card: #242424;
+  --surface-charcoal-border: #2e2e2e;
 }
 
 /* Optimus Theme - Dark Mode (Default) */
@@ -141,12 +162,46 @@
 
   --marketing-band-bg: 0 0% 0%;
   --marketing-band-fg: 0 0% 98%;
+
+  /* Refero / Supabase Extended Design Tokens in Dark Mode */
+  --color-phosphor-green: #3ecf8e;
+  --color-mint-pulse: #00c573;
+  --color-forest-depth: #1f4b37;
+  --color-midnight-emerald: #006239;
+  --color-snow: #fafafa;
+  --color-silver-mist: #b4b4b4;
+  --color-smoke: #898989;
+  --color-graphite: #4d4d4d;
+  --color-slate: #393939;
+  --color-charcoal: #2e2e2e;
+  --color-ash: #242424;
+  --color-obsidian: #121212;
+
+  --surface-obsidian-canvas: #121212;
+  --surface-ash-card: #242424;
+  --surface-charcoal-border: #2e2e2e;
 }
 
 
 @theme inline {
   --font-sans: var(--font-sans), 'Plus Jakarta Sans', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
   --font-mono: var(--font-mono), 'JetBrains Mono', ui-monospace, SFMono-Regular, Menlo, 'SF Mono', monospace;
+  --font-circular: 'Circular', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --font-source-code-pro: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  /* Supabase Extended Colors */
+  --color-phosphor-green: #3ecf8e;
+  --color-mint-pulse: #00c573;
+  --color-forest-depth: #1f4b37;
+  --color-midnight-emerald: #006239;
+  --color-snow: #fafafa;
+  --color-silver-mist: #b4b4b4;
+  --color-smoke: #898989;
+  --color-graphite: #4d4d4d;
+  --color-slate: #393939;
+  --color-charcoal: #2e2e2e;
+  --color-ash: #242424;
+  --color-obsidian: #121212;
   
   --color-background: hsl(var(--background));
   --color-foreground: hsl(var(--foreground));

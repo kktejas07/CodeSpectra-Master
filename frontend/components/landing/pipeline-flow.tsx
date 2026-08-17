@@ -1,98 +1,79 @@
 'use client'
 
 import { useEffect, useRef, useState } from 'react'
-import { CodeXml, GitBranch, Scan, Trophy, GraduationCap, Briefcase } from 'lucide-react'
+import { CodeXml, GitBranch, Scan, Trophy, GraduationCap, Briefcase, ArrowRight, Sparkles, CheckCircle2 } from 'lucide-react'
 import type { ReactNode } from 'react'
+import { cn } from '@/lib/utils'
 
 type PipelineStep = {
+  num: string
   icon: ReactNode
   title: string
   description: string
+  tag: string
+  snippet: string
+  color: string
 }
 
 const steps: PipelineStep[] = [
   {
+    num: '01',
     icon: <CodeXml className="h-5 w-5" />,
     title: 'Write Code',
-    description: 'Push your projects or solve challenges in the workspace',
+    description: 'Push your repositories or solve assignments in the workspace',
+    tag: 'IDE & REPO',
+    snippet: `export async function build() {\n  return await workspace.compile()\n}`,
+    color: 'from-teal-500/20 to-emerald-500/20',
   },
   {
+    num: '02',
     icon: <Scan className="h-5 w-5" />,
     title: 'Analyze & Scan',
     description: 'Automated quality checks catch issues and anti-patterns',
+    tag: 'STATIC SCAN',
+    snippet: `✓ 0 Critical Errors\n✓ 100% Type Coverage verified`,
+    color: 'from-emerald-500/20 to-cyan-500/20',
   },
   {
+    num: '03',
     icon: <GitBranch className="h-5 w-5" />,
     title: 'Learn & Fix',
     description: 'AI-guided explanations help you understand every finding',
+    tag: 'AI ASSISTANT',
+    snippet: `AI Suggestion: Refactor array iteration to map() for 3.2x speedup`,
+    color: 'from-cyan-500/20 to-blue-500/20',
   },
   {
+    num: '04',
     icon: <Trophy className="h-5 w-5" />,
     title: 'Practice & Compete',
     description: 'Reinforce skills with challenges and arena sessions',
+    tag: 'ARENA & PRACTICE',
+    snippet: `Arena Rank #14 · 98% Test Cases Passed`,
+    color: 'from-blue-500/20 to-purple-500/20',
   },
   {
+    num: '05',
     icon: <GraduationCap className="h-5 w-5" />,
     title: 'Certify & Grow',
     description: 'Earn certificates, train for interviews, explore roles',
+    tag: 'VERIFIED CERT',
+    snippet: `Certificate Issued: Senior TypeScript Engineer (ID: 0924)`,
+    color: 'from-purple-500/20 to-pink-500/20',
   },
   {
+    num: '06',
     icon: <Briefcase className="h-5 w-5" />,
     title: 'Advance Career',
     description: 'Build your profile with verified skills and credentials',
+    tag: 'CAREER LOOP',
+    snippet: `Profile Active: 12 Scans · 3 Certs · Ready for Hire`,
+    color: 'from-pink-500/20 to-teal-500/20',
   },
 ]
 
-function FlowArrow({ index, total, containerRef }: { index: number; total: number; containerRef: React.RefObject<HTMLDivElement | null> }) {
-  const pathRef = useRef<SVGPathElement>(null)
-  const dotRef = useRef<HTMLDivElement>(null)
-  const [pathLength, setPathLength] = useState(0)
-
-  useEffect(() => {
-    const el = pathRef.current
-    if (!el) return
-    setPathLength(el.getTotalLength())
-  }, [])
-
-  if (index >= total - 1) return null
-
-  return (
-    <div className="relative flex items-center justify-center py-1 sm:py-2">
-      <svg
-        className="h-8 w-full sm:h-10"
-        viewBox="0 0 120 32"
-        fill="none"
-        xmlns="http://www.w3.org/2000/svg"
-        preserveAspectRatio="none"
-      >
-        <path
-          ref={pathRef}
-          d="M0 16 C 30 16, 50 2, 80 2 C 100 2, 110 10, 120 16 C 110 22, 100 30, 80 30 C 50 30, 30 16, 0 16"
-          stroke="hsl(var(--primary) / 0.2)"
-          strokeWidth="1.5"
-          fill="none"
-          strokeDasharray="4 4"
-          className="dark:opacity-60"
-        />
-        <circle r="2.5" fill="hsl(var(--primary) / 0.5)" className="dark:opacity-80">
-          <animateMotion dur={`${2 + index * 0.3}s`} repeatCount="indefinite">
-            <mpath href={`#flow-path-${index}`} />
-          </animateMotion>
-        </circle>
-        <defs>
-          <path
-            id={`flow-path-${index}`}
-            d="M0 16 C 30 16, 50 2, 80 2 C 100 2, 110 10, 120 16 C 110 22, 100 30, 80 30 C 50 30, 30 16, 0 16"
-          />
-        </defs>
-      </svg>
-    </div>
-  )
-}
-
 export function PipelineFlow() {
   const sectionRef = useRef<HTMLElement>(null)
-  const containerRef = useRef<HTMLDivElement>(null)
   const [visible, setVisible] = useState(false)
   const [activeStep, setActiveStep] = useState(0)
 
@@ -116,151 +97,160 @@ export function PipelineFlow() {
     if (!visible) return
     const interval = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % steps.length)
-    }, 2200)
+    }, 2800)
     return () => clearInterval(interval)
   }, [visible])
+
+  const active = steps[activeStep]
 
   return (
     <section
       ref={sectionRef}
-      className="relative overflow-hidden border-t border-border/40 py-24 lg:py-32"
+      id="how-it-works"
+      className="relative overflow-hidden border-t border-slate-800/80 bg-[#060912] py-24 lg:py-32 scroll-mt-24"
     >
-      {/* Subtle background grid */}
+      {/* Background Ambient Grid & Radial Glow */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.02] dark:opacity-[0.03]"
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={{
           backgroundImage:
-            'linear-gradient(rgba(0,0,0,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(0,0,0,0.05) 1px, transparent 1px)',
-          backgroundSize: '48px 48px',
+            'linear-gradient(rgba(0, 197, 115, 0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 197, 115, 0.12) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
         }}
       />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[500px] w-[800px] rounded-full bg-gradient-radial from-teal-500/10 via-emerald-500/5 to-transparent blur-3xl" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-        <div
-          data-reveal
-          data-revealed={visible ? 'true' : 'false'}
-          className="mb-14 text-center lg:mb-20"
-        >
-          <span className="mb-6 inline-flex items-center gap-3 font-mono text-sm text-muted-foreground">
-            <span className="h-px w-8 bg-border" />
-            Pipeline
-            <span className="h-px w-8 bg-border" />
+        <div className="mb-16 text-center max-w-3xl mx-auto">
+          <span className="text-xs font-mono font-bold text-teal-400 tracking-widest uppercase mb-3 block">
+            PIPELINE FLOW
           </span>
-          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+          <h2 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl mb-4 leading-tight">
             From code to career.
             <br />
-            <span className="text-muted-foreground">A continuous loop.</span>
+            <span className="text-slate-300 font-normal">A continuous loop.</span>
           </h2>
+          <p className="text-base sm:text-lg text-slate-300 leading-relaxed">
+            Every line of code you write feeds into automated scans, AI learning loops, skill challenges, and career credentials.
+          </p>
         </div>
 
-        <div
-          ref={containerRef}
-          className="mx-auto flex max-w-5xl flex-col items-center"
-        >
-          {steps.map((step, i) => (
-            <div key={i} className="w-full max-w-lg">
-              <div
-                className={`group relative rounded-xl border p-5 transition-all duration-500 sm:p-6 ${
-                  visible
-                    ? 'translate-y-0 opacity-100'
-                    : 'translate-y-8 opacity-0'
-                } ${
-                  activeStep === i
-                    ? 'border-primary/40 bg-primary/[0.03] shadow-lg shadow-primary/5'
-                    : 'border-border/40 bg-card/30 hover:border-primary/20 hover:bg-primary/[0.01]'
-                }`}
-                style={{
-                  transitionDelay: `${i * 120}ms`,
-                }}
-              >
-                <div className="flex items-start gap-4">
+        {/* 6 Step Grid + Interactive Preview */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center max-w-6xl mx-auto">
+          {/* Step Cards List (7 Cols) */}
+          <div className="lg:col-span-7 grid grid-cols-1 sm:grid-cols-2 gap-3.5">
+            {steps.map((step, i) => {
+              const isActive = activeStep === i
+              return (
+                <button
+                  key={step.num}
+                  onClick={() => setActiveStep(i)}
+                  className={cn(
+                    'group relative rounded-xl border p-4 text-left transition-all duration-300 overflow-hidden cursor-pointer',
+                    isActive
+                      ? 'border-teal-500/60 bg-[#0d1626] shadow-xl shadow-teal-500/10 scale-[1.02]'
+                      : 'border-slate-800/90 bg-[#090d16]/80 hover:border-slate-700 hover:bg-[#0b101c]'
+                  )}
+                >
+                  {/* Subtle top indicator bar for active item */}
                   <div
-                    className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-lg transition-all duration-500 ${
-                      activeStep === i
-                        ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                        : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
-                    }`}
-                  >
-                    {step.icon}
-                  </div>
-                  <div className="min-w-0 flex-1">
-                    <div className="flex items-center gap-2">
-                      <span className="font-mono text-[10px] font-medium text-muted-foreground/50 sm:text-xs">
-                        STEP {String(i + 1).padStart(2, '0')}
-                      </span>
-                      {activeStep === i && (
-                        <span className="inline-flex gap-1">
-                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
-                          <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" style={{ animationDelay: '600ms' }} />
-                        </span>
+                    className={cn(
+                      'absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal-400 to-emerald-400 transition-all duration-300',
+                      isActive ? 'opacity-100' : 'opacity-0'
+                    )}
+                  />
+
+                  <div className="flex items-start gap-3.5">
+                    <div
+                      className={cn(
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg transition-colors',
+                        isActive
+                          ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                          : 'bg-slate-900 text-slate-400 border border-slate-800 group-hover:text-slate-200'
                       )}
+                    >
+                      {step.icon}
                     </div>
-                    <h3 className="mt-1 text-base font-semibold tracking-tight sm:text-lg">
-                      {step.title}
-                    </h3>
-                    <p className="mt-1 text-sm leading-relaxed text-muted-foreground">
-                      {step.description}
-                    </p>
+
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between gap-1 mb-1">
+                        <span className="font-mono text-[10px] font-semibold text-slate-400">
+                          {step.num}
+                        </span>
+                        <span className="text-[9px] font-mono font-medium text-teal-400/80 bg-teal-950/60 px-1.5 py-0.5 rounded border border-teal-900/40">
+                          {step.tag}
+                        </span>
+                      </div>
+                      <h3 className={cn("text-sm font-bold transition-colors", isActive ? "text-white" : "text-slate-200")}>
+                        {step.title}
+                      </h3>
+                      <p className="mt-1 text-xs text-slate-400 line-clamp-2 leading-relaxed">
+                        {step.description}
+                      </p>
+                    </div>
                   </div>
+                </button>
+              )
+            })}
+          </div>
+
+          {/* Active Step Real-time Terminal / Code Snippet Preview (5 Cols) */}
+          <div className="lg:col-span-5">
+            <div className="relative rounded-2xl border border-slate-800 bg-[#080d18] p-6 shadow-2xl overflow-hidden min-h-[340px] flex flex-col justify-between">
+              {/* Radial color backdrop for active step */}
+              <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40 pointer-events-none transition-all duration-500", active.color)} />
+
+              <div>
+                <div className="flex items-center justify-between gap-2 pb-4 border-b border-slate-800/80 mb-5">
+                  <div className="flex items-center gap-2">
+                    <span className="flex h-2 w-2 rounded-full bg-teal-400 animate-ping" />
+                    <span className="font-mono text-xs font-bold text-teal-300 uppercase tracking-wider">
+                      STEP {active.num} · {active.tag}
+                    </span>
+                  </div>
+                  <span className="text-[10px] font-mono text-slate-400">
+                    Live Status
+                  </span>
                 </div>
 
-                {/* Active indicator bar */}
-                <div
-                  className={`-bottom-px left-0 h-0.5 rounded-full bg-primary transition-all duration-700 ${
-                    activeStep === i ? 'w-full' : 'w-0'
-                  }`}
-                  style={{
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                  }}
-                />
+                <h3 className="text-xl font-bold text-white mb-2">
+                  {active.title}
+                </h3>
+                <p className="text-sm text-slate-300 leading-relaxed mb-6">
+                  {active.description}
+                </p>
               </div>
 
-              {/* Animated connector arrow between steps */}
-              {i < steps.length - 1 && (
-                <div className="flex justify-center py-2">
-                  <div className="relative flex h-8 w-8 items-center justify-center sm:h-10 sm:w-10">
-                    <svg
-                      className="h-6 w-6 sm:h-7 sm:w-7"
-                      viewBox="0 0 24 24"
-                      fill="none"
-                      stroke="hsl(var(--primary) / 0.25)"
-                      strokeWidth="1.5"
-                      strokeLinecap="round"
-                    >
-                      <path d="M12 5v14M5 12l7 7 7-7" />
-                    </svg>
-                    {activeStep === i && (
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <div
-                          className="h-2 w-2 animate-ping rounded-full bg-primary/40"
-                          style={{ animationDuration: '1.5s' }}
-                        />
-                      </div>
-                    )}
-                  </div>
+              {/* Code Snippet Box */}
+              <div className="relative rounded-xl border border-slate-800/90 bg-[#04070e] p-4 font-mono text-xs text-teal-300">
+                <div className="text-slate-400 text-[10px] mb-2 flex items-center justify-between">
+                  <span>// live output snippet</span>
+                  <CheckCircle2 className="w-3.5 h-3.5 text-teal-400" />
                 </div>
-              )}
+                <div className="whitespace-pre-wrap text-slate-200 font-mono text-xs">
+                  {active.snippet}
+                </div>
+              </div>
+
+              {/* Step indicator footer */}
+              <div className="pt-4 mt-4 border-t border-slate-800/80 flex items-center justify-between text-xs text-slate-400 font-mono">
+                <span>Loop progress</span>
+                <span className="text-teal-400 font-bold">{activeStep + 1} of {steps.length}</span>
+              </div>
             </div>
-          ))}
+          </div>
         </div>
 
-        {/* Flow line indicators */}
-        <div
-          data-reveal
-          data-revealed={visible ? 'true' : 'false'}
-          className="mt-12 text-center"
-        >
-          <div className="inline-flex items-center gap-3 rounded-full border border-border/30 bg-muted/30 px-4 py-2 text-xs text-muted-foreground">
+        {/* Auto-advancing indicator pill */}
+        <div className="mt-12 text-center">
+          <div className="inline-flex items-center gap-3 rounded-full border border-slate-800 bg-slate-900/90 px-4 py-2 text-xs text-slate-300">
             <span className="relative flex h-2 w-2">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-teal-400 opacity-75" />
+              <span className="relative inline-flex h-2 w-2 rounded-full bg-teal-400" />
             </span>
-            Auto-advancing
-            <span className="font-mono text-[10px] text-muted-foreground/50">
-              Step <span className="tabular-nums text-muted-foreground/70">{activeStep + 1}</span> / {steps.length}
+            Continuous loop active
+            <span className="font-mono text-[10px] text-slate-400">
+              Step <span className="tabular-nums text-teal-300 font-bold">{activeStep + 1}</span> / {steps.length}
             </span>
           </div>
         </div>
