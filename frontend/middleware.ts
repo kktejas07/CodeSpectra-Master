@@ -42,6 +42,8 @@ export function middleware(request: NextRequest) {
     '/api/proctor/events',
     '/api/daily-login',
     '/api/kyc/didit/webhook',
+    '/api/auth/login-method',
+    '/api/security/track',
   ]
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const rl = edgeRateLimit(`api:${edgeClientKey(request)}`, 240, 60_000)
@@ -86,7 +88,9 @@ export function middleware(request: NextRequest) {
   response.headers.set('X-Content-Type-Options', 'nosniff')
   response.headers.set('Referrer-Policy', 'strict-origin-when-cross-origin')
   response.headers.set('X-XSS-Protection', '1; mode=block')
-  response.headers.set('Cross-Origin-Opener-Policy', 'same-origin-allow-popups')
+  // COOP disabled: same-origin-allow-popups blocks Firebase OAuth popup
+  // window.closed calls. unsafe-none allows cross-origin popups to work.
+  response.headers.set('Cross-Origin-Opener-Policy', 'unsafe-none')
   response.headers.set('Cross-Origin-Resource-Policy', 'same-site')
   response.headers.set(
     'Permissions-Policy',
