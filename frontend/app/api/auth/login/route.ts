@@ -99,7 +99,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
     }
 
-    const uid = user.id || user._id
+    const uid = String(user.id || user._id)
     const role = normalizeUserRole(user.role as string | undefined | null)
 
     if (user.totp_enabled) {
@@ -118,84 +118,88 @@ export async function POST(request: Request) {
     await setSessionCookie({ uid, email: user.email, role })
     await updateUserLastLogin(uid, 'email')
 
-    await writeAuditLog({ action: 'auth.login', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid })
+    await writeAuditLog({ action: 'auth.login', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid }).catch(() => {})
     notify({ user_id: uid, type: 'auth.login', title: 'New sign-in', message: `Signed in as ${user.email}`, icon: 'log-in' }).catch(() => {})
 
-    const userAgent = request.headers.get('user-agent') || 'Unknown device'
-    const sessionGeo = await createUserSession({ user_id: uid, email: user.email, ip: actorIp, user_agent: userAgent, visitor_id: visitorId || undefined })
+    // Fire-and-forget side effects — any failure here must NOT 500 the login
+    Promise.allSettled([
+      (async () => {
+        const userAgent = request.headers.get('user-agent') || 'Unknown device'
+        const sessionGeo = await createUserSession({ user_id: uid, email: user.email, ip: actorIp, user_agent: userAgent, visitor_id: visitorId || undefined })
 
-    // Concurrent Session Limit — prune oldest sessions beyond the configured cap.
-    const policy = await securityPolicy()
-    if (policy.concurrentSessionLimit > 0) {
-      try {
-        const db2 = await getMongoDb()
-        const active = await db2.collection('user_sessions')
-          .find({ user_id: uid, is_active: true })
-          .sort({ last_seen: -1 })
-          .toArray()
-        const excess = active.slice(policy.concurrentSessionLimit)
-        if (excess.length > 0) {
-          await db2.collection('user_sessions').updateMany(
-            { id: { $in: excess.map(s => s.id) } },
-            { $set: { is_active: false } },
-          )
+        // Concurrent Session Limit — prune oldest sessions beyond the configured cap.
+        try {
+          const policy = await securityPolicy()
+          if (policy.concurrentSessionLimit > 0) {
+            const db2 = await getMongoDb()
+            const active = await db2.collection('user_sessions')
+              .find({ user_id: uid, is_active: true })
+              .sort({ last_seen: -1 })
+              .toArray()
+            const excess = active.slice(policy.concurrentSessionLimit)
+            if (excess.length > 0) {
+              await db2.collection('user_sessions').updateMany(
+                { id: { $in: excess.map(s => s.id) } },
+                { $set: { is_active: false } },
+              )
+            }
+          }
+        } catch (e) {
+          console.error('[Login] Concurrent session prune failed:', e)
         }
-      } catch (e) {
-        console.error('[Login] Concurrent session prune failed:', e)
-      }
-    }
 
-    // Device fingerprint — detect new device + multi-account risk.
-    if (visitorId) {
-      const fp = await trackDeviceFingerprint({ visitorId, user_id: uid, email: user.email, ip: actorIp, user_agent: userAgent })
-      if (fp.isNewDevice) {
-        await recordSecurityEvent({
-          type: 'auth.new_device',
-          severity: 'info',
-          user_id: uid,
-          email: user.email,
-          ip: actorIp,
-          visitorId,
-          detail: 'New device fingerprint used for this account',
-          metadata: { userAgent },
-        })
-      }
-      if (fp.multiAccountRisk) {
-        await recordSecurityEvent({
-          type: 'auth.multi_account',
-          severity: 'warning',
-          user_id: uid,
-          email: user.email,
-          ip: actorIp,
-          visitorId,
-          detail: 'Same device fingerprint used by multiple accounts',
-          metadata: { userAgent },
-        })
-      }
-    }
+        // Device fingerprint — detect new device + multi-account risk.
+        if (visitorId) {
+          const fp = await trackDeviceFingerprint({ visitorId, user_id: uid, email: user.email, ip: actorIp, user_agent: userAgent })
+          if (fp.isNewDevice) {
+            await recordSecurityEvent({
+              type: 'auth.new_device',
+              severity: 'info',
+              user_id: uid,
+              email: user.email,
+              ip: actorIp,
+              visitorId,
+              detail: 'New device fingerprint used for this account',
+              metadata: { userAgent },
+            })
+          }
+          if (fp.multiAccountRisk) {
+            await recordSecurityEvent({
+              type: 'auth.multi_account',
+              severity: 'warning',
+              user_id: uid,
+              email: user.email,
+              ip: actorIp,
+              visitorId,
+              detail: 'Same device fingerprint used by multiple accounts',
+              metadata: { userAgent },
+            })
+          }
+        }
 
-    // Impossible-travel check (account-takeover signal). Compare resolved geo from this
-    // login against the user's most recent session.
-    const travel = await detectImpossibleTravel({ user_id: uid, ip: actorIp, country: sessionGeo.country })
-    if (travel) {
-      await recordSecurityEvent({
-        type: 'auth.impossible_travel',
-        severity: 'critical',
-        user_id: uid,
-        email: user.email,
-        ip: actorIp,
-        visitorId: visitorId || undefined,
-        detail: 'Login from a different country within 2h of previous login',
-      })
-    }
+        // Impossible-travel check (account-takeover signal).
+        const travel = await detectImpossibleTravel({ user_id: uid, ip: actorIp, country: sessionGeo.country })
+        if (travel) {
+          await recordSecurityEvent({
+            type: 'auth.impossible_travel',
+            severity: 'critical',
+            user_id: uid,
+            email: user.email,
+            ip: actorIp,
+            visitorId: visitorId || undefined,
+            detail: 'Login from a different country within 2h of previous login',
+          })
+        }
 
-    // Send login notification email
-    const deviceInfo = userAgent.includes('Mobile') ? 'Mobile device' : 'Desktop browser'
-    const location = actorIp || 'Unknown location'
-    const time = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
-    const displayName = (user.name || normalizedEmail.split('@')[0])
-    const template = emailTemplates.loginNotification(displayName, deviceInfo, location, time)
-    await sendEmail(normalizedEmail, template).catch((e) => console.error('[Login] Notification email failed:', e))
+        // Send login notification email
+        const deviceInfo = userAgent.includes('Mobile') ? 'Mobile device' : 'Desktop browser'
+        const location = actorIp || 'Unknown location'
+        const time = new Date().toLocaleString('en-US', { dateStyle: 'medium', timeStyle: 'short' })
+        const displayName = (user.name || normalizedEmail.split('@')[0])
+        const template = emailTemplates.loginNotification(displayName, deviceInfo, location, time)
+        await sendEmail(normalizedEmail, template).catch((e) => console.error('[Login] Notification email failed:', e))
+      })(),
+    ]).catch(() => {})
 
     return NextResponse.json({ user: { id: uid, email: user.email, role, name: user.name || null } })
   } catch (error) {
