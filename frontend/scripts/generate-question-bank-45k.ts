@@ -743,7 +743,6 @@ async function main() {
     }
 
     console.log(`\n=== DONE: inserted ${totalInserted} new questions, ${totalFailed} rejected/failed. ===`)
-    }
   } finally {
     // Always close Mongo — even on error or MAX_* early-stop. Previously
     // process.exit(0) skipped this line, leaking a connection.
