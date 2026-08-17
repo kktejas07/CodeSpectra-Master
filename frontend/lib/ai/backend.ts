@@ -38,9 +38,22 @@ async function getBackendSecrets(): Promise<{
   }
 }
 
+async function getInternalSecret(): Promise<string> {
+  const fromEnv = process.env.INTERNAL_BACKEND_SECRET?.trim() || ''
+  if (fromEnv) return fromEnv
+  try {
+    const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
+    const secrets = await readServerSecrets()
+    const stored = typeof secrets.internal_backend_secret === 'string' ? secrets.internal_backend_secret.trim() : ''
+    return stored && !isMaskedSecret(stored) ? stored : ''
+  } catch {
+    return ''
+  }
+}
+
 async function backendHeaders(opts?: { apiKeyOverride?: string }): Promise<Record<string, string>> {
   const h: Record<string, string> = { 'Content-Type': 'application/json' }
-  const internalSecret = process.env.INTERNAL_BACKEND_SECRET
+  const internalSecret = await getInternalSecret()
   if (internalSecret) h['x-internal-secret'] = internalSecret
   if (opts?.apiKeyOverride) {
     h['x-api-key'] = opts.apiKeyOverride

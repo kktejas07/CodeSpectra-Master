@@ -62,7 +62,9 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/rag',
   '/dashboard/admin/ai-inventory',
   '/dashboard/admin/question-generator',
+  '/dashboard/admin/course-generator',
   '/dashboard/admin/workflows',
+  '/dashboard/admin/cron-jobs',
 
   // Analytics (superadmin only)
   '/dashboard/admin/analytics/proctoring',
@@ -87,6 +89,7 @@ export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Billing', firstRoute: '/dashboard/admin/pricing' },
   { label: 'Hiring', firstRoute: '/dashboard/admin/jobs' },
   { label: 'AI Tools', firstRoute: '/dashboard/admin/rag' },
+  { label: 'Learning', firstRoute: '/dashboard/admin/course-generator' },
   { label: 'Infrastructure', firstRoute: '/dashboard/admin/settings' },
   { label: 'Organization', firstRoute: '/dashboard/admin/team' },
 ]
@@ -246,7 +249,9 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/speed-insights': 'Speed Insights',
   '/dashboard/admin/cdn': 'CDN & Edge',
   '/dashboard/admin/workflows': 'Workflows',
+  '/dashboard/admin/cron-jobs': 'Cron Jobs',
   '/dashboard/admin/question-generator': 'Question Generator',
+  '/dashboard/admin/course-generator': 'Course Generator',
   '/dashboard/admin/hackathons/create': 'Create Hackathon',
   '/dashboard/admin/hackathons/edit': 'Edit Hackathon',
   '/dashboard/admin/hackathons': 'Hackathons',

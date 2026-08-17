@@ -48,11 +48,24 @@ const LEVEL_STYLE: Record<Course['level'], string> = {
 
 function HundredDaysHero() {
   const [completed, setCompleted] = useState<number[]>([])
+  const [problemsDone, setProblemsDone] = useState<number>(0)
   useEffect(() => {
     try {
       const raw = localStorage.getItem('100-days-completed')
       setCompleted(raw ? JSON.parse(raw) : [])
     } catch { setCompleted([]) }
+
+    let total = 0
+    try {
+      for (let d = 1; d <= 100; d++) {
+        const dayRaw = localStorage.getItem(`100-days-d${d}-completed`)
+        if (dayRaw) {
+          const arr = JSON.parse(dayRaw)
+          if (Array.isArray(arr)) total += arr.length
+        }
+      }
+    } catch { /* ignore */ }
+    setProblemsDone(total)
   }, [])
 
   const totalProblems = HUNDRED_DAYS.reduce((acc, d) => acc + d.problems.length, 0)
@@ -83,7 +96,7 @@ function HundredDaysHero() {
 
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-4">
           <Stat label="Days done" value={`${daysCompleted}/${HUNDRED_DAYS_TOTAL_DAYS}`} />
-          <Stat label="Problems" value={`${Math.round(completed.length * (totalProblems / Math.max(daysCompleted, 1)))}/`} suffix={`${totalProblems}`} />
+          <Stat label="Problems" value={`${problemsDone}`} suffix={`/${totalProblems}`} />
           <Stat label="Progress" value={`${pct}%`} />
           <Stat label="Topics" value={`${HUNDRED_DAYS.length}+`} />
         </div>

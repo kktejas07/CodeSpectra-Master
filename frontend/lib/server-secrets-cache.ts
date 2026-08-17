@@ -75,6 +75,10 @@ export type ServerSecretsRecord = {
   openwa_default_country_code?: string // e.g. 91 for India
   openwa_max_concurrency?: string // Max concurrent sends (default: 3)
   openwa_send_delay_ms?: string   // Delay between sends in ms (default: 400)
+  // --- Internal backend auth (frontend-side copy of INTERNAL_BACKEND_SECRET) --
+  // Sent as `x-internal-secret` on server->server calls to the FastAPI backend.
+  // Must match the backend's INTERNAL_BACKEND_SECRET env var (set in Dokploy).
+  internal_backend_secret?: string
 }
 
 interface PlatformSettingDoc {

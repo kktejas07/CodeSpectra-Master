@@ -67,6 +67,7 @@ import {
   Mail,
   ScanSearch,
   UserPlus,
+  Timer,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -335,7 +336,9 @@ export default function DashboardLayout({
       [p.codeathons]: Trophy,
       [p.exams]: FileText,
       [p.workflows]: Settings,
+      '/dashboard/admin/cron-jobs': Timer,
       [p.questionGenerator]: Bot,
+      '/dashboard/admin/course-generator': Sparkles,
       [DASHBOARD_ROUTES.organization.team]: Users,
       '/dashboard/arena': Trophy,
       '/dashboard/hackathons': Trophy,

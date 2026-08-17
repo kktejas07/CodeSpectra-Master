@@ -183,6 +183,7 @@ type SecretsDraft = {
   opencode_api_key: string
   openrouter_api_key: string
   nvidia_api_key: string
+  internal_backend_secret: string
 }
 
 const emptySecretsDraft = (): SecretsDraft => ({
@@ -222,6 +223,7 @@ const emptySecretsDraft = (): SecretsDraft => ({
   opencode_api_key: '',
   openrouter_api_key: '',
   nvidia_api_key: '',
+  internal_backend_secret: '',
 })
 
 function EmailTemplatesSection() {
@@ -297,7 +299,7 @@ function SystemSettingsInner() {
   const addToast = useToast()
   const [loading, setLoading] = useState(true)
   const [savingKey, setSavingKey] = useState<
-    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | 'gamification' | 'redis' | null
+    'branding' | 'ops' | 'product' | 'mail' | 'integrations' | 'payments' | 'certificates' | 'gamification' | 'redis' | 'media' | null
   >(null)
   const [loadError, setLoadError] = useState<string | null>(null)
   const [form, setForm] = useState<General>(defaults)
@@ -475,7 +477,7 @@ function SystemSettingsInner() {
   }, [loading, secretsMeta])
 
   const saveKeys = useCallback(
-    async (keys: GeneralKey[], section: 'branding' | 'ops' | 'product' | 'certificates') => {
+    async (keys: GeneralKey[], section: 'branding' | 'ops' | 'product' | 'certificates' | 'media') => {
       setSavingKey(section)
       try {
         const body: Record<string, unknown> = {}
@@ -670,6 +672,7 @@ function SystemSettingsInner() {
             </p>
                   </div>
                 </div>
+      </div>
 
       {loadError ? (
         <Alert variant="destructive" className="border-destructive/40">
@@ -680,7 +683,7 @@ function SystemSettingsInner() {
 
       <div className="min-w-0 space-y-6">
           {section === 'branding' ? (
-        <>
+        <div className="space-y-6">
         <Card className="rounded-xl border-border/60 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
@@ -920,7 +923,6 @@ function SystemSettingsInner() {
             </Button>
           </div>
         </Card>
-        </>
 
         <Card className="rounded-xl border-border/60 bg-card p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
@@ -979,12 +981,12 @@ function SystemSettingsInner() {
             </Button>
           </div>
         </Card>
-        </>
-          ) : null}
+        </div>
+      ) : null}
 
-           {section === 'cloudflare' ? (
-             <CloudflareSettingsSection />
-           ) : null}
+      {section === 'cloudflare' ? (
+        <CloudflareSettingsSection />
+      ) : null}
 
             {section === 'redis' ? (
               <RedisSettingsSection />
@@ -1573,6 +1575,54 @@ function SystemSettingsInner() {
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                     >
                       {visibleFields.github_app_token ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* Internal backend auth secret (frontend copy of INTERNAL_BACKEND_SECRET) */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="internal-secret-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Internal backend auth secret</p>
+                    <div className="flex items-center gap-2">
+                      {secretsMeta.has_internal_backend_secret ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                      )}
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Shared secret sent as <code>x-internal-secret</code> on server-to-server calls
+                    to the FastAPI backend (<code>/internal/*</code> routes). <strong>Must match the
+                    backend's <code>INTERNAL_BACKEND_SECRET</code> environment variable</strong> set in
+                    Dokploy — this field only controls the frontend's copy and takes effect on the
+                    next request after save.
+                  </p>
+                  {secretsMeta.has_internal_backend_secret ? (
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      Current key: {String(secretsMeta.internal_backend_secret_masked ?? '—')}
+                    </p>
+                  ) : null}
+                  <div className="relative">
+                    <Input
+                      id="sec_internal_backend_secret"
+                      type={visibleFields.internal_backend_secret ? 'text' : 'password'}
+                      value={visibleFields.internal_backend_secret ? (revealedValues.internal_backend_secret ?? '') : '••••••••'}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, internal_backend_secret: e.target.value }))
+                      }
+                      placeholder="Leave blank to keep Dokploy env value"
+                      className="font-mono pr-10"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => handleRevealToggle('internal_backend_secret')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
+                    >
+                      {visibleFields.internal_backend_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>
