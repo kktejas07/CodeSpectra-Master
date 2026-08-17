@@ -63,6 +63,10 @@ export type GeneralPlatformSettings = {
   video_player_autoplay: boolean
   /** Whether the video player is muted by default */
   video_player_muted: boolean
+  /** Logo / watermark image shown in the player controls (Vidstack DefaultVideoLayout logo slot) */
+  video_player_logo_url: string
+  /** Optional URL the player logo links to when clicked */
+  video_player_logo_link_url: string
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -95,6 +99,8 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   video_player_primary_color: '#34d399', // Default CodeSpectra green
   video_player_autoplay: false,
   video_player_muted: false,
+  video_player_logo_url: '',
+  video_player_logo_link_url: '',
 }
 
 export function mergeGeneralPlatformSettings(

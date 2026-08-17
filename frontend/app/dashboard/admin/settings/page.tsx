@@ -139,7 +139,7 @@ const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'ma
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
 const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
-const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted']
+const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_logo_url', 'video_player_logo_link_url']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
   postal_recovery: 'Postal — password reset link',
@@ -923,7 +923,10 @@ function SystemSettingsInner() {
             </Button>
           </div>
         </Card>
+        </div>
+      ) : null}
 
+      {section === 'media' ? (
         <Card className="rounded-xl border-border/60 bg-card p-6 shadow-sm">
           <div className="mb-6 flex items-center justify-between">
             <div>
@@ -970,6 +973,43 @@ function SystemSettingsInner() {
               </div>
             </div>
           </div>
+          <div className="mt-6 space-y-4 border-t border-border/40 pt-5">
+            <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Branding overlay</p>
+            <div>
+              <Label htmlFor="video_player_logo_url">Player logo / watermark URL</Label>
+              <Input
+                id="video_player_logo_url"
+                type="url"
+                value={form.video_player_logo_url}
+                onChange={(e) => setForm((f) => ({ ...f, video_player_logo_url: e.target.value }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                placeholder="https://codespectra.ai/logo.png"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Shown in the player controls (top-left). Leave empty to hide.
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="video_player_logo_link_url">Logo link URL (optional)</Label>
+              <Input
+                id="video_player_logo_link_url"
+                type="url"
+                value={form.video_player_logo_link_url}
+                onChange={(e) => setForm((f) => ({ ...f, video_player_logo_link_url: e.target.value }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background font-mono text-sm"
+                placeholder="https://codespectra.ai"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Where the player logo links when clicked. Leave empty for no link.
+              </p>
+            </div>
+            {form.video_player_logo_url ? (
+              <div className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 p-3">
+                <img src={form.video_player_logo_url} alt="player logo preview" className="h-8 w-auto rounded object-contain" />
+                <p className="text-xs text-muted-foreground">Logo preview</p>
+              </div>
+            ) : null}
+          </div>
           <div className="mt-6 flex justify-end">
             <Button
               className="gap-2 rounded-lg"
@@ -981,7 +1021,6 @@ function SystemSettingsInner() {
             </Button>
           </div>
         </Card>
-        </div>
       ) : null}
 
       {section === 'cloudflare' ? (
