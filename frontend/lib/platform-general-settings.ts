@@ -57,6 +57,12 @@ export type GeneralPlatformSettings = {
   terms_of_service_url: string
   /** Default certificate template used across all events */
   certificate_template: 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
+  /** Primary color hex for Vidstack player */
+  video_player_primary_color: string
+  /** Whether the video player should autoplay by default */
+  video_player_autoplay: boolean
+  /** Whether the video player is muted by default */
+  video_player_muted: boolean
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -86,6 +92,9 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   privacy_policy_url: '',
   terms_of_service_url: '',
   certificate_template: 'classic',
+  video_player_primary_color: '#34d399', // Default CodeSpectra green
+  video_player_autoplay: false,
+  video_player_muted: false,
 }
 
 export function mergeGeneralPlatformSettings(

@@ -1,4 +1,5 @@
 'use client'
+import { AiAnalyticsDashboard } from "./AiAnalyticsDashboard"
 
 import { Suspense, useCallback, useEffect, useRef, useState } from 'react'
 import Link from 'next/link'
@@ -34,6 +35,7 @@ import {
   XCircle,
   ScrollText,
   Trophy,
+  Video,
 } from 'lucide-react'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
@@ -137,6 +139,7 @@ const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'ma
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
 const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
+const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
   postal_recovery: 'Postal — password reset link',
@@ -668,8 +671,6 @@ function SystemSettingsInner() {
                   </div>
                 </div>
 
-              </div>
-
       {loadError ? (
         <Alert variant="destructive" className="border-destructive/40">
           <AlertTitle>Could not load saved settings</AlertTitle>
@@ -679,6 +680,7 @@ function SystemSettingsInner() {
 
       <div className="min-w-0 space-y-6">
           {section === 'branding' ? (
+        <>
         <Card className="rounded-xl border-border/60 shadow-sm">
           <div className="border-b border-border/60 px-6 py-4">
             <div className="flex items-center gap-2">
@@ -918,6 +920,66 @@ function SystemSettingsInner() {
             </Button>
           </div>
         </Card>
+        </>
+
+        <Card className="rounded-xl border-border/60 bg-card p-6 shadow-sm">
+          <div className="mb-6 flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold tracking-tight">Media Player Settings</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Configure global defaults for the Vidstack video player.
+              </p>
+            </div>
+            <div className="rounded-full bg-primary/10 p-2 text-primary">
+              <Video className="h-5 w-5" />
+            </div>
+          </div>
+          <div className="grid gap-6 md:grid-cols-2">
+            <div>
+              <Label htmlFor="video_player_primary_color">Primary Theme Color (Hex)</Label>
+              <Input
+                id="video_player_primary_color"
+                value={form.video_player_primary_color}
+                onChange={(e) => setForm((f) => ({ ...f, video_player_primary_color: e.target.value }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background"
+                placeholder="#34d399"
+              />
+            </div>
+            <div className="flex flex-col justify-center space-y-4">
+              <div className="flex items-center justify-between mt-6">
+                <div className="space-y-0.5">
+                  <Label>Autoplay by Default</Label>
+                  <p className="text-sm text-muted-foreground">Start videos automatically when loaded</p>
+                </div>
+                <Switch
+                  checked={form.video_player_autoplay}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_autoplay: c }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Muted by Default</Label>
+                  <p className="text-sm text-muted-foreground">Start videos with sound off</p>
+                </div>
+                <Switch
+                  checked={form.video_player_muted}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_muted: c }))}
+                />
+              </div>
+            </div>
+          </div>
+          <div className="mt-6 flex justify-end">
+            <Button
+              className="gap-2 rounded-lg"
+              onClick={() => void saveKeys(MEDIA_KEYS, 'media')}
+              disabled={savingKey !== null}
+            >
+              {savingKey === 'media' ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+              Save media settings
+            </Button>
+          </div>
+        </Card>
+        </>
           ) : null}
 
            {section === 'cloudflare' ? (
@@ -2273,6 +2335,7 @@ function SystemSettingsInner() {
                   </Button>
                 </div>
               </Card>
+              <AiAnalyticsDashboard />
             </div>
           ) : section === 'gamification' ? (
             <Card className="rounded-xl border-border/60 shadow-sm">

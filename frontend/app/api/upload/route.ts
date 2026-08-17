@@ -6,6 +6,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { randomUUID } from 'node:crypto'
+import DOMPurify from 'isomorphic-dompurify'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -34,9 +35,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'File too large. Max 5MB' }, { status: 400 })
     }
 
-    const bytes = await file.arrayBuffer()
+    let bytes = await file.arrayBuffer()
+    let finalType = file.type
+
+    if (finalType === 'image/svg+xml') {
+      const rawText = Buffer.from(bytes).toString('utf-8')
+      const sanitized = DOMPurify.sanitize(rawText, { USE_PROFILES: { svg: true, svgFilters: true } }) as string
+      // Create new buffer from sanitized string
+      const buf = Buffer.from(sanitized, 'utf-8')
+      bytes = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
+    }
+
     const base64 = Buffer.from(bytes).toString('base64')
-    const dataUrl = `data:${file.type};base64,${base64}`
+    const dataUrl = `data:${finalType};base64,${base64}`
 
     // Store in MongoDB for persistence
     const db = await getMongoDb()

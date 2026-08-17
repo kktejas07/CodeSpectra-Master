@@ -29,14 +29,9 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt }: Di
   const now = formatDate(issuedAt)
   const exp = expiresAt ? formatDate(expiresAt) : formatDate(new Date(Date.now() + 365 * 86400000).toISOString())
 
-  const qrPayload = JSON.stringify({
-    name,
-    email,
-    role,
-    id: idNumber,
-    issued: now,
-    platform: 'CodeSpectra',
-  })
+  const qrPayload = typeof window !== 'undefined' 
+    ? `${window.location.origin}/verify/${idNumber}` 
+    : `https://codespectra.ai/verify/${idNumber}`
 
   useEffect(() => {
     let cancelled = false
