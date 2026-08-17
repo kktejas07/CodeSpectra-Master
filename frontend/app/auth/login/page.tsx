@@ -156,27 +156,38 @@ function LoginInner() {
 
   return (
     <div className="min-h-screen w-full grid lg:grid-cols-[1.05fr_1fr] bg-background">
-      {/* Brand panel — visible on lg+ */}
-      <aside className="hidden lg:flex relative overflow-hidden flex-col justify-between p-12 xl:p-16 bg-[radial-gradient(60%_60%_at_30%_20%,hsl(var(--primary)/0.18)_0%,transparent_60%),radial-gradient(40%_40%_at_80%_90%,hsl(var(--primary)/0.10)_0%,transparent_55%)]">
-        <div aria-hidden className="absolute inset-0 opacity-[0.07] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
-        <div className="relative flex items-center gap-3">
-          <Link href="/" className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shadow-[0_0_40px_-8px_hsl(var(--primary)/0.7)]">
-              <Code2 className="h-5 w-5" />
+      {/* Side branding */}
+      <aside className="relative hidden lg:flex flex-col justify-between p-12 bg-[#060912] border-r border-slate-800/80 overflow-hidden">
+        {/* Background Grid Mesh */}
+        <div
+          className="pointer-events-none absolute inset-0 opacity-15"
+          style={{
+            backgroundImage: `linear-gradient(rgba(255, 255, 255, 0.04) 1px, transparent 1px), linear-gradient(90deg, rgba(255, 255, 255, 0.04) 1px, transparent 1px)`,
+            backgroundSize: '40px 40px',
+          }}
+        />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[500px] rounded-full bg-gradient-radial from-teal-500/15 via-emerald-500/5 to-transparent blur-3xl" />
+
+        <div className="relative z-10 flex items-center justify-between">
+          <Link href="/" className="flex items-center gap-2.5">
+            <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-teal-500/20 text-teal-400 border border-teal-500/40 shadow-sm">
+              <Code2 className="h-5 w-5 text-teal-400" />
             </div>
-            <span className="text-lg font-semibold tracking-tight">CodeSpectra</span>
+            <span className="text-xl font-bold tracking-tight text-white">CodeSpectra</span>
           </Link>
+          <Link href="/" className="text-xs text-slate-400 hover:text-white transition">← Back to home</Link>
         </div>
-        <div className="relative space-y-8 max-w-lg">
-          <div className="inline-flex items-center gap-2 rounded-full border border-border bg-card/60 backdrop-blur px-3 py-1 text-xs text-muted-foreground">
-            <Sparkles className="h-3 w-3 text-primary" />
-            Code quality + competitive coding, one platform
+
+        <div className="relative z-10 space-y-8 max-w-lg">
+          <div className="inline-flex items-center gap-2 rounded-full border border-teal-800/60 bg-teal-950/80 px-3.5 py-1 text-xs font-mono font-semibold text-teal-400">
+            <Terminal className="h-3.5 w-3.5" />
+            DEVELOPER CONSOLE ACCESS
           </div>
-          <h1 className="text-4xl xl:text-5xl font-bold tracking-tight leading-[1.05]">
+          <h1 className="text-4xl xl:text-5xl font-black tracking-tight leading-[1.05] text-white">
             Ship cleaner code.<br />
-            <span className="text-primary">Win the competition.</span>
+            <span className="text-teal-400">Win the competition.</span>
           </h1>
-          <p className="text-muted-foreground text-base leading-relaxed">
+          <p className="text-slate-300 text-base leading-relaxed">
             AI-powered static analysis meets competitive coding challenges. Scan, fix, and compete — all in one workspace.
           </p>
           <div className="grid grid-cols-1 gap-3 text-sm">

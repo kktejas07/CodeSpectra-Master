@@ -2,6 +2,8 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { CapabilityIllustration } from '@/components/landing/capability-illustration'
+import { Sparkles } from 'lucide-react'
+import { cn } from '@/lib/utils'
 
 type Capability = { number: string; title: string; description: string }
 
@@ -32,30 +34,6 @@ const capabilities: Capability[] = [
   },
 ]
 
-function FlowConnector({ active }: { active: boolean }) {
-  return (
-    <div className="flex justify-center py-1 sm:py-2">
-      <div className="relative flex h-7 w-7 items-center justify-center sm:h-9 sm:w-9">
-        <svg
-          className="h-5 w-5 sm:h-6 sm:w-6"
-          viewBox="0 0 24 24"
-          fill="none"
-          stroke="hsl(var(--primary) / 0.25)"
-          strokeWidth="1.5"
-          strokeLinecap="round"
-        >
-          <path d="M12 5v14M5 12l7 7 7-7" />
-        </svg>
-        {active && (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="h-2 w-2 animate-ping rounded-full bg-primary/30" style={{ animationDuration: '1.5s' }} />
-          </div>
-        )}
-      </div>
-    </div>
-  )
-}
-
 export function CapabilitiesFlow() {
   const sectionRef = useRef<HTMLElement>(null)
   const [visible, setVisible] = useState(false)
@@ -81,7 +59,7 @@ export function CapabilitiesFlow() {
     if (!visible) return
     const interval = setInterval(() => {
       setActiveStep((prev) => (prev + 1) % capabilities.length)
-    }, 2500)
+    }, 2800)
     return () => clearInterval(interval)
   }, [visible])
 
@@ -89,130 +67,96 @@ export function CapabilitiesFlow() {
     <section
       ref={sectionRef}
       id="capabilities"
-      className="scroll-mt-24 border-b border-border/40 py-24 lg:py-32 relative overflow-hidden"
+      className="scroll-mt-24 border-b border-slate-800/80 bg-[#060912] py-16 sm:py-20 lg:py-24 relative overflow-hidden"
     >
-      {/* Subtle background pattern */}
+      {/* Background Grid Lines & Ambient Glow */}
       <div
-        className="pointer-events-none absolute inset-0 opacity-[0.02] dark:opacity-[0.03]"
+        className="pointer-events-none absolute inset-0 opacity-40"
         style={{
           backgroundImage:
-            'radial-gradient(circle at 1px 1px, hsl(var(--foreground)) 1px, transparent 0)',
-          backgroundSize: '32px 32px',
+            'linear-gradient(rgba(0, 197, 115, 0.12) 1px, transparent 1px), linear-gradient(90deg, rgba(0, 197, 115, 0.12) 1px, transparent 1px)',
+          backgroundSize: '40px 40px',
         }}
       />
+      <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[400px] w-[700px] rounded-full bg-gradient-radial from-teal-500/10 via-emerald-500/5 to-transparent blur-3xl" />
 
       <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
         <div
           data-reveal
           data-revealed={visible ? 'true' : 'false'}
-          className="mb-14 max-w-3xl lg:mb-20"
+          className="mb-10 text-center max-w-3xl mx-auto"
         >
-          <span className="mb-6 inline-flex items-center gap-3 font-mono text-sm text-muted-foreground">
-            <span className="h-px w-8 bg-border" />
-            Capabilities
+          <span className="text-xs font-mono font-bold text-teal-400 tracking-widest uppercase mb-3 block">
+            CAPABILITIES
           </span>
-          <h2 className="text-4xl font-bold tracking-tight sm:text-5xl lg:text-6xl">
+          <h2 className="text-4xl font-black tracking-tight text-white sm:text-5xl lg:text-6xl mb-3 leading-tight">
             Everything you need.
             <br />
-            <span className="text-muted-foreground">Nothing you don&apos;t.</span>
+            <span className="text-slate-300 font-normal">Nothing you don&apos;t.</span>
           </h2>
         </div>
 
-        {/* Flow indicator */}
-        <div
-          data-reveal
-          data-revealed={visible ? 'true' : 'false'}
-          className="mb-8 flex items-center justify-center gap-3 sm:mb-10"
-        >
-          <span className="inline-flex items-center gap-1.5 rounded-full border border-border/30 bg-muted/30 px-3 py-1 font-mono text-[10px] text-muted-foreground sm:text-xs">
-            <span className="relative flex h-1.5 w-1.5">
-              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-emerald-400 opacity-75" />
-              <span className="relative inline-flex h-1.5 w-1.5 rounded-full bg-emerald-500" />
-            </span>
-            Learning flow
-          </span>
-          <span className="font-mono text-[10px] text-muted-foreground/50 sm:text-xs">
-            Step <span className="tabular-nums text-muted-foreground/70">{activeStep + 1}</span> / {capabilities.length}
-          </span>
-        </div>
-
-        <div className="mx-auto flex max-w-3xl flex-col items-center">
+        {/* 2x2 Compact Grid Layout */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-5 lg:gap-6 max-w-5xl mx-auto">
           {capabilities.map((cap, i) => {
             const isActive = i === activeStep
             return (
-              <div key={cap.number} className="w-full">
+              <button
+                key={cap.number}
+                onClick={() => setActiveStep(i)}
+                className={cn(
+                  'group relative rounded-2xl border p-6 text-left transition-all duration-300 overflow-hidden cursor-pointer flex flex-col justify-between min-h-[200px]',
+                  isActive
+                    ? 'border-teal-500/60 bg-[#0d1626] shadow-xl shadow-teal-500/10 scale-[1.01]'
+                    : 'border-slate-800/90 bg-[#090d16]/90 hover:border-slate-700 hover:bg-[#0b101c]'
+                )}
+              >
+                {/* Active Indicator Bar */}
                 <div
-                  className={`group relative rounded-xl border p-5 transition-all duration-700 sm:p-6 ${
-                    visible ? 'translate-y-0 opacity-100' : 'translate-y-8 opacity-0'
-                  } ${
-                    isActive
-                      ? 'border-primary/40 bg-primary/[0.03] shadow-lg shadow-primary/5'
-                      : 'border-border/40 bg-card/30 hover:border-primary/20 hover:bg-primary/[0.01]'
-                  }`}
-                  style={{ transitionDelay: `${i * 150}ms` }}
-                >
-                  <div className="flex items-start gap-4 sm:gap-5">
-                    {/* Number badge */}
+                  className={cn(
+                    'absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal-400 to-emerald-400 transition-all duration-300',
+                    isActive ? 'opacity-100' : 'opacity-0'
+                  )}
+                />
+
+                <div className="flex items-start justify-between gap-4">
+                  <div className="flex items-center gap-3">
                     <div
-                      className={`flex h-10 w-10 shrink-0 items-center justify-center rounded-lg font-mono text-sm font-bold transition-all duration-500 sm:h-12 sm:w-12 sm:text-base ${
+                      className={cn(
+                        'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg font-mono text-xs font-bold transition-colors',
                         isActive
-                          ? 'bg-primary text-primary-foreground shadow-md shadow-primary/20'
-                          : 'bg-muted text-muted-foreground group-hover:bg-primary/10 group-hover:text-primary'
-                      }`}
+                          ? 'bg-teal-500/20 text-teal-300 border border-teal-500/40'
+                          : 'bg-slate-900 text-slate-400 border border-slate-800'
+                      )}
                     >
                       {cap.number}
                     </div>
-
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center gap-2">
-                        <h3
-                          className={`text-lg font-semibold tracking-tight transition-colors sm:text-xl lg:text-2xl ${
-                            isActive ? 'text-foreground' : 'text-foreground/90'
-                          }`}
-                        >
-                          {cap.title}
-                        </h3>
-                        {isActive && (
-                          <span className="inline-flex gap-1">
-                            <span className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary" />
-                            <span
-                              className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary"
-                              style={{ animationDelay: '300ms' }}
-                            />
-                            <span
-                              className="h-1.5 w-1.5 animate-pulse rounded-full bg-primary"
-                              style={{ animationDelay: '600ms' }}
-                            />
-                          </span>
-                        )}
-                      </div>
-                      <p className="mt-2 text-sm leading-relaxed text-muted-foreground sm:text-[15px]">
-                        {cap.description}
-                      </p>
-                    </div>
-
-                    {/* Illustration */}
-                    <div className="hidden shrink-0 sm:block">
-                      <CapabilityIllustration
-                        variant={cap.number as '01' | '02' | '03' | '04'}
-                        className={`h-14 w-20 transition-all duration-500 md:h-18 md:w-28 ${
-                          isActive ? 'opacity-100 scale-110' : 'opacity-60 scale-100'
-                        }`}
-                      />
-                    </div>
+                    <h3 className={cn("text-base sm:text-lg font-bold transition-colors", isActive ? "text-white" : "text-slate-200")}>
+                      {cap.title}
+                    </h3>
                   </div>
 
-                  {/* Active indicator bar */}
-                  <div
-                    className={`absolute bottom-0 left-0 h-0.5 rounded-full bg-primary transition-all duration-700 ${
-                      isActive ? 'w-full' : 'w-0'
-                    }`}
+                  {/* Illustration */}
+                  <CapabilityIllustration
+                    variant={cap.number as '01' | '02' | '03' | '04'}
+                    className={cn(
+                      'h-12 w-16 shrink-0 transition-all duration-300',
+                      isActive ? 'opacity-100 scale-105' : 'opacity-50 scale-100'
+                    )}
                   />
                 </div>
 
-                {/* Animated connector */}
-                {i < capabilities.length - 1 && <FlowConnector active={isActive} />}
-              </div>
+                <p className="mt-4 text-xs sm:text-sm leading-relaxed text-slate-300">
+                  {cap.description}
+                </p>
+
+                <div className="mt-4 pt-3 border-t border-slate-800/60 flex items-center justify-between text-[11px] font-mono text-slate-400">
+                  <span>Learning module</span>
+                  <span className={cn(isActive ? "text-teal-400 font-bold" : "text-slate-500")}>
+                    {isActive ? '● Active' : 'Select'}
+                  </span>
+                </div>
+              </button>
             )
           })}
         </div>
