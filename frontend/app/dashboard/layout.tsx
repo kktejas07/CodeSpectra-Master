@@ -123,6 +123,7 @@ export default function DashboardLayout({
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [unreadNotifications, setUnreadNotifications] = useState(0)
+  const [openSupportTickets, setOpenSupportTickets] = useState(0)
   const [userRole, setUserRole] = useState<UserRole | null>(null)
   const [userPlan, setUserPlan] = useState<string>('free')
   const [deniedRoutes, setDeniedRoutes] = useState<Set<string>>(new Set())
@@ -292,6 +293,28 @@ export default function DashboardLayout({
       window.removeEventListener('codespectra:notification', onPush)
     }
   }, [userProfile?.id, pathname])
+
+  useEffect(() => {
+    if (!userProfile?.id) return
+    let cancelled = false
+    const loadTickets = async () => {
+      try {
+        const res = await fetch('/api/support/tickets/count', { credentials: 'include' })
+        if (!res.ok) return
+        const data = (await res.json()) as { open?: number }
+        if (cancelled) return
+        setOpenSupportTickets(data.open ?? 0)
+      } catch {
+        if (!cancelled) setOpenSupportTickets(0)
+      }
+    }
+    void loadTickets()
+    const t = window.setInterval(() => void loadTickets(), 60_000)
+    return () => {
+      cancelled = true
+      window.clearInterval(t)
+    }
+  }, [userProfile?.id])
 
   type NavLeaf = { href: string; label: string; icon: LucideIcon; route: string }
   type NavEntry =
@@ -580,6 +603,12 @@ export default function DashboardLayout({
     })
   }
 
+  const badgeCount = (route: string): number => {
+    if (route === '/dashboard/support') return openSupportTickets
+    if (route === '/dashboard/notifications') return unreadNotifications
+    return 0
+  }
+
   const renderLeaf = (leaf: NavLeaf) => {
     const { href, label, icon: IconComponent } = leaf
     const active = isActive(href)
@@ -625,6 +654,16 @@ export default function DashboardLayout({
           >
             {label}
           </span>
+          {badgeCount(leaf.route) > 0 && (
+            <span
+              className={cn(
+                'flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground',
+                sidebarCollapsed && 'lg:sr-only'
+              )}
+            >
+              {badgeCount(leaf.route) > 9 ? '9+' : badgeCount(leaf.route)}
+            </span>
+          )}
           {showLock && (
             <Lock className="h-4 w-4 shrink-0 text-muted-foreground/50" />
           )}
