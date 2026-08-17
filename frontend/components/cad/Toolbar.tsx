@@ -23,10 +23,12 @@ import {
   Download,
   Image,
   FileCode,
+  Sparkles,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import type { CADTool } from '@/types/cad';
 import { useZoom } from '@/hooks/useZoom';
+import { TextToCADModal } from './TextToCADModal';
 
 const tools: { id: CADTool; label: string; icon: React.ElementType; shortcut: string }[] = [
   { id: 'select', label: 'Select', icon: MousePointer2, shortcut: 'V' },
@@ -55,6 +57,7 @@ export function Toolbar() {
   const pushHistory = useCADStore((s) => s.pushHistory);
   const { zoomIn, zoomOut, resetZoom } = useZoom();
   const [showExport, setShowExport] = React.useState(false);
+  const [isAiModalOpen, setIsAiModalOpen] = React.useState(false);
   const exportRef = useRef<HTMLDivElement>(null);
 
   const handleDelete = () => {
@@ -224,6 +227,19 @@ export function Toolbar() {
 
       <div className="flex-1" />
 
+      {/* AI Text-to-CAD Generator Button */}
+      <button
+        type="button"
+        title="AI Text-to-CAD Generator"
+        onClick={() => setIsAiModalOpen(true)}
+        className="flex h-8 items-center gap-1.5 rounded-md px-2.5 bg-primary/10 text-primary hover:bg-primary/20 border border-primary/30 transition-colors shadow-xs"
+      >
+        <Sparkles className="h-3.5 w-3.5 animate-pulse" />
+        <span className="text-xs font-semibold">AI Text-to-CAD</span>
+      </button>
+
+      <div className="mx-1 h-6 w-px bg-border/40" />
+
       {/* Export */}
       <div className="relative" ref={exportRef}>
         <button
@@ -269,6 +285,13 @@ export function Toolbar() {
         <HelpCircle className="h-3.5 w-3.5" />
         <span className="text-[10px]">Shortcuts</span>
       </button>
+
+      {/* Text to CAD Modal */}
+      <TextToCADModal
+        isOpen={isAiModalOpen}
+        onClose={() => setIsAiModalOpen(false)}
+      />
     </div>
   );
 }
+

@@ -153,3 +153,16 @@ class AgentReq(BaseModel):
     provider_override: Optional[str] = None
     model_override: Optional[str] = None
     endpoint_override: Optional[str] = None
+
+
+# ── Text-to-CAD Generator ───────────────────────────────────────
+
+class TextToCadReq(BaseModel):
+    prompt: str
+    region_standard: str = "ISO"
+    unit_system: str = "metric"
+    viva_required: bool = True
+    model_role: Optional[str] = None
+    provider_override: Optional[str] = None
+    model_override: Optional[str] = None
+    endpoint_override: Optional[str] = None
