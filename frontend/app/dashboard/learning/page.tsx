@@ -6,7 +6,7 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Flame, Zap, BookOpen, Volume2, Play, Star, Clock, Loader, Trophy, ArrowRight, HelpCircle, CheckCircle2, TrendingUp, Target, Layers, Loader2 } from 'lucide-react'
+import { Flame, Zap, BookOpen, Volume2, Play, Star, Clock, Loader, Trophy, ArrowRight, HelpCircle, CheckCircle2, TrendingUp, Target, Layers, Loader2, RefreshCw } from 'lucide-react'
 import { HUNDRED_DAYS } from '@/lib/100-days-data'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -217,11 +217,19 @@ function CoursesSection() {
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
-    fetch('/api/courses')
+    fetch('/api/learning/courses')
       .then((r) => r.json())
       .then((j) => { if (j.data) setCourses(j.data) })
       .catch(() => {})
       .finally(() => setLoading(false))
+  }, [])
+
+  // Also fetch courses from the legacy API for backward compatibility
+  useEffect(() => {
+    fetch('/api/courses')
+      .then((r) => r.json())
+      .then((j) => { if (j.data && j.data.length > 0) setCourses(j.data) })
+      .catch(() => {})
   }, [])
 
   if (loading) {

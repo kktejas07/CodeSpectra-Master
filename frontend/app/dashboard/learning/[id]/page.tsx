@@ -1,55 +1,185 @@
 'use client'
 
-import { useState, use } from 'react'
-import { BookOpen, CheckCircle, Play, Download, MessageCircle, Loader2 } from 'lucide-react'
+import { useEffect, useState, use } from 'react'
+import Link from 'next/link'
+import { useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
-import { useToast } from '@/lib/toast-context'
+import { Card } from '@/components/ui/card'
+import { Badge } from '@/components/ui/badge'
+import { BookOpen, CheckCircle, Play, ArrowRight, Loader2, AlertCircle, ExternalLink, MonitorPlay, ShieldCheck } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 
-const lessons = [
-  {
-    id: 1,
-    title: 'Introduction to Arrays',
-    duration: '15 min',
-    completed: true,
-  },
-  {
-    id: 2,
-    title: 'Array Operations: Insert & Delete',
-    duration: '20 min',
-    completed: true,
-  },
-  {
-    id: 3,
-    title: 'Linked Lists Basics',
-    duration: '18 min',
-    completed: true,
-  },
-  {
-    id: 4,
-    title: 'Linked List Operations',
-    duration: '22 min',
-    completed: false,
-  },
-  {
-    id: 5,
-    title: 'Stacks & Queues',
-    duration: '25 min',
-    completed: false,
-  },
-]
+interface Resource {
+  title?: string
+  url?: string
+  embed_url?: string
+  provider?: string
+  license?: string
+  playback_type?: string
+  status?: string
+  duration?: number
+}
+
+interface Lesson {
+  id: string
+  title: string
+  slug: string
+  description?: string
+  url?: string
+  resources?: Resource[]
+}
+
+interface Section {
+  title: string
+  slug: string
+  lessons: Lesson[]
+}
+
+interface Course {
+  id: string
+  title: string
+  description: string
+  type: string
+  instructor: string
+  duration: string
+  level: string
+  tags: string[]
+  source: string
+  source_url: string
+  license: string
+  rating: number
+  sections: Section[]
+}
+
+function EmbedPlayer({ resource, title }: { resource: Resource; title: string }) {
+  const embedUrl = resource.embed_url || resource.url
+  return (
+    <div className="space-y-2">
+      <div className="relative aspect-video w-full overflow-hidden rounded-lg border border-border bg-black">
+        {(() => {
+          const safe = embedUrl || ''
+          if (typeof window !== 'undefined' && safe.includes('http')) {
+            return (
+              <iframe
+                key={safe}
+                src={safe}
+                title={resource.title || title}
+                allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+                allowFullScreen
+                className="h-full w-full"
+                loading="lazy"
+              />
+            )
+          }
+          return null
+        })()}
+      </div>
+      <div className="flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+        <Badge variant="secondary" className="text-[10px] capitalize">{resource.provider || 'video'}</Badge>
+        {resource.license && (
+          <span className="inline-flex items-center gap-1">
+            <ShieldCheck className="h-3 w-3" />
+            <span className="max-w-[280px] truncate">{resource.license}</span>
+          </span>
+        )}
+        {resource.duration ? <span>{formatDuration(resource.duration)}</span> : null}
+        {resource.url && (
+          <a
+            href={resource.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 underline-offset-2 hover:underline"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Watch on {resource.provider}
+          </a>
+        )}
+      </div>
+    </div>
+  )
+}
+
+function formatDuration(seconds: number): string {
+  const totalMinutes = Math.max(1, Math.round(seconds / 60))
+  const h = Math.floor(totalMinutes / 60)
+  const m = totalMinutes % 60
+  return h > 0 ? `${h}h ${m}m` : `${m}m`
+}
 
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
-
-  const courseId = use(params).id
   const addToast = useToast()
-  const [activeLesson, setActiveLesson] = useState(1)
-  const completed = lessons.filter((l) => l.completed).length
+  const resolved = use(params)
+  const courseId = resolved.id
 
-  const currentLesson = lessons.find((l) => l.id === activeLesson) || lessons[0]
+  const [course, setCourse] = useState<Course | null>(null)
+  const [loading, setLoading] = useState(true)
+  const [activeId, setActiveId] = useState<string | null>(null)
+
+  useEffect(() => {
+    let active = true
+    async function load() {
+      try {
+        const res = await fetch(`/api/learning/courses/${encodeURIComponent(courseId)}`, { credentials: 'include' })
+        if (!res.ok) throw new Error('Failed')
+        const json = await res.json()
+        if (!active) return
+        if (json.data) {
+          setCourse(json.data)
+        } else {
+          // Fallback: try the main courses list
+          const listRes = await fetch('/api/learning/courses', { credentials: 'include' })
+          if (listRes.ok) {
+            const listJson = await listRes.json()
+            const found = (listJson.data || []).find((c: Course) => c.id === courseId)
+            if (found) setCourse(found)
+          }
+        }
+      } catch {
+        if (active) setCourse(null)
+      } finally {
+        if (active) setLoading(false)
+      }
+    }
+    load()
+    return () => { active = false }
+  }, [courseId])
 
   if (!gate.ready) return null
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-20">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
+  }
+
+  if (!course) {
+    return (
+      <div className="space-y-4">
+        <Card className="p-8 text-center">
+          <AlertCircle className="h-10 w-10 text-muted-foreground/40 mx-auto mb-3" />
+          <p className="text-muted-foreground mb-4">Course not found.</p>
+          <Button asChild variant="outline">
+            <Link href="/dashboard/learning">Back to Learning</Link>
+          </Button>
+        </Card>
+      </div>
+    )
+  }
+
+  const totalLessons = course.sections?.reduce((acc, s) => acc + s.lessons.length, 0) || 0
+
+  const allLessons = (course.sections || []).flatMap((s) => s.lessons)
+  const activeLesson = allLessons.find((l) => l.id === activeId) || allLessons[0]
+  const activeResource =
+    activeLesson?.resources?.find((r) => r.embed_url) ||
+    activeLesson?.resources?.[0] ||
+    (activeLesson?.url || course.source_url
+      ? { title: activeLesson?.title, url: activeLesson?.url || course.source_url, provider: course.source, playback_type: 'external' }
+      : null)
 
   return (
     <div className="space-y-6">
@@ -57,137 +187,119 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       <div className="space-y-2">
         <div className="flex items-center gap-2">
           <BookOpen className="w-6 h-6 text-primary" />
-          <h1 className="text-3xl font-bold text-foreground">Data Structures Fundamentals</h1>
+          <h1 className="text-3xl font-bold text-foreground">{course.title}</h1>
         </div>
-        <div className="flex gap-2">
-          <span className="px-3 py-1 rounded-full text-xs font-medium bg-primary/10 text-primary">
-            Beginner
-          </span>
-          <span className="text-sm text-foreground/60">{completed} of {lessons.length} lessons completed</span>
+        <div className="flex gap-2 flex-wrap">
+          <Badge variant="outline" className="capitalize">{course.level}</Badge>
+          <Badge variant="secondary">{course.type}</Badge>
+          <Badge variant="outline" className="text-xs">
+            <ExternalLink className="h-3 w-3 mr-1" />
+            {course.source}
+          </Badge>
+          <span className="text-xs text-muted-foreground self-center">{totalLessons} lessons</span>
         </div>
+        <p className="text-sm text-muted-foreground">{course.description}</p>
       </div>
 
-      {/* Progress Bar */}
-      <div className="space-y-2">
-        <div className="flex justify-between text-sm">
-          <span className="text-foreground">Course Progress</span>
-          <span className="text-foreground/60">{Math.round((completed / lessons.length) * 100)}%</span>
-        </div>
-        <div className="w-full bg-border rounded-full h-3">
-          <div
-            className="bg-primary h-3 rounded-full transition-all"
-            style={{ width: `${(completed / lessons.length) * 100}%` }}
-          />
-        </div>
-      </div>
+      {/* Active lesson player */}
+      {activeLesson && activeResource && (
+        <Card className="border-border/60 overflow-hidden">
+          <div className="p-4 border-b border-border/40 space-y-2">
+            <div className="flex items-center gap-2">
+              <MonitorPlay className="h-4 w-4 text-primary" />
+              <h2 className="font-semibold text-foreground">{activeLesson.title}</h2>
+            </div>
+            {activeLesson.description && (
+              <p className="text-xs text-muted-foreground">{activeLesson.description}</p>
+            )}
+          </div>
+          <div className="p-4">
+            <EmbedPlayer resource={activeResource} title={activeLesson.title} />
+          </div>
+        </Card>
+      )}
 
-      {/* Main Content */}
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-         {/* Content Section */}
-         <div className="lg:col-span-3 space-y-4">
-           <div className="aspect-video rounded-lg bg-gradient-to-br from-primary/5 to-primary/10 border border-border flex items-center justify-center">
-             <div className="text-center px-6">
-               <BookOpen className="w-12 h-12 text-primary/40 mx-auto mb-3" />
-               <p className="text-foreground/70 font-medium">{currentLesson.title}</p>
-               <p className="text-sm text-muted-foreground mt-1">Reading material below</p>
-             </div>
-           </div>
+        {/* Sections & Lessons */}
+        <div className="lg:col-span-3 space-y-4">
+          {course.sections?.map((section) => (
+            <Card key={section.slug} className="border-border/60">
+              <div className="p-4 border-b border-border/40">
+                <h2 className="font-semibold text-foreground">{section.title}</h2>
+              </div>
+              <div className="divide-y divide-border/40">
+                {section.lessons?.map((lesson) => {
+                  const isActive = lesson.id === activeLesson?.id
+                  const hasEmbed = (lesson.resources || []).some((r) => r.embed_url)
+                  return (
+                    <button
+                      key={lesson.slug}
+                      onClick={() => setActiveId(lesson.id)}
+                      className={`flex w-full items-center gap-3 px-4 py-3 text-left transition-colors ${
+                        isActive ? 'bg-primary/5' : 'hover:bg-muted/30'
+                      }`}
+                    >
+                      {hasEmbed ? (
+                        <MonitorPlay className="h-4 w-4 text-primary shrink-0" />
+                      ) : (
+                        <Play className="h-4 w-4 text-primary shrink-0" />
+                      )}
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm truncate ${isActive ? 'font-semibold text-foreground' : 'text-foreground'}`}>
+                          {lesson.title}
+                        </p>
+                        {lesson.description && (
+                          <p className="text-xs text-muted-foreground line-clamp-1">{lesson.description}</p>
+                        )}
+                      </div>
+                      {lesson.url && (
+                        <a
+                          href={lesson.url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          onClick={(e) => e.stopPropagation()}
+                          className="text-muted-foreground hover:text-foreground shrink-0"
+                        >
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      )}
+                      <CheckCircle
+                        className={`h-4 w-4 shrink-0 ${isActive ? 'text-primary' : 'text-muted-foreground/30'}`}
+                      />
+                    </button>
+                  )
+                })}
+              </div>
+            </Card>
+          ))}
+        </div>
 
-          {/* Lesson Content */}
-          <div className="rounded-lg bg-card border border-border p-6 space-y-4">
-            <h2 className="text-2xl font-bold text-foreground">{currentLesson.title}</h2>
-            
-            <div className="prose prose-invert max-w-none space-y-4">
-              <div className="text-foreground/70 space-y-3">
-                <p>
-                  In this lesson, we'll explore the fundamentals of {(currentLesson.title || '').toLowerCase()}.
-                  This is a crucial concept for understanding more advanced data structures.
-                </p>
-
-                <h3 className="text-lg font-semibold text-foreground">Key Concepts</h3>
-                <ul className="list-disc list-inside space-y-2">
-                  <li>Basic structure and organization</li>
-                  <li>Time and space complexity analysis</li>
-                  <li>Common operations and use cases</li>
-                  <li>Real-world applications</li>
-                </ul>
-
-                <h3 className="text-lg font-semibold text-foreground">Learning Objectives</h3>
-                <ul className="list-disc list-inside space-y-2">
-                  <li>Understand the core principles</li>
-                  <li>Implement basic operations</li>
-                  <li>Analyze performance characteristics</li>
-                  <li>Solve practical problems</li>
-                </ul>
-
-                <div className="p-4 rounded-lg bg-primary/5 border border-primary/20">
-                  <p className="text-sm">
-                    <strong>Tip:</strong> Try to visualize how the operations work step-by-step.
-                    This will help you understand the underlying mechanics better.
-                  </p>
-                </div>
+        {/* Sidebar */}
+        <div className="space-y-4">
+          <Card className="p-4 space-y-3">
+            <h3 className="font-bold text-foreground">About This Course</h3>
+            <div className="text-xs text-muted-foreground space-y-2">
+              <p><strong>Source:</strong> {course.source}</p>
+              <p><strong>Level:</strong> {course.level}</p>
+              <p><strong>License:</strong> {course.license}</p>
+              <p><strong>Rating:</strong> {course.rating}/5</p>
+              <div className="flex flex-wrap gap-1 pt-1">
+                {course.tags.map((t) => (
+                  <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>
+                ))}
               </div>
             </div>
-
-            {/* Lesson Actions */}
-            <div className="flex gap-3 pt-4 border-t border-border">
-              <Button className="flex-1" size="sm">
-                <CheckCircle className="w-4 h-4 mr-2" />
-                Mark as Complete
-              </Button>
-              <Button variant="outline" className="flex-1" size="sm" onClick={() => addToast({ type: 'info', title: 'Coming soon', message: 'Downloadable notes will be available soon!' })}>
-                <Download className="w-4 h-4 mr-2" />
-                Download Notes
-              </Button>
-            </div>
-          </div>
-        </div>
-
-        {/* Sidebar - Lessons List */}
-        <div className="space-y-4">
-          <div className="rounded-lg bg-card border border-border p-4 space-y-3">
-            <h3 className="font-bold text-foreground">Course Content</h3>
-            
-            <div className="space-y-2">
-              {lessons.map((lesson) => (
-                <button
-                  key={lesson.id}
-                  onClick={() => setActiveLesson(lesson.id)}
-                  className={`w-full text-left p-3 rounded-lg transition ${
-                    activeLesson === lesson.id
-                      ? 'bg-primary/20 border border-primary'
-                      : 'hover:bg-background'
-                  }`}
-                >
-                  <div className="flex items-start gap-2">
-                    {lesson.completed && (
-                      <CheckCircle className="w-5 h-5 text-green-400 flex-shrink-0 mt-0.5" />
-                    )}
-                    <div className="flex-1 min-w-0">
-                      <p className="text-sm font-medium text-foreground line-clamp-2">
-                        {lesson.title}
-                      </p>
-                      <p className="text-xs text-foreground/50 mt-1">{lesson.duration}</p>
-                    </div>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </div>
-
-          {/* Discussion */}
-          <div className="rounded-lg bg-card border border-border p-4">
-            <h3 className="font-bold text-foreground mb-3 flex items-center gap-2">
-              <MessageCircle className="w-4 h-4" />
-              Discussion
-            </h3>
-            <Button variant="outline" size="sm" className="w-full text-xs" onClick={() => addToast({ type: 'info', title: 'Coming soon', message: 'Q&A feature will be available soon!' })}>
-              Ask a Question
-            </Button>
-          </div>
+          </Card>
+          <Button variant="outline" className="w-full" asChild>
+            <Link href="/dashboard/learning">Back to Learning</Link>
+          </Button>
+          <Button className="w-full" asChild>
+            <a href={course.source_url} target="_blank" rel="noopener noreferrer">
+              Start on {course.source}
+            </a>
+          </Button>
         </div>
       </div>
     </div>
   )
 }
-

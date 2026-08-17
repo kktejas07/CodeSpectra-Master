@@ -139,6 +139,22 @@ export async function backendComplete(args: {
   return (await res.json()) as { ok: boolean; text?: string; json?: unknown; raw?: string }
 }
 
+export async function backendGet<T = unknown>(
+  path: string,
+  headers?: HeadersInit
+): Promise<T> {
+  const h = await backendHeaders()
+  const allHeaders = { ...h, ...headers }
+  const res = await fetch(`${BACKEND}${path}`, {
+    method: 'GET',
+    headers: allHeaders,
+  })
+  if (!res.ok) {
+    throw new Error(`backend ${path} returned ${res.status}: ${await res.text()}`)
+  }
+  return (await res.json()) as T
+}
+
 export async function backendPost<T = unknown>(
   path: string,
   body: unknown,

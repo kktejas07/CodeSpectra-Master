@@ -122,6 +122,18 @@ class SkillInsightsReq(BaseModel):
     submissions_summary: List[Dict[str, Any]]
 
 
+# ── Course Generation ──────────────────────────────────────────
+
+class GenerateCourseReq(BaseModel):
+    technology: str  # e.g., "Java", "Python", "JavaScript"
+    level: str       # e.g., "Beginner", "Intermediate", "Advanced"
+    goal: Optional[str] = None  # e.g., "Become job-ready", "Pass certification"
+    duration_hours: Optional[int] = None  # Target duration in hours
+    include_projects: bool = True
+    include_assessments: bool = True
+    include_certificate: bool = True
+
+
 # ── Identity Verification ──────────────────────────────────────
 
 class IdentityVerifyReq(BaseModel):

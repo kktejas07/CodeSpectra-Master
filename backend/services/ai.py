@@ -11,6 +11,8 @@ import asyncio
 import json
 import os
 import pymongo
+import re
+from datetime import datetime, timezone
 from typing import Any, AsyncGenerator, Dict, List, Optional, Tuple
 
 from fastapi import HTTPException, Request
@@ -36,6 +38,7 @@ from models.ai import (
     CodeAnalysisReq,
     CodeReviewReq,
     CompleteReq,
+    GenerateCourseReq,
     GenerateProblemReq,
     GradeReq,
     HintsReq,
@@ -500,6 +503,240 @@ async def handle_skill_insights(
             break
     parsed = parse_json_response("".join(buf)) or {}
     return parsed
+
+
+# ── Course Factory ─────────────────────────────────────────────
+
+def slugify(text: str) -> str:
+    """Slugify a title for stable section/lesson ids (safe for URLs)."""
+    text = (text or "").strip().lower()
+    text = re.sub(r"[^a-z0-9]+", "-", text)
+    return text.strip("-") or "untitled"
+
+
+async def _enrich_lessons(modules: List[dict], limit: int = 3) -> None:
+    """Attach provider-share video candidates to every lesson in place.
+
+    Each lesson gains a `resources` array of `{ title, url, embed_url,
+    provider, license, playback_type, status }` records from the Content
+    Provider Layer. Kept async for concurrent provider calls; mutates the
+    modules passed in so callers (and the frontend preview) see resources.
+    """
+    from services.content_providers import search_videos
+
+    async def enrich(lesson: dict) -> None:
+        if not lesson.get("title"):
+            lesson["resources"] = []
+            return
+        query = lesson["title"]
+        try:
+            vids = await search_videos(query, limit=limit)
+        except Exception:
+            vids = []
+        lesson["resources"] = [
+            {
+                "title": v.title,
+                "url": v.source_url,
+                "embed_url": v.embed_url,
+                "provider": v.provider,
+                "license": v.license,
+                "playback_type": v.playback_type,
+                "status": v.status,
+                "thumbnail": v.thumbnail,
+                "duration": v.duration,
+                "author": v.author,
+                "language": v.language,
+            }
+            for v in vids
+        ]
+
+    tasks = [
+        enrich(lesson)
+        for mod in modules
+        for lesson in (mod.get("lessons") or [])
+    ]
+    if tasks:
+        await asyncio.gather(*tasks)
+
+
+async def handle_generate_course(
+    request: Request, req: GenerateCourseReq
+) -> dict[str, Any]:
+    """Generate a complete learning course with modules, lessons, and assessments.
+
+    Uses the LLM to build a curriculum blueprint (modules -> lessons) for the
+    requested technology/level, then enriches every lesson with externally
+    embeddable video candidates from the Content Provider Layer. Returns the
+    course blueprint (ready for human approval / auto-publish).
+    """
+    await check_rate_limit(f"generate-course:{client_ip(request)}", 20, 60)
+
+    system = (
+        "You are a senior curriculum designer for a technical training platform. "
+        "Create a structured learning course for a student. "
+        "Return JSON ONLY matching this exact shape:\n"
+        "{\n"
+        "  \"title\": \"string\",\n"
+        "  \"description\": \"string\",\n"
+        "  \"level\": \"Beginner|Intermediate|Advanced|Expert\",\n"
+        "  \"estimated_hours\": number,\n"
+        "  \"modules\": [\n"
+        "    {\n"
+        "      \"title\": \"string\",\n"
+        "      \"description\": \"string\",\n"
+        "      \"lessons\": [{\"title\": \"string\", \"type\": \"video|reading|exercise|project\", \"estimated_minutes\": number}]\n"
+        "    }\n"
+        "  ]\n"
+        "}\n"
+        "Requirements:\n"
+        "1. Match the student's level; each module builds on the previous one.\n"
+        "2. Keep lesson titles specific and self-contained (they are used to search for videos).\n"
+        "3. Include a final project module when projects are requested.\n"
+        "4. Aim for the requested total duration (hours) split across lessons.\n"
+        "Return ONLY one JSON object."
+    )
+    user = (
+        f"Technology: {req.technology}\n"
+        f"Level: {req.level}\n"
+        f"Goal: {req.goal or f'Master {req.technology}'}\n"
+        f"Target duration: {req.duration_hours or 20} hours\n"
+        f"Include projects: {req.include_projects}\n"
+        f"Include assessments: {req.include_assessments}\n\n"
+        "Return ONLY one JSON object."
+    )
+
+    chat = build_chat(
+        "reasoning",
+        f"course:{req.technology.lower()}:{req.level.lower()}",
+        system,
+        request.headers,
+    )
+    buf: list[str] = []
+    async for ev in chat.stream_message(UserMessage(text=user)):
+        if isinstance(ev, TextDelta):
+            buf.append(ev.content)
+        elif isinstance(ev, StreamDone):
+            break
+    parsed = parse_json_response("".join(buf)) or {}
+
+    if not parsed.get("modules"):
+        parsed = _fallback_course(req)
+
+    await _enrich_lessons(parsed.get("modules") or [])
+
+    # Persist so the learning/[id] page and certificate flow can read it.
+    try:
+        await _persist_generated_course(parsed, req)
+    except Exception:
+        pass  # ponytail: persistence failure must not fail course generation
+
+    return parsed
+
+
+def _modules_to_sections(modules: List[dict]) -> List[dict]:
+    """Convert AI blueprint `modules` into the learning-page `sections` shape."""
+    sections: List[dict] = []
+    for i, mod in enumerate(modules or []):
+        lessons = []
+        for j, lesson in enumerate(mod.get("lessons") or []):
+            lessons.append(
+                {
+                    "id": f"{slugify(mod.get('title', f'module-{i}'))}-{j + 1}",
+                    "slug": slugify(lesson.get("title") or f"lesson-{j + 1}"),
+                    "title": lesson.get("title", ""),
+                    "description": lesson.get("description", ""),
+                    "type": lesson.get("type", "lesson"),
+                    "estimated_minutes": lesson.get("estimated_minutes", 20),
+                    "resources": lesson.get("resources", []),
+                }
+            )
+        sections.append(
+            {
+                "title": mod.get("title", f"Module {i + 1}"),
+                "slug": slugify(mod.get("title", f"module-{i + 1}")),
+                "description": mod.get("description", ""),
+                "lessons": lessons,
+            }
+        )
+    return sections
+
+
+async def _persist_generated_course(course: dict, req: GenerateCourseReq) -> str:
+    """Upsert a generated course blueprint into `learning_courses`.
+
+    Stores the frontend `sections` shape plus the raw blueprint `modules`
+    so both the learning page and the admin preview work. Returns the course id.
+    """
+    from core.database import get_database
+
+    db = await get_database()
+    col = db["learning_courses"]
+    course_id = (course.get("id") or "").strip() or f"ai-{req.technology.lower()}-{datetime.utcnow().strftime('%Y%m%d%H%M%S')}"
+    doc = {
+        "id": course_id,
+        "title": course.get("title", f"{req.technology} Course"),
+        "description": course.get("description", ""),
+        "level": course.get("level", req.level),
+        "type": "video",
+        "instructor": "CodeSpectra AI",
+        "duration": f"{course.get('estimated_hours', '')} hours",
+        "rating": 4.5,
+        "tags": [req.technology, req.level],
+        "source": "AI Generated",
+        "license": "mixed (external embeds + CodeSpectra assessments)",
+        "status": "pending_review",
+        "sections": _modules_to_sections(course.get("modules") or []),
+        "modules": course.get("modules", []),
+        "generated_at": datetime.utcnow().isoformat(),
+        "updated_at": datetime.utcnow().isoformat(),
+    }
+    await col.replace_one({"id": course_id}, doc, upsert=True)
+    course["id"] = course_id
+    return course_id
+
+
+def _fallback_course(req: GenerateCourseReq) -> Dict[str, Any]:
+    """Deterministic course blueprint used when the LLM call fails.
+
+    Keeps the frontend preview usable and the /generate-course contract stable.
+    """
+    tech = req.technology
+    level = req.level
+    count = max(2, min(6, (req.duration_hours or 20) // 5))
+    steps = [
+        ("Introduction", "Overview and environment setup"),
+        ("Core Concepts", "Fundamentals and syntax"),
+        ("Practice", "Hands-on exercises"),
+        ("Advanced Topics", "Patterns, performance, and best practices"),
+        ("Final Project", "Build a complete application"),
+    ][:count]
+    modules = [
+        {
+            "title": f"{tech}: {label}",
+            "description": desc,
+            "lessons": [
+                {
+                    "title": f"{tech} {topic}",
+                    "type": "lesson",
+                    "estimated_minutes": 30,
+                }
+                for topic in ([label] * 3)
+            ],
+        }
+        for label, desc in steps
+    ]
+    return {
+        "title": f"{tech} — {level} Course",
+        "description": (
+            f"A {level.lower()} learning path for {tech}, generated by the "
+            "CodeSpectra AI Course Factory."
+        ),
+        "level": level,
+        "estimated_hours": req.duration_hours or 20,
+        "modules": modules,
+        "assessments": True if req.include_assessments else False,
+        "certificate": True if req.include_certificate else False,
+    }
 
 
 # ── Identity Verification ──────────────────────────────────────

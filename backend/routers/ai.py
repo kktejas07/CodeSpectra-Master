@@ -63,10 +63,12 @@ from services.ai import (
     handle_identity_verify,
     handle_rag_embed,
     handle_skill_insights,
+    handle_generate_course,
 )
 
 import functools
 import traceback
+
 
 def safe_ai_endpoint(fn):
     @functools.wraps(fn)
@@ -80,6 +82,7 @@ def safe_ai_endpoint(fn):
                 status_code=500,
             )
     return wrapper
+
 
 @router.post("/rag/embed")
 @safe_ai_endpoint
@@ -155,3 +158,10 @@ async def identity_verify(request: Request, req: IdentityVerifyReq) -> dict[str,
 async def agentic_fix(request: Request, req: AgentReq) -> dict[str, Any]:
     """Multi-step agentic code-fix loop."""
     return await handle_agent(request, req)
+
+
+@router.post("/generate-course")
+@safe_ai_endpoint
+async def generate_course(request: Request, req: GenerateCourseReq) -> dict[str, Any]:
+    """Generate a complete learning course with modules, lessons, and assessments."""
+    return await handle_generate_course(request, req)
