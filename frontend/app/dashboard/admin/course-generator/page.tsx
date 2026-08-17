@@ -47,7 +47,7 @@ export default function CourseGeneratorPage() {
     setCourse(null)
 
     try {
-      const res = await csrfFetch('/internal/ai/generate-course', {
+      const res = await csrfFetch('/api/learning/generate-course', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
