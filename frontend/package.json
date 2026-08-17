@@ -4,7 +4,7 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
-    "build": "next build --webpack",
+    "build": "NODE_ENV=production next build --webpack",
     "start": "next dev --webpack -p 3000 -H 0.0.0.0",
     "postinstall": "patch-package",
     "lint": "eslint .",
