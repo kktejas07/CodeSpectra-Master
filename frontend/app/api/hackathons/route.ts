@@ -68,17 +68,16 @@ function mergeFeatures(defaults: HackathonFeatures, overrides?: Partial<Hackatho
 
 export async function GET(req: NextRequest) {
   const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   const col = await hackathons()
   const isJudgeFilter = req.nextUrl.searchParams.get('judge') === '1'
-  const tenantFilter: Record<string, unknown> = user.role === 'tenant_admin'
+  const tenantFilter: Record<string, unknown> = user?.role === 'tenant_admin'
     ? (user.tenantId ? { tenant_id: user.tenantId } : { _id: null })
     : {}
   const filter: Record<string, unknown> = { ...tenantFilter }
-  if (!isAdmin(user.role)) {
+  if (!user || !isAdmin(user.role)) {
     filter.status = { $ne: 'draft' as const }
   }
-  if (isJudgeFilter) {
+  if (isJudgeFilter && user) {
     filter.judges = user.id
   }
   const items = await col
