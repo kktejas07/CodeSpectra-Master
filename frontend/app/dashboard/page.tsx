@@ -110,7 +110,7 @@ export default function DashboardPage() {
     <div className="space-y-8">
       {/* Developer Rank & XP Hero Banner */}
       <DeveloperRankBanner
-        name={fbUser?.name || fbUser?.email?.split('@')[0]}
+        name={fbUser?.displayName || fbUser?.email?.split('@')[0]}
         role={role || undefined}
         stats={stats}
       />
