@@ -133,44 +133,27 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
 
       const state = livenessStateRef.current
 
-      if (state === 'center') {
-        if (noseOffset > 0.4 && noseOffset < 0.6) {
-          setMessage('Great. Now turn your head slowly to the LEFT.')
-          setLivenessState('left')
-        } else {
-          setMessage('Look straight at the camera.')
-        }
-      } else if (state === 'left') {
-        if (noseOffset < 0.35) { // Nose closer to left eye in 2D projection when turning left
-          setMessage('Good. Now turn your head slowly to the RIGHT.')
-          setLivenessState('right')
-        }
-      } else if (state === 'right') {
-        if (noseOffset > 0.65) { // Nose closer to right eye
-          setMessage('Good. Look forward and SMILE.')
-          setLivenessState('smile')
-        }
-      } else if (state === 'smile') {
-        if (noseOffset > 0.4 && noseOffset < 0.6 && smileRatio > 0.55) {
-          setMessage('Perfect! Capturing...')
-          setLivenessState('done')
-          
-          setStatus('captured')
-          
-          const canvas = document.createElement('canvas')
-          canvas.width = videoWidth
-          canvas.height = videoHeight
-          const ctx = canvas.getContext('2d')
-          ctx?.drawImage(videoRef.current, 0, 0)
-          const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+      if (noseOffset > 0.35 && noseOffset < 0.65) {
+        setMessage('Perfect! Capturing...')
+        setLivenessState('done')
+        
+        setStatus('captured')
+        
+        const canvas = document.createElement('canvas')
+        canvas.width = videoWidth
+        canvas.height = videoHeight
+        const ctx = canvas.getContext('2d')
+        ctx?.drawImage(videoRef.current, 0, 0)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
 
-          if (streamRef.current) {
-            streamRef.current.getTracks().forEach(track => track.stop())
-          }
-
-          onCapture(detection.descriptor, dataUrl)
-          return // Stop polling
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach(track => track.stop())
         }
+
+        onCapture(detection.descriptor, dataUrl)
+        return // Stop polling
+      } else {
+        setMessage('Look straight at the camera.')
       }
 
       requestAnimationFrame(analyzeLiveness)
