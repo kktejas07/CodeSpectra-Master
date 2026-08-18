@@ -15,7 +15,6 @@ import {
   Loader2,
   Lock,
   Mail,
-  Sparkles,
   Terminal,
   Zap,
   ShieldCheck,
@@ -326,55 +325,6 @@ function LoginInner() {
             <ShieldCheck className="w-4 h-4 text-emerald-500" />
             Face Login
           </Button>
-
-          {/* Quick Demo Credentials Panel */}
-          <div className="rounded-xl border border-emerald-500/30 bg-slate-900/70 dark:bg-[#0d131f]/90 p-4 shadow-lg shadow-emerald-950/20 backdrop-blur-md">
-            <div className="flex items-center justify-between gap-2 mb-3">
-              <div className="flex items-center gap-1.5 text-xs font-mono font-bold text-emerald-400">
-                <Sparkles className="w-3.5 h-3.5 text-emerald-400" />
-                <span>DEMO CREDENTIALS</span>
-              </div>
-              <span className="text-[10px] font-mono px-2 py-0.5 rounded-full bg-emerald-950/80 text-emerald-300 border border-emerald-800/60">
-                1-Click Quick Fill
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 mb-2.5">
-              {[
-                { label: 'Super Admin', role: 'Superadmin', email: 'superadmin@codespectra.com', pass: 'ChangeMe123!', icon: '👑' },
-                { label: 'Tenant Admin', role: 'Admin', email: 'admin@codespectra.com', pass: 'ChangeMe123!', icon: '🏢' },
-                { label: 'Candidate', role: 'Student', email: 'demo@codespectra.com', pass: 'ChangeMe123!', icon: '👨‍💻' },
-                { label: 'QA Admin', role: 'Inspector', email: 'qa@codespectra.ai', pass: 'ChangeMe123!', icon: '🛡️' },
-              ].map((acc) => {
-                const isSelected = email.toLowerCase() === acc.email.toLowerCase()
-                return (
-                  <button
-                    key={acc.email}
-                    type="button"
-                    onClick={() => {
-                      setEmail(acc.email)
-                      setPassword(acc.pass)
-                      setError(null)
-                    }}
-                    className={`flex flex-col items-start p-2 rounded-lg text-left transition-all border cursor-pointer ${
-                      isSelected
-                        ? 'border-emerald-500 bg-emerald-950/40 text-emerald-300 shadow-sm shadow-emerald-950/30'
-                        : 'border-slate-800 bg-slate-950/50 hover:border-slate-700 text-slate-300 hover:text-white'
-                    }`}
-                  >
-                    <span className="text-sm mb-1">{acc.icon}</span>
-                    <span className="text-xs font-semibold leading-tight">{acc.label}</span>
-                    <span className="text-[10px] text-slate-500 truncate w-full">{acc.role}</span>
-                  </button>
-                )
-              })}
-            </div>
-
-            <div className="pt-2 border-t border-slate-800/80 flex items-center justify-between text-[11px] font-mono text-slate-400">
-              <span className="truncate">Pass: <strong className="text-slate-200">ChangeMe123!</strong></span>
-              <span className="text-emerald-400/80">Click any role to autofill</span>
-            </div>
-          </div>
 
           <div className="relative">
             <div className="absolute inset-0 flex items-center">
