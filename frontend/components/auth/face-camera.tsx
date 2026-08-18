@@ -216,9 +216,8 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
 
         {/* Overlay Guide */}
         {(status === 'ready' || status === 'detecting') && (
-          <div className="absolute inset-0 pointer-events-none">
-            <div className="w-full h-full border-[90px] border-background/60 rounded-[100%] transition-all duration-500" />
-            <div className="absolute inset-0 border-2 border-primary/50 rounded-[100%] scale-[0.55] opacity-50" />
+          <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
+            <div className="w-[160px] h-[220px] rounded-[100%] border-2 border-primary/50 ring-[1000px] ring-background/60 transition-all duration-500" />
           </div>
         )}
 

@@ -8,6 +8,7 @@
 
 | Session | Task / Area | Files claimed | Status | Last updated |
 |---|---|---|---|---|
+| antigravity (this session, FACE-OVAL-MASK) | Face login image preview gray circle is too big / squished horizontally. Fixed by using a fixed w-[160px] h-[220px] oval with ring-[1000px] instead of thick scaling borders. | frontend/components/auth/face-camera.tsx, WORKING.md | DONE | 2026-08-18 |
 | antigravity (this session, FACE-OVAL-FIX) | Face login circle too big — increase masking border-[60px]→[90px] + scale-[0.6]→[0.55] on guide ellipse | frontend/components/auth/face-camera.tsx, WORKING.md | DONE | 2026-08-17 |
 
 | Session | Task / Area | Files claimed | Status | Last updated |
