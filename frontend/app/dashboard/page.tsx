@@ -15,6 +15,12 @@ import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } from '@/lib/rbac'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { OrganizationDashboard } from '@/components/dashboard/organization-dashboard'
+import {
+  DeveloperRankBanner,
+  IsometricScanChip,
+  IsometricProblemCube,
+  IsometricFixEngine,
+} from '@/components/dashboard/dashboard-vectors'
 
 interface ActivityItem {
   ts: string
@@ -102,59 +108,44 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-3xl font-bold text-foreground">Dashboard</h1>
-          <p className="text-muted-foreground mt-1">Welcome back! Here&apos;s your activity overview.</p>
-        </div>
-        {stats.streak > 0 && (
-          <Badge variant="outline" className="gap-1.5 px-3 py-1.5">
-            <Flame className="h-4 w-4 text-orange-500" />
-            <span className="text-sm font-medium">{stats.streak} day streak</span>
-          </Badge>
-        )}
-        {plan && (
-          <Badge variant="default" className="gap-1.5 px-3 py-1.5">
-            <Crown className="h-3.5 w-3.5" />
-            <span className="text-sm font-medium">{plan.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase())}</span>
-          </Badge>
-        )}
-      </div>
+      {/* Developer Rank & XP Hero Banner */}
+      <DeveloperRankBanner
+        name={fbUser?.name || fbUser?.email?.split('@')[0]}
+        role={role || undefined}
+        stats={stats}
+      />
 
       <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
-        <Card className="border-border/60 p-4 hover:border-primary/30 transition-colors">
+        <Card className="border-border/60 p-4 hover:border-emerald-500/40 transition-all duration-300 group hover:shadow-lg hover:shadow-emerald-950/20">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-blue-500/10">
-              <Activity className="h-6 w-6 text-blue-500" />
-            </div>
+            <IsometricScanChip />
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Code Scans</p>
-              <p className="text-2xl font-bold text-foreground">{stats.scans}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground font-mono">Code Scans</p>
+              <p className="text-2xl font-black text-foreground tracking-tight">{stats.scans}</p>
             </div>
           </div>
         </Card>
-        <Card className="border-border/60 p-4 hover:border-primary/30 transition-colors">
+
+        <Card className="border-border/60 p-4 hover:border-emerald-500/40 transition-all duration-300 group hover:shadow-lg hover:shadow-emerald-950/20">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-green-500/10">
-              <Code className="h-6 w-6 text-green-500" />
-            </div>
+            <IsometricProblemCube />
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Challenges</p>
-              <p className="text-2xl font-bold text-foreground">{stats.challenges}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground font-mono">Challenges</p>
+              <p className="text-2xl font-black text-foreground tracking-tight">{stats.challenges}</p>
             </div>
           </div>
         </Card>
-        <Card className="border-border/60 p-4 hover:border-primary/30 transition-colors">
+
+        <Card className="border-border/60 p-4 hover:border-cyan-500/40 transition-all duration-300 group hover:shadow-lg hover:shadow-cyan-950/20">
           <div className="flex items-center gap-4">
-            <div className="flex h-12 w-12 items-center justify-center rounded-lg bg-purple-500/10">
-              <Zap className="h-6 w-6 text-purple-500" />
-            </div>
+            <IsometricFixEngine />
             <div>
-              <p className="text-xs font-medium uppercase tracking-wide text-muted-foreground">Fixes Applied</p>
-              <p className="text-2xl font-bold text-foreground">{stats.fixes}</p>
+              <p className="text-xs font-medium uppercase tracking-wider text-muted-foreground font-mono">Fixes Applied</p>
+              <p className="text-2xl font-black text-foreground tracking-tight">{stats.fixes}</p>
             </div>
           </div>
         </Card>
+
         <DailyChallengeWidget />
       </div>
 
@@ -220,41 +211,64 @@ export default function DashboardPage() {
                 <BookOpen className="h-4 w-4 text-primary" /> Quick actions
               </h2>
             </div>
-            <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-              <Link href="/dashboard/assessments">
-                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                  <FileText className="mx-auto h-5 w-5 text-indigo-500" />
-                  <p className="mt-1.5 text-xs font-medium text-foreground">Assessments</p>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              <Link href="/dashboard/assessments" className="group">
+                <div className="rounded-xl border border-slate-800/80 bg-gradient-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-emerald-500/50 group-hover:shadow-md group-hover:shadow-emerald-950/40 group-hover:-translate-y-0.5">
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                    <FileText className="h-4.5 w-4.5 text-emerald-400" />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-foreground">Assessments</p>
+                  <p className="text-[10px] text-muted-foreground">Test skills</p>
                 </div>
               </Link>
-              <Link href="/dashboard/problems">
-                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                  <Code className="mx-auto h-5 w-5 text-green-500" />
-                  <p className="mt-1.5 text-xs font-medium text-foreground">Problems</p>
+
+              <Link href="/dashboard/problems" className="group">
+                <div className="rounded-xl border border-slate-800/80 bg-gradient-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-emerald-500/50 group-hover:shadow-md group-hover:shadow-emerald-950/40 group-hover:-translate-y-0.5">
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
+                    <Code className="h-4.5 w-4.5 text-emerald-400" />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-foreground">Problems</p>
+                  <p className="text-[10px] text-muted-foreground">Algorithm lab</p>
                 </div>
               </Link>
-              <Link href="/dashboard/arena">
-                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                  <Target className="mx-auto h-5 w-5 text-red-500" />
-                  <p className="mt-1.5 text-xs font-medium text-foreground">Arena</p>
+
+              <Link href="/dashboard/arena" className="group">
+                <div className="rounded-xl border border-slate-800/80 bg-gradient-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-red-500/50 group-hover:shadow-md group-hover:shadow-red-950/40 group-hover:-translate-y-0.5">
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
+                    <Target className="h-4.5 w-4.5 text-red-400" />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-foreground">Arena</p>
+                  <p className="text-[10px] text-muted-foreground">Live 1v1</p>
                 </div>
               </Link>
-              <Link href="/dashboard/scanner?mode=manual">
-                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                  <Activity className="mx-auto h-5 w-5 text-blue-500" />
-                  <p className="mt-1.5 text-xs font-medium text-foreground">Run Scan</p>
+
+              <Link href="/dashboard/scanner?mode=manual" className="group">
+                <div className="rounded-xl border border-slate-800/80 bg-gradient-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-cyan-500/50 group-hover:shadow-md group-hover:shadow-cyan-950/40 group-hover:-translate-y-0.5">
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
+                    <Activity className="h-4.5 w-4.5 text-cyan-400" />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-foreground">Run Scan</p>
+                  <p className="text-[10px] text-muted-foreground">AST Engine</p>
                 </div>
               </Link>
-              <Link href="/dashboard/tracks">
-                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                  <Layers className="mx-auto h-5 w-5 text-purple-500" />
-                  <p className="mt-1.5 text-xs font-medium text-foreground">Tracks</p>
+
+              <Link href="/dashboard/tracks" className="group">
+                <div className="rounded-xl border border-slate-800/80 bg-gradient-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-cyan-500/50 group-hover:shadow-md group-hover:shadow-cyan-950/40 group-hover:-translate-y-0.5">
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
+                    <Layers className="h-4.5 w-4.5 text-cyan-400" />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-foreground">Tracks</p>
+                  <p className="text-[10px] text-muted-foreground">Curriculums</p>
                 </div>
               </Link>
-              <Link href="/dashboard/achievements">
-                <div className="rounded-lg border border-border/40 bg-muted/20 p-3 text-center transition-all hover:border-primary/40 hover:bg-primary/5">
-                  <Star className="mx-auto h-5 w-5 text-yellow-500" />
-                  <p className="mt-1.5 text-xs font-medium text-foreground">Achievements</p>
+
+              <Link href="/dashboard/achievements" className="group">
+                <div className="rounded-xl border border-slate-800/80 bg-gradient-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-amber-500/50 group-hover:shadow-md group-hover:shadow-amber-950/40 group-hover:-translate-y-0.5">
+                  <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-amber-500/10 border border-amber-500/20 group-hover:bg-amber-500/20 transition-colors">
+                    <Star className="h-4.5 w-4.5 text-amber-400" />
+                  </div>
+                  <p className="mt-2 text-xs font-semibold text-foreground">Achievements</p>
+                  <p className="text-[10px] text-muted-foreground">Trophies</p>
                 </div>
               </Link>
             </div>

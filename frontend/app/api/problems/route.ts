@@ -12,7 +12,14 @@ async function ensureSeeded() {
     if (n > 0) return
     const now = nowIso()
     const all = [...SEED_PROBLEMS, ...SEED_PROBLEMS_BULK]
-    const docs: ProblemDoc[] = all.map((p) => ({
+    const seen = new Set<string>()
+    const uniqueAll = all.filter((p) => {
+      const k = p.id || p.slug
+      if (!k || seen.has(k)) return false
+      seen.add(k)
+      return true
+    })
+    const docs: ProblemDoc[] = uniqueAll.map((p) => ({
       ...p,
       created_at: now,
       updated_at: now,
@@ -67,7 +74,14 @@ export async function GET(request: NextRequest) {
       .limit(limitParam || 0)
       .toArray()
     if (list.length > 0) {
-      return NextResponse.json({ data: list, count: list.length })
+      const seen = new Set<string>()
+      const uniqueList = list.filter((p) => {
+        const k = (p as any).id || (p as any).slug
+        if (!k || seen.has(k)) return false
+        seen.add(k)
+        return true
+      })
+      return NextResponse.json({ data: uniqueList, count: uniqueList.length })
     }
   } catch (error) {
     console.warn('[CodeSpectra] problems GET (mongo unavailable, using seed):', error)

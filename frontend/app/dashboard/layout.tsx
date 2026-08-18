@@ -69,6 +69,37 @@ import {
   UserPlus,
   AlertCircle,
   Timer,
+  Swords,
+  Target,
+  GitFork,
+  CalendarDays,
+  Terminal,
+  GraduationCap,
+  Video,
+  UserCheck,
+  FileSpreadsheet,
+  ClipboardCheck,
+  Boxes,
+  ScanFace,
+  Crown,
+  Medal,
+  LineChart,
+  Gift,
+  Receipt,
+  Server,
+  KeyRound,
+  Users2,
+  Ticket,
+  Megaphone,
+  BrainCircuit,
+  ShieldAlert,
+  ShieldCheck,
+  Workflow,
+  Wand2,
+  FileBarChart,
+  BadgeCheck,
+  TrendingUp,
+  Activity,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -78,7 +109,6 @@ import { Celebration } from '@/components/gamification/celebration'
 import { ThemeSwitcher } from '@/components/theme-switcher'
 import { CommandMenu } from '@/components/command-menu'
 import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
-import { Activity, Zap } from 'lucide-react'
 import { WebVitalsReporter } from '@/components/dashboard/web-vitals-reporter'
 import { AnalyticsTracker } from '@/components/dashboard/analytics-tracker'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
@@ -330,73 +360,96 @@ export default function DashboardLayout({
     const p = DASHBOARD_ROUTES.platform
 
     const ICON_MAP: Record<string, LucideIcon> = {
+      // Core & Dashboard
       '/dashboard': Home,
-      [p.system]: Home,
+      '/dashboard/agent': Bot,
+
+      // Practice
+      '/dashboard/arena': Swords,
+      '/dashboard/problems': CodeIcon,
+      '/dashboard/challenges': Target,
+      '/dashboard/tracks': GitFork,
+      '/dashboard/100-days': Flame,
+
+      // Events
+      '/dashboard/events': CalendarDays,
+      '/dashboard/codeathons': Terminal,
+      '/dashboard/hackathons': Trophy,
+
+      // Learning
+      '/dashboard/learning': GraduationCap,
+      '/dashboard/interview-prep': Video,
+
+      // Career
+      '/dashboard/jobs': Briefcase,
+      '/dashboard/interviews': UserCheck,
+      '/dashboard/resumes': FileSpreadsheet,
+      '/dashboard/assessments': ClipboardCheck,
+      '/dashboard/certifications': Award,
+
+      // Tools
+      '/dashboard/scanner': ScanSearch,
+      '/dashboard/cad': Boxes,
+      '/dashboard/identity-verify': ScanFace,
+
+      // Stats
+      '/dashboard/leaderboard': Crown,
+      '/dashboard/achievements': Medal,
+      '/dashboard/skill-analytics': LineChart,
+
+      // Account
+      '/dashboard/profile': User,
+      '/dashboard/notifications': Bell,
+      '/dashboard/billing': Receipt,
+      '/dashboard/pricing': CreditCard,
+      '/dashboard/settings': Settings,
+      '/dashboard/settings/ai': Sparkles,
+      '/dashboard/referrals': Gift,
+
+      // Support & Misc
+      '/dashboard/support': LifeBuoy,
+      '/dashboard/status': Activity,
+      '/dashboard/judge': ShieldCheck,
+
+      // Admin & Platform
+      [p.system]: Server,
       [p.users]: Users,
-      [p.roles]: Lock,
-      [p.analytics]: BarChart3,
+      [p.roles]: KeyRound,
+      [p.analytics]: TrendingUp,
       [p.integrations]: Plug,
       [p.speedInsights]: Gauge,
       [p.cdn]: Globe2,
       [p.permissions]: Shield,
       [p.plans]: FileText,
-      [p.pricing]: FileText,
+      [p.pricing]: CreditCard,
       '/dashboard/admin/organizations': Building2,
-      '/dashboard/admin/coupons': CreditCardIcon,
-      '/dashboard/admin/announcements': Bell,
+      '/dashboard/admin/coupons': Ticket,
+      '/dashboard/admin/announcements': Megaphone,
       '/dashboard/admin/newsletter': Mail,
       '/dashboard/admin/hackathons': Trophy,
-      '/dashboard/admin/rag': Database,
+      '/dashboard/admin/rag': BrainCircuit,
       '/dashboard/admin/ai-inventory': Sparkles,
       [p.settings]: Settings,
-      [p.settingsKyc]: Shield,
-      [p.security]: Shield,
-      '/dashboard/admin/proctor': Shield,
+      [p.settingsKyc]: BadgeCheck,
+      [p.security]: ShieldCheck,
+      '/dashboard/admin/proctor': ShieldAlert,
       '/dashboard/admin/certificates': Award,
       [p.jobs]: Briefcase,
-      [p.resumes]: FileText,
-      [p.codeathons]: Trophy,
-      [p.exams]: FileText,
-      [p.workflows]: Settings,
+      [p.resumes]: FileSpreadsheet,
+      [p.codeathons]: Terminal,
+      [p.exams]: ClipboardCheck,
+      [p.workflows]: Workflow,
       '/dashboard/admin/cron-jobs': Timer,
       [p.questionGenerator]: Bot,
-      '/dashboard/admin/course-generator': Sparkles,
-      [DASHBOARD_ROUTES.organization.team]: Users,
-      '/dashboard/arena': Trophy,
-      '/dashboard/hackathons': Trophy,
-      '/dashboard/problems': CodeIcon,
-      '/dashboard/tracks': LayersIcon,
-      '/dashboard/agent': Bot,
-      '/dashboard/learning': BookOpen,
-      '/dashboard/skill-analytics': SparklesIcon,
-      '/dashboard/identity-verify': CameraIcon,
-      '/dashboard/leaderboard': BarChart3,
-      '/dashboard/achievements': Star,
-      '/dashboard/certifications': Award,
-      '/dashboard/pricing': CreditCardIcon,
-      '/dashboard/settings/ai': SparklesIcon,
-      '/dashboard/status': Activity,
-      '/dashboard/support': MessageSquare,
-      '/dashboard/codeathons': Trophy,
-      '/dashboard/events': Zap,
-      '/dashboard/challenges': CodeIcon,
-      '/dashboard/interviews': Users,
-      '/dashboard/jobs': Briefcase,
-      '/dashboard/assessments': FileText,
-      '/dashboard/resumes': FileText,
-      '/dashboard/interview-prep': BookOpen,
-      '/dashboard/judge': Shield,
+      '/dashboard/admin/course-generator': Wand2,
+      [DASHBOARD_ROUTES.organization.team]: Users2,
       '/dashboard/admin/requisitions': Briefcase,
       '/dashboard/admin/question-bank': Database,
-      '/dashboard/admin/predictive-validity': BarChart3,
-      '/dashboard/admin/sme-review': Users,
-      '/dashboard/admin/hiring-manager-report': FileText,
-      '/dashboard/admin/kyc': Shield,
-      '/dashboard/100-days': Flame,
-      '/dashboard/cad': LayersIcon,
+      '/dashboard/admin/predictive-validity': LineChart,
+      '/dashboard/admin/sme-review': UserCheck,
+      '/dashboard/admin/hiring-manager-report': FileBarChart,
+      '/dashboard/admin/kyc': BadgeCheck,
       '/dashboard/recruiter-analytics': BarChart3,
-      '/dashboard/scanner': ScanSearch,
-      '/dashboard/referrals': UserPlus,
     }
 
     const HREF_OVERRIDES: Record<string, string> = {
@@ -406,8 +459,8 @@ export default function DashboardLayout({
 
     const addSectionHeaders = (leaves: NavLeaf[]): NavEntry[] => {
       const sectionByRoute = new Map<string, string>()
-      for (const s of ADMIN_SECTIONS) sectionByRoute.set(s.firstRoute, s.label)
       for (const s of USER_SECTIONS) sectionByRoute.set(s.firstRoute, s.label)
+      for (const s of ADMIN_SECTIONS) sectionByRoute.set(s.firstRoute, s.label)
       const seenSections = new Set<string>()
       const result: NavEntry[] = []
       let current: { label: string; items: NavLeaf[] } | null = null
@@ -427,7 +480,7 @@ export default function DashboardLayout({
       return result
     }
 
-    const allRouteGroups = [ADMIN_ONLY_ROUTES, TENANT_ADMIN_ROUTES, JUDGE_ROUTES, ALL_USER_ROUTES] as const
+    const allRouteGroups = [ALL_USER_ROUTES, TENANT_ADMIN_ROUTES, JUDGE_ROUTES, ADMIN_ONLY_ROUTES] as const
     const seen = new Set<string>()
     const allLeaves: NavLeaf[] = []
     for (const group of allRouteGroups) {
@@ -620,7 +673,7 @@ export default function DashboardLayout({
       <ChevronRight
         className={cn(
           'h-4 w-4 shrink-0 text-muted-foreground/70',
-          active && 'text-primary/80',
+          active && 'text-primary/90',
           sidebarCollapsed && 'lg:sr-only'
         )}
         aria-hidden
@@ -637,17 +690,17 @@ export default function DashboardLayout({
       >
         <div
           className={cn(
-            'flex min-w-0 w-full items-center gap-2.5 rounded-md px-3 py-2 text-sm transition-all',
+            'flex min-w-0 w-full items-center gap-3 rounded-lg px-3 py-2 text-[14px] transition-all',
             sidebarCollapsed && 'lg:justify-center lg:px-2',
             active
-              ? 'bg-primary/10 font-medium text-primary'
-              : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              ? 'bg-primary/15 font-semibold text-primary shadow-xs'
+              : 'font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground'
           )}
         >
-          <IconComponent className="h-4 w-4 shrink-0 opacity-90" />
+          <IconComponent className="h-[18px] w-[18px] shrink-0 opacity-90" />
           <span
             className={cn(
-              'min-w-0 flex-1 truncate',
+              'min-w-0 flex-1 truncate text-[14px]',
               sidebarCollapsed && 'lg:sr-only'
             )}
           >
@@ -656,7 +709,7 @@ export default function DashboardLayout({
           {badgeCount(leaf.route) > 0 && (
             <span
               className={cn(
-                'flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[10px] font-semibold text-primary-foreground',
+                'flex h-5 min-w-5 items-center justify-center rounded-full bg-primary px-1.5 text-[11px] font-bold text-primary-foreground',
                 sidebarCollapsed && 'lg:sr-only'
               )}
             >
@@ -816,15 +869,15 @@ export default function DashboardLayout({
                             onClick={() => toggleSection(label)}
                             aria-expanded={expanded}
                             className={cn(
-                              'flex w-full items-center justify-between gap-1 rounded-md px-3 py-1.5 text-[11px] font-semibold uppercase tracking-wider text-muted-foreground/70 transition-colors hover:bg-muted/50 hover:text-foreground',
+                              'flex w-full items-center justify-between gap-1 rounded-md px-3 py-2 text-xs font-bold uppercase tracking-wider text-muted-foreground/80 transition-colors hover:bg-muted/50 hover:text-foreground',
                               sidebarCollapsed && 'lg:sr-only'
                             )}
                           >
-                            <span className="min-w-0 truncate">{label}</span>
+                            <span className="min-w-0 truncate text-xs font-bold tracking-wider">{label}</span>
                             <ChevronDown
                               className={cn(
-                                'h-3.5 w-3.5 shrink-0 transition-transform duration-200',
-                                expanded && 'rotate-180',
+                                'h-3.5 w-3.5 shrink-0 transition-transform duration-200 opacity-80',
+                                expanded && 'rotate-180 opacity-100',
                                 sidebarCollapsed && 'lg:sr-only'
                               )}
                               aria-hidden

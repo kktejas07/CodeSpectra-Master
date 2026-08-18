@@ -32,9 +32,10 @@ export default function ProblemsListPage() {
   const { loading, error, q, setQ, difficulty, setDifficulty, filtered } = useProblemsViewModel()
   const [topic, setTopic] = useState('')
 
-  const final = topic
+  const final = (topic
     ? filtered.filter(p => (p.topics || []).some(t => t.toLowerCase() === topic.toLowerCase()))
     : filtered
+  ).filter((p, idx, arr) => arr.findIndex(x => (x.id && x.id === p.id) || (x.slug && x.slug === p.slug)) === idx)
 
   const countByTopic = (key: string) => key ? filtered.filter(p => (p.topics || []).some(t => t.toLowerCase() === key.toLowerCase())).length : filtered.length
 
@@ -116,7 +117,7 @@ export default function ProblemsListPage() {
       ) : (
         <ul className="space-y-2">
           {final.map((p, i) => (
-            <li key={p.id}>
+            <li key={p.id ? `${p.id}-${i}` : `prob-${i}`}>
               <Link
                 href={`/dashboard/problems/${p.slug || p.id}`}
                 className="group flex items-center justify-between rounded-lg border border-border bg-card/40 hover:bg-card hover:border-primary/40 transition px-5 py-4"
