@@ -14,6 +14,7 @@ import {
   ArrowRight,
 } from 'lucide-react'
 import Link from 'next/link'
+import { EmptyTimelineIllustration } from '@/components/dashboard/dashboard-vectors'
 
 interface ActivityItem {
   ts: string
@@ -32,11 +33,11 @@ interface ActivityTimelineProps {
 }
 
 const typeConfig: Record<string, { icon: React.ComponentType<{ className?: string }>; color: string; bg: string }> = {
-  scan: { icon: Search, color: 'text-blue-500', bg: 'bg-blue-500' },
-  review: { icon: Code2, color: 'text-green-500', bg: 'bg-green-500' },
-  fix: { icon: Zap, color: 'text-purple-500', bg: 'bg-purple-500' },
-  challenge: { icon: Trophy, color: 'text-amber-500', bg: 'bg-amber-500' },
-  daily: { icon: Calendar, color: 'text-red-500', bg: 'bg-red-500' },
+  scan: { icon: Search, color: 'text-emerald-400', bg: 'bg-emerald-500' },
+  review: { icon: Code2, color: 'text-teal-400', bg: 'bg-teal-500' },
+  fix: { icon: Zap, color: 'text-cyan-400', bg: 'bg-cyan-500' },
+  challenge: { icon: Trophy, color: 'text-amber-400', bg: 'bg-amber-500' },
+  daily: { icon: Calendar, color: 'text-emerald-500', bg: 'bg-emerald-500' },
   default: { icon: Sparkles, color: 'text-muted-foreground', bg: 'bg-muted-foreground' },
 }
 
@@ -82,10 +83,13 @@ export function ActivityTimeline({
       </div>
 
       {displayActivities.length === 0 ? (
-        <div className="py-8 text-center">
-          <Sparkles className="mx-auto h-8 w-8 text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">
-            No recent activity. Start coding to see your contributions here.
+        <div className="py-4 text-center">
+          <EmptyTimelineIllustration />
+          <p className="text-xs font-medium text-slate-400 mt-1">
+            No recent activity recorded
+          </p>
+          <p className="text-[11px] text-muted-foreground mt-0.5">
+            Start coding to see your contributions timeline
           </p>
         </div>
       ) : (

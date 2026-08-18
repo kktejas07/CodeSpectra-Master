@@ -16,170 +16,148 @@
     monospace;
 }
 
-/* Optimus / v0 marketing theme — light */
+/* Prisma Emerald/Mint Marketing & App Theme — Light */
 :root {
-  /* Neutral — soft paper white */
-  --background: 40 20% 99%;
-  --foreground: 240 10% 4%;
+  /* Clean alabaster paper with subtle cool mint undertone */
+  --background: 160 20% 99%;
+  --foreground: 220 30% 8%;
   --card: 0 0% 100%;
-  --card-foreground: 240 10% 4%;
+  --card-foreground: 220 30% 8%;
   --popover: 0 0% 100%;
-  --popover-foreground: 240 10% 4%;
+  --popover-foreground: 220 30% 8%;
   
-  /* Primary accent - Vibrant emerald green */
-  --primary: 142 71% 45%;
-  --primary-foreground: 0 0% 100%;
+  /* Primary accent - Electric Prisma Mint / Emerald (#00c573) */
+  --primary: 156 100% 39%;
+  --primary-foreground: 220 30% 8%;
   
   /* Secondary colors */
-  --secondary: 240 5% 96%;
-  --secondary-foreground: 240 6% 10%;
+  --secondary: 160 20% 96%;
+  --secondary-foreground: 160 60% 20%;
   
   /* Neutral grays */
-  --muted: 240 6% 96%;
-  --muted-foreground: 240 4% 42%;
+  --muted: 220 15% 96%;
+  --muted-foreground: 220 10% 46%;
   
   /* Accent */
-  --accent: 240 5% 96%;
-  --accent-foreground: 240 6% 10%;
+  --accent: 160 25% 94%;
+  --accent-foreground: 160 60% 15%;
   
   /* Destructive */
   --destructive: 0 84% 60%;
   --destructive-foreground: 0 0% 100%;
   
   /* Success */
-  --success: 142 76% 36%;
+  --success: 156 100% 39%;
   --success-foreground: 0 0% 100%;
   
   /* Borders and input */
-  --border: 240 6% 91%;
-  --input: 240 6% 91%;
-  --ring: 142 71% 45%;
+  --border: 220 15% 90%;
+  --input: 220 15% 90%;
+  --ring: 156 100% 39%;
   
   /* Charts */
-  --chart-1: 142 71% 45%;
-  --chart-2: 142 76% 36%;
-  --chart-3: 215 20% 50%;
-  --chart-4: 25 95% 53%;
-  --chart-5: 199 89% 48%;
+  --chart-1: 156 100% 39%;
+  --chart-2: 187 92% 43%;
+  --chart-3: 153 60% 53%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 221 83% 53%;
   
   /* Radius */
   --radius: 0.625rem;
   
   /* Sidebar */
   --sidebar: 0 0% 100%;
-  --sidebar-foreground: 240 10% 4%;
-  --sidebar-primary: 142 71% 45%;
-  --sidebar-primary-foreground: 0 0% 100%;
-  --sidebar-accent: 240 5% 96%;
-  --sidebar-accent-foreground: 240 6% 10%;
-  --sidebar-border: 240 6% 90%;
-  --sidebar-ring: 142 71% 45%;
+  --sidebar-foreground: 220 30% 8%;
+  --sidebar-primary: 156 100% 39%;
+  --sidebar-primary-foreground: 220 30% 8%;
+  --sidebar-accent: 160 20% 96%;
+  --sidebar-accent-foreground: 160 60% 20%;
+  --sidebar-border: 220 15% 90%;
+  --sidebar-ring: 156 100% 39%;
 
-  /* Inverted marketing band (e.g. Process / how-it-works) — near-black + light text in light & dark */
-  --marketing-band-bg: 240 10% 4%;
+  --marketing-band-bg: 220 30% 6%;
   --marketing-band-fg: 0 0% 98%;
 
-  /* Refero / Supabase Extended Design Tokens */
-  --color-phosphor-green: #3ecf8e;
-  --color-mint-pulse: #00c573;
-  --color-forest-depth: #1f4b37;
-  --color-midnight-emerald: #006239;
-  --color-snow: #fafafa;
-  --color-silver-mist: #b4b4b4;
-  --color-smoke: #898989;
-  --color-graphite: #4d4d4d;
-  --color-slate: #393939;
-  --color-charcoal: #2e2e2e;
-  --color-ash: #242424;
-  --color-obsidian: #121212;
-
-  --font-circular: 'Circular', ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-  --font-source-code-pro: 'Source Code Pro', ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
-
-  --surface-obsidian-canvas: #121212;
-  --surface-ash-card: #242424;
-  --surface-charcoal-border: #2e2e2e;
+  /* Prisma Extended Tokens */
+  --color-prisma-emerald: #00c573;
+  --color-prisma-mint: #3ecf8e;
+  --color-prisma-cyan: #06b6d4;
+  --color-prisma-teal: #14b8a6;
+  --color-prisma-obsidian: #080c14;
+  --color-prisma-card: #0d131f;
+  --color-prisma-border: #1e293b;
 }
 
-/* Optimus Theme - Dark Mode (Default) */
+/* Prisma Emerald/Mint Theme - Dark Mode (Default Elite Obsidian Look) */
 .dark {
-  /* Deep dark backgrounds */
-  --background: 240 10% 4%;
-  --foreground: 0 0% 98%;
-  --card: 240 10% 6%;
-  --card-foreground: 0 0% 98%;
-  --popover: 240 10% 6%;
-  --popover-foreground: 0 0% 98%;
+  /* Deep Obsidian Slate with emerald depth */
+  --background: 220 40% 5%;
+  --foreground: 210 20% 98%;
+  --card: 220 35% 8%;
+  --card-foreground: 210 20% 98%;
+  --popover: 220 35% 8%;
+  --popover-foreground: 210 20% 98%;
   
-  /* Primary accent - Bright emerald green */
-  --primary: 142 70% 50%;
-  --primary-foreground: 240 10% 4%;
+  /* Primary accent - Vibrant Electric Prisma Mint (#00c573 / #3ecf8e) */
+  --primary: 156 100% 42%;
+  --primary-foreground: 220 40% 5%;
   
   /* Secondary colors */
-  --secondary: 240 4% 16%;
-  --secondary-foreground: 0 0% 98%;
+  --secondary: 220 25% 13%;
+  --secondary-foreground: 156 60% 85%;
   
-  /* Neutral grays */
-  --muted: 240 4% 16%;
-  --muted-foreground: 240 5% 65%;
+  /* Neutral grays / dark slate mists */
+  --muted: 220 20% 12%;
+  --muted-foreground: 215 15% 65%;
   
   /* Accent */
-  --accent: 240 4% 16%;
-  --accent-foreground: 0 0% 98%;
+  --accent: 220 25% 15%;
+  --accent-foreground: 156 80% 90%;
   
   /* Destructive */
   --destructive: 0 72% 51%;
   --destructive-foreground: 0 0% 98%;
   
   /* Success */
-  --success: 142 71% 45%;
-  --success-foreground: 240 10% 4%;
+  --success: 156 100% 42%;
+  --success-foreground: 220 40% 5%;
   
   /* Borders and input */
-  --border: 240 4% 16%;
-  --input: 240 4% 16%;
-  --ring: 142 70% 50%;
+  --border: 220 20% 16%;
+  --input: 220 20% 14%;
+  --ring: 156 100% 42%;
   
   /* Charts */
-  --chart-1: 142 70% 50%;
-  --chart-2: 142 71% 45%;
-  --chart-3: 215 18% 55%;
-  --chart-4: 25 95% 53%;
-  --chart-5: 199 89% 48%;
+  --chart-1: 156 100% 42%;
+  --chart-2: 187 92% 50%;
+  --chart-3: 153 60% 55%;
+  --chart-4: 38 92% 50%;
+  --chart-5: 221 83% 60%;
   
   /* Radius */
   --radius: 0.625rem;
   
   /* Sidebar */
-  --sidebar: 240 10% 6%;
-  --sidebar-foreground: 0 0% 98%;
-  --sidebar-primary: 142 70% 50%;
-  --sidebar-primary-foreground: 240 10% 4%;
-  --sidebar-accent: 240 4% 16%;
-  --sidebar-accent-foreground: 0 0% 98%;
-  --sidebar-border: 240 4% 16%;
-  --sidebar-ring: 142 70% 50%;
+  --sidebar: 220 35% 6%;
+  --sidebar-foreground: 210 20% 98%;
+  --sidebar-primary: 156 100% 42%;
+  --sidebar-primary-foreground: 220 40% 5%;
+  --sidebar-accent: 220 25% 13%;
+  --sidebar-accent-foreground: 156 80% 90%;
+  --sidebar-border: 220 20% 14%;
+  --sidebar-ring: 156 100% 42%;
 
-  --marketing-band-bg: 0 0% 0%;
+  --marketing-band-bg: 220 45% 3%;
   --marketing-band-fg: 0 0% 98%;
 
-  /* Refero / Supabase Extended Design Tokens in Dark Mode */
-  --color-phosphor-green: #3ecf8e;
-  --color-mint-pulse: #00c573;
-  --color-forest-depth: #1f4b37;
-  --color-midnight-emerald: #006239;
-  --color-snow: #fafafa;
-  --color-silver-mist: #b4b4b4;
-  --color-smoke: #898989;
-  --color-graphite: #4d4d4d;
-  --color-slate: #393939;
-  --color-charcoal: #2e2e2e;
-  --color-ash: #242424;
-  --color-obsidian: #121212;
-
-  --surface-obsidian-canvas: #121212;
-  --surface-ash-card: #242424;
-  --surface-charcoal-border: #2e2e2e;
+  /* Prisma Extended Tokens */
+  --color-prisma-emerald: #00c573;
+  --color-prisma-mint: #3ecf8e;
+  --color-prisma-cyan: #06b6d4;
+  --color-prisma-teal: #14b8a6;
+  --color-prisma-obsidian: #080c14;
+  --color-prisma-card: #0d131f;
+  --color-prisma-border: #1e293b;
 }
 
 

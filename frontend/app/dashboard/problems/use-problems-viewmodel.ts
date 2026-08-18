@@ -36,7 +36,15 @@ export function useProblemsViewModel() {
       const res = await fetch(`/api/problems?${params.toString()}`, { cache: 'no-store' })
       const json = (await res.json()) as { data?: ProblemSummary[]; error?: string }
       if (!res.ok) throw new Error(json.error || 'Failed to load problems')
-      setProblems(json.data || [])
+      const rawList = json.data || []
+      const seen = new Set<string>()
+      const deduped = rawList.filter((p) => {
+        const key = p.id || p.slug
+        if (!key || seen.has(key)) return false
+        seen.add(key)
+        return true
+      })
+      setProblems(deduped)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {

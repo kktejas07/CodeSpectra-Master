@@ -88,7 +88,7 @@ export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Billing', firstRoute: '/dashboard/admin/pricing' },
   { label: 'Hiring', firstRoute: '/dashboard/admin/jobs' },
   { label: 'AI Tools', firstRoute: '/dashboard/admin/rag' },
-  { label: 'Learning', firstRoute: '/dashboard/admin/course-generator' },
+  { label: 'Learning Admin', firstRoute: '/dashboard/admin/course-generator' },
   { label: 'Infrastructure', firstRoute: '/dashboard/admin/settings' },
   { label: 'Organization', firstRoute: '/dashboard/admin/team' },
 ]
@@ -102,6 +102,7 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
   { label: 'Stats', firstRoute: '/dashboard/leaderboard' },
   { label: 'Account', firstRoute: '/dashboard/profile' },
+  { label: 'Agent', firstRoute: '/dashboard/agent' },
   { label: 'Help', firstRoute: '/dashboard/support' },
 ]
 
@@ -131,9 +132,8 @@ export const JUDGE_ROUTES: string[] = [
  * Everything else under /dashboard/ defaults to 'user' unless specified above.
  */
 export const ALL_USER_ROUTES: string[] = [
-  // Dashboard & AI
+  // Dashboard & Overview (FIRST)
   '/dashboard',
-  '/dashboard/agent',
 
   // Practice & Coding
   '/dashboard/arena',
@@ -157,7 +157,7 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/interviews',
   '/dashboard/resumes',
   '/dashboard/assessments',
-'/dashboard/certifications',
+  '/dashboard/certifications',
 
   // Tools
   '/dashboard/scanner',
@@ -180,7 +180,10 @@ export const ALL_USER_ROUTES: string[] = [
   // Referrals
   '/dashboard/referrals',
 
-  // Misc
+  // Agent (LAST)
+  '/dashboard/agent',
+
+  // Misc / Help
   '/dashboard/support',
   '/dashboard/status',
 ]

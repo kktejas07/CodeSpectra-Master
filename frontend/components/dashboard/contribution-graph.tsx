@@ -4,6 +4,7 @@ import { useMemo, useState, useRef, useCallback } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { TrendingUp } from 'lucide-react'
+import { EmptyActivityIllustration } from '@/components/dashboard/dashboard-vectors'
 
 interface DayData {
   date: string
@@ -123,10 +124,13 @@ export function ContributionGraph({
       </div>
 
       {!hasData ? (
-        <div className="py-12 text-center">
-          <TrendingUp className="mx-auto h-8 w-8 text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">
-            No activity yet — run a code scan or solve a challenge to start tracking
+        <div className="py-6 text-center">
+          <EmptyActivityIllustration />
+          <p className="text-sm font-medium text-slate-300 mt-2">
+            No activity recorded yet
+          </p>
+          <p className="text-xs text-muted-foreground mt-1">
+            Run a code scan or solve your first challenge to generate telemetry
           </p>
         </div>
       ) : (
