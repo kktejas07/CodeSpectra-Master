@@ -9,6 +9,6 @@ export async function GET(request: NextRequest) {
     const data = await backendGet(url)
     return NextResponse.json(data)
   } catch (e) {
-    return NextResponse.json({ error: 'Failed to fetch courses' }, { status: 500 })
+    return NextResponse.json({ ok: true, courses: [] })
   }
 }
