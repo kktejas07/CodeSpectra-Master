@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FaceCamera } from "@/components/auth/face-camera";
@@ -22,11 +22,10 @@ function EnrollFaceInner() {
     ? new Date().getTime() - new Date(user.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000 
     : false;
 
-  const handleCapture = async (descriptor: Float32Array, imageBase64: string) => {
+  const handleCapture = useCallback(async (descriptor: Float32Array, imageBase64: string) => {
     setLoading(true);
     setError(null);
     try {
-      // Send descriptor to backend
       const res = await fetch("/api/auth/face-enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -40,14 +39,15 @@ function EnrollFaceInner() {
         throw new Error(data.error || "Failed to save biometric template.");
       }
 
-      // Proceed to dashboard on success
       router.push(redirectTo);
       router.refresh();
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
     }
-  };
+  }, [router, redirectTo]);
+
+  const handleError = useCallback((err: Error) => setError(err.message), []);
 
   const handleSkip = () => {
     router.push(redirectTo);
@@ -89,7 +89,7 @@ function EnrollFaceInner() {
           <FaceCamera 
             mode="enroll" 
             onCapture={handleCapture}
-            onError={(err) => setError(err.message)}
+            onError={handleError}
           />
         </div>
 

@@ -44,6 +44,8 @@ export function middleware(request: NextRequest) {
     '/api/kyc/didit/webhook',
     '/api/auth/login-method',
     '/api/security/track',
+    '/api/auth/face-enroll',
+    '/api/auth/face-verify',
   ]
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const rl = edgeRateLimit(`api:${edgeClientKey(request)}`, 240, 60_000)

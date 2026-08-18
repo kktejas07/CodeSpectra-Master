@@ -25,40 +25,25 @@ export function useRoleGate(opts: { require?: 'auth' | 'admin' | 'superadmin' } 
 
   useEffect(() => {
     let cancelled = false
-    let attempts = 0
-    let maxAttempts = 30 // ~60 seconds total
 
-    const trySession = () => {
+    const trySession = async () => {
       if (cancelled) return
-      fetch('/api/auth/session', { credentials: 'include' })
-        .then(r => r.ok ? r.json() : null)
-        .then(data => {
-          if (cancelled) return
+      try {
+        const r = await fetch('/api/auth/session', { credentials: 'include' })
+        if (cancelled) return
+        if (r.ok) {
+          const data = await r.json()
           if (data?.user) {
             setUserRole((data.user.role || 'user') as UserRole)
             setReady(true)
             return
           }
-          // Retry with backoff
-          attempts++
-          if (attempts < maxAttempts) {
-            setTimeout(trySession, Math.min(2000 + attempts * 500, 10000))
-          } else {
-            // After ~60s, give up silently — user sees "Loading..." but stays on page
-            setReady(true)
-            setUserRole('user')
-          }
-        })
-        .catch(() => {
-          if (cancelled) return
-          attempts++
-          if (attempts < maxAttempts) {
-            setTimeout(trySession, 3000)
-          } else {
-            setReady(true)
-            setUserRole('user')
-          }
-        })
+        }
+      } catch {}
+      if (!cancelled) {
+        setReady(true)
+        setUserRole('user')
+      }
     }
 
     trySession()
