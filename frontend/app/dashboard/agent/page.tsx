@@ -16,6 +16,34 @@ const DiffEditor = dynamic(() => import('@monaco-editor/react').then(m => m.Diff
 
 const STEP_OPTIONS = [1, 2, 3, 4, 5]
 
+interface AgentStep {
+  step: number
+  thought: string
+  summary: string
+}
+
+interface AgentRunResult {
+  final_code: string
+  steps: AgentStep[]
+  summary: string
+}
+
+interface AgentTurn {
+  id: string
+  role: 'user' | 'agent'
+  content: string
+  steps?: AgentStep[]
+}
+
+const LANGS = ['python', 'javascript', 'typescript', 'cpp', 'java', 'go'] as const
+
+const STARTER_CODE = `# Type your code or paste a snippet, then ask the agent to refactor, fix bugs, or add tests.
+def fib(n):
+    if n < 2:
+        return n
+    return fib(n - 1) + fib(n - 2)
+`
+
 const SUGGESTED_PROMPTS = [
   'Refactor for O(n) memoization',
   'Add input validation & docstrings',
