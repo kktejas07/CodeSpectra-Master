@@ -195,7 +195,7 @@ function CodeathonFormFields({
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
+        <div className="grid grid-cols-1 gap-3">
           <div className="space-y-1.5">
             <Label className="text-xs font-semibold text-foreground">Start Date & Time</Label>
             <Input
