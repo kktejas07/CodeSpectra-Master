@@ -40,7 +40,7 @@ export async function signSessionToken(payload: SessionPayload): Promise<string>
     try {
       const db = await getMongoDb()
       const user = await db.collection('user').findOne(
-        { id: payload.uid },
+        { $or: [{ id: payload.uid }, { _id: payload.uid as any }] },
         { projection: { session_version: 1 } },
       )
       ver = (user?.session_version as number) ?? 1
@@ -64,7 +64,7 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
     try {
       const db = await getMongoDb()
       const user = await db.collection('user').findOne(
-        { id: data.uid },
+        { $or: [{ id: data.uid }, { _id: data.uid as any }] },
         { projection: { session_version: 1 } },
       )
       const currentVer = (user?.session_version as number) ?? 1

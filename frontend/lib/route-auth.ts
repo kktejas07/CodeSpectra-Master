@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { getAdminAuthInstance } from './firebase-admin'
 import { bootSchedulerOnce } from './boot-scheduler'
 import { normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
-import { users as getUsersCollection } from '@/lib/db/admin'
+import { users as getUsersCollection, getUserById } from '@/lib/db/admin'
 import { verifySessionToken, type SessionPayload } from '@/lib/session'
 import { checkResourcePermission } from '@/lib/permissions-db'
 import { isFeatureEnabled, isPageAllowed } from '@/lib/plans-client'
@@ -52,20 +52,20 @@ export function invalidatePermissionCache() { _permCache = null; _permCacheAt = 
 
 async function lookupRole(uid: string): Promise<UserRole> {
   try {
-    const userCol = await getUsersCollection()
-    const profile = await userCol.findOne({ id: uid })
+    const profile = await getUserById(uid)
     if (profile?.role) return normalizeUserRole(profile.role as string)
   } catch { /* fall through */ }
   return 'user'
 }
 
-async function getUserProfile(uid: string): Promise<{ role: UserRole; lastLoginMethod?: string | null; lastLoginAt?: Date | null; tenantId?: string | null }> {
+async function getUserProfile(uid: string): Promise<{ role: UserRole; name?: string; fullName?: string; lastLoginMethod?: string | null; lastLoginAt?: Date | null; tenantId?: string | null }> {
   try {
-    const userCol = await getUsersCollection()
-    const profile = await userCol.findOne({ id: uid })
+    const profile = await getUserById(uid)
     if (profile) {
       return {
         role: profile.role ? normalizeUserRole(profile.role as string) : 'user',
+        name: profile.fullName || profile.name || undefined,
+        fullName: profile.fullName || profile.name || undefined,
         lastLoginMethod: profile.lastLoginMethod ?? null,
         lastLoginAt: profile.lastLoginAt ?? null,
         tenantId: (profile.tenantId as string | null) ?? (profile.organizationId as string | null) ?? null,
@@ -92,14 +92,23 @@ export async function getAPIUser(): Promise<APIUser | null> {
           const decoded = await adminAuth.verifySessionCookie(sessionCookie, true)
           if (decoded) {
             const profile = await getUserProfile(decoded.uid)
-            return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? undefined, fullName: decoded.name ?? undefined, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
+            return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? profile.name, fullName: decoded.name ?? profile.fullName, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
           }
         } catch { /* fallback */ }
       }
       const payload = await verifySessionToken(sessionCookie)
       if (payload) {
         const profile = await getUserProfile(payload.uid)
-        return { id: payload.uid, email: payload.email, role: profile.role, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
+        return {
+          id: payload.uid,
+          email: payload.email,
+          role: profile.role !== 'user' ? profile.role : normalizeUserRole(payload.role),
+          name: profile.fullName || profile.name,
+          fullName: profile.fullName || profile.name,
+          lastLoginMethod: profile.lastLoginMethod,
+          lastLoginAt: profile.lastLoginAt,
+          tenantId: profile.tenantId,
+        }
       }
     }
 

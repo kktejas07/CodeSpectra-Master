@@ -116,7 +116,7 @@ export async function POST(request: Request) {
     }
 
     await setSessionCookie({ uid, email: user.email, role })
-    await updateUserLastLogin(uid, 'email')
+    await updateUserLastLogin(uid, 'email').catch((e) => console.error('[Login] updateUserLastLogin failed:', e))
 
     await writeAuditLog({ action: 'auth.login', outcome: 'success', actor: normalizedEmail, actorIp, resource: 'user/' + uid, resourceType: 'auth', severity: 'info', user_id: uid }).catch(() => {})
     notify({ user_id: uid, type: 'auth.login', title: 'New sign-in', message: `Signed in as ${user.email}`, icon: 'log-in' }).catch(() => {})
