@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { cookies } from 'next/headers'
-import { users as getUsersCollection } from '@/lib/db/admin'
+import { users as getUsersCollection, getUserById, updateUserById } from '@/lib/db/admin'
 import { verifySessionToken, setSessionCookie } from '@/lib/session'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { createUserSession, updateSessionHeartbeat } from '@/lib/db/sessions'
@@ -14,7 +14,7 @@ const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7 * 1000
 async function ensureUserProfile(uid: string, email: string, displayName?: string, loginMethod?: string) {
   try {
     const userCol = await getUsersCollection()
-    const existing = await userCol.findOne({ id: uid })
+    const existing = await getUserById(uid)
     const updateFields: Record<string, unknown> = { updatedAt: new Date() }
     if (loginMethod) {
       updateFields.lastLoginMethod = loginMethod
@@ -23,6 +23,7 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
     if (!existing) {
       await userCol.insertOne({
         _id: uid,
+        id: uid,
         email,
         name: displayName || email?.split('@')[0] || 'User',
         fullName: displayName || email?.split('@')[0] || 'User',
@@ -33,7 +34,7 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
         ...(loginMethod ? { lastLoginMethod: loginMethod, lastLoginAt: new Date() } : {}),
       } as any)
     } else {
-      await userCol.updateOne({ id: uid }, { $set: updateFields })
+      await updateUserById(uid, updateFields as any)
     }
   } catch (e) {
     console.error('[Session] Profile sync error:', e)
@@ -157,9 +158,8 @@ export async function GET() {
     try {
       const decoded = await auth.verifySessionCookie(sessionCookie, true)
       if (decoded) {
-        const userCol = await getUsersCollection()
-        const profile = await userCol.findOne({ id: decoded.uid })
-        userCol.updateOne({ id: decoded.uid }, { $set: { updatedAt: new Date() } }).catch(() => {})
+        const profile = await getUserById(decoded.uid)
+        updateUserById(decoded.uid, { updatedAt: new Date() } as any).catch(() => {})
         return NextResponse.json({
           user: {
             uid: decoded.uid,
@@ -182,14 +182,13 @@ export async function GET() {
   // Fallback: verify as JWT (DB auth session)
   const payload = await verifySessionToken(sessionCookie)
   if (payload) {
-    const userCol = await getUsersCollection()
-    const profile = await userCol.findOne({ id: payload.uid })
-    userCol.updateOne({ id: payload.uid }, { $set: { updatedAt: new Date() } }).catch(() => {})
+    const profile = await getUserById(payload.uid)
+    updateUserById(payload.uid, { updatedAt: new Date() } as any).catch(() => {})
     return NextResponse.json({
       user: {
         uid: payload.uid,
         email: payload.email,
-        role: payload.role,
+        role: profile?.role || payload.role,
         plan: profile?.plan || 'free',
         fullName: profile?.fullName || profile?.name || null,
         lastLoginMethod: profile?.lastLoginMethod || null,
