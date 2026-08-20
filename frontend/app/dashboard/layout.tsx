@@ -94,6 +94,7 @@ import {
   BrainCircuit,
   ShieldAlert,
   ShieldCheck,
+  Gavel,
   Workflow,
   Wand2,
   FileBarChart,
@@ -373,6 +374,7 @@ export default function DashboardLayout({
 
       // Events
       '/dashboard/events': CalendarDays,
+      '/dashboard/judge': Gavel,
       '/dashboard/codeathons': Terminal,
       '/dashboard/hackathons': Trophy,
 
@@ -409,7 +411,6 @@ export default function DashboardLayout({
       // Support & Misc
       '/dashboard/support': LifeBuoy,
       '/dashboard/status': Activity,
-      '/dashboard/judge': ShieldCheck,
 
       // Admin & Platform
       [p.system]: Server,
@@ -575,6 +576,7 @@ export default function DashboardLayout({
   const isScannerShell = pathname.startsWith('/dashboard/scanner')
   const isLearningShell = pathname.startsWith('/dashboard/learning')
   const isPlatformSettingsShell = pathname.startsWith('/dashboard/admin/settings')
+  const isLessonPlayer = pathname.includes('/lesson/')
 
   const isActive = (href: string | undefined) => {
     if (!href) return false
@@ -739,6 +741,7 @@ export default function DashboardLayout({
       )}
 
       {/* Sidebar */}
+      {!isLessonPlayer && (
       <aside
         className={cn(
           'fixed left-0 top-0 z-40 h-screen w-64 border-r border-border/40 bg-card/95 backdrop-blur-md overflow-hidden transition-[width,transform] duration-200',
@@ -1039,12 +1042,13 @@ export default function DashboardLayout({
           </div>
         </div>
       </aside>
+      )}
 
       {/* Main Content */}
       <div
         className={cn(
           'transition-[margin] duration-200',
-          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+          !isLessonPlayer && (sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64')
         )}
       >
         {/* Impersonation notice — superadmin acting as another user */}
@@ -1067,6 +1071,7 @@ export default function DashboardLayout({
         )}
 
         {/* Breadcrumbs + mobile menu (no top profile — account lives in sidebar footer) */}
+        {!isLessonPlayer && (
         <div className="sticky top-0 z-20 flex h-12 items-center justify-between gap-3 border-b border-border/20 bg-background/80 px-4 backdrop-blur-xl lg:px-6">
           <Breadcrumbs homeHref={homeHref} className="min-w-0" />
           <button
@@ -1078,9 +1083,10 @@ export default function DashboardLayout({
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
+        )}
 
         {/* Page Content — full width with proper padding */}
-        <main className="px-4 py-5 lg:px-6 lg:py-8">
+        <main className={cn("w-full", isLessonPlayer ? "p-0" : "px-4 py-5 lg:px-6 lg:py-8")}>
           <div className="w-full">
             {currentPageLocked ? (
               <PageLocked routeName={lockedPageLabel || undefined} />
