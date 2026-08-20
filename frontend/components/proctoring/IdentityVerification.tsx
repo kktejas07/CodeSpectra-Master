@@ -4,6 +4,7 @@ import { useRef, useState, useEffect } from 'react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { FaceCamera } from '@/components/auth/face-camera'
 import { X, ShieldAlert, ArrowRight, FileText, AlertCircle, RefreshCw, Camera, User, Check, Loader2 } from "lucide-react"
 
@@ -116,7 +117,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
       setIsIdVerifying(true)
       setIdError(null)
       try {
-        const res = await fetch('/api/assessment/id-ocr', {
+        const res = await csrfFetch('/api/assessment/id-ocr', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ imageBase64: idPhoto })
@@ -148,7 +149,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
     if (idPhoto && facePhoto && faceDescriptor) {
       setIsVerifying(true)
       try {
-        const res = await fetch('/api/assessment/face-verify', {
+        const res = await csrfFetch('/api/assessment/face-verify', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ descriptor: Array.from(faceDescriptor), examId: examTitle })
