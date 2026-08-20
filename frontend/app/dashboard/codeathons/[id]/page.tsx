@@ -11,7 +11,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, Di
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Trophy, Users, Clock, HelpCircle, Calendar, Target, BookOpen, ChevronRight,
-  Plus, UserMinus, UserPlus, Mail, CheckCircle2, XCircle, Shield, Copy
+  Plus, UserMinus, UserPlus, Mail, CheckCircle2, XCircle, Shield, Copy, Share2, Check
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -284,9 +284,19 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
     } catch { /* ignore */ }
   }
 
+  const [copied, setCopied] = useState(false)
   const isTeamMode = codeathon?.event_type === 'team'
   const isContestActive = codeathon?.status === 'active' || (codeathon?.startDate && new Date(codeathon.startDate) <= new Date())
-  const problemsVisible = codeathon?.problem_visibility === 'immediate' || isContestActive
+  const isAdmin = (gate as any)?.user?.role === 'superadmin' || (gate as any)?.user?.role === 'tenant_admin' || (gate as any)?.user?.role === 'admin'
+  const problemsVisible = isAdmin || codeathon?.problem_visibility === 'immediate' || isContestActive
+
+  const copyEventLink = () => {
+    const origin = typeof window !== 'undefined' ? window.location.origin : ''
+    navigator.clipboard.writeText(`${origin}/dashboard/codeathons/${id}`)
+    setCopied(true)
+    addToast({ type: 'success', title: 'Event link copied to clipboard!' })
+    setTimeout(() => setCopied(false), 2500)
+  }
 
   if (loading) return (
     <div className="flex flex-col items-center justify-center py-20 gap-3">
@@ -300,26 +310,38 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex items-center gap-3">
-        <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/codeathons')}>
-          <ChevronRight className="h-4 w-4 rotate-180" />
-        </Button>
-        <div className="flex-1">
-          <div className="flex items-center gap-2">
-            <h1 className="text-2xl font-bold">{codeathon.title}</h1>
-            <Badge variant="outline" className={
-              codeathon.status === 'active' ? 'border-green-400 text-green-600' :
-              codeathon.status === 'upcoming' ? 'border-blue-400 text-blue-600' :
-              'border-gray-400 text-gray-600'
-            }>
-              {codeathon.status}
-            </Badge>
-            <Badge variant="outline">{isTeamMode ? 'Team Event' : 'Individual'}</Badge>
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/codeathons')}>
+            <ChevronRight className="h-4 w-4 rotate-180" />
+          </Button>
+          <div>
+            <div className="flex items-center gap-2">
+              <h1 className="text-2xl font-bold">{codeathon.title}</h1>
+              <Badge variant="outline" className={
+                codeathon.status === 'active' ? 'border-green-400 text-green-600' :
+                codeathon.status === 'upcoming' ? 'border-blue-400 text-blue-600' :
+                'border-gray-400 text-gray-600'
+              }>
+                {codeathon.status}
+              </Badge>
+              <Badge variant="outline">{isTeamMode ? 'Team Event' : 'Individual'}</Badge>
+            </div>
+            {codeathon.description && (
+              <p className="text-sm text-muted-foreground mt-1">{codeathon.description}</p>
+            )}
           </div>
-          {codeathon.description && (
-            <p className="text-sm text-muted-foreground mt-1">{codeathon.description}</p>
-          )}
         </div>
+
+        <Button
+          variant="outline"
+          size="sm"
+          onClick={copyEventLink}
+          className="gap-1.5 self-start sm:self-auto border-emerald-500/30 hover:bg-emerald-500/10 hover:text-emerald-400 text-xs font-semibold"
+        >
+          {copied ? <Check className="h-3.5 w-3.5 text-emerald-400" /> : <Share2 className="h-3.5 w-3.5" />}
+          {copied ? 'Link Copied!' : 'Share Event'}
+        </Button>
       </div>
 
       {/* Invitations Banner */}

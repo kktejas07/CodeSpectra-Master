@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAdminAuthInstance } from '@/lib/firebase-admin'
 import { cookies } from 'next/headers'
-import { users as getUsersCollection } from '@/lib/db/admin'
+import { users as getUsersCollection, getUserById, updateUserById } from '@/lib/db/admin'
 import { verifySessionToken, setSessionCookie } from '@/lib/session'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { createUserSession, updateSessionHeartbeat } from '@/lib/db/sessions'
@@ -24,6 +24,7 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
     if (!existing) {
       await userCol.insertOne({
         _id: uid,
+        id: uid,
         email,
         name: displayName || email?.split('@')[0] || 'User',
         fullName: displayName || email?.split('@')[0] || 'User',
@@ -34,7 +35,7 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
         ...(loginMethod ? { lastLoginMethod: loginMethod, lastLoginAt: new Date() } : {}),
       } as any)
     } else {
-      await userCol.updateOne({ _id: existing._id }, { $set: updateFields })
+      await updateUserById(uid, updateFields as any)
     }
   } catch (e) {
     console.error('[Session] Profile sync error:', e)
@@ -158,11 +159,8 @@ export async function GET() {
     try {
       const decoded = await auth.verifySessionCookie(sessionCookie, true)
       if (decoded) {
-        const userCol = await getUsersCollection()
         const profile = await getUserById(decoded.uid)
-        if (profile) {
-          userCol.updateOne({ _id: profile._id }, { $set: { updatedAt: new Date() } }).catch(() => {})
-        }
+        updateUserById(decoded.uid, { updatedAt: new Date() } as any).catch(() => {})
         return NextResponse.json({
           user: {
             uid: decoded.uid,
@@ -186,16 +184,13 @@ export async function GET() {
   // Fallback: verify as JWT (DB auth session)
   const payload = await verifySessionToken(sessionCookie)
   if (payload) {
-    const userCol = await getUsersCollection()
     const profile = await getUserById(payload.uid)
-    if (profile) {
-      userCol.updateOne({ _id: profile._id }, { $set: { updatedAt: new Date() } }).catch(() => {})
-    }
+    updateUserById(payload.uid, { updatedAt: new Date() } as any).catch(() => {})
     return NextResponse.json({
       user: {
         uid: payload.uid,
         email: payload.email,
-        role: payload.role,
+        role: profile?.role || payload.role,
         plan: profile?.plan || 'free',
         fullName: profile?.fullName || profile?.name || null,
         lastLoginMethod: profile?.lastLoginMethod || null,

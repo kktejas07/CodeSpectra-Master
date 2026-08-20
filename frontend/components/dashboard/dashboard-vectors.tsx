@@ -1,137 +1,58 @@
 'use client'
 
 import React from 'react'
-import { Sparkles, Zap, Shield, Flame, Terminal, Code2, ArrowUpRight } from 'lucide-react'
+import { Sparkles, Zap, Shield, Flame, Terminal, Code2, ScanLine, Wrench, BarChart2, Activity, Clock } from 'lucide-react'
 
-// 1. Isometric Scan Vector Icon for Stat Card
+// 1. Elite Code Scan Icon Badge for Stat Card
 export function IsometricScanChip() {
   return (
-    <div className="relative w-12 h-12 flex items-center justify-center">
-      <svg className="w-12 h-12" viewBox="0 0 48 48" fill="none">
-        {/* Isometric base diamond */}
-        <path
-          d="M24 6L42 16.5V31.5L24 42L6 31.5V16.5L24 6Z"
-          fill="#061f16"
-          stroke="#00c573"
-          strokeWidth="1.5"
-        />
-        {/* Top facet */}
-        <path
-          d="M24 6L42 16.5L24 27L6 16.5L24 6Z"
-          fill="#0a3224"
-          stroke="#3ecf8e"
-          strokeWidth="1"
-          opacity="0.8"
-        />
-        {/* Center scanner laser line */}
-        <line x1="12" y1="20" x2="36" y2="20" stroke="#00c573" strokeWidth="1.5" strokeLinecap="round" />
-        {/* Pulse radar wave */}
-        <path d="M18 24L22 28L26 22L30 26" stroke="#06b6d4" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
-      </svg>
-      {/* Outer ambient glow */}
-      <div className="absolute inset-0 rounded-full bg-[#00c573]/20 blur-md pointer-events-none -z-10" />
+    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 shadow-sm shadow-emerald-950/30 group-hover:scale-105 group-hover:bg-emerald-500/15 group-hover:border-emerald-500/40 transition-all duration-300">
+      <ScanLine className="h-5 w-5 text-emerald-400" />
+      <div className="absolute inset-0 rounded-xl bg-emerald-500/10 blur-sm pointer-events-none -z-10" />
     </div>
   )
 }
 
-// 2. Isometric Problem Cube Vector Icon
+// 2. Elite Challenges Icon Badge for Stat Card
 export function IsometricProblemCube() {
   return (
-    <div className="relative w-12 h-12 flex items-center justify-center">
-      <svg className="w-12 h-12" viewBox="0 0 48 48" fill="none">
-        {/* Isometric Cube */}
-        <path d="M24 7L40 16.5L24 26L8 16.5L24 7Z" fill="#0d281e" stroke="#10b981" strokeWidth="1.5" />
-        <path d="M8 16.5L24 26V41L8 31.5V16.5Z" fill="#061912" stroke="#10b981" strokeWidth="1.5" />
-        <path d="M40 16.5L24 26V41L40 31.5V16.5Z" fill="#092218" stroke="#10b981" strokeWidth="1.5" />
-        {/* Inner Code Braces */}
-        <text x="24" y="24" textAnchor="middle" fontSize="11" fontFamily="monospace" fontWeight="bold" fill="#34d399">
-          &lt;/&gt;
-        </text>
-      </svg>
-      <div className="absolute inset-0 rounded-full bg-emerald-500/20 blur-md pointer-events-none -z-10" />
+    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-emerald-500/10 border border-emerald-500/25 text-emerald-400 shadow-sm shadow-emerald-950/30 group-hover:scale-105 group-hover:bg-emerald-500/15 group-hover:border-emerald-500/40 transition-all duration-300">
+      <Code2 className="h-5 w-5 text-emerald-400" />
+      <div className="absolute inset-0 rounded-xl bg-emerald-500/10 blur-sm pointer-events-none -z-10" />
     </div>
   )
 }
 
-// 3. Isometric Fix Engine Vector Icon
+// 3. Elite Fixes Applied Icon Badge for Stat Card
 export function IsometricFixEngine() {
   return (
-    <div className="relative w-12 h-12 flex items-center justify-center">
-      <svg className="w-12 h-12" viewBox="0 0 48 48" fill="none">
-        {/* Isometric Hex Chip */}
-        <path d="M24 6L42 16.5V31.5L24 42L6 31.5V16.5L24 6Z" fill="#082126" stroke="#06b6d4" strokeWidth="1.5" />
-        {/* Circuit Traces */}
-        <path d="M12 18L18 21V28L24 31" stroke="#22d3ee" strokeWidth="1.2" strokeLinecap="round" />
-        <path d="M36 18L30 21V28L24 31" stroke="#22d3ee" strokeWidth="1.2" strokeLinecap="round" />
-        {/* Center Spark Core */}
-        <circle cx="24" cy="21" r="4" fill="#06b6d4" />
-        <circle cx="24" cy="21" r="2" fill="#ffffff" />
-      </svg>
-      <div className="absolute inset-0 rounded-full bg-cyan-500/20 blur-md pointer-events-none -z-10" />
+    <div className="relative flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-cyan-500/10 border border-cyan-500/25 text-cyan-400 shadow-sm shadow-cyan-950/30 group-hover:scale-105 group-hover:bg-cyan-500/15 group-hover:border-cyan-500/40 transition-all duration-300">
+      <Sparkles className="h-5 w-5 text-cyan-400" />
+      <div className="absolute inset-0 rounded-xl bg-cyan-500/10 blur-sm pointer-events-none -z-10" />
     </div>
   )
 }
 
-// 4. Empty State Illustration: Holographic Workstation
+// 4. Empty State Illustration: Clean Elite Activity Badge
 export function EmptyActivityIllustration() {
   return (
-    <div className="relative py-6 flex flex-col items-center justify-center select-none">
-      <svg className="w-48 h-32" viewBox="0 0 240 140" fill="none">
-        {/* Isometric Grid Floor */}
-        <path d="M120 10L230 70L120 130L10 70L120 10Z" fill="#080e1a" stroke="#1e293b" strokeWidth="1" />
-        <line x1="65" y1="40" x2="175" y2="100" stroke="#1e293b" strokeWidth="0.8" strokeDasharray="3 3" />
-        <line x1="175" y1="40" x2="65" y2="100" stroke="#1e293b" strokeWidth="0.8" strokeDasharray="3 3" />
-
-        {/* Floating Center Hologram Terminal */}
-        <g transform="translate(70, 30)">
-          {/* Back Glow */}
-          <rect x="0" y="0" width="100" height="60" rx="8" fill="#061d15" stroke="#00c573" strokeWidth="1.5" />
-          <rect x="6" y="6" width="88" height="48" rx="4" fill="#040d0a" />
-
-          {/* Terminal Window Dots */}
-          <circle cx="14" cy="14" r="2" fill="#ef4444" />
-          <circle cx="21" cy="14" r="2" fill="#eab308" />
-          <circle cx="28" cy="14" r="2" fill="#00c573" />
-
-          {/* Code Lines */}
-          <line x1="14" y1="24" x2="50" y2="24" stroke="#00c573" strokeWidth="2" strokeLinecap="round" />
-          <line x1="14" y1="32" x2="75" y2="32" stroke="#3ecf8e" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
-          <line x1="14" y1="40" x2="60" y2="40" stroke="#06b6d4" strokeWidth="1.5" strokeLinecap="round" opacity="0.8" />
-          <line x1="14" y1="47" x2="35" y2="47" stroke="#94a3b8" strokeWidth="1.5" strokeLinecap="round" opacity="0.6" />
-        </g>
-
-        {/* Upward Light Beam */}
-        <polygon points="120,30 80,95 160,95" fill="url(#hologramGrad)" opacity="0.3" />
-
-        {/* Gradients */}
-        <defs>
-          <linearGradient id="hologramGrad" x1="120" y1="30" x2="120" y2="95" gradientUnits="userSpaceOnUse">
-            <stop stopColor="#00c573" stopOpacity="0.8" />
-            <stop offset="1" stopColor="#00c573" stopOpacity="0" />
-          </linearGradient>
-        </defs>
-      </svg>
+    <div className="relative py-4 flex flex-col items-center justify-center select-none">
+      <div className="relative flex h-14 w-14 items-center justify-center rounded-2xl bg-card border border-border/80 shadow-inner">
+        <Activity className="h-6 w-6 text-emerald-400/70" />
+        <div className="absolute -inset-1 rounded-2xl border border-emerald-500/20 opacity-50" />
+      </div>
     </div>
   )
 }
 
-// 5. Empty State Illustration: Timeline Node
+// 5. Empty State Illustration: Clean Elite Timeline Badge
 export function EmptyTimelineIllustration() {
   return (
-    <div className="relative py-4 flex flex-col items-center justify-center select-none">
-      <svg className="w-32 h-24" viewBox="0 0 160 100" fill="none">
-        {/* Timeline Path */}
-        <path d="M30 50 Q 80 15, 130 50" stroke="#1e293b" strokeWidth="2" strokeDasharray="4 4" />
-        
-        {/* Nodes */}
-        <circle cx="30" cy="50" r="6" fill="#0f172a" stroke="#334155" strokeWidth="2" />
-        <circle cx="80" cy="32" r="9" fill="#062016" stroke="#00c573" strokeWidth="2" />
-        <circle cx="80" cy="32" r="3" fill="#3ecf8e" />
-        <circle cx="130" cy="50" r="6" fill="#0f172a" stroke="#334155" strokeWidth="2" />
-
-        {/* Sparkles */}
-        <path d="M80 12L82 17L87 19L82 21L80 26L78 21L73 19L78 17Z" fill="#06b6d4" />
-      </svg>
+    <div className="relative py-3 flex flex-col items-center justify-center select-none">
+      <div className="relative flex h-12 w-12 items-center justify-center rounded-2xl bg-card border border-border/80 shadow-inner">
+        <Clock className="h-5 w-5 text-muted-foreground/70" />
+        <div className="absolute -inset-1 rounded-2xl border border-border/40 opacity-40" />
+      </div>
     </div>
   )
 }
