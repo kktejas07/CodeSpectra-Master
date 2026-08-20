@@ -35,6 +35,7 @@ interface Exam {
   branch?: string
   screening_type?: string
   tenant_id?: string | null
+  createdAt?: string
 }
 
 interface Tenant {
@@ -81,6 +82,41 @@ export default function AdminExamsPage() {
   const [branch, setBranch] = useState('')
   const [screeningType, setScreeningType] = useState('mixed')
   const [saving, setSaving] = useState(false)
+
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [datePreset, setDatePreset] = useState<'all' | '7d' | '30d' | '90d' | 'year'>('all')
+
+  const applyDatePreset = (preset: 'all' | '7d' | '30d' | '90d' | 'year'): { from: string; to: string } => {
+    if (preset === 'all') return { from: '', to: '' }
+    const to = new Date().toISOString().split('T')[0]
+    const days = preset === '7d' ? 7 : preset === '30d' ? 30 : preset === '90d' ? 90 : 0
+    const from = days === 0 ? `${new Date().getFullYear()}-01-01` : new Date(Date.now() - days * 86400000).toISOString().split('T')[0]
+    return { from, to }
+  }
+
+  const handleDatePreset = (preset: 'all' | '7d' | '30d' | '90d' | 'year') => {
+    const { from, to } = applyDatePreset(preset)
+    setDatePreset(preset)
+    setDateFrom(from)
+    setDateTo(to)
+  }
+
+  const clearDateFilter = () => {
+    setDateFrom('')
+    setDateTo('')
+    setDatePreset('all')
+  }
+
+  const filterByDate = (item: Exam): boolean => {
+    if (!dateFrom && !dateTo) return true
+    const created = item.createdAt ? new Date(item.createdAt).getTime() : NaN
+    if (dateFrom && !(created >= new Date(dateFrom).getTime())) return false
+    if (dateTo && !(created <= new Date(dateTo + 'T23:59:59').getTime())) return false
+    return true
+  }
+
+  const visibleExams = exams.filter(filterByDate)
 
   const fetchExams = async () => {
     setLoading(true)
@@ -347,12 +383,31 @@ export default function AdminExamsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Assessment Management</h1>
-            <p className="text-muted-foreground text-sm">{exams.length} assessments</p>
+            <p className="text-muted-foreground text-sm">{visibleExams.length} assessments</p>
           </div>
         </div>
         <Button className="gap-2" onClick={openAddModal}>
           <Plus className="w-4 h-4" />Add Assessment
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3">
+        <span className="text-sm font-medium text-muted-foreground">Created:</span>
+        <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
+        <span className="text-muted-foreground">to</span>
+        <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
+        <div className="flex items-center gap-1">
+          {([['7d', '7D'], ['30d', '30D'], ['90d', '90D'], ['year', 'Year']] as const).map(([val, label]) => (
+            <Button key={val} size="sm" variant={datePreset === val ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => handleDatePreset(val)}>
+              {label}
+            </Button>
+          ))}
+        </div>
+        {(dateFrom || dateTo) && (
+          <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={clearDateFilter}>
+            Clear
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -362,7 +417,7 @@ export default function AdminExamsPage() {
       ) : (
         <DataTable
           columns={columns}
-          data={exams}
+          data={visibleExams}
           searchPlaceholder="Search assessments..."
           searchKeys={['title', 'subject', 'level', 'tenant_id']}
           bulkActions={bulkActions}

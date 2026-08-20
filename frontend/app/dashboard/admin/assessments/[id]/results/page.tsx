@@ -35,6 +35,7 @@ interface CandidateResult {
   score: number | null
   maxScore: number | null
   submittedAt: string | null
+  invitedAt: string | null
   proctoringFlags: number
   idPhoto?: string | null
   facePhoto?: string | null
@@ -265,6 +266,7 @@ export default function ExamResultsPage() {
   const [showProctorLog, setShowProctorLog] = useState(true)
   const [showRawProctorMeta, setShowRawProctorMeta] = useState(false)
   const [proctorFilter, setProctorFilter] = useState<'all' | 'high' | 'warn' | 'info'>('all')
+  const [resultFilter, setResultFilter] = useState<'all' | 'completed' | 'in_progress' | 'pending' | 'ungraded' | 'flagged'>('all')
   const [exportingReport, setExportingReport] = useState(false)
   const [showReleaseAllConfirm, setShowReleaseAllConfirm] = useState(false)
 
@@ -891,6 +893,18 @@ export default function ExamResultsPage() {
       ),
     },
     {
+      key: 'invitedAt',
+      header: 'Invited',
+      cell: (row: CandidateResult) => (
+        row.invitedAt ? (
+          <div>
+            <div className="text-sm">{new Date(row.invitedAt).toLocaleDateString()}</div>
+            <div className="text-xs text-muted-foreground">{new Date(row.invitedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+        ) : <span className="text-xs text-muted-foreground">--</span>
+      ),
+    },
+    {
       key: 'source',
       header: 'Source',
       cell: (row: CandidateResult) => (
@@ -1048,6 +1062,21 @@ export default function ExamResultsPage() {
   const unreleasedCount = results.filter(r => r.status === 'completed' && !r.released).length
   const pendingGradingCount = results.filter(r => r.status === 'completed' && r.graded === false).length
 
+  const inProgressCount = results.filter(r => r.status === 'in_progress').length
+  const pendingCount = results.filter(r => r.status === 'pending').length
+  const flaggedCount = results.filter(r => r.proctoringFlags > 0).length
+
+  const filteredResults = results.filter(r => {
+    switch (resultFilter) {
+      case 'completed': return r.status === 'completed'
+      case 'in_progress': return r.status === 'in_progress'
+      case 'pending': return r.status === 'pending'
+      case 'ungraded': return r.status === 'completed' && r.graded === false
+      case 'flagged': return r.proctoringFlags > 0
+      default: return true
+    }
+  })
+
   return (
     <div className="space-y-6 pb-12">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1120,9 +1149,37 @@ export default function ExamResultsPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {([
+          ['all', 'All Invited', results.length, 'text-foreground', ''],
+          ['pending', 'Invited', pendingCount, 'text-muted-foreground', ''],
+          ['in_progress', 'In Progress', inProgressCount, 'text-blue-600 dark:text-blue-400', ''],
+          ['completed', 'Submitted', completedCount, 'text-emerald-600 dark:text-emerald-400', ''],
+          ['ungraded', 'Awaiting Grading', pendingGradingCount, 'text-amber-600 dark:text-amber-400', ''],
+          ['flagged', 'Flagged Review', flaggedCount, 'text-red-600 dark:text-red-400', ''],
+        ] as const).map(([key, label, count, color, _]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setResultFilter(key)}
+            className={`rounded-lg border p-3 text-left transition-colors ${resultFilter === key ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border bg-card hover:bg-muted/50'} ${count === 0 ? 'opacity-60' : ''}`}
+          >
+            <div className={`text-2xl font-bold ${color}`}>{count}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+          </button>
+        ))}
+      </div>
+
+      {resultFilter !== 'all' && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Showing {filteredResults.length} of {results.length} candidates.</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setResultFilter('all')}>Show all</Button>
+        </div>
+      )}
+
       <div className="bg-card border rounded-lg p-1">
         <DataTable 
-          data={results} 
+          data={filteredResults} 
           columns={columns} 
           searchKeys={['name', 'email']}
           searchPlaceholder="Search candidates..."
