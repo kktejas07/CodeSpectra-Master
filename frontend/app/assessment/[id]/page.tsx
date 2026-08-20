@@ -573,24 +573,15 @@ interface RunResult {
             </span>
           </label>
 
-          {user?.has_enrolled_face === false ? (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-lg flex flex-col items-center gap-3 text-sm">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              <p className="text-center">
-                <strong>Biometric Enrollment Required</strong><br />
-                You must enroll your face biometrics before taking this assessment.
-              </p>
-              <Button asChild variant="destructive" className="mt-2">
-                <Link href={`/auth/enroll-face?redirect=/assessment/${params.id}`}>
-                  Enroll Face Biometrics Now
-                </Link>
-              </Button>
+          {user?.has_enrolled_face === false && (
+            <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-lg text-xs flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>First time here? Your face biometrics will be enrolled during the identity verification step.</span>
             </div>
-          ) : (
-            <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
-              Start Assessment Now
-            </Button>
           )}
+          <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
+            Start Assessment Now
+          </Button>
         </Card>
 
         {showVerification && (
