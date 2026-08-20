@@ -21,6 +21,12 @@ const nextConfig = {
   typescript: {
     ignoreBuildErrors: false, // SECURITY: TypeScript errors must be fixed, not silently ignored
   },
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      { module: /node_modules\/@vladmandic\/face-api/ }
+    ]
+    return config
+  },
   images: {
     unoptimized: true,
   },

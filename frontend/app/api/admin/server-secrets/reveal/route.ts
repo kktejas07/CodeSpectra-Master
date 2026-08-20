@@ -28,6 +28,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'stripe_webhook_secret',
   'upstash_redis_rest_token',
   'internal_backend_secret',
+  'session_secret',
 ]
 
 export async function GET(request: Request) {

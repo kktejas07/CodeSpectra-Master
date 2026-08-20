@@ -5,6 +5,7 @@ import { users as getUsersCollection, getUserById, updateUserById } from '@/lib/
 import { verifySessionToken, setSessionCookie } from '@/lib/session'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { createUserSession, updateSessionHeartbeat } from '@/lib/db/sessions'
+import { getUserById } from '@/lib/db/admin'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { isIpBlocked, trackDeviceFingerprint, recordSecurityEvent } from '@/lib/db/security'
 
@@ -171,6 +172,7 @@ export async function GET() {
             lastLoginAt: profile?.lastLoginAt || null,
             createdAt: profile?.createdAt || null,
             has_enrolled_face: !!(profile as any)?.facial_biometric_template,
+            onboardingGoal: (profile as any)?.onboardingGoal || null,
           },
         })
       }
@@ -195,6 +197,7 @@ export async function GET() {
         lastLoginAt: profile?.lastLoginAt || null,
         createdAt: profile?.createdAt || null,
         has_enrolled_face: !!(profile as any)?.facial_biometric_template,
+        onboardingGoal: (profile as any)?.onboardingGoal || null,
       },
     })
   }

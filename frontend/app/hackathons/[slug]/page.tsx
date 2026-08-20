@@ -22,6 +22,8 @@ import { Label } from '@/components/ui/label'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import { cn } from '@/lib/utils'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -175,218 +177,344 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
   const isClosed = now > ends.getTime() || hackathon.status === 'closed'
 
   return (
-    <div className="min-h-screen bg-background">
-      {hackathon.banner_url && (
-        <div className="h-48 w-full overflow-hidden bg-muted">
+    <div className="min-h-screen bg-background pb-20">
+      {/* Hero Banner Area */}
+      <div className="relative h-64 md:h-80 w-full overflow-hidden bg-muted border-b border-border">
+        {hackathon.banner_url ? (
           <img src={hackathon.banner_url} alt="" className="w-full h-full object-cover" />
-        </div>
-      )}
-      <header className="border-b border-border bg-card/40 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
+        ) : (
+          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-background" />
+        )}
+        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+        
+        {/* Banner Overlay Controls */}
+        <div className="absolute top-0 left-0 w-full p-4 md:p-6 flex justify-between items-start">
           <button onClick={() => {
             const role = gate.user?.role
             if (role && isSuperAdmin(role)) { router.push('/dashboard/admin/hackathons'); return }
             router.push('/dashboard/hackathons')
-          }} className="text-sm text-muted-foreground hover:text-foreground">← Back</button>
-          <div className="flex items-center gap-3">
-            {myTeam && isLive && (
-              <Link href={`/hackathons/${slug}/workspace`}>
-                <Button size="sm" variant="default"><ListChecks className="h-3.5 w-3.5 mr-1" /> Enter Workspace</Button>
-              </Link>
-            )}
-            {isClosed && hackathon.results_released && (
-              <Link href={`/hackathons/${slug}/results`}>
-                <Button size="sm" variant="outline"><Trophy className="h-3.5 w-3.5 mr-1" /> View Results</Button>
-              </Link>
-            )}
-            {isClosed && !hackathon.results_released && (
-              <Badge variant="outline" className="text-muted-foreground">Event Ended</Badge>
-            )}
-            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase">
+          }} className="px-4 py-2 bg-background/50 backdrop-blur-md border border-border/50 rounded-lg text-sm font-medium hover:bg-background/80 transition-colors">
+            ← Back
+          </button>
+          
+          <div className="flex items-center gap-2">
+            <Badge variant={isLive ? 'default' : isClosed ? 'destructive' : 'secondary'} className="uppercase px-3 py-1 text-xs backdrop-blur-md bg-background/80">
               {isLive ? 'Live' : isClosed ? 'Closed' : 'Open'}
             </Badge>
           </div>
         </div>
-      </header>
+      </div>
 
-      <main className="mx-auto max-w-5xl space-y-6 px-6 py-10">
-        {/* Event Header */}
-        <section>
-          <h1 className="flex items-center gap-2 text-3xl font-bold">
-            <Trophy className="h-7 w-7 text-primary" /> {hackathon.name}
-          </h1>
-          {hackathon.description && <p className="mt-2 text-sm text-muted-foreground">{hackathon.description}</p>}
-          <div className="mt-4 flex flex-wrap gap-3 text-xs">
-            <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1">
-              <CalendarDays className="h-3 w-3" /> {starts.toLocaleString()}
-            </span>
-            {!isClosed && !isLive && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-yellow-500">
-                <Timer className="h-3 w-3" /> Starts in <Countdown targetIso={hackathon.starts_at} />
-              </span>
-            )}
-            {isLive && !isClosed && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-green-500">
-                <Timer className="h-3 w-3" /> Ends in <Countdown targetIso={hackathon.ends_at} />
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1">
-              <Clock className="h-3 w-3" /> {hackathon.timeout_minutes} min · {hackathon.tasks?.length || 0} problems
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1">
-              <Users className="h-3 w-3" /> {teams.length} / {hackathon.num_teams} teams
-            </span>
+      <main className="mx-auto max-w-6xl px-4 lg:px-8 -mt-16 relative z-10">
+        <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
+          {/* Left Column (Details, Tabs) */}
+          <div className="space-y-6">
+            
+            {/* Event Header */}
+            <div className="bg-card rounded-2xl p-6 shadow-sm border border-border/40 backdrop-blur-xl">
+              <h1 className="flex items-center gap-2 text-3xl md:text-4xl font-bold tracking-tight mb-2">
+                <Trophy className="h-8 w-8 text-primary shrink-0" /> {hackathon.name}
+              </h1>
+              {hackathon.description && <p className="text-muted-foreground">{hackathon.description}</p>}
+              
+              <div className="mt-6 flex flex-wrap gap-3">
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
+                  <CalendarDays className="h-4 w-4 text-primary" />
+                  <span>{starts.toLocaleString()}</span>
+                </div>
+                {!isClosed && !isLive && (
+                  <div className="flex items-center gap-2 rounded-lg border border-yellow-500/30 bg-yellow-500/10 px-3 py-2 text-sm font-medium text-yellow-600 dark:text-yellow-500">
+                    <Timer className="h-4 w-4" />
+                    <span>Starts in <Countdown targetIso={hackathon.starts_at} /></span>
+                  </div>
+                )}
+                {isLive && !isClosed && (
+                  <div className="flex items-center gap-2 rounded-lg border border-green-500/30 bg-green-500/10 px-3 py-2 text-sm font-medium text-green-600 dark:text-green-500">
+                    <Timer className="h-4 w-4" />
+                    <span>Ends in <Countdown targetIso={hackathon.ends_at} /></span>
+                  </div>
+                )}
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
+                  <Clock className="h-4 w-4 text-primary" />
+                  <span>{hackathon.timeout_minutes} min duration</span>
+                </div>
+                <div className="flex items-center gap-2 rounded-lg border border-border bg-muted/40 px-3 py-2 text-sm font-medium">
+                  <Users className="h-4 w-4 text-primary" />
+                  <span>{teams.length} / {hackathon.num_teams} teams</span>
+                </div>
+              </div>
+            </div>
+
+            {/* Tabbed Navigation */}
+            <Tabs defaultValue="overview" className="w-full">
+              <TabsList className="w-full justify-start h-auto p-1 bg-card border border-border/40 mb-4 rounded-xl overflow-x-auto no-scrollbar">
+                <TabsTrigger value="overview" className="px-6 py-2.5 rounded-lg">Overview</TabsTrigger>
+                <TabsTrigger value="leaderboard" className="px-6 py-2.5 rounded-lg">
+                  Leaderboard <Badge variant="secondary" className="ml-2 text-[10px]">{teams.length}</Badge>
+                </TabsTrigger>
+                {hackathon.rules && hackathon.rules.length > 0 && (
+                  <TabsTrigger value="rules" className="px-6 py-2.5 rounded-lg">Rules</TabsTrigger>
+                )}
+              </TabsList>
+
+              <TabsContent value="overview" className="space-y-6 mt-0">
+                <Card className="p-6">
+                  <h3 className="text-lg font-semibold mb-4">About this hackathon</h3>
+                  <div className="prose prose-sm dark:prose-invert max-w-none text-muted-foreground">
+                    <p>{hackathon.description || 'No detailed description provided.'}</p>
+                    <p className="mt-4">
+                      This hackathon features {hackathon.tasks?.length || 0} challenging problems with an automated evaluation system.
+                      Participants can register their teams and compete for the top rank on the leaderboard.
+                    </p>
+                  </div>
+                </Card>
+              </TabsContent>
+
+              <TabsContent value="leaderboard" className="mt-0">
+                <Card className="divide-y divide-border/60 overflow-hidden">
+                  <div className="p-4 bg-muted/30">
+                    <h3 className="text-sm font-semibold uppercase tracking-wider text-muted-foreground">
+                      Current Standings
+                    </h3>
+                  </div>
+                  {teams.length === 0 ? (
+                    <div className="p-8 text-center">
+                      <div className="inline-flex h-12 w-12 items-center justify-center rounded-full bg-muted mb-4">
+                        <Trophy className="h-6 w-6 text-muted-foreground opacity-50" />
+                      </div>
+                      <p className="text-sm font-medium text-muted-foreground">No teams have registered yet.</p>
+                      <p className="text-xs text-muted-foreground mt-1">Be the first to join the competition!</p>
+                    </div>
+                  ) : (
+                    teams.map((t, i) => (
+                      <div key={t.id} className="flex items-center gap-4 p-4 hover:bg-muted/50 transition-colors">
+                        <span className={cn(
+                          "flex h-8 w-8 items-center justify-center rounded-full text-sm font-bold tabular-nums",
+                          i === 0 ? "bg-yellow-500/20 text-yellow-600 dark:text-yellow-500" :
+                          i === 1 ? "bg-slate-300/20 text-slate-600 dark:text-slate-300" :
+                          i === 2 ? "bg-amber-700/20 text-amber-700 dark:text-amber-500" :
+                          "text-muted-foreground bg-muted"
+                        )}>
+                          {i + 1}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <p className="font-semibold truncate">{t.name}</p>
+                          <p className="text-xs text-muted-foreground truncate">
+                            {t.members.length} member{t.members.length === 1 ? '' : 's'} · {t.submissions} submission{t.submissions === 1 ? '' : 's'}
+                          </p>
+                        </div>
+                        <div className="flex flex-col items-end gap-1 shrink-0">
+                          <Badge className="font-bold gap-1"><Trophy className="h-3 w-3" /> {t.xp} XP</Badge>
+                          {t.achievements.length > 0 && (
+                            <div className="text-[10px] text-muted-foreground flex items-center gap-1">
+                              <Sparkles className="h-3 w-3 text-primary" /> {t.achievements.length} badges
+                            </div>
+                          )}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </Card>
+              </TabsContent>
+
+              {hackathon.rules && hackathon.rules.length > 0 && (
+                <TabsContent value="rules" className="mt-0">
+                  <Card className="p-6 space-y-6">
+                    <h3 className="flex items-center gap-2 text-lg font-semibold">
+                      <Shield className="h-5 w-5 text-primary" /> Rules & Regulations
+                    </h3>
+                    <div className="grid gap-6 md:grid-cols-2">
+                      {hackathon.rules.map((r, i) => (
+                        <div key={i} className="flex gap-4 p-4 rounded-xl border border-border/50 bg-muted/20">
+                          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-primary/10 text-primary font-bold">
+                            {i + 1}
+                          </div>
+                          <div>
+                            <p className="text-sm font-semibold mb-1">{r.title}</p>
+                            <p className="text-sm text-muted-foreground leading-relaxed">{r.description}</p>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </Card>
+                </TabsContent>
+              )}
+            </Tabs>
           </div>
-        </section>
-
-        {/* Registration / My Team Panel */}
-        {!isClosed && (
-          <Card className="space-y-4 p-5">
-            {myTeam ? (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <h2 className="text-sm font-semibold">Your Team: {myTeam.name}</h2>
-                  <Badge variant="outline">{myTeam.members.length}/{hackathon.max_per_team} members</Badge>
+          
+          {/* Right Column (Sticky Registration Card) */}
+          <div className="relative">
+            <div className="sticky top-20 lg:top-24 space-y-4">
+              
+              {/* Main Registration Card */}
+              <Card className="overflow-hidden border-border/50 shadow-lg relative">
+                {/* Decoration */}
+                <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+                  <Trophy className="h-32 w-32" />
                 </div>
+                
+                <div className="p-6 relative z-10">
+                  {!isClosed ? (
+                    <div>
+                      {myTeam ? (
+                        <div className="space-y-5">
+                          <div className="flex items-center justify-between pb-4 border-b border-border/50">
+                            <div>
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Your Team</p>
+                              <h2 className="text-xl font-bold truncate pr-4">{myTeam.name}</h2>
+                            </div>
+                            <div className="bg-green-500/10 text-green-500 p-2 rounded-full">
+                              <CheckCircle className="h-6 w-6" />
+                            </div>
+                          </div>
 
-                {/* Team members */}
-                <div className="flex flex-wrap gap-2 mb-3">
-                  {myTeam.members.map((m) => (
-                    <Badge key={m.user_id} variant={m.role === 'captain' ? 'default' : 'secondary'}>
-                      {m.name} {m.role === 'captain' && '(Captain)'}
-                    </Badge>
-                  ))}
+                          {/* Action Buttons */}
+                          <div className="space-y-2">
+                            {isLive && (
+                              <Link href={`/hackathons/${slug}/workspace`} className="block">
+                                <Button className="w-full h-11 text-base shadow-sm"><ListChecks className="mr-2 h-4 w-4" /> Enter Workspace</Button>
+                              </Link>
+                            )}
+                            <Button variant="outline" className="w-full" onClick={() => setEmailInviteOpen(true)}>
+                              <Users className="mr-2 h-4 w-4" /> Manage Team
+                            </Button>
+                          </div>
+
+                          {/* Team Roster */}
+                          <div>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Members</p>
+                              <Badge variant="secondary" className="text-[10px]">{myTeam.members.length}/{hackathon.max_per_team}</Badge>
+                            </div>
+                            <div className="flex flex-wrap gap-2">
+                              {myTeam.members.map((m) => (
+                                <Badge key={m.user_id} variant={m.role === 'captain' ? 'default' : 'secondary'} className="px-2 py-1">
+                                  {m.name} {m.role === 'captain' && <Trophy className="ml-1 h-3 w-3 opacity-70" />}
+                                </Badge>
+                              ))}
+                            </div>
+                          </div>
+
+                          {/* Share Invite */}
+                          <div className="bg-primary/5 rounded-xl p-4 border border-primary/20">
+                            <p className="text-xs font-semibold text-primary mb-2 flex items-center gap-1">
+                              <Sparkles className="h-3 w-3" /> Invite Teammates
+                            </p>
+                            <div className="flex gap-2 mb-2">
+                              <code className="flex-1 text-xs truncate rounded-md bg-background px-3 py-2 border border-border/50 shadow-sm">{getInviteUrl(myTeam)}</code>
+                              <Button size="icon" variant="outline" onClick={copyInvite} className="shrink-0 h-8 w-8">
+                                {copied ? <CheckCircle className="h-3 w-3 text-green-500" /> : <Copy className="h-3 w-3" />}
+                              </Button>
+                            </div>
+                            <Button size="sm" variant="secondary" className="w-full text-xs h-8" onClick={() => setEmailInviteOpen(true)}>
+                              Send Email Invite
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <div className="space-y-5">
+                          <div>
+                            <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-2">Registration</p>
+                            <h2 className="text-2xl font-bold">Join Hackathon</h2>
+                          </div>
+
+                          {authUser?.uid ? (
+                            <div className="space-y-4 pt-2">
+                              <div className="space-y-2">
+                                <Label className="text-xs font-medium">Team Name</Label>
+                                <Input 
+                                  placeholder="Leave blank for auto-generated name" 
+                                  value={newTeamName}
+                                  onChange={(e) => setNewTeamName(e.target.value)} 
+                                  className="h-11"
+                                />
+                              </div>
+                              <Button 
+                                onClick={createTeam} 
+                                disabled={creating || teams.length >= hackathon.num_teams}
+                                className="w-full h-11 text-base shadow-sm font-semibold"
+                              >
+                                {creating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                                Register Team
+                              </Button>
+                              {teams.length >= hackathon.num_teams && (
+                                <p className="text-xs text-destructive text-center font-medium">Event is at full capacity ({hackathon.num_teams} teams).</p>
+                              )}
+                            </div>
+                          ) : (
+                            <div className="space-y-4 pt-2">
+                              <p className="text-sm text-muted-foreground">
+                                You must be signed in to create or join a team for this event.
+                              </p>
+                              <div className="grid gap-2">
+                                <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`} className="w-full">
+                                  <Button className="w-full h-11 gap-2"><LogIn className="h-4 w-4" /> Sign In</Button>
+                                </Link>
+                                <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`} className="w-full">
+                                  <Button variant="outline" className="w-full h-11">Create Account</Button>
+                                </Link>
+                              </div>
+                            </div>
+                          )}
+                          {error && <p className="text-xs text-destructive text-center font-medium bg-destructive/10 py-2 rounded-md">{error}</p>}
+                        </div>
+                      )}
+                    </div>
+                  ) : (
+                    <div className="text-center py-6 space-y-4">
+                      <div className="inline-flex h-16 w-16 items-center justify-center rounded-full bg-muted mb-2">
+                        <Trophy className="h-8 w-8 text-muted-foreground" />
+                      </div>
+                      <div>
+                        <h2 className="text-xl font-bold mb-1">Hackathon Closed</h2>
+                        <p className="text-sm text-muted-foreground">This event has ended. Registration is no longer available.</p>
+                      </div>
+                      
+                      {hackathon.results_released ? (
+                        <Link href={`/hackathons/${slug}/results`} className="block mt-6">
+                          <Button className="w-full h-11"><Trophy className="mr-2 h-4 w-4" /> View Final Results</Button>
+                        </Link>
+                      ) : (
+                        <Badge variant="outline" className="mt-4 py-1.5 px-3">Results Pending</Badge>
+                      )}
+                    </div>
+                  )}
                 </div>
+              </Card>
 
-                {/* Assigned Problems */}
-                {hackathon.tasks && hackathon.tasks.length > 0 && (
-                  <div className="mb-3 space-y-1">
-                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Assigned Problems</p>
+              {/* Tasks Overview Card (for participants) */}
+              {myTeam && hackathon.tasks && hackathon.tasks.length > 0 && (
+                <Card className="p-5 border-border/50 bg-card/50">
+                  <h3 className="text-sm font-semibold mb-3 flex items-center gap-2">
+                    <ListChecks className="h-4 w-4 text-primary" /> Problem Set
+                  </h3>
+                  <div className="space-y-2">
                     {hackathon.tasks.map((task) => (
-                      <div key={task.problem_slug}
-                        className="flex items-center justify-between p-2 rounded text-sm">
-                        <span>{task.problem_title}</span>
-                        <div className="flex items-center gap-2">
-                          <Badge variant="outline" className="text-[10px]">{task.difficulty}</Badge>
-                          <span className="text-xs text-muted-foreground">{task.points} pts</span>
+                      <div key={task.problem_slug} className="flex items-center justify-between p-2.5 rounded-lg bg-muted/50 border border-border/30">
+                        <span className="text-sm font-medium truncate pr-2">{task.problem_title}</span>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <Badge variant="outline" className="text-[10px] uppercase">{task.difficulty}</Badge>
+                          <span className="text-xs font-bold text-primary">{task.points} pts</span>
                         </div>
                       </div>
                     ))}
                   </div>
-                )}
-
-                {(!hackathon.tasks || hackathon.tasks.length === 0) && (
-                  <p className="text-xs text-muted-foreground">No problems assigned yet — check back soon.</p>
-                )}
-
-                {/* Invite link */}
-                {myTeam && (
-                  <div className="rounded-lg border border-primary/40 bg-primary/5 p-3">
-                    <p className="text-xs font-semibold text-primary mb-2">Share this invite link with your team:</p>
-                    <div className="flex gap-2">
-                      <code className="flex-1 text-xs truncate rounded bg-background px-2 py-1.5 border">{getInviteUrl(myTeam)}</code>
-                      <Button size="sm" variant="outline" onClick={copyInvite}>
-                        {copied ? 'Copied!' : <Copy className="h-3 w-3" />}
-                      </Button>
-                    </div>
-                    <Button size="sm" variant="outline" className="w-full gap-1.5 mt-2" onClick={() => setEmailInviteOpen(true)}>
-                      <Send className="h-3 w-3" /> Send invite by email
-                    </Button>
-                  </div>
-                )}
-              </div>
-            ) : (
-              <div>
-                {authUser?.uid ? (
-                  <>
-                    <h2 className="text-sm font-semibold mb-3">Register your team</h2>
-                    <div className="flex gap-2">
-                      <Input placeholder="Team name (auto-named if blank)" value={newTeamName}
-                        onChange={(e) => setNewTeamName(e.target.value)} />
-                      <Button onClick={createTeam} disabled={creating || teams.length >= hackathon.num_teams}>
-                        {creating ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
-                        Register
-                      </Button>
-                    </div>
-                    {teams.length >= hackathon.num_teams && <p className="text-xs text-destructive mt-1">Event is at capacity ({hackathon.num_teams} teams).</p>}
-                  </>
-                ) : (
-                  <div className="rounded-lg border border-primary/20 bg-primary/5 p-4">
-                    <p className="text-sm font-medium">Sign in to register your team</p>
-                    <p className="mt-1 text-xs text-muted-foreground">
-                      Create an account or sign in to participate in this hackathon.
-                    </p>
-                    <div className="mt-3 flex gap-2">
-                      <Link href={`/auth/login?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`}>
-                        <Button size="sm" className="gap-1.5"><LogIn className="h-3.5 w-3.5" /> Sign in</Button>
-                      </Link>
-                      <Link href={`/auth/signup?redirect=${encodeURIComponent(`/hackathons/${slug}`)}`}>
-                        <Button size="sm" variant="outline" className="gap-1.5">Create account</Button>
-                      </Link>
-                    </div>
-                  </div>
-                )}
-              </div>
-            )}
-            {error && <p className="text-xs text-destructive">{error}</p>}
-          </Card>
-        )}
-
-        {/* Rules */}
-        {hackathon.rules && hackathon.rules.length > 0 && (
-          <Card className="p-5">
-            <h2 className="flex items-center gap-2 text-sm font-semibold mb-3">
-              <Shield className="h-4 w-4 text-primary" /> Rules & Regulations
-            </h2>
-            <div className="space-y-2">
-              {hackathon.rules.map((r, i) => (
-                <div key={i}>
-                  <p className="text-sm font-medium">{r.title}</p>
-                  <p className="text-xs text-muted-foreground">{r.description}</p>
-                </div>
-              ))}
+                </Card>
+              )}
             </div>
-          </Card>
-        )}
-
-        {/* Leaderboard */}
-        <section>
-          <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
-            Leaderboard ({teams.length})
-          </h2>
-          {teams.length === 0 ? (
-            <Card className="p-6 text-center text-xs text-muted-foreground">No teams have registered yet.</Card>
-          ) : (
-            <Card className="divide-y divide-border/60 overflow-hidden">
-              {teams.map((t, i) => (
-                <div key={t.id} className="flex items-center gap-3 p-4">
-                  <span className="w-8 text-xl font-bold text-muted-foreground tabular-nums">{i + 1}</span>
-                  <div className="flex-1">
-                    <p className="font-medium">{t.name}</p>
-                    <p className="text-xs text-muted-foreground">
-                      {t.members.length} member{t.members.length === 1 ? '' : 's'} · {t.submissions} submission{t.submissions === 1 ? '' : 's'}
-                    </p>
-                  </div>
-                  {t.achievements.length > 0 && (
-                    <Badge variant="outline" className="gap-1"><Sparkles className="h-3 w-3" /> {t.achievements.length}</Badge>
-                  )}
-                  <Badge className="gap-1"><Trophy className="h-3 w-3" /> {t.xp} XP · Lv {t.level}</Badge>
-                </div>
-              ))}
-            </Card>
-          )}
-        </section>
+          </div>
+        </div>
       </main>
 
+      {/* Email Invite Dialog */}
       <Dialog open={emailInviteOpen} onOpenChange={setEmailInviteOpen}>
         <DialogContent className="sm:max-w-[420px]">
           <DialogHeader>
-            <DialogTitle>Invite by email</DialogTitle>
+            <DialogTitle>Invite Teammate</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4 py-2">
-            <div>
-              <Label htmlFor="invite-email">Email address</Label>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label htmlFor="invite-email" className="text-xs font-bold uppercase text-muted-foreground">Email address</Label>
               <Input
                 id="invite-email"
                 type="email"
@@ -394,16 +522,20 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
                 value={inviteEmail}
                 onChange={e => setInviteEmail(e.target.value)}
                 onKeyDown={e => e.key === 'Enter' && void sendEmailInvite()}
+                className="h-11"
               />
             </div>
-            <p className="text-xs text-muted-foreground">
-              We&apos;ll send an invite link to this email address. They don&apos;t need the team URL — just sign in and click to join.
-            </p>
+            <div className="bg-muted/50 p-3 rounded-lg flex gap-3 text-xs text-muted-foreground items-start">
+              <Sparkles className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+              <p>
+                We'll send a direct invite link to this email address. They don't need a code — just sign in and click to join.
+              </p>
+            </div>
           </div>
           <DialogFooter>
-            <Button variant="outline" onClick={() => setEmailInviteOpen(false)}>Cancel</Button>
+            <Button variant="ghost" onClick={() => setEmailInviteOpen(false)}>Cancel</Button>
             <Button onClick={() => void sendEmailInvite()} disabled={sendingInvite || !inviteEmail.trim()}>
-              {sendingInvite ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              {sendingInvite ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="mr-2 h-4 w-4" />}
               Send Invite
             </Button>
           </DialogFooter>

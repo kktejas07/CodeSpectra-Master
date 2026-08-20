@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
-import { Search, CheckSquare, Square, ChevronLeft, ChevronRight } from 'lucide-react'
+import { Search, CheckSquare, Square, ChevronLeft, ChevronRight, ArrowUpDown, ArrowUp, ArrowDown } from 'lucide-react'
 import {
   Select,
   SelectContent,
@@ -19,6 +19,7 @@ export interface DataTableColumn<T> {
   header: string
   cell: (row: T) => React.ReactNode
   className?: string
+  sortable?: boolean
 }
 
 export interface BulkAction {
@@ -75,9 +76,18 @@ export function DataTable<T extends { id: string }>({
   })
   const [selected, setSelected] = useState<Set<string>>(new Set())
   const [page, setPage] = useState(1)
+  const [sortConfig, setSortConfig] = useState<{ key: string, direction: 'asc' | 'desc' } | null>(null)
+
+  const handleSort = (key: string) => {
+    let direction: 'asc' | 'desc' = 'asc'
+    if (sortConfig && sortConfig.key === key && sortConfig.direction === 'asc') {
+      direction = 'desc'
+    }
+    setSortConfig({ key, direction })
+  }
 
   const safeData = data || []
-  const filtered = safeData.filter(item => {
+  let filtered = safeData.filter(item => {
     if (search && searchKeys?.length) {
       const q = search.toLowerCase()
       const match = searchKeys.some(key => {
@@ -97,6 +107,16 @@ export function DataTable<T extends { id: string }>({
     }
     return true
   })
+
+  if (sortConfig !== null) {
+    filtered = [...filtered].sort((a, b) => {
+      const aVal = (a as any)[sortConfig.key]
+      const bVal = (b as any)[sortConfig.key]
+      if (aVal < bVal) return sortConfig.direction === 'asc' ? -1 : 1
+      if (aVal > bVal) return sortConfig.direction === 'asc' ? 1 : -1
+      return 0
+    })
+  }
 
   const totalPages = Math.max(1, Math.ceil(filtered.length / pageSize))
   const safePage = Math.min(page, totalPages)
@@ -195,7 +215,21 @@ export function DataTable<T extends { id: string }>({
                 ) : null}
                 {columns.map(col => (
                   <th key={col.key} className={`text-left py-3 px-4 font-semibold text-xs ${col.className || ''}`}>
-                    {col.header}
+                    {col.sortable ? (
+                      <button
+                        onClick={() => handleSort(col.key)}
+                        className="flex items-center gap-1 hover:text-foreground transition-colors group"
+                      >
+                        {col.header}
+                        {sortConfig?.key === col.key ? (
+                          sortConfig.direction === 'asc' ? <ArrowUp className="w-3.5 h-3.5" /> : <ArrowDown className="w-3.5 h-3.5" />
+                        ) : (
+                          <ArrowUpDown className="w-3.5 h-3.5 opacity-0 group-hover:opacity-50" />
+                        )}
+                      </button>
+                    ) : (
+                      col.header
+                    )}
                   </th>
                 ))}
               </tr>

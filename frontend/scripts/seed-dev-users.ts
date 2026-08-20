@@ -40,7 +40,7 @@ async function main() {
   console.log(`Connecting to ${uri.replace(/\/\/[^:]+:[^@]+@/, '//***:***@')} …`)
   const client = new MongoClient(uri)
   await client.connect()
-  const db = client.db()
+  const db = client.db(process.env.MONGODB_DB_NAME || 'codespectra')
   const col = db.collection('user')
 
   for (const acc of DEV_ACCOUNTS) {

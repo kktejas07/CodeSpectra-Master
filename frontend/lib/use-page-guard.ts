@@ -14,9 +14,12 @@ let fetchPromise: Promise<LockedData> | null = null
 function fetchLockedData(): Promise<LockedData> {
   if (cachedLockedData) return Promise.resolve(cachedLockedData)
   if (fetchPromise) return fetchPromise
-  fetchPromise = fetch('/api/platform/locked-pages')
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
+  fetchPromise = fetch('/api/platform/locked-pages', { signal: controller.signal })
     .then(r => r.ok ? r.json() : { locked_pages: [], locked_features: [] })
     .then(data => {
+      clearTimeout(timeout)
       const locked: LockedData = {
         locked_pages: Array.isArray(data?.locked_pages) ? data.locked_pages : [],
         locked_features: Array.isArray(data?.locked_features) ? data.locked_features : [],
@@ -25,6 +28,8 @@ function fetchLockedData(): Promise<LockedData> {
       return locked
     })
     .catch(() => {
+      clearTimeout(timeout)
+      fetchPromise = null // allow retry next time
       cachedLockedData = { locked_pages: [], locked_features: [] }
       return cachedLockedData
     })

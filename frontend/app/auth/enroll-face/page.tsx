@@ -8,6 +8,7 @@ import { Button } from "@/components/ui/button";
 import { Code2, ArrowRight, Shield, AlertCircle } from "lucide-react";
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { csrfFetch } from "@/lib/csrf-fetch";
 
 function EnrollFaceInner() {
   const router = useRouter();
@@ -26,7 +27,7 @@ function EnrollFaceInner() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/face-enroll", {
+      const res = await csrfFetch("/api/auth/face-enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({

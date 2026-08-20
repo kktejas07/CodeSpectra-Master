@@ -88,7 +88,13 @@ export async function GET() {
       const userId = gate.user.id
       const [submissions, invites] = await Promise.all([
         db.collection('exam_submissions').find({ user_id: userId }).project({ exam_id: 1 }).toArray(),
-        db.collection('candidate_invites').find({ user_id: userId }).project({ target_url: 1, assigned_assessments: 1 }).toArray(),
+        db.collection('candidate_invites').find({
+          $or: [
+            { user_id: userId },
+            { email: gate.user.email },
+            { email: { $regex: new RegExp(`^${String(gate.user.email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+          ],
+        }).project({ target_url: 1, assigned_assessments: 1, email: 1 }).toArray(),
       ])
       const userExamIds = new Set<string>()
       submissions.forEach((s: any) => { if (s.exam_id) userExamIds.add(s.exam_id) })

@@ -48,7 +48,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
     }
 
-    const { email, password, name, visitorId } = await request.json()
+    const { email, password, name, visitorId, mobile, userType, domain, experience, classGrade, currentJobRole, organisationName, organisationType } = await request.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
@@ -71,8 +71,17 @@ export async function POST(request: Request) {
 
     await db.collection('user').insertOne({
       _id: uid,
+      id: uid,
       email: normalizedEmail,
       name: name || null,
+      mobile: mobile || null,
+      userType: userType || null,
+      domain: domain || null,
+      experience: experience || null,
+      classGrade: classGrade || null,
+      currentJobRole: currentJobRole || null,
+      organisationName: organisationName || null,
+      organisationType: organisationType || null,
       passwordHash,
       role: 'user',
       emailVerified: false,

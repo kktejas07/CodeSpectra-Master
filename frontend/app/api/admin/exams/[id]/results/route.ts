@@ -75,6 +75,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       score: number | null
       maxScore: number | null
       submittedAt: string | null
+      invitedAt: string | null
       proctoringFlags: number
       released: boolean
       deliveryStatus: string | null
@@ -130,6 +131,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         score: sub ? toPercent(sub.score, sub.max_score) : null,
         maxScore: sub ? sub.max_score : null,
         submittedAt: sub?.submitted_at || null,
+        invitedAt: inv.created_at || null,
         proctoringFlags: proctorMap.get(inv.user_id) || 0,
         released: sub?.released_at ? true : false,
         deliveryStatus: sub && inv.delivery_status === 'sending' ? 'delivered' : (inv.delivery_status || null),
@@ -156,6 +158,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         score: toPercent(sub.score, sub.max_score),
         maxScore: sub.max_score || null,
         submittedAt: sub.submitted_at || null,
+        invitedAt: sub.submitted_at || null,
         proctoringFlags: proctorMap.get(sub.user_id) || 0,
         released: sub.released_at ? true : false,
         deliveryStatus: 'delivered',

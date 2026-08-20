@@ -11,7 +11,7 @@ const CSP = [
   "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https:",
   "connect-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.github.com https://*.razorpay.com https://api.razorpay.com https://checkout.razorpay.com wss://*.firebaseio.com",
-  "frame-src 'self' blob: data: https://*.firebaseapp.com https://checkout.razorpay.com",
+  "frame-src 'self' blob: data: https://*.firebaseapp.com https://checkout.razorpay.com https://www.youtube.com https://youtube.com",
   "worker-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
   "child-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
   "media-src 'self' blob: data:",
@@ -23,7 +23,7 @@ const CSP = [
 
 const HSTS = 'max-age=63072000; includeSubDomains; preload'
 
-export function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const { pathname } = request.nextUrl
 
   const response = NextResponse.next()
@@ -60,6 +60,8 @@ export function middleware(request: NextRequest) {
     }
   }
 
+  const secureFlag = process.env.NODE_ENV === 'production' ? 'Secure;' : ''
+
   // CSRF protection for API routes (webhooks & web-vitals exempt — external callers use HMAC signatures, not CSRF tokens)
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const csrf = checkCsrf(request)
@@ -69,7 +71,7 @@ export function middleware(request: NextRequest) {
     if (csrf.token) {
       response.headers.append(
         'Set-Cookie',
-        `${CSRF_COOKIE}=${csrf.token}; Path=/; Max-Age=86400; SameSite=Lax; Secure`,
+        `${CSRF_COOKIE}=${csrf.token}; Path=/; Max-Age=86400; SameSite=Lax; ${secureFlag}`,
       )
     }
   }
@@ -81,7 +83,7 @@ export function middleware(request: NextRequest) {
     const hex = Array.from(token).map(b => b.toString(16).padStart(2, '0')).join('')
     response.headers.append(
       'Set-Cookie',
-      `${CSRF_COOKIE}=${hex}; Path=/; Max-Age=86400; SameSite=Lax; Secure`,
+      `${CSRF_COOKIE}=${hex}; Path=/; Max-Age=86400; SameSite=Lax; ${secureFlag}`,
     )
   }
 

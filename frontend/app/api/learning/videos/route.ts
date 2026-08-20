@@ -17,7 +17,9 @@ export async function GET(request: NextRequest) {
 
   try {
     const params = new URLSearchParams({ q: q.trim(), provider, limit: String(limit) })
-    const data = await backendGet(`/internal/learning/providers/search?${params.toString()}`)
+    const data = await backendGet(`/internal/learning/providers/search?${params.toString()}`, {
+      Cookie: request.headers.get('cookie') || ''
+    })
     return NextResponse.json(data)
   } catch (e) {
     return NextResponse.json({ ok: false, error: (e as Error).message }, { status: 502 })

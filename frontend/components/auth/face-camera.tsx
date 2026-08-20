@@ -27,7 +27,7 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
         
         await Promise.all([
           faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-          faceapi.nets.faceLandmark68Net.loadFromUri(MODEL_URL),
+          faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
           faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
         ])
         
@@ -91,14 +91,14 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
     if (!videoRef.current || status === 'captured' || status === 'error') return
     
     try {
+      // OPTIMIZATION: Only use face landmarks for liveness checks, avoid the heavy descriptor calculation in the loop
       const detection = await faceapi
-        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions())
-        .withFaceLandmarks()
-        .withFaceDescriptor()
+        .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5, inputSize: 224 }))
+        .withFaceLandmarks(true)
 
       if (!detection) {
         setMessage('No face detected. Please look directly at the camera.')
-        requestAnimationFrame(analyzeLiveness)
+        setTimeout(analyzeLiveness, 250)
         return
       }
 
@@ -107,9 +107,9 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
       const videoWidth = videoRef.current.videoWidth
       const videoHeight = videoRef.current.videoHeight
 
-      if (width < videoWidth * 0.2 || height < videoHeight * 0.2) {
+      if (width < videoWidth * 0.15 || height < videoHeight * 0.15) {
         setMessage('Please move closer to the camera.')
-        requestAnimationFrame(analyzeLiveness)
+        setTimeout(analyzeLiveness, 250)
         return
       }
 
@@ -133,10 +133,22 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
 
       const state = livenessStateRef.current
 
-      if (noseOffset > 0.35 && noseOffset < 0.65) {
-        setMessage('Perfect! Capturing...')
+      if (noseOffset > 0.3 && noseOffset < 0.7) {
+        setMessage('Perfect! Generating secure token...')
         setLivenessState('done')
         
+        // NOW calculate the heavy face descriptor just once
+        const fullDetection = await faceapi
+          .detectSingleFace(videoRef.current, new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.5, inputSize: 224 }))
+          .withFaceLandmarks(true)
+          .withFaceDescriptor()
+
+        if (!fullDetection) {
+           setStatus('error')
+           setMessage('Failed to generate biometric descriptor. Try again.')
+           return
+        }
+
         setStatus('captured')
         
         const canvas = document.createElement('canvas')
@@ -150,13 +162,13 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
           streamRef.current.getTracks().forEach(track => track.stop())
         }
 
-        onCapture(detection.descriptor, dataUrl)
+        onCapture(fullDetection.descriptor, dataUrl)
         return // Stop polling
       } else {
         setMessage('Look straight at the camera.')
       }
 
-      requestAnimationFrame(analyzeLiveness)
+      setTimeout(analyzeLiveness, 250)
 
     } catch (err: any) {
       console.error('Liveness check error:', err)
@@ -177,8 +189,13 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
       <div className="relative w-full max-w-sm aspect-4/3 rounded-xl overflow-hidden bg-muted border-2 border-border shadow-sm flex items-center justify-center">
         {status === 'initializing' && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-background/80 backdrop-blur-sm p-6 text-center">
-            <Loader2 className="w-8 h-8 text-primary animate-spin mb-4" />
-            <p className="text-sm font-medium">{message}</p>
+            <div className="relative">
+              <div className="absolute inset-0 rounded-full border-t-2 border-primary animate-spin" />
+              <div className="absolute inset-1 rounded-full border-r-2 border-primary/70 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
+              <Loader2 className="w-12 h-12 text-primary animate-pulse p-2" />
+            </div>
+            <p className="text-sm font-medium mt-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">{message}</p>
+            <p className="text-xs text-muted-foreground mt-1 animate-pulse">Initializing Biometrics Engine...</p>
           </div>
         )}
         

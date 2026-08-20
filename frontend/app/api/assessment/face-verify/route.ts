@@ -39,7 +39,31 @@ export async function POST(request: Request) {
 
     // Strict enforcement: if the user hasn't enrolled yet, they cannot take the exam.
     if (!dbUser.facial_biometric_template) {
-      return NextResponse.json({ error: 'You must enroll your face biometrics before taking an assessment. Please go to your Profile Settings.' }, { status: 403 })
+      // Auto-enroll: the live verification selfie (identity already proven by the
+      // ID-OCR name-match in the previous step) becomes the enrolled template on
+      // first verification, so first-time candidates aren't hard-blocked.
+      try {
+        await db.collection('user').updateOne(
+          { _id: dbUser._id },
+          { $set: { facial_biometric_template: descriptor, biometric_enrolled_at: new Date() } }
+        )
+      } catch (enrollErr) {
+        console.error('[AssessmentFaceVerify] auto-enroll failed:', enrollErr)
+        return NextResponse.json({ error: 'Could not enroll face biometrics. Please enroll from Profile Settings.' }, { status: 500 })
+      }
+      const rawIp = clientLimiterKeyFromRequest(request, null).replace(/^(ip:|u:)/, '')
+      await writeAuditLog({
+        action: 'assessment.biometric_enroll',
+        outcome: 'success',
+        actor: user.email,
+        actorIp: rawIp,
+        resource: 'exam/' + examId,
+        resourceType: 'assessment',
+        severity: 'info',
+        user_id: user.id,
+        detail: 'Auto-enrolled face template during assessment identity verification'
+      })
+      return NextResponse.json({ ok: true, matched: true, score: 1, enrolled: true })
     }
 
     // Compare face embeddings
