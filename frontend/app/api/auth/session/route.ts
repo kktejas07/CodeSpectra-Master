@@ -5,7 +5,6 @@ import { users as getUsersCollection, getUserById, updateUserById } from '@/lib/
 import { verifySessionToken, setSessionCookie } from '@/lib/session'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { createUserSession, updateSessionHeartbeat } from '@/lib/db/sessions'
-import { getUserById } from '@/lib/db/admin'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { isIpBlocked, trackDeviceFingerprint, recordSecurityEvent } from '@/lib/db/security'
 
