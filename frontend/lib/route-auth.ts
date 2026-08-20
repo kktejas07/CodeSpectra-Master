@@ -3,7 +3,7 @@ import { cookies } from 'next/headers'
 import { getAdminAuthInstance } from './firebase-admin'
 import { bootSchedulerOnce } from './boot-scheduler'
 import { normalizeUserRole, type UserRole as RBACUserRole } from './rbac'
-import { users as getUsersCollection } from '@/lib/db/admin'
+import { users as getUsersCollection, getUserById } from '@/lib/db/admin'
 import { verifySessionToken, type SessionPayload } from '@/lib/session'
 import { checkResourcePermission } from '@/lib/permissions-db'
 import { isFeatureEnabled, isPageAllowed } from '@/lib/plans-client'
@@ -52,8 +52,7 @@ export function invalidatePermissionCache() { _permCache = null; _permCacheAt = 
 
 async function lookupRole(uid: string): Promise<UserRole> {
   try {
-    const userCol = await getUsersCollection()
-    const profile = await userCol.findOne({ id: uid })
+    const profile = await getUserById(uid)
     if (profile?.role) return normalizeUserRole(profile.role as string)
   } catch { /* fall through */ }
   return 'user'
@@ -61,8 +60,7 @@ async function lookupRole(uid: string): Promise<UserRole> {
 
 async function getUserProfile(uid: string): Promise<{ role: UserRole; lastLoginMethod?: string | null; lastLoginAt?: Date | null; tenantId?: string | null }> {
   try {
-    const userCol = await getUsersCollection()
-    const profile = await userCol.findOne({ id: uid })
+    const profile = await getUserById(uid)
     if (profile) {
       return {
         role: profile.role ? normalizeUserRole(profile.role as string) : 'user',

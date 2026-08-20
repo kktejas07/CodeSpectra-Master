@@ -32,10 +32,12 @@ NEXT_ORIGIN = os.environ.get("NEXTJS_INTERNAL_URL", "http://localhost:3000")
 app = FastAPI(title="CodeSpectra API")
 
 
+_scheduler_task = None
+
 @app.on_event("startup")
 async def startup_event():
-    """Initialize Redis client on startup."""
-    global _redis_client
+    """Initialize Redis client and background scheduler on startup."""
+    global _redis_client, _scheduler_task
     try:
         _redis_client = await init_redis_client()
         if _redis_client:
@@ -45,12 +47,23 @@ async def startup_event():
     except Exception as e:
         logging.warning(f"Failed to initialize Redis client: {e}")
         _redis_client = None
+        
+    try:
+        from scheduler import start_scheduler
+        _scheduler_task = start_scheduler()
+        logging.info("Background scheduler started")
+    except Exception as e:
+        logging.warning(f"Failed to start scheduler: {e}")
 
 
 @app.on_event("shutdown")
 async def shutdown_event():
-    """Close Redis client on shutdown."""
-    global _redis_client
+    """Close Redis client and stop scheduler on shutdown."""
+    global _redis_client, _scheduler_task
+    
+    if _scheduler_task:
+        _scheduler_task.cancel()
+        
     if _redis_client:
         try:
             await _redis_client.close()

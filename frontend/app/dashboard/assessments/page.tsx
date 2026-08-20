@@ -24,17 +24,34 @@ interface Attempt {
   certificate_url?: string
 }
 
+interface AvailableExam {
+  id: string
+  title: string
+  level: string
+  subject?: string
+  duration: number
+  questions: number
+  access_type: 'invite_only' | 'open'
+  source: 'invite' | 'open'
+  invite_status?: string
+  target_url: string
+}
+
 export default function MyAssessmentsPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
   const [attempts, setAttempts] = useState<Attempt[]>([])
+  const [available, setAvailable] = useState<AvailableExam[]>([])
   const [loading, setLoading] = useState(true)
 
   useEffect(() => {
     if (!gate.ready) return
     fetch('/api/user/assessments', { credentials: 'include' })
       .then(r => r.json())
-      .then(json => { if (json.data) setAttempts(json.data) })
+      .then(json => {
+        if (json.attempts) setAttempts(json.attempts)
+        if (Array.isArray(json.available)) setAvailable(json.available)
+      })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [gate.ready])
@@ -180,6 +197,33 @@ export default function MyAssessmentsPage() {
           </div>
         </Card>
       </div>
+
+      {/* Assigned / Ready-to-take */}
+      {available.length > 0 && (
+        <div className="space-y-3">
+          <h2 className="text-lg font-semibold text-foreground">Ready to take</h2>
+          {available.map(ex => (
+            <Card key={ex.id} className="border-border/60 p-4">
+              <div className="flex flex-wrap items-center justify-between gap-3">
+                <div className="min-w-0 space-y-1">
+                  <p className="font-medium text-foreground">{ex.title}</p>
+                  <p className="text-xs text-muted-foreground">
+                    Level {(ex.level || '').toLowerCase()} · {ex.duration} min · {ex.questions} questions
+                  </p>
+                  <Badge variant="outline" className={`text-xs ${
+                    ex.source === 'invite' ? 'border-primary/40 text-primary' : 'text-muted-foreground'
+                  }`}>
+                    {ex.source === 'invite' ? 'Assigned to you' : 'Open assessment'}
+                  </Badge>
+                </div>
+                <Button size="sm" onClick={() => router.push(ex.target_url)}>
+                  Start
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
 
       {/* Attempts Table */}
       {attempts.length === 0 ? (

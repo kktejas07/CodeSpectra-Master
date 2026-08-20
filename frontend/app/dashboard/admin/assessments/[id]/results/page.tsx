@@ -885,6 +885,7 @@ export default function ExamResultsPage() {
     {
       key: 'name',
       header: 'Candidate',
+      sortable: true,
       cell: (row: CandidateResult) => (
         <div>
           <div className="font-medium text-foreground">{row.name}</div>
@@ -895,11 +896,25 @@ export default function ExamResultsPage() {
     {
       key: 'invitedAt',
       header: 'Invited',
+      sortable: true,
       cell: (row: CandidateResult) => (
         row.invitedAt ? (
           <div>
             <div className="text-sm">{new Date(row.invitedAt).toLocaleDateString()}</div>
             <div className="text-xs text-muted-foreground">{new Date(row.invitedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+        ) : <span className="text-xs text-muted-foreground">--</span>
+      ),
+    },
+    {
+      key: 'submittedAt',
+      header: 'Submitted',
+      sortable: true,
+      cell: (row: CandidateResult) => (
+        row.submittedAt ? (
+          <div>
+            <div className="text-sm">{new Date(row.submittedAt).toLocaleDateString()}</div>
+            <div className="text-xs text-muted-foreground">{new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
           </div>
         ) : <span className="text-xs text-muted-foreground">--</span>
       ),
@@ -974,6 +989,7 @@ export default function ExamResultsPage() {
     {
       key: 'score',
       header: 'Score',
+      sortable: true,
       cell: (row: CandidateResult) => (
         <div className="font-mono font-medium">
           {row.score !== null ? `${row.score}%` : '--'}

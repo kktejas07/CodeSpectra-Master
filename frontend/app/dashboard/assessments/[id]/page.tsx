@@ -340,9 +340,16 @@ export default function ExamPage() {
           })}
         </div>
 
-        <Button onClick={() => router.push('/dashboard/assessments')} className="w-full gap-2">
-          <ArrowLeft className="h-4 w-4" /> Back to Assessments
-        </Button>
+        <div className="flex gap-4">
+          <Button onClick={() => router.push('/dashboard/assessments')} className="flex-1 gap-2" variant="outline">
+            <ArrowLeft className="h-4 w-4" /> Back to Assessments
+          </Button>
+          {results.score / results.total >= 0.7 && (
+            <Button onClick={() => router.push(`/certificate-preview/${examId}`)} className="flex-1 gap-2 bg-blue-600 hover:bg-blue-700 text-white">
+               View Certificate <ChevronRight className="h-4 w-4" />
+            </Button>
+          )}
+        </div>
       </div>
     )
   }

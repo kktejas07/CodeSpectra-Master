@@ -11,6 +11,7 @@ export async function GET() {
 
   try {
     const db = await getMongoDb()
+    const userId = gate.user.id
     const submissions = await db.collection('exam_submissions')
       .find({ user_id: gate.user.id })
       .sort({ created_at: -1 })
@@ -45,7 +46,70 @@ export async function GET() {
       ? Math.round(attempts.reduce((sum: number, a: any) => sum + (a.max_score > 0 ? (a.score / a.max_score) * 100 : 0), 0) / total)
       : 0
 
-    return NextResponse.json({ attempts, stats: { total, passed, avgScore } })
+    // ---- Available: assigned (pending/active invites) + open published exams ----
+    const attemptedIds = new Set(examIds.filter(Boolean))
+    const tokenRe = /\/assessment\/([^/?]+)/
+    const inviteEmail = (gate.user.email || '').toLowerCase()
+
+    const inviteDocs = await db.collection('candidate_invites').find({
+      $or: [{ user_id: userId }, { email: inviteEmail }],
+      status: { $in: ['pending', 'active'] },
+    }).toArray()
+
+    const inviteExamIds = new Set<string>()
+    const inviteByExam = new Map<string, any>()
+    inviteDocs.forEach((inv: any) => {
+      const fromUrl = inv.target_url?.match(tokenRe)?.[1]
+      if (fromUrl && !attemptedIds.has(fromUrl)) {
+        inviteExamIds.add(fromUrl)
+        if (!inviteByExam.has(fromUrl)) inviteByExam.set(fromUrl, inv)
+      }
+    })
+
+    const baseProjection = { id: 1, title: 1, level: 1, subject: 1, duration: 1, questions: 1, access_type: 1, published: 1 }
+
+    const [invitedExams, openExams] = await Promise.all([
+      inviteExamIds.size > 0
+        ? db.collection('exams').find({ id: { $in: [...inviteExamIds] }, published: true }).project(baseProjection).toArray()
+        : Promise.resolve([]),
+      db.collection('exams').find({
+        access_type: 'open',
+        published: true,
+        id: { $nin: [...attemptedIds] },
+      }).project(baseProjection).toArray(),
+    ])
+
+    const available = [
+      ...invitedExams.map((e: any) => {
+        const inv = inviteByExam.get(e.id)
+        const token = (inv && (inv as any).token) || ''
+        const query = `?inviteEmail=${encodeURIComponent(inviteEmail)}${token ? `&inviteToken=${encodeURIComponent(token)}` : ''}`
+        return {
+          id: e.id, title: e.title, level: e.level, subject: e.subject,
+          duration: e.duration, questions: e.questions,
+          access_type: e.access_type, source: 'invite',
+          invite_status: (inv && (inv as any).status) || 'pending',
+          target_url: `/assessment/${e.id}${query}`,
+        }
+      }),
+      ...openExams
+        .filter((e: any) => !attemptedIds.has(e.id))
+        .map((e: any) => ({
+          id: e.id, title: e.title, level: e.level, subject: e.subject,
+          duration: e.duration, questions: e.questions,
+          access_type: e.access_type, source: 'open',
+          target_url: `/assessment/${e.id}`,
+        })),
+    ]
+
+    const seen = new Set<string>()
+    const dedupAvailable = available.filter((i: any) => {
+      if (seen.has(i.id)) return false
+      seen.add(i.id)
+      return true
+    })
+
+    return NextResponse.json({ attempts, available: dedupAvailable, stats: { total, passed, avgScore } })
   } catch (e) {
     console.error('[user assessments] error:', e)
     return NextResponse.json({ error: 'Failed to fetch assessments' }, { status: 500 })

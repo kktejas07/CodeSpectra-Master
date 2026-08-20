@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/route-auth'
+import { getAPIUser } from '@/lib/route-auth'
 import { backendPost } from '@/lib/ai/backend'
 import { resolveModel } from '@/lib/ai/get-user-model'
 
@@ -15,9 +15,8 @@ const FALLBACK_PROVIDERS = [
 ]
 
 export async function POST(req: NextRequest) {
-  const gate = await requireSuperAdmin()
-  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
-  const user = gate.user
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
   let body: Record<string, unknown>
   try {

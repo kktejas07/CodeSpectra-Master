@@ -380,6 +380,7 @@ export default function DashboardLayout({
 
       // Learning
       '/dashboard/learning': GraduationCap,
+      '/dashboard/courses': BookOpen,
       '/dashboard/interview-prep': Video,
 
       // Career
@@ -443,6 +444,7 @@ export default function DashboardLayout({
       '/dashboard/admin/cron-jobs': Timer,
       [p.questionGenerator]: Bot,
       '/dashboard/admin/course-generator': Wand2,
+      '/dashboard/admin/courses': BookOpen,
       [DASHBOARD_ROUTES.organization.team]: Users2,
       '/dashboard/admin/requisitions': Briefcase,
       '/dashboard/admin/question-bank': Database,

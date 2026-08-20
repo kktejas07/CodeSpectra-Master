@@ -6,9 +6,10 @@ import '@vidstack/react/player/styles/default/layouts/video.css'
 import { useEffect, useState } from 'react'
 import { MediaPlayer, MediaProvider } from '@vidstack/react'
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default'
+import { RemotionProviderLoader } from '@vidstack/react/player/remotion'
 
 interface VideoPlayerProps {
-  src: string
+  src: any
   title?: string
   poster?: string
   autoplay?: boolean
@@ -38,6 +39,7 @@ export function VideoPlayer({
   logoLinkUrl,
   className = '',
 }: VideoPlayerProps) {
+  console.log('RemotionProviderLoader is:', RemotionProviderLoader)
   const [settings, setSettings] = useState<PlayerSettings>({})
 
   useEffect(() => {
@@ -85,7 +87,7 @@ export function VideoPlayer({
         muted={finalMuted}
         style={{ '--video-brand': finalColor } as any}
       >
-        <MediaProvider />
+        <MediaProvider loaders={[RemotionProviderLoader]} />
         <DefaultVideoLayout
           thumbnails={poster}
           icons={defaultLayoutIcons}

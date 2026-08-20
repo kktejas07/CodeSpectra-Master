@@ -5,6 +5,7 @@ import { users as getUsersCollection } from '@/lib/db/admin'
 import { verifySessionToken, setSessionCookie } from '@/lib/session'
 import { createRemoteJWKSet, jwtVerify } from 'jose'
 import { createUserSession, updateSessionHeartbeat } from '@/lib/db/sessions'
+import { getUserById } from '@/lib/db/admin'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { isIpBlocked, trackDeviceFingerprint, recordSecurityEvent } from '@/lib/db/security'
 
@@ -14,7 +15,7 @@ const SESSION_EXPIRES_IN = 60 * 60 * 24 * 7 * 1000
 async function ensureUserProfile(uid: string, email: string, displayName?: string, loginMethod?: string) {
   try {
     const userCol = await getUsersCollection()
-    const existing = await userCol.findOne({ id: uid })
+    const existing = await getUserById(uid)
     const updateFields: Record<string, unknown> = { updatedAt: new Date() }
     if (loginMethod) {
       updateFields.lastLoginMethod = loginMethod
@@ -33,7 +34,7 @@ async function ensureUserProfile(uid: string, email: string, displayName?: strin
         ...(loginMethod ? { lastLoginMethod: loginMethod, lastLoginAt: new Date() } : {}),
       } as any)
     } else {
-      await userCol.updateOne({ id: uid }, { $set: updateFields })
+      await userCol.updateOne({ _id: existing._id }, { $set: updateFields })
     }
   } catch (e) {
     console.error('[Session] Profile sync error:', e)
@@ -158,8 +159,10 @@ export async function GET() {
       const decoded = await auth.verifySessionCookie(sessionCookie, true)
       if (decoded) {
         const userCol = await getUsersCollection()
-        const profile = await userCol.findOne({ id: decoded.uid })
-        userCol.updateOne({ id: decoded.uid }, { $set: { updatedAt: new Date() } }).catch(() => {})
+        const profile = await getUserById(decoded.uid)
+        if (profile) {
+          userCol.updateOne({ _id: profile._id }, { $set: { updatedAt: new Date() } }).catch(() => {})
+        }
         return NextResponse.json({
           user: {
             uid: decoded.uid,
@@ -171,6 +174,7 @@ export async function GET() {
             lastLoginAt: profile?.lastLoginAt || null,
             createdAt: profile?.createdAt || null,
             has_enrolled_face: !!(profile as any)?.facial_biometric_template,
+            onboardingGoal: (profile as any)?.onboardingGoal || null,
           },
         })
       }
@@ -183,8 +187,10 @@ export async function GET() {
   const payload = await verifySessionToken(sessionCookie)
   if (payload) {
     const userCol = await getUsersCollection()
-    const profile = await userCol.findOne({ id: payload.uid })
-    userCol.updateOne({ id: payload.uid }, { $set: { updatedAt: new Date() } }).catch(() => {})
+    const profile = await getUserById(payload.uid)
+    if (profile) {
+      userCol.updateOne({ _id: profile._id }, { $set: { updatedAt: new Date() } }).catch(() => {})
+    }
     return NextResponse.json({
       user: {
         uid: payload.uid,
@@ -196,6 +202,7 @@ export async function GET() {
         lastLoginAt: profile?.lastLoginAt || null,
         createdAt: profile?.createdAt || null,
         has_enrolled_face: !!(profile as any)?.facial_biometric_template,
+        onboardingGoal: (profile as any)?.onboardingGoal || null,
       },
     })
   }

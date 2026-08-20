@@ -1671,16 +1671,9 @@
     "@radix-ui/react-use-effect-event" "0.0.5"
     "@radix-ui/react-use-layout-effect" "1.1.4"
 
-"@radix-ui/react-use-effect-event@0.0.5":
+"@radix-ui/react-use-effect-event@0.0.5", "@radix-ui/react-use-effect-event@^0.0.5":
   version "0.0.5"
   resolved "https://registry.npmjs.org/@radix-ui/react-use-effect-event/-/react-use-effect-event-0.0.5.tgz"
-  integrity sha512-7cshFL8HGS/7HEiHH+9kL9HBwp2sa9yX18Knwek6KYWmXwM7pegMgta2AXMQKI+rq3JnfSj9x8wYqFMTdG1Jgg==
-  dependencies:
-    "@radix-ui/react-use-layout-effect" "1.1.4"
-
-"@radix-ui/react-use-effect-event@^0.0.5":
-  version "0.0.5"
-  resolved "https://registry.yarnpkg.com/@radix-ui/react-use-effect-event/-/react-use-effect-event-0.0.5.tgz#7732a4ae6bc032c7f654e658203df92d3520f8d1"
   integrity sha512-7cshFL8HGS/7HEiHH+9kL9HBwp2sa9yX18Knwek6KYWmXwM7pegMgta2AXMQKI+rq3JnfSj9x8wYqFMTdG1Jgg==
   dependencies:
     "@radix-ui/react-use-layout-effect" "1.1.4"
@@ -1780,6 +1773,13 @@
     redux "^5.0.1"
     redux-thunk "^3.1.0"
     reselect "^5.1.0"
+
+"@remotion/player@^4.0.513":
+  version "4.0.513"
+  resolved "https://registry.npmjs.org/@remotion/player/-/player-4.0.513.tgz"
+  integrity sha512-7zBJIypNp7duagRy7SghedEPtIpIF96Lb+r2EZnGMKRbm8PYc6nO2JOnX+gRnMszaULmaLId3pQHMThOy7CJyA==
+  dependencies:
+    remotion "4.0.513"
 
 "@rolldown/binding-android-arm64@1.1.4":
   version "1.1.4"
@@ -2450,6 +2450,13 @@
   resolved "https://registry.npmjs.org/@types/use-sync-external-store/-/use-sync-external-store-0.0.6.tgz"
   integrity sha512-zFDAD+tlpf2r4asuHEj0XH6pY6i0g5NeAHPn+15wk3BV6JA69eERFXC1gyGThDkVa1zCyKr5jox1+2LbV/AMLg==
 
+"@types/uuid@^11.0.0":
+  version "11.0.0"
+  resolved "https://registry.npmjs.org/@types/uuid/-/uuid-11.0.0.tgz"
+  integrity sha512-HVyk8nj2m+jcFRNazzqyVKiZezyhDKrGUA3jlEcg/nZ6Ms+qHwocba1Y/AaVaznJTAM9xpdFSh+ptbNrhOGvZA==
+  dependencies:
+    uuid "*"
+
 "@types/webidl-conversions@*":
   version "7.0.3"
   resolved "https://registry.npmjs.org/@types/webidl-conversions/-/webidl-conversions-7.0.3.tgz"
@@ -2591,7 +2598,7 @@
 
 "@vidstack/react@^1.15.6":
   version "1.15.6"
-  resolved "https://registry.yarnpkg.com/@vidstack/react/-/react-1.15.6.tgz#cc9a27d5942a3af67310722319106118da92a7e2"
+  resolved "https://registry.npmjs.org/@vidstack/react/-/react-1.15.6.tgz"
   integrity sha512-hO7cLld5yfxCdDnDCYqh5aS7JxmHfsmX43PmKBJWzDTwK40P3hh5qAdDQzl3qDtEJLYjuo3Sv+kr6tt/VRtJzQ==
   dependencies:
     "@floating-ui/dom" "^1.6.10"
@@ -2666,7 +2673,7 @@
 
 "@vladmandic/face-api@^1.7.15":
   version "1.7.15"
-  resolved "https://registry.yarnpkg.com/@vladmandic/face-api/-/face-api-1.7.15.tgz#10cddf5c405f6f52f37605c9ee28c91ac6a23ead"
+  resolved "https://registry.npmjs.org/@vladmandic/face-api/-/face-api-1.7.15.tgz"
   integrity sha512-WDMmK3CfNLo8jylWqMoQgf4nIst3M0fzx1dnac96wv/dvMTN4DxC/Pq1DGtduDk1lktCamQ3MIDXFnvrdHTXDw==
 
 "@workflow/serde@4.1.0":
@@ -2712,7 +2719,7 @@ abort-controller@^3.0.0:
 
 acorn@^8.14.0:
   version "8.18.0"
-  resolved "https://registry.yarnpkg.com/acorn/-/acorn-8.18.0.tgz#4faf01b2d6d326bfeed97aea1f52220b5f4c1940"
+  resolved "https://registry.npmjs.org/acorn/-/acorn-8.18.0.tgz"
   integrity sha512-lGq+9yr1/GuAWaVYIHRjvvySG5/4VfKIvC8EWxStPdcDh/Ka7FG3twP6v4d5BkravUilhIAsG4Qj83t02LWUPQ==
 
 adler-32@~1.3.0:
@@ -2831,6 +2838,13 @@ autoprefixer@^10.5.4:
     fraction.js "^5.3.4"
     picocolors "^1.1.1"
     postcss-value-parser "^4.2.0"
+
+axios@^0.21.0:
+  version "0.21.4"
+  resolved "https://registry.npmjs.org/axios/-/axios-0.21.4.tgz"
+  integrity sha512-ut5vewkiu8jjGBdqpM44XxjuCjq9LAKeHVmoVfHVzy8eHgxxq8SbAVQNovDA8mVi05kP0Ea/n/UzcSHcTJQfNg==
+  dependencies:
+    follow-redirects "^1.14.0"
 
 axios@^1.18.1:
   version "1.18.1"
@@ -3637,6 +3651,11 @@ dompurify@^3.3.1, dompurify@^3.4.12:
   optionalDependencies:
     "@types/trusted-types" "^2.0.7"
 
+dotenv@^17.4.2:
+  version "17.4.2"
+  resolved "https://registry.yarnpkg.com/dotenv/-/dotenv-17.4.2.tgz#c07e54a746e11eba021dd9e1047ced5afdc1c034"
+  integrity sha512-nI4U3TottKAcAD9LLud4Cb7b2QztQMUEfHbvhTH09bqXTxnSie8WnjPALV/WMCrJZ6UV/qHJ6L03OqO3LcdYZw==
+
 draco3d@^1.4.1:
   version "1.5.7"
   resolved "https://registry.npmjs.org/draco3d/-/draco3d-1.5.7.tgz"
@@ -3958,7 +3977,7 @@ firebase@^12.17.1:
     "@firebase/storage-compat" "0.4.4"
     "@firebase/util" "1.15.2"
 
-follow-redirects@^1.16.0:
+follow-redirects@^1.14.0, follow-redirects@^1.16.0:
   version "1.16.0"
   resolved "https://registry.npmjs.org/follow-redirects/-/follow-redirects-1.16.0.tgz"
   integrity sha512-y5rN/uOsadFT/JfYwhxRS5R7Qce+g3zG97+JrtFZlC9klX/W5hD7iiLzScI4nZqUS7DNUdhPgw4xI8W2LuXlUw==
@@ -4022,7 +4041,7 @@ fs-extra@^10.0.0:
 
 fscreen@^1.2.0:
   version "1.2.0"
-  resolved "https://registry.yarnpkg.com/fscreen/-/fscreen-1.2.0.tgz#1a8c88e06bc16a07b473ad96196fb06d6657f59e"
+  resolved "https://registry.npmjs.org/fscreen/-/fscreen-1.2.0.tgz"
   integrity sha512-hlq4+BU0hlPmwsFjwGGzZ+OZ9N/wq9Ljg/sq3pX+2CD7hrJsX9tJgWWK/wiNTFM212CLHWhicOoqwXyZGGetJg==
 
 fsevents@~2.3.3:
@@ -4197,6 +4216,13 @@ google-logging-utils@^0.0.2:
   version "0.0.2"
   resolved "https://registry.npmjs.org/google-logging-utils/-/google-logging-utils-0.0.2.tgz"
   integrity sha512-NEgUnEcBiP5HrPzufUkBzJOD/Sxsco3rLNo1F1TNf7ieU8ryUzBhqba8r756CjLX7rn3fHl6iLEwPYuqpoKgQQ==
+
+google-tts-api@^2.0.2:
+  version "2.0.2"
+  resolved "https://registry.npmjs.org/google-tts-api/-/google-tts-api-2.0.2.tgz"
+  integrity sha512-MkQYbBJEdom8hJpfEVDfD3tpBtkz0X59C+FNsoRhbnCiFjZRnzyurGQ5OrAr3xkigII56/jmk0JNwZsp450G+Q==
+  dependencies:
+    axios "^0.21.0"
 
 gopd@^1.0.1, gopd@^1.2.0:
   version "1.2.0"
@@ -4573,7 +4599,7 @@ isexe@^2.0.0:
 
 isomorphic-dompurify@^3.22.0:
   version "3.22.0"
-  resolved "https://registry.yarnpkg.com/isomorphic-dompurify/-/isomorphic-dompurify-3.22.0.tgz#53918dc6ccf43d4d141c1ce807713aeabf10279c"
+  resolved "https://registry.npmjs.org/isomorphic-dompurify/-/isomorphic-dompurify-3.22.0.tgz"
   integrity sha512-cz/BkSODnQir4IV2quqbuEHhAGz4MAYGvhoemsxuwMpY/oZbRHlNjPLPyIQ0fdULiwDPUE+OHPwWb6XTEiNk1A==
   dependencies:
     dompurify "^3.4.12"
@@ -4851,7 +4877,7 @@ limiter@^1.1.5:
 
 lit-html@^2.8.0:
   version "2.8.0"
-  resolved "https://registry.yarnpkg.com/lit-html/-/lit-html-2.8.0.tgz#96456a4bb4ee717b9a7d2f94562a16509d39bffa"
+  resolved "https://registry.npmjs.org/lit-html/-/lit-html-2.8.0.tgz"
   integrity sha512-o9t+MQM3P4y7M7yNzqAyjp7z+mQGa4NS4CxiyLqFPyFWyc4O+nodLrkrxSaCTrla6M5YOLaT3RpbbqjszB5g3Q==
   dependencies:
     "@types/trusted-types" "^2.0.2"
@@ -5164,12 +5190,12 @@ mdn-data@2.27.1:
 
 media-captions@^1.0.4:
   version "1.0.4"
-  resolved "https://registry.yarnpkg.com/media-captions/-/media-captions-1.0.4.tgz#aaacb6a554f7549fc7308b6b7cf766686cf42fad"
+  resolved "https://registry.npmjs.org/media-captions/-/media-captions-1.0.4.tgz"
   integrity sha512-cyDNmuZvvO4H27rcBq2Eudxo9IZRDCOX/I7VEyqbxsEiD2Ei7UYUhG/Sc5fvMZjmathgz3fEK7iAKqvpY+Ux1w==
 
 media-icons@^0.10.0:
   version "0.10.0"
-  resolved "https://registry.yarnpkg.com/media-icons/-/media-icons-0.10.0.tgz#96f606cc4e41faf973efe5c521bc6375f2d95624"
+  resolved "https://registry.npmjs.org/media-icons/-/media-icons-0.10.0.tgz"
   integrity sha512-M9loX7KUWsID3T8pRSN6/+MNKPEm9dNteqJk7yfo9ZaAIEYzEd07jWTVRlRmgVMKoAh1kY7funD6Qe1prrTJMQ==
 
 memory-pager@^1.0.2:
@@ -5974,7 +6000,7 @@ react-remove-scroll-bar@^2.3.7:
 
 react-remove-scroll@^2.7.2:
   version "2.7.2"
-  resolved "https://registry.yarnpkg.com/react-remove-scroll/-/react-remove-scroll-2.7.2.tgz#6442da56791117661978ae99cd29be9026fecca0"
+  resolved "https://registry.npmjs.org/react-remove-scroll/-/react-remove-scroll-2.7.2.tgz"
   integrity sha512-Iqb9NjCCTt6Hf+vOdNIZGdTiH1QSqr27H/Ek9sv/a97gfueI/5h1s3yRi1nngzMUaOOToin5dI1dXKdXiF+u0Q==
   dependencies:
     react-remove-scroll-bar "^2.3.7"
@@ -6138,6 +6164,11 @@ remark-stringify@^11.0.0:
     "@types/mdast" "^4.0.0"
     mdast-util-to-markdown "^2.0.0"
     unified "^11.0.0"
+
+remotion@4.0.513, remotion@^4.0.513:
+  version "4.0.513"
+  resolved "https://registry.npmjs.org/remotion/-/remotion-4.0.513.tgz"
+  integrity sha512-cDaUqFq7GBuxYYSINhfXy5+X7V4L3fSy3lDL4G/7v61jCpEzYcRQftAKo2Cyj1evHt34bn++4eMMUZBMh624yA==
 
 require-directory@^2.1.1:
   version "2.1.1"
@@ -6611,7 +6642,7 @@ tesseract.js-core@^7.0.0:
 
 tesseract.js@^7.0.0:
   version "7.0.0"
-  resolved "https://registry.yarnpkg.com/tesseract.js/-/tesseract.js-7.0.0.tgz#4106fb6245efab40c57b94bc1798368807526be8"
+  resolved "https://registry.npmjs.org/tesseract.js/-/tesseract.js-7.0.0.tgz"
   integrity sha512-exPBkd+z+wM1BuMkx/Bjv43OeLBxhL5kKWsz/9JY+DXcXdiBjiAch0V49QR3oAJqCaL5qURE0vx9Eo+G5YE7mA==
   dependencies:
     bmp-js "^0.1.0"
@@ -6911,7 +6942,7 @@ universalify@^2.0.0:
 
 unplugin@^1.12.0:
   version "1.16.1"
-  resolved "https://registry.yarnpkg.com/unplugin/-/unplugin-1.16.1.tgz#a844d2e3c3b14a4ac2945c42be80409321b61199"
+  resolved "https://registry.npmjs.org/unplugin/-/unplugin-1.16.1.tgz"
   integrity sha512-4/u/j4FrCKdi17jaxuJA0jClGxB1AvU2hw/IuayPc4ay1XGaJs/rbb4v5WKwAjNifjmXK9PIFyuPiaK8azyR9w==
   dependencies:
     acorn "^8.14.0"
@@ -6962,7 +6993,7 @@ utrie@^1.0.2:
   dependencies:
     base64-arraybuffer "^1.0.2"
 
-uuid@^9.0.0, uuid@^9.0.1:
+uuid@*, uuid@^9.0.0, uuid@^9.0.1:
   version "9.0.1"
   resolved "https://registry.npmjs.org/uuid/-/uuid-9.0.1.tgz"
   integrity sha512-b+1eJOlsR9K8HJpow9Ok3fiWOWSIcIzXodvv0rQjVoOVNpWMpxf1wZNpt4y9h10odCNrqnYp1OBzRktckBe3sA==
@@ -7012,7 +7043,7 @@ victory-vendor@^37.0.2:
 
 vidstack@^1.15.6:
   version "1.15.6"
-  resolved "https://registry.yarnpkg.com/vidstack/-/vidstack-1.15.6.tgz#cf58ef64a105ff6d01eefa1e49abeb9eaa7d52ce"
+  resolved "https://registry.npmjs.org/vidstack/-/vidstack-1.15.6.tgz"
   integrity sha512-bdPbguNooX7Og6xqhqlRoowciTL7DibntuUwFrW6Y7K2t1jcYX7yTd05k/hfEOJrTGaY2VpU5hLQpFJDNFzK4A==
   dependencies:
     "@floating-ui/dom" "^1.6.10"
@@ -7109,7 +7140,7 @@ webidl-conversions@^8.0.1:
 
 webpack-virtual-modules@^0.6.2:
   version "0.6.2"
-  resolved "https://registry.yarnpkg.com/webpack-virtual-modules/-/webpack-virtual-modules-0.6.2.tgz#057faa9065c8acf48f24cb57ac0e77739ab9a7e8"
+  resolved "https://registry.npmjs.org/webpack-virtual-modules/-/webpack-virtual-modules-0.6.2.tgz"
   integrity sha512-66/V2i5hQanC51vBQKPH4aI8NMAcBW59FVBs+rC7eGHupMyfn34q7rZIE+ETlJ+XTevqfUhVVBgSUNSW2flEUQ==
 
 websocket-driver@>=0.5.1:
