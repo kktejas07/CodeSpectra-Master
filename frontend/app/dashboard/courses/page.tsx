@@ -40,14 +40,26 @@ const CATEGORIES = [
   { id: 'Security',      label: 'Security',           icon: <Shield className="h-4 w-4" /> },
 ]
 
-// Fallback images cycled per course index
-const FALLBACK_IMAGES = [
-  '/courses/cpp.jpg',
-  '/courses/os.jpg',
-  '/courses/web.jpg',
-  '/courses/python.jpg',
-  '/courses/system.jpg',
-]
+// Category-based fallback images
+const CATEGORY_IMAGES: Record<string, string> = {
+  'CPP': '/courses/cpp.jpg',
+  'C': '/courses/c.jpg',
+  'Python': '/courses/python.jpg',
+  'Java': '/courses/java.jpg',
+  'JavaScript': '/courses/javascript.jpg',
+  'Full Stack Web dev': '/courses/web.jpg',
+  'React': '/courses/react.jpg',
+  'Node.js': '/courses/web.jpg',
+  'Software Tools': '/courses/os.jpg',
+  'DevOps': '/courses/devops.jpg',
+  'Docker': '/courses/devops.jpg',
+  'SQL': '/courses/sql.jpg',
+  'Management': '/courses/system.jpg',
+  'AI': '/courses/python.jpg',
+  'System Design': '/courses/system.jpg',
+}
+
+const DEFAULT_IMAGE = '/courses/web.jpg'
 
 function LearningPageInner() {
   const router = useRouter()
@@ -184,10 +196,10 @@ function LearningPageInner() {
                 {/* Thumbnail */}
                 <div className="relative h-44 w-full overflow-hidden shrink-0 bg-muted">
                   <img
-                    src={course.image || FALLBACK_IMAGES[i % FALLBACK_IMAGES.length]}
+                    src={course.image || CATEGORY_IMAGES[course.category || course.tags?.[0]] || DEFAULT_IMAGE}
                     alt={course.title}
                     className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
-                    onError={e => { (e.target as HTMLImageElement).src = FALLBACK_IMAGES[i % FALLBACK_IMAGES.length] }}
+                    onError={e => { (e.target as HTMLImageElement).src = CATEGORY_IMAGES[course.category || course.tags?.[0]] || DEFAULT_IMAGE }}
                   />
                   {/* Level badge */}
                   {course.level && (
