@@ -111,6 +111,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
 
   const [isIdVerifying, setIsIdVerifying] = useState(false)
   const [idError, setIdError] = useState<string | null>(null)
+  const [useAsProfile, setUseAsProfile] = useState(false)
 
   const handleNextFromId = async () => {
     if (idPhoto) {
@@ -158,6 +159,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
         if (!res.ok) {
           throw new Error(data.error || 'Verification failed')
         }
+        if (useAsProfile) setProfileAvatar(facePhoto)
         onComplete({ idPhoto, facePhoto })
       } catch (err: any) {
         setVerificationError(err.message)
@@ -167,6 +169,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
       }
     } else if (idPhoto && facePhoto) {
       // Fallback if no descriptor
+      if (useAsProfile) setProfileAvatar(facePhoto)
       onComplete({ idPhoto, facePhoto })
     }
   }
@@ -178,6 +181,21 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
       setFacePhoto(null)
     }
     startCamera()
+  }
+
+  const setProfileAvatar = (dataUrl: string) => {
+    try {
+      const key = 'codeSpectra_extendedProfile'
+      let extended: Record<string, any> = {}
+      const prev = localStorage.getItem(key)
+      if (prev) {
+        try { extended = JSON.parse(prev) || {} } catch { extended = {} }
+      }
+      extended.avatar = dataUrl
+      localStorage.setItem(key, JSON.stringify(extended))
+    } catch (e) {
+      console.error('Failed to save profile avatar:', e)
+    }
   }
 
   return (
@@ -433,6 +451,18 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                 </Button>
               </div>
             </div>
+
+            <label className="flex items-start gap-3 cursor-pointer p-3 bg-muted/40 rounded-lg border text-sm">
+                <input
+                  type="checkbox"
+                  checked={useAsProfile}
+                  onChange={(e) => setUseAsProfile(e.target.checked)}
+                  className="mt-0.5 h-4 w-4 rounded border-input text-primary focus:ring-primary"
+                />
+                <span className="text-muted-foreground text-xs">
+                  Also use my verification selfie as my profile picture. You can change it anytime from Profile &gt; Edit.
+                </span>
+              </label>
 
             <div className="flex justify-end gap-3 border-t pt-4">
               <Button variant="outline" onClick={() => { setStep('capture_face'); }}>Back</Button>
