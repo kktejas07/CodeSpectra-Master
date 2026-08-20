@@ -1,6 +1,7 @@
 'use client'
 
 import * as React from 'react'
+import '@/lib/fetch-csrf-guard'
 import { ThemeProvider } from '@/components/theme-provider'
 import { AuthProvider } from '@/lib/auth-context'
 import { ToastProvider } from '@/lib/toast-context'
