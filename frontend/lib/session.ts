@@ -5,26 +5,59 @@ import { getMongoDb } from '@/lib/mongodb'
 const SESSION_COOKIE = 'codespectra_session'
 
 let _secret: Uint8Array | null = null
+let _secretPromise: Promise<Uint8Array> | null = null
 
-function getSecret(): Uint8Array {
-  if (_secret) return _secret
+/**
+ * Resolve the session signing secret. Priority: env var first, then a secret
+ * persisted in Mongo `platform_settings.secrets.session_secret`. The DB-backed
+ * fallback exists so a fresh container (rebuilt by Dokploy) never hard-fails on
+ * login just because `SESSION_SECRET` was dropped from the service env (Dokploy
+ * re-applies its own stored env on every roll, wiping ad-hoc --env-add values).
+ *
+ * Security note: the DB secret is exactly as secret as the DB is; it lives in the
+ * same `platform_settings` record that already stores every API key (see
+ * server-secrets-cache.ts). Because it is a per-app random 64+ hex string and never
+ * ships in code, it does not weaken the earlier "no public fallback key" guarantee.
+ */
+async function resolveSecret(): Promise<Uint8Array> {
   const raw = process.env.SESSION_SECRET
-  // Hard fail: a publicly-known fallback key would let anyone forge a session
-  // cookie for any uid (full account impersonation). No silent dev secret.
-  if (!raw || raw.length < 32) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(
-        '[session] SESSION_SECRET must be set to a 32+ char random string in production. ' +
-        'Refusing to start with a weak signing key.',
-      )
+  if (raw && raw.length >= 32) {
+    _secret = new TextEncoder().encode(raw)
+    return _secret
+  }
+  try {
+    const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
+    const secrets = await readServerSecrets()
+    const stored = typeof secrets.session_secret === 'string' ? secrets.session_secret.trim() : ''
+    if (stored.length >= 32 && !isMaskedSecret(stored)) {
+      _secret = new TextEncoder().encode(stored)
+      return _secret
     }
-    console.warn(
-      '[session] SESSION_SECRET not set or too short — using development fallback. ' +
-      'Set SESSION_SECRET (32+ chars) in your environment.',
+  } catch {
+    // fall through to env failure handling
+  }
+  if (process.env.NODE_ENV === 'production') {
+    throw new Error(
+      '[session] SESSION_SECRET must be set to a 32+ char random string in production. ' +
+      'Set SESSION_SECRET in the service env or store `session_secret` in ' +
+      'MongoDB platform_settings.secrets. Refusing to start with a weak signing key.',
     )
   }
-  _secret = new TextEncoder().encode(raw || 'dev-secret-do-not-use-in-production-32chars')
+  console.warn(
+    '[session] SESSION_SECRET not set or too short — using development fallback. ' +
+    'Set SESSION_SECRET (32+ chars) in your environment.',
+  )
+  _secret = new TextEncoder().encode('dev-secret-do-not-use-in-production-32chars')
   return _secret
+}
+
+async function getSecret(): Promise<Uint8Array> {
+  if (_secret) return _secret
+  _secretPromise ??= resolveSecret().catch((err) => {
+    _secretPromise = null
+    throw err
+  })
+  return _secretPromise
 }
 
 export interface SessionPayload {
@@ -52,12 +85,12 @@ export async function signSessionToken(payload: SessionPayload): Promise<string>
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(getSecret())
+    .sign(await getSecret())
 }
 
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecret())
+    const { payload } = await jwtVerify(token, await getSecret())
     const data = payload as unknown as SessionPayload
     if (!data.uid) return null
     // Check session version (revocation)

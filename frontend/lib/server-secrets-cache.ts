@@ -60,6 +60,8 @@ export type ServerSecretsRecord = {
   // --- Upstash Redis (rate limiting) -------------------------------------
   upstash_redis_rest_url?: string
   upstash_redis_rest_token?: string
+  // --- Session signing (frontend JWT fallback when SESSION_SECRET env is missing) ----
+  session_secret?: string
   // --- Cloudflare --------------------------------------------------------
   cloudflare_zone_id?: string
   cloudflare_api_token?: string
