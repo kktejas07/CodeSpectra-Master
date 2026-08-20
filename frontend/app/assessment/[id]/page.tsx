@@ -217,7 +217,7 @@ interface RunResult {
 
         // Share link: skip invite-only check. Track public link view.
         if (isShareLink) {
-          fetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
+          csrfFetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
         } else if (accType === 'invite_only') {
           if (!inviteToken) {
             setAccessError('This assessment is invite-only. A valid invitation link is required.')
@@ -373,7 +373,7 @@ interface RunResult {
       const testCases = (currentQ as any).test_cases || []
       const sampleCases = testCases.filter((tc: TestCase) => tc.isSample !== false)
 
-      const res = await fetch('/api/execute-code', {
+      const res = await csrfFetch('/api/execute-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -408,7 +408,7 @@ interface RunResult {
       for (const [k, v] of Object.entries(answers)) {
         serialized[k] = Array.isArray(v) ? v.join(', ') : v
       }
-      const res = await fetch(`/api/exams/${exam.id}/submit`, {
+      const res = await csrfFetch(`/api/exams/${exam.id}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
