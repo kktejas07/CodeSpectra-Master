@@ -5,6 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { slidesFromAiJson, withDurations, normalizeBullets } from '@/lib/courses/lesson-video'
 import { durationFramesFromSpoken, estimateSpokenSeconds, splitTextForTts } from '@/lib/courses/tts'
+import { isStaleRunning, STALE_RUNNING_MS } from '@/lib/courses/process-job'
 
 const fiveSlides = {
   slides: [
@@ -70,5 +71,17 @@ describe('splitTextForTts', () => {
     const chunks = splitTextForTts(long)
     expect(chunks.length).toBeGreaterThan(1)
     expect(chunks.every(c => c.length <= 190)).toBe(true)
+  })
+})
+
+describe('stale running jobs', () => {
+  it('flags a running job older than 45 minutes', () => {
+    const now = Date.parse('2026-08-21T12:00:00Z')
+    expect(isStaleRunning({ status: 'running', startedAt: '2026-08-21T11:59:00Z' }, now)).toBe(false)
+    expect(isStaleRunning({
+      status: 'running',
+      startedAt: new Date(now - STALE_RUNNING_MS - 1000).toISOString(),
+    }, now)).toBe(true)
+    expect(isStaleRunning({ status: 'pending', startedAt: '2020-01-01T00:00:00Z' }, now)).toBe(false)
   })
 })

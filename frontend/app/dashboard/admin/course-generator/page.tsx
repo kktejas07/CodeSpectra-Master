@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   CheckCircle2, Loader2, AlertTriangle, Clock, Play, Pause,
   RotateCcw, Trash2, Eye, ChevronDown, ChevronUp, Zap, BookOpen,
-  RefreshCw, Plus, Search, BarChart3
+  RefreshCw, Plus, Search, BarChart3, RotateCw
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -63,6 +63,8 @@ export default function CourseGeneratorPage() {
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [expandedJob, setExpandedJob] = useState<string | null>(null)
+  const [workerOnline, setWorkerOnline] = useState<boolean | null>(null)
+  const [workerHint, setWorkerHint] = useState('')
 
   // Course state
   const [existingCourses, setExistingCourses] = useState<any[]>([])
@@ -78,8 +80,10 @@ export default function CourseGeneratorPage() {
   useEffect(() => {
     loadJobs()
     loadExistingCourses()
+    loadWorker()
     const interval = setInterval(() => {
       loadJobs()
+      loadWorker()
     }, 5000)
     return () => clearInterval(interval)
   }, [])
@@ -91,6 +95,54 @@ export default function CourseGeneratorPage() {
       if (data.jobs) setJobs(data.jobs)
     } catch {}
     setLoading(false)
+  }
+
+  const loadWorker = async () => {
+    try {
+      const res = await csrfFetch('/api/admin/courses/worker', { credentials: 'include' })
+      const data = await res.json()
+      if (typeof data.online === 'boolean') setWorkerOnline(data.online)
+      if (data.hint) setWorkerHint(data.hint)
+    } catch {
+      setWorkerOnline(false)
+    }
+  }
+
+  const handleRetryJob = async (jobId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const res = await csrfFetch('/api/admin/courses/worker', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ jobId, action: 'retry' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Retry failed')
+      addToast({ type: 'success', title: data.message || 'Job requeued' })
+      loadJobs()
+      loadWorker()
+    } catch (err: any) {
+      addToast({ type: 'error', title: err.message })
+    }
+  }
+
+  const handleCancelJob = async (jobId: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    try {
+      const res = await csrfFetch('/api/admin/courses/worker', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ jobId, action: 'cancel' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Cancel failed')
+      addToast({ type: 'success', title: 'Job cancelled' })
+      loadJobs()
+    } catch (err: any) {
+      addToast({ type: 'error', title: err.message })
+    }
   }
 
   const loadExistingCourses = async () => {
@@ -141,16 +193,9 @@ export default function CourseGeneratorPage() {
         }),
       })
       const jobData = await jobRes.json()
+      if (!jobRes.ok) throw new Error(jobData.error || 'Failed to queue video job')
 
-      // Step 3: Start server-side worker
-      await csrfFetch('/api/admin/courses/worker', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ jobId: jobData.job.id }),
-      })
-
-      addToast({ type: 'success', title: 'Video generation started in background' })
+      addToast({ type: 'success', title: 'Queued — course worker will generate videos (one job at a time)' })
       loadJobs()
       loadExistingCourses()
     } catch (e: any) {
@@ -180,16 +225,9 @@ export default function CourseGeneratorPage() {
         }),
       })
       const jobData = await jobRes.json()
+      if (!jobRes.ok) throw new Error(jobData.error || 'Failed to queue regeneration')
 
-      // Start worker
-      await csrfFetch('/api/admin/courses/worker', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ jobId: jobData.job.id }),
-      })
-
-      addToast({ type: 'success', title: `Regeneration started for "${courseTitle}"` })
+      addToast({ type: 'success', title: `Queued regeneration for "${courseTitle}"` })
       loadJobs()
     } catch (e: any) {
       addToast({ type: 'error', title: e.message })
@@ -293,8 +331,25 @@ export default function CourseGeneratorPage() {
               {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Zap className="h-4 w-4" /> Generate Course</>}
             </Button>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Curriculum is instant. Videos are real voiceovers (~3–5 min each) and take about a minute per lesson — a 12-lesson course is 10–20 minutes, not 17 seconds.
+              Curriculum is instant. Videos run on a separate course-worker container (one job at a time, ~1 min per lesson). Jobs stay pending until that worker is running (`COURSE_WORKER=1`).
             </p>
+          </Card>
+
+          {/* Stats Card */}
+          <Card className="p-5 space-y-3">
+            <h2 className="text-sm font-semibold flex items-center gap-2">
+              <BarChart3 className="h-4 w-4 text-muted-foreground" />
+              Worker
+            </h2>
+            <div className="flex items-center gap-2">
+              <span className={`inline-block h-2 w-2 rounded-full ${workerOnline ? 'bg-green-500' : workerOnline === false ? 'bg-red-500' : 'bg-muted-foreground'}`} />
+              <span className="text-sm font-medium">
+                {workerOnline === null ? 'Checking…' : workerOnline ? 'Online — jobs start automatically' : 'Offline'}
+              </span>
+            </div>
+            {workerHint && (
+              <p className="text-[11px] text-muted-foreground leading-relaxed">{workerHint}</p>
+            )}
           </Card>
 
           {/* Stats Card */}
@@ -427,7 +482,17 @@ export default function CourseGeneratorPage() {
                               </p>
                             </div>
                           </div>
-                          <div className="flex items-center gap-2">
+                          <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
+                            {(job.status === 'failed' || job.status === 'cancelled' || job.status === 'running' || job.status === 'pending') && (
+                              <Button variant="ghost" size="sm" title="Retry / unstick" onClick={(e) => handleRetryJob(job.id, e)}>
+                                <RotateCw className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {(job.status === 'pending' || job.status === 'running') && (
+                              <Button variant="ghost" size="sm" title="Cancel job" onClick={(e) => handleCancelJob(job.id, e)}>
+                                <Pause className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
                             {expandedJob === job.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}
                           </div>
                         </div>
