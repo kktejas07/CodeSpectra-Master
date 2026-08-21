@@ -143,7 +143,7 @@ export async function backendComplete(args: {
     const res = await fetch(`${BACKEND}/internal/ai/complete`, {
       method: 'POST',
       headers,
-      signal: AbortSignal.timeout(120_000),
+      signal: AbortSignal.timeout(180_000),
       body: JSON.stringify({
         session_id: args.sessionId ?? 'default',
         system_message: args.systemMessage,

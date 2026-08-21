@@ -10,10 +10,8 @@ import {
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { cn } from '@/lib/utils'
-import { CourseVideoComposition } from '@/app/remotion/CourseVideo'
 import { useToast } from '@/lib/toast-context'
 import { VideoPlayer } from '@/components/ui/video-player'
-import { Player } from '@remotion/player'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -38,6 +36,7 @@ interface Lesson {
   videoType?: 'youtube' | 'ai'
   script?: any[]
   audioUrl?: string
+  videoUrl?: string
   textContent?: string
 }
 
@@ -59,12 +58,6 @@ function formatDuration(seconds: number): string {
   const s = Math.floor(seconds % 60)
   if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   return `${m}:${s.toString().padStart(2, '0')}`
-}
-
-function scriptDurationFrames(script: any[] | undefined): number {
-  if (!script?.length) return 30
-  const frames = script.reduce((acc: number, curr: any) => acc + (curr.durationInFrames || 0), 0)
-  return Math.max(30, frames)
 }
 
 function resolveMediaUrl(url?: string | null): string | undefined {
@@ -252,29 +245,18 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
               <div className="mt-6">
                 {viewMode === 'video' ? (
                   <div className="w-full aspect-video bg-black sm:rounded-2xl overflow-hidden shadow-2xl relative border border-border/20">
-                    {activeLesson.videoType === 'ai' && activeLesson.script?.length ? (
-                      <Player
-                        component={CourseVideoComposition}
-                        inputProps={{
-                          script: activeLesson.script,
-                          audioUrl: resolveMediaUrl(activeLesson.audioUrl),
-                        }}
-                        durationInFrames={scriptDurationFrames(activeLesson.script)}
-                        compositionWidth={1920}
-                        compositionHeight={1080}
-                        fps={30}
-                        controls
-                        autoPlay={false}
-                        clickToPlay
-                        spaceKeyToPlayOrPause
-                        style={{ width: '100%', height: '100%' }}
+                    {activeLesson.videoUrl ? (
+                      <VideoPlayer
+                        src={resolveMediaUrl(activeLesson.videoUrl)}
+                        title={activeLesson.title}
+                        className="w-full h-full border-0 rounded-none"
                       />
                     ) : activeLesson.url ? (
                       <VideoPlayer src={activeLesson.url} title={activeLesson.title} className="w-full h-full" />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground bg-black">
                         <Play className="h-10 w-10 opacity-40" />
-                        <p className="text-sm">Video not generated yet. Open Course Generator and regenerate this course.</p>
+                        <p className="text-sm">MP4 not generated yet. Open Course Generator and regenerate this course.</p>
                       </div>
                     )}
                   </div>

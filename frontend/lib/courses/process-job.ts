@@ -1,14 +1,14 @@
 import { getMongoDb } from '@/lib/mongodb'
 import { generateLessonVideo } from '@/lib/courses/lesson-video'
-import { lessonAudioPath, saveLessonAudio } from '@/lib/courses/lesson-audio'
+import { lessonAudioPath, saveLessonAudio, deleteCourseAudio, loadLessonAudio } from '@/lib/courses/lesson-audio'
+import { lessonVideoPath, deleteCourseVideos } from '@/lib/courses/lesson-mp4'
 
 export function finalJobStatus(completedItems: number, failedItems: number): 'completed' | 'failed' {
-  if (completedItems > 0 && failedItems === 0) return 'completed'
-  if (completedItems === 0) return 'failed'
+  if (failedItems > 0 || completedItems === 0) return 'failed'
   return 'completed'
 }
 
-export const STALE_RUNNING_MS = 45 * 60 * 1000
+export const STALE_RUNNING_MS = 3 * 60 * 60 * 1000
 export const WORKER_ONLINE_MS = 20_000
 const HEARTBEAT_ID = 'course-video-worker'
 const BUSY_STATUSES = ['pending', 'running'] as const
@@ -62,11 +62,11 @@ export async function recoverStaleRunningJobs(): Promise<number> {
     await db.collection('generation_jobs').updateOne(
       { id: job.id },
       {
-        $set: { status: 'failed', error: 'Stale — worker died or timed out after 45 minutes' },
+        $set: { status: 'failed', error: 'Stale — worker died or timed out after 3 hours' },
         $push: {
           logs: {
             timestamp: new Date().toISOString(),
-            message: 'Marked failed: job was still running after 45 minutes (worker likely restarted)',
+            message: 'Marked failed: job was still running after 3 hours (worker likely restarted)',
             type: 'error',
           },
         } as any,
@@ -125,28 +125,51 @@ export async function processVideoJob(jobId: string): Promise<void> {
     let failedItems = 0
     const totalItems = sections.reduce((sum: number, s: any) => sum + (s.lessons?.length || 0), 0)
 
-    await addLog(`Starting video generation for ${totalItems} lessons (each takes ~1 min — text + 3–5 min voiceover)`)
+    await addLog(`Starting MP4 generation for ${totalItems} lessons (script + voiceover + render, ~5–10 min each)`)
 
     for (let sIdx = 0; sIdx < sections.length; sIdx++) {
       const section = sections[sIdx]
       for (let lIdx = 0; lIdx < (section.lessons?.length || 0); lIdx++) {
         const lesson = section.lessons[lIdx]
 
-        if (lesson.script && lesson.script.length > 0 && lesson.audioUrl) {
+        if (lesson.videoUrl) {
           completedItems++
-          await addLog(`Skipped (already has video): ${lesson.title}`, 'info')
+          await addLog(`Skipped (already has MP4): ${lesson.title}`, 'info')
           continue
         }
-
-        await addLog(`Generating: ${section.title} > ${lesson.title} (LLM + voiceover, 1–2 min)`)
-        console.log('[course-worker] lesson', lesson.title)
 
         try {
           const topic = lesson.content || lesson.title
           const techStack = course.tags?.[0] || 'programming'
-          const generated = await generateLessonVideo({ topic, techStack })
+          let script = Array.isArray(lesson.script) ? lesson.script : null
+          let textContent = lesson.textContent || ''
+          let durationSeconds = Number(lesson.duration) || 0
+          let audio = script?.length && lesson.audioUrl
+            ? (await loadLessonAudio(job.courseId, lesson.id))?.data ?? null
+            : null
 
-          await saveLessonAudio(job.courseId, lesson.id, generated.audioBuffer)
+          if (script?.length && audio) {
+            await addLog(`Rendering MP4: ${section.title} > ${lesson.title}`)
+          } else {
+            await addLog(`Generating: ${section.title} > ${lesson.title} (script + voiceover + MP4)`)
+            console.log('[course-worker] lesson', lesson.title)
+            const generated = await generateLessonVideo({ topic, techStack })
+            await saveLessonAudio(job.courseId, lesson.id, generated.audioBuffer)
+            script = generated.script
+            audio = generated.audioBuffer
+            textContent = generated.textContent
+            durationSeconds = generated.durationSeconds
+          }
+
+          if (!script?.length || !audio) throw new Error('Missing script or audio for MP4 render')
+
+          const { renderAndStoreLessonMp4 } = await import('@/lib/courses/render-mp4')
+          const mp4 = await renderAndStoreLessonMp4({
+            courseId: job.courseId,
+            lessonId: lesson.id,
+            script,
+            audio,
+          })
 
           const latest = await db.collection('courses').findOne({ id: job.courseId })
           const updatedSections = [...(latest?.sections || sections)]
@@ -154,12 +177,13 @@ export async function processVideoJob(jobId: string): Promise<void> {
             ...updatedSections[sIdx],
             lessons: updatedSections[sIdx].lessons.map((l: any, i: number) => i !== lIdx ? l : {
               ...l,
-              textContent: generated.textContent,
-              script: generated.script,
+              textContent,
+              script,
               audioUrl: lessonAudioPath(job.courseId, lesson.id),
+              videoUrl: lessonVideoPath(job.courseId, lesson.id),
               videoType: 'ai',
               type: 'video',
-              duration: generated.durationSeconds,
+              duration: durationSeconds || Math.round(script.reduce((n: number, s: any) => n + (s.durationInFrames || 0), 0) / 30),
             }),
           }
 
@@ -170,7 +194,7 @@ export async function processVideoJob(jobId: string): Promise<void> {
 
           completedItems++
           await addLog(
-            `Completed: ${lesson.title} (${generated.script.length} slides, ${generated.durationSeconds}s audio)`,
+            `Completed: ${lesson.title} (MP4 ${(mp4.bytes / 1_000_000).toFixed(1)}MB ${mp4.stored === 'object' ? 'object storage' : 'Mongo'})`,
             'success',
           )
         } catch (e: any) {
@@ -195,15 +219,17 @@ export async function processVideoJob(jobId: string): Promise<void> {
           status,
           progress: 100,
           completedAt: new Date().toISOString(),
-          ...(status === 'failed' ? { error: `${failedItems} videos failed, 0 generated` } : { error: null }),
+          ...(status === 'failed'
+            ? { error: `${failedItems} videos failed, ${completedItems} generated` }
+            : { error: null }),
         },
       },
     )
     await addLog(
       status === 'failed'
-        ? `Job failed: 0 videos generated, ${failedItems} failed`
-        : `Job completed: ${completedItems} videos generated, ${failedItems} failed`,
-      status === 'failed' ? 'error' : failedItems > 0 ? 'warning' : 'success',
+        ? `Job failed: ${completedItems} videos generated, ${failedItems} failed — Retry remaining keeps successes; Regenerate all starts over`
+        : `Job completed: ${completedItems} videos generated`,
+      status === 'failed' ? 'error' : 'success',
     )
   } catch (e: any) {
     await db.collection('generation_jobs').updateOne(
@@ -248,11 +274,38 @@ export async function readWorkerStatus(): Promise<{
   }
 }
 
-export async function requeueJob(jobId: string): Promise<{ ok: boolean; error?: string }> {
+export async function clearCourseVideos(courseId: string): Promise<void> {
+  const db = await getMongoDb()
+  const course = await db.collection('courses').findOne({ id: courseId })
+  if (!course) return
+  const sectionsUpdate = (course.sections || []).map((s: any) => ({
+    ...s,
+    lessons: (s.lessons || []).map((l: any) => ({
+      ...l,
+      script: [],
+      textContent: null,
+      audioUrl: null,
+      videoUrl: null,
+      videoType: null,
+      duration: 600,
+      type: 'text',
+    })),
+  }))
+  await db.collection('courses').updateOne(
+    { id: courseId },
+    { $set: { sections: sectionsUpdate, updated_at: new Date().toISOString() } },
+  )
+  await deleteCourseAudio(courseId)
+  await deleteCourseVideos(courseId)
+}
+
+export async function requeueJob(jobId: string, opts?: { regenerateAll?: boolean }): Promise<{ ok: boolean; error?: string }> {
   const db = await getMongoDb()
   const job = await db.collection('generation_jobs').findOne({ id: jobId })
   if (!job) return { ok: false, error: 'Job not found' }
-  if (job.status === 'completed') return { ok: false, error: 'Job already completed' }
+  if (job.status === 'completed' && !opts?.regenerateAll && !(job.failedItems > 0)) {
+    return { ok: false, error: 'Job already completed' }
+  }
 
   const busy = await db.collection('generation_jobs').findOne({
     status: { $in: ['pending', 'running'] },
@@ -260,14 +313,24 @@ export async function requeueJob(jobId: string): Promise<{ ok: boolean; error?: 
   })
   if (busy) return { ok: false, error: `Another job is already ${busy.status}` }
 
+  if (opts?.regenerateAll) await clearCourseVideos(job.courseId)
+
   await db.collection('generation_jobs').updateOne(
     { id: jobId },
     {
-      $set: { status: 'pending', error: null, progress: job.status === 'running' ? job.progress : 0 },
+      $set: {
+        status: 'pending',
+        error: null,
+        progress: 0,
+        completedItems: 0,
+        failedItems: 0,
+      },
       $push: {
         logs: {
           timestamp: new Date().toISOString(),
-          message: 'Requeued from Course Generator UI — worker will pick this up',
+          message: opts?.regenerateAll
+            ? 'Requeued — regenerating ALL videos (existing ones cleared)'
+            : 'Requeued — will skip lessons that already have video',
           type: 'info',
         },
       } as any,

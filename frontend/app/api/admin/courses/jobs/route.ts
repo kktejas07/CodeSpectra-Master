@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { findBusyJob } from '@/lib/courses/process-job'
+import { findBusyJob, clearCourseVideos } from '@/lib/courses/process-job'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -43,9 +43,9 @@ export async function GET(request: NextRequest) {
       .limit(50)
       .toArray()
 
-    // Old worker marked 0-success runs as completed. Surface them as failed.
+    // Old worker marked mixed/zero-success runs as completed. Surface them as failed.
     const normalized = jobs.map((job: any) => {
-      if (job.status === 'completed' && (job.completedItems || 0) === 0 && (job.failedItems || 0) > 0) {
+      if (job.status === 'completed' && (job.failedItems || 0) > 0) {
         return { ...job, status: 'failed' }
       }
       return job
@@ -78,29 +78,7 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // If force is true, clear the existing AI scripts and textContent so they regenerate
-    if (force) {
-      const course = await db.collection('courses').findOne({ id: courseId })
-      if (course) {
-        const sectionsUpdate = (course.sections || []).map((s: any) => ({
-          ...s,
-          lessons: (s.lessons || []).map((l: any) => ({
-             ...l,
-             script: [],
-             textContent: null,
-             audioUrl: null,
-             videoType: null,
-             duration: 600,
-             type: 'text'
-          }))
-        }))
-        await db.collection('courses').updateOne(
-          { id: courseId }, 
-          { $set: { sections: sectionsUpdate, updated_at: new Date().toISOString() } }
-        )
-        await db.collection('course_lesson_audio').deleteMany({ courseId })
-      }
-    }
+    if (force) await clearCourseVideos(courseId)
 
     const job: GenerationJob = {
       id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,

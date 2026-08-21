@@ -194,7 +194,12 @@ async def _search_rag(query: str, uri: str) -> str | None:
 
 async def handle_complete(request: Request, req: CompleteReq) -> dict[str, Any]:
     """Single-turn LLM completion, returns full text / JSON."""
-    await check_rate_limit(f"complete:{client_ip(request)}", 60, 60)
+    # ponytail: public 60/min stays; internal worker (12 lessons × failover) would 429 itself
+    from core.auth import get_internal_backend_secret
+    secret = request.headers.get("x-internal-secret", "")
+    backend_secret = await get_internal_backend_secret()
+    if not (secret and backend_secret and secret == backend_secret):
+        await check_rate_limit(f"complete:{client_ip(request)}", 60, 60)
     chat = build_chat(
         req.model_role,
         req.session_id,

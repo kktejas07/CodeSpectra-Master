@@ -65,6 +65,16 @@ export type ServerSecretsRecord = {
   // --- Cloudflare --------------------------------------------------------
   cloudflare_zone_id?: string
   cloudflare_api_token?: string
+  r2_account_id?: string
+  r2_access_key_id?: string
+  r2_secret_access_key?: string
+  r2_bucket?: string
+  s3_provider?: string
+  s3_endpoint?: string
+  s3_region?: string
+  s3_bucket?: string
+  s3_access_key_id?: string
+  s3_secret_access_key?: string
   // --- PhonePe -----------------------------------------------------------
   phonepe_merchant_id?: string
   phonepe_salt_key?: string

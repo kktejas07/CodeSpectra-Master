@@ -17,7 +17,7 @@ const nextConfig = {
     '*.preview.emergentagent.com',
     '*.preview.emergentcf.cloud',
   ],
-  serverExternalPackages: ['mongodb', 'nodemailer', 'bcryptjs'],
+  serverExternalPackages: ['mongodb', 'nodemailer', 'bcryptjs', '@remotion/renderer', '@remotion/bundler'],
   typescript: {
     ignoreBuildErrors: false, // SECURITY: TypeScript errors must be fixed, not silently ignored
   },

@@ -1,5 +1,3 @@
-'use client'
-
 import React from 'react'
 import { interpolate, spring, useCurrentFrame, useVideoConfig, AbsoluteFill } from 'remotion'
 

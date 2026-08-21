@@ -1,53 +1,69 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { getMongoDb } from '@/lib/mongodb'
+import {
+  generateRuntimeSecret,
+  pickRuntimeSecret,
+} from '@/lib/runtime-secrets'
 
 const SESSION_COOKIE = 'codespectra_session'
 
 let _secret: Uint8Array | null = null
 let _secretPromise: Promise<Uint8Array> | null = null
 
+async function persistSessionSecret(value: string): Promise<void> {
+  const db = await getMongoDb()
+  await db.collection('platform_settings').updateOne(
+    { key: 'secrets' },
+    { $set: { 'value.session_secret': value } },
+    { upsert: true },
+  )
+}
+
 /**
- * Resolve the session signing secret. Priority: env var first, then a secret
- * persisted in Mongo `platform_settings.secrets.session_secret`. The DB-backed
- * fallback exists so a fresh container (rebuilt by Dokploy) never hard-fails on
- * login just because `SESSION_SECRET` was dropped from the service env (Dokploy
- * re-applies its own stored env on every roll, wiping ad-hoc --env-add values).
- *
- * Security note: the DB secret is exactly as secret as the DB is; it lives in the
- * same `platform_settings` record that already stores every API key (see
- * server-secrets-cache.ts). Because it is a per-app random 64+ hex string and never
- * ships in code, it does not weaken the earlier "no public fallback key" guarantee.
+ * Canonical store is Mongo `platform_settings.secrets.session_secret`.
+ * Env is bootstrap only — Dokploy rolls wipe ad-hoc `--env-add` values.
+ * If both are empty, generate once and persist so the next rebuild still works.
  */
 async function resolveSecret(): Promise<Uint8Array> {
-  const raw = process.env.SESSION_SECRET
-  if (raw && raw.length >= 32) {
-    _secret = new TextEncoder().encode(raw)
-    return _secret
-  }
+  let stored = ''
   try {
     const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
     const secrets = await readServerSecrets()
-    const stored = typeof secrets.session_secret === 'string' ? secrets.session_secret.trim() : ''
-    if (stored.length >= 32 && !isMaskedSecret(stored)) {
-      _secret = new TextEncoder().encode(stored)
-      return _secret
-    }
+    stored = typeof secrets.session_secret === 'string' ? secrets.session_secret.trim() : ''
+    if (isMaskedSecret(stored)) stored = ''
   } catch {
-    // fall through to env failure handling
+    // Mongo unavailable — try env / generate below
   }
-  if (process.env.NODE_ENV === 'production') {
-    throw new Error(
-      '[session] SESSION_SECRET must be set to a 32+ char random string in production. ' +
-      'Set SESSION_SECRET in the service env or store `session_secret` in ' +
-      'MongoDB platform_settings.secrets. Refusing to start with a weak signing key.',
-    )
+  const picked = pickRuntimeSecret(process.env.SESSION_SECRET, stored)
+  let raw = picked.value
+  if (!raw) {
+    raw = generateRuntimeSecret()
+    try {
+      await persistSessionSecret(raw)
+      console.warn('[session] generated session_secret and stored it in Mongo')
+    } catch {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(
+          '[session] SESSION_SECRET missing and Mongo persist failed. ' +
+          'Set MONGODB_URI so the container can read/write platform_settings.secrets.',
+        )
+      }
+      console.warn(
+        '[session] SESSION_SECRET not set or too short — using development fallback. ' +
+        'Set SESSION_SECRET (32+ chars) in your environment.',
+      )
+      raw = 'dev-secret-do-not-use-in-production-32chars'
+    }
+  } else if (picked.source === 'env') {
+    try {
+      await persistSessionSecret(raw)
+    } catch {
+      // ponytail: login still works this process; next roll re-reads env or generates
+    }
   }
-  console.warn(
-    '[session] SESSION_SECRET not set or too short — using development fallback. ' +
-    'Set SESSION_SECRET (32+ chars) in your environment.',
-  )
-  _secret = new TextEncoder().encode('dev-secret-do-not-use-in-production-32chars')
+  process.env.SESSION_SECRET = raw
+  _secret = new TextEncoder().encode(raw)
   return _secret
 }
 

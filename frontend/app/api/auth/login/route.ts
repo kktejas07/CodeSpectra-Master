@@ -56,10 +56,20 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
-    const normalizedEmail = email.toLowerCase().trim()
+    const ident = String(email).toLowerCase().trim()
     const actorIp = rawIp
     const db = await getMongoDb()
-    const user = await db.collection('user').findOne({ email: normalizedEmail })
+    const escaped = ident.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+    const user = await db.collection('user').findOne({
+      $or: [
+        { email: ident },
+        { email: { $regex: `^${escaped}$`, $options: 'i' } },
+        ...(!ident.includes('@') && ident
+          ? [{ name: { $regex: `^${escaped}$`, $options: 'i' } }, { mobile: ident }]
+          : []),
+      ],
+    })
+    const normalizedEmail = String(user?.email || ident).toLowerCase().trim()
     if (!user) {
       await writeAuditLog({ action: 'auth.login', outcome: 'denied', actor: normalizedEmail, actorIp, resource: 'email/' + normalizedEmail, resourceType: 'auth', severity: 'warning', detail: 'user not found', user_id: normalizedEmail })
       return NextResponse.json({ error: 'Invalid email or password' }, { status: 401 })
@@ -73,7 +83,12 @@ export async function POST(request: Request) {
       )
     }
 
-    const valid = await bcrypt.compare(password, user.passwordHash)
+    let valid = false
+    try {
+      valid = await bcrypt.compare(password, String(user.passwordHash))
+    } catch {
+      valid = false
+    }
     if (!valid) {
       const emailCheck = await rateLimitRedis(`login:email:${normalizedEmail}`, 5, 60_000)
       if (!emailCheck.ok) {

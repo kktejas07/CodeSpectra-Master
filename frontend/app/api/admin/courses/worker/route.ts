@@ -54,9 +54,16 @@ export async function POST(request: NextRequest) {
 
     if (action === 'retry') {
       const recovered = await recoverStaleRunningJobs()
-      const result = await requeueJob(jobId)
+      const regenerateAll = Boolean(body.regenerateAll)
+      const result = await requeueJob(jobId, { regenerateAll })
       if (!result.ok) return NextResponse.json({ error: result.error }, { status: 409 })
-      return NextResponse.json({ ok: true, recovered, message: 'Job requeued. Worker will pick it up if it is online.' })
+      return NextResponse.json({
+        ok: true,
+        recovered,
+        message: regenerateAll
+          ? 'Regenerating all videos. Worker will pick this up if it is online.'
+          : 'Retrying remaining lessons (keeping successful videos). Worker will pick this up if it is online.',
+      })
     }
 
     if (action === 'cancel') {

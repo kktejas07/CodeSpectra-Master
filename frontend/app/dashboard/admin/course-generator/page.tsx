@@ -130,14 +130,14 @@ export default function CourseGeneratorPage() {
     }
   }
 
-  const handleRetryJob = async (jobId: string, e: React.MouseEvent) => {
+  const handleRetryJob = async (jobId: string, e: React.MouseEvent, regenerateAll = false) => {
     e.stopPropagation()
     try {
       const res = await csrfFetch('/api/admin/courses/worker', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
-        body: JSON.stringify({ jobId, action: 'retry' }),
+        body: JSON.stringify({ jobId, action: 'retry', regenerateAll }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Retry failed')
@@ -147,6 +147,16 @@ export default function CourseGeneratorPage() {
     } catch (err: any) {
       addToast({ type: 'error', title: err.message })
     }
+  }
+
+  const handleRegenerateAllJob = (jobId: string, courseTitle: string, e: React.MouseEvent) => {
+    e.stopPropagation()
+    setConfirmTitle('Regenerate all videos')
+    setConfirmMessage(`Delete existing videos for "${courseTitle}" (including successful ones) and generate all lessons again?`)
+    setConfirmAction(() => async () => {
+      await handleRetryJob(jobId, e, true)
+    })
+    setConfirmOpen(true)
   }
 
   const handleCancelJob = async (jobId: string, e: React.MouseEvent) => {
@@ -540,8 +550,13 @@ export default function CourseGeneratorPage() {
                           </div>
                           <div className="flex items-center gap-1" onClick={e => e.stopPropagation()}>
                             {(job.status === 'failed' || job.status === 'cancelled' || job.status === 'running' || job.status === 'pending') && (
-                              <Button variant="ghost" size="sm" title="Retry / unstick" onClick={(e) => handleRetryJob(job.id, e)}>
+                              <Button variant="ghost" size="sm" title="Retry remaining lessons (keep successful videos)" onClick={(e) => handleRetryJob(job.id, e)}>
                                 <RotateCw className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {(job.status === 'failed' || job.status === 'cancelled' || job.status === 'completed') && (
+                              <Button variant="ghost" size="sm" title="Regenerate all videos from scratch" onClick={(e) => handleRegenerateAllJob(job.id, job.courseTitle, e)}>
+                                <RotateCcw className="h-3.5 w-3.5" />
                               </Button>
                             )}
                             {(job.status === 'pending' || job.status === 'running') && (
