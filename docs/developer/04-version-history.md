@@ -9,6 +9,8 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-21 | v0.24.10 | Audit / system logs show **full email addresses** (no `hu***@gmail.com` masking). SuperAdmin System + Audit Logs tables and server logger. | CodeSpectra-Master |
+| 2026-08-21 | v0.24.9 | Course watch progress: lesson completions persist from the player; playback position saved every 5s and resumed; Continue Learning opens the last lesson. Auto-complete at 90%. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.6 | Login 500 after Swarm/Dokploy rolls: `SESSION_SECRET` is no longer required in Dokploy env. Container entrypoint loads `session_secret` + `internal_backend_secret` from Mongo `platform_settings` (generates once if missing) before `next start` / uvicorn. `session.ts` prefers Mongo and persists env/generated values so the next rebuild keeps the same signing key. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.8 | Frontend Docker build: Remotion `Composition` typing no longer fails `yarn build` (`script` required vs `Record<string, unknown>`). | CodeSpectra-Master |
 | 2026-08-21 | v0.24.7 | Course generator renders **Unstop-style MP4** (Remotion H264 720p + voiceover + diagram/code slides), uploads to object storage, and the lesson player plays `video/mp4` only (no live Remotion). | CodeSpectra-Master |

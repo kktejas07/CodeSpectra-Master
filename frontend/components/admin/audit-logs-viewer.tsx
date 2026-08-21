@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Clock, Loader2 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { DataTable } from '@/components/ui/data-table'
-import { auditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
+import { unmaskedAuditLogColumns, type AuditRow } from '@/components/admin/audit-log-columns'
 
 interface AuditLogsViewerProps {
   logs?: AuditRow[]
@@ -58,7 +58,7 @@ export function AuditLogsViewer({ logs: propLogs }: AuditLogsViewerProps) {
       </div>
 
       <DataTable
-        columns={auditLogColumns}
+        columns={unmaskedAuditLogColumns}
         data={logs}
         tableId="audit-logs-overview"
         searchPlaceholder="Search actor, action, resource..."

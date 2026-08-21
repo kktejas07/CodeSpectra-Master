@@ -237,7 +237,7 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
               <div className="absolute inset-1 rounded-full border-r-2 border-primary/70 animate-spin" style={{ animationDirection: 'reverse', animationDuration: '1.5s' }} />
               <Loader2 className="w-12 h-12 text-primary animate-pulse p-2" />
             </div>
-            <p className="text-sm font-medium mt-4 bg-clip-text text-transparent bg-gradient-to-r from-primary to-primary/60">{message}</p>
+            <p className="text-sm font-medium mt-4 bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60">{message}</p>
             <p className="text-xs text-muted-foreground mt-1 animate-pulse">Initializing Biometrics Engine...</p>
           </div>
         )}
@@ -260,7 +260,7 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
 
         {(status === 'ready' || status === 'detecting') && (
           <div className="absolute inset-0 pointer-events-none flex items-center justify-center overflow-hidden">
-            <div className="w-[160px] h-[220px] rounded-[100%] border-2 border-primary/50 ring-[1000px] ring-background/60 transition-all duration-500" />
+            <div className="w-40 h-55 rounded-[100%] border-2 border-primary/50 ring-1000 ring-background/60 transition-all duration-500" />
           </div>
         )}
 

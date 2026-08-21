@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, use } from 'react'
+import { useEffect, useState, use, useRef } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
@@ -12,6 +12,8 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/lib/toast-context'
 import { VideoPlayer } from '@/components/ui/video-player'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { resumeSeconds, shouldAutoComplete } from '@/lib/courses/watch-progress'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -87,24 +89,51 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['0']))
   const [viewMode, setViewMode] = useState<'video' | 'text'>('video')
+  const [startAt, setStartAt] = useState(0)
+  const lastPos = useRef(0)
+  const lastSave = useRef(0)
+  const autoCompleted = useRef(false)
 
   useEffect(() => {
+    let cancelled = false
     setLoading(true)
-    fetch(`/api/courses/${encodeURIComponent(courseId)}`, { credentials: 'include' })
-      .then(r => r.json())
-      .then(j => {
-        if (j.data) {
-          setCourse(j.data)
-          // Find the section that contains the current lesson and open it
-          const sections = j.data.sections || []
-          const sectionIdx = sections.findIndex((s: Section) => s.lessons.some(l => l.id === lessonId))
-          if (sectionIdx !== -1) {
-            setOpenSections(new Set([String(sectionIdx)]))
-          }
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    lastPos.current = 0
+    lastSave.current = 0
+    autoCompleted.current = false
+    Promise.all([
+      fetch(`/api/courses/${encodeURIComponent(courseId)}`, { credentials: 'include' }).then(r => r.json()),
+      fetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([courseData, completionsData, progressData]) => {
+      if (cancelled) return
+      if (courseData.data) {
+        setCourse(courseData.data)
+        const sections = courseData.data.sections || []
+        const sectionIdx = sections.findIndex((s: Section) => s.lessons.some((l: Lesson) => l.id === lessonId))
+        if (sectionIdx !== -1) setOpenSections(new Set([String(sectionIdx)]))
+      }
+      if (completionsData?.completedLessons) {
+        const done = new Set<string>(completionsData.completedLessons)
+        setCompletedLessons(done)
+        autoCompleted.current = done.has(lessonId)
+      }
+      setStartAt(resumeSeconds(progressData?.lessonPositions?.[lessonId]))
+    }).catch(() => {})
+      .finally(() => { if (!cancelled) setLoading(false) })
+    csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, { method: 'POST' }).catch(() => {})
+    return () => { cancelled = true }
+  }, [courseId, lessonId])
+
+  useEffect(() => {
+    return () => {
+      const t = lastPos.current
+      if (t < 5) return
+      csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId, position: Math.floor(t) }),
+      }).catch(() => {})
+    }
   }, [courseId, lessonId])
 
   if (!gate.ready || loading) {
@@ -152,7 +181,29 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
 
   const markComplete = (id: string) => {
     setCompletedLessons(prev => new Set([...prev, id]))
+    csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ lessonId: id }),
+    }).catch(() => {})
     addToast({ title: 'Lesson marked as complete!', type: 'success' })
+  }
+
+  const savePosition = (t: number, duration: number) => {
+    lastPos.current = t
+    const now = Date.now()
+    if (now - lastSave.current >= 5000) {
+      lastSave.current = now
+      csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ lessonId, position: Math.floor(t) }),
+      }).catch(() => {})
+    }
+    if (!autoCompleted.current && shouldAutoComplete(t, duration)) {
+      autoCompleted.current = true
+      markComplete(lessonId)
+    }
   }
 
   const toggleSection = (idx: string) => {
@@ -247,12 +298,24 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   <div className="w-full aspect-video bg-black sm:rounded-2xl overflow-hidden shadow-2xl relative border border-border/20">
                     {activeLesson.videoUrl ? (
                       <VideoPlayer
+                        key={activeLesson.id}
                         src={resolveMediaUrl(activeLesson.videoUrl)}
                         title={activeLesson.title}
                         className="w-full h-full border-0 rounded-none"
+                        startAt={startAt}
+                        onProgress={savePosition}
+                        onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
                       />
                     ) : activeLesson.url ? (
-                      <VideoPlayer src={activeLesson.url} title={activeLesson.title} className="w-full h-full" />
+                      <VideoPlayer
+                        key={activeLesson.id}
+                        src={activeLesson.url}
+                        title={activeLesson.title}
+                        className="w-full h-full"
+                        startAt={startAt}
+                        onProgress={savePosition}
+                        onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
+                      />
                     ) : (
                       <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground bg-black">
                         <Play className="h-10 w-10 opacity-40" />
