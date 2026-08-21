@@ -6,7 +6,7 @@ import { ArrayWalkScene } from './scenes/ArrayWalkScene'
 import { BarSortScene } from './scenes/BarSortScene'
 import { TreeBuildScene } from './scenes/TreeBuildScene'
 
-export interface ScriptItem {
+export type ScriptItem = {
   id: string
   title: string
   content: string[] | string
@@ -19,10 +19,10 @@ export interface ScriptItem {
   spokenText?: string
 }
 
-export interface CourseVideoProps {
+export type CourseVideoProps = {
   script: ScriptItem[]
   audioUrl?: string | null
-}
+} & Record<string, unknown>
 
 const DEFAULT_ARRAY = [4, 8, 15, 16, 23, 42, 50, 61, 73, 89]
 const DEFAULT_SORT = [8, 3, 7, 1, 5, 2, 9, 4]
