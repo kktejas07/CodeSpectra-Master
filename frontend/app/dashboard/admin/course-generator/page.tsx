@@ -7,14 +7,15 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  CheckCircle2, Loader2, AlertTriangle, Clock, Play, Pause,
+  Loader2, Clock, Pause,
   RotateCcw, Trash2, Eye, ChevronDown, ChevronUp, Zap, BookOpen,
-  RefreshCw, Plus, Search, BarChart3, RotateCw
+  RefreshCw, BarChart3, RotateCw
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
+import { estimateCatalog, estimateCourse, COURSE_LEVELS, INDUSTRIES, subjectsForIndustry } from '@/lib/courses/syllabus'
 
 interface JobLog {
   timestamp: string
@@ -38,15 +39,7 @@ interface GenerationJob {
   error?: string
 }
 
-const TECHNOLOGIES = [
-  'Java', 'Python', 'JavaScript', 'TypeScript', 'React', 'Next.js',
-  'Node.js', 'C#', '.NET', 'C++', 'Go', 'Rust', 'Kotlin', 'Swift',
-  'SQL', 'PostgreSQL', 'MongoDB', 'AWS', 'Azure', 'GCP', 'Docker',
-  'Kubernetes', 'Terraform', 'Data Engineering', 'Machine Learning',
-  'AI', 'Cybersecurity', 'DevOps', 'System Design'
-]
-
-const LEVELS = ['Beginner', 'Intermediate', 'Advanced', 'Expert']
+const LEVELS = [...COURSE_LEVELS]
 
 export default function CourseGeneratorPage() {
   const gate = usePageGuard('superadmin')
@@ -56,11 +49,10 @@ export default function CourseGeneratorPage() {
   const [technology, setTechnology] = useState('')
   const [level, setLevel] = useState('')
   const [customTech, setCustomTech] = useState('')
+  const [industry, setIndustry] = useState<(typeof INDUSTRIES)[number]['id']>('software')
 
   // Job state
   const [jobs, setJobs] = useState<GenerationJob[]>([])
-  const [activeJob, setActiveJob] = useState<GenerationJob | null>(null)
-  const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
   const [expandedJob, setExpandedJob] = useState<string | null>(null)
   const [workerOnline, setWorkerOnline] = useState<boolean | null>(null)
@@ -70,7 +62,7 @@ export default function CourseGeneratorPage() {
 
   // Course state
   const [existingCourses, setExistingCourses] = useState<any[]>([])
-  const [courseTab, setCourseTab] = useState('all')
+  const [expandedCourse, setExpandedCourse] = useState<string | null>(null)
 
   // Confirm dialog state
   const [confirmOpen, setConfirmOpen] = useState(false)
@@ -96,7 +88,6 @@ export default function CourseGeneratorPage() {
       const data = await res.json()
       if (data.jobs) setJobs(data.jobs)
     } catch {}
-    setLoading(false)
   }
 
   const loadWorker = async () => {
@@ -186,11 +177,15 @@ export default function CourseGeneratorPage() {
   }
 
   const selectedTech = customTech || technology
+  const industrySubjects = subjectsForIndustry(industry)
+  const preview = selectedTech && level ? estimateCourse(selectedTech, level) : null
+  const catalog = estimateCatalog()
+  const industryCatalog = estimateCatalog(industrySubjects.map(s => s.name), LEVELS)
 
   // Start generation (server-side worker)
   const handleGenerate = async () => {
     if (!selectedTech || !level) {
-      addToast({ type: 'error', title: 'Select technology and level' })
+      addToast({ type: 'error', title: 'Select subject and level' })
       return
     }
 
@@ -363,12 +358,27 @@ export default function CourseGeneratorPage() {
             </h2>
 
             <div>
-              <label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">Technology</label>
-              <select value={technology} onChange={e => setTechnology(e.target.value)} className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm">
-                <option value="">Select or type custom</option>
-                {TECHNOLOGIES.map(tech => <option key={tech} value={tech}>{tech}</option>)}
+              <label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">Industry</label>
+              <select
+                value={industry}
+                onChange={e => {
+                  setIndustry(e.target.value as (typeof INDUSTRIES)[number]['id'])
+                  setTechnology('')
+                  setCustomTech('')
+                }}
+                className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm"
+              >
+                {INDUSTRIES.map(ind => <option key={ind.id} value={ind.id}>{ind.label}</option>)}
               </select>
-              <input type="text" value={customTech} onChange={e => setCustomTech(e.target.value)} placeholder="Or type custom..." className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm mt-2" />
+            </div>
+
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">Subject</label>
+              <select value={technology} onChange={e => { setTechnology(e.target.value); setCustomTech('') }} className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm">
+                <option value="">Select subject</option>
+                {industrySubjects.map(s => <option key={s.name} value={s.name}>{s.name}</option>)}
+              </select>
+              <input type="text" value={customTech} onChange={e => setCustomTech(e.target.value)} placeholder="Or type a custom subject..." className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm mt-2" />
             </div>
 
             <div>
@@ -383,8 +393,20 @@ export default function CourseGeneratorPage() {
               {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Zap className="h-4 w-4" /> Generate Course</>}
             </Button>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Curriculum is instant. Videos run on a separate course-worker container (one job at a time, ~1 min per lesson). Jobs stay pending until that worker is running (`COURSE_WORKER=1`).
+              Full syllabus + curriculum for this subject/level, then MP4, audio, and captions (~8–12 min/lesson, one job at a time).
             </p>
+            {preview && (
+              <div className="rounded-md border border-border/60 p-3 space-y-2">
+                <p className="text-sm font-medium">{preview.title}</p>
+                <p className="text-[11px] text-muted-foreground">{preview.brief}</p>
+                <p className="text-[11px] text-muted-foreground">
+                  {preview.industry} · {preview.moduleCount} modules · ≥{preview.minLessons} lessons · ~{preview.estimatedHours} hours
+                </p>
+                <ol className="list-decimal pl-4 max-h-40 overflow-y-auto space-y-0.5 text-[11px] text-muted-foreground">
+                  {preview.modules.map(m => <li key={m}>{m}</li>)}
+                </ol>
+              </div>
+            )}
           </Card>
 
           {/* Stats Card */}
@@ -437,6 +459,10 @@ export default function CourseGeneratorPage() {
                 <p className="text-[10px] text-muted-foreground">Running</p>
               </div>
             </div>
+            <p className="text-[11px] text-muted-foreground mt-3 leading-relaxed">
+              This industry: <strong>{industryCatalog.courses} courses</strong>, ~{industryCatalog.lessons.toLocaleString()} lessons, ~{industryCatalog.hours}h, ~{industryCatalog.gb} GB.
+              Full catalog ({catalog.industries} industries, {catalog.subjects} subjects): <strong>{catalog.courses} courses</strong>, ~{catalog.lessons.toLocaleString()} lessons, ~{catalog.hours}h, ~{catalog.gb} GB.
+            </p>
           </Card>
         </div>
 
@@ -472,18 +498,20 @@ export default function CourseGeneratorPage() {
                 ) : (
                   <div className="space-y-2">
                     {existingCourses.map((course: any) => {
-                      const hasVideos = course.sections?.some((s: any) => s.lessons?.some((l: any) => l.script?.length > 0))
                       const totalLessons = course.sections?.reduce((sum: number, s: any) => sum + (s.lessons?.length || 0), 0) || 0
                       const videosGenerated = course.sections?.reduce((sum: number, s: any) => sum + (s.lessons?.filter((l: any) => l.script?.length > 0)?.length || 0), 0) || 0
+                      const open = expandedCourse === course.id
+                      const planModules = course.curriculumPlan?.modules || (course.sections || []).map((s: any) => ({ title: s.title, lessonCount: s.lessons?.length || 0 }))
 
                       return (
-                        <div key={course.id} className="flex items-center justify-between p-3 rounded-lg border border-border/60 hover:bg-muted/20">
-                          <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center">
+                        <div key={course.id} className="rounded-lg border border-border/60">
+                          <div className="flex items-center justify-between p-3 hover:bg-muted/20">
+                          <button type="button" className="flex items-center gap-3 text-left min-w-0" onClick={() => setExpandedCourse(open ? null : course.id)}>
+                            <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
                               <BookOpen className="h-5 w-5 text-primary" />
                             </div>
-                            <div>
-                              <p className="text-sm font-medium">{course.title}</p>
+                            <div className="min-w-0">
+                              <p className="text-sm font-medium truncate">{course.title}</p>
                               <p className="text-xs text-muted-foreground">
                                 {course.sections?.length || 0} modules · {videosGenerated}/{totalLessons} videos
                                 {videosGenerated < totalLessons && (
@@ -491,8 +519,8 @@ export default function CourseGeneratorPage() {
                                 )}
                               </p>
                             </div>
-                          </div>
-                          <div className="flex items-center gap-1">
+                          </button>
+                          <div className="flex items-center gap-1 shrink-0">
                             <Button variant="ghost" size="sm" onClick={() => handleRegenerate(course.id, course.title)} title="Regenerate videos (Force)">
                               <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
@@ -505,6 +533,14 @@ export default function CourseGeneratorPage() {
                               <Trash2 className="h-3.5 w-3.5" />
                             </Button>
                           </div>
+                          </div>
+                          {open && (
+                            <ol className="border-t border-border/50 px-4 py-2 max-h-48 overflow-y-auto space-y-1 text-[11px] text-muted-foreground list-decimal pl-8">
+                              {planModules.map((m: any, i: number) => (
+                                <li key={i}>{m.title} · {m.lessonCount} lessons</li>
+                              ))}
+                            </ol>
+                          )}
                         </div>
                       )
                     })}

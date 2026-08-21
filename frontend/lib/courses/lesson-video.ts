@@ -2,6 +2,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
 import { durationFramesFromSpoken, synthesizeTts } from '@/lib/courses/tts'
+import { SOFTWARE_FAMILIES, familyFor } from '@/lib/courses/catalog'
 
 export type SlideType = 'title' | 'concept' | 'code' | 'visual'
 
@@ -94,23 +95,37 @@ export function withDurations(slides: Omit<VideoSlide, 'durationInFrames'>[]): V
 
 const TEXT_SYSTEM = `You are an expert course instructor writing Unstop-style textbook lessons. Return clean Markdown only — no preamble.`
 
-const TEXT_PROMPT = (topic: string, techStack: string) => `Write a comprehensive, detailed lesson on: "${topic}" (${techStack}).
+const TEXT_PROMPT = (topic: string, techStack: string) => {
+  const software = SOFTWARE_FAMILIES.has(familyFor(techStack))
+  const exampleRule = software
+    ? '- At least one real-world example\n- A fenced code block if the topic involves code (working code, not pseudocode)'
+    : '- At least one realistic workplace example from this field\n- Prefer checklists, workflows, or short case tables over code blocks unless the topic is truly technical tooling'
+  return `Write a comprehensive, detailed lesson on: "${topic}" (${techStack}).
 
 Match this structure (use these heading styles):
 - H1: lesson title
 - Intro paragraph (what the student will learn by the end)
 - H2 sections covering WHY → WHAT → HOW → WHERE
 - Bullet lists for features/responsibilities
-- At least one real-world example
-- A fenced code block if the topic involves code (working code, not pseudocode)
+${exampleRule}
 - Two short quizzes: "Quiz 1" and "Quiz 2", each with Question / Correct Answer / Explanation
 - Final Thoughts + Conclusion
 
-The lesson should take a student 12–18 minutes to read. Teach every subtopic. Do not skip edge cases, complexity, or working code. Do not assume prior knowledge of this lesson.`
+The lesson should take a student 12–18 minutes to read. Teach every subtopic. Do not skip edge cases. Do not assume prior knowledge of this lesson.`
+}
 
 const VIDEO_SYSTEM = `You are an expert video-lesson scriptwriter. Return ONLY valid JSON, no markdown.`
 
-const VIDEO_PROMPT = (topic: string, techStack: string, textLesson: string) => `Turn this text lesson into an 8–12 minute instructor video script. Cover the topic in full. Do not skip or summarize-away details.
+const VIDEO_PROMPT = (topic: string, techStack: string, textLesson: string) => {
+  const software = SOFTWARE_FAMILIES.has(familyFor(techStack))
+  const slideRules = software
+    ? `- 12 to 16 slides total. Types: "title" | "concept" | "code" | "visual".
+- Include at least two "code" slides with a "code" field (working ${techStack} snippet) and "codeLanguage".
+- Include one "visual" slide with "visual": "array" | "sort" | "tree" when the topic is data/algorithms; otherwise use extra concept/code slides.`
+    : `- 12 to 16 slides total. Types: "title" | "concept" | "visual".
+- Do NOT invent programming code for non-software topics.
+- Prefer concept slides with workplace workflows, checklists, and scenarios. Use "visual" only when a simple diagram helps.`
+  return `Turn this text lesson into an 8–12 minute instructor video script. Cover the topic in full. Do not skip or summarize-away details.
 
 Output JSON ONLY:
 {
@@ -127,12 +142,10 @@ Output JSON ONLY:
 
 Rules:
 - First slide type MUST be "title" (welcome + what we'll cover).
-- 12 to 16 slides total. Types: "title" | "concept" | "code" | "visual".
-- Include at least two "code" slides with a "code" field (working ${techStack} snippet) and "codeLanguage".
-- Include one "visual" slide with "visual": "array" | "sort" | "tree" when the topic is data/algorithms; otherwise use extra concept/code slides.
+${slideRules}
 - Each spokenText MUST be 140-180 words (this is what makes the video ~8–12 minutes).
 - On-screen "content" is 3-5 short bullets, not the full narration.
-- Cover WHY → WHAT → HOW → WHERE, then edge cases, complexity, and a full worked example.
+- Cover WHY → WHAT → HOW → WHERE, then edge cases and a full worked example.
 - Do not say "we will skip" or "as you already know".
 - No markdown fences around the JSON.
 
@@ -142,6 +155,7 @@ ${textLesson.slice(0, 16000)}
 """
 
 Topic: ${topic}`
+}
 
 function extractText(res: { ok?: boolean; text?: string; json?: unknown; raw?: string }): string {
   if (typeof res.text === 'string' && res.text.trim()) return res.text.trim()

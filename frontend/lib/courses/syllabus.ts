@@ -1,180 +1,92 @@
 /** Required modules so a generated course cannot skip a whole topic family. */
 
+import {
+  CATALOG_SUBJECTS,
+  COURSE_LEVELS,
+  DOMAIN_STEM,
+  SOFTWARE_FAMILIES,
+  SOFTWARE_STEM,
+  familyFor,
+  findSubject,
+  levelKey,
+  trackFor,
+} from '@/lib/courses/catalog'
+
+export { CATALOG_SUBJECTS, COURSE_LEVELS, INDUSTRIES, subjectsForIndustry } from '@/lib/courses/catalog'
 export const MIN_LESSONS_PER_MODULE = 6
 
-const LANGUAGE = [
-  'Environment and toolchain',
-  'Syntax, types, and values',
-  'Control flow',
-  'Functions, scope, and closures',
-  'Object-oriented programming and the type system',
-  'Errors and exceptions',
-  'Standard library essentials',
-  'Strings and text processing',
-  'Arrays and dynamic lists',
-  'Linked lists',
-  'Stacks and queues',
-  'Hash tables and maps',
-  'Trees, BST, and heaps',
-  'Graphs',
-  'Sorting algorithms',
-  'Searching and binary search',
-  'Recursion and backtracking',
-  'Dynamic programming',
-  'Greedy, two pointers, and sliding window',
-  'Concurrency and async',
-  'Memory, performance, and complexity',
-  'Testing',
-  'Packaging, modules, and build',
-  'Interview problem patterns',
-]
+export function syllabusFamily(techStack: string): string {
+  return familyFor(techStack)
+}
 
-const FRONTEND = [
-  'Project setup and tooling',
-  'Language and runtime basics',
-  'Rendering and the component model',
-  'Props, state, and data flow',
-  'Events and forms',
-  'Lists, keys, and reconciliation',
-  'Routing',
-  'Data fetching and caching',
-  'Styling',
-  'Hooks and composition',
-  'Performance',
-  'Accessibility',
-  'Testing UI',
-  'State management',
-  'Auth and protected routes',
-  'Build, deploy, and production',
-  'Interview and debugging patterns',
-]
+export function requiredModules(techStack: string, level = ''): string[] {
+  return [...trackFor(techStack, level).modules]
+}
 
-const CLOUD = [
-  'Accounts, IAM, and billing',
-  'Regions, availability, and networking',
-  'Compute',
-  'Object and block storage',
-  'Managed databases',
-  'Load balancing and DNS',
-  'Containers on the cloud',
-  'Serverless',
-  'Observability',
-  'Encryption and security',
-  'Infrastructure as code',
-  'Cost, quotas, and limits',
-  'Identity federation',
-  'Event-driven architecture',
-  'Disaster recovery',
-  'End-to-end production lab',
-]
+export function defaultCourseTitle(tech: string, level: string): string {
+  return trackFor(tech, level).title(tech)
+}
 
-const DATA = [
-  'Relational model and SQL basics',
-  'Filtering, joins, and aggregation',
-  'Indexes and query plans',
-  'Transactions and isolation',
-  'Schema design and normalization',
-  'Constraints and integrity',
-  'Window functions',
-  'Stored logic and views',
-  'Backup, restore, and replication',
-  'JSON, documents, and NoSQL tradeoffs',
-  'ETL and pipelines',
-  'Performance tuning',
-  'Security and roles',
-  'Interview SQL patterns',
-]
+export function trackBrief(tech: string, level: string): string {
+  return trackFor(tech, level).brief
+}
 
-const OPS = [
-  'Containers from scratch',
-  'Images, layers, and registries',
-  'Compose and local multi-service',
-  'Orchestration basics',
-  'Pods, services, and networking',
-  'Config, secrets, and volumes',
-  'Scaling and health checks',
-  'CI/CD',
-  'Infrastructure as code',
-  'Observability',
-  'Security hardening',
-  'GitOps and rollouts',
-  'Cost and resource limits',
-  'Incident and debugging drills',
-]
+export function sanitizeCourseTitle(aiTitle: string, tech: string, level: string): string {
+  const fallback = defaultCourseTitle(tech, level)
+  const t = (aiTitle || '').trim()
+  if (!t) return fallback
+  const family = syllabusFamily(tech)
+  const lv = levelKey(level)
+  const dsaOk = family === 'language' && lv === 'intermediate'
+  if (!dsaOk && /dsa|data structures|mastery/i.test(t)) return fallback
+  return t
+}
 
-const ML = [
-  'Problem framing and data',
-  'Features and preprocessing',
-  'Supervised learning',
-  'Unsupervised learning',
-  'Model evaluation',
-  'Overfitting and regularization',
-  'Neural nets basics',
-  'Training loops and hardware',
-  'NLP or vision track',
-  'Pipelines and experiment tracking',
-  'Serving models',
-  'Ethics, leakage, and failure modes',
-  'Interview ML patterns',
-]
+const MINUTES_PER_LESSON = 10
+const MB_PER_LESSON = 12
 
-const SYS = [
-  'Requirements and constraints',
-  'Load, latency, and SLOs',
-  'Load balancing',
-  'Caching',
-  'Databases at scale',
-  'Queues and async',
-  'Sharding and partitioning',
-  'Consistency and replication',
-  'CDN and edge',
-  'Security in design',
-  'Observability',
-  'Failure and disaster recovery',
-  'Capstone designs',
-]
+export function estimateCourse(tech: string, level: string) {
+  const modules = requiredModules(tech, level)
+  const minLessons = modules.length * MIN_LESSONS_PER_MODULE
+  const estimatedHours = Math.round((minLessons * MINUTES_PER_LESSON) / 6) / 10
+  return {
+    title: defaultCourseTitle(tech, level),
+    brief: trackBrief(tech, level),
+    family: syllabusFamily(tech),
+    industry: findSubject(tech)?.industry || 'software',
+    modules,
+    moduleCount: modules.length,
+    minLessons,
+    estimatedHours,
+  }
+}
 
-const SEC = [
-  'Threat models',
-  'Authn and authz',
-  'Cryptography in practice',
-  'Web attacks and defenses',
-  'Network security',
-  'Secrets and key management',
-  'Secure coding',
-  'Logging, detection, and response',
-  'Cloud security',
-  'Compliance basics',
-  'Interview security patterns',
-]
+export function estimateCatalog(techs?: string[], levels?: string[]) {
+  const subjects = techs?.length ? techs : CATALOG_SUBJECTS.map(s => s.name)
+  const lvls = levels?.length ? levels : [...COURSE_LEVELS]
+  let courses = 0
+  let lessons = 0
+  let hours = 0
+  for (const tech of subjects) {
+    for (const level of lvls) {
+      courses++
+      const e = estimateCourse(tech, level)
+      lessons += e.minLessons
+      hours += e.estimatedHours
+    }
+  }
+  return {
+    courses,
+    lessons,
+    hours: Math.round(hours),
+    gb: Math.round((lessons * MB_PER_LESSON) / 1024 * 10) / 10,
+    subjects: subjects.length,
+    industries: new Set(subjects.map(s => findSubject(s)?.industry || familyFor(s))).size,
+  }
+}
 
 function norm(s: string): string {
   return (s || '').toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
-}
-
-export function syllabusFamily(techStack: string): string {
-  const t = norm(techStack)
-  if (/react|next/.test(t)) return 'frontend'
-  if (/aws|azure|gcp|google cloud/.test(t)) return 'cloud'
-  if (/sql|postgres|mongo|data engineer/.test(t)) return 'data'
-  if (/docker|kubernetes|k8s|terraform|devops/.test(t)) return 'ops'
-  if (/machine learning|^ai$|artificial intelligence/.test(t)) return 'ml'
-  if (/system design/.test(t)) return 'sys'
-  if (/cyber|security/.test(t)) return 'sec'
-  return 'language'
-}
-
-export function requiredModules(techStack: string): string[] {
-  switch (syllabusFamily(techStack)) {
-    case 'frontend': return FRONTEND
-    case 'cloud': return CLOUD
-    case 'data': return DATA
-    case 'ops': return OPS
-    case 'ml': return ML
-    case 'sys': return SYS
-    case 'sec': return SEC
-    default: return LANGUAGE
-  }
 }
 
 export function slugify(s: string): string {
@@ -185,23 +97,20 @@ export function courseIdFor(techStack: string, level: string): string {
   return slugify(`${techStack}-${level || 'beginner'}`)
 }
 
-const STEM = [
-  'Foundations and vocabulary',
-  'Mental model and why it exists',
-  'APIs and syntax in this stack',
-  'Worked example from scratch',
-  'Edge cases and failure modes',
-  'Complexity, performance, and tradeoffs',
-  'Common bugs and debugging',
-  'Interview-style problem with a full solution',
-]
+function stemsFor(tech: string): string[] {
+  return SOFTWARE_FAMILIES.has(syllabusFamily(tech)) ? SOFTWARE_STEM : DOMAIN_STEM
+}
 
 export function lessonStub(moduleTitle: string, stem: string, tech: string, level: string) {
+  const software = SOFTWARE_FAMILIES.has(syllabusFamily(tech))
+  const examples = software
+    ? `working ${tech} examples`
+    : `realistic ${tech} workplace examples`
   return {
     title: `${moduleTitle}: ${stem}`,
     slug: slugify(`${moduleTitle}-${stem}`),
     description: stem,
-    content: `Teach "${moduleTitle}" focusing on "${stem}" in ${tech} at ${level} level. Cover the topic completely with working ${tech} examples. Do not assume the student already knows this module. Do not skip subtopics or say details are out of scope.`,
+    content: `Teach "${moduleTitle}" focusing on "${stem}" in ${tech} at ${level} level. Cover the topic completely with ${examples}. Do not assume the student already knows this module. Do not skip subtopics or say details are out of scope.`,
     duration: 720,
     free: false,
     videoType: 'ai' as const,
@@ -209,7 +118,13 @@ export function lessonStub(moduleTitle: string, stem: string, tech: string, leve
 }
 
 export function defaultLessons(moduleTitle: string, tech: string, level: string) {
-  return STEM.map(stem => lessonStub(moduleTitle, stem, tech, level))
+  return stemsFor(tech).map(stem => lessonStub(moduleTitle, stem, tech, level))
+}
+
+function sectionMatchesModule(section: { title?: string; slug?: string }, mod: string): boolean {
+  const t = norm(section.title || section.slug || '')
+  const key = norm(mod)
+  return t === key || t.includes(key) || key.includes(t)
 }
 
 export function padCurriculum(
@@ -217,17 +132,13 @@ export function padCurriculum(
   level: string,
   sections: Array<{ title?: string; slug?: string; description?: string; lessons?: any[] }>,
 ): typeof sections {
-  const out = [...(sections || [])]
+  const required = requiredModules(tech, level)
+  const out = (sections || []).filter(s => required.some(mod => sectionMatchesModule(s, mod)))
 
-  for (const mod of requiredModules(tech)) {
-    const key = norm(mod)
-    let section = out.find(s => {
-      const t = norm(s.title || s.slug || '')
-      return t === key || t.includes(key) || key.includes(t)
-    })
+  for (const mod of required) {
+    let section = out.find(s => sectionMatchesModule(s, mod))
     if (!section) {
-      section = { title: mod, slug: slugify(mod), description: `${tech} — ${mod}`, lessons: defaultLessons(mod, tech, level) }
-      out.push(section)
+      out.push({ title: mod, slug: slugify(mod), description: `${tech} — ${mod}`, lessons: defaultLessons(mod, tech, level) })
       continue
     }
     const lessons = Array.isArray(section.lessons) ? [...section.lessons] : []
