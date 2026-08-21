@@ -281,7 +281,7 @@ export default function GenerateCoursePage() {
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                 <Video className="h-5 w-5 text-indigo-500" /> How it works
               </h3>
-              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-border before:to-transparent">
                 <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                   <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-indigo-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                     <Database className="h-4 w-4" />
@@ -330,11 +330,11 @@ export default function GenerateCoursePage() {
               <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-indigo-600" />
             </div>
             
-            <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">
+            <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-600">
               Generating your {duration}-hour course...
             </h2>
             
-            <p className="text-xl text-muted-foreground mb-8 min-h-[30px] transition-all">
+            <p className="text-xl text-muted-foreground mb-8 min-h-7.5 transition-all">
               {currentTask}
             </p>
             
@@ -367,7 +367,7 @@ export default function GenerateCoursePage() {
                 Generating a full video course requires 10 credits. You currently have 0 credits. Upgrade to PRO to get 1,000 monthly credits and unlimited course generation.
               </p>
               <div className="space-y-3">
-                <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg">
+                <Button className="w-full bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg">
                   <Zap className="mr-2 h-4 w-4" /> Upgrade to PRO ($15/mo)
                 </Button>
                 <Button variant="ghost" className="w-full" onClick={() => setShowUpsell(false)}>
