@@ -1,16 +1,17 @@
 'use client'
 
 import React from 'react'
-import { useCurrentFrame, useVideoConfig, interpolate } from 'remotion'
+import { useCurrentFrame, useVideoConfig, interpolate, AbsoluteFill } from 'remotion'
 
 interface CodeTypingSceneProps {
   language: string
   code: string
+  title?: string
   explanation?: string
   spokenText?: string
 }
 
-export const CodeTypingScene: React.FC<CodeTypingSceneProps> = ({ language, code, explanation, spokenText }) => {
+export const CodeTypingScene: React.FC<CodeTypingSceneProps> = ({ language, code, title, explanation, spokenText }) => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
@@ -70,6 +71,7 @@ export const CodeTypingScene: React.FC<CodeTypingSceneProps> = ({ language, code
   }
 
   return (
+    <AbsoluteFill>
     <div style={{
       width: '100%', height: '100%',
       backgroundColor: '#0f172a',
@@ -91,7 +93,7 @@ export const CodeTypingScene: React.FC<CodeTypingSceneProps> = ({ language, code
           <div style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#22c55e' }} />
         </div>
         <div style={{ fontSize: 18, color: '#64748b' }}>
-          {language.toUpperCase()} — Binary Search Implementation
+          {title || `${language.toUpperCase()} example`}
         </div>
       </div>
 
@@ -171,5 +173,6 @@ export const CodeTypingScene: React.FC<CodeTypingSceneProps> = ({ language, code
         {language.toUpperCase()}
       </div>
     </div>
+    </AbsoluteFill>
   )
 }

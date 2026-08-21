@@ -78,12 +78,9 @@ export default function CourseGeneratorPage() {
   useEffect(() => {
     loadJobs()
     loadExistingCourses()
-    // Auto-refresh every 10 seconds for running jobs
     const interval = setInterval(() => {
-      if (jobs.some(j => j.status === 'running')) {
-        loadJobs()
-      }
-    }, 10000)
+      loadJobs()
+    }, 5000)
     return () => clearInterval(interval)
   }, [])
 
@@ -295,6 +292,9 @@ export default function CourseGeneratorPage() {
             <Button onClick={handleGenerate} disabled={generating || !selectedTech || !level} className="w-full gap-2">
               {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Zap className="h-4 w-4" /> Generate Course</>}
             </Button>
+            <p className="text-[11px] text-muted-foreground leading-relaxed">
+              Curriculum is instant. Videos are real voiceovers (~3–5 min each) and take about a minute per lesson — a 12-lesson course is 10–20 minutes, not 17 seconds.
+            </p>
           </Card>
 
           {/* Stats Card */}
