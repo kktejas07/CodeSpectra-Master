@@ -10,6 +10,7 @@
 
 | Date | Version | Description | Author |
 | 2026-08-21 | v0.24.6 | Login 500 after Swarm/Dokploy rolls: `SESSION_SECRET` is no longer required in Dokploy env. Container entrypoint loads `session_secret` + `internal_backend_secret` from Mongo `platform_settings` (generates once if missing) before `next start` / uvicorn. `session.ts` prefers Mongo and persists env/generated values so the next rebuild keeps the same signing key. | CodeSpectra-Master |
+| 2026-08-21 | v0.24.7 | Course generator renders **Unstop-style MP4** (Remotion H264 720p + voiceover + diagram/code slides), uploads to object storage, and the lesson player plays `video/mp4` only (no live Remotion). | CodeSpectra-Master |
 | 2026-08-21 | v0.24.5 | Course media uses one **S3-compatible** client. SuperAdmin picks Cloudflare R2, AWS S3, GCS, Hetzner Object Storage, or custom/MinIO (endpoint + keys). Same generate → upload → signed URL path. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.4 | Course lesson audio uploads to **Cloudflare R2** when SuperAdmin configures it (Settings → Cloudflare). Player uses a 1-hour signed URL (private bucket, $0 egress). Mongo keeps the blob only if R2 is unset or upload fails. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.3 | Course videos: mixed jobs (e.g. 1/12) are **failed** with **Retry remaining** (keep successes) and **Regenerate all**. Worker no longer trips the backend 60/min complete limit (internal secret skipped) and fails over on NVIDIA timeout instead of aborting the lesson. | CodeSpectra-Master |

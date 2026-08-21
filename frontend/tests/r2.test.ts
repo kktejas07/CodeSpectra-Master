@@ -1,10 +1,11 @@
 import { describe, it, expect } from 'vitest'
-import { lessonObjectKey, r2EndpointFromAccount, presetFor, endpointHost } from '@/lib/s3-presets'
+import { lessonObjectKey, lessonVideoKey, r2EndpointFromAccount, presetFor, endpointHost } from '@/lib/s3-presets'
 import { lessonR2Key, r2Host } from '@/lib/r2'
 
 describe('object storage helpers', () => {
   it('builds a stable private object key per lesson', () => {
     expect(lessonObjectKey('java', 'linked-lists')).toBe('courses/java/lessons/linked-lists.mp3')
+    expect(lessonVideoKey('java', 'linked-lists')).toBe('courses/java/lessons/linked-lists.mp4')
     expect(lessonR2Key('java', 'linked-lists')).toBe('courses/java/lessons/linked-lists.mp3')
   })
 

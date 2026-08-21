@@ -53,6 +53,8 @@ describe('slidesFromAiJson', () => {
     expect(slides[4].type).toBe('visual')
     expect(slides[4].visual).toBe('sort')
   })
+
+  it('rejects the 2-scene mock that produced 13s silent videos', () => {
     expect(() => slidesFromAiJson({
       scenes: [
         { title: 'Introduction', content: ['Understanding Java'], spokenText: 'Let me explain.' },
