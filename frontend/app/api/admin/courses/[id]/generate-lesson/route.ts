@@ -3,10 +3,11 @@ import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { generateLessonVideo } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio } from '@/lib/courses/lesson-audio'
+import { lessonVideoPath } from '@/lib/courses/lesson-mp4'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 300
+export const maxDuration = 600
 
 export async function POST(
   request: NextRequest,
@@ -38,7 +39,7 @@ export async function POST(
 
     const lesson = lessons[lessonIndex]
 
-    if (lesson.script && lesson.script.length > 0 && lesson.audioUrl) {
+    if (lesson.videoUrl) {
       return NextResponse.json({ success: true, skipped: true, message: 'Already generated' })
     }
 
@@ -53,6 +54,13 @@ export async function POST(
     })
 
     await saveLessonAudio(courseId, lesson.id, generated.audioBuffer)
+    const { renderAndStoreLessonMp4 } = await import('@/lib/courses/render-mp4')
+    await renderAndStoreLessonMp4({
+      courseId,
+      lessonId: lesson.id,
+      script: generated.script,
+      audio: generated.audioBuffer,
+    })
 
     const sectionsUpdate = [...sections]
     const lessonsUpdate = [...sectionsUpdate[sectionIndex].lessons]
@@ -61,6 +69,7 @@ export async function POST(
       textContent: generated.textContent,
       script: generated.script,
       audioUrl: lessonAudioPath(courseId, lesson.id),
+      videoUrl: lessonVideoPath(courseId, lesson.id),
       type: 'video',
       videoType: 'ai',
       duration: generated.durationSeconds,
@@ -76,8 +85,8 @@ export async function POST(
       success: true,
       slides: generated.script.length,
       durationSeconds: generated.durationSeconds,
-      audioUrl: 'stored',
-      message: `Generated ${generated.script.length}-slide video (${generated.durationSeconds}s) for "${lesson.title}"`,
+      videoUrl: 'stored',
+      message: `Generated ${generated.script.length}-slide MP4 (${generated.durationSeconds}s) for "${lesson.title}"`,
     })
 
   } catch (e) {

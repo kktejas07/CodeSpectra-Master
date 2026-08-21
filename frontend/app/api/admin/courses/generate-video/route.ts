@@ -3,6 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { generateLessonVideo } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio } from '@/lib/courses/lesson-audio'
+import { lessonVideoPath } from '@/lib/courses/lesson-mp4'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -32,11 +33,19 @@ export async function POST(request: NextRequest) {
         const lesson = sections[sectionIndex]?.lessons?.[lessonIndex]
         if (lesson) {
           await saveLessonAudio(courseId, lesson.id, generated.audioBuffer)
+          const { renderAndStoreLessonMp4 } = await import('@/lib/courses/render-mp4')
+          await renderAndStoreLessonMp4({
+            courseId,
+            lessonId: lesson.id,
+            script: generated.script,
+            audio: generated.audioBuffer,
+          })
           sections[sectionIndex].lessons[lessonIndex] = {
             ...lesson,
             textContent: generated.textContent,
             script: generated.script,
             audioUrl: lessonAudioPath(courseId, lesson.id),
+            videoUrl: lessonVideoPath(courseId, lesson.id),
             videoType: 'ai',
             type: 'video',
             duration: generated.durationSeconds,
@@ -56,7 +65,7 @@ export async function POST(request: NextRequest) {
       audioUrl: `data:audio/mpeg;base64,${generated.audioBuffer.toString('base64')}`,
       totalDurationFrames: generated.script.reduce((n, s) => n + s.durationInFrames, 0),
       totalDurationSeconds: generated.durationSeconds,
-      message: `Generated ${generated.script.length} slides (~${generated.durationSeconds}s) for "${topic}"`,
+      message: `Generated ${generated.script.length}-slide MP4 (~${generated.durationSeconds}s) for "${topic}"`,
     })
 
   } catch (e) {

@@ -20,7 +20,9 @@ ENV DIDIT_API_KEY=${DIDIT_API_KEY}
 ENV DIDIT_WEBHOOK_SECRET=${DIDIT_WEBHOOK_SECRET}
 ENV DIDIT_WORKFLOW_ID=${DIDIT_WORKFLOW_ID}
 ENV PISTON_URL=http://piston:2000/api/v2
-RUN apk add --no-cache docker-cli
+RUN apk add --no-cache docker-cli chromium nss freetype harfbuzz ca-certificates ttf-freefont font-noto
+ENV REMOTION_BROWSER_EXECUTABLE=/usr/bin/chromium-browser
+ENV PUPPETEER_SKIP_DOWNLOAD=true
 WORKDIR /app
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile

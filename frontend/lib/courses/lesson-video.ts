@@ -3,11 +3,12 @@ import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
 import { durationFramesFromSpoken, synthesizeTts } from '@/lib/courses/tts'
 
-export type SlideType = 'title' | 'concept' | 'code'
+export type SlideType = 'title' | 'concept' | 'code' | 'visual'
 
 export interface VideoSlide {
   id: string
   type: SlideType
+  visual?: 'array' | 'sort' | 'tree'
   title: string
   content: string[]
   code?: string
@@ -33,7 +34,18 @@ function asSlideType(raw: unknown): SlideType {
   const t = String(raw || '').toLowerCase()
   if (t === 'code') return 'code'
   if (t === 'title') return 'title'
+  if (t === 'visual' || t === 'diagram' || t === 'animation') return 'visual'
   return 'concept'
+}
+
+function asVisual(raw: unknown, title: string): VideoSlide['visual'] | undefined {
+  const v = String(raw || '').toLowerCase()
+  if (v === 'array' || v === 'sort' || v === 'tree') return v
+  const t = title.toLowerCase()
+  if (/tree|bst|heap/.test(t)) return 'tree'
+  if (/sort|bubble|merge|quick/.test(t)) return 'sort'
+  if (/array|binary search|linked list/.test(t)) return 'array'
+  return undefined
 }
 
 /** Accepts `{ slides }` or the older `{ scenes }` shape. */
@@ -57,9 +69,11 @@ export function slidesFromAiJson(raw: unknown): Omit<VideoSlide, 'durationInFram
     const spokenText = String(item?.spokenText || item?.narration || '').trim()
     const title = String(item?.title || `Slide ${i + 1}`).trim()
     const content = normalizeBullets(item?.content)
+    const type = asSlideType(item?.type || (i === 0 ? 'title' : item?.code ? 'code' : 'concept'))
     return {
       id: String(item?.id || `slide-${i + 1}`),
-      type: asSlideType(item?.type || (i === 0 ? 'title' : item?.code ? 'code' : 'concept')),
+      type,
+      visual: type === 'visual' ? asVisual(item?.visual, title) : undefined,
       title,
       content: content.length ? content : [title],
       code: item?.code ? String(item.code) : undefined,
@@ -113,8 +127,9 @@ Output JSON ONLY:
 
 Rules:
 - First slide type MUST be "title" (welcome + what we'll cover).
-- 8 to 10 slides total. Types: "title" | "concept" | "code".
+- 8 to 10 slides total. Types: "title" | "concept" | "code" | "visual".
 - Include at least one "code" slide with a "code" field (working ${techStack} snippet) and "codeLanguage".
+- Include one "visual" slide with "visual": "array" | "sort" | "tree" (animated diagram — pick the one that matches the topic).
 - Each spokenText MUST be 80-120 words (this is what makes the video ~3 minutes, not 13 seconds).
 - On-screen "content" is 3-5 short bullets, not the full narration.
 - Cover the same WHY → WHAT → HOW → WHERE arc as the text lesson.
@@ -184,6 +199,7 @@ async function completeWithFallback(args: Parameters<typeof backendComplete>[0])
   const chain = [...nvidia, ...rest.slice(start), ...rest.slice(0, start)]
   const seen = new Set<string>()
   let last = 'No LLM provider with a key is configured'
+  let waitedRateLimit = false
   for (const p of chain) {
     if (!p.provider || !p.model) continue
     const id = `${p.provider}:${p.model}`
@@ -194,19 +210,31 @@ async function completeWithFallback(args: Parameters<typeof backendComplete>[0])
     const apiKey = fromPrimary || (secretField && typeof secrets[secretField] === 'string' ? String(secrets[secretField]).trim() : '')
     if (!apiKey) continue
     console.log('[course-worker] trying', p.provider, p.model)
-    const res = await backendComplete({
-      ...args,
-      providerOverride: p.provider,
-      modelOverride: p.model,
-      endpointOverride: p.endpoint,
-      apiKeyOverride: apiKey,
-    })
-    const dead = isDeadProviderOutput(res)
-    if (dead) {
-      last = `${id}: ${dead}`
-      continue
+    try {
+      const res = await backendComplete({
+        ...args,
+        providerOverride: p.provider,
+        modelOverride: p.model,
+        endpointOverride: p.endpoint,
+        apiKeyOverride: apiKey,
+      })
+      const dead = isDeadProviderOutput(res)
+      if (dead) {
+        last = `${id}: ${dead}`
+        const waitSec = Number((dead.match(/Try again in (\d+)s/i) || [])[1] || 0)
+        // ponytail: one wait then retry same provider; spraying every key in 1s burns the shared 60/min
+        if (waitSec && !waitedRateLimit) {
+          waitedRateLimit = true
+          console.log('[course-worker] rate limited, waiting', waitSec, 's then retry', id)
+          await new Promise(r => setTimeout(r, (waitSec + 2) * 1000))
+          seen.delete(id)
+        }
+        continue
+      }
+      return res
+    } catch (e: unknown) {
+      last = `${id}: ${e instanceof Error ? e.message : String(e)}`
     }
-    return res
   }
   throw new Error(`All LLM providers failed. Last: ${last}`)
 }

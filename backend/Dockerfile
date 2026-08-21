@@ -15,4 +15,7 @@ RUN mkdir -p /app/backend && \
     chown -R appuser:appuser /app/backend
 USER appuser
 EXPOSE 8000
+# Hydrate SESSION_SECRET + INTERNAL_BACKEND_SECRET from Mongo, then exec uvicorn
+# so Settings() sees them even when Dokploy wiped ad-hoc --env-add values.
+ENTRYPOINT ["python", "scripts/hydrate_runtime_secrets.py"]
 CMD ["uvicorn", "server:app", "--host", "0.0.0.0", "--port", "8000"]

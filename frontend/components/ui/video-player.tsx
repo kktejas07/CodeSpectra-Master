@@ -39,7 +39,6 @@ export function VideoPlayer({
   logoLinkUrl,
   className = '',
 }: VideoPlayerProps) {
-  console.log('RemotionProviderLoader is:', RemotionProviderLoader)
   const [settings, setSettings] = useState<PlayerSettings>({})
 
   useEffect(() => {
@@ -85,6 +84,7 @@ export function VideoPlayer({
         title={title}
         autoplay={finalAutoplay}
         muted={finalMuted}
+        className="h-full w-full"
         style={{ '--video-brand': finalColor } as any}
       >
         <MediaProvider loaders={[RemotionProviderLoader]} />

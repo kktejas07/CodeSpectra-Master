@@ -22,6 +22,8 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'openwa_api_key',
   'nvidia_api_key',
   'cloudflare_api_token',
+  'r2_secret_access_key',
+  's3_secret_access_key',
   'phonepe_salt_key',
   'phonepe_webhook_secret',
   'stripe_secret_key',

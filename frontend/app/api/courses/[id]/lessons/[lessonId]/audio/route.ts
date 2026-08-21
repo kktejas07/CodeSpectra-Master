@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
-import { loadLessonAudio } from '@/lib/courses/lesson-audio'
+import { lessonAudioPlayback } from '@/lib/courses/lesson-audio'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -13,8 +13,12 @@ export async function GET(
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { id: courseId, lessonId } = await params
-  const audio = await loadLessonAudio(courseId, lessonId)
+  const audio = await lessonAudioPlayback(courseId, lessonId)
   if (!audio) return NextResponse.json({ error: 'Audio not found' }, { status: 404 })
+
+  if (audio.kind === 'redirect') {
+    return NextResponse.redirect(audio.url, 302)
+  }
 
   return new NextResponse(new Uint8Array(audio.data), {
     headers: {

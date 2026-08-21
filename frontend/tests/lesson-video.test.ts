@@ -43,7 +43,16 @@ describe('slidesFromAiJson', () => {
     })).toThrow(/Insufficient credits/)
   })
 
-  it('rejects the 2-scene mock that produced 13s silent videos', () => {
+  it('parses visual/diagram slides', () => {
+    const slides = slidesFromAiJson({
+      slides: [
+        ...fiveSlides.slides.slice(0, 4),
+        { id: 's5', type: 'visual', visual: 'sort', title: 'Bubble sort', content: ['Watch the bars'], spokenText: fiveSlides.slides[4].spokenText },
+      ],
+    })
+    expect(slides[4].type).toBe('visual')
+    expect(slides[4].visual).toBe('sort')
+  })
     expect(() => slidesFromAiJson({
       scenes: [
         { title: 'Introduction', content: ['Understanding Java'], spokenText: 'Let me explain.' },
@@ -81,7 +90,7 @@ describe('splitTextForTts', () => {
 })
 
 describe('stale running jobs', () => {
-  it('flags a running job older than 45 minutes', () => {
+  it('flags a running job older than the stale window', () => {
     const now = Date.parse('2026-08-21T12:00:00Z')
     expect(isStaleRunning({ status: 'running', startedAt: '2026-08-21T11:59:00Z' }, now)).toBe(false)
     expect(isStaleRunning({
@@ -94,7 +103,7 @@ describe('stale running jobs', () => {
   it('marks 0-success runs as failed, not completed', () => {
     expect(finalJobStatus(0, 12)).toBe('failed')
     expect(finalJobStatus(12, 0)).toBe('completed')
-    expect(finalJobStatus(8, 4)).toBe('completed')
+    expect(finalJobStatus(8, 4)).toBe('failed')
     expect(finalJobStatus(0, 0)).toBe('failed')
   })
 })

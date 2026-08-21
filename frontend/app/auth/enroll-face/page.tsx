@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FaceCamera } from "@/components/auth/face-camera";
 import { Button } from "@/components/ui/button";
-import { Code2, ArrowRight, Shield, AlertCircle } from "lucide-react";
+import { Shield, AlertCircle, Loader2 } from "lucide-react";
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { csrfFetch } from "@/lib/csrf-fetch";
@@ -17,6 +17,7 @@ function EnrollFaceInner() {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cameraKey, setCameraKey] = useState(0);
   const { user } = useAuth();
 
   const isMandatory = user?.createdAt 
@@ -36,8 +37,8 @@ function EnrollFaceInner() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save biometric template.");
+        const data = await res.json().catch(() => ({} as { error?: string }))
+        throw new Error(data.error || `Failed to save biometric template (${res.status}).`)
       }
 
       router.push(redirectTo);
@@ -45,6 +46,7 @@ function EnrollFaceInner() {
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
+      setCameraKey((k) => k + 1);
     }
   }, [router, redirectTo]);
 
@@ -87,8 +89,9 @@ function EnrollFaceInner() {
         )}
 
         <div className="py-4">
-          <FaceCamera 
-            mode="enroll" 
+          <FaceCamera
+            key={cameraKey}
+            mode="enroll"
             onCapture={handleCapture}
             onError={handleError}
           />
@@ -118,7 +121,11 @@ function EnrollFaceInner() {
 
 export default function EnrollFacePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
       <EnrollFaceInner />
     </Suspense>
   );

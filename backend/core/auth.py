@@ -55,38 +55,38 @@ async def _platform_secrets() -> dict:
 
 
 async def get_internal_backend_secret() -> str:
-    """Resolve the internal service secret: env var first, then Mongo-backed value.
+    """Resolve the internal service secret: Mongo first, then env.
 
     Fixes a recurring prod outage: building/rolling the backend image with Dokploy
     re-applies Dokploy's stored env, which can drop ad-hoc `--env-add` values from
     the service spec. Falling back to the Mongo copy means the backend keeps
     trusting frontend-to-backend calls even when the env var is missing.
     """
-    env_val = (settings.INTERNAL_BACKEND_SECRET or "").strip()
-    if env_val:
-        return env_val
     try:
         secrets = await _platform_secrets()
-        return str(secrets.get("internal_backend_secret", "") or "").strip()
+        stored = str(secrets.get("internal_backend_secret", "") or "").strip()
+        if len(stored) >= 32 and "•" not in stored:
+            return stored
     except Exception:
-        return ""
+        pass
+    return (settings.INTERNAL_BACKEND_SECRET or "").strip()
 
 
 async def get_session_secret() -> str:
-    """Resolve the JWT signing secret: env var first, then Mongo-backed value.
+    """Resolve the JWT signing secret: Mongo first, then env.
 
     Mirrors the frontend (`lib/session.ts`): if a rebuild drops SESSION_SECRET from
     the service env, we fall back to the secret persisted in `platform_settings`.
     Keeps existing sessions valid because the value is identical across pods.
     """
-    env_val = (settings.SESSION_SECRET or "").strip()
-    if env_val:
-        return env_val
     try:
         secrets = await _platform_secrets()
-        return str(secrets.get("session_secret", "") or "").strip()
+        stored = str(secrets.get("session_secret", "") or "").strip()
+        if len(stored) >= 32 and "•" not in stored:
+            return stored
     except Exception:
-        return ""
+        pass
+    return (settings.SESSION_SECRET or "").strip()
 
 
 async def _get_session_payload_from_request(request: Request) -> dict | None:
