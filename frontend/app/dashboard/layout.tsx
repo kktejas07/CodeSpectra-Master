@@ -706,7 +706,7 @@ export default function DashboardLayout({
               : 'font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground'
           )}
         >
-          <IconComponent className="h-[18px] w-[18px] shrink-0 opacity-90" />
+          <IconComponent className="h-4.5 w-4.5 shrink-0 opacity-90" />
           <span
             className={cn(
               'min-w-0 flex-1 truncate text-[14px]',
@@ -1026,7 +1026,7 @@ export default function DashboardLayout({
               >
                 <Bell className="h-4 w-4 shrink-0" />
                 {unreadNotifications > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground leading-none"
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground leading-none"
                     aria-label={`${unreadNotifications} unread notifications`}>
                     {unreadNotifications > 9 ? '9+' : unreadNotifications}
                   </span>

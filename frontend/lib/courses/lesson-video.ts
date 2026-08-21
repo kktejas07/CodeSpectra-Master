@@ -106,11 +106,11 @@ Match this structure (use these heading styles):
 - Two short quizzes: "Quiz 1" and "Quiz 2", each with Question / Correct Answer / Explanation
 - Final Thoughts + Conclusion
 
-The lesson should take a student 4–6 minutes to read. Be specific and educational, not generic.`
+The lesson should take a student 12–18 minutes to read. Teach every subtopic. Do not skip edge cases, complexity, or working code. Do not assume prior knowledge of this lesson.`
 
 const VIDEO_SYSTEM = `You are an expert video-lesson scriptwriter. Return ONLY valid JSON, no markdown.`
 
-const VIDEO_PROMPT = (topic: string, techStack: string, textLesson: string) => `Turn this text lesson into a 3–5 minute instructor video script.
+const VIDEO_PROMPT = (topic: string, techStack: string, textLesson: string) => `Turn this text lesson into an 8–12 minute instructor video script. Cover the topic in full. Do not skip or summarize-away details.
 
 Output JSON ONLY:
 {
@@ -120,24 +120,25 @@ Output JSON ONLY:
       "type": "title",
       "title": "Short on-screen headline",
       "content": ["One-line subtitle"],
-      "spokenText": "80-120 words the narrator speaks while this slide is on screen. Conversational, like a patient teacher."
+      "spokenText": "140-180 words the narrator speaks while this slide is on screen. Conversational, like a patient teacher. Teach, do not tease."
     }
   ]
 }
 
 Rules:
 - First slide type MUST be "title" (welcome + what we'll cover).
-- 8 to 10 slides total. Types: "title" | "concept" | "code" | "visual".
-- Include at least one "code" slide with a "code" field (working ${techStack} snippet) and "codeLanguage".
-- Include one "visual" slide with "visual": "array" | "sort" | "tree" (animated diagram — pick the one that matches the topic).
-- Each spokenText MUST be 80-120 words (this is what makes the video ~3 minutes, not 13 seconds).
+- 12 to 16 slides total. Types: "title" | "concept" | "code" | "visual".
+- Include at least two "code" slides with a "code" field (working ${techStack} snippet) and "codeLanguage".
+- Include one "visual" slide with "visual": "array" | "sort" | "tree" when the topic is data/algorithms; otherwise use extra concept/code slides.
+- Each spokenText MUST be 140-180 words (this is what makes the video ~8–12 minutes).
 - On-screen "content" is 3-5 short bullets, not the full narration.
-- Cover the same WHY → WHAT → HOW → WHERE arc as the text lesson.
+- Cover WHY → WHAT → HOW → WHERE, then edge cases, complexity, and a full worked example.
+- Do not say "we will skip" or "as you already know".
 - No markdown fences around the JSON.
 
 TEXT LESSON:
 """
-${textLesson.slice(0, 12000)}
+${textLesson.slice(0, 16000)}
 """
 
 Topic: ${topic}`

@@ -68,7 +68,7 @@ export async function renderAndStoreLessonMp4(opts: {
       crf: 28,
       jpegQuality: 70,
       concurrency: 1,
-      timeoutInMilliseconds: 8 * 60 * 1000,
+      timeoutInMilliseconds: 20 * 60 * 1000,
       chromiumOptions: { enableMultiProcessOnLinux: true, gl: 'swangle' },
       ...(chromePath() ? { browserExecutable: chromePath() } : {}),
     })

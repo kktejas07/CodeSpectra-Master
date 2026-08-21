@@ -392,10 +392,10 @@ export default function SystemAdminDashboard() {
                   No containers currently running.
                 </p>
               ) : (
-                <div className="max-h-[300px] overflow-y-auto space-y-2">
+                <div className="max-h-75 overflow-y-auto space-y-2">
                   {server.containers.list.slice(0, 12).map((c) => (
                     <div key={c.name} className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2 text-xs">
-                      <span className="font-mono truncate max-w-[200px]" title={c.name}>{c.name}</span>
+                      <span className="font-mono truncate max-w-50" title={c.name}>{c.name}</span>
                       <div className="flex items-center gap-3 text-muted-foreground">
                         <span>{c.cpu}</span>
                         <span>{c.memory}</span>
@@ -564,7 +564,7 @@ export default function SystemAdminDashboard() {
                   </div>
 
                   {(redis.rateLimitKeys?.length ?? 0) > 0 ? (
-                    <div className="max-h-[300px] space-y-3 overflow-y-auto rounded-md border border-border/60 p-3">
+                    <div className="max-h-75 space-y-3 overflow-y-auto rounded-md border border-border/60 p-3">
                       {RATE_CATEGORY_ORDER.map((cat) => {
                         const items = (redis.rateLimitKeys ?? []).filter((k) => decodeRateKey(k.key).category === cat.kind)
                         if (!items.length) return null

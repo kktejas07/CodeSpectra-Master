@@ -13,11 +13,11 @@ export const WORKER_ONLINE_MS = 20_000
 const HEARTBEAT_ID = 'course-video-worker'
 const BUSY_STATUSES = ['pending', 'running'] as const
 
-export function isStaleRunning(job: { status?: string; startedAt?: string }, now = Date.now()): boolean {
-  if (job.status !== 'running' || !job.startedAt) return false
-  const started = Date.parse(job.startedAt)
-  if (Number.isNaN(started)) return false
-  return now - started > STALE_RUNNING_MS
+export function isStaleRunning(job: { status?: string; startedAt?: string; heartbeatAt?: string }, now = Date.now()): boolean {
+  if (job.status !== 'running') return false
+  const t = Date.parse(job.heartbeatAt || job.startedAt || '')
+  if (Number.isNaN(t)) return false
+  return now - t > STALE_RUNNING_MS
 }
 
 export async function findBusyJob(): Promise<{ id: string; courseTitle?: string; status: string } | null> {
@@ -55,7 +55,10 @@ export async function recoverStaleRunningJobs(): Promise<number> {
   const cutoff = new Date(Date.now() - STALE_RUNNING_MS).toISOString()
   const stale = await db.collection('generation_jobs').find({
     status: 'running',
-    startedAt: { $lt: cutoff },
+    $or: [
+      { heartbeatAt: { $lt: cutoff } },
+      { heartbeatAt: { $exists: false }, startedAt: { $lt: cutoff } },
+    ],
   }).toArray()
 
   for (const job of stale) {
@@ -125,7 +128,7 @@ export async function processVideoJob(jobId: string): Promise<void> {
     let failedItems = 0
     const totalItems = sections.reduce((sum: number, s: any) => sum + (s.lessons?.length || 0), 0)
 
-    await addLog(`Starting MP4 generation for ${totalItems} lessons (script + voiceover + render, ~5–10 min each)`)
+    await addLog(`Starting detailed MP4 generation for ${totalItems} lessons (script + voiceover + render, ~10–15 min each)`)
 
     for (let sIdx = 0; sIdx < sections.length; sIdx++) {
       const section = sections[sIdx]
@@ -204,7 +207,7 @@ export async function processVideoJob(jobId: string): Promise<void> {
 
         await db.collection('generation_jobs').updateOne(
           { id: jobId },
-          { $set: { completedItems, failedItems, progress: Math.round((completedItems / totalItems) * 100) } },
+          { $set: { completedItems, failedItems, progress: Math.round((completedItems / totalItems) * 100), heartbeatAt: new Date().toISOString() } },
         )
 
         await new Promise(r => setTimeout(r, 500))
