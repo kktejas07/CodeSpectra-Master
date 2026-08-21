@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { backendComplete } from '@/lib/ai/backend'
+import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -85,6 +86,7 @@ export async function POST(request: NextRequest) {
         techStack || 'programming'
       ),
       responseFormat: 'json',
+      ...(await platformModelOverrides()),
     })
 
     if (!aiRes.ok) {

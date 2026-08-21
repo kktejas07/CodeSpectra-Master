@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 import { backendComplete } from '@/lib/ai/backend'
+import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 
 export const runtime = 'nodejs'
@@ -227,6 +228,7 @@ export async function POST(request: Request) {
           systemMessage: 'You are a senior technical assessor who creates realistic job screening questions. Each question must test a distinct skill with realistic distractors. Return ONLY valid JSON.',
           userMessage: aiPrompt,
           responseFormat: 'json',
+          ...(await platformModelOverrides()),
         })
         const rawJson = aiRes.ok ? (aiRes.json || (aiRes.text ? tryParseJsonArray(aiRes.text) : null)) : null
         if (rawJson && Array.isArray(rawJson) && rawJson.length > 0) {
