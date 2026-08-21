@@ -7,7 +7,11 @@
  * the browser.
  */
 
-const BACKEND = process.env.INTERNAL_BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'http://codespectra-backend-cd7lq6:8000' : 'http://localhost:8001')
+const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
+const BACKEND = process.env.INTERNAL_BACKEND_URL
+  || ((process.env.COURSE_WORKER === '1' || process.env.NODE_ENV === 'production')
+    ? PROD_BACKEND
+    : 'http://localhost:8001')
 
 async function getBackendSecrets(): Promise<{
   anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string; groq: string
@@ -139,6 +143,7 @@ export async function backendComplete(args: {
     const res = await fetch(`${BACKEND}/internal/ai/complete`, {
       method: 'POST',
       headers,
+      signal: AbortSignal.timeout(120_000),
       body: JSON.stringify({
         session_id: args.sessionId ?? 'default',
         system_message: args.systemMessage,
@@ -165,8 +170,9 @@ export async function backendComplete(args: {
     return parsedRes
   } catch (e) {
     success = false
-    error = e instanceof Error ? e.message : 'Unknown error'
-    throw e
+    const cause = e instanceof Error ? e.message : 'Unknown error'
+    error = `AI backend unreachable at ${BACKEND}: ${cause}`
+    throw new Error(error)
   } finally {
     const latencyMs = Date.now() - start
     if (args.feature) {

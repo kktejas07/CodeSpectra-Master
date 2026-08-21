@@ -65,6 +65,8 @@ export default function CourseGeneratorPage() {
   const [expandedJob, setExpandedJob] = useState<string | null>(null)
   const [workerOnline, setWorkerOnline] = useState<boolean | null>(null)
   const [workerHint, setWorkerHint] = useState('')
+  const [workerStuck, setWorkerStuck] = useState(false)
+  const [runningJobTitle, setRunningJobTitle] = useState('')
 
   // Course state
   const [existingCourses, setExistingCourses] = useState<any[]>([])
@@ -103,8 +105,28 @@ export default function CourseGeneratorPage() {
       const data = await res.json()
       if (typeof data.online === 'boolean') setWorkerOnline(data.online)
       if (data.hint) setWorkerHint(data.hint)
+      setWorkerStuck(Boolean(data.stuck))
+      setRunningJobTitle(data.runningJob?.courseTitle ? `${data.runningJob.courseTitle} (${data.runningJob.progress || 0}%)` : '')
     } catch {
       setWorkerOnline(false)
+    }
+  }
+
+  const handleUnstick = async () => {
+    try {
+      const res = await csrfFetch('/api/admin/courses/worker', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ action: 'unstick' }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Unstick failed')
+      addToast({ type: 'success', title: data.message || 'Stuck job requeued' })
+      loadJobs()
+      loadWorker()
+    } catch (err: any) {
+      addToast({ type: 'error', title: err.message })
     }
   }
 
@@ -254,6 +276,26 @@ export default function CourseGeneratorPage() {
   }
 
   // Delete job
+  const handleDeleteFailedJobs = () => {
+    setConfirmTitle('Delete failed jobs')
+    setConfirmMessage('Delete all failed and cancelled job records? Running jobs are kept.')
+    setConfirmAction(() => async () => {
+      try {
+        const res = await csrfFetch('/api/admin/courses/jobs?failed=1', {
+          method: 'DELETE',
+          credentials: 'include',
+        })
+        const data = await res.json()
+        if (!res.ok) throw new Error(data.error || 'Delete failed')
+        addToast({ type: 'success', title: `Deleted ${data.deleted ?? 0} jobs` })
+        loadJobs()
+      } catch (err: any) {
+        addToast({ type: 'error', title: err.message })
+      }
+    })
+    setConfirmOpen(true)
+  }
+
   const handleDeleteJob = (jobId: string) => {
     setConfirmTitle('Delete Job')
     setConfirmMessage('Delete this job record? This cannot be undone.')
@@ -347,8 +389,17 @@ export default function CourseGeneratorPage() {
                 {workerOnline === null ? 'Checking…' : workerOnline ? 'Online — jobs start automatically' : 'Offline'}
               </span>
             </div>
+            {runningJobTitle && (
+              <p className="text-[11px] text-muted-foreground">Running: {runningJobTitle}</p>
+            )}
             {workerHint && (
               <p className="text-[11px] text-muted-foreground leading-relaxed">{workerHint}</p>
+            )}
+            <Button variant="outline" size="sm" className="w-full" onClick={handleUnstick}>
+              Unstick hung job
+            </Button>
+            {workerStuck && (
+              <p className="text-[11px] text-amber-600">Job is marked running but the worker is idle. Unstick requeues it.</p>
             )}
           </Card>
 
@@ -457,9 +508,14 @@ export default function CourseGeneratorPage() {
               <Card className="p-5">
                 <div className="flex items-center justify-between mb-4">
                   <h2 className="text-sm font-semibold">Generation Jobs</h2>
-                  <Button variant="ghost" size="sm" onClick={loadJobs}>
-                    <RefreshCw className="h-3.5 w-3.5" />
-                  </Button>
+                  <div className="flex items-center gap-1">
+                    <Button variant="ghost" size="sm" title="Delete failed jobs" onClick={handleDeleteFailedJobs}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={loadJobs}>
+                      <RefreshCw className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
                 </div>
 
                 {jobs.length === 0 ? (
@@ -491,6 +547,11 @@ export default function CourseGeneratorPage() {
                             {(job.status === 'pending' || job.status === 'running') && (
                               <Button variant="ghost" size="sm" title="Cancel job" onClick={(e) => handleCancelJob(job.id, e)}>
                                 <Pause className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                            {job.status !== 'running' && (
+                              <Button variant="ghost" size="sm" title="Delete job" className="text-red-500 hover:text-red-600" onClick={() => handleDeleteJob(job.id)}>
+                                <Trash2 className="h-3.5 w-3.5" />
                               </Button>
                             )}
                             {expandedJob === job.id ? <ChevronUp className="h-4 w-4" /> : <ChevronDown className="h-4 w-4" />}

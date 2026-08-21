@@ -43,7 +43,15 @@ export async function GET(request: NextRequest) {
       .limit(50)
       .toArray()
 
-    return NextResponse.json({ jobs })
+    // Old worker marked 0-success runs as completed. Surface them as failed.
+    const normalized = jobs.map((job: any) => {
+      if (job.status === 'completed' && (job.completedItems || 0) === 0 && (job.failedItems || 0) > 0) {
+        return { ...job, status: 'failed' }
+      }
+      return job
+    })
+
+    return NextResponse.json({ jobs: normalized })
   } catch (e) {
     console.error('[jobs] GET error:', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
@@ -121,6 +129,42 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ success: true, job })
   } catch (e) {
     console.error('[jobs] POST error:', e)
+    return NextResponse.json({ error: String(e) }, { status: 500 })
+  }
+}
+
+export async function DELETE(request: NextRequest) {
+  const user = await getAPIUser()
+  if (!user || user.role !== 'superadmin') {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+
+  try {
+    const jobId = request.nextUrl.searchParams.get('jobId')
+    const allFailed = request.nextUrl.searchParams.get('failed') === '1'
+    const db = await getMongoDb()
+
+    if (allFailed) {
+      const res = await db.collection('generation_jobs').deleteMany({
+        $or: [
+          { status: 'failed' },
+          { status: 'cancelled' },
+          { status: 'completed', completedItems: 0, failedItems: { $gt: 0 } },
+        ],
+      })
+      return NextResponse.json({ success: true, deleted: res.deletedCount })
+    }
+
+    if (!jobId) return NextResponse.json({ error: 'jobId required' }, { status: 400 })
+    const job = await db.collection('generation_jobs').findOne({ id: jobId })
+    if (!job) return NextResponse.json({ error: 'Job not found' }, { status: 404 })
+    if (job.status === 'running') {
+      return NextResponse.json({ error: 'Stop or cancel a running job before deleting it' }, { status: 409 })
+    }
+    await db.collection('generation_jobs').deleteOne({ id: jobId })
+    return NextResponse.json({ success: true })
+  } catch (e) {
+    console.error('[jobs] DELETE error:', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }

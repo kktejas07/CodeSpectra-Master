@@ -5,7 +5,7 @@
 import { describe, it, expect } from 'vitest'
 import { slidesFromAiJson, withDurations, normalizeBullets } from '@/lib/courses/lesson-video'
 import { durationFramesFromSpoken, estimateSpokenSeconds, splitTextForTts } from '@/lib/courses/tts'
-import { isStaleRunning, STALE_RUNNING_MS } from '@/lib/courses/process-job'
+import { isStaleRunning, STALE_RUNNING_MS, finalJobStatus } from '@/lib/courses/process-job'
 
 const fiveSlides = {
   slides: [
@@ -35,6 +35,12 @@ describe('slidesFromAiJson', () => {
 
   it('accepts the legacy scenes key', () => {
     expect(slidesFromAiJson({ scenes: fiveSlides.slides })).toHaveLength(5)
+  })
+
+  it('surfaces OpenRouter credit errors instead of missing-slides', () => {
+    expect(() => slidesFromAiJson({
+      error: { message: 'Insufficient credits.', code: 402 },
+    })).toThrow(/Insufficient credits/)
   })
 
   it('rejects the 2-scene mock that produced 13s silent videos', () => {
@@ -83,5 +89,12 @@ describe('stale running jobs', () => {
       startedAt: new Date(now - STALE_RUNNING_MS - 1000).toISOString(),
     }, now)).toBe(true)
     expect(isStaleRunning({ status: 'pending', startedAt: '2020-01-01T00:00:00Z' }, now)).toBe(false)
+  })
+
+  it('marks 0-success runs as failed, not completed', () => {
+    expect(finalJobStatus(0, 12)).toBe('failed')
+    expect(finalJobStatus(12, 0)).toBe('completed')
+    expect(finalJobStatus(8, 4)).toBe('completed')
+    expect(finalJobStatus(0, 0)).toBe('failed')
   })
 })

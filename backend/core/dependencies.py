@@ -194,6 +194,7 @@ _KEY_HEADER_MAP: dict[str, str] = {
     "openrouter": "x-openai-api-key",
     "omnirouter": "x-openai-api-key",
     "groq": "x-openai-api-key",
+    "nvidia": "x-openai-api-key",
 }
 
 _ENV_MAP: dict[str, str] = {
@@ -203,6 +204,7 @@ _ENV_MAP: dict[str, str] = {
     "opencode": "OPENCODE_API_KEY",
     "openrouter": "OPENROUTER_API_KEY",
     "groq": "GROQ_API_KEY",
+    "nvidia": "NVIDIA_API_KEY",
     "omnirouter": "OPENAI_API_KEY",
 }
 
@@ -328,6 +330,8 @@ def build_chat(
         base_url = "https://openrouter.ai/api/v1"
     elif provider == "groq" and not base_url:
         base_url = "https://api.groq.com/openai/v1"
+    elif provider == "nvidia" and not base_url:
+        base_url = "https://integrate.api.nvidia.com/v1"
     # Split comma-separated keys for multi-key rotation
     keys = [k.strip() for k in key.split(",") if k.strip()] if key else [""]
     

@@ -1,5 +1,6 @@
 import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
 import { durationFramesFromSpoken, synthesizeTts } from '@/lib/courses/tts'
 
 export type SlideType = 'title' | 'concept' | 'code'
@@ -44,6 +45,11 @@ export function slidesFromAiJson(raw: unknown): Omit<VideoSlide, 'durationInFram
   }
   if (Array.isArray(obj)) obj = { slides: obj }
   const record = (obj && typeof obj === 'object') ? obj as Record<string, unknown> : {}
+  if (record.error) {
+    const err = record.error
+    const msg = (err && typeof err === 'object' && 'message' in err) ? String((err as { message: unknown }).message) : String(err)
+    throw new Error(`LLM provider error: ${msg}`)
+  }
   const list = (record.slides || record.scenes) as unknown
   if (!Array.isArray(list)) throw new Error('AI video script missing slides/scenes array')
 
@@ -121,11 +127,88 @@ ${textLesson.slice(0, 12000)}
 
 Topic: ${topic}`
 
-function extractText(res: { ok?: boolean; text?: string; json?: unknown }): string {
+function extractText(res: { ok?: boolean; text?: string; json?: unknown; raw?: string }): string {
   if (typeof res.text === 'string' && res.text.trim()) return res.text.trim()
+  if (typeof res.raw === 'string' && res.raw.trim()) return res.raw.trim()
   if (typeof res.json === 'string' && res.json.trim()) return res.json.trim()
   if (res.json != null) return typeof res.json === 'object' ? JSON.stringify(res.json) : String(res.json)
   return ''
+}
+
+function isDeadProviderOutput(res: { ok?: boolean; json?: unknown; text?: string; raw?: string }): string | null {
+  const blob = extractText(res)
+  if (!res.ok) return (res.text || blob || 'request failed').slice(0, 180)
+  if (/insufficient credits|API Error \(\d+\)/i.test(blob)) return blob.slice(0, 180)
+  if (res.json && typeof res.json === 'object' && res.json !== null && 'error' in res.json && !('slides' in res.json) && !('scenes' in res.json)) {
+    return JSON.stringify(res.json).slice(0, 180)
+  }
+  return null
+}
+
+const PROVIDER_SECRET: Record<string, string> = {
+  nvidia: 'nvidia_api_key',
+  groq: 'groq_api_key',
+  gemini: 'gemini_api_key',
+  openai: 'openai_api_key',
+  opencode: 'opencode_api_key',
+  openrouter: 'openrouter_api_key',
+}
+
+const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1'
+
+/** Own keys from SuperAdmin. NVIDIA first (user request), then the rest. */
+const PROVIDER_MODELS: { provider: string; model: string; endpoint?: string }[] = [
+  { provider: 'nvidia', model: 'meta/llama-3.1-70b-instruct', endpoint: NVIDIA_ENDPOINT },
+  { provider: 'nvidia', model: 'meta/llama-3.1-8b-instruct', endpoint: NVIDIA_ENDPOINT },
+  { provider: 'groq', model: 'llama-3.1-8b-instant', endpoint: 'https://api.groq.com/openai/v1' },
+  { provider: 'gemini', model: 'gemini-2.0-flash' },
+  { provider: 'openai', model: 'gpt-4o-mini' },
+  { provider: 'opencode', model: 'deepseek-v4-flash-free' },
+  { provider: 'openrouter', model: 'google/gemini-2.0-flash-lite-001:free' },
+]
+
+let rr = 0
+
+/** Fail over across configured keys. No proxy / limit-bypass. */
+async function completeWithFallback(args: Parameters<typeof backendComplete>[0]) {
+  const primary = await platformModelOverrides()
+  const secrets = await readServerSecrets() as Record<string, unknown>
+  const nvidia = PROVIDER_MODELS.filter(p => p.provider === 'nvidia')
+  const rest = [
+    ...(primary.providerOverride && primary.modelOverride && primary.providerOverride !== 'openrouter' && primary.providerOverride !== 'nvidia'
+      ? [{ provider: primary.providerOverride, model: primary.modelOverride, endpoint: primary.endpointOverride }]
+      : []),
+    ...PROVIDER_MODELS.filter(p => p.provider !== 'nvidia'),
+  ]
+  const start = rest.length ? (rr++ % rest.length) : 0
+  const chain = [...nvidia, ...rest.slice(start), ...rest.slice(0, start)]
+  const seen = new Set<string>()
+  let last = 'No LLM provider with a key is configured'
+  for (const p of chain) {
+    if (!p.provider || !p.model) continue
+    const id = `${p.provider}:${p.model}`
+    if (seen.has(id)) continue
+    seen.add(id)
+    const secretField = PROVIDER_SECRET[p.provider]
+    const fromPrimary = p.provider === primary.providerOverride ? primary.apiKeyOverride : ''
+    const apiKey = fromPrimary || (secretField && typeof secrets[secretField] === 'string' ? String(secrets[secretField]).trim() : '')
+    if (!apiKey) continue
+    console.log('[course-worker] trying', p.provider, p.model)
+    const res = await backendComplete({
+      ...args,
+      providerOverride: p.provider,
+      modelOverride: p.model,
+      endpointOverride: p.endpoint,
+      apiKeyOverride: apiKey,
+    })
+    const dead = isDeadProviderOutput(res)
+    if (dead) {
+      last = `${id}: ${dead}`
+      continue
+    }
+    return res
+  }
+  throw new Error(`All LLM providers failed. Last: ${last}`)
 }
 
 export async function generateLessonVideo(opts: {
@@ -135,39 +218,33 @@ export async function generateLessonVideo(opts: {
   const topic = (opts.topic || '').trim()
   if (!topic) throw new Error('Topic is required')
   const techStack = opts.techStack || 'programming'
-  const overrides = await platformModelOverrides()
 
-  const textRes = await backendComplete({
+  const textRes = await completeWithFallback({
     systemMessage: TEXT_SYSTEM,
     userMessage: TEXT_PROMPT(topic, techStack),
     responseFormat: 'text',
     modelRole: 'fast',
     feature: 'course-video-text',
-    ...overrides,
   })
-  if (!textRes.ok) throw new Error(textRes.text || 'AI text lesson failed — check LLM keys in Settings')
   const textContent = extractText(textRes)
   if (textContent.length < 400) throw new Error('AI text lesson was too short — refusing to build a stub video')
 
-  const runScript = async () => backendComplete({
+  const runScript = async () => completeWithFallback({
     systemMessage: VIDEO_SYSTEM,
     userMessage: VIDEO_PROMPT(topic, techStack, textContent),
     responseFormat: 'json',
     modelRole: 'fast',
     feature: 'course-video-script',
-    ...overrides,
   })
 
   let videoRes = await runScript()
-  if (!videoRes.ok) throw new Error(videoRes.text || 'AI video script failed — check LLM keys in Settings')
 
   let slides: VideoSlide[]
   try {
-    slides = withDurations(slidesFromAiJson(videoRes.json ?? videoRes.text))
-  } catch (e) {
+    slides = withDurations(slidesFromAiJson(videoRes.json ?? videoRes.raw ?? videoRes.text))
+  } catch {
     videoRes = await runScript()
-    if (!videoRes.ok) throw new Error(videoRes.text || 'AI video script retry failed')
-    slides = withDurations(slidesFromAiJson(videoRes.json ?? videoRes.text))
+    slides = withDurations(slidesFromAiJson(videoRes.json ?? videoRes.raw ?? videoRes.text))
   }
 
   const fullSpoken = slides.map(s => s.spokenText).join(' ')
