@@ -3,7 +3,7 @@
 import '@vidstack/react/player/styles/default/theme.css'
 import '@vidstack/react/player/styles/default/layouts/video.css'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { MediaPlayer, MediaProvider } from '@vidstack/react'
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default'
 import { RemotionProviderLoader } from '@vidstack/react/player/remotion'
@@ -18,6 +18,9 @@ interface VideoPlayerProps {
   logoUrl?: string
   logoLinkUrl?: string
   className?: string
+  startAt?: number
+  onProgress?: (currentTime: number, duration: number) => void
+  onEnded?: () => void
 }
 
 type PlayerSettings = {
@@ -38,8 +41,17 @@ export function VideoPlayer({
   logoUrl,
   logoLinkUrl,
   className = '',
+  startAt = 0,
+  onProgress,
+  onEnded,
 }: VideoPlayerProps) {
   const [settings, setSettings] = useState<PlayerSettings>({})
+  const player = useRef<any>(null)
+  const appliedStart = useRef(false)
+  const onProgressRef = useRef(onProgress)
+  const onEndedRef = useRef(onEnded)
+  onProgressRef.current = onProgress
+  onEndedRef.current = onEnded
 
   useEffect(() => {
     let cancelled = false
@@ -53,6 +65,16 @@ export function VideoPlayer({
       .catch(() => {})
     return () => { cancelled = true }
   }, [])
+
+  useEffect(() => {
+    appliedStart.current = false
+  }, [src, startAt])
+
+  const emitProgress = () => {
+    const el = player.current
+    if (!el) return
+    onProgressRef.current?.(Number(el.currentTime) || 0, Number(el.duration) || 0)
+  }
 
   const finalAutoplay = autoplay ?? settings.video_player_autoplay ?? false
   const finalMuted = muted ?? settings.video_player_muted ?? false
@@ -71,7 +93,7 @@ export function VideoPlayer({
       <img
         src={finalLogoUrl}
         alt=""
-        className="h-7 w-auto max-w-[120px] object-contain"
+        className="h-7 w-auto max-w-30 object-contain"
         loading="lazy"
       />
     </a>
@@ -80,12 +102,25 @@ export function VideoPlayer({
   return (
     <div className={`overflow-hidden rounded-md border ${className}`}>
       <MediaPlayer
+        ref={player}
         src={src}
         title={title}
         autoplay={finalAutoplay}
         muted={finalMuted}
         className="h-full w-full"
         style={{ '--video-brand': finalColor } as any}
+        onCanPlay={() => {
+          if (!appliedStart.current && startAt > 0 && player.current) {
+            player.current.currentTime = startAt
+            appliedStart.current = true
+          }
+        }}
+        onTimeUpdate={emitProgress}
+        onPause={emitProgress}
+        onEnded={() => {
+          emitProgress()
+          onEndedRef.current?.()
+        }}
       >
         <MediaProvider loaders={[RemotionProviderLoader]} />
         <DefaultVideoLayout

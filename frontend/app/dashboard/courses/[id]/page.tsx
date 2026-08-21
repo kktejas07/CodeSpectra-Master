@@ -14,7 +14,8 @@ import {
   ChevronUp, Share2, Heart, Download, HelpCircle
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { pickResumeLessonId } from '@/lib/courses/watch-progress'
 import { cn } from '@/lib/utils'
 import { Player } from '@remotion/player'
 import { CourseVideoComposition } from '@/app/remotion/CourseVideo'
@@ -77,6 +78,7 @@ interface Progress {
   completedModules: number[]
   quizScores: Record<number, number>
   currentModule: number
+  currentLessonId?: string
   skippedToFinal: boolean
   finalExamScore?: number
   certificateUrl?: string
@@ -158,25 +160,21 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const saveProgress = async (updates: Partial<Progress>) => {
     if (!enrolled) return
     try {
-      await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
+      await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify(updates),
       })
     } catch {}
   }
 
-  // Mark lesson complete
   const markComplete = async (lessonId: string) => {
     const newCompleted = new Set([...completedLessons, lessonId])
     setCompletedLessons(newCompleted)
-    // Save to server
     try {
-      await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
+      await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
         body: JSON.stringify({ lessonId }),
       })
     } catch {}
@@ -206,9 +204,8 @@ const handleEnroll = async () => {
     setEnrolled(true)
     addToast({ title: `Enrolling in ${course?.title}...`, type: 'info' })
     try {
-      const res = await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, {
+      const res = await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, {
         method: 'POST',
-        credentials: 'include',
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Enrollment failed')
@@ -243,6 +240,12 @@ const handleEnroll = async () => {
   const sections = course.sections || []
   const allLessons = sections.flatMap(s => s.lessons)
   const firstLesson = allLessons[0] || null
+  const resumeLessonId = pickResumeLessonId(
+    allLessons.map(l => l.id),
+    progress?.currentLessonId,
+    completedLessons,
+  )
+  const continueLesson = allLessons.find(l => l.id === resumeLessonId) || firstLesson
   const totalLessons = allLessons.length
   const totalDuration = allLessons.reduce((acc, l) => acc + (l.duration || 0), 0)
   const hoursOfContent = totalDuration > 0
@@ -282,7 +285,7 @@ const handleEnroll = async () => {
   return (
     <div className="min-h-screen bg-background">
       {/* ── Hero ── */}
-      <div className="relative overflow-hidden bg-gradient-to-br from-slate-950 via-[#0d1b3e] to-slate-900 text-white">
+      <div className="relative overflow-hidden bg-linear-to-br from-slate-950 via-[#0d1b3e] to-slate-900 text-white">
         {/* Ambient glow blobs */}
         <div className="absolute -top-32 -left-32 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
         <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
@@ -344,8 +347,8 @@ const handleEnroll = async () => {
                   <Button
                     className="bg-emerald-500 hover:bg-emerald-600 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-emerald-500/20 rounded-xl"
                     onClick={() => {
-                      if (firstLesson) {
-                        router.push(`/dashboard/courses/${courseId}/lesson/${firstLesson.id}`)
+                      if (continueLesson) {
+                        router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)
                       }
                     }}
                   >
@@ -377,13 +380,13 @@ const handleEnroll = async () => {
             {/* Right: thumbnail preview */}
             <div className="lg:col-span-2">
               <div className="rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-black/50 bg-black">
-                <div className="relative aspect-video bg-gradient-to-br from-blue-600 to-purple-700 flex items-center justify-center">
+                <div className="relative aspect-video bg-linear-to-br from-blue-600 to-purple-700 flex items-center justify-center">
                   <img
                     src={course.image || '/courses/cpp.jpg'}
                     alt={course.title}
                     className="absolute inset-0 w-full h-full object-cover opacity-40"
                   />
-                  <div className="relative z-10 flex flex-col items-center gap-3 text-white cursor-pointer" onClick={() => firstLesson && router.push(`/dashboard/courses/${courseId}/lesson/${firstLesson.id}`)}>
+                  <div className="relative z-10 flex flex-col items-center gap-3 text-white cursor-pointer" onClick={() => continueLesson && router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)}>
                     <div className="w-20 h-20 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center border border-white/30 transition-transform hover:scale-110">
                       <Play className="h-8 w-8 fill-white ml-1" />
                     </div>
@@ -401,7 +404,7 @@ const handleEnroll = async () => {
         </div>
 
         {/* Bottom wave */}
-        <div className="absolute bottom-0 left-0 right-0 h-12 bg-gradient-to-t from-background to-transparent" />
+        <div className="absolute bottom-0 left-0 right-0 h-12 bg-linear-to-t from-background to-transparent" />
       </div>
 
       {/* ── Stats bar ── */}
@@ -441,7 +444,7 @@ const handleEnroll = async () => {
                 </div>
                 <div className="h-2.5 bg-muted rounded-full overflow-hidden">
                   <div
-                    className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-700 rounded-full"
+                    className="h-full bg-linear-to-r from-blue-500 to-purple-500 transition-all duration-700 rounded-full"
                     style={{ width: `${progressPercent}%` }}
                   />
                 </div>
@@ -607,7 +610,7 @@ const handleEnroll = async () => {
               <p className="text-muted-foreground mb-6">Skills that unlock new opportunities</p>
               <div className="grid sm:grid-cols-2 gap-4">
                 {careers.map((c, i) => (
-                  <div key={i} className={cn('rounded-2xl p-5 bg-gradient-to-br border border-border/60 hover:shadow-lg transition-all', c.color)}>
+                  <div key={i} className={cn('rounded-2xl p-5 bg-linear-to-br border border-border/60 hover:shadow-lg transition-all', c.color)}>
                     <div className="flex items-center gap-3 mb-4">
                       <div className="w-10 h-10 rounded-xl bg-white/10 backdrop-blur-sm flex items-center justify-center">
                         <TrendingUp className="h-5 w-5 text-foreground" />
@@ -659,7 +662,7 @@ const handleEnroll = async () => {
             <div className="sticky top-6 space-y-5">
               {/* Enroll card */}
               <Card className="border-border/60 shadow-xl overflow-hidden">
-                <div className="h-1 bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500" />
+                <div className="h-1 bg-linear-to-r from-blue-500 via-purple-500 to-pink-500" />
                 <div className="p-6 space-y-5">
                   <div>
                     <p className="text-3xl font-black text-foreground">Free</p>
@@ -670,8 +673,8 @@ const handleEnroll = async () => {
                     <Button
                       className="w-full h-12 bg-emerald-500 hover:bg-emerald-600 text-white font-semibold rounded-xl"
                       onClick={() => {
-                        if (firstLesson) {
-                          router.push(`/dashboard/courses/${courseId}/lesson/${firstLesson.id}`)
+                        if (continueLesson) {
+                          router.push(`/dashboard/courses/${courseId}/lesson/${continueLesson.id}`)
                         }
                       }}
                     >
@@ -740,7 +743,7 @@ const handleEnroll = async () => {
         </div>
 
         {/* ── Certificate Section ── */}
-        <div className="mt-20 rounded-3xl overflow-hidden relative bg-gradient-to-br from-slate-900 via-[#0d1b3e] to-slate-950 text-white px-8 md:px-14 py-14">
+        <div className="mt-20 rounded-3xl overflow-hidden relative bg-linear-to-br from-slate-900 via-[#0d1b3e] to-slate-950 text-white px-8 md:px-14 py-14">
           <div className="absolute top-0 right-0 w-96 h-96 bg-blue-600/20 rounded-full blur-[120px] pointer-events-none" />
           <div className="absolute bottom-0 left-0 w-64 h-64 bg-purple-600/20 rounded-full blur-[80px] pointer-events-none" />
 
@@ -772,7 +775,7 @@ const handleEnroll = async () => {
 
             {/* Certificate mockup */}
             <div className="flex justify-center">
-              <div className="w-full max-w-sm aspect-[4/3] bg-white rounded-2xl shadow-2xl p-5 transform rotate-2 hover:rotate-0 transition-transform duration-500">
+              <div className="w-full max-w-sm aspect-4/3 bg-white rounded-2xl shadow-2xl p-5 transform rotate-2 hover:rotate-0 transition-transform duration-500">
                 <div className="w-full h-full border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-center p-6 gap-4">
                   <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
                     <Award className="h-8 w-8 text-amber-500" />

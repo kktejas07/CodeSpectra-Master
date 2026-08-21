@@ -5,24 +5,20 @@ import { getMongoDb } from '@/lib/mongodb'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-interface UserProgress {
-  courseId: string
-  userId: string
-  enrolledAt: string
-  completedModules: number[]
-  quizScores: Record<number, number>
-  currentModule: number
-  currentLesson: number
-  skippedToFinal: boolean
-  finalExamScore?: number
-  certificateUrl?: string
-  completedAt?: string
-  lastAccessedAt: string
-}
+const PATCH_FIELDS = [
+  'completedModules',
+  'quizScores',
+  'currentModule',
+  'currentLesson',
+  'skippedToFinal',
+  'finalExamScore',
+  'certificateUrl',
+  'completedAt',
+  'currentLessonId',
+] as const
 
-// GET - Load user progress for a course
 export async function GET(
-  request: NextRequest,
+  _request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
 ) {
   const user = await getAPIUser()
@@ -38,7 +34,6 @@ export async function GET(
     })
 
     if (!progress) {
-      // Return default progress
       return NextResponse.json({
         courseId,
         userId: user.id,
@@ -47,19 +42,25 @@ export async function GET(
         quizScores: {},
         currentModule: 0,
         currentLesson: 0,
+        currentLessonId: null,
+        lessonPositions: {},
         skippedToFinal: false,
         lastAccessedAt: new Date().toISOString(),
       })
     }
 
-    return NextResponse.json(progress)
+    return NextResponse.json({
+      ...progress,
+      lessonPositions: progress.lessonPositions && typeof progress.lessonPositions === 'object'
+        ? progress.lessonPositions
+        : {},
+    })
   } catch (e) {
     console.error('[progress] GET error:', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
 
-// POST - Save user progress for a course
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string }> }
@@ -70,44 +71,48 @@ export async function POST(
   const { id: courseId } = await params
 
   try {
-    const body = await request.json()
+    const body = await request.json().catch(() => ({})) as Record<string, unknown>
     const db = await getMongoDb()
 
-    const updateData: Partial<UserProgress> = {
+    const $set: Record<string, unknown> = {
       courseId,
       userId: user.id,
       lastAccessedAt: new Date().toISOString(),
-      ...body,
     }
 
-    // Upsert progress
+    for (const k of PATCH_FIELDS) {
+      if (k in body) $set[k] = body[k]
+    }
+
+    const lessonId = typeof body.lessonId === 'string' ? body.lessonId.trim() : ''
+    const position = Number(body.position)
+    if (lessonId && Number.isFinite(position) && position >= 0) {
+      $set[`lessonPositions.${lessonId}`] = Math.floor(position)
+      $set.currentLessonId = lessonId
+    }
+
     await db.collection('course_progress').updateOne(
       { courseId, userId: user.id },
       {
-        $set: updateData,
-        $setOnInsert: {
-          enrolledAt: new Date().toISOString(),
-        },
+        $set,
+        $setOnInsert: { enrolledAt: new Date().toISOString() },
       },
-      { upsert: true }
+      { upsert: true },
     )
 
-    // Check if all modules completed
     const course = await db.collection('courses').findOne({ id: courseId })
     if (course) {
       const totalModules = course.sections?.length || 0
-      const completedModules = body.completedModules || []
-      
+      const completedModules = Array.isArray(body.completedModules) ? body.completedModules : []
       if (totalModules > 0 && completedModules.length === totalModules && !body.completedAt) {
-        updateData.completedAt = new Date().toISOString()
         await db.collection('course_progress').updateOne(
           { courseId, userId: user.id },
-          { $set: { completedAt: updateData.completedAt } }
+          { $set: { completedAt: new Date().toISOString() } },
         )
       }
     }
 
-    return NextResponse.json({ success: true, progress: updateData })
+    return NextResponse.json({ success: true })
   } catch (e) {
     console.error('[progress] POST error:', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
