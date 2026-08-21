@@ -61,6 +61,25 @@ function formatDuration(seconds: number): string {
   return `${m}:${s.toString().padStart(2, '0')}`
 }
 
+function scriptDurationFrames(script: any[] | undefined): number {
+  if (!script?.length) return 30
+  const frames = script.reduce((acc: number, curr: any) => acc + (curr.durationInFrames || 0), 0)
+  return Math.max(30, frames)
+}
+
+function resolveMediaUrl(url?: string | null): string | undefined {
+  if (!url) return undefined
+  if (url.startsWith('/') && typeof window !== 'undefined') return `${window.location.origin}${url}`
+  return url
+}
+
+function scriptAsMarkdown(script: any[]): string {
+  return script.map((s: any) => {
+    const bullets = Array.isArray(s.content) ? s.content : s.content ? [s.content] : []
+    return `## ${s.title || 'Slide'}\n\n${bullets.map((b: string) => `- ${b}`).join('\n')}`
+  }).join('\n\n')
+}
+
 
 export default function LessonPlayerPage({ params }: { params: Promise<{ id: string, lessonId: string }> }) {
   const gate = usePageGuard('user')
@@ -201,8 +220,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   <h2 className="text-2xl font-bold">{activeLesson.title}</h2>
                 </div>
                 
-                {/* Toggle Group */}
-                {activeLesson.textContent && (
+                {(activeLesson.textContent || activeLesson.script?.length) && (
                   <div className="flex items-center p-1 bg-muted/50 rounded-lg border border-border/50 shrink-0 w-max">
                     <button
                       onClick={() => setViewMode('text')}
@@ -234,28 +252,36 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
               <div className="mt-6">
                 {viewMode === 'video' ? (
                   <div className="w-full aspect-video bg-black sm:rounded-2xl overflow-hidden shadow-2xl relative border border-border/20">
-                    {activeLesson.videoType === 'ai' && activeLesson.script ? (
-                      <div className="w-full h-full flex items-center justify-center bg-black">
-                        <Player 
-                          component={CourseVideoComposition}
-                          inputProps={{ script: activeLesson.script, audioUrl: activeLesson.audioUrl }}
-                          durationInFrames={Math.max(30, activeLesson.script.reduce((acc: number, curr: any) => acc + (curr.durationInFrames || 0), 0))}
-                          compositionWidth={1920}
-                          compositionHeight={1080}
-                          fps={30}
-                          controls
-                          autoPlay
-                          className="w-full h-full object-cover rounded-2xl"
-                        />
-                      </div>
+                    {activeLesson.videoType === 'ai' && activeLesson.script?.length ? (
+                      <Player
+                        component={CourseVideoComposition}
+                        inputProps={{
+                          script: activeLesson.script,
+                          audioUrl: resolveMediaUrl(activeLesson.audioUrl),
+                        }}
+                        durationInFrames={scriptDurationFrames(activeLesson.script)}
+                        compositionWidth={1920}
+                        compositionHeight={1080}
+                        fps={30}
+                        controls
+                        autoPlay={false}
+                        clickToPlay
+                        spaceKeyToPlayOrPause
+                        style={{ width: '100%', height: '100%' }}
+                      />
+                    ) : activeLesson.url ? (
+                      <VideoPlayer src={activeLesson.url} title={activeLesson.title} className="w-full h-full" />
                     ) : (
-                      <VideoPlayer src={activeLesson.url || ''} title={activeLesson.title} className="w-full h-full" />
+                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground bg-black">
+                        <Play className="h-10 w-10 opacity-40" />
+                        <p className="text-sm">Video not generated yet. Open Course Generator and regenerate this course.</p>
+                      </div>
                     )}
                   </div>
                 ) : (
                   <div className="prose prose-slate dark:prose-invert max-w-none prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50 bg-card rounded-2xl p-8 border border-border/40 shadow-sm">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {activeLesson.textContent || 'No text content available for this lesson.'}
+                      {activeLesson.textContent || (activeLesson.script?.length ? scriptAsMarkdown(activeLesson.script) : 'No text content available for this lesson.')}
                     </ReactMarkdown>
                   </div>
                 )}
@@ -292,17 +318,6 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                     </Button>
                   </div>
                 </div>
-
-                {/* Text Content (if available) */}
-                {activeLesson.textContent && (
-                  <div className="mt-12 pt-8 border-t border-border/40">
-                    <div className="prose prose-slate dark:prose-invert max-w-none prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50">
-                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                        {activeLesson.textContent}
-                      </ReactMarkdown>
-                    </div>
-                  </div>
-                )}
               </div>
 
             </div>

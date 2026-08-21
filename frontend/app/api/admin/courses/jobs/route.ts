@@ -81,6 +81,7 @@ export async function POST(request: NextRequest) {
           { id: courseId }, 
           { $set: { sections: sectionsUpdate, updated_at: new Date().toISOString() } }
         )
+        await db.collection('course_lesson_audio').deleteMany({ courseId })
       }
     }
 
