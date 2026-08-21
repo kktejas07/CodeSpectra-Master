@@ -108,12 +108,8 @@ const RATE_KEY_RULES: Array<{
 function maskIdentity(value: string): string {
   if (!value) return '—'
   if (value === 'unknown') return 'Unknown'
-  if (/^u:/i.test(value)) return value // internal user ids are not PII
-  if (value.includes('@')) {
-    const at = value.indexOf('@')
-    const local = value.slice(0, at)
-    return `${local[0] || '•'}••••@${value.slice(at + 1)}`
-  }
+  if (/^u:/i.test(value)) return value
+  if (value.includes('@')) return value
   const v4 = value.split('.')
   if (v4.length === 4 && v4.every((n) => /^\d+$/.test(n))) {
     return `${v4[0]}.${v4[1]}.${v4[2]}.***`

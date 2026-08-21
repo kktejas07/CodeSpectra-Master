@@ -6,6 +6,7 @@
 
 ## Current Claims
 
+| cursor (this session, AUDIT-EMAIL) | Show full emails in audit logs instead of hu***@gmail.com. | frontend/components/admin/audit-log-columns.tsx, frontend/components/admin/audit-logs-viewer.tsx, frontend/lib/logger.ts, frontend/lib/send-email.ts, frontend/app/dashboard/admin/system/page.tsx, WORKING.md | DONE | 2026-08-21 |
 | cursor (this session, LOGIN-401) | Live POST /api/auth/login 401 on codespectra.ai. Check Swarm task, hydrate, audit logs. | WORKING.md | DONE — 401 is wrong password, not SESSION_SECRET. Hydrate SET. Other logins 200. | 2026-08-21 |
 | cursor (this session, COURSE-PROGRESS) | Persist lesson completions + watch-position resume; Continue Learning jumps to last lesson. CSRF on course POSTs. | frontend/lib/courses/watch-progress.ts, frontend/app/api/user/courses/[id]/progress/route.ts, frontend/components/ui/video-player.tsx, frontend/app/dashboard/courses/[id]/lesson/[lessonId]/page.tsx, frontend/app/dashboard/courses/[id]/page.tsx | DONE | 2026-08-21 |
 | cursor (this session, REMOTION-TS) | Dokploy frontend build failed: remotion/Root.tsx Composition props vs CourseVideoProps. | frontend/remotion/Root.tsx, frontend/app/remotion/CourseVideo.tsx, WORKING.md | DONE — pushed so Dokploy rebuild can pass TypeScript | 2026-08-21 |

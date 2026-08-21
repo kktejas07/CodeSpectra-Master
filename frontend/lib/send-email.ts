@@ -1,14 +1,6 @@
 import { logEmailSend, type EmailDeliveryStatus } from '@/lib/db/email-logs'
 import { logger } from '@/lib/logger'
 
-function maskEmail(email: string): string {
-  if (process.env.NODE_ENV === 'production') {
-    const [local, domain] = email.split('@')
-    return `${local?.slice(0, 2)}***@${domain || '***'}`
-  }
-  return email
-}
-
 export async function sendEmail(to: string, template: { subject: string; html: string }, cc?: string, opts?: { category?: string; campaignId?: string }) {
   let postalMessageId: number | null = null
 
