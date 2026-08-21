@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Plus, Loader2, Trash2, BookOpen, Save, Video, ArrowLeft, Wand2 } from 'lucide-react'
+import { Plus, Loader2, Trash2, BookOpen, Save, Video, ArrowLeft, Wand2, HelpCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -33,6 +33,14 @@ interface Section {
   title: string
   slug: string
   lessons: Lesson[]
+  quiz?: Array<{
+    id: string
+    type: string
+    question: string
+    options: string[]
+    correct: number
+    explanation: string
+  }>
 }
 
 interface Course {
@@ -70,6 +78,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState<string | null>(null)
+  const [generatingQuiz, setGeneratingQuiz] = useState<number | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -174,23 +183,67 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
       const res = await csrfFetch('/api/admin/courses/generate-video', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: lesson.content }),
+        body: JSON.stringify({
+          topic: lesson.content,
+          courseId: course.id,
+          sectionIndex,
+          lessonIndex,
+          techStack: course.tags?.[0] || course.title,
+        }),
         credentials: 'include'
       })
       
       const json = await res.json()
       if (!res.ok) throw new Error(json.error || 'Failed to generate video')
       
-      addToast({ type: 'success', title: 'Video generated successfully!' })
+      // Update with scene-based script (each scene has its own audio)
       updateLesson(sectionIndex, lessonIndex, 'script', json.script)
-      updateLesson(sectionIndex, lessonIndex, 'audioUrl', json.audioUrl)
       updateLesson(sectionIndex, lessonIndex, 'type', 'video')
       updateLesson(sectionIndex, lessonIndex, 'videoType', 'ai')
-      updateLesson(sectionIndex, lessonIndex, 'duration', json.script?.reduce((a: number, c: any) => a + (c.durationInFrames || 0), 0) ? Math.floor(json.script.reduce((a: number, c: any) => a + (c.durationInFrames || 0), 0) / 30) : 600)
+      updateLesson(sectionIndex, lessonIndex, 'duration', json.totalDurationSeconds)
+      
+      // Refresh course data to show saved state
+      const updated = await csrfFetch(`/api/admin/courses/${course.id}`, { credentials: 'include' })
+      const updatedJson = await updated.json()
+      if (updatedJson.data) setCourse(updatedJson.data)
+      
+      addToast({ type: 'success', title: `Generated ${json.script.length} scenes (${json.totalDurationSeconds}s)` })
     } catch (e: any) {
       addToast({ type: 'error', title: e.message })
     } finally {
       setGenerating(null)
+    }
+  }
+
+  const handleGenerateQuiz = async (sectionIndex: number) => {
+    if (!course || !course.sections) return
+    
+    setGeneratingQuiz(sectionIndex)
+    try {
+      const res = await csrfFetch('/api/admin/courses/generate-quiz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId: course.id,
+          sectionIndex,
+          techStack: course.tags?.[0] || course.title,
+        }),
+        credentials: 'include'
+      })
+      
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to generate quiz')
+      
+      // Refresh course data
+      const updated = await csrfFetch(`/api/admin/courses/${course.id}`, { credentials: 'include' })
+      const updatedJson = await updated.json()
+      if (updatedJson.data) setCourse(updatedJson.data)
+      
+      addToast({ type: 'success', title: json.message || `Generated ${json.quiz?.length || 0} questions` })
+    } catch (e: any) {
+      addToast({ type: 'error', title: e.message })
+    } finally {
+      setGeneratingQuiz(null)
     }
   }
 
@@ -519,6 +572,47 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                       No lessons in this module. Add one above.
                     </div>
                   )}
+
+                  {/* Quiz Section */}
+                  <div className="mt-4 pt-4 border-t border-border/50">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                        <span className="text-sm font-medium">Module Quiz</span>
+                        {section.quiz && section.quiz.length > 0 && (
+                          <Badge variant="outline" className="text-xs bg-green-50 text-green-700 border-green-200">
+                            {section.quiz.length} questions
+                          </Badge>
+                        )}
+                      </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        className="gap-1.5"
+                        onClick={() => handleGenerateQuiz(sIndex)}
+                        disabled={generatingQuiz === sIndex}
+                      >
+                        {generatingQuiz === sIndex ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Wand2 className="h-3.5 w-3.5" />
+                        )}
+                        {section.quiz && section.quiz.length > 0 ? 'Regenerate Quiz' : 'Generate Quiz'}
+                      </Button>
+                    </div>
+                    {section.quiz && section.quiz.length > 0 && (
+                      <div className="space-y-2">
+                        {section.quiz.slice(0, 3).map((q: any, qi: number) => (
+                          <div key={qi} className="text-xs p-2 rounded bg-muted/30 border border-border/30">
+                            <span className="font-medium">Q{qi + 1}:</span> {q.question?.slice(0, 80)}...
+                          </div>
+                        ))}
+                        {section.quiz.length > 3 && (
+                          <div className="text-xs text-muted-foreground">+{section.quiz.length - 3} more questions</div>
+                        )}
+                      </div>
+                    )}
+                  </div>
                 </div>
               </div>
             ))}
