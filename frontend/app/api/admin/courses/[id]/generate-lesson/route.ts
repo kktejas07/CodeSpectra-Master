@@ -49,20 +49,15 @@ export async function POST(
 
     const topic = lesson.content
 
-    // --- Generate Script via AI ---
-    const prompt = `You are an expert course instructor. Generate a script for a 3-minute video lesson on the topic: "${topic}".
-Output valid JSON ONLY with this schema:
-{
-  "slides": [
-    {
-      "id": "unique-string",
-      "title": "Slide Headline",
-      "content": ["Bullet point 1", "Bullet point 2"],
-      "spokenText": "The actual text the voiceover will read while this slide is on screen."
-    }
-  ]
-}
-Do not include markdown blocks, just raw JSON.`
+    // --- Step 1: Generate Detailed Text Lesson ---
+    const textPrompt = `You are an expert course instructor. Write a comprehensive, detailed textbook-style lesson on the topic: "${topic}".
+Include:
+- Clear headings and structured formatting
+- Deep explanations of the concepts
+- Practical real-world examples
+- Code snippets (if applicable)
+- A short quiz at the end to test understanding
+Format the entire response in clean Markdown.`
 
     const openAiKey = process.env.OPENAI_API_KEY
     const groqKey = process.env.GROQ_API_KEY
@@ -86,7 +81,7 @@ Do not include markdown blocks, just raw JSON.`
         ? 'llama-3.3-70b-versatile'
         : 'gpt-4o-mini'
 
-    const aiRes = await fetch(aiEndpoint, {
+    const textRes = await fetch(aiEndpoint, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -94,18 +89,64 @@ Do not include markdown blocks, just raw JSON.`
       },
       body: JSON.stringify({
         model: aiModel,
-        messages: [{ role: 'user', content: prompt }],
+        messages: [{ role: 'user', content: textPrompt }]
+      })
+    })
+
+    if (!textRes.ok) {
+      const err = await textRes.text()
+      throw new Error(`AI Text Error: ${err}`)
+    }
+
+    const textData = await textRes.json()
+    const generatedMarkdown = textData.choices[0].message.content
+
+    // --- Step 2: Generate Video Script from Text Lesson ---
+    const videoPrompt = `You are an expert course instructor. I will provide you with a detailed text lesson. 
+Summarize this lesson into a high-quality video script.
+
+Output valid JSON ONLY with this schema:
+{
+  "slides": [
+    {
+      "id": "unique-string",
+      "title": "Slide Headline",
+      "content": ["Bullet point 1", "Bullet point 2"],
+      "spokenText": "The actual text the voiceover will read while this slide is on screen."
+    }
+  ]
+}
+Requirements:
+1. Generate between 5 to 10 slides.
+2. The "spokenText" for each slide MUST be very detailed, conversational, and comprehensive, containing at least 60-100 words per slide. Explain the concepts deeply as a real instructor would, using the provided text lesson as the source.
+3. The "content" bullet points should be concise summaries of what is being spoken, 3-5 points per slide.
+Do not include markdown blocks or any other text outside the JSON.
+
+TEXT LESSON TO SUMMARIZE:
+"""
+${generatedMarkdown}
+"""`
+
+    const videoRes = await fetch(aiEndpoint, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${aiKey}`
+      },
+      body: JSON.stringify({
+        model: aiModel,
+        messages: [{ role: 'user', content: videoPrompt }],
         response_format: { type: 'json_object' }
       })
     })
 
-    if (!aiRes.ok) {
-      const err = await aiRes.text()
-      throw new Error(`AI Error: ${err}`)
+    if (!videoRes.ok) {
+      const err = await videoRes.text()
+      throw new Error(`AI Video Script Error: ${err}`)
     }
 
-    const aiData = await aiRes.json()
-    const parsed = JSON.parse(aiData.choices[0].message.content)
+    const videoData = await videoRes.json()
+    const parsed = JSON.parse(videoData.choices[0].message.content)
 
     // --- Generate Audio via TTS ---
     let fullAudioUrl: string | null = null
@@ -142,6 +183,7 @@ Do not include markdown blocks, just raw JSON.`
     const lessonsUpdate = [...sectionsUpdate[sectionIndex].lessons]
     lessonsUpdate[lessonIndex] = {
       ...lessonsUpdate[lessonIndex],
+      textContent: generatedMarkdown,
       script: finalScript,
       audioUrl: fullAudioUrl,
       type: 'video',
@@ -161,7 +203,7 @@ Do not include markdown blocks, just raw JSON.`
       success: true,
       script: finalScript,
       audioUrl: fullAudioUrl ? 'generated' : null,
-      message: `Generated video for "${lesson.title}"`,
+      message: `Generated text and video for "${lesson.title}"`,
     })
 
   } catch (e) {

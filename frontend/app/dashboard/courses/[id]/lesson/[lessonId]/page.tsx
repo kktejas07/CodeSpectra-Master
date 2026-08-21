@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils'
 import { CourseVideoComposition } from '@/app/remotion/CourseVideo'
 import { useToast } from '@/lib/toast-context'
 import { VideoPlayer } from '@/components/ui/video-player'
+import ReactMarkdown from 'react-markdown'
+import remarkGfm from 'remark-gfm'
 
 interface Resource {
   title?: string
@@ -35,6 +37,7 @@ interface Lesson {
   videoType?: 'youtube' | 'ai'
   script?: any[]
   audioUrl?: string
+  textContent?: string
 }
 
 interface Section {
@@ -70,6 +73,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['0']))
+  const [viewMode, setViewMode] = useState<'video' | 'text'>('video')
 
   useEffect(() => {
     setLoading(true)
@@ -190,34 +194,78 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           <div className="flex-1 p-0 sm:p-4 lg:p-6 overflow-y-auto">
             <div className="max-w-5xl mx-auto w-full space-y-6">
               
-              {/* Video Container */}
-              <div className="w-full aspect-video bg-black sm:rounded-2xl overflow-hidden shadow-2xl relative border border-border/20">
-                {activeLesson.videoType === 'ai' && activeLesson.script ? (
-                  <div className="w-full h-full flex items-center justify-center bg-black">
-                    <VideoPlayer 
-                      src={{
-                        type: 'video/remotion',
-                        src: CourseVideoComposition,
-                        compositionWidth: 1920,
-                        compositionHeight: 1080,
-                        fps: 30,
-                        durationInFrames: activeLesson.script.reduce((acc: number, curr: any) => acc + (curr.durationInFrames || 0), 0),
-                        inputProps: { script: activeLesson.script, audioUrl: activeLesson.audioUrl }
-                      }}
-                      title={activeLesson.title} 
-                      className="w-full h-full" 
-                    />
+              {/* Content Header & Toggle */}
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/40">
+                <div className="flex items-center gap-2">
+                  <h2 className="text-2xl font-bold">{activeLesson.title}</h2>
+                </div>
+                
+                {/* Toggle Group */}
+                {activeLesson.textContent && (
+                  <div className="flex items-center p-1 bg-muted/50 rounded-lg border border-border/50 shrink-0 w-max">
+                    <button
+                      onClick={() => setViewMode('text')}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all",
+                        viewMode === 'text' 
+                          ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <BookOpen className="w-4 h-4" /> Text Lesson
+                    </button>
+                    <button
+                      onClick={() => setViewMode('video')}
+                      className={cn(
+                        "flex items-center gap-2 px-4 py-1.5 rounded-md text-sm font-medium transition-all",
+                        viewMode === 'video' 
+                          ? "bg-background text-foreground shadow-sm ring-1 ring-border/50" 
+                          : "text-muted-foreground hover:text-foreground hover:bg-muted"
+                      )}
+                    >
+                      <Play className="w-4 h-4" /> Video Lesson
+                    </button>
                   </div>
-                ) : (
-                  <VideoPlayer src={activeLesson.url || ''} title={activeLesson.title} className="w-full h-full" />
                 )}
               </div>
 
-              {/* Lesson Details */}
-              <div className="px-4 sm:px-0 space-y-6 pb-20">
+              {/* Conditional Content Area */}
+              <div className="mt-6">
+                {viewMode === 'video' ? (
+                  <div className="w-full aspect-video bg-black sm:rounded-2xl overflow-hidden shadow-2xl relative border border-border/20">
+                    {activeLesson.videoType === 'ai' && activeLesson.script ? (
+                      <div className="w-full h-full flex items-center justify-center bg-black">
+                        <VideoPlayer 
+                          src={{
+                            type: 'video/remotion',
+                            src: CourseVideoComposition,
+                            compositionWidth: 1920,
+                            compositionHeight: 1080,
+                            fps: 30,
+                            durationInFrames: activeLesson.script.reduce((acc: number, curr: any) => acc + (curr.durationInFrames || 0), 0),
+                            inputProps: { script: activeLesson.script, audioUrl: activeLesson.audioUrl }
+                          }}
+                          title={activeLesson.title} 
+                          className="w-full h-full" 
+                        />
+                      </div>
+                    ) : (
+                      <VideoPlayer src={activeLesson.url || ''} title={activeLesson.title} className="w-full h-full" />
+                    )}
+                  </div>
+                ) : (
+                  <div className="prose prose-slate dark:prose-invert max-w-none prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50 bg-card rounded-2xl p-8 border border-border/40 shadow-sm">
+                    <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                      {activeLesson.textContent || 'No text content available for this lesson.'}
+                    </ReactMarkdown>
+                  </div>
+                )}
+              </div>
+
+              {/* Lesson Details & Footer */}
+              <div className="px-4 sm:px-0 space-y-6 pb-20 pt-8 mt-8 border-t border-border/40">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div>
-                    <h2 className="text-2xl font-bold">{activeLesson.title}</h2>
                     {activeLesson.description && (
                       <p className="text-muted-foreground mt-2 text-sm leading-relaxed max-w-3xl">
                         {activeLesson.description}
@@ -245,6 +293,17 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                     </Button>
                   </div>
                 </div>
+
+                {/* Text Content (if available) */}
+                {activeLesson.textContent && (
+                  <div className="mt-12 pt-8 border-t border-border/40">
+                    <div className="prose prose-slate dark:prose-invert max-w-none prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50">
+                      <ReactMarkdown remarkPlugins={[remarkGfm]}>
+                        {activeLesson.textContent}
+                      </ReactMarkdown>
+                    </div>
+                  </div>
+                )}
               </div>
 
             </div>
