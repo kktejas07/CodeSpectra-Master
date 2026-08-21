@@ -121,9 +121,14 @@ export default function CourseGeneratorPage() {
       const job = jobData.job
       setActiveJob(job)
 
+      console.log('[Generator] Course:', currData.course?.id)
+      console.log('[Generator] Sections:', currData.course?.sections?.length)
+      console.log('[Generator] Total lessons:', totalLessons)
+
       // Step 3: Generate videos one by one
       const course = currData.course
-      if (course?.sections) {
+      if (course?.sections && course.sections.length > 0) {
+        console.log('[Generator] Starting video generation loop')
         for (let sIdx = 0; sIdx < course.sections.length; sIdx++) {
           const section = course.sections[sIdx]
           for (let lIdx = 0; lIdx < (section.lessons?.length || 0); lIdx++) {
@@ -209,6 +214,9 @@ export default function CourseGeneratorPage() {
             await new Promise(r => setTimeout(r, 500))
           }
         }
+        console.log('[Generator] Video generation loop completed')
+      } else {
+        console.log('[Generator] No sections found or sections empty')
       }
 
       // Complete job
