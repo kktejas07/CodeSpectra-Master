@@ -57,7 +57,32 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { courseId, courseTitle, type, totalItems } = await request.json()
+    const { courseId, courseTitle, type, totalItems, force } = await request.json()
+
+    const db = await getMongoDb()
+
+    // If force is true, clear the existing AI scripts and textContent so they regenerate
+    if (force) {
+      const course = await db.collection('courses').findOne({ id: courseId })
+      if (course) {
+        const sectionsUpdate = (course.sections || []).map((s: any) => ({
+          ...s,
+          lessons: (s.lessons || []).map((l: any) => ({
+             ...l,
+             script: [],
+             textContent: null,
+             audioUrl: null,
+             videoType: null,
+             duration: 600,
+             type: 'text'
+          }))
+        }))
+        await db.collection('courses').updateOne(
+          { id: courseId }, 
+          { $set: { sections: sectionsUpdate, updated_at: new Date().toISOString() } }
+        )
+      }
+    }
 
     const job: GenerationJob = {
       id: `job-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
@@ -77,7 +102,6 @@ export async function POST(request: NextRequest) {
       startedAt: new Date().toISOString(),
     }
 
-    const db = await getMongoDb()
     await db.collection('generation_jobs').insertOne(job)
 
     return NextResponse.json({ success: true, job })

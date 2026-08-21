@@ -179,6 +179,7 @@ export default function CourseGeneratorPage() {
           courseTitle,
           type: 'video',
           totalItems: totalLessons,
+          force: true,
         }),
       })
       const jobData = await jobRes.json()
@@ -376,11 +377,9 @@ export default function CourseGeneratorPage() {
                             </div>
                           </div>
                           <div className="flex items-center gap-1">
-                            {videosGenerated < totalLessons && (
-                              <Button variant="ghost" size="sm" onClick={() => handleRegenerate(course.id, course.title)} title="Regenerate videos">
-                                <RotateCcw className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
+                            <Button variant="ghost" size="sm" onClick={() => handleRegenerate(course.id, course.title)} title="Regenerate videos (Force)">
+                              <RotateCcw className="h-3.5 w-3.5" />
+                            </Button>
                             <Link href={`/dashboard/admin/courses/${course.id}`}>
                               <Button variant="ghost" size="sm" title="Edit course">
                                 <Eye className="h-3.5 w-3.5" />
