@@ -23,6 +23,7 @@ import {
   ROUTE_LABELS,
   ADMIN_SECTIONS,
   USER_SECTIONS,
+  isPlatformAdminRoute,
 } from '@/lib/page-permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -544,6 +545,10 @@ export default function DashboardLayout({
         !deniedRoutes.has(leaf.route) &&
         !Array.from(deniedRoutes).some(r => leaf.route.startsWith(r + '/'))
       )
+    }
+
+    if (!isSuperAdmin(role)) {
+      leaves = leaves.filter(leaf => !isPlatformAdminRoute(leaf.route))
     }
 
     return addSectionHeaders(leaves)

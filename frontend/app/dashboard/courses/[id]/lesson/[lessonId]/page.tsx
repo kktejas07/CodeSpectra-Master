@@ -75,6 +75,13 @@ function scriptAsMarkdown(script: any[]): string {
   }).join('\n\n')
 }
 
+// ponytail: one-course memory so lesson→lesson remounts skip the spinner; refetch if you open a different course
+let lessonShellCache: {
+  courseId: string
+  course: Course
+  completions: string[]
+  positions: Record<string, number>
+} | null = null
 
 export default function LessonPlayerPage({ params }: { params: Promise<{ id: string, lessonId: string }> }) {
   const gate = usePageGuard('user')
@@ -82,47 +89,61 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const router = useRouter()
   const resolved = use(params)
   const { id: courseId, lessonId } = resolved
+  const cached = lessonShellCache?.courseId === courseId ? lessonShellCache : null
 
-  const [course, setCourse] = useState<Course | null>(null)
-  const [loading, setLoading] = useState(true)
-  const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
+  const [course, setCourse] = useState<Course | null>(cached?.course ?? null)
+  const [loading, setLoading] = useState(!cached)
+  const [completedLessons, setCompletedLessons] = useState<Set<string>>(() => new Set(cached?.completions ?? []))
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['0']))
   const [viewMode, setViewMode] = useState<'video' | 'text'>('video')
-  const [startAt, setStartAt] = useState(0)
+  const [startAt, setStartAt] = useState(() => resumeSeconds(cached?.positions?.[lessonId]))
   const lastPos = useRef(0)
   const lastSave = useRef(0)
-  const autoCompleted = useRef(false)
+  const autoCompleted = useRef(cached?.completions.includes(lessonId) ?? false)
+  const positionsRef = useRef<Record<string, number>>(cached?.positions ?? {})
+  const lessonIdRef = useRef(lessonId)
+  lessonIdRef.current = lessonId
 
   useEffect(() => {
     let cancelled = false
-    setLoading(true)
-    lastPos.current = 0
-    lastSave.current = 0
-    autoCompleted.current = false
+    if (lessonShellCache?.courseId !== courseId) setLoading(true)
     Promise.all([
       fetch(`/api/courses/${encodeURIComponent(courseId)}`, { credentials: 'include' }).then(r => r.json()),
       fetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
       fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
     ]).then(([courseData, completionsData, progressData]) => {
       if (cancelled) return
+      if (courseData.data) setCourse(courseData.data)
+      const done: string[] = completionsData?.completedLessons || []
+      setCompletedLessons(new Set(done))
+      const positions = { ...positionsRef.current, ...(progressData?.lessonPositions || {}) }
+      positionsRef.current = positions
       if (courseData.data) {
-        setCourse(courseData.data)
-        const sections = courseData.data.sections || []
-        const sectionIdx = sections.findIndex((s: Section) => s.lessons.some((l: Lesson) => l.id === lessonId))
-        if (sectionIdx !== -1) setOpenSections(new Set([String(sectionIdx)]))
+        lessonShellCache = { courseId, course: courseData.data, completions: done, positions }
       }
-      if (completionsData?.completedLessons) {
-        const done = new Set<string>(completionsData.completedLessons)
-        setCompletedLessons(done)
-        autoCompleted.current = done.has(lessonId)
-      }
-      setStartAt(resumeSeconds(progressData?.lessonPositions?.[lessonId]))
+      const id = lessonIdRef.current
+      autoCompleted.current = done.includes(id)
+      setStartAt(resumeSeconds(positions[id]))
     }).catch(() => {})
       .finally(() => { if (!cancelled) setLoading(false) })
     csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, { method: 'POST' }).catch(() => {})
     return () => { cancelled = true }
-  }, [courseId, lessonId])
+  }, [courseId])
+
+  useEffect(() => {
+    lastPos.current = 0
+    lastSave.current = 0
+    autoCompleted.current = completedLessons.has(lessonId)
+    setStartAt(resumeSeconds(positionsRef.current[lessonId]))
+    setViewMode('video')
+  }, [lessonId])
+
+  useEffect(() => {
+    if (!course) return
+    const sectionIdx = (course.sections || []).findIndex((s: Section) => s.lessons.some((l: Lesson) => l.id === lessonId))
+    if (sectionIdx !== -1) setOpenSections(prev => prev.has(String(sectionIdx)) ? prev : new Set([...prev, String(sectionIdx)]))
+  }, [lessonId, course])
 
   useEffect(() => {
     return () => {
@@ -136,7 +157,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     }
   }, [courseId, lessonId])
 
-  if (!gate.ready || loading) {
+  if (!course && (loading || !gate.ready)) {
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -186,18 +207,24 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ lessonId: id }),
     }).catch(() => {})
+    if (lessonShellCache?.courseId === courseId) {
+      lessonShellCache = { ...lessonShellCache, completions: [...new Set([...lessonShellCache.completions, id])] }
+    }
     addToast({ title: 'Lesson marked as complete!', type: 'success' })
   }
 
   const savePosition = (t: number, duration: number) => {
     lastPos.current = t
+    const pos = Math.floor(t)
+    positionsRef.current = { ...positionsRef.current, [lessonId]: pos }
+    if (lessonShellCache?.courseId === courseId) lessonShellCache = { ...lessonShellCache, positions: positionsRef.current }
     const now = Date.now()
     if (now - lastSave.current >= 5000) {
       lastSave.current = now
       csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ lessonId, position: Math.floor(t) }),
+        body: JSON.stringify({ lessonId, position: pos }),
       }).catch(() => {})
     }
     if (!autoCompleted.current && shouldAutoComplete(t, duration)) {

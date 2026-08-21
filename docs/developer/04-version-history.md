@@ -9,6 +9,9 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-21 | v0.24.13 | Assessment ID OCR no longer treats a face selfie as an ID. Vision models must set `is_id_card: true`; guessed names (e.g. from a selfie) are discarded and the user is asked to hold up a real ID. | CodeSpectra-Master |
+| 2026-08-21 | v0.24.12 | Platform Security is superadmin-only: page guard redirects, sidebar/command palette cannot grant `/dashboard/admin/*` to users, login notifications no longer deep-link there. Full-app splash plays on first load only (GitHub/YouTube-style in-app tab switches). | CodeSpectra-Master |
+| 2026-08-21 | v0.24.11 | Lesson player no longer shows the full-app splash when switching lessons. Same-course / last-segment navigations skip `LoadingWrapper`; the player keeps the course in memory so the sidebar stays on screen. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.10 | Audit / system logs show **full email addresses** (no `hu***@gmail.com` masking). SuperAdmin System + Audit Logs tables and server logger. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.9 | Course watch progress: lesson completions persist from the player; playback position saved every 5s and resumed; Continue Learning opens the last lesson. Auto-complete at 90%. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.6 | Login 500 after Swarm/Dokploy rolls: `SESSION_SECRET` is no longer required in Dokploy env. Container entrypoint loads `session_secret` + `internal_backend_secret` from Mongo `platform_settings` (generates once if missing) before `next start` / uvicorn. `session.ts` prefers Mongo and persists env/generated values so the next rebuild keeps the same signing key. | CodeSpectra-Master |
