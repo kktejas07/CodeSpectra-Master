@@ -8,7 +8,9 @@ loadEnv({ path: '.env.local' })
 loadEnv()
 
 async function main() {
-  const { claimNextPendingJob, processVideoJob, writeWorkerHeartbeat } = await import('../lib/courses/process-job')
+  const { claimNextPendingJob, processVideoJob, writeWorkerHeartbeat, requeueOrphanRunningJobs } = await import('../lib/courses/process-job')
+  const orphans = await requeueOrphanRunningJobs()
+  if (orphans) console.log('[course-worker] requeued', orphans, 'orphan running job(s)')
   console.log('[course-worker] started, polling generation_jobs (one job at a time)')
 
   let working = false

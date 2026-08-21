@@ -2,6 +2,12 @@ import { getMongoDb } from '@/lib/mongodb'
 import { generateLessonVideo } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio } from '@/lib/courses/lesson-audio'
 
+export function finalJobStatus(completedItems: number, failedItems: number): 'completed' | 'failed' {
+  if (completedItems > 0 && failedItems === 0) return 'completed'
+  if (completedItems === 0) return 'failed'
+  return 'completed'
+}
+
 export const STALE_RUNNING_MS = 45 * 60 * 1000
 export const WORKER_ONLINE_MS = 20_000
 const HEARTBEAT_ID = 'course-video-worker'
@@ -21,6 +27,27 @@ export async function findBusyJob(): Promise<{ id: string; courseTitle?: string;
     { projection: { id: 1, courseTitle: 1, status: 1 } },
   )
   return job as { id: string; courseTitle?: string; status: string } | null
+}
+
+export async function requeueOrphanRunningJobs(): Promise<number> {
+  const db = await getMongoDb()
+  const running = await db.collection('generation_jobs').find({ status: 'running' }).toArray()
+  for (const job of running) {
+    await db.collection('generation_jobs').updateOne(
+      { id: job.id },
+      {
+        $set: { status: 'pending' },
+        $push: {
+          logs: {
+            timestamp: new Date().toISOString(),
+            message: 'Requeued — worker restarted while this job was in progress',
+            type: 'warning',
+          },
+        } as any,
+      },
+    )
+  }
+  return running.length
 }
 
 export async function recoverStaleRunningJobs(): Promise<number> {
@@ -111,7 +138,8 @@ export async function processVideoJob(jobId: string): Promise<void> {
           continue
         }
 
-        await addLog(`Generating: ${section.title} > ${lesson.title}`)
+        await addLog(`Generating: ${section.title} > ${lesson.title} (LLM + voiceover, 1–2 min)`)
+        console.log('[course-worker] lesson', lesson.title)
 
         try {
           const topic = lesson.content || lesson.title
@@ -159,13 +187,23 @@ export async function processVideoJob(jobId: string): Promise<void> {
       }
     }
 
+    const status = finalJobStatus(completedItems, failedItems)
     await db.collection('generation_jobs').updateOne(
       { id: jobId },
-      { $set: { status: 'completed', progress: 100, completedAt: new Date().toISOString() } },
+      {
+        $set: {
+          status,
+          progress: 100,
+          completedAt: new Date().toISOString(),
+          ...(status === 'failed' ? { error: `${failedItems} videos failed, 0 generated` } : { error: null }),
+        },
+      },
     )
     await addLog(
-      `Job completed: ${completedItems} videos generated, ${failedItems} failed`,
-      failedItems > 0 ? 'warning' : 'success',
+      status === 'failed'
+        ? `Job failed: 0 videos generated, ${failedItems} failed`
+        : `Job completed: ${completedItems} videos generated, ${failedItems} failed`,
+      status === 'failed' ? 'error' : failedItems > 0 ? 'warning' : 'success',
     )
   } catch (e: any) {
     await db.collection('generation_jobs').updateOne(

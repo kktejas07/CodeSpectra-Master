@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { cancelJob, readWorkerStatus, recoverStaleRunningJobs, requeueJob } from '@/lib/courses/process-job'
+import { cancelJob, readWorkerStatus, recoverStaleRunningJobs, requeueJob, requeueOrphanRunningJobs } from '@/lib/courses/process-job'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -20,12 +20,16 @@ export async function GET() {
     { projection: { id: 1, courseTitle: 1, progress: 1 } },
   )
 
+  const stuck = Boolean(running && (!status.online || !status.currentJobId))
   return NextResponse.json({
     ...status,
+    stuck,
     runningJob: running ? { id: running.id, courseTitle: running.courseTitle, progress: running.progress } : null,
     hint: status.online
-      ? 'Worker is polling. Pending jobs start automatically.'
-      : 'Worker is offline. In Dokploy, run a 1-replica copy of the frontend image with COURSE_WORKER=1 (no public domain).',
+      ? (stuck
+        ? 'A job is marked running but the worker is idle. Click Unstick hung job.'
+        : 'Worker is polling. Pending jobs start automatically.')
+      : 'Worker is offline. Restart the course-worker app in Dokploy, or click Unstick hung job after it is back.',
   })
 }
 
@@ -40,6 +44,12 @@ export async function POST(request: NextRequest) {
     const body = await request.json()
     const action = body.action || 'enqueue'
     const jobId = body.jobId
+
+    if (action === 'unstick') {
+      const n = await requeueOrphanRunningJobs()
+      return NextResponse.json({ ok: true, requeued: n, message: n ? `Requeued ${n} stuck job(s). Worker will pick them up.` : 'Nothing was stuck.' })
+    }
+
     if (!jobId) return NextResponse.json({ error: 'jobId required' }, { status: 400 })
 
     if (action === 'retry') {
