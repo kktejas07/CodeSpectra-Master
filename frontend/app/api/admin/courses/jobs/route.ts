@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { findBusyJob } from '@/lib/courses/process-job'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -61,6 +62,14 @@ export async function POST(request: NextRequest) {
 
     const db = await getMongoDb()
 
+    const busy = await findBusyJob()
+    if (busy) {
+      return NextResponse.json(
+        { error: `Another generation is already ${busy.status} for "${busy.courseTitle || busy.id}". One job at a time.` },
+        { status: 409 },
+      )
+    }
+
     // If force is true, clear the existing AI scripts and textContent so they regenerate
     if (force) {
       const course = await db.collection('courses').findOne({ id: courseId })
@@ -98,6 +107,10 @@ export async function POST(request: NextRequest) {
       logs: [{
         timestamp: new Date().toISOString(),
         message: `Job created for "${courseTitle}"`,
+        type: 'info',
+      }, {
+        timestamp: new Date().toISOString(),
+        message: 'Queued — waiting for course-worker (one job at a time)',
         type: 'info',
       }],
       startedAt: new Date().toISOString(),

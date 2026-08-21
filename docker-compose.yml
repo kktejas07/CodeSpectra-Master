@@ -39,6 +39,31 @@ services:
         condition: service_healthy
     restart: unless-stopped
 
+  # Same image as frontend, no HTTP. Polls generation_jobs. 1 replica only.
+  course-worker:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+      args:
+        NEXT_PUBLIC_APP_URL: ${NEXT_PUBLIC_APP_URL:-https://codespectra.ai}
+        NEXT_PUBLIC_FIREBASE_API_KEY: ${NEXT_PUBLIC_FIREBASE_API_KEY}
+        NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN: ${NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN}
+        NEXT_PUBLIC_FIREBASE_PROJECT_ID: ${NEXT_PUBLIC_FIREBASE_PROJECT_ID}
+        NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
+        NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
+        NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+    container_name: codespectra-course-worker
+    environment:
+      - COURSE_WORKER=1
+      - MONGODB_URI=${MONGODB_URI}
+      - MONGODB_DB_NAME=${MONGODB_DB_NAME:-codespectra}
+      - INTERNAL_BACKEND_URL=http://backend:8000
+      - INTERNAL_BACKEND_SECRET=${INTERNAL_BACKEND_SECRET}
+    depends_on:
+      - backend
+    restart: unless-stopped
+    # ponytail: 1 replica. A second replica can race-claim; scale only after a Redis lock.
+
   backend:
     build:
       context: ./backend

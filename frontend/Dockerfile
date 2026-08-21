@@ -25,6 +25,8 @@ WORKDIR /app
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
 COPY . .
+RUN chmod +x scripts/docker-entrypoint.sh
 RUN yarn build
 EXPOSE 80
+ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
 CMD ["npx", "next", "start", "-p", "80"]
