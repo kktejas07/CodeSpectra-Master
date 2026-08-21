@@ -14,6 +14,7 @@
  *   - delay          : { ms }                              -> setTimeout
  */
 import { backendComplete } from '@/lib/ai/backend'
+import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { getMongoDb } from '@/lib/mongodb'
 import type { WorkflowDoc, WorkflowNode } from '@/lib/db/leaderboard'
 
@@ -83,6 +84,7 @@ async function runNode(
         systemMessage: sys,
         userMessage: interp,
         modelRole: (cfg.modelRole as 'reasoning' | 'fast') || 'fast',
+        ...(await platformModelOverrides()),
       })
       return result.text || result.raw || ''
     }

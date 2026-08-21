@@ -309,18 +309,18 @@ export default function AdminExamsPage() {
   }
 
   const columns: DataTableColumn<Exam>[] = [
-    { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
-    { key: 'subject', header: 'Subject', cell: (r) => r.subject },
-    { key: 'tenant', header: 'Organization', cell: (r) => {
+    { key: 'title', header: 'Title', sortable: true, cell: (r) => <span className="font-medium">{r.title}</span> },
+    { key: 'subject', header: 'Subject', sortable: true, cell: (r) => r.subject },
+    { key: 'tenant', header: 'Organization', sortable: true, cell: (r) => {
       if (!r.tenant_id) return <span className="text-muted-foreground">Platform</span>
       const tenant = tenants.find(t => t.id === r.tenant_id)
       return tenant?.name || <span className="text-muted-foreground">Unknown</span>
     }},
-    { key: 'branch', header: 'Branch', cell: (r) => r.branch ? BRANCHES.find(b => b.id === r.branch)?.short || r.branch : 'General' },
-    { key: 'screening', header: 'Screening', cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
-    { key: 'level', header: 'Level', cell: (r) => r.level },
-    { key: 'duration', header: 'Duration', cell: (r) => `${r.duration} min` },
-    { key: 'questions', header: 'Questions', cell: (r) => r.questions },
+    { key: 'branch', header: 'Branch', sortable: true, cell: (r) => r.branch ? BRANCHES.find(b => b.id === r.branch)?.short || r.branch : 'General' },
+    { key: 'screening', header: 'Screening', sortable: true, cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
+    { key: 'level', header: 'Level', sortable: true, cell: (r) => r.level },
+    { key: 'duration', header: 'Duration', sortable: true, cell: (r) => `${r.duration} min` },
+    { key: 'questions', header: 'Questions', sortable: true, cell: (r) => r.questions },
     { key: 'status', header: 'Status', cell: (r) => (
       <Badge className={r.published ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}>
         {r.published ? 'Published' : 'Draft'}

@@ -13,6 +13,7 @@ import { cn } from '@/lib/utils'
 import { CourseVideoComposition } from '@/app/remotion/CourseVideo'
 import { useToast } from '@/lib/toast-context'
 import { VideoPlayer } from '@/components/ui/video-player'
+import { Player } from '@remotion/player'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 
@@ -235,18 +236,16 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   <div className="w-full aspect-video bg-black sm:rounded-2xl overflow-hidden shadow-2xl relative border border-border/20">
                     {activeLesson.videoType === 'ai' && activeLesson.script ? (
                       <div className="w-full h-full flex items-center justify-center bg-black">
-                        <VideoPlayer 
-                          src={{
-                            type: 'video/remotion',
-                            src: CourseVideoComposition,
-                            compositionWidth: 1920,
-                            compositionHeight: 1080,
-                            fps: 30,
-                            durationInFrames: activeLesson.script.reduce((acc: number, curr: any) => acc + (curr.durationInFrames || 0), 0),
-                            inputProps: { script: activeLesson.script, audioUrl: activeLesson.audioUrl }
-                          }}
-                          title={activeLesson.title} 
-                          className="w-full h-full" 
+                        <Player 
+                          component={CourseVideoComposition}
+                          inputProps={{ script: activeLesson.script, audioUrl: activeLesson.audioUrl }}
+                          durationInFrames={Math.max(30, activeLesson.script.reduce((acc: number, curr: any) => acc + (curr.durationInFrames || 0), 0))}
+                          compositionWidth={1920}
+                          compositionHeight={1080}
+                          fps={30}
+                          controls
+                          autoPlay
+                          className="w-full h-full object-cover rounded-2xl"
                         />
                       </div>
                     ) : (
