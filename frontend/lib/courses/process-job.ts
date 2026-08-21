@@ -2,6 +2,7 @@ import { getMongoDb } from '@/lib/mongodb'
 import { generateLessonVideo } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio, deleteCourseAudio, loadLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath, deleteCourseVideos } from '@/lib/courses/lesson-mp4'
+import { deleteCourseCaptions, lessonCaptionsPath, saveLessonCaptions, vttFromSlides } from '@/lib/courses/lesson-captions'
 
 export function finalJobStatus(completedItems: number, failedItems: number): 'completed' | 'failed' {
   if (failedItems > 0 || completedItems === 0) return 'failed'
@@ -136,6 +137,27 @@ export async function processVideoJob(jobId: string): Promise<void> {
         const lesson = section.lessons[lIdx]
 
         if (lesson.videoUrl) {
+          if (!lesson.captionsUrl && Array.isArray(lesson.script) && lesson.script.length) {
+            try {
+              const vtt = vttFromSlides(lesson.script)
+              await saveLessonCaptions(job.courseId, lesson.id, vtt)
+              const latest = await db.collection('courses').findOne({ id: job.courseId })
+              const updatedSections = [...(latest?.sections || sections)]
+              updatedSections[sIdx] = {
+                ...updatedSections[sIdx],
+                lessons: updatedSections[sIdx].lessons.map((l: any, i: number) =>
+                  i !== lIdx ? l : { ...l, captionsUrl: lessonCaptionsPath(job.courseId, lesson.id) },
+                ),
+              }
+              await db.collection('courses').updateOne(
+                { id: job.courseId },
+                { $set: { sections: updatedSections, updated_at: new Date().toISOString() } },
+              )
+              await addLog(`Backfilled captions: ${lesson.title}`, 'success')
+            } catch (e: any) {
+              await addLog(`Caption backfill failed: ${lesson.title} — ${e.message}`, 'warning')
+            }
+          }
           completedItems++
           await addLog(`Skipped (already has MP4): ${lesson.title}`, 'info')
           continue
@@ -166,6 +188,9 @@ export async function processVideoJob(jobId: string): Promise<void> {
 
           if (!script?.length || !audio) throw new Error('Missing script or audio for MP4 render')
 
+          const vtt = vttFromSlides(script)
+          await saveLessonCaptions(job.courseId, lesson.id, vtt)
+
           const { renderAndStoreLessonMp4 } = await import('@/lib/courses/render-mp4')
           const mp4 = await renderAndStoreLessonMp4({
             courseId: job.courseId,
@@ -184,6 +209,7 @@ export async function processVideoJob(jobId: string): Promise<void> {
               script,
               audioUrl: lessonAudioPath(job.courseId, lesson.id),
               videoUrl: lessonVideoPath(job.courseId, lesson.id),
+              captionsUrl: lessonCaptionsPath(job.courseId, lesson.id),
               videoType: 'ai',
               type: 'video',
               duration: durationSeconds || Math.round(script.reduce((n: number, s: any) => n + (s.durationInFrames || 0), 0) / 30),
@@ -289,6 +315,7 @@ export async function clearCourseVideos(courseId: string): Promise<void> {
       textContent: null,
       audioUrl: null,
       videoUrl: null,
+      captionsUrl: null,
       videoType: null,
       duration: 600,
       type: 'text',
@@ -300,6 +327,7 @@ export async function clearCourseVideos(courseId: string): Promise<void> {
   )
   await deleteCourseAudio(courseId)
   await deleteCourseVideos(courseId)
+  await deleteCourseCaptions(courseId)
 }
 
 export async function requeueJob(jobId: string, opts?: { regenerateAll?: boolean }): Promise<{ ok: boolean; error?: string }> {

@@ -39,6 +39,7 @@ interface Lesson {
   script?: any[]
   audioUrl?: string
   videoUrl?: string
+  captionsUrl?: string
   textContent?: string
 }
 
@@ -330,6 +331,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         title={activeLesson.title}
                         className="w-full h-full border-0 rounded-none"
                         startAt={startAt}
+                        captionsSrc={resolveMediaUrl(activeLesson.captionsUrl)}
                         onProgress={savePosition}
                         onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
                       />

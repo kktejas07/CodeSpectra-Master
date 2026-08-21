@@ -12,12 +12,9 @@ import { Sparkles, ArrowRight, ArrowLeft, Loader2, Play, CheckCircle2, Video, Da
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { COURSE_LEVELS, INDUSTRIES, subjectsForIndustry, estimateCourse } from '@/lib/courses/syllabus'
 
-const TECHNOLOGIES = [
-  'Python', 'JavaScript', 'React', 'Next.js', 'Go', 'Rust', 'Machine Learning', 'Data Science', 'System Design'
-]
-
-const LEVELS = ['Beginner', 'Intermediate', 'Advanced']
+const LEVELS = [...COURSE_LEVELS]
 const DURATIONS = [2, 5, 12, 20]
 
 export default function GenerateCoursePage() {
@@ -26,10 +23,14 @@ export default function GenerateCoursePage() {
   const router = useRouter()
 
   const [step, setStep] = useState(1)
+  const [industry, setIndustry] = useState<(typeof INDUSTRIES)[number]['id']>('software')
   const [technology, setTechnology] = useState('')
   const [level, setLevel] = useState('')
   const [duration, setDuration] = useState(12)
   const [goal, setGoal] = useState('')
+  const industrySubjects = subjectsForIndustry(industry)
+  const subjectNames = industrySubjects.map(s => s.name)
+  const preview = technology ? estimateCourse(technology, level || 'Beginner') : null
   
   const [generating, setGenerating] = useState(false)
   const [progress, setProgress] = useState(0)
@@ -55,51 +56,48 @@ export default function GenerateCoursePage() {
   const handleBack = () => setStep(step - 1)
 
   const startGeneration = async () => {
-    if (userCredits === null || userCredits < 10) {
+    if (!technology || !level) {
+      return
+    }
+    if (userCredits !== null && userCredits < 10) {
       setShowUpsell(true)
       return
     }
 
     try {
       setGenerating(true)
-      const res = await csrfFetch('/api/user/ai-credits', {
+      setStep(4)
+      setProgress(20)
+      setCurrentTask('Building syllabus from catalog...')
+
+      const genRes = await csrfFetch('/api/user/courses/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 10 })
+        body: JSON.stringify({ technology, level, goal }),
       })
-      
-      const data = await res.json()
-      if (!res.ok) {
+      const genData = await genRes.json().catch(() => ({}))
+
+      if (genRes.status === 403) {
         setShowUpsell(true)
         setGenerating(false)
+        setStep(3)
         return
       }
-      
-      setUserCredits(data.balance)
-      setStep(4)
-      
-      // Call the real generation API
-      const genRes = await csrfFetch('/api/learning/generate-course', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          technology,
-          level,
-          duration_hours: duration,
-          goal,
-          include_projects: true,
-          include_assessments: true,
-          include_certificate: true
-        })
-      })
-
       if (!genRes.ok) {
-        throw new Error('Generation failed')
+        throw new Error(genData.error || 'Generation failed')
       }
 
-      const genData = await genRes.json()
+      if (typeof genData.creditsCharged === 'number' && userCredits !== null) {
+        setUserCredits(Math.max(0, userCredits - genData.creditsCharged))
+      } else {
+        fetch('/api/user/ai-credits')
+          .then(r => r.json())
+          .then(d => { if (d.balance !== undefined) setUserCredits(d.balance) })
+          .catch(() => {})
+      }
+
       setProgress(100)
-      setCurrentTask('Course Ready!')
+      setCurrentTask(genData.message || 'Course Ready!')
       setTimeout(() => {
         if (genData.course_id) {
           router.push(`/dashboard/courses/${genData.course_id}`)
@@ -110,6 +108,8 @@ export default function GenerateCoursePage() {
     } catch (e) {
       console.error(e)
       setGenerating(false)
+      setStep(3)
+      setCurrentTask('Generation failed')
     }
   }
 
@@ -153,8 +153,20 @@ export default function GenerateCoursePage() {
                 {/* Step 1: Technology */}
                 <div className={`transition-all duration-500 ${step === 1 ? 'opacity-100 translate-x-0' : 'opacity-0 absolute -translate-x-full pointer-events-none'}`}>
                   <h2 className="text-2xl font-bold mb-6">What do you want to learn?</h2>
+                  <div className="flex flex-wrap gap-2 mb-4">
+                    {INDUSTRIES.map(ind => (
+                      <button
+                        key={ind.id}
+                        type="button"
+                        onClick={() => { setIndustry(ind.id); setTechnology('') }}
+                        className={`px-3 py-1.5 rounded-lg border text-sm transition-all ${industry === ind.id ? 'border-indigo-500 bg-indigo-500/10' : 'border-border hover:border-indigo-500/50'}`}
+                      >
+                        {ind.label}
+                      </button>
+                    ))}
+                  </div>
                   <div className="flex flex-wrap gap-3 mb-6">
-                    {TECHNOLOGIES.map(tech => (
+                    {subjectNames.map(tech => (
                       <div 
                         key={tech}
                         onClick={() => setTechnology(tech)}
@@ -168,11 +180,16 @@ export default function GenerateCoursePage() {
                     <Label>Or enter a custom topic</Label>
                     <Input 
                       placeholder="e.g. Quantum Computing with Qiskit" 
-                      value={!TECHNOLOGIES.includes(technology) ? technology : ''}
+                      value={!subjectNames.includes(technology) ? technology : ''}
                       onChange={(e) => setTechnology(e.target.value)}
                       className="bg-background/50 backdrop-blur-sm"
                     />
                   </div>
+                  {preview && (
+                    <p className="text-xs text-muted-foreground mb-4">
+                      {preview.title} · {preview.moduleCount} modules · ≥{preview.minLessons} lessons · ~{preview.estimatedHours}h
+                    </p>
+                  )}
                   <Button onClick={handleNext} disabled={!technology} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white">
                     Next Step <ArrowRight className="ml-2 h-4 w-4" />
                   </Button>
@@ -185,7 +202,7 @@ export default function GenerateCoursePage() {
                   <div className="space-y-6 mb-8">
                     <div>
                       <Label className="mb-3 block text-base">Current Experience Level</Label>
-                      <div className="grid grid-cols-3 gap-3">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
                         {LEVELS.map(l => (
                           <div 
                             key={l}
@@ -264,7 +281,7 @@ export default function GenerateCoursePage() {
               <h3 className="font-bold text-lg mb-4 flex items-center gap-2">
                 <Video className="h-5 w-5 text-indigo-500" /> How it works
               </h3>
-              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-border before:to-transparent">
+              <div className="space-y-6 relative before:absolute before:inset-0 before:ml-5 before:-translate-x-px md:before:mx-auto md:before:translate-x-0 before:h-full before:w-0.5 before:bg-linear-to-b before:from-transparent before:via-border before:to-transparent">
                 <div className="relative flex items-center justify-between md:justify-normal md:odd:flex-row-reverse group is-active">
                   <div className="flex items-center justify-center w-10 h-10 rounded-full border border-white bg-indigo-500 text-white shadow shrink-0 md:order-1 md:group-odd:-translate-x-1/2 md:group-even:translate-x-1/2 z-10">
                     <Database className="h-4 w-4" />
@@ -313,11 +330,11 @@ export default function GenerateCoursePage() {
               <Sparkles className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-8 w-8 text-indigo-600" />
             </div>
             
-            <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-gradient-to-r from-indigo-500 to-purple-600">
+            <h2 className="text-3xl font-bold mb-4 bg-clip-text text-transparent bg-linear-to-r from-indigo-500 to-purple-600">
               Generating your {duration}-hour course...
             </h2>
             
-            <p className="text-xl text-muted-foreground mb-8 min-h-[30px] transition-all">
+            <p className="text-xl text-muted-foreground mb-8 min-h-7.5 transition-all">
               {currentTask}
             </p>
             
@@ -350,7 +367,7 @@ export default function GenerateCoursePage() {
                 Generating a full video course requires 10 credits. You currently have 0 credits. Upgrade to PRO to get 1,000 monthly credits and unlimited course generation.
               </p>
               <div className="space-y-3">
-                <Button className="w-full bg-gradient-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg">
+                <Button className="w-full bg-linear-to-r from-amber-500 to-orange-600 hover:from-amber-600 hover:to-orange-700 text-white shadow-lg">
                   <Zap className="mr-2 h-4 w-4" /> Upgrade to PRO ($15/mo)
                 </Button>
                 <Button variant="ghost" className="w-full" onClick={() => setShowUpsell(false)}>

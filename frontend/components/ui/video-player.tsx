@@ -4,7 +4,7 @@ import '@vidstack/react/player/styles/default/theme.css'
 import '@vidstack/react/player/styles/default/layouts/video.css'
 
 import { useEffect, useRef, useState } from 'react'
-import { MediaPlayer, MediaProvider } from '@vidstack/react'
+import { MediaPlayer, MediaProvider, Track } from '@vidstack/react'
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default'
 import { RemotionProviderLoader } from '@vidstack/react/player/remotion'
 
@@ -19,6 +19,7 @@ interface VideoPlayerProps {
   logoLinkUrl?: string
   className?: string
   startAt?: number
+  captionsSrc?: string
   onProgress?: (currentTime: number, duration: number) => void
   onEnded?: () => void
 }
@@ -42,6 +43,7 @@ export function VideoPlayer({
   logoLinkUrl,
   className = '',
   startAt = 0,
+  captionsSrc,
   onProgress,
   onEnded,
 }: VideoPlayerProps) {
@@ -122,7 +124,11 @@ export function VideoPlayer({
           onEndedRef.current?.()
         }}
       >
-        <MediaProvider loaders={[RemotionProviderLoader]} />
+        <MediaProvider loaders={[RemotionProviderLoader]}>
+          {captionsSrc ? (
+            <Track src={captionsSrc} kind="subtitles" label="English" language="en" default />
+          ) : null}
+        </MediaProvider>
         <DefaultVideoLayout
           thumbnails={poster}
           icons={defaultLayoutIcons}

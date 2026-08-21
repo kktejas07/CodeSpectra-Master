@@ -9,6 +9,11 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-21 | v0.24.20 | User course generate uses the same catalog syllabus + video job queue as admin (`/api/user/courses/generate`). Existing catalog courses enroll free; new ones cost 10 AI credits. | CodeSpectra-Master |
+| 2026-08-21 | v0.24.19 | Retry remaining backfills English captions for lessons that already have MP4 but no VTT. | CodeSpectra-Master |
+| 2026-08-21 | v0.24.18 | Course catalog expands to manufacturing, telecom, banking ops; user course-generate picks Industry → Subject; non-software lesson scripts no longer force code slides. | CodeSpectra-Master |
+| 2026-08-21 | v0.24.17 | Course catalog is industry → subject → 4 exclusive level tracks (software, cloud, data, engineering, healthcare, finance, business, marketing, design, people, operations, legal, education). Generator picks Industry then Subject; every subject has a non-DSA beginner track where appropriate. | CodeSpectra-Master |
+| 2026-08-21 | v0.24.16 | Java Beginner is **Fundamentals** (syntax/tooling), not DSA Mastery. Intermediate is the DSA track. Generator preview shows the syllabus; worker writes English VTT captions from the lesson script. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.15 | Course generator no longer caps modules at 3–6 short DSA videos. Each stack gets a full required syllabus (one topic per lesson, ≥6 lessons/module), level is honored (`java-beginner` vs `java-advanced`), and each lesson script targets an 8–12 minute video. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.14 | Course detail page imports `useToast` so `yarn build` typecheck passes (Dokploy frontend image). | CodeSpectra-Master |
 | 2026-08-21 | v0.24.13 | Assessment ID OCR no longer treats a face selfie as an ID. Vision models must set `is_id_card: true`; guessed names (e.g. from a selfie) are discarded and the user is asked to hold up a real ID. | CodeSpectra-Master |

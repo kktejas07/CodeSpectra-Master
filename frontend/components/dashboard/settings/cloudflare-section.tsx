@@ -355,12 +355,20 @@ function ObjectStorageCard() {
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
-        {provider === 'r2' && 'R2 → Create private bucket + R2 API token (Object Read & Write).'}
+        {provider === 'r2' && 'R2 → Create a private bucket, then R2 API token with Object Read & Write. Paste Account ID + keys here, Save, Test connection.'}
         {provider === 's3' && 'IAM user with s3:PutObject/GetObject/DeleteObject on the bucket. Endpoint must match the region.'}
         {provider === 'gcs' && 'GCS Settings → Interoperability → HMAC key. Endpoint stays storage.googleapis.com.'}
         {provider === 'hetzner' && 'Hetzner Cloud → Object Storage → copy the S3 endpoint for your location (fsn1, nbg1, hel1).'}
         {provider === 'custom' && 'Point at MinIO or any S3 API (including a reverse-proxied volume on a Hetzner VPS).'}
       </p>
+      {provider === 'r2' && (
+        <ol className="space-y-1 text-xs text-muted-foreground list-decimal pl-4">
+          <li>Cloudflare Dashboard → R2 → Create bucket (keep it private).</li>
+          <li>R2 → Manage R2 API Tokens → Create API token (Object Read & Write, that bucket).</li>
+          <li>Copy Account ID (R2 overview), Access Key ID, and Secret Access Key into the fields above. Region stays <code>auto</code>.</li>
+          <li>Save storage → Test connection. New course videos upload automatically; regenerate old courses to move them off Mongo.</li>
+        </ol>
+      )}
       <div className="flex justify-end gap-2">
         <Button variant="outline" onClick={test} disabled={testing || !ready} className="gap-2">
           {testing ? <Loader2 className="h-4 w-4 animate-spin" /> : null}
