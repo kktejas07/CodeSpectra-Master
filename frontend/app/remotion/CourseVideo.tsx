@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { Composition, Sequence, Audio, Internals } from 'remotion'
+import { Composition, Sequence, Audio, Internals, AbsoluteFill } from 'remotion'
 import { CourseSlide } from './CourseSlide'
 
 export interface ScriptItem {
@@ -26,7 +26,7 @@ export const CourseVideoComposition: React.FC<CourseVideoProps> = ({ script, aud
   let currentTime = 0
 
   return (
-    <div style={{ flex: 1, backgroundColor: '#0f172a' }}>
+    <AbsoluteFill style={{ backgroundColor: '#0f172a' }}>
       {audioUrl && (
         <Internals.PlaybackRateContext.Provider value={defaultPlaybackRate}>
           <Internals.BufferingProvider>
@@ -45,6 +45,6 @@ export const CourseVideoComposition: React.FC<CourseVideoProps> = ({ script, aud
           </Sequence>
         )
       })}
-    </div>
+    </AbsoluteFill>
   )
 }

@@ -50,7 +50,7 @@ export async function POST(
     const topic = lesson.content
 
     // --- Generate Script via AI ---
-    const prompt = `You are an expert course instructor. Generate a script for a 3-minute video lesson on the topic: "${topic}".
+    const prompt = `You are an expert course instructor. Generate a detailed, highly informative script for a 3-5 minute video lesson on the topic: "${topic}".
 Output valid JSON ONLY with this schema:
 {
   "slides": [
@@ -62,7 +62,11 @@ Output valid JSON ONLY with this schema:
     }
   ]
 }
-Do not include markdown blocks, just raw JSON.`
+Requirements:
+1. Generate between 5 to 8 slides.
+2. The "spokenText" for each slide MUST be very detailed and comprehensive, containing at least 60-100 words per slide. Do not be brief; explain the concepts deeply as a real instructor would.
+3. The "content" bullet points should be concise summaries of what is being spoken, 3-5 points per slide.
+Do not include markdown blocks or any other text, just raw JSON.`
 
     const openAiKey = process.env.OPENAI_API_KEY
     const groqKey = process.env.GROQ_API_KEY

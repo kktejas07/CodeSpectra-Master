@@ -1,7 +1,7 @@
 'use client'
 
 import React from 'react'
-import { interpolate, spring, useCurrentFrame, useVideoConfig } from 'remotion'
+import { interpolate, spring, useCurrentFrame, useVideoConfig, AbsoluteFill } from 'remotion'
 
 export interface CourseSlideProps {
   title: string
@@ -24,9 +24,8 @@ export const CourseSlide: React.FC<CourseSlideProps> = ({ title, content }) => {
   })
 
   return (
-    <div
+    <AbsoluteFill
       style={{
-        flex: 1,
         backgroundColor: '#0f172a', // slate-900
         padding: '60px 80px',
         display: 'flex',
@@ -82,6 +81,6 @@ export const CourseSlide: React.FC<CourseSlideProps> = ({ title, content }) => {
           )
         })}
       </ul>
-    </div>
+    </AbsoluteFill>
   )
 }
