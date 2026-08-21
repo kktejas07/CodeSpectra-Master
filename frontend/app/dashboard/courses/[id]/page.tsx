@@ -11,13 +11,14 @@ import {
   Star, Clock, Layers, Award, Users, ChevronDown,
   ChevronRight, Lock, ArrowLeft, Volume2, Maximize2,
   GraduationCap, TrendingUp, Zap, Shield, BarChart2, BookMarked,
-  ChevronUp, Share2, Heart, Download
+  ChevronUp, Share2, Heart, Download, HelpCircle
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { cn } from '@/lib/utils'
 import { Player } from '@remotion/player'
 import { CourseVideoComposition } from '@/app/remotion/CourseVideo'
+import { QuizComponent, type QuizQuestion } from '@/components/courses/QuizComponent'
 
 interface Resource {
   title?: string
@@ -34,6 +35,7 @@ interface Lesson {
   description?: string
   url?: string
   duration?: number
+  content?: string
   resources?: Resource[]
   free?: boolean
   type?: 'video' | 'text'
@@ -46,6 +48,7 @@ interface Section {
   title: string
   slug: string
   lessons: Lesson[]
+  quiz?: QuizQuestion[]
 }
 
 interface Course {
@@ -67,6 +70,16 @@ interface Course {
   source_url?: string
   license?: string
   whatYoullLearn?: string[]
+  introVideoUrl?: string
+}
+
+interface Progress {
+  completedModules: number[]
+  quizScores: Record<number, number>
+  currentModule: number
+  skippedToFinal: boolean
+  finalExamScore?: number
+  certificateUrl?: string
 }
 
 
@@ -110,25 +123,74 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [enrolled, setEnrolled] = useState(false)
   const [saved, setSaved] = useState(false)
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
+  const [progress, setProgress] = useState<Progress | null>(null)
+  const [showQuiz, setShowQuiz] = useState<number | null>(null)
+  const [showIntroVideo, setShowIntroVideo] = useState(false)
   const router = useRouter()
 
   useEffect(() => {
     setLoading(true)
-    fetch(`/api/courses/${encodeURIComponent(courseId)}`, { credentials: 'include' })
-      .then(r => r.json())
-      .then(j => {
-        if (j.data) {
-          setCourse(j.data)
-          if (typeof j.data.userEnrolled === 'boolean') setEnrolled(j.data.userEnrolled)
-        }
-      })
-      .catch(() => {})
-      .finally(() => setLoading(false))
+    Promise.all([
+      fetch(`/api/courses/${encodeURIComponent(courseId)}`, { credentials: 'include' }).then(r => r.json()),
+      fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      fetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+      fetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, { credentials: 'include' }).then(r => r.json()).catch(() => null),
+    ]).then(([courseData, progressData, enrollData, completionsData]) => {
+      if (courseData.data) {
+        setCourse(courseData.data)
+      }
+      if (enrollData?.enrolled) {
+        setEnrolled(true)
+      } else if (typeof courseData.data?.userEnrolled === 'boolean') {
+        setEnrolled(courseData.data.userEnrolled)
+      }
+      if (progressData && !progressData.error) {
+        setProgress(progressData)
+      }
+      if (completionsData?.completedLessons) {
+        setCompletedLessons(new Set(completionsData.completedLessons))
+      }
+    }).catch(() => {})
+    .finally(() => setLoading(false))
   }, [courseId])
 
+  // Save progress
+  const saveProgress = async (updates: Partial<Progress>) => {
+    if (!enrolled) return
+    try {
+      await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(updates),
+      })
+    } catch {}
+  }
+
   // Mark lesson complete
-  const markComplete = (lessonId: string) => {
-    setCompletedLessons(prev => new Set([...prev, lessonId]))
+  const markComplete = async (lessonId: string) => {
+    const newCompleted = new Set([...completedLessons, lessonId])
+    setCompletedLessons(newCompleted)
+    // Save to server
+    try {
+      await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({ lessonId }),
+      })
+    } catch {}
+  }
+
+  // Check if module is complete (all lessons done + quiz passed)
+  const isModuleComplete = (sectionIndex: number) => {
+    return progress?.completedModules?.includes(sectionIndex) || false
+  }
+
+  // Check if module is unlocked (previous module complete, or first module)
+  const isModuleUnlocked = (sectionIndex: number) => {
+    if (sectionIndex === 0) return true
+    return isModuleComplete(sectionIndex - 1)
   }
 
   const toggleSection = (idx: string) => {
@@ -140,17 +202,22 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     })
   }
 
-const handleEnroll = () => {
-  setEnrolled(true)
-  addToast({ title: `Enrolled in ${course?.title}`, type: 'success' })
-  fetch(`/api/courses/${encodeURIComponent(courseId)}`, {
-    method: 'POST',
-    credentials: 'include',
-  }).then(r => r.json()).then(() => {}).catch(() => {
-    setEnrolled(false)
-    addToast({ title: 'Enrollment failed — please try again.', type: 'error' })
-  })
-}
+const handleEnroll = async () => {
+    setEnrolled(true)
+    addToast({ title: `Enrolling in ${course?.title}...`, type: 'info' })
+    try {
+      const res = await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/enroll`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Enrollment failed')
+      addToast({ title: `Enrolled in ${course?.title}`, type: 'success' })
+    } catch (e: any) {
+      setEnrolled(false)
+      addToast({ title: e.message || 'Enrollment failed', type: 'error' })
+    }
+  }
 
   if (!gate.ready) return (
     <div className="w-full min-h-screen flex items-center justify-center">
@@ -189,7 +256,7 @@ const handleEnroll = () => {
     'Lifetime access to materials',
     'Community doubt-clearing support'
   ]
-  const progress = totalLessons > 0 ? Math.round((completedLessons.size / totalLessons) * 100) : 0
+  const progressPercent = totalLessons > 0 ? Math.round((completedLessons.size / totalLessons) * 100) : 0
 
   // Career outcomes based on tags
   const careerMap: Record<string, { title: string; growth: string; salary: string; color: string }[]> = {
@@ -370,12 +437,12 @@ const handleEnroll = () => {
               <div className="bg-card rounded-2xl border border-border/60 p-5">
                 <div className="flex items-center justify-between mb-3">
                   <p className="font-semibold">Your Progress</p>
-                  <p className="text-sm font-bold text-primary">{progress}%</p>
+                  <p className="text-sm font-bold text-primary">{progressPercent}%</p>
                 </div>
                 <div className="h-2.5 bg-muted rounded-full overflow-hidden">
                   <div
                     className="h-full bg-gradient-to-r from-blue-500 to-purple-500 transition-all duration-700 rounded-full"
-                    style={{ width: `${progress}%` }}
+                    style={{ width: `${progressPercent}%` }}
                   />
                 </div>
                 <p className="text-xs text-muted-foreground mt-2">{completedLessons.size} / {totalLessons} lessons completed</p>
@@ -479,6 +546,52 @@ const handleEnroll = () => {
                                 </button>
                               )
                             })}
+                          </div>
+                        )}
+
+                        {/* Module Quiz */}
+                        {isOpen && enrolled && section.quiz && section.quiz.length > 0 && (
+                          <div className="p-4 border-t border-border/50">
+                            <div className="flex items-center justify-between mb-3">
+                              <div className="flex items-center gap-2">
+                                <HelpCircle className="h-4 w-4 text-muted-foreground" />
+                                <span className="text-sm font-medium">Module Quiz</span>
+                                {isModuleComplete(sIdx) && (
+                                  <Badge className="text-xs bg-emerald-500 text-emerald-700">
+                                    Passed: {progress?.quizScores?.[sIdx] || 0}%
+                                  </Badge>
+                                )}
+                              </div>
+                              {!isModuleComplete(sIdx) && (
+                                <Button
+                                  variant="outline"
+                                  size="sm"
+                                  onClick={() => setShowQuiz(showQuiz === sIdx ? null : sIdx)}
+                                >
+                                  {showQuiz === sIdx ? 'Hide Quiz' : 'Take Quiz'}
+                                </Button>
+                              )}
+                            </div>
+                            {showQuiz === sIdx && (
+                              <QuizComponent
+                                questions={section.quiz}
+                                onComplete={(score, total) => {
+                                  if (score >= total * 0.8) {
+                                    addToast({ type: 'success', title: `Passed! ${Math.round(score/total*100)}%` })
+                                    saveProgress({
+                                      completedModules: [...(progress?.completedModules || []), sIdx],
+                                      quizScores: { ...(progress?.quizScores || {}), [sIdx]: Math.round(score/total*100) },
+                                    })
+                                  } else {
+                                    addToast({ type: 'error', title: `Not yet — ${Math.round(score/total*100)}% (need 80%)` })
+                                  }
+                                  setShowQuiz(null)
+                                }}
+                              />
+                            )}
+                            {isModuleComplete(sIdx) && !showQuiz && (
+                              <p className="text-xs text-muted-foreground">Module completed. Proceed to next module.</p>
+                            )}
                           </div>
                         )}
                       </div>
