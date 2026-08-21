@@ -73,11 +73,17 @@ export const CourseVideoComposition: React.FC<CourseVideoProps> = ({ script, aud
           <Sequence key={item.id || start} from={start} durationInFrames={frames}>
             {!audioUrl && item.audioUrl ? <Audio src={item.audioUrl} /> : null}
             {visual === 'sort' ? (
-              <BarSortScene title={item.title} initialArray={DEFAULT_SORT} algorithm="bubble" />
+              <AbsoluteFill>
+                <BarSortScene title={item.title} initialArray={DEFAULT_SORT} algorithm="bubble" />
+              </AbsoluteFill>
             ) : visual === 'tree' ? (
-              <TreeBuildScene title={item.title} nodes={DEFAULT_TREE} highlightPath={['a', 'b', 'e']} />
+              <AbsoluteFill>
+                <TreeBuildScene title={item.title} nodes={DEFAULT_TREE} highlightPath={['a', 'b', 'e']} />
+              </AbsoluteFill>
             ) : visual === 'array' ? (
-              <ArrayWalkScene title={item.title} array={DEFAULT_ARRAY} target={23} explanation={points[0]} />
+              <AbsoluteFill>
+                <ArrayWalkScene title={item.title} array={DEFAULT_ARRAY} target={23} explanation={points[0]} />
+              </AbsoluteFill>
             ) : isCode ? (
               <CodeTypingScene
                 language={item.codeLanguage || 'javascript'}

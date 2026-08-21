@@ -1,5 +1,5 @@
 import { getMongoDb } from '@/lib/mongodb'
-import { lessonObjectKey, readS3Config, s3DeleteObject, s3PutObject, s3SignedGetUrl } from '@/lib/s3-storage'
+import { lessonObjectKey, readS3Config, s3DeleteObject, s3GetObject, s3PutObject, s3SignedGetUrl } from '@/lib/s3-storage'
 
 const COLLECTION = 'course_lesson_audio'
 
@@ -54,7 +54,6 @@ export async function loadLessonAudio(courseId: string, lessonId: string): Promi
   }
   const objectKey = (typeof doc.objectKey === 'string' && doc.objectKey) || (typeof doc.r2Key === 'string' ? doc.r2Key : '')
   if (objectKey && await readS3Config()) {
-    const { s3GetObject } = await import('@/lib/s3-storage')
     return { mime: String(doc.mime || 'audio/mpeg'), data: await s3GetObject(objectKey) }
   }
   return null
