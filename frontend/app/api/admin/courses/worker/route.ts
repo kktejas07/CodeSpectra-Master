@@ -84,76 +84,115 @@ async function processJob(jobId: string) {
         await addLog(`Generating: ${section.title} > ${lesson.title}`)
 
         try {
-          // Generate video via AI
           const topic = lesson.content || lesson.title
           const techStack = course.tags?.[0] || 'programming'
 
-          // Generate script via AI
+          // --- Step 1: Generate Detailed Text Lesson ---
+          const textPrompt = `You are an expert course instructor. Write a comprehensive, detailed textbook-style lesson on the topic: "${topic}".
+Include:
+- Clear headings and structured formatting
+- Deep explanations of the concepts
+- Practical real-world examples
+- Code snippets (if applicable)
+- A short quiz at the end to test understanding
+Format the entire response in clean Markdown.`
+
           const openAiKey = process.env.OPENAI_API_KEY
           const groqKey = process.env.GROQ_API_KEY
           const nvidiaKey = process.env.NVIDIA_API_KEY
 
-          let scenes: any[] = []
-
           if (!openAiKey && !groqKey && !nvidiaKey) {
-            // Mock mode
-            scenes = [
-              { id: 'scene-1', type: 'concept', title: 'Introduction', content: [`Understanding ${topic}`], spokenText: `Let me explain ${topic}. ${topic} is an important concept that helps us solve problems efficiently.` },
-              { id: 'scene-2', type: 'concept', title: 'Key Concepts', content: ['Core ideas'], spokenText: `The key concepts of ${topic} include understanding the problem, choosing the right approach, and implementing it correctly.` },
-            ]
-          } else {
-            const prompt = `Generate a 5-scene video lesson script on: "${topic}". Follow WHY→WHAT→HOW→WHERE teaching. Output JSON: {"scenes":[{"id":"s1","type":"concept","title":"Why","content":["reason"],"spokenText":"explanation"},{"id":"s2","type":"concept","title":"What","content":["definition"],"spokenText":"explain"},{"id":"s3","type":"code","title":"How","code":"// code","codeLanguage":"${techStack}","content":["key point"],"spokenText":"walkthrough"},{"id":"s4","type":"diagram","title":"Visual","visual":"array-walk","content":["step"],"spokenText":"watch this"},{"id":"s5","type":"concept","title":"Where","content":["use case"],"spokenText":"real world"}]}. Rules: spokenText explains REASONING not description. No markdown.`
+            throw new Error('No AI API key configured')
+          }
 
-            const aiEndpoint = nvidiaKey ? 'https://integrate.api.nvidia.com/v1/chat/completions' : groqKey ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions'
-            const aiKey = nvidiaKey || groqKey || openAiKey
-            const aiModel = nvidiaKey ? 'meta/llama-3.1-70b-instruct' : groqKey ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini'
+          const aiEndpoint = nvidiaKey ? 'https://integrate.api.nvidia.com/v1/chat/completions' : groqKey ? 'https://api.groq.com/openai/v1/chat/completions' : 'https://api.openai.com/v1/chat/completions'
+          const aiKey = nvidiaKey || groqKey || openAiKey
+          const aiModel = nvidiaKey ? 'meta/llama-3.1-70b-instruct' : groqKey ? 'llama-3.3-70b-versatile' : 'gpt-4o-mini'
 
-            const aiRes = await fetch(aiEndpoint, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiKey}` },
-              body: JSON.stringify({ model: aiModel, messages: [{ role: 'user', content: prompt }], response_format: { type: 'json_object' } })
+          const textRes = await fetch(aiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiKey}` },
+            body: JSON.stringify({ model: aiModel, messages: [{ role: 'user', content: textPrompt }] })
+          })
+
+          if (!textRes.ok) throw new Error('AI Text Error')
+          const textData = await textRes.json()
+          const generatedMarkdown = textData.choices[0].message.content
+
+          // --- Step 2: Generate Video Script from Text Lesson ---
+          const videoPrompt = `You are an expert course instructor. I will provide you with a detailed text lesson. 
+Summarize this lesson into a high-quality video script.
+
+Output valid JSON ONLY with this schema:
+{
+  "slides": [
+    {
+      "id": "unique-string",
+      "title": "Slide Headline",
+      "content": ["Bullet point 1", "Bullet point 2"],
+      "spokenText": "The actual text the voiceover will read while this slide is on screen."
+    }
+  ]
+}
+Requirements:
+1. Generate between 5 to 10 slides.
+2. The "spokenText" for each slide MUST be very detailed, conversational, and comprehensive, containing at least 60-100 words per slide. Explain the concepts deeply as a real instructor would, using the provided text lesson as the source.
+3. The "content" bullet points should be concise summaries of what is being spoken, 3-5 points per slide.
+Do not include markdown blocks or any other text outside the JSON.
+
+TEXT LESSON TO SUMMARIZE:
+"""
+${generatedMarkdown}
+"""`
+
+          const videoRes = await fetch(aiEndpoint, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${aiKey}` },
+            body: JSON.stringify({ model: aiModel, messages: [{ role: 'user', content: videoPrompt }], response_format: { type: 'json_object' } })
+          })
+
+          if (!videoRes.ok) throw new Error('AI Video Script Error')
+          const videoData = await videoRes.json()
+          const parsed = JSON.parse(videoData.choices[0].message.content)
+
+          // --- Generate Audio via TTS ---
+          let fullAudioUrl: string | null = null
+          try {
+            const fullSpokenText = parsed.slides.map((s: any) => s.spokenText).join(' ')
+            const results = await googleTTS.getAllAudioBase64(fullSpokenText, {
+              lang: 'en', slow: false, host: 'https://translate.google.com', timeout: 15000,
             })
-
-            if (!aiRes.ok) throw new Error('AI generation failed')
-            const aiData = await aiRes.json()
-            const parsed = JSON.parse(aiData.choices[0].message.content)
-            scenes = parsed.scenes || []
+            const buffers = results.map((r: any) => Buffer.from(r.base64, 'base64'))
+            const combinedBuffer = Buffer.concat(buffers)
+            fullAudioUrl = `data:audio/mpeg;base64,${combinedBuffer.toString('base64')}`
+          } catch (ttsErr) {
+            console.warn('[worker] TTS failed:', ttsErr)
           }
 
-          // Generate audio for each scene
-          let totalDurationFrames = 0
-          const scenesWithAudio = []
-
-          for (const scene of scenes) {
-            let audioBase64: string | null = null
-            let durationFrames = 300
-
-            if (scene.spokenText) {
-              try {
-                const results = await googleTTS.getAllAudioBase64(scene.spokenText, {
-                  lang: 'en', slow: false, host: 'https://translate.google.com', timeout: 15000,
-                })
-                const buffers = results.map((r: any) => Buffer.from(r.base64, 'base64'))
-                const combined = Buffer.concat(buffers)
-                audioBase64 = `data:audio/mpeg;base64,${combined.toString('base64')}`
-                durationFrames = Math.round((combined.length / 16000) * 30)
-              } catch (e) {
-                console.warn(`TTS failed for scene ${scene.id}:`, e)
-              }
+          // --- Format Script for Remotion ---
+          const finalScript = parsed.slides.map((slide: any) => {
+            const wordCount = (slide.spokenText || '').split(' ').length
+            const estimatedSeconds = Math.max(3, wordCount / 2.0)
+            return {
+              id: slide.id,
+              title: slide.title,
+              content: slide.content,
+              durationInFrames: Math.round(estimatedSeconds * 30)
             }
-
-            scenesWithAudio.push({ ...scene, audioUrl: audioBase64, durationInFrames: durationFrames, startFrame: totalDurationFrames })
-            totalDurationFrames += durationFrames
-          }
+          })
 
           // Save to course
           const updatedSections = [...sections]
           updatedSections[sIdx].lessons[lIdx] = {
             ...updatedSections[sIdx].lessons[lIdx],
-            script: scenesWithAudio,
+            textContent: generatedMarkdown,
+            script: finalScript,
+            audioUrl: fullAudioUrl,
             videoType: 'ai',
             type: 'video',
-            duration: Math.round(totalDurationFrames / 30),
+            duration: finalScript.reduce((a: number, c: any) => a + (c.durationInFrames || 0), 0)
+              ? Math.floor(finalScript.reduce((a: number, c: any) => a + (c.durationInFrames || 0), 0) / 30)
+              : 600,
           }
 
           await db.collection('courses').updateOne(
@@ -162,7 +201,7 @@ async function processJob(jobId: string) {
           )
 
           completedItems++
-          await addLog(`Completed: ${lesson.title} (${scenesWithAudio.length} scenes)`, 'success')
+          await addLog(`Completed: ${lesson.title} (${finalScript.length} slides)`, 'success')
         } catch (e: any) {
           failedItems++
           await addLog(`Failed: ${lesson.title} — ${e.message}`, 'error')
