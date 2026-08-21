@@ -71,14 +71,14 @@ describe('duration', () => {
     expect(durationFramesFromSpoken(words)).toBe(36 * 30)
   })
 
-  it('8 long slides land in the 3–6 minute Unstop range', () => {
-    const spoken = Array.from({ length: 90 }, () => 'word').join(' ')
-    const slides = withDurations(Array.from({ length: 8 }, (_, i) => ({
+  it('12 long slides land in the 8–15 minute detailed range', () => {
+    const spoken = Array.from({ length: 160 }, () => 'word').join(' ')
+    const slides = withDurations(Array.from({ length: 12 }, (_, i) => ({
       id: `s${i}`, type: 'concept' as const, title: 'T', content: ['c'], spokenText: spoken,
     })))
     const seconds = slides.reduce((n, s) => n + s.durationInFrames, 0) / 30
-    expect(seconds).toBeGreaterThanOrEqual(180)
-    expect(seconds).toBeLessThanOrEqual(360)
+    expect(seconds).toBeGreaterThanOrEqual(480)
+    expect(seconds).toBeLessThanOrEqual(900)
   })
 })
 
@@ -95,6 +95,11 @@ describe('stale running jobs', () => {
   it('flags a running job older than the stale window', () => {
     const now = Date.parse('2026-08-21T12:00:00Z')
     expect(isStaleRunning({ status: 'running', startedAt: '2026-08-21T11:59:00Z' }, now)).toBe(false)
+    expect(isStaleRunning({
+      status: 'running',
+      startedAt: new Date(now - STALE_RUNNING_MS - 1000).toISOString(),
+      heartbeatAt: new Date(now - 60_000).toISOString(),
+    }, now)).toBe(false)
     expect(isStaleRunning({
       status: 'running',
       startedAt: new Date(now - STALE_RUNNING_MS - 1000).toISOString(),

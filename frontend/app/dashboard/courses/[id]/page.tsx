@@ -14,6 +14,7 @@ import {
   ChevronUp, Share2, Heart, Download, HelpCircle
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { pickResumeLessonId } from '@/lib/courses/watch-progress'
 import { cn } from '@/lib/utils'

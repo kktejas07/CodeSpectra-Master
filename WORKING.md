@@ -6,6 +6,7 @@
 
 ## Current Claims
 
+| cursor (this session, COURSE-DEPTH) | Curriculum was 3–6 short DSA lessons and ignored level. Full per-stack syllabus, one topic per lesson, longer videos. | frontend/lib/courses/syllabus.ts, frontend/app/api/admin/courses/generate-curriculum/route.ts, frontend/lib/courses/lesson-video.ts, frontend/lib/courses/process-job.ts, frontend/lib/courses/render-mp4.ts, WORKING.md | DONE | 2026-08-21 |
 | cursor (this session, ID-OCR-SELFIE) | ID step hallucinates a name (e.g. Sushant Kumar) from a face-only photo. Require is_id_card; never treat a guessed name as OCR. | frontend/app/api/assessment/id-ocr/route.ts, frontend/lib/assessment/id-ocr-parse.ts, frontend/tests/id-ocr-parse.test.ts, WORKING.md | DONE | 2026-08-21 |
 | cursor (this session, ADMIN-ACL+SPLASH) | Users can open /dashboard/admin/security. Enforce superadmin on platform-admin routes (guard, sidebar, command menu, notification links). Splash only on first load, not tab/sidebar nav. | frontend/lib/use-page-guard.ts, frontend/lib/page-permissions.ts, frontend/app/dashboard/layout.tsx, frontend/components/command-menu.tsx, frontend/lib/notifications.ts, frontend/components/loading-wrapper.tsx, WORKING.md | DONE | 2026-08-21 |
 | cursor (this session, LESSON-SPLASH) | Lesson 1→2 shows full loading screen. Skip splash on same-shell nav; keep lesson player if course already loaded. | frontend/lib/skip-route-splash.ts, frontend/components/loading-wrapper.tsx, frontend/app/dashboard/courses/[id]/lesson/[lessonId]/page.tsx, WORKING.md | DONE | 2026-08-21 |

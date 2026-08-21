@@ -9,6 +9,8 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-21 | v0.24.15 | Course generator no longer caps modules at 3–6 short DSA videos. Each stack gets a full required syllabus (one topic per lesson, ≥6 lessons/module), level is honored (`java-beginner` vs `java-advanced`), and each lesson script targets an 8–12 minute video. | CodeSpectra-Master |
+| 2026-08-21 | v0.24.14 | Course detail page imports `useToast` so `yarn build` typecheck passes (Dokploy frontend image). | CodeSpectra-Master |
 | 2026-08-21 | v0.24.13 | Assessment ID OCR no longer treats a face selfie as an ID. Vision models must set `is_id_card: true`; guessed names (e.g. from a selfie) are discarded and the user is asked to hold up a real ID. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.12 | Platform Security is superadmin-only: page guard redirects, sidebar/command palette cannot grant `/dashboard/admin/*` to users, login notifications no longer deep-link there. Full-app splash plays on first load only (GitHub/YouTube-style in-app tab switches). | CodeSpectra-Master |
 | 2026-08-21 | v0.24.11 | Lesson player no longer shows the full-app splash when switching lessons. Same-course / last-segment navigations skip `LoadingWrapper`; the player keeps the course in memory so the sidebar stays on screen. | CodeSpectra-Master |

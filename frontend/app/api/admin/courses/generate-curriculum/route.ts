@@ -3,91 +3,54 @@ import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
+import { courseIdFor, padCurriculum, requiredModules } from '@/lib/courses/syllabus'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const CURRICULUM_PROMPT = (techStack: string) => `You are an expert course curriculum designer for CodeSpectra learning platform. Generate a complete curriculum for a "${techStack} Data Structures & Algorithms" course.
+const CURRICULUM_PROMPT = (techStack: string, level: string) => {
+  const modules = requiredModules(techStack).map((m, i) => `${i + 1}. ${m}`).join('\n')
+  return `You are designing a COMPLETE ${level} course on "${techStack}" for CodeSpectra.
 
-Output valid JSON ONLY with this exact schema:
+This is NOT a highlights reel and NOT a 3-video intro. Every required module below MUST appear as its own section. One lesson = one atomic topic. Never merge three topics into one short video. Never skip a module. Never say "we assume you already know this" — teach it.
+
+Required modules (use these titles, in this order, plus extra modules if the stack needs them):
+${modules}
+
+Output valid JSON ONLY:
 {
   "title": "Course Title",
   "description": "2-3 sentence course description",
-  "level": "beginner|intermediate|advanced",
+  "level": "${level}",
   "category": "Coding",
   "tags": ["tag1", "tag2"],
   "whatYoullLearn": ["skill 1", "skill 2", "skill 3", "skill 4", "skill 5", "skill 6"],
   "instructor": "CodeSpectra AI",
-  "duration": "40 hours",
+  "duration": "estimated hours as a string",
   "sections": [
     {
-      "title": "Section Title",
-      "slug": "section-slug",
-      "description": "Brief section description",
+      "title": "Module title from the required list",
+      "slug": "module-slug",
+      "description": "What this module covers",
       "lessons": [
         {
-          "title": "Lesson Title",
-          "slug": "lesson-slug",
-          "description": "Brief description",
-          "content": "Detailed topic/prompt for AI to generate a 3-minute video lesson. Be specific about what to cover.",
-          "duration": 300,
-          "free": false,
-          "videoType": "ai"
+          "title": "One specific topic",
+          "slug": "topic-slug",
+          "description": "One sentence",
+          "content": "Detailed teaching brief for an 8–12 minute video: what to explain, which ${techStack} APIs/code, edge cases, complexity. No skipped subtopics."
         }
       ]
     }
   ]
 }
 
-Requirements:
-- 12-16 modules (sections), each with 3-6 lessons
-- Each lesson content field should be a detailed prompt for generating a 3-minute video
-- Include practical coding examples and real-world applications
-- Start from fundamentals and progress to advanced topics
-- Each lesson content must be specific enough that an AI can generate a video script from it
-- Do NOT include any markdown, just raw JSON
-- Do NOT reference any external websites, platforms, or brands (no freecodecamp, no geeksforgeeks, no youtube references)
-- Duration should be in seconds (300 = 5 min, 600 = 10 min, etc.)
-- All content must be original and self-contained
-
-Tech stack: ${techStack}`
-
-function generateFallbackSections(techStack: string) {
-  const topics = [
-    { title: 'Fundamentals', slug: 'fundamentals', lessons: [
-      { title: `${techStack} Setup & Hello World`, slug: 'setup', description: 'Getting started', content: `Setting up ${techStack} development environment and writing your first program`, duration: 300 },
-      { title: 'Variables & Data Types', slug: 'variables', description: 'Core types', content: `Understanding variables, data types, and type system in ${techStack}`, duration: 300 },
-      { title: 'Control Flow', slug: 'control-flow', description: 'Conditionals and loops', content: `Mastering if/else, for loops, while loops, and switch statements in ${techStack}`, duration: 300 },
-    ]},
-    { title: 'Data Structures', slug: 'data-structures', lessons: [
-      { title: 'Arrays & Lists', slug: 'arrays', description: 'Linear data structures', content: `Working with arrays, lists, and their operations in ${techStack}`, duration: 300 },
-      { title: 'Stacks & Queues', slug: 'stacks-queues', description: 'LIFO and FIFO', content: `Implementing and using stacks and queues for problem solving`, duration: 300 },
-      { title: 'Linked Lists', slug: 'linked-lists', description: 'Node-based structures', content: `Singly and doubly linked lists: traversal, insertion, and deletion`, duration: 300 },
-    ]},
-    { title: 'Trees & Graphs', slug: 'trees-graphs', lessons: [
-      { title: 'Binary Trees', slug: 'binary-trees', description: 'Tree fundamentals', content: `Binary trees, traversals (inorder, preorder, postorder), and BST operations`, duration: 300 },
-      { title: 'Graph Algorithms', slug: 'graph-algorithms', description: 'Graph traversal', content: `BFS, DFS, shortest path, and topological sort algorithms`, duration: 300 },
-    ]},
-    { title: 'Sorting & Searching', slug: 'sorting-searching', lessons: [
-      { title: 'Sorting Algorithms', slug: 'sorting', description: 'Comparison sorts', content: `Bubble sort, merge sort, quick sort, and their time complexities`, duration: 300 },
-      { title: 'Binary Search', slug: 'binary-search', description: 'Efficient searching', content: `Binary search algorithm and its variants for sorted data`, duration: 300 },
-    ]},
-    { title: 'Dynamic Programming', slug: 'dynamic-programming', lessons: [
-      { title: 'DP Fundamentals', slug: 'dp-fundamentals', description: 'Memoization and tabulation', content: `Introduction to dynamic programming with memoization and tabulation approaches`, duration: 300 },
-      { title: 'Classic DP Problems', slug: 'dp-classic', description: 'Knapsack, LCS, LIS', content: `Solving knapsack, longest common subsequence, and longest increasing subsequence`, duration: 300 },
-    ]},
-  ]
-
-  return topics.map(t => ({
-    title: t.title,
-    slug: t.slug,
-    description: `${techStack} ${t.title.toLowerCase()}`,
-    lessons: t.lessons.map(l => ({
-      ...l,
-      free: false,
-      videoType: 'ai',
-    })),
-  }))
+Rules:
+- At least ${requiredModules(techStack).length} sections (the required modules). 6–10 lessons per section.
+- Lesson titles must be specific (e.g. "Hash collisions and open addressing in ${techStack}"), not "Introduction".
+- Include working-${techStack} examples in every lesson brief.
+- Start from first principles for ${level}; still cover the full module even at beginner (just slower).
+- JSON only. No markdown. No external brand names.
+`
 }
 
 // DELETE - Remove a course
@@ -125,27 +88,26 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { techStack, slug } = await request.json()
+    const { techStack, slug, level: rawLevel } = await request.json()
+    const level = String(rawLevel || 'beginner').toLowerCase()
 
     if (!techStack) {
       return NextResponse.json({ error: 'techStack is required' }, { status: 400 })
     }
 
     const db = await getMongoDb()
+    const courseId = slug || courseIdFor(techStack, level)
 
-    // Check if course already exists
-    const existing = await db.collection('courses').findOne({ id: slug || techStack.toLowerCase().replace(/\s+/g, '-') })
+    const existing = await db.collection('courses').findOne({ id: courseId })
     if (existing) {
-      return NextResponse.json({ error: `Course "${techStack}" already exists (id: ${existing.id})` }, { status: 409 })
+      return NextResponse.json({ error: `Course "${techStack}" (${level}) already exists (id: ${existing.id})` }, { status: 409 })
     }
 
-    // Generate curriculum via AI
     const overrides = await platformModelOverrides()
-    console.log('[generate-curriculum] Platform overrides:', JSON.stringify(overrides))
-    console.log('[generate-curriculum] Calling backendComplete for:', techStack)
+    console.log('[generate-curriculum] Calling backendComplete for:', techStack, level)
     const aiRes = await backendComplete({
-      systemMessage: 'You are an expert course curriculum designer. Return ONLY valid JSON, no markdown, no code blocks.',
-      userMessage: CURRICULUM_PROMPT(techStack),
+      systemMessage: 'You are an expert course curriculum designer. Return ONLY valid JSON, no markdown, no code blocks. Include every required module.',
+      userMessage: CURRICULUM_PROMPT(techStack, level),
       responseFormat: 'json',
       ...overrides,
     })
@@ -155,8 +117,7 @@ export async function POST(request: NextRequest) {
     console.log('[generate-curriculum] AI response preview:', JSON.stringify(aiRes.json).substring(0, 500))
 
     if (!aiRes.ok) {
-      console.error('[generate-curriculum] AI error:', aiRes.text)
-      return NextResponse.json({ error: aiRes.text || 'AI generation failed' }, { status: 500 })
+      console.error('[generate-curriculum] AI error, using full syllabus pad:', aiRes.text)
     }
 
     let curriculum
@@ -188,30 +149,24 @@ export async function POST(request: NextRequest) {
       console.log('[generate-curriculum] sections count:', curriculum?.sections?.length || 0)
     } catch (e) {
       console.error('[generate-curriculum] parse error:', e)
-      return NextResponse.json({ error: 'Failed to parse AI response as JSON' }, { status: 500 })
+      curriculum = {}
     }
 
-    // If no sections from AI, generate a fallback curriculum
-    if (!curriculum.sections || curriculum.sections.length === 0) {
-      console.log('[generate-curriculum] No sections from AI, generating fallback')
-      curriculum.sections = generateFallbackSections(techStack)
-      curriculum.title = curriculum.title || `${techStack} DSA Mastery`
-      curriculum.description = curriculum.description || `Complete ${techStack} Data Structures & Algorithms course`
-      curriculum.level = curriculum.level || 'beginner'
-      curriculum.category = curriculum.category || 'Coding'
-      curriculum.tags = curriculum.tags || [techStack, 'DSA']
-      curriculum.whatYoullLearn = curriculum.whatYoullLearn || [
-        `Master ${techStack} fundamentals`,
-        'Solve coding problems efficiently',
-        'Understand time and space complexity',
-        'Build real-world applications',
-        'Pass technical interviews',
-        'Earn a verified certificate'
-      ]
-    }
+    if (!curriculum || typeof curriculum !== 'object') curriculum = {}
+    curriculum.sections = padCurriculum(techStack, level, curriculum.sections || [])
+    curriculum.title = curriculum.title || `${techStack} ${level}`
+    curriculum.description = curriculum.description || `Complete ${level} ${techStack} course — every required topic, taught in full.`
+    curriculum.level = level
+    curriculum.category = curriculum.category || 'Coding'
+    curriculum.tags = curriculum.tags || [techStack, level]
+    curriculum.whatYoullLearn = curriculum.whatYoullLearn || [
+      `Master ${techStack} from first principles`,
+      `Cover every required ${techStack} topic in detail`,
+      'Worked examples, edge cases, and complexity',
+      `Build and debug real ${techStack} code`,
+      'Interview-style problems with full solutions',
+    ]
 
-    // Build course document
-    const courseId = slug || techStack.toLowerCase().replace(/\s+/g, '-')
     const now = new Date().toISOString()
 
     // Generate image based on tech stack (matching existing patterns)
@@ -231,24 +186,17 @@ export async function POST(request: NextRequest) {
 
     const course = {
       id: courseId,
-      title: curriculum.title || `${techStack} DSA Mastery`,
-      description: curriculum.description || `Complete ${techStack} Data Structures & Algorithms course`,
+      title: curriculum.title || `${techStack} ${level}`,
+      description: curriculum.description || `Complete ${level} ${techStack} course`,
       type: 'video',
       instructor: curriculum.instructor || 'CodeSpectra AI',
-      level: curriculum.level || 'beginner',
+      level,
       rating: 0,
       sessions: curriculum.sections?.length || 0,
       category: curriculum.category || 'Coding',
-      tags: curriculum.tags || [techStack, 'DSA'],
+      tags: curriculum.tags || [techStack, level],
       image: imageMap[imageKey] || '/courses/web.jpg',
-      whatYoullLearn: curriculum.whatYoullLearn || [
-        `Master ${techStack} fundamentals`,
-        'Solve coding problems efficiently',
-        'Understand time and space complexity',
-        'Build real-world applications',
-        'Pass technical interviews',
-        'Earn a verified certificate'
-      ],
+      whatYoullLearn: curriculum.whatYoullLearn,
       duration: curriculum.duration || '40 hours',
       sections: (curriculum.sections || []).map((section: any) => ({
         title: section.title,
@@ -259,7 +207,7 @@ export async function POST(request: NextRequest) {
           slug: lesson.slug || lesson.title.toLowerCase().replace(/\s+/g, '-'),
           description: lesson.description || '',
           content: lesson.content || '',
-          duration: lesson.duration || 300,
+          duration: lesson.duration || 720,
           free: lesson.free || false,
           type: 'video',
           videoType: 'ai',
