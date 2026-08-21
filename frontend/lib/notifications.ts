@@ -23,10 +23,10 @@ import type { Document, Filter } from 'mongodb'
 
 export const NOTIFICATION_TYPES = {
   // Auth & Account
-  'auth.login': { category: 'account', icon: 'log-in', default_title: 'New Login', default_link: '/dashboard/admin/security' },
+  'auth.login': { category: 'account', icon: 'log-in', default_title: 'New Login', default_link: '/dashboard/profile' },
   'auth.signup': { category: 'account', icon: 'user-plus', default_title: 'Welcome!', default_link: '/dashboard' },
-  'auth.2fa_enabled': { category: 'security', icon: 'shield', default_title: '2FA Enabled', default_link: '/dashboard/admin/settings' },
-  'auth.password_changed': { category: 'security', icon: 'key', default_title: 'Password Changed', default_link: '/dashboard/admin/settings' },
+  'auth.2fa_enabled': { category: 'security', icon: 'shield', default_title: '2FA Enabled', default_link: '/dashboard/settings' },
+  'auth.password_changed': { category: 'security', icon: 'key', default_title: 'Password Changed', default_link: '/dashboard/settings' },
 
   // Billing
   'billing.subscription_created': { category: 'billing', icon: 'credit-card', default_title: 'Subscription Created', default_link: '/dashboard/billing' },

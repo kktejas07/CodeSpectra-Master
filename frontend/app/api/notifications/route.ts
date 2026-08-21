@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { notifications, newId, nowIso } from '@/lib/db/admin'
+import { isSuperAdmin } from '@/lib/rbac'
+import { isPlatformAdminRoute } from '@/lib/page-permissions'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -18,8 +20,12 @@ export async function GET() {
       .toArray()
 
     const unread = list.filter((n) => !n.is_read).length
+    const items = isSuperAdmin(user.role) ? list : list.map(n => {
+      const link = typeof n.link === 'string' ? n.link : ''
+      return isPlatformAdminRoute(link) ? { ...n, link: '/dashboard/profile' } : n
+    })
 
-    return NextResponse.json({ items: list, unread })
+    return NextResponse.json({ items, unread })
   } catch (error) {
     console.error('[notifications] GET:', error)
     return NextResponse.json({ error: String(error) }, { status: 500 })

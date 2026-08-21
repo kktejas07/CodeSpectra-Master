@@ -38,10 +38,10 @@ const CATEGORIES = [
 ]
 
 const DEFAULT_LINKS: Record<string, string> = {
-  'auth.login': '/dashboard/admin/security',
+  'auth.login': '/dashboard/profile',
   'auth.signup': '/dashboard',
-  'auth.2fa_enabled': '/dashboard/admin/settings',
-  'auth.password_changed': '/dashboard/admin/settings',
+  'auth.2fa_enabled': '/dashboard/settings',
+  'auth.password_changed': '/dashboard/settings',
   'xp.awarded': '/dashboard/leaderboard',
   'xp.level_up': '/dashboard/leaderboard',
   'hackathon.results': '/dashboard/events',

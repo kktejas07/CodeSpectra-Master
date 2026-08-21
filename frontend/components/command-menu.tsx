@@ -24,6 +24,7 @@ import {
   JUDGE_ROUTES,
   ALL_USER_ROUTES,
   ROUTE_LABELS,
+  isPlatformAdminRoute,
 } from '@/lib/page-permissions'
 import {
   DASHBOARD_ROUTES,
@@ -187,6 +188,10 @@ export function CommandMenu({
         !deniedRoutes.has(item.route) &&
         !Array.from(deniedRoutes).some(r => item.route.startsWith(r + '/'))
       )
+    }
+
+    if (!isSuperAdmin(role)) {
+      filtered = filtered.filter(item => !isPlatformAdminRoute(item.route))
     }
 
     const overview = {

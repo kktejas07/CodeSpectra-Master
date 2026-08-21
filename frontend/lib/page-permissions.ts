@@ -224,6 +224,16 @@ export function getRequiredRoleForRoute(pathname: string): UserRole {
   return 'user'
 }
 
+/** Platform-operator console. DB grants must not open these for non-superadmins. */
+export function isPlatformAdminRoute(pathname: string): boolean {
+  const base = pathname.split('?')[0]
+  if (!(base === '/dashboard/admin' || base.startsWith('/dashboard/admin/'))) return false
+  for (const route of TENANT_ADMIN_ROUTES) {
+    if (base === route || base.startsWith(route + '/')) return false
+  }
+  return true
+}
+
 /**
  * Human-readable labels for all known routes.
  */
