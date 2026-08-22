@@ -40,7 +40,7 @@ export function AiCreditsWidget({ className }: { className?: string }) {
   if (!credits) return null
 
   const isPro = credits.plan.includes('pro') || credits.plan === 'enterprise'
-  const maxCredits = isPro ? (credits.plan === 'enterprise' ? 50 : 10) : 3
+  const maxCredits = isPro ? (credits.plan === 'enterprise' ? 50 : 10) : 10
   const percentage = Math.min(100, Math.max(0, (credits.balance / maxCredits) * 100))
   
   const isLow = credits.balance <= 1

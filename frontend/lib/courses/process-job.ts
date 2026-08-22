@@ -385,12 +385,6 @@ export async function requeueJob(jobId: string, opts?: { regenerateAll?: boolean
     return { ok: false, error: 'Job already completed' }
   }
 
-  const busy = await db.collection('generation_jobs').findOne({
-    status: { $in: ['pending', 'running'] },
-    id: { $ne: jobId },
-  })
-  if (busy) return { ok: false, error: `Another job is already ${busy.status}` }
-
   if (opts?.regenerateAll) await clearCourseVideos(job.courseId)
 
   await db.collection('generation_jobs').updateOne(

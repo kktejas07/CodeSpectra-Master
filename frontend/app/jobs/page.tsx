@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -86,7 +87,7 @@ export default function JobsPage() {
   const clearFilters = () => { setFilterType(''); setFilterLevel(''); setFilterLocation('') }
 
   return (
-    <div className="min-h-screen bg-background">
+    <PublicPageWrapper>
       <div className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="max-w-6xl mx-auto px-4 py-4">
           <div className="flex items-center justify-between mb-4">
@@ -208,7 +209,7 @@ export default function JobsPage() {
                   </div>
 
                   {job.skills && job.skills.length > 0 && (
-                    <div className="flex flex-wrap gap-1 mb-3">
+                     <div className="flex flex-wrap gap-1 mb-3">
                       {job.skills.slice(0, 4).map(s => (
                         <Badge key={s} variant="outline" className="text-[10px]">{s}</Badge>
                       ))}
@@ -243,6 +244,6 @@ export default function JobsPage() {
           </div>
         )}
       </div>
-    </div>
+    </PublicPageWrapper>
   )
 }

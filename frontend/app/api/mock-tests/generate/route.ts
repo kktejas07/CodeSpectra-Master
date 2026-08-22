@@ -2,8 +2,11 @@ import { NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { z } from 'zod'
 import { generateObject } from 'ai'
-import { openai } from '@ai-sdk/openai'
+import { createOpenAI } from '@ai-sdk/openai'
+import { createGoogleGenerativeAI } from '@ai-sdk/google'
+import { createAnthropic } from '@ai-sdk/anthropic'
 import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
+import { readServerSecrets } from '@/lib/server-secrets-cache'
 
 export const runtime = 'nodejs'
 export const maxDuration = 60 // Allow up to 60 seconds for generating questions
@@ -44,22 +47,51 @@ export async function POST(req: Request) {
       }
     }
 
-    const { object } = await generateObject({
-      model: openai('gpt-4-turbo'),
-      schema: questionSchema,
-      prompt: `Generate exactly ${count} multiple-choice interview questions for a ${difficulty} level candidate applying for a ${role} position at ${company}.
+    const secrets = await readServerSecrets()
+    const openai = createOpenAI({ apiKey: secrets.openai_api_key || process.env.OPENAI_API_KEY || '' })
+    const google = createGoogleGenerativeAI({ apiKey: secrets.gemini_api_key || process.env.GEMINI_API_KEY || '' })
+    const anthropic = createAnthropic({ apiKey: secrets.anthropic_api_key || process.env.ANTHROPIC_API_KEY || '' })
+
+    const models = [
+      { provider: 'openai', model: openai('gpt-4-turbo') },
+      { provider: 'google', model: google('gemini-1.5-flash') },
+      { provider: 'anthropic', model: anthropic('claude-3-5-sonnet-20240620') }
+    ]
+
+    const promptText = `Generate exactly ${count} multiple-choice interview questions for a ${difficulty} level candidate applying for a ${role} position at ${company}.
       
 Make the questions realistic, challenging, and strictly relevant to the role and company. 
 Include a mix of technical knowledge, situational judgment, and problem-solving if appropriate.
-Each question must have exactly 4 options, and provide the index (0-3) of the correct answer, along with a brief explanation.`,
-    })
+Each question must have exactly 4 options, and provide the index (0-3) of the correct answer, along with a brief explanation.`
+
+    let generatedObject = null
+    let lastError = null
+
+    for (const m of models) {
+      try {
+        const { object } = await generateObject({
+          model: m.model,
+          schema: questionSchema,
+          prompt: promptText,
+        })
+        generatedObject = object
+        break
+      } catch (err: any) {
+        console.warn(`[mock-tests generate] ${m.provider} failed: ${err.message}`)
+        lastError = err
+      }
+    }
+
+    if (!generatedObject) {
+      throw lastError || new Error('All AI providers failed')
+    }
 
     // Deduct credit
     if (gate.user?.id) {
       await deductUserAiCredits(gate.user.id)
     }
 
-    return NextResponse.json({ questions: object.questions })
+    return NextResponse.json({ questions: generatedObject.questions })
 
   } catch (e) {
     console.error('[mock-tests generate] error:', e)

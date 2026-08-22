@@ -1,7 +1,7 @@
 import { getMongoDb } from '@/lib/mongodb'
 import { getAPIUser } from '@/lib/route-auth'
 
-export const FREE_AI_CREDITS = 100
+export const FREE_AI_CREDITS = 10
 export const PRO_AI_CREDITS = 1000
 export const ENTERPRISE_AI_CREDITS = 5000
 

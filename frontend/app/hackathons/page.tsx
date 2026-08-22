@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -38,7 +39,7 @@ export default function PublicHackathonsPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background">
+    <PublicPageWrapper>
       {/* Hero */}
       <div className="relative overflow-hidden border-b border-border/40">
         <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
@@ -115,6 +116,6 @@ export default function PublicHackathonsPage() {
           </div>
         )}
       </div>
-    </div>
+    </PublicPageWrapper>
   )
 }

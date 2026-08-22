@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState } from 'react'
+import { PublicPageWrapper } from '@/app/public-layout'
 import { CheckCircle2, XCircle, Loader2 } from 'lucide-react'
 
 interface HealthCheck {
@@ -32,7 +33,7 @@ export default function StatusPage() {
   }, [])
 
   return (
-    <div className="min-h-screen bg-background">
+    <PublicPageWrapper>
       <div className="mx-auto max-w-2xl px-4 py-16">
         <div className="mb-8 text-center">
           <h1 className="text-3xl font-bold tracking-tight text-foreground">System Status</h1>
@@ -101,6 +102,6 @@ export default function StatusPage() {
           </div>
         ) : null}
       </div>
-    </div>
+    </PublicPageWrapper>
   )
 }

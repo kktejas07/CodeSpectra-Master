@@ -162,6 +162,7 @@ export async function GET() {
       },
     })
   } catch (e) {
+    console.error('[CRON JOBS GET 500 ERROR]', e)
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
