@@ -932,7 +932,7 @@ function SystemSettingsInner() {
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Media Player Settings</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Configure global defaults for the Vidstack video player.
+                Configure global defaults for the Vidstack video player. After saving, hard-refresh a lesson page to verify autoplay stays off when disabled.
               </p>
             </div>
             <div className="rounded-full bg-primary/10 p-2 text-primary">

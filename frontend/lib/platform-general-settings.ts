@@ -106,6 +106,18 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   video_player_captions_default: true,
 }
 
+export function coercePlatformBool(v: unknown, fallback: boolean): boolean {
+  if (typeof v === 'boolean') return v
+  if (typeof v === 'number') return v !== 0
+  if (typeof v === 'string') {
+    const s = v.trim().toLowerCase()
+    if (s === 'true' || s === '1' || s === 'yes' || s === 'on') return true
+    if (s === 'false' || s === '0' || s === 'no' || s === 'off' || s === '') return false
+  }
+  if (v == null) return fallback
+  return Boolean(v)
+}
+
 export function mergeGeneralPlatformSettings(
   raw: Record<string, unknown> | undefined | null
 ): GeneralPlatformSettings {
@@ -120,5 +132,18 @@ export function mergeGeneralPlatformSettings(
   if (!Array.isArray(merged.locked_features)) {
     merged.locked_features = []
   }
+  // Strict bools so "false" strings / missing keys cannot flip toggles back on
+  merged.video_player_autoplay = coercePlatformBool(
+    merged.video_player_autoplay,
+    GENERAL_PLATFORM_DEFAULTS.video_player_autoplay,
+  )
+  merged.video_player_muted = coercePlatformBool(
+    merged.video_player_muted,
+    GENERAL_PLATFORM_DEFAULTS.video_player_muted,
+  )
+  merged.video_player_captions_default = coercePlatformBool(
+    merged.video_player_captions_default,
+    GENERAL_PLATFORM_DEFAULTS.video_player_captions_default,
+  )
   return merged as GeneralPlatformSettings
 }

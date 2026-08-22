@@ -79,11 +79,12 @@ export function VideoPlayer({
     onProgressRef.current?.(Number(el.currentTime) || 0, Number(el.duration) || 0)
   }
 
-  const finalAutoplay = autoplay ?? settings.video_player_autoplay ?? false
-  const finalMuted = muted ?? settings.video_player_muted ?? false
+  const finalAutoplay = autoplay ?? settings.video_player_autoplay === true
+  const finalMuted = muted ?? settings.video_player_muted === true
   const finalColor = primaryColor ?? settings.video_player_primary_color ?? '#34d399'
   const finalLogoUrl = logoUrl ?? settings.video_player_logo_url ?? ''
   const finalLogoLinkUrl = logoLinkUrl ?? settings.video_player_logo_link_url ?? ''
+  const finalCaptionsDefault = settings.video_player_captions_default === true
 
   const logo = finalLogoUrl ? (
     <a
@@ -108,8 +109,10 @@ export function VideoPlayer({
         ref={player}
         src={src}
         title={title}
-        autoplay={finalAutoplay}
+        // Vidstack React prop is camelCase `autoPlay` — lowercase `autoplay` is ignored / treated as a DOM flag
+        autoPlay={finalAutoplay}
         muted={finalMuted}
+        playsInline
         className="h-full w-full"
         style={{ '--video-brand': finalColor } as any}
         onCanPlay={() => {
@@ -127,7 +130,7 @@ export function VideoPlayer({
       >
         <MediaProvider loaders={[RemotionProviderLoader]}>
           {captionsSrc ? (
-            <Track src={captionsSrc} kind="subtitles" label="English" language="en" default={settings.video_player_captions_default !== false} />
+            <Track src={captionsSrc} kind="subtitles" label="English" language="en" default={finalCaptionsDefault} />
           ) : null}
         </MediaProvider>
         <DefaultVideoLayout

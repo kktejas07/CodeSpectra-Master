@@ -141,6 +141,7 @@ export async function PATCH(request: Request) {
     'video_player_primary_color',
     'video_player_autoplay',
     'video_player_muted',
+    'video_player_captions_default',
     'video_player_logo_url',
     'video_player_logo_link_url',
   ] as const
@@ -163,7 +164,8 @@ export async function PATCH(request: Request) {
         k === 'enable_sso_login' ||
         k === 'enable_chatbot' ||
         k === 'video_player_autoplay' ||
-        k === 'video_player_muted'
+        k === 'video_player_muted' ||
+        k === 'video_player_captions_default'
       ) {
         next[k] = Boolean(v)
         continue
