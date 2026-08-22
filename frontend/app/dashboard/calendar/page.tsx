@@ -163,7 +163,7 @@ export default function CalendarPage() {
                 return (
                   <div
                     key={c.key}
-                    className={`min-h-[72px] rounded-md border p-1 text-left ${
+                    className={`min-h-18 rounded-md border p-1 text-left ${
                       c.date ? 'border-border bg-card' : 'border-transparent'
                     }`}
                   >

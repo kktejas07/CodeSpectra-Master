@@ -1,8 +1,9 @@
 /**
- * Cron: ingest public RSS → AI rewrite → signal_drafts (pending).
+ * Cron: ingest public RSS → research → fact pack → draft → humanize → signal_drafts (pending).
  * POST /api/cron/signals-ingest  ?secret=CRON_SECRET
  *
  * Never scrapes Unstop/closed sites. Human must approve before publish.
+ * Cost: HTTP fetch/RSS = free. LLM = existing platform AI keys (usage).
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { SIGNAL_FEEDS } from '@/lib/signals/feeds'
@@ -13,7 +14,8 @@ import { nowIso } from '@/lib/db/blog-posts'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+// 3 LLM passes × a few items — allow serverless room
+export const maxDuration = 300
 
 function authorize(req: NextRequest): boolean {
   const expected = process.env.CRON_SECRET?.trim()
@@ -34,9 +36,10 @@ export async function POST(req: NextRequest) {
   const skipped: string[] = []
   const errors: string[] = []
 
+  // ponytail: 1 item/feed — 3 LLM calls each; ceiling ~N feeds per cron run
   for (const feed of SIGNAL_FEEDS) {
     try {
-      const items = await fetchFeedItems(feed.url, 3)
+      const items = await fetchFeedItems(feed.url, 1)
       for (const item of items) {
         const exists = await drafts.findOne({ source_url: item.link })
         if (exists) {
@@ -52,6 +55,8 @@ export async function POST(req: NextRequest) {
         })
 
         const now = nowIso()
+        const sourceUrls =
+          rewritten?.source_urls?.length ? rewritten.source_urls : [item.link]
         const doc: SignalDraftDoc = {
           id: newSignalId(),
           title: rewritten?.title || item.title,
@@ -63,6 +68,9 @@ export async function POST(req: NextRequest) {
           source_url: item.link,
           source_title: item.title,
           source_feed: feed.id,
+          angle: rewritten?.angle,
+          facts: rewritten?.facts,
+          source_urls: sourceUrls,
           status: 'pending',
           created_at: now,
           updated_at: now,

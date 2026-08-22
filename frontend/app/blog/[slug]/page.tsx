@@ -85,7 +85,7 @@ export default async function BlogArticlePage({
             {categoryLabel(post.category)}
           </Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="line-clamp-1 max-w-[12rem] text-foreground sm:max-w-xs">{post.title}</span>
+          <span className="line-clamp-1 max-w-48 text-foreground sm:max-w-xs">{post.title}</span>
         </nav>
 
         <div className="grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
@@ -132,7 +132,7 @@ export default async function BlogArticlePage({
               <span>{formatDate(post.published_at)}</span>
             </div>
 
-            <div className="relative mt-8 aspect-[16/9] overflow-hidden rounded-2xl bg-gradient-to-br from-teal-600/25 via-emerald-500/10 to-cyan-500/20">
+            <div className="relative mt-8 aspect-video overflow-hidden rounded-2xl bg-linear-to-br from-teal-600/25 via-emerald-500/10 to-cyan-500/20">
               {post.cover_image ? (
                 // eslint-disable-next-line @next/next/no-img-element
                 <img src={post.cover_image} alt="" className="h-full w-full object-cover" />

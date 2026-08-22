@@ -383,7 +383,7 @@ export default function EditProfileWizard() {
 
         {/* Main Form Area */}
         <Card className="p-6 md:p-8 border-border/50 shadow-sm relative overflow-hidden h-fit">
-          <div className="min-h-[400px]">
+          <div className="min-h-100">
             {/* Step 1: Basic Details */}
             {step === 1 && (
               <div className="space-y-6 animate-in fade-in slide-in-from-right-4">
@@ -449,7 +449,7 @@ export default function EditProfileWizard() {
                   <div className="space-y-2">
                     <Label>Mobile <span className="text-destructive">*</span></Label>
                     <div className="flex gap-2">
-                      <select className="min-w-[100px] w-[100px] bg-background border border-input rounded-md text-sm p-1" value={basic.countryCode || '+91'} onChange={e => setBasic({...basic, countryCode: e.target.value})}>
+                      <select className="min-w-25 w-25 bg-background border border-input rounded-md text-sm p-1" value={basic.countryCode || '+91'} onChange={e => setBasic({...basic, countryCode: e.target.value})}>
                         <option value="+93">+93 (AF)</option>
                         <option value="+355">+355 (AL)</option>
                         <option value="+213">+213 (DZ)</option>

@@ -14,9 +14,13 @@ type Draft = {
   id: string
   title: string
   excerpt: string
+  body?: string
   category: string
   source_url: string
   source_feed: string
+  angle?: string
+  facts?: { claim: string; source_url: string; date?: string }[]
+  source_urls?: string[]
   status: string
   blog_slug?: string
   created_at: string
@@ -89,11 +93,11 @@ export default function AdminSignalsPage() {
             <Radio className="h-6 w-6 text-teal-600" /> Signals
           </h1>
           <p className="text-sm text-muted-foreground">
-            Public RSS → AI rewrite → your approval →{' '}
+            Public RSS → research pages → fact pack → draft → humanize → your approval →{' '}
             <Link href="/blog" className="text-teal-600 hover:underline" target="_blank">
               /blog
             </Link>
-            . We do not scrape Unstop or closed sites.
+            . Fetch is free; LLM uses your platform AI keys. We do not scrape Unstop.
           </p>
         </div>
         <Button
@@ -130,16 +134,37 @@ export default function AdminSignalsPage() {
                     <Badge variant={d.status === 'pending' ? 'default' : 'outline'}>{d.status}</Badge>
                   </div>
                   <p className="mt-1 line-clamp-2 text-xs text-muted-foreground">{d.excerpt}</p>
+                  {d.angle ? (
+                    <p className="mt-1 text-[11px] text-muted-foreground">
+                      Angle: {d.angle}
+                    </p>
+                  ) : null}
+                  {d.facts && d.facts.length > 0 ? (
+                    <ul className="mt-2 list-disc space-y-0.5 pl-4 text-[11px] text-muted-foreground">
+                      {d.facts.slice(0, 6).map((f, i) => (
+                        <li key={i}>
+                          {f.claim}
+                          {f.date ? ` (${f.date})` : ''}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : null}
                   <p className="mt-1 text-[11px] text-muted-foreground">
                     {d.source_feed} ·{' '}
-                    <a
-                      href={d.source_url}
-                      target="_blank"
-                      rel="noreferrer"
-                      className="inline-flex items-center gap-0.5 text-teal-600 hover:underline"
-                    >
-                      source <ExternalLink className="h-3 w-3" />
-                    </a>
+                    {(d.source_urls?.length ? d.source_urls : [d.source_url]).map((u, i) => (
+                      <span key={u}>
+                        {i > 0 ? ' · ' : null}
+                        <a
+                          href={u}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center gap-0.5 text-teal-600 hover:underline"
+                        >
+                          source{d.source_urls && d.source_urls.length > 1 ? ` ${i + 1}` : ''}{' '}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </span>
+                    ))}
                     {d.blog_slug ? (
                       <>
                         {' '}

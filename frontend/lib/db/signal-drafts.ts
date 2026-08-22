@@ -9,6 +9,12 @@ import type { BlogCategoryId } from '@/lib/blog-categories'
 
 export type SignalDraftStatus = 'pending' | 'approved' | 'rejected' | 'published'
 
+export interface SignalFactStored {
+  claim: string
+  source_url: string
+  date?: string
+}
+
 export interface SignalDraftDoc {
   id: string
   title: string
@@ -18,6 +24,12 @@ export interface SignalDraftDoc {
   source_url: string
   source_title: string
   source_feed: string
+  /** Editorial angle from research pass */
+  angle?: string
+  /** Verifiable claims extracted before drafting */
+  facts?: SignalFactStored[]
+  /** All public URLs used (seed + linked pages) */
+  source_urls?: string[]
   status: SignalDraftStatus
   blog_slug?: string
   created_at: string

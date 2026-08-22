@@ -120,7 +120,7 @@ export default async function BlogIndexPage({
                       href={`/blog/${p.slug}`}
                       className="group flex gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:border-teal-500/40"
                     >
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-gradient-to-br from-teal-500/20 to-cyan-500/10 text-xs font-bold text-teal-700 dark:text-teal-300">
+                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-teal-500/20 to-cyan-500/10 text-xs font-bold text-teal-700 dark:text-teal-300">
                         {(p.category || 'CS').slice(0, 2).toUpperCase()}
                       </div>
                       <div className="min-w-0">
@@ -164,7 +164,7 @@ function FeaturedCard({ post }: { post: BlogPostDoc }) {
       href={`/blog/${post.slug}`}
       className="group block overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
     >
-      <div className="relative aspect-[16/9] bg-gradient-to-br from-teal-600/30 via-emerald-500/10 to-cyan-500/20">
+      <div className="relative aspect-video bg-linear-to-br from-teal-600/30 via-emerald-500/10 to-cyan-500/20">
         {post.cover_image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={post.cover_image} alt="" className="h-full w-full object-cover" />
@@ -204,7 +204,7 @@ function ArticleCard({ post }: { post: BlogPostDoc }) {
       href={`/blog/${post.slug}`}
       className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
     >
-      <div className="aspect-[16/10] bg-gradient-to-br from-slate-800/40 to-teal-900/20">
+      <div className="aspect-16/10 bg-linear-to-br from-slate-800/40 to-teal-900/20">
         {post.cover_image ? (
           // eslint-disable-next-line @next/next/no-img-element
           <img src={post.cover_image} alt="" className="h-full w-full object-cover" />

@@ -1403,7 +1403,7 @@ function SystemSettingsInner() {
             `}</style>
 
             <Dialog open={!!previewTemplate} onOpenChange={(o) => { if (!o) setPreviewTemplate(null) }}>
-              <DialogContent className="!max-w-[95vw] !w-[1400px] max-h-[95vh] overflow-y-auto">
+              <DialogContent className="max-w-[95vw]! w-350! max-h-[95vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Certificate Preview — {TEMPLATES.find((t) => t.key === previewTemplate)?.label || previewTemplate}</DialogTitle>
                   <DialogDescription>
@@ -1411,7 +1411,7 @@ function SystemSettingsInner() {
                   </DialogDescription>
                 </DialogHeader>
                 {previewTemplate && (
-                  <div className="w-full max-w-[1100px] mx-auto">
+                  <div className="w-full max-w-275 mx-auto">
                     <div className="overflow-hidden rounded-lg border shadow-sm">
                       <CertificateRenderer data={CERT_PREVIEW_DATA} template={previewTemplate} />
                     </div>
