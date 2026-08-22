@@ -12,9 +12,10 @@ import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { CAREER_GOAL_OPTIONS, POPULAR_CAREER_GOALS } from '@/lib/career-goals'
-import { generateUsernameCandidate } from '@/lib/username'
+import { generateUsernameCandidate, isGenericUsername } from '@/lib/username'
 import { ArrowLeft, ArrowRight, Save, CheckCircle2, User, Briefcase, GraduationCap, Code2, Award, Link as LinkIcon, Camera, Sparkles, Plus, Trash2, Eye, Lightbulb, ShieldCheck, X } from 'lucide-react'
 import { FileText, Calendar, MapPin, UploadCloud, FileBadge2, Trophy, UserCircle, Search, MapPinIcon } from 'lucide-react'
+import { AnonAadhaarProfileCard } from '@/components/kyc/AnonAadhaarProfileCard'
 
 // Wizard Steps Configuration
 const STEPS = [
@@ -120,18 +121,26 @@ export default function EditProfileWizard() {
     return () => { cancelled = true }
   }, [user?.email])
 
-  // Auto-generate username for old users (blank) and new users once we have name or email.
+  // Name-based username (LinkedIn-style). Upgrade placeholder user1234 once we have a real name.
   // New signups do NOT get a username at account creation — only here / API backfill.
   useEffect(() => {
-    if (basic.username) return
+    const hasName = Boolean(basic.firstName?.trim() || basic.lastName?.trim() || user?.displayName?.trim())
+    const hasIdentity = hasName || Boolean(basic.email || user?.email)
+    if (!hasIdentity) return
+    const shouldReplace = !basic.username || isGenericUsername(basic.username)
+    if (!shouldReplace) return
+    // Prefer bare name; only attach digits when we still have nothing better than "user"
     const candidate = generateUsernameCandidate({
       firstName: basic.firstName,
       lastName: basic.lastName,
       email: basic.email || user?.email,
       name: user?.displayName,
     })
-    if (!candidate || candidate.startsWith('user') && !basic.firstName && !basic.lastName && !(basic.email || user?.email)) return
-    setBasic(prev => prev.username ? prev : { ...prev, username: candidate })
+    if (!candidate || isGenericUsername(candidate)) return
+    setBasic(prev => {
+      if (prev.username && !isGenericUsername(prev.username)) return prev
+      return { ...prev, username: candidate }
+    })
   }, [basic.firstName, basic.lastName, basic.username, basic.email, user?.email, user?.displayName])
 
   // Seed email + name + username from auth session when extended profile is empty
@@ -337,13 +346,24 @@ export default function EditProfileWizard() {
         <div className="space-y-4 hidden md:block">
           
           {/* Create Resume Promo */}
-          <div className="bg-blue-600 rounded-xl p-4 text-white flex items-center justify-between cursor-pointer hover:bg-blue-700 transition-colors shadow-sm">
-            <div className="flex items-center gap-3">
-              <FileText className="w-8 h-8 opacity-80" />
-              <span className="font-semibold">Create your Resume</span>
+          <Link
+            href="/dashboard/resumes/builder"
+            className="group relative block overflow-hidden rounded-2xl border border-sky-400/30 bg-linear-to-br from-sky-600 via-blue-600 to-indigo-700 p-4 text-white shadow-lg shadow-blue-900/30 transition hover:scale-[1.01] hover:shadow-xl hover:shadow-blue-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+          >
+            <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl transition group-hover:bg-white/20" />
+            <div className="relative flex items-center justify-between gap-3">
+              <div className="flex items-center gap-3">
+                <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-white/15 ring-1 ring-white/25 backdrop-blur-sm">
+                  <FileText className="h-5 w-5" />
+                </span>
+                <div>
+                  <p className="text-sm font-semibold leading-tight">Create your Resume</p>
+                  <p className="text-[11px] text-white/75">Build a portfolio-ready CV in minutes</p>
+                </div>
+              </div>
+              <ArrowRight className="h-4 w-4 shrink-0 opacity-80 transition group-hover:translate-x-0.5" />
             </div>
-            <ArrowRight className="w-4 h-4 opacity-70" />
-          </div>
+          </Link>
 
            {/* Profile Completion Box */}
            <Card className="p-4 border-border/50 shadow-sm">
@@ -539,18 +559,7 @@ export default function EditProfileWizard() {
                   </div>
                   
                   <div className="space-y-2 sm:col-span-2 mt-2">
-                    <div className="flex flex-col sm:flex-row sm:items-start gap-4 p-4 bg-muted/40 border border-border rounded-xl">
-                      <div className="bg-muted p-3 rounded-full shrink-0 mx-auto sm:mx-0">
-                        <ShieldCheck className="w-5 h-5 text-muted-foreground" />
-                      </div>
-                      <div className="flex-1 text-center sm:text-left space-y-1">
-                        <p className="text-sm font-semibold">Identity verification</p>
-                        <p className="text-xs text-muted-foreground">
-                          Optional ID verification is coming soon. It is not required to use CodeSpectra today.
-                        </p>
-                        <p className="text-[11px] text-muted-foreground/80">Status: Coming later</p>
-                      </div>
-                    </div>
+                    <AnonAadhaarProfileCard />
                   </div>
 
                   <div className="space-y-2 sm:col-span-2 mt-4">
