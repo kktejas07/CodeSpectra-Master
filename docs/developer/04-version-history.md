@@ -9,6 +9,7 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-21 | v0.24.21 | Admin Generate Course no longer calls the LLM for the full syllabus JSON (timeout → 500). Builds from catalog instantly; worker still writes per-lesson videos. Clearer 409 when the course already exists. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.20 | User course generate uses the same catalog syllabus + video job queue as admin (`/api/user/courses/generate`). Existing catalog courses enroll free; new ones cost 10 AI credits. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.19 | Retry remaining backfills English captions for lessons that already have MP4 but no VTT. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.18 | Course catalog expands to manufacturing, telecom, banking ops; user course-generate picks Industry → Subject; non-software lesson scripts no longer force code slides. | CodeSpectra-Master |
