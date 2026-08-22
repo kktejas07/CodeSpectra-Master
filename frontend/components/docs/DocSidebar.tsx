@@ -14,7 +14,7 @@ import {
   FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import { docHref, type DocSection, type DocMeta } from '@/lib/docs'
+import { docHref, type DocSection, type DocMeta } from '@/lib/docs-shared'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   BookOpen,

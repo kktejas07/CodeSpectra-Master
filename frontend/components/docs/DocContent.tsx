@@ -12,7 +12,7 @@ import {
   getAdjacentDocs,
   type DocPage,
   type DocSection,
-} from '@/lib/docs'
+} from '@/lib/docs-shared'
 import { cn } from '@/lib/utils'
 
 interface DocContentProps {
