@@ -30,6 +30,7 @@ type PlayerSettings = {
   video_player_muted?: boolean
   video_player_logo_url?: string
   video_player_logo_link_url?: string
+  video_player_captions_default?: boolean
 }
 
 export function VideoPlayer({
@@ -126,7 +127,7 @@ export function VideoPlayer({
       >
         <MediaProvider loaders={[RemotionProviderLoader]}>
           {captionsSrc ? (
-            <Track src={captionsSrc} kind="subtitles" label="English" language="en" default />
+            <Track src={captionsSrc} kind="subtitles" label="English" language="en" default={settings.video_player_captions_default !== false} />
           ) : null}
         </MediaProvider>
         <DefaultVideoLayout

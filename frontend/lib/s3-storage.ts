@@ -183,8 +183,11 @@ const CORS_XML = `<?xml version="1.0" encoding="UTF-8"?>
     <AllowedMethod>GET</AllowedMethod>
     <AllowedMethod>HEAD</AllowedMethod>
     <AllowedHeader>*</AllowedHeader>
+    <ExposeHeader>Accept-Ranges</ExposeHeader>
     <ExposeHeader>Content-Length</ExposeHeader>
+    <ExposeHeader>Content-Range</ExposeHeader>
     <ExposeHeader>Content-Type</ExposeHeader>
+    <ExposeHeader>ETag</ExposeHeader>
     <MaxAgeSeconds>3600</MaxAgeSeconds>
   </CORSRule>
 </CORSConfiguration>`

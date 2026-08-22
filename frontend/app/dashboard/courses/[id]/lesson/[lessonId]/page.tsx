@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { 
   ArrowLeft, CheckCircle, Play, Lock, Loader2, 
-  Menu, X, ChevronDown, ChevronUp, BookOpen 
+  Menu, X, ChevronDown, ChevronUp, BookOpen, Puzzle 
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { cn } from '@/lib/utils'
@@ -16,6 +16,8 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { resumeSeconds, shouldAutoComplete } from '@/lib/courses/watch-progress'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
+import { QuizComponent, type QuizQuestion } from '@/components/courses/QuizComponent'
+import { quizLessonId, parseQuizLessonId, fallbackModuleQuiz } from '@/lib/courses/module-quiz'
 
 interface Resource {
   title?: string
@@ -47,6 +49,7 @@ interface Section {
   title: string
   slug: string
   lessons: Lesson[]
+  quiz?: QuizQuestion[]
 }
 
 interface Course {
@@ -76,6 +79,14 @@ function scriptAsMarkdown(script: any[]): string {
   }).join('\n\n')
 }
 
+/** Old lessons put Quiz 1/2 answers in the markdown — strip those; real quizzes are interactive. */
+function stripEmbeddedQuizzes(md: string): string {
+  return md
+    .replace(/^#{1,3}\s*Quiz\s*\d+[\s\S]*?(?=^#{1,3}\s|\Z)/gim, '')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim()
+}
+
 // ponytail: one-course memory so lesson→lesson remounts skip the spinner; refetch if you open a different course
 let lessonShellCache: {
   courseId: string
@@ -98,6 +109,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['0']))
   const [viewMode, setViewMode] = useState<'video' | 'text'>('video')
+  const [quizScores, setQuizScores] = useState<Record<number, number>>({})
   const [startAt, setStartAt] = useState(() => resumeSeconds(cached?.positions?.[lessonId]))
   const lastPos = useRef(0)
   const lastSave = useRef(0)
@@ -118,6 +130,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       if (courseData.data) setCourse(courseData.data)
       const done: string[] = completionsData?.completedLessons || []
       setCompletedLessons(new Set(done))
+      if (progressData?.quizScores) setQuizScores(progressData.quizScores)
       const positions = { ...positionsRef.current, ...(progressData?.lessonPositions || {}) }
       positionsRef.current = positions
       if (courseData.data) {
@@ -182,16 +195,45 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   let nextLesson: Lesson | null = null
   let prevLesson: Lesson | null = null
 
+  const quizSectionIndex = parseQuizLessonId(lessonId)
+  const isQuizMode = quizSectionIndex != null
+  const quizSection = isQuizMode ? sections[quizSectionIndex] : null
+  const quizQuestions: QuizQuestion[] = quizSection
+    ? (Array.isArray(quizSection.quiz) && quizSection.quiz.length
+        ? quizSection.quiz as QuizQuestion[]
+        : fallbackModuleQuiz(quizSection.title, quizSection.lessons, course.title) as QuizQuestion[])
+    : []
+
   const allLessons = sections.flatMap(s => s.lessons)
   const activeIndex = allLessons.findIndex(l => l.id === lessonId)
   
+  // Quiz "virtual lesson" navigation (Unstop-style module quiz after videos)
+  let quizNextHref: string | null = null
+  let quizPrevHref: string | null = null
+  if (isQuizMode && quizSectionIndex != null) {
+    const sec = sections[quizSectionIndex]
+    const last = sec?.lessons?.[sec.lessons.length - 1]
+    if (last) quizPrevHref = `/dashboard/courses/${courseId}/lesson/${last.id}`
+    const nextSec = sections[quizSectionIndex + 1]
+    if (nextSec?.lessons?.[0]) quizNextHref = `/dashboard/courses/${courseId}/lesson/${nextSec.lessons[0].id}`
+  }
+
   if (activeIndex !== -1) {
     activeLesson = allLessons[activeIndex]
     if (activeIndex > 0) prevLesson = allLessons[activeIndex - 1]
     if (activeIndex < allLessons.length - 1) nextLesson = allLessons[activeIndex + 1]
+    // If this is the last lesson in its section and a quiz exists (or can fallback), Next → quiz
+    const sIdx = sections.findIndex(s => s.lessons.some(l => l.id === activeLesson?.id))
+    if (sIdx >= 0) {
+      const sec = sections[sIdx]
+      const lastId = sec.lessons[sec.lessons.length - 1]?.id
+      if (activeLesson?.id === lastId) {
+        nextLesson = { id: quizLessonId(sIdx), title: "Let's test your understanding!", slug: quizLessonId(sIdx) } as Lesson
+      }
+    }
   }
 
-  if (!activeLesson) {
+  if (!activeLesson && !isQuizMode) {
     return (
       <div className="w-full h-screen flex flex-col items-center justify-center bg-background gap-4">
         <BookOpen className="h-12 w-12 text-muted-foreground/40" />
@@ -200,6 +242,9 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
       </div>
     )
   }
+
+  const lesson = activeLesson
+
 
   const markComplete = (id: string) => {
     setCompletedLessons(prev => new Set([...prev, id]))
@@ -243,7 +288,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     })
   }
 
-  const isDone = completedLessons.has(activeLesson.id)
+  const isDone = !!(activeLesson && completedLessons.has(activeLesson.id))
 
   return (
     <div className="flex flex-col h-screen w-full bg-background overflow-hidden text-foreground">
@@ -256,7 +301,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           <div className="hidden sm:block">
             <h1 className="font-semibold text-sm line-clamp-1">{course.title}</h1>
             <p className="text-xs text-muted-foreground flex items-center gap-2 mt-0.5">
-              <span>{activeLesson.title}</span>
+              <span>{isQuizMode ? (quizSection?.title || "Module quiz") : activeLesson?.title}</span>
             </p>
           </div>
         </div>
@@ -289,10 +334,10 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
               {/* Content Header & Toggle */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/40">
                 <div className="flex items-center gap-2">
-                  <h2 className="text-2xl font-bold">{activeLesson.title}</h2>
+                  <h2 className="text-2xl font-bold">{isQuizMode ? "Let's test your understanding!" : activeLesson?.title}</h2>
                 </div>
                 
-                {(activeLesson.textContent || activeLesson.script?.length) && (
+                {(!isQuizMode && activeLesson && (activeLesson?.textContent || activeLesson?.script?.length)) && (
                   <div className="flex items-center p-1 bg-muted/50 rounded-lg border border-border/50 shrink-0 w-max">
                     <button
                       onClick={() => setViewMode('text')}
@@ -320,26 +365,91 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                 )}
               </div>
 
+              {/* Unstop-style module quiz */}
+              {isQuizMode ? (
+                <div className="mt-6 rounded-2xl border border-border/40 bg-card p-6 shadow-sm">
+                  <div className="mb-4">
+                    <p className="text-xs font-medium uppercase tracking-wide text-primary">Module quiz</p>
+                    <h2 className="text-2xl font-bold mt-1">Let&apos;s test your understanding!</h2>
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {quizSection?.title || 'This module'} — answer to unlock the next module.
+                    </p>
+                    {quizSectionIndex != null && quizScores[quizSectionIndex] != null && (
+                      <p className="text-sm text-emerald-600 mt-2">Best score: {quizScores[quizSectionIndex]}%</p>
+                    )}
+                  </div>
+                  {quizQuestions.length === 0 ? (
+                    <p className="text-sm text-muted-foreground">Quiz questions are not ready yet.</p>
+                  ) : (
+                    <QuizComponent
+                      questions={quizQuestions}
+                      reviewHref={
+                        quizSection?.lessons?.[0]?.id
+                          ? `/dashboard/courses/${courseId}/lesson/${quizSection.lessons[0].id}`
+                          : undefined
+                      }
+                      reviewLabel={
+                        quizSection?.lessons?.[0]?.title
+                          ? `Review lesson: ${quizSection.lessons[0].title}`
+                          : 'Review module lessons'
+                      }
+                      onComplete={async (score, total) => {
+                        const pct = Math.round((score / total) * 100)
+                        if (quizSectionIndex == null) return
+                        setQuizScores(prev => ({ ...prev, [quizSectionIndex]: pct }))
+                        try {
+                          await csrfFetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              quizScores: { ...quizScores, [quizSectionIndex]: pct },
+                              ...(pct >= 80
+                                ? { completedModules: Array.from(new Set([
+                                    ...((await fetch(`/api/user/courses/${encodeURIComponent(courseId)}/progress`, { credentials: 'include' }).then(r => r.json()).catch(() => ({})))?.completedModules || []),
+                                    quizSectionIndex,
+                                  ])) }
+                                : {}),
+                            }),
+                          })
+                        } catch {}
+                        if (pct >= 80) {
+                          addToast({ title: `Passed! ${pct}% — module unlocked`, type: 'success' })
+                          if (quizNextHref) setTimeout(() => router.push(quizNextHref), 800)
+                        } else {
+                          addToast({ title: `${pct}% — need 80% to pass. Review and retry.`, type: 'error' })
+                        }
+                      }}
+                    />
+                  )}
+                  <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
+                    <Button variant="outline" disabled={!quizPrevHref} onClick={() => quizPrevHref && router.push(quizPrevHref)}>Previous</Button>
+                    <Button disabled={!quizNextHref || (quizSectionIndex != null && (quizScores[quizSectionIndex] ?? 0) < 80)} onClick={() => quizNextHref && router.push(quizNextHref)}>
+                      Next Module
+                    </Button>
+                  </div>
+                </div>
+              ) : (
+              <>
               {/* Conditional Content Area */}
               <div className="mt-6">
                 {viewMode === 'video' ? (
                   <div className="w-full aspect-video bg-black sm:rounded-2xl overflow-hidden shadow-2xl relative border border-border/20">
-                    {activeLesson.videoUrl ? (
+                    {activeLesson?.videoUrl ? (
                       <VideoPlayer
-                        key={activeLesson.id}
-                        src={resolveMediaUrl(activeLesson.videoUrl)}
-                        title={activeLesson.title}
+                        key={activeLesson?.id}
+                        src={resolveMediaUrl(activeLesson?.videoUrl)}
+                        title={activeLesson?.title}
                         className="w-full h-full border-0 rounded-none"
                         startAt={startAt}
-                        captionsSrc={resolveMediaUrl(activeLesson.captionsUrl)}
+                        captionsSrc={resolveMediaUrl(activeLesson?.captionsUrl)}
                         onProgress={savePosition}
                         onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
                       />
-                    ) : activeLesson.url ? (
+                    ) : activeLesson?.url ? (
                       <VideoPlayer
-                        key={activeLesson.id}
-                        src={activeLesson.url}
-                        title={activeLesson.title}
+                        key={activeLesson?.id}
+                        src={activeLesson?.url}
+                        title={activeLesson?.title}
                         className="w-full h-full"
                         startAt={startAt}
                         onProgress={savePosition}
@@ -355,19 +465,26 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                 ) : (
                   <div className="prose prose-slate dark:prose-invert max-w-none prose-pre:bg-muted/50 prose-pre:border prose-pre:border-border/50 bg-card rounded-2xl p-8 border border-border/40 shadow-sm">
                     <ReactMarkdown remarkPlugins={[remarkGfm]}>
-                      {activeLesson.textContent || (activeLesson.script?.length ? scriptAsMarkdown(activeLesson.script) : 'No text content available for this lesson.')}
+                      {stripEmbeddedQuizzes(
+                        activeLesson?.textContent
+                          || (activeLesson?.script?.length ? scriptAsMarkdown(activeLesson?.script) : '')
+                          || 'No text content available for this lesson.',
+                      )}
                     </ReactMarkdown>
                   </div>
                 )}
               </div>
 
+              </>
+              )}
+
               {/* Lesson Details & Footer */}
               <div className="px-4 sm:px-0 space-y-6 pb-20 pt-8 mt-8 border-t border-border/40">
                 <div className="flex flex-col md:flex-row md:items-start justify-between gap-4">
                   <div>
-                    {activeLesson.description && (
+                    {activeLesson?.description && (
                       <p className="text-muted-foreground mt-2 text-sm leading-relaxed max-w-3xl">
-                        {activeLesson.description}
+                        {activeLesson?.description}
                       </p>
                     )}
                   </div>
@@ -483,6 +600,32 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                           </button>
                         )
                       })}
+                      <button
+                        onClick={() => router.push(`/dashboard/courses/${courseId}/lesson/${quizLessonId(sIdx)}`)}
+                        className={cn(
+                          "w-full flex items-start gap-3 px-5 py-3 text-left transition-colors relative",
+                          isQuizMode && quizSectionIndex === sIdx ? "bg-primary/5" : "hover:bg-muted/40"
+                        )}
+                      >
+                        {isQuizMode && quizSectionIndex === sIdx && <div className="absolute left-0 top-0 bottom-0 w-1 bg-primary" />}
+                        <div className={cn(
+                          "mt-0.5 shrink-0 w-4 h-4 rounded-full border flex items-center justify-center",
+                          quizScores[sIdx] != null && quizScores[sIdx] >= 80
+                            ? "bg-emerald-500 border-emerald-500 text-white"
+                            : "border-violet-500/50 text-violet-500"
+                        )}>
+                          {quizScores[sIdx] != null && quizScores[sIdx] >= 80 ? <CheckCircle className="h-3 w-3" /> : <Puzzle className="h-2.5 w-2.5" />}
+                        </div>
+                        <div className="flex-1 min-w-0">
+                          <p className={cn("text-sm leading-snug", isQuizMode && quizSectionIndex === sIdx ? "font-semibold text-primary" : "text-foreground/80 font-medium")}>
+                            Let&apos;s test your understanding!
+                          </p>
+                          <div className="flex items-center gap-2 mt-1.5 text-[11px] text-muted-foreground font-medium">
+                            <span>Quiz · ~1 min</span>
+                            {quizScores[sIdx] != null && <span>· {quizScores[sIdx]}%</span>}
+                          </div>
+                        </div>
+                      </button>
                     </div>
                   )}
                 </div>

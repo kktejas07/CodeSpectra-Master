@@ -50,12 +50,19 @@ export async function renderAndStoreLessonMp4(opts: {
     const { renderMedia, selectComposition } = await import('@remotion/renderer')
     const inputProps = {
       script: opts.script,
-      audioUrl: pathToFileURL(audioPath).href,
+      // Remotion blocks file:// — use data URL for local TTS audio
+      audioUrl: `data:audio/mpeg;base64,${opts.audio.toString('base64')}`,
     }
+    // Prefer Remotion's chrome-headless-shell (works on Alpine with gcompat + setpriv shim).
+    // Only force system Chromium when REMOTION_BROWSER_EXECUTABLE is set.
+    const browserExecutable = process.env.REMOTION_BROWSER_EXECUTABLE?.trim() || undefined
+    const chromiumOptions = { enableMultiProcessOnLinux: false as const }
     const composition = await selectComposition({
       serveUrl,
       id: 'CourseVideo',
       inputProps,
+      chromiumOptions,
+      ...(browserExecutable ? { browserExecutable } : {}),
     })
     await renderMedia({
       composition,
@@ -69,8 +76,8 @@ export async function renderAndStoreLessonMp4(opts: {
       jpegQuality: 70,
       concurrency: 1,
       timeoutInMilliseconds: 20 * 60 * 1000,
-      chromiumOptions: { enableMultiProcessOnLinux: true, gl: 'swangle' },
-      ...(chromePath() ? { browserExecutable: chromePath() } : {}),
+      chromiumOptions,
+      ...(browserExecutable ? { browserExecutable } : {}),
     })
     const mp4 = await readFile(outPath)
     if (mp4.length < 1000) throw new Error('MP4 render produced an empty file')

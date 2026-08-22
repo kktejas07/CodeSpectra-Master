@@ -4,12 +4,12 @@ import { readServerSecrets } from '@/lib/server-secrets-cache'
 import { durationFramesFromSpoken, synthesizeTts } from '@/lib/courses/tts'
 import { SOFTWARE_FAMILIES, familyFor } from '@/lib/courses/catalog'
 
-export type SlideType = 'title' | 'concept' | 'code' | 'visual'
+export type SlideType = 'title' | 'concept' | 'code' | 'visual' | 'diagram'
 
 export interface VideoSlide {
   id: string
   type: SlideType
-  visual?: 'array' | 'sort' | 'tree'
+  visual?: 'array' | 'sort' | 'tree' | 'flow' | 'icons' | 'compare'
   title: string
   content: string[]
   code?: string
@@ -35,13 +35,14 @@ function asSlideType(raw: unknown): SlideType {
   const t = String(raw || '').toLowerCase()
   if (t === 'code') return 'code'
   if (t === 'title') return 'title'
-  if (t === 'visual' || t === 'diagram' || t === 'animation') return 'visual'
+  if (t === 'diagram') return 'diagram'
+  if (t === 'visual' || t === 'animation') return 'visual'
   return 'concept'
 }
 
 function asVisual(raw: unknown, title: string): VideoSlide['visual'] | undefined {
   const v = String(raw || '').toLowerCase()
-  if (v === 'array' || v === 'sort' || v === 'tree') return v
+  if (v === 'array' || v === 'sort' || v === 'tree' || v === 'flow' || v === 'icons' || v === 'compare') return v
   const t = title.toLowerCase()
   if (/tree|bst|heap/.test(t)) return 'tree'
   if (/sort|bubble|merge|quick/.test(t)) return 'sort'
@@ -74,7 +75,7 @@ export function slidesFromAiJson(raw: unknown): Omit<VideoSlide, 'durationInFram
     return {
       id: String(item?.id || `slide-${i + 1}`),
       type,
-      visual: type === 'visual' ? asVisual(item?.visual, title) : undefined,
+      visual: (type === 'visual' || type === 'diagram') ? asVisual(item?.visual, title) : undefined,
       title,
       content: content.length ? content : [title],
       code: item?.code ? String(item.code) : undefined,
@@ -108,8 +109,8 @@ Match this structure (use these heading styles):
 - H2 sections covering WHY → WHAT → HOW → WHERE
 - Bullet lists for features/responsibilities
 ${exampleRule}
-- Two short quizzes: "Quiz 1" and "Quiz 2", each with Question / Correct Answer / Explanation
 - Final Thoughts + Conclusion
+- Do NOT embed quiz questions or answers in the text (quizzes are a separate interactive step after the module videos)
 
 The lesson should take a student 12–18 minutes to read. Teach every subtopic. Do not skip edge cases. Do not assume prior knowledge of this lesson.`
 }
@@ -121,10 +122,12 @@ const VIDEO_PROMPT = (topic: string, techStack: string, textLesson: string) => {
   const slideRules = software
     ? `- 12 to 16 slides total. Types: "title" | "concept" | "code" | "visual".
 - Include at least two "code" slides with a "code" field (working ${techStack} snippet) and "codeLanguage".
-- Include one "visual" slide with "visual": "array" | "sort" | "tree" when the topic is data/algorithms; otherwise use extra concept/code slides.`
+- Include one "visual" slide with "visual": "array" | "sort" | "tree" when the topic is data/algorithms.
+- Include one "diagram" slide with "visual": "flow" | "icons" | "compare" and 2–4 short "content" labels for on-screen boxes (e.g. Client → Server → Database).`
     : `- 12 to 16 slides total. Types: "title" | "concept" | "visual".
 - Do NOT invent programming code for non-software topics.
-- Prefer concept slides with workplace workflows, checklists, and scenarios. Use "visual" only when a simple diagram helps.`
+- Prefer concept slides with workplace workflows, checklists, and scenarios.
+- Include one "diagram" slide with "visual": "flow" | "icons" | "compare" and 2–4 short "content" labels for on-screen boxes.`
   return `Turn this text lesson into an 8–12 minute instructor video script. Cover the topic in full. Do not skip or summarize-away details.
 
 Output JSON ONLY:

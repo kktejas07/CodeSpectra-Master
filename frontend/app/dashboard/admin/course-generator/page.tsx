@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Loader2, Clock, Pause,
   RotateCcw, Trash2, Eye, ChevronDown, ChevronUp, Zap, BookOpen,
-  RefreshCw, BarChart3, RotateCw
+  RefreshCw, BarChart3, RotateCw, Film, CheckCircle2, Circle,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -40,6 +40,15 @@ interface GenerationJob {
 }
 
 const LEVELS = [...COURSE_LEVELS]
+
+/** Count lessons that have a playable MP4 (`videoUrl`) vs script-only stubs. */
+function courseMediaStats(course: any) {
+  const lessons = (course.sections || []).flatMap((s: any) => s.lessons || [])
+  const total = lessons.length
+  const mp4Ready = lessons.filter((l: any) => Boolean(l.videoUrl)).length
+  const scriptOnly = lessons.filter((l: any) => !l.videoUrl && Array.isArray(l.script) && l.script.length > 0).length
+  return { total, mp4Ready, scriptOnly, pending: Math.max(0, total - mp4Ready) }
+}
 
 export default function CourseGeneratorPage() {
   const gate = usePageGuard('superadmin')
@@ -501,24 +510,38 @@ export default function CourseGeneratorPage() {
                 ) : (
                   <div className="space-y-2">
                     {existingCourses.map((course: any) => {
-                      const totalLessons = course.sections?.reduce((sum: number, s: any) => sum + (s.lessons?.length || 0), 0) || 0
-                      const videosGenerated = course.sections?.reduce((sum: number, s: any) => sum + (s.lessons?.filter((l: any) => l.script?.length > 0)?.length || 0), 0) || 0
+                      const media = courseMediaStats(course)
                       const open = expandedCourse === course.id
-                      const planModules = course.curriculumPlan?.modules || (course.sections || []).map((s: any) => ({ title: s.title, lessonCount: s.lessons?.length || 0 }))
+                      const sections = course.sections || []
 
                       return (
                         <div key={course.id} className="rounded-lg border border-border/60">
                           <div className="flex items-center justify-between p-3 hover:bg-muted/20">
                           <button type="button" className="flex items-center gap-3 text-left min-w-0" onClick={() => setExpandedCourse(open ? null : course.id)}>
                             <div className="w-10 h-10 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-                              <BookOpen className="h-5 w-5 text-primary" />
+                              <Film className="h-5 w-5 text-primary" />
                             </div>
                             <div className="min-w-0">
                               <p className="text-sm font-medium truncate">{course.title}</p>
-                              <p className="text-xs text-muted-foreground">
-                                {course.sections?.length || 0} modules · {videosGenerated}/{totalLessons} videos
-                                {videosGenerated < totalLessons && (
-                                  <span className="text-yellow-500 ml-1">({totalLessons - videosGenerated} pending)</span>
+                              <p className="text-xs text-muted-foreground flex flex-wrap items-center gap-x-2 gap-y-0.5">
+                                <span>{sections.length} modules · {media.total} lessons</span>
+                                <Badge
+                                  variant="outline"
+                                  className={`h-5 px-1.5 text-[10px] font-normal ${
+                                    media.mp4Ready === media.total && media.total > 0
+                                      ? 'border-green-500/40 text-green-600'
+                                      : media.mp4Ready > 0
+                                        ? 'border-amber-500/40 text-amber-600'
+                                        : 'border-border text-muted-foreground'
+                                  }`}
+                                >
+                                  MP4 {media.mp4Ready}/{media.total}
+                                </Badge>
+                                {media.pending > 0 && (
+                                  <span className="text-amber-600">{media.pending} pending</span>
+                                )}
+                                {media.scriptOnly > 0 && media.mp4Ready === 0 && (
+                                  <span className="text-muted-foreground">(script only — no MP4 yet)</span>
                                 )}
                               </p>
                             </div>
@@ -527,8 +550,8 @@ export default function CourseGeneratorPage() {
                             <Button variant="ghost" size="sm" onClick={() => handleRegenerate(course.id, course.title)} title="Regenerate videos (Force)">
                               <RotateCcw className="h-3.5 w-3.5" />
                             </Button>
-                            <Link href={`/dashboard/admin/courses/${course.id}`}>
-                              <Button variant="ghost" size="sm" title="Edit course">
+                            <Link href={`/dashboard/courses/${course.id}`}>
+                              <Button variant="ghost" size="sm" title="Open course">
                                 <Eye className="h-3.5 w-3.5" />
                               </Button>
                             </Link>
@@ -538,11 +561,31 @@ export default function CourseGeneratorPage() {
                           </div>
                           </div>
                           {open && (
-                            <ol className="border-t border-border/50 px-4 py-2 max-h-48 overflow-y-auto space-y-1 text-[11px] text-muted-foreground list-decimal pl-8">
-                              {planModules.map((m: any, i: number) => (
-                                <li key={i}>{m.title} · {m.lessonCount} lessons</li>
+                            <div className="border-t border-border/50 px-3 py-2 max-h-64 overflow-y-auto space-y-3">
+                              {sections.map((section: any) => (
+                                <div key={section.id || section.title}>
+                                  <p className="text-[11px] font-medium text-foreground/80 mb-1">{section.title}</p>
+                                  <ul className="space-y-0.5">
+                                    {(section.lessons || []).map((lesson: any) => {
+                                      const hasMp4 = Boolean(lesson.videoUrl)
+                                      return (
+                                        <li key={lesson.id} className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                                          {hasMp4 ? (
+                                            <CheckCircle2 className="h-3 w-3 shrink-0 text-green-600" />
+                                          ) : (
+                                            <Circle className="h-3 w-3 shrink-0 text-muted-foreground/50" />
+                                          )}
+                                          <span className="truncate flex-1">{lesson.title}</span>
+                                          <span className={hasMp4 ? 'text-green-600 shrink-0' : 'shrink-0'}>
+                                            {hasMp4 ? 'MP4' : '—'}
+                                          </span>
+                                        </li>
+                                      )
+                                    })}
+                                  </ul>
+                                </div>
                               ))}
-                            </ol>
+                            </div>
                           )}
                         </div>
                       )
@@ -582,7 +625,7 @@ export default function CourseGeneratorPage() {
                             <div>
                               <p className="text-sm font-medium">{job.courseTitle}</p>
                               <p className="text-xs text-muted-foreground">
-                                {job.completedItems}/{job.totalItems} items
+                                MP4 {job.completedItems}/{job.totalItems}
                                 {job.failedItems > 0 && <span className="text-red-500 ml-2">{job.failedItems} failed</span>}
                               </p>
                             </div>
@@ -629,7 +672,15 @@ export default function CourseGeneratorPage() {
                                 {job.logs.slice().reverse().map((log, i) => (
                                   <div key={i} className="flex items-start gap-2 text-xs">
                                     <span className="text-muted-foreground shrink-0">{new Date(log.timestamp).toLocaleTimeString()}</span>
-                                    <span className={log.type === 'success' ? 'text-green-600' : log.type === 'error' ? 'text-red-600' : log.type === 'warning' ? 'text-yellow-600' : 'text-foreground'}>
+                                    <span className={
+                                      log.type === 'success' || /MP4 .+object storage/i.test(log.message || '')
+                                        ? 'text-green-600'
+                                        : log.type === 'error'
+                                          ? 'text-red-600'
+                                          : log.type === 'warning'
+                                            ? 'text-yellow-600'
+                                            : 'text-foreground'
+                                    }>
                                       {log.message}
                                     </span>
                                   </div>

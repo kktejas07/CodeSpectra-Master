@@ -1,9 +1,10 @@
 'use client'
 
 import React, { useState } from 'react'
+import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, XCircle, Loader2, HelpCircle, RotateCcw } from 'lucide-react'
+import { CheckCircle2, XCircle, HelpCircle, RotateCcw, BookOpen, Lightbulb } from 'lucide-react'
 
 export interface QuizQuestion {
   id: string
@@ -18,9 +19,24 @@ interface QuizComponentProps {
   questions: QuizQuestion[]
   onComplete?: (score: number, total: number) => void
   readOnly?: boolean
+  /** Optional lesson to re-open when the learner gets a question wrong */
+  reviewHref?: string
+  reviewLabel?: string
+  passPercent?: number
 }
 
-export function QuizComponent({ questions, onComplete, readOnly = false }: QuizComponentProps) {
+/**
+ * Interactive module quiz (Unstop-style): pick → submit → see correct/wrong + reteach.
+ * Not narrated inside the video.
+ */
+export function QuizComponent({
+  questions,
+  onComplete,
+  readOnly = false,
+  reviewHref,
+  reviewLabel = 'Review the lesson',
+  passPercent = 80,
+}: QuizComponentProps) {
   const [currentQ, setCurrentQ] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
   const [showAnswer, setShowAnswer] = useState(false)
@@ -42,6 +58,15 @@ export function QuizComponent({ questions, onComplete, readOnly = false }: QuizC
     setShowAnswer(true)
   }
 
+  /** Let them re-pick on this question after seeing the reteach (wrong answers only). */
+  const handleTryAgain = () => {
+    const next = { ...answers }
+    delete next[currentQ]
+    setAnswers(next)
+    setSelected(null)
+    setShowAnswer(false)
+  }
+
   const handleNext = () => {
     if (currentQ < questions.length - 1) {
       setCurrentQ(currentQ + 1)
@@ -49,11 +74,11 @@ export function QuizComponent({ questions, onComplete, readOnly = false }: QuizC
       setShowAnswer(false)
     } else {
       setCompleted(true)
-      onComplete?.(score + (isCorrect ? 1 : 0), questions.length)
+      onComplete?.(score, questions.length)
     }
   }
 
-  const handleRetry = () => {
+  const handleRetryAll = () => {
     setCurrentQ(0)
     setSelected(null)
     setShowAnswer(false)
@@ -61,28 +86,69 @@ export function QuizComponent({ questions, onComplete, readOnly = false }: QuizC
     setCompleted(false)
   }
 
+  if (!questions.length) {
+    return <p className="text-sm text-muted-foreground p-4">No quiz questions yet.</p>
+  }
+
   if (completed) {
-    const finalScore = score
-    const percentage = Math.round((finalScore / questions.length) * 100)
+    const percentage = Math.round((score / questions.length) * 100)
+    const passed = percentage >= passPercent
+    const missed = questions
+      .map((q, i) => ({ q, i, picked: answers[i] }))
+      .filter(({ q, picked }) => picked !== q.correct)
+
     return (
-      <div className="p-6 text-center space-y-4">
-        <div className="text-4xl font-bold" style={{ color: percentage >= 80 ? '#22c55e' : percentage >= 50 ? '#f59e0b' : '#ef4444' }}>
-          {percentage >= 80 ? 'Excellent' : percentage >= 50 ? 'Good' : 'Keep Trying'}
+      <div className="p-6 space-y-5">
+        <div className="text-center space-y-2">
+          <div
+            className="text-4xl font-bold"
+            style={{ color: passed ? '#22c55e' : percentage >= 50 ? '#f59e0b' : '#ef4444' }}
+          >
+            {passed ? 'Passed' : 'Not yet'}
+          </div>
+          <h3 className="text-2xl font-bold">
+            {score} / {questions.length} · {percentage}%
+          </h3>
+          <p className="text-muted-foreground text-sm">
+            {passed
+              ? 'Nice work — you can continue to the next module.'
+              : `You need ${passPercent}% to pass. Review the concepts below, then retry.`}
+          </p>
         </div>
-        <h3 className="text-2xl font-bold">
-          {finalScore} / {questions.length}
-        </h3>
-        <p className="text-muted-foreground">
-          {percentage >= 80
-            ? 'Excellent! You have a strong understanding.'
-            : percentage >= 50
-              ? 'Good effort! Review the explanations below.'
-              : 'Keep practicing! Re-read the lessons and try again.'}
-        </p>
-        <div className="flex gap-2 justify-center">
-          <Button variant="outline" onClick={handleRetry}>
+
+        {missed.length > 0 && (
+          <div className="rounded-xl border border-amber-500/30 bg-amber-500/5 p-4 space-y-3 text-left">
+            <div className="flex items-center gap-2 font-medium text-amber-700 dark:text-amber-400">
+              <Lightbulb className="h-4 w-4" />
+              Concepts to review
+            </div>
+            {missed.map(({ q, i, picked }) => (
+              <div key={q.id || i} className="text-sm border-t border-border/40 pt-3 first:border-0 first:pt-0">
+                <p className="font-medium text-foreground">{q.question}</p>
+                <p className="text-red-600 dark:text-red-400 mt-1">
+                  Your answer: {typeof picked === 'number' ? q.options[picked] : '—'}
+                </p>
+                <p className="text-green-700 dark:text-green-400 mt-0.5">
+                  Correct: {q.options[q.correct]}
+                </p>
+                <p className="text-muted-foreground mt-1">{q.explanation}</p>
+              </div>
+            ))}
+            {reviewHref && (
+              <Button variant="outline" size="sm" asChild className="mt-1">
+                <Link href={reviewHref}>
+                  <BookOpen className="h-4 w-4 mr-2" />
+                  {reviewLabel}
+                </Link>
+              </Button>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-2 justify-center flex-wrap">
+          <Button variant="outline" onClick={handleRetryAll}>
             <RotateCcw className="h-4 w-4 mr-2" />
-            Retry
+            Retry quiz
           </Button>
         </div>
       </div>
@@ -91,10 +157,11 @@ export function QuizComponent({ questions, onComplete, readOnly = false }: QuizC
 
   if (!question) return null
 
+  const correctLabel = question.options[question.correct]
+
   return (
-    <div className="p-4 space-y-4">
-      {/* Progress */}
-      <div className="flex items-center justify-between">
+    <div className="p-4 sm:p-6 space-y-4">
+      <div className="flex items-center justify-between gap-3">
         <Badge variant="outline">
           Question {currentQ + 1} of {questions.length}
         </Badge>
@@ -116,11 +183,13 @@ export function QuizComponent({ questions, onComplete, readOnly = false }: QuizC
         </div>
       </div>
 
-      {/* Question */}
-      <div className="text-lg font-medium">{question.question}</div>
+      <p className="text-xs text-muted-foreground">
+        Choose an answer, then press <span className="font-medium text-foreground">Check answer</span>.
+      </p>
 
-      {/* Options */}
-      <div className="space-y-2">
+      <div className="text-lg font-medium leading-snug">{question.question}</div>
+
+      <div className="space-y-2" role="radiogroup" aria-label="Answer choices">
         {question.options.map((option, i) => {
           const isSelected = selected === i
           const isCorrectOption = i === question.correct
@@ -130,22 +199,23 @@ export function QuizComponent({ questions, onComplete, readOnly = false }: QuizC
           return (
             <button
               key={i}
+              type="button"
+              role="radio"
+              aria-checked={isSelected}
               onClick={() => handleSelect(i)}
               disabled={showAnswer || readOnly}
               className={`w-full text-left p-3 rounded-lg border transition-all ${
                 showCorrect
-                  ? 'border-green-500 bg-green-500/10 text-green-700'
+                  ? 'border-green-500 bg-green-500/10 text-green-800 dark:text-green-300'
                   : showWrong
-                    ? 'border-red-500 bg-red-500/10 text-red-700'
+                    ? 'border-red-500 bg-red-500/10 text-red-800 dark:text-red-300'
                     : isSelected
                       ? 'border-primary bg-primary/10'
                       : 'border-border hover:border-primary/50'
               }`}
             >
               <div className="flex items-start gap-3">
-                <span className="font-mono text-sm mt-0.5">
-                  {String.fromCharCode(65 + i)})
-                </span>
+                <span className="font-mono text-sm mt-0.5">{String.fromCharCode(65 + i)})</span>
                 <span className="flex-1">{option}</span>
                 {showCorrect && <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0" />}
                 {showWrong && <XCircle className="h-5 w-5 text-red-500 shrink-0" />}
@@ -155,31 +225,69 @@ export function QuizComponent({ questions, onComplete, readOnly = false }: QuizC
         })}
       </div>
 
-      {/* Explanation */}
       {showAnswer && (
-        <div className={`p-4 rounded-lg border ${isCorrect ? 'border-green-500/30 bg-green-500/5' : 'border-red-500/30 bg-red-500/5'}`}>
+        <div
+          className={`p-4 rounded-lg border space-y-3 ${
+            isCorrect
+              ? 'border-green-500/30 bg-green-500/5'
+              : 'border-red-500/30 bg-red-500/5'
+          }`}
+        >
           <div className="flex items-start gap-2">
-            <HelpCircle className={`h-5 w-5 shrink-0 mt-0.5 ${isCorrect ? 'text-green-500' : 'text-red-500'}`} />
-            <div>
-              <div className={`font-medium mb-1 ${isCorrect ? 'text-green-700' : 'text-red-700'}`}>
-                {isCorrect ? 'Correct!' : 'Not quite.'}
+            {isCorrect ? (
+              <CheckCircle2 className="h-5 w-5 text-green-500 shrink-0 mt-0.5" />
+            ) : (
+              <XCircle className="h-5 w-5 text-red-500 shrink-0 mt-0.5" />
+            )}
+            <div className="space-y-1">
+              <div className={`font-semibold ${isCorrect ? 'text-green-700 dark:text-green-400' : 'text-red-700 dark:text-red-400'}`}>
+                {isCorrect ? 'Correct!' : 'Incorrect'}
               </div>
-              <div className="text-sm text-muted-foreground">{question.explanation}</div>
+              {!isCorrect && (
+                <p className="text-sm">
+                  Correct answer: <span className="font-medium text-foreground">{correctLabel}</span>
+                </p>
+              )}
             </div>
           </div>
+
+          <div className="flex items-start gap-2 pl-0.5">
+            <HelpCircle className={`h-4 w-4 shrink-0 mt-0.5 ${isCorrect ? 'text-green-600' : 'text-amber-600'}`} />
+            <div>
+              <p className="text-sm font-medium text-foreground mb-0.5">
+                {isCorrect ? 'Why this is right' : 'Why this matters — learn it again'}
+              </p>
+              <p className="text-sm text-muted-foreground leading-relaxed">{question.explanation}</p>
+            </div>
+          </div>
+
+          {!isCorrect && reviewHref && (
+            <Button variant="outline" size="sm" asChild>
+              <Link href={reviewHref}>
+                <BookOpen className="h-4 w-4 mr-2" />
+                {reviewLabel}
+              </Link>
+            </Button>
+          )}
         </div>
       )}
 
-      {/* Actions */}
-      <div className="flex justify-end gap-2">
+      <div className="flex justify-end gap-2 flex-wrap">
         {!showAnswer ? (
-          <Button onClick={handleSubmit} disabled={selected === null}>
-            Check Answer
+          <Button onClick={handleSubmit} disabled={selected === null || readOnly}>
+            Check answer
           </Button>
         ) : (
-          <Button onClick={handleNext}>
-            {currentQ < questions.length - 1 ? 'Next Question' : 'See Results'}
-          </Button>
+          <>
+            {!isCorrect && (
+              <Button variant="outline" onClick={handleTryAgain}>
+                Try this question again
+              </Button>
+            )}
+            <Button onClick={handleNext}>
+              {currentQ < questions.length - 1 ? 'Next question' : 'See results'}
+            </Button>
+          </>
         )}
       </div>
     </div>

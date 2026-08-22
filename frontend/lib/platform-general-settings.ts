@@ -67,6 +67,8 @@ export type GeneralPlatformSettings = {
   video_player_logo_url: string
   /** Optional URL the player logo links to when clicked */
   video_player_logo_link_url: string
+  /** When true, captions/subtitles start on by default in the course player */
+  video_player_captions_default: boolean
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -101,6 +103,7 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   video_player_muted: false,
   video_player_logo_url: '',
   video_player_logo_link_url: '',
+  video_player_captions_default: true,
 }
 
 export function mergeGeneralPlatformSettings(

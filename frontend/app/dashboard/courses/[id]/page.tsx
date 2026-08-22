@@ -579,6 +579,16 @@ const handleEnroll = async () => {
                             {showQuiz === sIdx && (
                               <QuizComponent
                                 questions={section.quiz}
+                                reviewHref={
+                                  section.lessons?.[0]?.id
+                                    ? `/dashboard/courses/${courseId}/lesson/${section.lessons[0].id}`
+                                    : undefined
+                                }
+                                reviewLabel={
+                                  section.lessons?.[0]?.title
+                                    ? `Review: ${section.lessons[0].title}`
+                                    : 'Review module lessons'
+                                }
                                 onComplete={(score, total) => {
                                   if (score >= total * 0.8) {
                                     addToast({ type: 'success', title: `Passed! ${Math.round(score/total*100)}%` })

@@ -1,5 +1,5 @@
 import { getMongoDb } from '@/lib/mongodb'
-import { lessonObjectKey, readS3Config, s3DeleteObject, s3GetObject, s3PutObject, s3SignedGetUrl } from '@/lib/s3-storage'
+import { lessonObjectKey, readS3Config, s3DeleteObject, s3GetObject, s3PutObject } from '@/lib/s3-storage'
 
 const COLLECTION = 'course_lesson_audio'
 
@@ -59,23 +59,14 @@ export async function loadLessonAudio(courseId: string, lessonId: string): Promi
   return null
 }
 
+/** Same-origin buffer — avoid R2 redirect CORS (same as lesson MP4). */
 export async function lessonAudioPlayback(
   courseId: string,
   lessonId: string,
-): Promise<{ kind: 'redirect'; url: string } | { kind: 'buffer'; mime: string; data: Buffer } | null> {
-  const db = await getMongoDb()
-  const doc = await db.collection(COLLECTION).findOne({ courseId, lessonId })
-  if (!doc) return null
-  const objectKey = (typeof doc.objectKey === 'string' && doc.objectKey) || (typeof doc.r2Key === 'string' ? doc.r2Key : '')
-  if (objectKey && await readS3Config()) {
-    return { kind: 'redirect', url: await s3SignedGetUrl(objectKey) }
-  }
-  const raw = doc.data
-  if (!raw) return null
-  const data = Buffer.isBuffer(raw)
-    ? raw
-    : Buffer.from((raw as { buffer?: ArrayBuffer }).buffer ?? raw)
-  return { mime: String(doc.mime || 'audio/mpeg'), data, kind: 'buffer' }
+): Promise<{ kind: 'buffer'; mime: string; data: Buffer } | null> {
+  const loaded = await loadLessonAudio(courseId, lessonId)
+  if (!loaded) return null
+  return { kind: 'buffer', mime: loaded.mime, data: loaded.data }
 }
 
 export async function deleteCourseAudio(courseId: string): Promise<void> {
