@@ -196,6 +196,33 @@ function ObjectStorageCard() {
   const [testing, setTesting] = useState(false)
   const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
 
+  const [showSecret, setShowSecret] = useState(false)
+  const [revealedSecret, setRevealedSecret] = useState('')
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
+
+  const handleRevealToggle = useCallback(async () => {
+    if (showSecret) {
+      if (timerRef.current) clearTimeout(timerRef.current)
+      setShowSecret(false)
+      setRevealedSecret('')
+    } else {
+      const key = provider === 'r2' ? 'r2_secret_access_key' : 's3_secret_access_key'
+      const res = await fetch(`/api/admin/server-secrets/reveal?key=${key}`, { credentials: 'include' })
+      const json = await res.json().catch(() => ({}))
+      if (res.ok && json.value) setRevealedSecret(json.value)
+      setShowSecret(true)
+      if (timerRef.current) clearTimeout(timerRef.current)
+      timerRef.current = setTimeout(() => {
+        setShowSecret(false)
+        setRevealedSecret('')
+      }, 30_000)
+    }
+  }, [showSecret, provider])
+
+  useEffect(() => {
+    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
+  }, [])
+
   const load = useCallback(() => {
     fetch('/api/admin/server-secrets', { credentials: 'include' })
       .then((r) => r.json())
@@ -351,7 +378,26 @@ function ObjectStorageCard() {
         </div>
         <div className="space-y-1.5 md:col-span-2">
           <Label htmlFor="s3_secret">Secret Access Key</Label>
-          <input id="s3_secret" type="password" value={secretKey} onChange={(e) => setSecretKey(e.target.value)} className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm" placeholder={hasSecret ? 'Saved — enter a new key to replace' : 'Secret key'} />
+          <div className="relative">
+            <input
+              id="s3_secret"
+              type={showSecret ? 'text' : 'password'}
+              value={showSecret ? revealedSecret : secretKey}
+              onChange={(e) => {
+                if (showSecret) setRevealedSecret(e.target.value)
+                setSecretKey(e.target.value)
+              }}
+              className="h-10 w-full rounded-lg border border-border/60 bg-background px-3 font-mono text-sm pr-10 focus:outline-none focus:ring-1 focus:ring-primary"
+              placeholder={hasSecret ? 'Saved — enter a new key to replace' : 'Secret key'}
+            />
+            <button
+              type="button"
+              onClick={handleRevealToggle}
+              className="absolute right-2 top-1/2 -translate-y-1/2 p-1 text-muted-foreground hover:text-foreground"
+            >
+              {showSecret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+            </button>
+          </div>
         </div>
       </div>
       <p className="text-xs text-muted-foreground">
