@@ -161,6 +161,7 @@ export default function ProfilePage() {
   const gate = usePageGuard('user')
 
   const [user, setUser] = useState<{ id: string; email: string; name?: string; role?: string; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string } | null>(null)
+  const [kycStatus, setKycStatus] = useState<{ verified?: boolean; status?: string } | null>(null)
   const [stats, setStats] = useState<Record<string, number | string> | null>(null)
   const [xp, setXp] = useState(0)
   const [level, setLevel] = useState(1)
@@ -210,7 +211,7 @@ export default function ProfilePage() {
         // Ignore local storage parsing errors
       }
 
-      const [userRes, statsRes, activityRes, heatmapRes, achRes, lbRes, extRes] = await Promise.all([
+      const [userRes, statsRes, activityRes, heatmapRes, achRes, lbRes, extRes, kycRes] = await Promise.all([
         fetch('/api/auth/me').then(r => r.json()).catch(() => null),
         fetch('/api/user/stats').then(r => r.json()).catch(() => null),
         fetch('/api/user/activity?limit=20').then(r => r.json()).catch(() => null),
@@ -218,6 +219,7 @@ export default function ProfilePage() {
         fetch('/api/achievements').then(r => r.json()).catch(() => null),
         fetch('/api/leaderboard').then(r => r.json()).catch(() => null),
         fetch('/api/user/extended-profile', { credentials: 'include' }).then(r => r.json()).catch(() => null),
+        fetch('/api/kyc/didit/status').then(r => r.json()).catch(() => null),
       ])
 
       if (userRes?.user) setUser(userRes.user)
@@ -230,6 +232,8 @@ export default function ProfilePage() {
       if (activityRes?.data) setActivity(activityRes.data)
       if (typeof lbRes?.currentUser?.rank === 'number') setGlobalRank(lbRes.currentUser.rank)
       else if (typeof lbRes?.rank === 'number') setGlobalRank(lbRes.rank)
+      if (kycRes && !kycRes.error) setKycStatus(kycRes)
+      
       const ext = extRes?.data
       if (ext) {
         if (typeof ext.about === 'string') setAboutBio(ext.about)
@@ -510,6 +514,7 @@ export default function ProfilePage() {
               email={user?.email || ''}
               role={user?.role || 'user'}
               id={user?.id || ''}
+              kycVerified={kycStatus?.verified}
             />
           </Card>
 

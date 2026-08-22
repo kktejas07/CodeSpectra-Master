@@ -9,6 +9,7 @@ interface DigitalIdCardProps {
   id: string
   issuedAt?: string
   expiresAt?: string
+  kycVerified?: boolean
 }
 
 function formatDate(iso?: string): string {
@@ -19,7 +20,7 @@ function formatDate(iso?: string): string {
   return new Date().toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })
 }
 
-export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt }: DigitalIdCardProps) {
+export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycVerified }: DigitalIdCardProps) {
   const [flipped, setFlipped] = useState(false)
   const [copied, setCopied] = useState(false)
   const [qrDataUrl, setQrDataUrl] = useState('')

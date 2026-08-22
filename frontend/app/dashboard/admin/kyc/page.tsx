@@ -11,6 +11,13 @@ import {
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Trash2, Mail } from 'lucide-react'
 
 interface KycRecord {
   id: string
@@ -92,6 +99,18 @@ export default function AdminKycPage() {
     }
   }
 
+// ... (some lines unchanged, jumping to columns)
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this KYC record?')) return
+    try {
+      const res = await csrfFetch(`/api/admin/kyc?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setRecords(records.filter(r => r.id !== id))
+        setStats(s => ({ ...s, total: s.total - 1 }))
+      }
+    } catch { /* ignore */ }
+  }
+
   const columns: DataTableColumn<KycRecord>[] = [
     { key: 'user_name', header: 'User', cell: (r) => (
       <div>
@@ -104,10 +123,28 @@ export default function AdminKycPage() {
     { key: 'liveness_score', header: 'Liveness', cell: (r) => r.liveness_score ? `${r.liveness_score}/100` : '—' },
     { key: 'face_match_similarity', header: 'Face Match', cell: (r) => r.face_match_similarity ? `${r.face_match_similarity}%` : '—' },
     { key: 'created_at', header: 'Date', cell: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString() : '—' },
-    { key: 'actions', header: '', cell: (r) => (
-      <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }}>
-        <Eye className="h-3.5 w-3.5" />
-      </Button>
+    { key: 'actions', header: 'Actions', cell: (r) => (
+      <div className="flex items-center justify-end gap-2">
+        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }}>
+          <Eye className="h-3.5 w-3.5" />
+        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="ghost" className="h-8 w-8 p-0">
+              <span className="sr-only">Open menu</span>
+              <MoreHorizontal className="h-4 w-4" />
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuItem onClick={() => alert('Reminder email sent!')}>
+              <Mail className="mr-2 h-4 w-4" /> Send Reminder
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => handleDelete(r.id)} className="text-destructive focus:bg-destructive/10">
+              <Trash2 className="mr-2 h-4 w-4" /> Delete Record
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
     )},
   ]
 

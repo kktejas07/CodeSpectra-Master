@@ -70,14 +70,6 @@ export async function POST(request: NextRequest) {
 
     const db = await getMongoDb()
 
-    const busy = await findBusyJob()
-    if (busy) {
-      return NextResponse.json(
-        { error: `Another generation is already ${busy.status} for "${busy.courseTitle || busy.id}". One job at a time.` },
-        { status: 409 },
-      )
-    }
-
     if (force) await clearCourseVideos(courseId)
 
     const job: GenerationJob = {

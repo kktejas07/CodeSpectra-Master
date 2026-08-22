@@ -1,6 +1,7 @@
 'use client'
 
 import Link from 'next/link'
+import { PublicPageWrapper } from '@/app/public-layout'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { ExternalLink, Award, BookOpen, ShieldCheck, Code2 } from 'lucide-react'
@@ -89,55 +90,57 @@ function Section({ icon: Icon, title, subtitle, items, testid }: {
 
 export default function OpenSourcePage() {
   return (
-    <main className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 py-12 px-4" data-testid="open-source-page">
-      <div className="max-w-4xl mx-auto space-y-6">
-        <header className="text-center space-y-3 mb-8">
-          <Badge variant="outline" className="border-emerald-500/40 text-emerald-500">100% Open Source</Badge>
-          <h1 className="text-4xl font-bold">Built on open source</h1>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            Every certification on CodeSpectra is backed by open-source curricula, rendered by
-            open-source libraries, and audited with open-source tooling. No proprietary
-            question banks, no closed-source illustrations, no licensed-only fonts. This page
-            lists every source so candidates, employers and contributors can audit the supply
-            chain in one click.
-          </p>
-        </header>
+    <PublicPageWrapper>
+      <main className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 py-12 px-4" data-testid="open-source-page">
+        <div className="max-w-4xl mx-auto space-y-6">
+          <header className="text-center space-y-3 mb-8">
+            <Badge variant="outline" className="border-emerald-500/40 text-emerald-500">100% Open Source</Badge>
+            <h1 className="text-4xl font-bold">Built on open source</h1>
+            <p className="text-muted-foreground max-w-2xl mx-auto">
+              Every certification on CodeSpectra is backed by open-source curricula, rendered by
+              open-source libraries, and audited with open-source tooling. No proprietary
+              question banks, no closed-source illustrations, no licensed-only fonts. This page
+              lists every source so candidates, employers and contributors can audit the supply
+              chain in one click.
+            </p>
+          </header>
 
-        <Section
-          icon={BookOpen}
-          title="Curriculum sources"
-          subtitle="Every assessment question is paraphrased from one of these open knowledge bases."
-          items={CURRICULA}
-          testid="oss-curricula"
-        />
+          <Section
+            icon={BookOpen}
+            title="Curriculum sources"
+            subtitle="Every assessment question is paraphrased from one of these open knowledge bases."
+            items={CURRICULA}
+            testid="oss-curricula"
+          />
 
-        <Section
-          icon={Code2}
-          title="Application libraries"
-          subtitle="The OSI-approved packages this Next.js + React app depends on."
-          items={LIBRARIES}
-          testid="oss-libraries"
-        />
+          <Section
+            icon={Code2}
+            title="Application libraries"
+            subtitle="The OSI-approved packages this Next.js + React app depends on."
+            items={LIBRARIES}
+            testid="oss-libraries"
+          />
 
-        <Section
-          icon={ShieldCheck}
-          title="Audit & execution tooling"
-          subtitle="Vulnerability scanners and code sandbox engines."
-          items={TOOLS}
-          testid="oss-tools"
-        />
+          <Section
+            icon={ShieldCheck}
+            title="Audit & execution tooling"
+            subtitle="Vulnerability scanners and code sandbox engines."
+            items={TOOLS}
+            testid="oss-tools"
+          />
 
-        <Card className="p-6 bg-emerald-500/5 border-emerald-500/20 text-center">
-          <Award className="w-10 h-10 mx-auto text-emerald-500 mb-2" />
-          <p className="text-sm">
-            Spotted a missing attribution?{' '}
-            <Link href="/dashboard/admin/ai-inventory" className="text-primary underline">
-              File it via the AI Inventory dashboard
-            </Link>{' '}
-            or open a PR.
-          </p>
-        </Card>
-      </div>
-    </main>
+          <Card className="p-6 bg-emerald-500/5 border-emerald-500/20 text-center">
+            <Award className="w-10 h-10 mx-auto text-emerald-500 mb-2" />
+            <p className="text-sm">
+              Spotted a missing attribution?{' '}
+              <Link href="/dashboard/admin/ai-inventory" className="text-primary underline">
+                File it via the AI Inventory dashboard
+              </Link>{' '}
+              or open a PR.
+            </p>
+          </Card>
+        </div>
+      </main>
+    </PublicPageWrapper>
   )
 }

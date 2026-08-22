@@ -6,8 +6,11 @@
 
 ## Current Claims
 
+| antigravity (this session, REVIEWS-AND-CREDITS) | Update kyc status with anon aadhaar, fix blog padding, and update resume AI credits | frontend/app/api/kyc/didit/status/route.ts, frontend/app/blog/[slug]/page.tsx, frontend/app/blog/page.tsx, frontend/app/dashboard/resumes/builder/page.tsx, WORKING.md | DONE | 2026-08-22 |
+
 | cursor (this session, REMOVE-POC-VIDEO) | Remove AI Video Generator PoC button from Course Management; production is course-generator | courses page, poc-video page, page-permissions, WORKING.md | DONE — removed button + deleted poc-video page + dropped permission route | 2026-08-22 |
 | cursor (this session, EMPTY+WIDTH) | Lottie empty states (dynamic) + full-width dashboard pages audit | empty-state, lottie assets, hub pages, WORKING.md | DONE — shared EmptyState+Lottie; hubs full width; dynamic empty on bookmarks/notif/courses/etc | 2026-08-22 |
+| cursor (this session, COURSE-Q+MOCK-FB) | Course Generator background queue, Mock Tests fallback chain (OpenAI -> Gemini -> Anthropic), AI free credit default tune to 10 | process-job.ts, courses/jobs/route.ts, mock-tests/generate/route.ts, user-credits.ts, ai-credits-widget.tsx, WORKING.md | DONE — removed busy blocks, updated route with array iteration + ai-sdk installs | 2026-08-22 |
 | cursor (this session, EBOOKS+QUIZ-BM) | Unstop-style ebooks E2E + module-quiz bookmarks; close gaps | quiz bookmarks, resources/ebooks, admin generate, cron, WORKING.md | DONE — quiz bookmarks + ebook seed/API/UI/admin/cron; tsc clean | 2026-08-22 |
 | cursor (this session, UNSTOP-PARITY) | Filters? Quizzes/Articles/Resources/My Courses/Sessions/Recent/Watchlist/Bookmarks; complaint+Updated On | pages, APIs, trust footer, sidebar ICON_MAP, WORKING.md | DONE — hubs + activity pages + trust footer; Unstop-style All Filters on Quizzes | 2026-08-22 |
 | cursor (this session, DOCS+CRON) | /docs/getting-started 404 + empty UI; CRON_SECRET shows Missing | Dockerfile (ship docs/), docs.ts paths, Dokploy env note, WORKING.md | DONE — mirrored frontend/docs; live hotfix + CRON_SECRET on service | 2026-08-22 |

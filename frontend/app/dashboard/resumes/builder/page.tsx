@@ -147,7 +147,7 @@ export default function ResumeBuilderPage() {
       return
     }
 
-    if (userCredits === null || userCredits < 5) {
+    if (userCredits === null || userCredits < 1) {
       addToast({ type: 'error', title: 'Insufficient AI Credits. Upgrade to PRO to get more.' })
       return
     }
@@ -158,7 +158,7 @@ export default function ResumeBuilderPage() {
       const res = await csrfFetch('/api/user/ai-credits', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ amount: 5 })
+        body: JSON.stringify({ amount: 1 })
       })
       
       const resData = await res.json()
@@ -178,7 +178,7 @@ export default function ResumeBuilderPage() {
           summary: `Highly motivated and results-driven ${role} with a proven track record of delivering innovative solutions. Skilled in ${prev.skills || 'various technologies'}, with a strong focus on collaboration, problem-solving, and driving continuous improvement to achieve organizational goals.`
         }))
         setIsGeneratingAI(false)
-        addToast({ type: 'success', title: 'AI Summary Generated! (5 credits deducted)' })
+        addToast({ type: 'success', title: 'AI Summary Generated! (1 credit deducted)' })
       }, 1500)
     } catch (e) {
       console.error(e)

@@ -1,4 +1,5 @@
 import { Metadata } from 'next'
+import { PublicPageWrapper } from '@/app/public-layout'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -100,21 +101,7 @@ export default async function PublicEventsPage() {
   const events = await getEvents()
 
   return (
-    <div className="min-h-screen bg-background">
-      <header className="border-b border-border bg-card/40 backdrop-blur">
-        <div className="mx-auto flex max-w-5xl items-center justify-between px-6 py-4">
-          <Link href="/" className="text-lg font-bold">CodeSpectra</Link>
-          <div className="flex items-center gap-3">
-            <Link href="/auth/login">
-              <Button size="sm" variant="ghost">Sign In</Button>
-            </Link>
-            <Link href="/auth/signup">
-              <Button size="sm">Get Started</Button>
-            </Link>
-          </div>
-        </div>
-      </header>
-
+    <PublicPageWrapper>
       <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
         <div className="text-center space-y-2">
           <h1 className="text-3xl font-bold">Events</h1>
@@ -137,6 +124,6 @@ export default async function PublicEventsPage() {
           </div>
         )}
       </main>
-    </div>
+    </PublicPageWrapper>
   )
 }
