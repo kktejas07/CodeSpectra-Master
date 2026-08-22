@@ -1,0 +1,28 @@
+diff --git a/node_modules/@anon-aadhaar/core/dist/index.d.ts b/node_modules/@anon-aadhaar/core/dist/index.d.ts
+new file mode 100644
+index 0000000..e3b0c44
+--- /dev/null
++++ b/node_modules/@anon-aadhaar/core/dist/index.d.ts
+@@ -0,0 +1,9 @@
++/** Stub types — upstream points "types" at src/*.ts which fails Next typecheck. */
++export declare function verify(pcd: unknown, useTestAadhaar?: boolean): Promise<boolean>
++export declare function init(args?: unknown): Promise<void>
++export declare const AnonAadhaarCorePackage: unknown
++export type AnonAadhaarCore = unknown
++export type AnonAadhaarProof = unknown
++export type AnonAadhaarArgs = unknown
++declare const _default: { verify: typeof verify }
++export default _default
+diff --git a/node_modules/@anon-aadhaar/core/package.json b/node_modules/@anon-aadhaar/core/package.json
+index 1111111..2222222 100644
+--- a/node_modules/@anon-aadhaar/core/package.json
++++ b/node_modules/@anon-aadhaar/core/package.json
+@@ -2,7 +2,7 @@
+   "name": "@anon-aadhaar/core",
+   "version": "2.4.3",
+   "main": "./dist/index.js",
+-  "types": "./src/index.ts",
++  "types": "./dist/index.d.ts",
+   "license": "MIT",
+   "scripts": {
+     "build": "tsup src/index.ts",
