@@ -178,7 +178,7 @@ function ArticleCard({ post }: { post: BlogPostDoc }) {
       href={`/blog/${post.slug}`}
       className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
     >
-      <div className="aspect-16/10 overflow-hidden bg-muted">
+      <div className="aspect-video overflow-hidden bg-muted">
         <Cover post={post} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
