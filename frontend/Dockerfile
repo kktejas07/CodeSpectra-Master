@@ -46,6 +46,8 @@ COPY package.json yarn.lock ./
 COPY patches ./patches
 RUN yarn install --frozen-lockfile
 COPY . .
+# markdown docs must be present at /app/docs (mirrored into frontend/docs for this context)
+RUN test -d docs/public || (echo "ERROR: docs/public missing — run scripts/sync-docs.cjs before build" && exit 1)
 RUN chmod +x scripts/docker-entrypoint.sh \
   && npx patch-package \
   && node scripts/ensure-anon-aadhaar-types.cjs
