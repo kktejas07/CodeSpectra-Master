@@ -9,6 +9,8 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-22 | — | Fix AI Video Generator: Synchronize `worker/route.ts` with the new 2-step pipeline so textContent, audioUrl, and video duration generate correctly. | antigravity |
+| 2026-08-22 | — | Remove Course Management “AI Video Generator” PoC (`/courses/poc-video`); production generation stays on `/dashboard/admin/course-generator`. | cursor |
 | 2026-08-22 | — | Unstop-style Resources ebooks (seed + generate + flipbook UI + daily cron drafts) and module-quiz question bookmarks (API + QuizComponent + activity bookmarks tab). | cursor |
 | 2026-08-22 | — | Newsletter public GET: type `$in` statuses as `as const` so Dokploy `yarn build` typecheck passes. | cursor |
 | 2026-08-22 | — | Signals quality: research public pages → fact pack → draft → humanize; store facts/source_urls; admin queue shows angle + facts. RSS/fetch free; LLM = platform AI usage. | cursor |
