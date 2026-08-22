@@ -31,8 +31,8 @@ export function PublicPageWrapper({
   return (
     <div className="min-h-screen bg-background text-foreground flex flex-col">
       {/* Top Banner */}
-      <div className="relative z-50 bg-gradient-to-r from-[#091e17] via-[#0b2923] to-[#121a29] text-slate-200 text-xs py-2 px-4 border-b border-teal-500/20 text-center flex items-center justify-center gap-2 overflow-hidden">
-        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#00c573_1px,transparent_1px)] [background-size:16px_16px]" />
+      <div className="relative z-50 bg-linear-to-r from-[#091e17] via-[#0b2923] to-[#121a29] text-slate-200 text-xs py-2 px-4 border-b border-teal-500/20 text-center flex items-center justify-center gap-2 overflow-hidden">
+        <div className="absolute inset-0 opacity-10 pointer-events-none bg-[radial-gradient(#00c573_1px,transparent_1px)] bg-size-[16px_16px]" />
         <span className="inline-flex items-center gap-1.5 px-2 py-0.5 rounded-full bg-teal-500/15 text-teal-300 font-semibold text-[10px] border border-teal-500/30 uppercase tracking-wider">
           <span className="w-1.5 h-1.5 rounded-full bg-teal-400 animate-pulse" />
           Builder's Day
@@ -57,7 +57,7 @@ export function PublicPageWrapper({
           )}>
             {/* Logo */}
             <Link href="/" className="group relative z-10 flex min-w-0 shrink-0 items-center gap-2.5 transition-transform hover:scale-[1.02]">
-              <div className="relative flex items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 border border-teal-500/40 shadow-sm shadow-teal-500/20 group-hover:border-teal-400 transition-colors">
+              <div className="relative flex items-center justify-center rounded-xl bg-linear-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 border border-teal-500/40 shadow-sm shadow-teal-500/20 group-hover:border-teal-400 transition-colors">
                 <svg className="w-5 h-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                   <defs>
                     <linearGradient id="nav-logo-grad" x1="2" y1="2" x2="30" y2="30" gradientUnits="userSpaceOnUse">
@@ -135,7 +135,7 @@ export function PublicPageWrapper({
               {/* Auth / Dashboard CTA */}
               <div className="flex items-center gap-2">
                 {hasSession ? (
-                  <Button size="sm" asChild className="gap-1.5 rounded-full bg-[#00c573] hover:bg-[#3ecf8e] text-slate-950 font-bold px-4.5 py-2 text-xs sm:text-sm shadow-md shadow-[#00c573]/25 transition-all hover:scale-105">
+                  <Button size="sm" asChild className="gap-1.5 rounded-full bg-mint-pulse hover:bg-phosphor-green text-slate-950 font-bold px-4.5 py-2 text-xs sm:text-sm shadow-md shadow-mint-pulse/25 transition-all hover:scale-105">
                     <Link href={DASHBOARD_HREF}>
                       Dashboard
                       <ArrowRight className="w-4 h-4" />
@@ -151,7 +151,7 @@ export function PublicPageWrapper({
                     </Link>
                     <Link
                       href="/auth/signup"
-                      className="shrink-0 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-[#00c573] to-[#2dd4bf] hover:from-[#3ecf8e] hover:to-[#5eead4] text-slate-950 px-4.5 py-2 text-xs sm:text-sm font-bold transition-all shadow-md shadow-[#00c573]/25 hover:shadow-lg hover:shadow-[#00c573]/40 hover:scale-105"
+                      className="shrink-0 inline-flex items-center gap-1 rounded-full bg-linear-to-r from-mint-pulse to-[#2dd4bf] hover:from-phosphor-green hover:to-[#5eead4] text-slate-950 px-4.5 py-2 text-xs sm:text-sm font-bold transition-all shadow-md shadow-mint-pulse/25 hover:shadow-lg hover:shadow-mint-pulse/40 hover:scale-105"
                     >
                       Get started
                       <ArrowRight className="w-3.5 h-3.5 ml-0.5" />
@@ -219,7 +219,7 @@ export function PublicPageWrapper({
 
               <div className="pt-2">
                 {hasSession ? (
-                  <Button size="sm" asChild className="w-full gap-1.5 rounded-xl bg-[#00c573] hover:bg-[#3ecf8e] text-slate-950 font-bold py-2">
+                  <Button size="sm" asChild className="w-full gap-1.5 rounded-xl bg-mint-pulse hover:bg-phosphor-green text-slate-950 font-bold py-2">
                     <Link href={DASHBOARD_HREF}>
                       Go to dashboard
                       <ArrowRight className="w-4 h-4" />
@@ -230,7 +230,7 @@ export function PublicPageWrapper({
                     <Button variant="outline" size="sm" asChild className="flex-1 rounded-xl border-slate-700 bg-slate-900/60 text-slate-200 hover:bg-slate-800 hover:text-white">
                       <Link href="/auth/login">Log in</Link>
                     </Button>
-                    <Button size="sm" asChild className="flex-1 rounded-xl bg-gradient-to-r from-[#00c573] to-[#2dd4bf] text-slate-950 font-bold shadow-md shadow-[#00c573]/20">
+                    <Button size="sm" asChild className="flex-1 rounded-xl bg-linear-to-r from-mint-pulse to-[#2dd4bf] text-slate-950 font-bold shadow-md shadow-mint-pulse/20">
                       <Link href="/auth/signup">Get started</Link>
                     </Button>
                   </div>
@@ -253,7 +253,7 @@ export function PublicPageWrapper({
           <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="group flex items-center gap-2.5 mb-6">
-                <div className="flex items-center justify-center rounded-xl bg-gradient-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 border border-teal-500/40 shadow-sm shadow-teal-500/20">
+                <div className="flex items-center justify-center rounded-xl bg-linear-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 border border-teal-500/40 shadow-sm shadow-teal-500/20">
                   <svg className="w-5 h-5" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
                     <path d="M7 10L16 4L25 10V22L16 28L7 22V10Z" stroke="#2dd4bf" strokeWidth="2" strokeLinejoin="round" />
                     <path d="M16 4V28M7 10L25 22M7 22L25 10" stroke="#00c573" strokeWidth="1.2" strokeOpacity="0.6" />

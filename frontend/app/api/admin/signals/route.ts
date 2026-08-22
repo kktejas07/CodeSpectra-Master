@@ -74,19 +74,21 @@ export async function POST(req: NextRequest) {
     const now = nowIso()
     const user = await getAPIUser()
 
+    const sourceUrls =
+      draft.source_urls?.length ? draft.source_urls : [draft.source_url]
     const post: BlogPostDoc = {
       id: newBlogId(),
       slug,
       title: draft.title,
       excerpt: draft.excerpt,
-      body: `${draft.body}<p class="text-sm text-muted-foreground"><a href="${draft.source_url}" rel="noopener noreferrer" target="_blank">Original source</a></p>`,
+      body: draft.body,
       category: draft.category,
       tags: ['signals', draft.source_feed],
       author_name: 'CodeSpectra Signals',
       author_role: 'Editorial',
       status: 'published',
-      source_urls: [draft.source_url],
-      source_note: `Rewritten from public feed (${draft.source_feed}) — original wording not copied.`,
+      source_urls: sourceUrls,
+      source_note: `Research + rewrite from public feed (${draft.source_feed}) — original wording not copied.`,
       read_minutes: estimateReadMinutes(draft.body),
       published_at: now,
       created_at: now,

@@ -9,6 +9,8 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-22 | — | Newsletter public GET: type `$in` statuses as `as const` so Dokploy `yarn build` typecheck passes. | cursor |
+| 2026-08-22 | — | Signals quality: research public pages → fact pack → draft → humanize; store facts/source_urls; admin queue shows angle + facts. RSS/fetch free; LLM = platform AI usage. | cursor |
 | 2026-08-22 | — | Soften Aadhaar profile copy for users; newsletter “Publish to Newsroom”; Signals agent scaffold (public RSS → AI rewrite → admin approve → /blog). | cursor |
 | 2026-08-22 | — | Newsroom blog: public `/blog` + `/blog/[slug]` (featured/Just in/TOC), admin `/dashboard/admin/blog`, `blog_posts` + seed; newsletter stays push, blog is evergreen. | cursor |
 | 2026-08-22 | — | Newsletter notifications open an in-dashboard modal with full body (`GET /api/newsletter/[id]`); no longer drop users on the index snippet list. | cursor |

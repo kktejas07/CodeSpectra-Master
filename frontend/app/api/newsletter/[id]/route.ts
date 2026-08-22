@@ -15,7 +15,8 @@ export async function GET(_req: Request, ctx: RouteContext) {
   const { id } = await ctx.params
   try {
     const col = await emailCampaigns()
-    const publishedStatuses = ['completed', 'sending']
+    // ponytail: as const so $in matches EmailCampaignDoc.status (not string[])
+    const publishedStatuses = ['completed', 'sending'] as const
 
     const campaign =
       id === 'latest'

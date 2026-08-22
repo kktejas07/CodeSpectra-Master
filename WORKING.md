@@ -6,6 +6,9 @@
 
 ## Current Claims
 
+| cursor (this session, CRON-UI) | Improve existing /dashboard/admin/cron-jobs: clear configured+running UI; include Signals ingest | cron-jobs page+API, WORKING.md | DONE — status cards, HTTP catalog (+Signals), run-now, schedules | 2026-08-22 |
+| cursor (this session, NL-BUILD-TS) | Dokploy yarn build fails: newsletter route `$in` status is `string[]` vs campaign union | frontend/app/api/newsletter/[id]/route.ts, WORKING.md | DONE — as const; push so rebuild typechecks | 2026-08-22 |
+| cursor (this session, SIGNALS-QUALITY) | Research→fact pack→humanize draft; attach sources; explain free vs paid | signals research/rewrite, drafts schema, cron, admin UI, WORKING.md | DONE — multi-pass rewrite; facts+source_urls on drafts; publish carries sources; fetch free / LLM usage | 2026-08-22 |
 | cursor (this session, AADHAAR+SIGNALS) | Soften Aadhaar UX; newsletter→blog; scaffold Signals draft agent | profile edit, newsletter admin, signals cron/admin, WORKING.md | DONE — user-friendly Aadhaar copy; Publish to Newsroom; Signals ingest→rewrite→approve queue | 2026-08-22 |
 | cursor (this session, BLOG-V1) | No /blog; Unstop-style articles + auto news vision; fix newsletter reader path | blog pages/API/admin, footer, page-permissions, WORKING.md | DONE — /blog + /blog/[slug] Newsroom, admin CRUD, seed posts; auto Signals pipeline designed (Phase 2) | 2026-08-22 |
 | cursor (this session, NL-MODAL) | Newsletter tap opens index (snippet only) instead of full body; wants popup on notifications | notifications page, /api/newsletter/[id], WORKING.md | DONE — modal reader + public GET /api/newsletter/[id]|latest | 2026-08-22 |
