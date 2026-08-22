@@ -85,7 +85,7 @@ export default function MyResumesPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto w-full pb-10">
+    <div className="space-y-6 w-full pb-10">
       
       {/* Top Section: Templates */}
       <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-6 overflow-hidden">

@@ -104,6 +104,12 @@ import {
   BadgeCheck,
   TrendingUp,
   Activity,
+  Heart,
+  HelpCircle,
+  Library,
+  History,
+  Bookmark,
+  UserRound,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -384,7 +390,19 @@ export default function DashboardLayout({
       // Learning
       '/dashboard/learning': GraduationCap,
       '/dashboard/courses': BookOpen,
+      '/dashboard/courses/my': UserRound,
+      '/dashboard/courses/wishlist': Heart,
       '/dashboard/interview-prep': Video,
+
+      // Discover
+      '/dashboard/quizzes': HelpCircle,
+      '/dashboard/articles': Newspaper,
+      '/dashboard/resources': Library,
+
+      // My Activity
+      '/dashboard/activity/recent': History,
+      '/dashboard/activity/sessions': Video,
+      '/dashboard/activity/bookmarks': Bookmark,
 
       // Career
       '/dashboard/jobs': Briefcase,
@@ -433,6 +451,7 @@ export default function DashboardLayout({
       '/dashboard/admin/announcements': Megaphone,
       '/dashboard/admin/newsletter': Mail,
       '/dashboard/admin/blog': Newspaper,
+      '/dashboard/admin/resources': Library,
       '/dashboard/admin/signals': Radio,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/rag': BrainCircuit,

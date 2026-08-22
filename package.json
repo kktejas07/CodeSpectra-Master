@@ -1,0 +1,6 @@
+{
+  "dependencies": {
+    "@remotion/bundler": "4.0.513",
+    "@remotion/renderer": "4.0.513"
+  }
+}

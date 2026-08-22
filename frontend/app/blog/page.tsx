@@ -147,7 +147,7 @@ function FeaturedCard({ post }: { post: BlogPostDoc }) {
       href={`/blog/${post.slug}`}
       className="group grid overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40 lg:grid-cols-2"
     >
-      <div className="relative aspect-video lg:aspect-auto lg:min-h-[320px]">
+      <div className="relative aspect-video lg:aspect-auto lg:min-h-80">
         <Cover post={post} />
       </div>
       <div className="flex flex-col justify-center space-y-3 p-6 sm:p-8">

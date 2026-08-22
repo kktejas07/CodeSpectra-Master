@@ -39,7 +39,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
       {/* Full-bleed poster / hero */}
       {campaign.hero_image ? (
         <div className="w-full border-b border-border/60 bg-[#0b1220]">
-          <div className="mx-auto flex w-full max-w-[1400px] justify-center px-0 sm:px-4 lg:px-8">
+          <div className="mx-auto flex w-full max-w-350 justify-center px-0 sm:px-4 lg:px-8">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img
               src={campaign.hero_image}
@@ -49,7 +49,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
           </div>
         </div>
       ) : (
-        <div className="w-full border-b border-border/60 bg-gradient-to-br from-teal-700/30 via-emerald-600/10 to-cyan-700/20 px-4 py-16 sm:px-6">
+        <div className="w-full border-b border-border/60 bg-linear-to-br from-teal-700/30 via-emerald-600/10 to-cyan-700/20 px-4 py-16 sm:px-6">
           <div className="mx-auto max-w-3xl">
             <p className="text-xs font-semibold uppercase tracking-wider text-teal-300">Newsletter</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">

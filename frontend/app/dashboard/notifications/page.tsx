@@ -11,6 +11,7 @@ import {
 import { Bell, Loader2, CheckCheck, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star, Mail } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { EmptyState } from '@/components/ui/empty-state'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   trophy: Trophy, shield: Shield, 'credit-card': CreditCard, video: Video,
@@ -204,10 +205,15 @@ export default function NotificationsPage() {
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading notifications…
         </Card>
       ) : filtered.length === 0 ? (
-        <Card className="p-10 text-center">
-          <Bell className="mx-auto h-10 w-10 text-muted-foreground/40 mb-3" />
-          <p className="text-sm text-muted-foreground">No notifications {category !== 'all' ? `in this category` : 'yet'}.</p>
-        </Card>
+        <EmptyState
+          variant="notifications"
+          title={category !== 'all' ? 'No notifications in this category' : 'No notifications yet'}
+          description={
+            category !== 'all'
+              ? 'Try another category, or check back when something new arrives.'
+              : 'When you get updates about courses, assessments, or account activity, they will show up here.'
+          }
+        />
       ) : (
         <div className="space-y-2">
           {filtered.map((n) => {

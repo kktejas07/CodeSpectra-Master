@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
+import { EmptyState } from '@/components/ui/empty-state'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
 import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
@@ -243,12 +244,13 @@ function LearningPageInner() {
       )}
 
       {!loading && filteredCourses.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 text-center gap-4">
-          <BookOpen className="h-12 w-12 text-muted-foreground/40" />
-          <p className="text-muted-foreground text-lg font-medium">No courses found</p>
-          <p className="text-sm text-muted-foreground/70">Try a different category or search term</p>
-          <Button variant="outline" onClick={() => setCategory('all')}>View All Courses</Button>
-        </div>
+        <EmptyState
+          variant="search"
+          title="No courses found"
+          description="Try a different category or search term. Clear filters to see the full catalog again."
+          actionLabel="View all courses"
+          onAction={() => setCategory('all')}
+        />
       )}
 
       {!loading && filteredCourses.length > 0 && (

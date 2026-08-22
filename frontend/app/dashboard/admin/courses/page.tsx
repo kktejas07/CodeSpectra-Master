@@ -154,14 +154,6 @@ export default function AdminCoursesPage() {
         </div>
         <div className="flex items-center gap-3">
           <Button
-            variant="outline"
-            className="gap-2 border-indigo-200 text-indigo-700 hover:bg-indigo-50 font-medium"
-            onClick={() => router.push('/dashboard/admin/courses/poc-video')}
-          >
-            <BookOpen className="w-4 h-4" /> {/* Or Wand2, but BookOpen is already imported */}
-            AI Video Generator
-          </Button>
-          <Button
             className="gap-2 bg-indigo-600 text-white hover:bg-indigo-700 font-semibold shadow-md"
             onClick={() => {
               setForm({ title: '', description: '', type: 'video', instructor: 'CodeSpectra', level: 'beginner', category: 'Coding' })

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ArrowLeft, CheckCircle2, ChevronDown, ChevronRight, Code2, Loader2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle } from 'lucide-react'
+import { ArrowLeft, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Loader2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useLockedFeatures } from '@/lib/use-page-guard'
@@ -101,6 +101,7 @@ export default function ProblemDetailPage() {
   const slug = params?.slug ?? ''
   const [problem, setProblem] = useState<Problem | null>(null)
   const [loadError, setLoadError] = useState<string | null>(null)
+  const [bookmarked, setBookmarked] = useState(false)
 
   const [language, setLanguage] = useState<string>('python')
   const [source, setSource] = useState<string>('')
@@ -155,6 +156,27 @@ export default function ProblemDetailPage() {
       }
     })()
   }, [slug])
+
+  useEffect(() => {
+    if (!problem) return
+    void csrfFetch('/api/user/recently-viewed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'problem',
+        id: problem.id || problem.slug,
+        title: problem.title,
+        href: `/dashboard/problems/${problem.slug}`,
+      }),
+    }).catch(() => {})
+    fetch('/api/user/problem-bookmarks', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        const items = d.items || []
+        setBookmarked(items.some((i: { problemId?: string; slug?: string }) => i.problemId === problem.id || i.slug === problem.slug))
+      })
+      .catch(() => {})
+  }, [problem?.id, problem?.slug, problem?.title])
 
   useEffect(() => {
     if (!slug) return
@@ -287,6 +309,32 @@ export default function ProblemDetailPage() {
              <ArrowLeft className="h-4 w-4" />
           </button>
           <div className="font-bold text-foreground">{problem.title}</div>
+          <button
+            type="button"
+            className="p-1.5 text-muted-foreground hover:text-foreground transition-colors"
+            title={bookmarked ? 'Remove bookmark' : 'Bookmark question'}
+            onClick={() => {
+              const next = !bookmarked
+              setBookmarked(next)
+              void csrfFetch('/api/user/problem-bookmarks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  problemId: problem.id || problem.slug,
+                  slug: problem.slug,
+                  title: problem.title,
+                  difficulty: problem.difficulty,
+                }),
+              })
+                .then(async (r) => {
+                  const d = await r.json()
+                  if (r.ok) setBookmarked(!!d.saved)
+                })
+                .catch(() => setBookmarked(!next))
+            }}
+          >
+            <Bookmark className={`h-4 w-4 ${bookmarked ? 'fill-amber-400 text-amber-400' : ''}`} />
+          </button>
         </div>
         
         <div className="flex items-center gap-5">
@@ -477,7 +525,7 @@ export default function ProblemDetailPage() {
            </div>
 
            {/* Editor */}
-           <div className="flex-1 min-h-[300px]">
+           <div className="flex-1 min-h-75">
              <Editor
                height="100%"
                language={TOP_LANGUAGES.find(l => l.id === language)?.monaco || 'plaintext'}
@@ -497,7 +545,7 @@ export default function ProblemDetailPage() {
            </div>
 
            {/* Console / Output Panel */}
-           <div className="border-t border-border bg-card flex flex-col shrink-0 min-h-[220px]">
+           <div className="border-t border-border bg-card flex flex-col shrink-0 min-h-55">
               
               <div className="flex items-center justify-between border-b border-border/50 px-2 bg-muted/20">
                  <div className="flex gap-1 pt-1">
@@ -566,7 +614,7 @@ export default function ProblemDetailPage() {
 
         {/* INFORMATION SIDE PANEL */}
         {isInfoPanelOpen && (
-           <div className="w-[320px] lg:w-[400px] border-l border-border bg-card flex flex-col shrink-0 animate-in slide-in-from-right">
+           <div className="w-[320px] lg:w-100 border-l border-border bg-card flex flex-col shrink-0 animate-in slide-in-from-right">
               <div className="flex items-center justify-between px-4 py-4 border-b border-border/50">
                  <h2 className="font-bold text-foreground">Information</h2>
                  <button onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
