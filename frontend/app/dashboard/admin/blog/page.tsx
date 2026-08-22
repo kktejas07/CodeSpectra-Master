@@ -1,0 +1,238 @@
+'use client'
+
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Input } from '@/components/ui/input'
+import { Label } from '@/components/ui/label'
+import { Badge } from '@/components/ui/badge'
+import { Textarea } from '@/components/ui/textarea'
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select'
+import { Loader2, Newspaper, Plus, Trash2, Eye } from 'lucide-react'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { BLOG_CATEGORIES, type BlogCategoryId } from '@/lib/blog-categories'
+
+type Post = {
+  id: string
+  slug: string
+  title: string
+  excerpt: string
+  body: string
+  category: string
+  status: string
+  author_name: string
+  published_at?: string | null
+  read_minutes: number
+}
+
+export default function AdminBlogPage() {
+  const gate = usePageGuard('superadmin')
+  const addToast = useToast()
+  const [items, setItems] = useState<Post[]>([])
+  const [loading, setLoading] = useState(true)
+  const [saving, setSaving] = useState(false)
+  const [showForm, setShowForm] = useState(false)
+
+  const [title, setTitle] = useState('')
+  const [excerpt, setExcerpt] = useState('')
+  const [body, setBody] = useState('')
+  const [category, setCategory] = useState<BlogCategoryId>('signals')
+  const [authorName, setAuthorName] = useState('CodeSpectra Editorial')
+  const [coverImage, setCoverImage] = useState('')
+
+  const load = useCallback(async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/blog?status=all&limit=100', { cache: 'no-store' })
+      const data = await res.json()
+      setItems(data.items || [])
+    } catch {
+      addToast({ type: 'error', title: 'Failed to load posts' })
+    } finally {
+      setLoading(false)
+    }
+  }, [addToast])
+
+  useEffect(() => {
+    if (gate.ready) void load()
+  }, [gate.ready, load])
+
+  if (!gate.ready) return null
+
+  const create = async (publish: boolean) => {
+    if (!title.trim()) {
+      addToast({ type: 'error', title: 'Title required' })
+      return
+    }
+    setSaving(true)
+    try {
+      const res = await csrfFetch('/api/blog', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          title,
+          excerpt,
+          body: body || `<p>${excerpt || title}</p>`,
+          category,
+          author_name: authorName,
+          cover_image: coverImage || undefined,
+          publish,
+        }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Create failed')
+      addToast({ type: 'success', title: publish ? 'Published' : 'Draft saved' })
+      setShowForm(false)
+      setTitle('')
+      setExcerpt('')
+      setBody('')
+      setCoverImage('')
+      await load()
+    } catch (e) {
+      addToast({ type: 'error', title: String(e) })
+    } finally {
+      setSaving(false)
+    }
+  }
+
+  const remove = async (slug: string) => {
+    if (!confirm('Delete this post?')) return
+    const res = await csrfFetch(`/api/blog/${encodeURIComponent(slug)}`, { method: 'DELETE' })
+    if (!res.ok) {
+      addToast({ type: 'error', title: 'Delete failed' })
+      return
+    }
+    addToast({ type: 'success', title: 'Deleted' })
+    await load()
+  }
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-wrap items-center justify-between gap-3">
+        <div>
+          <h1 className="flex items-center gap-2 text-2xl font-bold">
+            <Newspaper className="h-6 w-6 text-teal-600" /> Newsroom
+          </h1>
+          <p className="text-sm text-muted-foreground">
+            Public articles at{' '}
+            <Link href="/blog" className="text-teal-600 hover:underline" target="_blank">
+              /blog
+            </Link>
+            . Prefer publishing newsletters here when they should live forever.
+          </p>
+        </div>
+        <Button onClick={() => setShowForm((v) => !v)}>
+          <Plus className="mr-1 h-4 w-4" /> New post
+        </Button>
+      </div>
+
+      {showForm && (
+        <Card className="space-y-4 p-5">
+          <div className="grid gap-4 sm:grid-cols-2">
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Title</Label>
+              <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Article title" />
+            </div>
+            <div className="space-y-1.5">
+              <Label>Category</Label>
+              <Select value={category} onValueChange={(v) => setCategory(v as BlogCategoryId)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {BLOG_CATEGORIES.map((c) => (
+                    <SelectItem key={c.id} value={c.id}>
+                      {c.label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-1.5">
+              <Label>Author</Label>
+              <Input value={authorName} onChange={(e) => setAuthorName(e.target.value)} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Excerpt</Label>
+              <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Cover image URL (optional)</Label>
+              <Input
+                value={coverImage}
+                onChange={(e) => setCoverImage(e.target.value)}
+                placeholder="https://…"
+              />
+            </div>
+            <div className="space-y-1.5 sm:col-span-2">
+              <Label>Body (HTML)</Label>
+              <Textarea
+                value={body}
+                onChange={(e) => setBody(e.target.value)}
+                rows={10}
+                placeholder="<h2>Section</h2><p>…</p>"
+                className="font-mono text-xs"
+              />
+            </div>
+          </div>
+          <div className="flex flex-wrap gap-2">
+            <Button disabled={saving} onClick={() => void create(true)}>
+              {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
+              Publish
+            </Button>
+            <Button variant="outline" disabled={saving} onClick={() => void create(false)}>
+              Save draft
+            </Button>
+            <Button variant="ghost" onClick={() => setShowForm(false)}>
+              Cancel
+            </Button>
+          </div>
+        </Card>
+      )}
+
+      {loading ? (
+        <Card className="flex h-28 items-center justify-center text-muted-foreground">
+          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
+        </Card>
+      ) : items.length === 0 ? (
+        <Card className="p-10 text-center text-sm text-muted-foreground">No posts yet.</Card>
+      ) : (
+        <div className="space-y-2">
+          {items.map((p) => (
+            <Card key={p.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
+              <div className="min-w-0">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="font-medium">{p.title}</p>
+                  <Badge variant="secondary">{p.category}</Badge>
+                  <Badge variant={p.status === 'published' ? 'default' : 'outline'}>{p.status}</Badge>
+                </div>
+                <p className="mt-1 text-xs text-muted-foreground">
+                  /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
+                </p>
+              </div>
+              <div className="flex gap-2">
+                <Button variant="outline" size="sm" asChild>
+                  <Link href={`/blog/${p.slug}`} target="_blank">
+                    <Eye className="mr-1 h-3.5 w-3.5" /> View
+                  </Link>
+                </Button>
+                <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)}>
+                  <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                </Button>
+              </div>
+            </Card>
+          ))}
+        </div>
+      )}
+    </div>
+  )
+}

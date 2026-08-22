@@ -9,6 +9,9 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-22 | — | Soften Aadhaar profile copy for users; newsletter “Publish to Newsroom”; Signals agent scaffold (public RSS → AI rewrite → admin approve → /blog). | cursor |
+| 2026-08-22 | — | Newsroom blog: public `/blog` + `/blog/[slug]` (featured/Just in/TOC), admin `/dashboard/admin/blog`, `blog_posts` + seed; newsletter stays push, blog is evergreen. | cursor |
+| 2026-08-22 | — | Newsletter notifications open an in-dashboard modal with full body (`GET /api/newsletter/[id]`); no longer drop users on the index snippet list. | cursor |
 | 2026-08-22 | — | Courses catalog: remove duplicate seed “Java Fundamentals” (`java-fundamentals` Coding/20) when generated `java-beginner` exists; title dedupe + no re-upsert of colliding seeds. | cursor |
 | 2026-08-22 | v0.24.28 | Profile real rank/bio (no mock); Add-to-Calendar (.ics); wishlist page; course share menu; MP4-ready soft-launch banner; extended profile persists to Mongo. | CodeSpectra-Master |
 | 2026-08-22 | v0.24.27 | Course detail UX: wishlist/share tooltips + Mongo persistence; About section; Unstop-style skill pills; SuperAdmin certificate template preview with SAMPLE watermark. | CodeSpectra-Master |

@@ -112,6 +112,12 @@ export function PublicPageWrapper({
                 Pricing
               </Link>
               <Link
+                href="/blog"
+                className="px-3 py-1.5 text-sm lg:text-[15px] font-semibold text-slate-300 hover:text-white rounded-full hover:bg-slate-800/60 transition-all duration-200"
+              >
+                Blog
+              </Link>
+              <Link
                 href="/docs"
                 className="px-3 py-1.5 text-sm lg:text-[15px] font-semibold text-slate-300 hover:text-white rounded-full hover:bg-slate-800/60 transition-all duration-200"
               >
@@ -272,6 +278,7 @@ export function PublicPageWrapper({
               <h4 className="font-semibold text-foreground text-sm mb-6">Resources</h4>
               <ul className="space-y-4">
                 <li><Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</Link></li>
+                <li><Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Blog</Link></li>
                 <li><Link href="/api-reference" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">API reference</Link></li>
                 <li><Link href="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Support</Link></li>
               </ul>

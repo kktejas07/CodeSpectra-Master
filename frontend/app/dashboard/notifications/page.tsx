@@ -2,11 +2,13 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Bell, Loader2, CheckCheck, Filter, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star } from 'lucide-react'
+import {
+  Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
+} from '@/components/ui/dialog'
+import { Bell, Loader2, CheckCheck, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star, Mail } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -16,12 +18,25 @@ const ICON_MAP: Record<string, React.ElementType> = {
   'alert-triangle': AlertTriangle, 'file-text': FileText, 'message-square': MessageSquare,
   clock: Clock, building: Building, key: Key, play: Play, 'x-circle': XCircle,
   'check-circle': Star, bell: Bell, 'user-plus': Users, 'alert-circle': AlertTriangle,
+  mail: Mail,
 }
 
 interface Notification {
   id: string; title: string; message: string; type: string
   is_read: boolean; link?: string; icon?: string; category?: string
   created_at: string
+  metadata?: { campaignId?: string; campaign_id?: string }
+}
+
+interface NewsletterPayload {
+  id: string
+  subject: string
+  intro?: string
+  body?: string
+  hero_image?: string
+  cta_text?: string
+  cta_url?: string
+  completed_at?: string
 }
 
 const CATEGORIES = [
@@ -59,18 +74,26 @@ const DEFAULT_LINKS: Record<string, string> = {
   'scan.completed': '/dashboard/projects',
   'team.invite': '/dashboard/team',
   'team.joined': '/dashboard/team',
-  // Missing this → newsletter taps with empty link fell through to /dashboard
-  newsletter: '/newsletter',
+}
+
+function isNewsletter(n: Notification): boolean {
+  return n.type === 'newsletter' || (n.type || '').startsWith('newsletter')
+}
+
+/** Prefer /newsletter/{id}; fall back to metadata; else "latest". */
+function newsletterApiId(n: Notification): string {
+  const raw = (n.link || '').trim()
+  const fromLink = raw.match(/\/newsletter\/([^/?#]+)/)?.[1]
+  if (fromLink && fromLink !== 'latest') return fromLink
+  const meta = n.metadata
+  const fromMeta = meta?.campaignId || meta?.campaign_id
+  if (fromMeta) return String(fromMeta)
+  return 'latest'
 }
 
 function resolveNotificationLink(n: Notification): string {
   const raw = (n.link || '').trim()
-  if (raw && raw !== '/dashboard') return raw
-  if (n.type === 'newsletter' || (n.type || '').startsWith('newsletter')) {
-    const id = raw.match(/\/newsletter\/([^/?#]+)/)?.[1]
-    if (id) return `/newsletter/${id}`
-    return '/newsletter'
-  }
+  if (raw && raw !== '/dashboard' && !isNewsletter(n)) return raw
   return DEFAULT_LINKS[n.type] || '/dashboard'
 }
 
@@ -82,6 +105,11 @@ export default function NotificationsPage() {
   const [loading, setLoading] = useState(true)
   const [category, setCategory] = useState('all')
   const [unreadCount, setUnreadCount] = useState(0)
+
+  const [newsletterOpen, setNewsletterOpen] = useState(false)
+  const [newsletterLoading, setNewsletterLoading] = useState(false)
+  const [newsletter, setNewsletter] = useState<NewsletterPayload | null>(null)
+  const [newsletterError, setNewsletterError] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -100,6 +128,27 @@ export default function NotificationsPage() {
     const interval = setInterval(() => { void load() }, 30_000)
     return () => clearInterval(interval)
   }, [load])
+
+  const openNewsletter = async (n: Notification) => {
+    setNewsletterOpen(true)
+    setNewsletter(null)
+    setNewsletterError('')
+    setNewsletterLoading(true)
+    try {
+      const id = newsletterApiId(n)
+      const res = await fetch(`/api/newsletter/${encodeURIComponent(id)}`, { cache: 'no-store' })
+      const data = await res.json()
+      if (!res.ok) {
+        setNewsletterError(data.error || 'Newsletter not found')
+        return
+      }
+      setNewsletter(data)
+    } catch {
+      setNewsletterError('Failed to load newsletter')
+    } finally {
+      setNewsletterLoading(false)
+    }
+  }
 
   if (!gate.ready) return null
 
@@ -137,7 +186,6 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      {/* Category filter chips */}
       <div className="flex gap-2 overflow-x-auto pb-2">
         {CATEGORIES.map((c) => (
           <button key={c.id} onClick={() => setCategory(c.id)}
@@ -164,7 +212,6 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {filtered.map((n) => {
             const Icon = IconComponent(n.icon || 'bell') as React.ComponentType<{ className?: string }>
-            const resolvedLink = resolveNotificationLink(n)
             return (
               <div key={n.id} className={`rounded-lg border transition-colors ${
                 n.is_read ? 'border-border bg-card hover:bg-muted/30' : 'border-primary/30 bg-primary/10 hover:bg-primary/15'
@@ -172,7 +219,11 @@ export default function NotificationsPage() {
                 <div className="flex items-start gap-3 p-4 cursor-pointer"
                   onClick={async () => {
                     if (!n.is_read) await markRead(n.id)
-                    router.push(resolvedLink)
+                    if (isNewsletter(n)) {
+                      await openNewsletter(n)
+                      return
+                    }
+                    router.push(resolveNotificationLink(n))
                   }}>
                   <div className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${
                     n.is_read ? 'bg-muted' : 'bg-primary/15'
@@ -192,7 +243,7 @@ export default function NotificationsPage() {
                     <div className="flex items-center gap-2 mt-1.5">
                       <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/60 text-muted-foreground">{n.type}</span>
                       <span className="text-[10px] text-primary">
-                        Tap to view →
+                        {isNewsletter(n) ? 'Tap to read →' : 'Tap to view →'}
                       </span>
                     </div>
                   </div>
@@ -202,6 +253,63 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+
+      <Dialog open={newsletterOpen} onOpenChange={setNewsletterOpen}>
+        <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
+          <DialogHeader>
+            <DialogTitle className="pr-6 text-left text-xl leading-snug">
+              {newsletterLoading ? 'Loading…' : (newsletter?.subject || 'Newsletter')}
+            </DialogTitle>
+            {newsletter?.completed_at && (
+              <DialogDescription className="text-left">
+                {new Date(newsletter.completed_at).toLocaleDateString()}
+              </DialogDescription>
+            )}
+          </DialogHeader>
+
+          {newsletterLoading && (
+            <div className="flex h-24 items-center justify-center text-muted-foreground">
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading newsletter…
+            </div>
+          )}
+
+          {newsletterError && (
+            <p className="text-sm text-destructive">{newsletterError}</p>
+          )}
+
+          {newsletter && !newsletterLoading && (
+            <div className="space-y-4">
+              {newsletter.hero_image && (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={newsletter.hero_image}
+                  alt=""
+                  className="max-h-56 w-full rounded-lg object-cover"
+                />
+              )}
+              {newsletter.intro && (
+                <p className="text-sm text-muted-foreground leading-relaxed">{newsletter.intro}</p>
+              )}
+              {newsletter.body && (
+                <div
+                  className="prose prose-sm prose-zinc dark:prose-invert max-w-none"
+                  dangerouslySetInnerHTML={{ __html: newsletter.body }}
+                />
+              )}
+              {newsletter.cta_text && newsletter.cta_url && (
+                <a
+                  href={newsletter.cta_url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="inline-flex items-center justify-center rounded-lg bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90"
+                >
+                  {newsletter.cta_text}
+                </a>
+              )}
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

@@ -24,7 +24,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
       <div className="max-w-3xl mx-auto py-12 px-4 sm:px-6 lg:px-8">
         <div className="mb-8 text-center">
           <Link href="/" className="inline-block">
-            <span className="bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide">
+            <span className="bg-linear-to-br from-violet-600 to-fuchsia-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide">
               CODESPECTRA
             </span>
           </Link>
