@@ -17,6 +17,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { ListingTrustFooter } from '@/components/trust/listing-trust-footer'
 import { useToast } from '@/lib/toast-context'
 import { Label } from '@/components/ui/label'
 import {
@@ -183,9 +184,9 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
         {hackathon.banner_url ? (
           <img src={hackathon.banner_url} alt="" className="w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 bg-gradient-to-br from-primary/20 via-background to-background" />
+          <div className="absolute inset-0 bg-linear-to-br from-primary/20 via-background to-background" />
         )}
-        <div className="absolute inset-0 bg-gradient-to-t from-background/90 via-background/20 to-transparent" />
+        <div className="absolute inset-0 bg-linear-to-t from-background/90 via-background/20 to-transparent" />
         
         {/* Banner Overlay Controls */}
         <div className="absolute top-0 left-0 w-full p-4 md:p-6 flex justify-between items-start">
@@ -506,9 +507,21 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
         </div>
       </main>
 
+      {hackathon ? (
+        <div className="mx-auto max-w-6xl px-4 pb-10">
+          <ListingTrustFooter
+            entityType="hackathon"
+            entityId={hackathon.id || slug}
+            entityTitle={hackathon.name}
+            organizerName="CodeSpectra Hackathons"
+            updatedAt={hackathon.starts_at}
+          />
+        </div>
+      ) : null}
+
       {/* Email Invite Dialog */}
       <Dialog open={emailInviteOpen} onOpenChange={setEmailInviteOpen}>
-        <DialogContent className="sm:max-w-[420px]">
+        <DialogContent className="sm:max-w-105">
           <DialogHeader>
             <DialogTitle>Invite Teammate</DialogTitle>
           </DialogHeader>

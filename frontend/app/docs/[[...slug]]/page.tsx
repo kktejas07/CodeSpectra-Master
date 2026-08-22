@@ -93,7 +93,7 @@ function DocsHome({ sections }: { sections: DocSection[] }) {
 
   return (
     <div className="mx-auto w-full max-w-5xl pb-16">
-      <div className="relative mb-12 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-teal-500/10 via-background to-cyan-500/5 p-8 sm:p-10">
+      <div className="relative mb-12 overflow-hidden rounded-2xl border border-border/60 bg-linear-to-br from-teal-500/10 via-background to-cyan-500/5 p-8 sm:p-10">
         <div className="absolute -right-16 -top-16 h-48 w-48 rounded-full bg-teal-500/10 blur-3xl" />
         <div className="relative">
           <p className="mb-3 inline-flex items-center gap-2 rounded-full border border-teal-500/30 bg-teal-500/10 px-3 py-1 text-xs font-semibold uppercase tracking-wider text-teal-700 dark:text-teal-300">

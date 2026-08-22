@@ -323,7 +323,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
         {/* ── Main Video Area ── */}
         <main className="flex-1 flex flex-col min-w-0 bg-black/5 dark:bg-black/40">
           <div className="flex-1 p-0 sm:p-4 lg:p-6 overflow-y-auto">
-            <div className="max-w-5xl mx-auto w-full space-y-6">
+            <div className="w-full space-y-6">
               
               {/* Content Header & Toggle */}
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 pb-2 border-b border-border/40">
@@ -377,6 +377,12 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   ) : (
                     <QuizComponent
                       questions={quizQuestions}
+                      bookmark={{
+                        courseId,
+                        courseTitle: course.title,
+                        lessonId,
+                        href: `/dashboard/courses/${courseId}/lesson/${lessonId}`,
+                      }}
                       reviewHref={
                         quizSection?.lessons?.[0]?.id
                           ? `/dashboard/courses/${courseId}/lesson/${quizSection.lessons[0].id}`

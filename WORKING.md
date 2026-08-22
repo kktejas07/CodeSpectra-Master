@@ -6,6 +6,10 @@
 
 ## Current Claims
 
+| cursor (this session, REMOVE-POC-VIDEO) | Remove AI Video Generator PoC button from Course Management; production is course-generator | courses page, poc-video page, page-permissions, WORKING.md | IN PROGRESS | 2026-08-22 |
+| cursor (this session, EMPTY+WIDTH) | Lottie empty states (dynamic) + full-width dashboard pages audit | empty-state, lottie assets, hub pages, WORKING.md | DONE — shared EmptyState+Lottie; hubs full width; dynamic empty on bookmarks/notif/courses/etc | 2026-08-22 |
+| cursor (this session, EBOOKS+QUIZ-BM) | Unstop-style ebooks E2E + module-quiz bookmarks; close gaps | quiz bookmarks, resources/ebooks, admin generate, cron, WORKING.md | DONE — quiz bookmarks + ebook seed/API/UI/admin/cron; tsc clean | 2026-08-22 |
+| cursor (this session, UNSTOP-PARITY) | Filters? Quizzes/Articles/Resources/My Courses/Sessions/Recent/Watchlist/Bookmarks; complaint+Updated On | pages, APIs, trust footer, sidebar ICON_MAP, WORKING.md | DONE — hubs + activity pages + trust footer; Unstop-style All Filters on Quizzes | 2026-08-22 |
 | cursor (this session, DOCS+CRON) | /docs/getting-started 404 + empty UI; CRON_SECRET shows Missing | Dockerfile (ship docs/), docs.ts paths, Dokploy env note, WORKING.md | DONE — mirrored frontend/docs; live hotfix + CRON_SECRET on service | 2026-08-22 |
 | cursor (this session, DOCS-FS-BUILD) | Dokploy: DocContent imports lib/docs → Can't resolve 'fs' | docs.ts, docs-shared.ts, DocContent, DocSidebar, WORKING.md | DONE — client imports docs-shared only; fs stays server | 2026-08-22 |
 | cursor (this session, DOCS-UI) | Redesign /docs into professional docs UI (sidebar/content/TOC), fix bugs | docs page, DocSidebar, DocContent, WORKING.md | DONE — Mintlify-style shell, home cards, TOC, prev/next | 2026-08-22 |

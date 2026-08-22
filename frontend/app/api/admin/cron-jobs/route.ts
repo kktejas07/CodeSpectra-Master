@@ -61,6 +61,15 @@ const HTTP_CRON_JOBS = [
     cronHint: '0 * * * *',
     auth: 'CRON_SECRET',
   },
+  {
+    id: 'ebooks-daily',
+    path: '/api/cron/ebooks-daily',
+    name: 'Daily ebook draft',
+    what: 'Generates one original CodeSpectra ebook draft (no copyrighted scraping). Publish in Admin → Resources.',
+    recommend: 'Daily',
+    cronHint: '0 7 * * *',
+    auth: 'CRON_SECRET',
+  },
 ] as const
 
 const ALLOWED_RUN_PATHS = new Set(HTTP_CRON_JOBS.map((j) => j.path))

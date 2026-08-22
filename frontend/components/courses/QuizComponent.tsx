@@ -1,10 +1,11 @@
 'use client'
 
-import React, { useState } from 'react'
+import React, { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { CheckCircle2, XCircle, HelpCircle, RotateCcw, BookOpen, Lightbulb } from 'lucide-react'
+import { CheckCircle2, XCircle, HelpCircle, RotateCcw, BookOpen, Lightbulb, Bookmark } from 'lucide-react'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
 export interface QuizQuestion {
   id: string
@@ -15,6 +16,13 @@ export interface QuizQuestion {
   explanation: string
 }
 
+export type QuizBookmarkContext = {
+  courseId: string
+  courseTitle?: string
+  lessonId: string
+  href?: string
+}
+
 interface QuizComponentProps {
   questions: QuizQuestion[]
   onComplete?: (score: number, total: number) => void
@@ -23,6 +31,8 @@ interface QuizComponentProps {
   reviewHref?: string
   reviewLabel?: string
   passPercent?: number
+  /** When set, each question can be bookmarked (snapshot stored server-side). */
+  bookmark?: QuizBookmarkContext
 }
 
 /**
@@ -36,12 +46,92 @@ export function QuizComponent({
   reviewHref,
   reviewLabel = 'Review the lesson',
   passPercent = 80,
+  bookmark,
 }: QuizComponentProps) {
   const [currentQ, setCurrentQ] = useState(0)
   const [selected, setSelected] = useState<number | null>(null)
   const [showAnswer, setShowAnswer] = useState(false)
   const [answers, setAnswers] = useState<Record<number, number>>({})
   const [completed, setCompleted] = useState(false)
+  const [bookmarkedIds, setBookmarkedIds] = useState<Set<string>>(new Set())
+  const [bookmarkBusy, setBookmarkBusy] = useState(false)
+
+  useEffect(() => {
+    if (!bookmark?.courseId || !bookmark.lessonId) return
+    let cancelled = false
+    fetch('/api/user/quiz-bookmarks', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (cancelled || !d?.items) return
+        const ids = new Set<string>()
+        for (const it of d.items as { courseId?: string; lessonId?: string; questionId?: string }[]) {
+          if (it.courseId === bookmark.courseId && it.lessonId === bookmark.lessonId && it.questionId) {
+            ids.add(it.questionId)
+          }
+        }
+        setBookmarkedIds(ids)
+      })
+      .catch(() => {})
+    return () => {
+      cancelled = true
+    }
+  }, [bookmark?.courseId, bookmark?.lessonId])
+
+  async function toggleBookmark(q: QuizQuestion) {
+    if (!bookmark || bookmarkBusy || readOnly) return
+    setBookmarkBusy(true)
+    const next = !bookmarkedIds.has(q.id)
+    setBookmarkedIds((prev) => {
+      const s = new Set(prev)
+      if (next) s.add(q.id)
+      else s.delete(q.id)
+      return s
+    })
+    try {
+      const r = await csrfFetch('/api/user/quiz-bookmarks', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          courseId: bookmark.courseId,
+          courseTitle: bookmark.courseTitle || '',
+          lessonId: bookmark.lessonId,
+          questionId: q.id,
+          question: q.question,
+          options: q.options,
+          correct: q.correct,
+          explanation: q.explanation,
+          href:
+            bookmark.href ||
+            `/dashboard/courses/${encodeURIComponent(bookmark.courseId)}/lesson/${encodeURIComponent(bookmark.lessonId)}`,
+        }),
+      })
+      if (r.ok) {
+        const d = await r.json()
+        setBookmarkedIds((prev) => {
+          const s = new Set(prev)
+          if (d.saved) s.add(q.id)
+          else s.delete(q.id)
+          return s
+        })
+      } else {
+        setBookmarkedIds((prev) => {
+          const s = new Set(prev)
+          if (next) s.delete(q.id)
+          else s.add(q.id)
+          return s
+        })
+      }
+    } catch {
+      setBookmarkedIds((prev) => {
+        const s = new Set(prev)
+        if (next) s.delete(q.id)
+        else s.add(q.id)
+        return s
+      })
+    } finally {
+      setBookmarkBusy(false)
+    }
+  }
 
   const question = questions[currentQ]
   const isCorrect = selected === question?.correct
@@ -165,21 +255,38 @@ export function QuizComponent({
         <Badge variant="outline">
           Question {currentQ + 1} of {questions.length}
         </Badge>
-        <div className="flex gap-1">
-          {questions.map((_, i) => (
-            <div
-              key={i}
-              className={`h-2 w-2 rounded-full ${
-                i < currentQ
-                  ? answers[i] === questions[i].correct
-                    ? 'bg-green-500'
-                    : 'bg-red-500'
-                  : i === currentQ
-                    ? 'bg-primary'
-                    : 'bg-muted'
-              }`}
-            />
-          ))}
+        <div className="flex items-center gap-2">
+          {bookmark ? (
+            <Button
+              type="button"
+              size="sm"
+              variant="ghost"
+              className="h-8 px-2"
+              disabled={bookmarkBusy || readOnly}
+              title={bookmarkedIds.has(question.id) ? 'Remove bookmark' : 'Bookmark question'}
+              onClick={() => void toggleBookmark(question)}
+            >
+              <Bookmark
+                className={`h-4 w-4 ${bookmarkedIds.has(question.id) ? 'fill-amber-400 text-amber-400' : ''}`}
+              />
+            </Button>
+          ) : null}
+          <div className="flex gap-1">
+            {questions.map((_, i) => (
+              <div
+                key={i}
+                className={`h-2 w-2 rounded-full ${
+                  i < currentQ
+                    ? answers[i] === questions[i].correct
+                      ? 'bg-green-500'
+                      : 'bg-red-500'
+                    : i === currentQ
+                      ? 'bg-primary'
+                      : 'bg-muted'
+                }`}
+              />
+            ))}
+          </div>
         </div>
       </div>
 

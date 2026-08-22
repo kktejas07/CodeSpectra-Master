@@ -9,6 +9,7 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-22 | — | Unstop-style Resources ebooks (seed + generate + flipbook UI + daily cron drafts) and module-quiz question bookmarks (API + QuizComponent + activity bookmarks tab). | cursor |
 | 2026-08-22 | — | Newsletter public GET: type `$in` statuses as `as const` so Dokploy `yarn build` typecheck passes. | cursor |
 | 2026-08-22 | — | Signals quality: research public pages → fact pack → draft → humanize; store facts/source_urls; admin queue shows angle + facts. RSS/fetch free; LLM = platform AI usage. | cursor |
 | 2026-08-22 | — | Soften Aadhaar profile copy for users; newsletter “Publish to Newsroom”; Signals agent scaffold (public RSS → AI rewrite → admin approve → /blog). | cursor |

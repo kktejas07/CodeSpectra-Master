@@ -103,8 +103,8 @@ export function LearningSidebarNav({
               <span className={cn('truncate', collapsed && 'lg:sr-only')}>All courses</span>
             </NavLinkRow>
             <NavLinkRow
-              href={learningHref(sp, { view: 'my-courses' })}
-              active={onHub && view === 'my-courses'}
+              href="/dashboard/courses/my"
+              active={pathname === '/dashboard/courses/my'}
               collapsed={collapsed}
               onPick={onNavigate}
             >
@@ -112,13 +112,13 @@ export function LearningSidebarNav({
               <span className={cn('truncate', collapsed && 'lg:sr-only')}>My courses</span>
             </NavLinkRow>
             <NavLinkRow
-              href={learningHref(sp, { view: 'saved' })}
-              active={onHub && view === 'saved'}
+              href="/dashboard/courses/wishlist"
+              active={pathname === '/dashboard/courses/wishlist'}
               collapsed={collapsed}
               onPick={onNavigate}
             >
               <Bookmark className="h-4 w-4 shrink-0 opacity-90" />
-              <span className={cn('truncate', collapsed && 'lg:sr-only')}>Saved</span>
+              <span className={cn('truncate', collapsed && 'lg:sr-only')}>Watchlist</span>
             </NavLinkRow>
           </div>
         </div>

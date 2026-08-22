@@ -65,7 +65,6 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/course-generator',
   '/dashboard/admin/courses',
   '/dashboard/admin/courses/[id]',
-  '/dashboard/admin/courses/poc-video',
   '/dashboard/admin/workflows',
   '/dashboard/admin/cron-jobs',
 
@@ -81,6 +80,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/announcements',
   '/dashboard/admin/newsletter',
   '/dashboard/admin/blog',
+  '/dashboard/admin/resources',
   '/dashboard/admin/signals',
   '/dashboard/admin/billing',
   '/dashboard/admin/help',
@@ -103,6 +103,8 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Practice', firstRoute: '/dashboard/arena' },
   { label: 'Events', firstRoute: '/dashboard/events' },
   { label: 'Courses', firstRoute: '/dashboard/courses' },
+  { label: 'Discover', firstRoute: '/dashboard/quizzes' },
+  { label: 'My Activity', firstRoute: '/dashboard/courses/my' },
   { label: 'Career', firstRoute: '/dashboard/jobs' },
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
   { label: 'Stats', firstRoute: '/dashboard/leaderboard' },
@@ -155,8 +157,19 @@ export const ALL_USER_ROUTES: string[] = [
   
   // Learning & Prep
   '/dashboard/courses',
+  '/dashboard/courses/my',
   '/dashboard/courses/wishlist',
   '/dashboard/interview-prep',
+
+  // Discover (Unstop-style hubs)
+  '/dashboard/quizzes',
+  '/dashboard/articles',
+  '/dashboard/resources',
+
+  // My Activity
+  '/dashboard/activity/recent',
+  '/dashboard/activity/sessions',
+  '/dashboard/activity/bookmarks',
   
   // Career & Hiring
   '/dashboard/jobs',
@@ -271,13 +284,13 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/course-generator': 'Course Generator',
   '/dashboard/admin/courses': 'Course Management',
   '/dashboard/admin/courses/[id]': 'Edit Course',
-  '/dashboard/admin/courses/poc-video': 'AI Video PoC',
   '/dashboard/admin/hackathons/create': 'Create Hackathon',
   '/dashboard/admin/hackathons/edit': 'Edit Hackathon',
   '/dashboard/admin/hackathons': 'Hackathons',
   '/dashboard/admin/announcements': 'Announcements',
   '/dashboard/admin/newsletter': 'Newsletter',
   '/dashboard/admin/blog': 'Newsroom',
+  '/dashboard/admin/resources': 'Resources / Ebooks',
   '/dashboard/admin/signals': 'Signals',
   '/dashboard/admin/rag': 'RAG',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
@@ -293,7 +306,14 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/scanner': 'Scanner',
   '/dashboard/agent': 'Agent',
   '/dashboard/courses': 'Courses',
-  '/dashboard/courses/wishlist': 'Wishlist',
+  '/dashboard/courses/my': 'My Courses',
+  '/dashboard/courses/wishlist': 'Watchlist',
+  '/dashboard/quizzes': 'Quizzes',
+  '/dashboard/articles': 'Articles',
+  '/dashboard/resources': 'Resources',
+  '/dashboard/activity/recent': 'Recently Viewed',
+  '/dashboard/activity/sessions': 'My Sessions',
+  '/dashboard/activity/bookmarks': 'Bookmarked Questions',
   '/dashboard/skill-analytics': 'Skill Analytics',
   '/dashboard/identity-verify': 'Identity Verify',
   '/dashboard/leaderboard': 'Leaderboard',

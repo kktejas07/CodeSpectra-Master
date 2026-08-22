@@ -6,6 +6,7 @@ import { blogPosts, categoryLabel } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
 import { coverForPost } from '@/lib/blog-covers'
 import { Clock, ChevronRight, ExternalLink } from 'lucide-react'
+import { ListingTrustFooter } from '@/components/trust/listing-trust-footer'
 
 export const dynamic = 'force-dynamic'
 
@@ -88,10 +89,10 @@ export default async function BlogArticlePage({
     <PublicPageWrapper>
       {/* Full-bleed cover */}
       <div className="relative w-full border-b border-border/60">
-        <div className="relative aspect-[21/9] min-h-[220px] w-full max-h-[420px] overflow-hidden bg-muted sm:min-h-[280px]">
+        <div className="relative aspect-21/9 min-h-55 w-full max-h-105 overflow-hidden bg-muted sm:min-h-70">
           {/* eslint-disable-next-line @next/next/no-img-element */}
           <img src={cover} alt="" className="h-full w-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+          <div className="absolute inset-0 bg-linear-to-t from-background via-background/20 to-transparent" />
         </div>
       </div>
 
@@ -109,7 +110,7 @@ export default async function BlogArticlePage({
             {categoryLabel(post.category)}
           </Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="line-clamp-1 max-w-[14rem] text-foreground sm:max-w-xs">{post.title}</span>
+          <span className="line-clamp-1 max-w-56 text-foreground sm:max-w-xs">{post.title}</span>
         </nav>
 
         <div className="grid gap-10 xl:grid-cols-[1fr_minmax(0,48rem)_1fr]">
@@ -185,6 +186,14 @@ export default async function BlogArticlePage({
                 ) : null}
               </div>
             ) : null}
+
+            <ListingTrustFooter
+              entityType="blog"
+              entityId={post.slug}
+              entityTitle={post.title}
+              organizerName={post.author_name || 'CodeSpectra Editorial'}
+              updatedAt={post.updated_at || post.published_at}
+            />
 
             <p className="mt-10">
               <Link href="/blog" className="text-sm text-teal-600 hover:underline dark:text-teal-400">

@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Heart, Loader2, BookOpen, ArrowRight } from 'lucide-react'
+import { Heart, Loader2, ArrowRight } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { EmptyState } from '@/components/ui/empty-state'
 
 type CourseCard = {
   id: string
@@ -72,11 +73,11 @@ export default function CourseWishlistPage() {
   }
 
   return (
-    <div className="max-w-5xl mx-auto px-4 py-8 space-y-6">
+    <div className="w-full space-y-6">
       <div className="flex items-center justify-between gap-4">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
-            <Heart className="h-6 w-6 text-red-500 fill-red-500" /> Wishlist
+            <Heart className="h-6 w-6 text-red-500 fill-red-500" /> Watchlist
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
             Courses you saved for later · {ids.length} saved
@@ -88,14 +89,13 @@ export default function CourseWishlistPage() {
       </div>
 
       {courses.length === 0 ? (
-        <Card className="p-10 text-center space-y-3">
-          <BookOpen className="h-10 w-10 mx-auto text-muted-foreground/50" />
-          <p className="font-medium">Your wishlist is empty</p>
-          <p className="text-sm text-muted-foreground">Tap the heart on a course to save it here.</p>
-          <Button asChild className="mt-2">
-            <Link href="/dashboard/courses">Explore courses</Link>
-          </Button>
-        </Card>
+        <EmptyState
+          variant="courses"
+          title="Your wishlist is empty"
+          description="Tap the heart on a course to save it here. Remove the last one and this empty state comes back."
+          actionLabel="Explore courses"
+          actionHref="/dashboard/courses"
+        />
       ) : (
         <div className="grid gap-4 sm:grid-cols-2">
           {courses.map(c => (

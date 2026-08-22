@@ -80,6 +80,7 @@
     "jspdf": "^4.2.1",
     "konva": "^10.3.1",
     "libphonenumber-js": "^1.13.11",
+    "lottie-react": "^3.1.0",
     "lucide-react": "^1.31.0",
     "media-icons": "^0.10.0",
     "mongodb": "^7.5.0",
