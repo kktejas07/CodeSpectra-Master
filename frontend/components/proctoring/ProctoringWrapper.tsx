@@ -355,7 +355,7 @@ export function ProctoringWrapper({
 
       {showWarningBanner && (
         <div className="fixed top-12 left-1/2 z-50 -translate-x-1/2 flex items-center gap-3 rounded-lg border border-amber-500/40 bg-amber-500/15 px-4 py-2.5 text-xs text-amber-700 dark:text-amber-300 shadow-lg backdrop-blur">
-          <AlertTriangle className="h-4 w-4 text-amber-500 flex-shrink-0" />
+          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
           <div>
             <div className="font-bold">Proctor Warning Logged</div>
             <div>{warningMessage}</div>

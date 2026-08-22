@@ -348,7 +348,7 @@ export default function EditProfileWizard() {
           {/* Create Resume Promo */}
           <Link
             href="/dashboard/resumes/builder"
-            className="group relative block overflow-hidden rounded-2xl border border-sky-400/30 bg-gradient-to-br from-sky-600 via-blue-600 to-indigo-700 p-4 text-white shadow-lg shadow-blue-900/30 transition hover:scale-[1.01] hover:shadow-xl hover:shadow-blue-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
+            className="group relative block overflow-hidden rounded-2xl border border-sky-400/30 bg-linear-to-br from-sky-600 via-blue-600 to-indigo-700 p-4 text-white shadow-lg shadow-blue-900/30 transition hover:scale-[1.01] hover:shadow-xl hover:shadow-blue-900/40 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-sky-300"
           >
             <div className="pointer-events-none absolute -right-6 -top-6 h-24 w-24 rounded-full bg-white/10 blur-2xl transition group-hover:bg-white/20" />
             <div className="relative flex items-center justify-between gap-3">
