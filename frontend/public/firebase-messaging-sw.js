@@ -63,6 +63,10 @@ function initMessaging() {
   return initPromise
 }
 
+// Satisfy Chrome's requirement that these handlers are registered synchronously on initial evaluation.
+self.addEventListener('push', () => {})
+self.addEventListener('pushsubscriptionchange', () => {})
+
 // Synchronous top-level wiring — this is what silences Chrome's late-handler
 // warnings and guarantees background pushes work once the SW is active.
 if (embeddedConfig) {
