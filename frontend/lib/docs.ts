@@ -127,6 +127,30 @@ export function resolveDoc(slug: string[]): DocPage | null {
   return null
 }
 
+/** Canonical URL for a doc page. */
+export function docHref(doc: Pick<DocMeta, 'section' | 'slug'>): string {
+  return doc.section === 'public' ? `/docs/${doc.slug}` : `/docs/user/${doc.slug}`
+}
+
+/** Flat ordered list of all served docs (for prev/next). */
+export function flattenDocs(sections: DocSection[] = getDocTree()): DocMeta[] {
+  return sections.flatMap((s) => s.docs)
+}
+
+export function getAdjacentDocs(
+  current: DocMeta,
+  sections: DocSection[] = getDocTree(),
+): { prev: DocMeta | null; next: DocMeta | null } {
+  const flat = flattenDocs(sections)
+  const idx = flat.findIndex((d) => d.section === current.section && d.slug === current.slug)
+  if (idx < 0) return { prev: null, next: null }
+  return {
+    prev: idx > 0 ? flat[idx - 1] : null,
+    next: idx < flat.length - 1 ? flat[idx + 1] : null,
+  }
+}
+
+
 function loadDoc(meta: DocMeta): DocPage {
   const raw = fs.readFileSync(meta.filePath, 'utf-8')
   const { data, content } = matter(raw)
