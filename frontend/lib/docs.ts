@@ -1,6 +1,10 @@
 import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
+import type { DocMeta, DocPage, DocSection, ServeSection } from './docs-shared'
+
+export type { DocMeta, DocPage, DocSection, ServeSection }
+export { docHref, flattenDocs, getAdjacentDocs } from './docs-shared'
 
 const DOCS_ROOT = (() => {
   const cwd = process.cwd()
@@ -16,31 +20,7 @@ const DOCS_ROOT = (() => {
   return siblings[0]
 })()
 
-const SERVE_SECTIONS = ['public', 'user'] as const
-type ServeSection = (typeof SERVE_SECTIONS)[number]
-
-export interface DocMeta {
-  slug: string
-  title: string
-  section: ServeSection
-  sectionLabel: string
-  order: number
-  filePath: string
-}
-
-export interface DocSection {
-  id: ServeSection
-  label: string
-  icon: string
-  badge: string
-  docs: DocMeta[]
-}
-
-export interface DocPage {
-  meta: DocMeta
-  content: string
-  headings: { level: number; text: string; id: string }[]
-}
+const SERVE_SECTIONS = ['public', 'user'] as const satisfies readonly ServeSection[]
 
 const SECTION_LABELS: Record<ServeSection, { label: string; icon: string; badge: string }> = {
   public: { label: 'Public Documentation', icon: 'BookOpen', badge: 'Public' },
@@ -126,30 +106,6 @@ export function resolveDoc(slug: string[]): DocPage | null {
 
   return null
 }
-
-/** Canonical URL for a doc page. */
-export function docHref(doc: Pick<DocMeta, 'section' | 'slug'>): string {
-  return doc.section === 'public' ? `/docs/${doc.slug}` : `/docs/user/${doc.slug}`
-}
-
-/** Flat ordered list of all served docs (for prev/next). */
-export function flattenDocs(sections: DocSection[] = getDocTree()): DocMeta[] {
-  return sections.flatMap((s) => s.docs)
-}
-
-export function getAdjacentDocs(
-  current: DocMeta,
-  sections: DocSection[] = getDocTree(),
-): { prev: DocMeta | null; next: DocMeta | null } {
-  const flat = flattenDocs(sections)
-  const idx = flat.findIndex((d) => d.section === current.section && d.slug === current.slug)
-  if (idx < 0) return { prev: null, next: null }
-  return {
-    prev: idx > 0 ? flat[idx - 1] : null,
-    next: idx < flat.length - 1 ? flat[idx + 1] : null,
-  }
-}
-
 
 function loadDoc(meta: DocMeta): DocPage {
   const raw = fs.readFileSync(meta.filePath, 'utf-8')
