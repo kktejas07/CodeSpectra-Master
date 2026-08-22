@@ -14,6 +14,7 @@ export type EbookPageType =
   | 'stats'
   | 'journey'
   | 'tips'
+  | 'image'
 
 export type EbookPage = {
   type: EbookPageType
@@ -28,6 +29,8 @@ export type EbookPage = {
   steps?: { n: string; title: string; text: string }[]
   quote?: string
   quoteBy?: string
+  imageUrl?: string
+  imageAlt?: string
 }
 
 export type EbookStatus = 'draft' | 'published' | 'archived'

@@ -43,10 +43,10 @@ export async function POST(req: NextRequest) {
     const action = body.action || 'approve'
 
     if (action === 'ingest') {
-      const origin = new URL(req.url).origin
+      const port = process.env.PORT || 80
       const secret = process.env.CRON_SECRET || ''
       const res = await fetch(
-        `${origin}/api/cron/signals-ingest?secret=${encodeURIComponent(secret)}`,
+        `http://127.0.0.1:${port}/api/cron/signals-ingest?secret=${encodeURIComponent(secret)}`,
         { method: 'POST' },
       )
       const data = await res.json()

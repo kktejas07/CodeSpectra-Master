@@ -290,7 +290,7 @@ export default function NotificationsPage() {
                 <img
                   src={newsletter.hero_image}
                   alt=""
-                  className="max-h-56 w-full rounded-lg object-cover"
+                  className="max-h-96 w-full rounded-lg object-contain bg-muted/10 p-2"
                 />
               )}
               {newsletter.intro && (

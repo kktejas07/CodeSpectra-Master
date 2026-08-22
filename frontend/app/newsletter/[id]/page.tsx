@@ -36,21 +36,10 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
 
   return (
     <PublicPageWrapper>
-      {/* Full-bleed poster / hero */}
-      {campaign.hero_image ? (
-        <div className="w-full border-b border-border/60 bg-[#0b1220]">
-          <div className="mx-auto flex w-full max-w-350 justify-center px-0 sm:px-4 lg:px-8">
-            {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img
-              src={campaign.hero_image}
-              alt=""
-              className="h-auto w-full object-contain object-top sm:rounded-b-2xl"
-            />
-          </div>
-        </div>
-      ) : (
+      {/* Header bar if no hero image (fallback style) */}
+      {!campaign.hero_image && (
         <div className="w-full border-b border-border/60 bg-linear-to-br from-teal-700/30 via-emerald-600/10 to-cyan-700/20 px-4 py-16 sm:px-6">
-          <div className="mx-auto max-w-3xl">
+          <div className="mx-auto max-w-7xl">
             <p className="text-xs font-semibold uppercase tracking-wider text-teal-300">Newsletter</p>
             <h1 className="mt-2 text-3xl font-bold tracking-tight text-white sm:text-4xl">
               {campaign.subject}
@@ -59,56 +48,71 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
         </div>
       )}
 
-      <div className="w-full min-w-0 px-4 py-10 sm:px-6 lg:px-10">
-        <article className="mx-auto max-w-3xl">
-          {campaign.hero_image ? (
-            <>
-              <p className="text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
-                Newsletter · {dateLabel}
-              </p>
-              <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{campaign.subject}</h1>
-            </>
-          ) : (
-            <p className="text-xs text-muted-foreground">{dateLabel}</p>
-          )}
+      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+        <div className="flex flex-col lg:flex-row gap-10">
+          <article className="flex-1 min-w-0">
+            {campaign.hero_image ? (
+              <>
+                <p className="text-xs font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
+                  Newsletter · {dateLabel}
+                </p>
+                <h1 className="mt-2 text-3xl font-bold tracking-tight sm:text-4xl">{campaign.subject}</h1>
+              </>
+            ) : (
+              <p className="text-xs text-muted-foreground">{dateLabel}</p>
+            )}
 
-          {campaign.intro ? (
-            <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{campaign.intro}</p>
-          ) : null}
+            {campaign.intro ? (
+              <p className="mt-4 text-lg leading-relaxed text-muted-foreground">{campaign.intro}</p>
+            ) : null}
 
-          {safeBody ? (
-            <div
-              className="prose prose-zinc mt-8 max-w-none dark:prose-invert prose-img:w-full prose-img:rounded-xl"
-              dangerouslySetInnerHTML={{ __html: safeBody }}
-            />
-          ) : null}
+            {safeBody ? (
+              <div
+                className="prose prose-zinc mt-8 max-w-none dark:prose-invert prose-img:rounded-xl"
+                dangerouslySetInnerHTML={{ __html: safeBody }}
+              />
+            ) : null}
 
-          {campaign.cta_text && campaign.cta_url ? (
-            <div className="mt-10">
-              <a
-                href={campaign.cta_url}
-                className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-500"
+            {campaign.cta_text && campaign.cta_url ? (
+              <div className="mt-10">
+                <a
+                  href={campaign.cta_url}
+                  className="inline-flex items-center justify-center rounded-lg bg-teal-600 px-6 py-3 text-sm font-semibold text-white shadow-sm transition-colors hover:bg-teal-500"
+                >
+                  {campaign.cta_text}
+                </a>
+              </div>
+            ) : null}
+
+            <p className="mt-12 flex flex-wrap gap-4 border-t border-border pt-6 text-sm text-muted-foreground">
+              <Link href="/newsletter" className="text-teal-600 hover:underline dark:text-teal-400">
+                ← All newsletters
+              </Link>
+              <Link href="/blog" className="text-teal-600 hover:underline dark:text-teal-400">
+                Newsroom
+              </Link>
+              <Link
+                href="/dashboard/notifications"
+                className="text-teal-600 hover:underline dark:text-teal-400"
               >
-                {campaign.cta_text}
-              </a>
-            </div>
-          ) : null}
-
-          <p className="mt-12 flex flex-wrap gap-4 border-t border-border pt-6 text-sm text-muted-foreground">
-            <Link href="/newsletter" className="text-teal-600 hover:underline dark:text-teal-400">
-              ← All newsletters
-            </Link>
-            <Link href="/blog" className="text-teal-600 hover:underline dark:text-teal-400">
-              Newsroom
-            </Link>
-            <Link
-              href="/dashboard/notifications"
-              className="text-teal-600 hover:underline dark:text-teal-400"
-            >
-              Open in dashboard
-            </Link>
-          </p>
-        </article>
+                Open in dashboard
+              </Link>
+            </p>
+          </article>
+          
+          {campaign.hero_image && (
+            <aside className="w-full lg:w-[400px] xl:w-[500px] shrink-0">
+              <div className="sticky top-24 rounded-2xl border border-border/50 bg-muted/20 p-2">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={campaign.hero_image}
+                  alt={campaign.subject}
+                  className="h-auto w-full rounded-xl object-contain shadow-sm"
+                />
+              </div>
+            </aside>
+          )}
+        </div>
       </div>
     </PublicPageWrapper>
   )

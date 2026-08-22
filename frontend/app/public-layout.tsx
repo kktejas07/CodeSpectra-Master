@@ -278,6 +278,7 @@ export function PublicPageWrapper({
               <h4 className="font-semibold text-foreground text-sm mb-6">Resources</h4>
               <ul className="space-y-4">
                 <li><Link href="/docs" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Documentation</Link></li>
+                <li><Link href="/newsletter" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Newsletter</Link></li>
                 <li><Link href="/blog" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Blog</Link></li>
                 <li><Link href="/api-reference" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">API reference</Link></li>
                 <li><Link href="/support" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Support</Link></li>
