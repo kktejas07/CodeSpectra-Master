@@ -41,10 +41,14 @@ ENV PUPPETEER_SKIP_DOWNLOAD=true
 # Leave REMOTION_BROWSER_EXECUTABLE unset so Remotion uses chrome-headless-shell
 # (glibc binary via gcompat). Override only if you install a working Chromium.
 WORKDIR /app
+# patches/ must exist before yarn install — postinstall runs patch-package
 COPY package.json yarn.lock ./
+COPY patches ./patches
 RUN yarn install --frozen-lockfile
 COPY . .
-RUN chmod +x scripts/docker-entrypoint.sh
+RUN chmod +x scripts/docker-entrypoint.sh \
+  && npx patch-package \
+  && node scripts/ensure-anon-aadhaar-types.cjs
 RUN yarn build
 EXPOSE 80
 ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
