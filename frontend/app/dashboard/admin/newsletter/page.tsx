@@ -10,7 +10,7 @@ import { Switch } from '@/components/ui/switch'
 import {
   Loader2, Mail, Send, Users as UsersIcon, CheckCircle, Eye, Clock,
   BarChart3, Trash2, Copy, ExternalLink, AlertCircle, Image as ImageIcon,
-  Megaphone, Calendar, XCircle, MessageCircle, Upload, X, PencilLine
+  Megaphone, Calendar, XCircle, MessageCircle, Upload, X, PencilLine, Newspaper
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -302,6 +302,27 @@ export default function NewsletterPage() {
     finally { setTestWhatsappSending(false) }
   }
 
+  const publishToBlog = async (id: string) => {
+    try {
+      const res = await csrfFetch('/api/blog/from-newsletter', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ campaignId: id, publish: true }),
+      })
+      const data = await res.json()
+      if (!res.ok || data.error) {
+        addToast({ type: 'error', title: data.error || 'Publish failed' })
+        return
+      }
+      addToast({
+        type: 'success',
+        title: data.already ? 'Already on Newsroom' : 'Published to Newsroom',
+      })
+    } catch {
+      addToast({ type: 'error', title: 'Failed to publish to Newsroom' })
+    }
+  }
+
   const handleDeleteCampaign = async (id: string) => {
     try {
       const res = await csrfFetch(`/api/newsletter/admin/campaigns/${id}`, { method: 'DELETE', credentials: 'include' })
@@ -509,6 +530,17 @@ export default function NewsletterPage() {
                         </div>
                       </div>
                       <div className="flex items-center gap-1 shrink-0">
+                        {(c.status === 'completed' || c.status === 'sending') && (
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            title="Publish to Newsroom"
+                            onClick={() => void publishToBlog(c.id)}
+                            className="text-teal-600 hover:bg-teal-500/10"
+                          >
+                            <Newspaper className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
                         {(c.status === 'draft' || c.status === 'scheduled') && (
                           <Button size="sm" variant="ghost" title="Resume editing" onClick={() => resumeDraft(c)} className="text-primary hover:bg-primary/10"><PencilLine className="h-3.5 w-3.5" /></Button>
                         )}

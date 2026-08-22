@@ -18,7 +18,7 @@ export default async function NewsletterIndexPage() {
       <div className="max-w-3xl mx-auto py-12 px-4">
         <div className="mb-8 text-center">
           <Link href="/">
-            <span className="bg-gradient-to-br from-violet-600 to-fuchsia-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide">
+            <span className="bg-linear-to-br from-violet-600 to-fuchsia-500 text-white px-4 py-1.5 rounded-full text-sm font-semibold tracking-wide">
               CODESPECTRA
             </span>
           </Link>
@@ -42,8 +42,9 @@ export default async function NewsletterIndexPage() {
                     {c.intro && (
                       <p className="mt-1 text-sm text-muted-foreground line-clamp-2">{c.intro}</p>
                     )}
-                    <p className="mt-2 text-[11px] text-muted-foreground">
-                      {new Date(String(c.completed_at || c.created_at)).toLocaleDateString()}
+                    <p className="mt-2 flex items-center justify-between text-[11px] text-muted-foreground">
+                      <span>{new Date(String(c.completed_at || c.created_at)).toLocaleDateString()}</span>
+                      <span className="text-primary">Read full →</span>
                     </p>
                   </Link>
                 </li>

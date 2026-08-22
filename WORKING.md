@@ -6,6 +6,9 @@
 
 ## Current Claims
 
+| cursor (this session, AADHAAR+SIGNALS) | Soften Aadhaar UX; newsletter→blog; scaffold Signals draft agent | profile edit, newsletter admin, signals cron/admin, WORKING.md | DONE — user-friendly Aadhaar copy; Publish to Newsroom; Signals ingest→rewrite→approve queue | 2026-08-22 |
+| cursor (this session, BLOG-V1) | No /blog; Unstop-style articles + auto news vision; fix newsletter reader path | blog pages/API/admin, footer, page-permissions, WORKING.md | DONE — /blog + /blog/[slug] Newsroom, admin CRUD, seed posts; auto Signals pipeline designed (Phase 2) | 2026-08-22 |
+| cursor (this session, NL-MODAL) | Newsletter tap opens index (snippet only) instead of full body; wants popup on notifications | notifications page, /api/newsletter/[id], WORKING.md | DONE — modal reader + public GET /api/newsletter/[id]|latest | 2026-08-22 |
 | cursor (this session, JAVA-DUP-CARD) | Courses page shows 2× “Java Fundamentals”; generator shows 1 | frontend/app/api/courses/route.ts, courses page, WORKING.md | DONE — seed stub `java-fundamentals` (Coding/20/4.6) deleted+blocked; keep generated `java-beginner`; title dedupe + client fallback | 2026-08-22 |
 | cursor (this session, PROFILE-NOTIF-FIX) | Geolocation; career goals UI; email/mobile verify; usernames; Aadhaar; in-app calendar; newsletter deep link | profile edit, notifications, calendar, email/phone APIs, WORKING.md | DONE — geo=(self); career chips; email+phone OTP via email; username backfill; DigiLocker deferred; /dashboard/calendar; newsletter link+reader | 2026-08-22 |
 | cursor (this session, PROFILE+CAL+SUGGEST) | Profile real data; Add-to-Calendar; wishlist; share menu; MP4-ready | profile page, calendar/ics, wishlist page, course detail, extended-profile API, WORKING.md | DONE — Unstop-style calendar; live rank/bio; Mongo extended profile; wishlist page; share menu; MP4 banner | 2026-08-22 |

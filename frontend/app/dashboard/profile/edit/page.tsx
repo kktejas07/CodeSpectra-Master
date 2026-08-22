@@ -544,12 +544,11 @@ export default function EditProfileWizard() {
                         <ShieldCheck className="w-5 h-5 text-muted-foreground" />
                       </div>
                       <div className="flex-1 text-center sm:text-left space-y-1">
-                        <p className="text-sm font-semibold">Identity verification (Aadhaar)</p>
+                        <p className="text-sm font-semibold">Identity verification</p>
                         <p className="text-xs text-muted-foreground">
-                          DigiLocker / UIDAI eKYC requires a paid government / licensed partner API — there is no free production open-source Aadhaar verifier we can ship legally.
-                          For now this is optional and deferred so we do not fake DigiLocker or store Aadhaar numbers. When we add KYC we will use a compliant provider (or manual ID upload for review).
+                          Optional ID verification is coming soon. It is not required to use CodeSpectra today.
                         </p>
-                        <p className="text-[11px] text-muted-foreground/80">Status: Coming later — not required to use CodeSpectra.</p>
+                        <p className="text-[11px] text-muted-foreground/80">Status: Coming later</p>
                       </div>
                     </div>
                   </div>
@@ -1256,7 +1255,7 @@ export default function EditProfileWizard() {
               { heading: 'Profile photo matters', body: 'A professional headshot increases profile views by 14x. Use a clear, front-facing photo.' },
               { heading: 'Career Goal', body: 'Selecting multiple goals lets our AI match you with a broader range of opportunities.' },
               { heading: 'Current Location', body: 'Use the GPS button to auto-detect your city and state for accurate job matching.' },
-              { heading: 'Aadhaar KYC', body: 'Verifying your identity builds trust with employers and increases your response rate.' },
+              { heading: 'Keep details accurate', body: 'Employers and mentors trust complete, truthful profiles. Optional ID verification will arrive later.' },
             ],
           },
           2: {
