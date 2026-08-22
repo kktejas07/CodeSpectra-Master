@@ -56,7 +56,7 @@ export default async function BlogIndexPage({
 
   return (
     <PublicPageWrapper>
-      <div className="w-full min-w-0 px-4 py-10 sm:px-6 lg:px-10 xl:px-12">
+      <div className="w-full min-w-0 px-6 py-10 sm:px-8 lg:px-10 xl:px-12 mx-auto max-w-7xl">
         <div className="mb-10 max-w-3xl">
           <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
             Newsroom

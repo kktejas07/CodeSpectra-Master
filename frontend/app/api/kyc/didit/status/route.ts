@@ -15,14 +15,19 @@ export async function GET(): Promise<NextResponse> {
     const session = await db.collection('kyc_sessions')
       .findOne({ user_id: user.id }, { sort: { created_at: -1 } })
 
+    // Check for Anon Aadhaar in user document
+    const dbUser = await db.collection('users').findOne({ id: user.id })
+    const hasAnonAadhaar = !!dbUser?.anon_aadhaar
+
     if (!session) {
       return NextResponse.json({
-        kyc_status: 'none',
-        verified: false,
-        provider: null,
+        kyc_status: hasAnonAadhaar ? 'approved' : 'none',
+        verified: hasAnonAadhaar,
+        provider: hasAnonAadhaar ? 'anon_aadhaar' : null,
         session_id: null,
         result: null,
         created_at: null,
+        anon_aadhaar_verified: hasAnonAadhaar
       })
     }
 
@@ -78,11 +83,12 @@ export async function GET(): Promise<NextResponse> {
 
     return NextResponse.json({
       kyc_status: session.status,
-      verified: session.status === 'approved',
+      verified: session.status === 'approved' || hasAnonAadhaar,
       provider: session.provider,
       session_id: session.id,
       result,
       created_at: session.created_at,
+      anon_aadhaar_verified: hasAnonAadhaar
     })
   } catch (e) {
     console.error('[KYC status]', e)

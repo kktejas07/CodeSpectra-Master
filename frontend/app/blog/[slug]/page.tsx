@@ -96,7 +96,7 @@ export default async function BlogArticlePage({
         </div>
       </div>
 
-      <div className="w-full min-w-0 px-4 py-8 sm:px-6 lg:px-10 xl:px-12">
+      <div className="mx-auto max-w-7xl w-full min-w-0 px-6 py-8 sm:px-8 lg:px-10 xl:px-12">
         <nav className="mb-6 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
           <Link href="/" className="hover:text-foreground">
             Home
