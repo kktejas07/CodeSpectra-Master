@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { generateModuleQuiz } from '@/lib/courses/module-quiz'
+import { generateModuleQuiz } from '@/lib/courses/module-quiz-generate'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'

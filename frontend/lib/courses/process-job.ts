@@ -1,5 +1,6 @@
 import { getMongoDb } from '@/lib/mongodb'
-import { generateModuleQuiz, fallbackModuleQuiz } from '@/lib/courses/module-quiz'
+import { fallbackModuleQuiz } from '@/lib/courses/module-quiz'
+import { generateModuleQuiz } from '@/lib/courses/module-quiz-generate'
 import { generateLessonVideo } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio, deleteCourseAudio, loadLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath, deleteCourseVideos } from '@/lib/courses/lesson-mp4'
