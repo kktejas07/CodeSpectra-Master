@@ -2,6 +2,7 @@ import Link from 'next/link'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { BLOG_CATEGORIES, blogPosts, categoryLabel, type BlogPostDoc } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
+import { coverForPost } from '@/lib/blog-covers'
 import { Clock, Newspaper, Search } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
@@ -52,21 +53,19 @@ export default async function BlogIndexPage({
 
   const featured = posts[0]
   const rest = posts.slice(1)
-  const latest = posts.slice(0, 5)
 
   return (
     <PublicPageWrapper>
-      <div className="mx-auto max-w-7xl px-4 py-10 sm:px-6 lg:px-8">
+      <div className="w-full min-w-0 px-4 py-10 sm:px-6 lg:px-10 xl:px-12">
         <div className="mb-10 max-w-3xl">
           <p className="mb-2 text-sm font-semibold uppercase tracking-wider text-teal-600 dark:text-teal-400">
             Newsroom
           </p>
-          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">
+          <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">
             Explore <span className="text-teal-600 dark:text-teal-400">Articles</span>
           </h1>
           <p className="mt-3 text-muted-foreground">
-            Product updates, engineering notes, and career Signals — rewritten for builders, not
-            recycled headlines.
+            Product updates, engineering notes, campus stories, and career Signals for builders.
           </p>
         </div>
 
@@ -101,41 +100,13 @@ export default async function BlogIndexPage({
             <p>No articles in this view yet.</p>
           </div>
         ) : (
-          <div className="grid gap-8 lg:grid-cols-3">
-            <div className="space-y-8 lg:col-span-2">
-              {featured && <FeaturedCard post={featured} />}
-              <div className="grid gap-5 sm:grid-cols-2">
-                {rest.map((p) => (
-                  <ArticleCard key={p.id} post={p} />
-                ))}
-              </div>
+          <div className="space-y-8">
+            {featured ? <FeaturedCard post={featured} /> : null}
+            <div className="grid gap-5 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-4">
+              {rest.map((p) => (
+                <ArticleCard key={p.id} post={p} />
+              ))}
             </div>
-
-            <aside className="space-y-4">
-              <h2 className="text-lg font-semibold text-teal-700 dark:text-teal-400">Just in</h2>
-              <ul className="space-y-3">
-                {latest.map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      href={`/blog/${p.slug}`}
-                      className="group flex gap-3 rounded-xl border border-border bg-card p-3 transition-colors hover:border-teal-500/40"
-                    >
-                      <div className="flex h-14 w-14 shrink-0 items-center justify-center rounded-lg bg-linear-to-br from-teal-500/20 to-cyan-500/10 text-xs font-bold text-teal-700 dark:text-teal-300">
-                        {(p.category || 'CS').slice(0, 2).toUpperCase()}
-                      </div>
-                      <div className="min-w-0">
-                        <p className="line-clamp-2 text-sm font-medium group-hover:text-teal-600 dark:group-hover:text-teal-400">
-                          {p.title}
-                        </p>
-                        <p className="mt-1 text-[11px] text-muted-foreground">
-                          {formatDate(p.published_at)} · {p.read_minutes} min
-                        </p>
-                      </div>
-                    </Link>
-                  </li>
-                ))}
-              </ul>
-            </aside>
           </div>
         )}
       </div>
@@ -158,25 +129,28 @@ function Chip({ href, label, active }: { href: string; label: string; active: bo
   )
 }
 
+function Cover({ post, className }: { post: BlogPostDoc; className?: string }) {
+  const src = coverForPost({
+    title: post.title,
+    category: post.category,
+    cover_image: post.cover_image,
+  })
+  return (
+    // eslint-disable-next-line @next/next/no-img-element
+    <img src={src} alt="" className={className || 'h-full w-full object-cover'} />
+  )
+}
+
 function FeaturedCard({ post }: { post: BlogPostDoc }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group block overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
+      className="group grid overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40 lg:grid-cols-2"
     >
-      <div className="relative aspect-video bg-linear-to-br from-teal-600/30 via-emerald-500/10 to-cyan-500/20">
-        {post.cover_image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={post.cover_image} alt="" className="h-full w-full object-cover" />
-        ) : (
-          <div className="flex h-full items-end p-6">
-            <span className="rounded-full bg-background/80 px-3 py-1 text-xs font-semibold text-teal-700 backdrop-blur dark:text-teal-300">
-              {categoryLabel(post.category)}
-            </span>
-          </div>
-        )}
+      <div className="relative aspect-video lg:aspect-auto lg:min-h-[320px]">
+        <Cover post={post} />
       </div>
-      <div className="space-y-3 p-6">
+      <div className="flex flex-col justify-center space-y-3 p-6 sm:p-8">
         <div className="flex flex-wrap items-center gap-2 text-xs text-muted-foreground">
           <span className="rounded-full bg-teal-500/10 px-2 py-0.5 font-medium text-teal-700 dark:text-teal-300">
             {categoryLabel(post.category)}
@@ -186,12 +160,12 @@ function FeaturedCard({ post }: { post: BlogPostDoc }) {
           </span>
           <span>{formatDate(post.published_at)}</span>
         </div>
-        <h2 className="text-xl font-bold tracking-tight group-hover:text-teal-600 dark:group-hover:text-teal-400 sm:text-2xl">
+        <h2 className="text-2xl font-bold tracking-tight group-hover:text-teal-600 dark:group-hover:text-teal-400 sm:text-3xl">
           {post.title}
         </h2>
-        {post.excerpt && (
-          <p className="line-clamp-2 text-sm text-muted-foreground">{post.excerpt}</p>
-        )}
+        {post.excerpt ? (
+          <p className="line-clamp-3 text-sm text-muted-foreground sm:text-base">{post.excerpt}</p>
+        ) : null}
         <p className="text-sm font-medium text-teal-600 dark:text-teal-400">Read more →</p>
       </div>
     </Link>
@@ -202,13 +176,10 @@ function ArticleCard({ post }: { post: BlogPostDoc }) {
   return (
     <Link
       href={`/blog/${post.slug}`}
-      className="group flex flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
+      className="group flex min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
     >
-      <div className="aspect-16/10 bg-linear-to-br from-slate-800/40 to-teal-900/20">
-        {post.cover_image ? (
-          // eslint-disable-next-line @next/next/no-img-element
-          <img src={post.cover_image} alt="" className="h-full w-full object-cover" />
-        ) : null}
+      <div className="aspect-16/10 overflow-hidden bg-muted">
+        <Cover post={post} className="h-full w-full object-cover transition-transform duration-300 group-hover:scale-[1.02]" />
       </div>
       <div className="flex flex-1 flex-col gap-2 p-4">
         <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
@@ -220,9 +191,9 @@ function ArticleCard({ post }: { post: BlogPostDoc }) {
         <h3 className="line-clamp-2 text-base font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400">
           {post.title}
         </h3>
-        {post.excerpt && (
+        {post.excerpt ? (
           <p className="line-clamp-2 text-xs text-muted-foreground">{post.excerpt}</p>
-        )}
+        ) : null}
         <p className="mt-auto pt-2 text-[11px] text-muted-foreground">
           {post.author_name}
           {post.published_at ? ` · ${formatDate(post.published_at)}` : ''}

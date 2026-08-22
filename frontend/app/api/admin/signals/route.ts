@@ -12,6 +12,7 @@ import {
   slugifyTitle,
   type BlogPostDoc,
 } from '@/lib/db/blog-posts'
+import { coverForPost } from '@/lib/blog-covers'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -75,7 +76,7 @@ export async function POST(req: NextRequest) {
     const user = await getAPIUser()
 
     const sourceUrls =
-      draft.source_urls?.length ? draft.source_urls : [draft.source_url]
+      draft.source_urls?.length ? draft.source_urls : [draft.source_url].filter(Boolean)
     const post: BlogPostDoc = {
       id: newBlogId(),
       slug,
@@ -87,8 +88,12 @@ export async function POST(req: NextRequest) {
       author_name: 'CodeSpectra Signals',
       author_role: 'Editorial',
       status: 'published',
+      cover_image: coverForPost({ title: draft.title, category: draft.category }),
       source_urls: sourceUrls,
-      source_note: `Research + rewrite from public feed (${draft.source_feed}) — original wording not copied.`,
+      // Short feed attribution only — no long “editorial synthesis” disclaimer.
+      source_note: draft.source_feed
+        ? `Based on public reporting (${draft.source_feed}).`
+        : undefined,
       read_minutes: estimateReadMinutes(draft.body),
       published_at: now,
       created_at: now,

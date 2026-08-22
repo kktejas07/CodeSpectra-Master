@@ -4,7 +4,8 @@ import DOMPurify from 'isomorphic-dompurify'
 import { PublicPageWrapper } from '@/app/public-layout'
 import { blogPosts, categoryLabel } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
-import { Clock, ChevronRight } from 'lucide-react'
+import { coverForPost } from '@/lib/blog-covers'
+import { Clock, ChevronRight, ExternalLink } from 'lucide-react'
 
 export const dynamic = 'force-dynamic'
 
@@ -49,6 +50,14 @@ function injectHeadingIds(html: string): string {
   })
 }
 
+function shouldShowSourceNote(note?: string | null, urls?: string[] | null): boolean {
+  if (urls && urls.length > 0) return true
+  if (!note) return false
+  // Hide the old generic disclaimer — not useful on original CodeSpectra posts.
+  if (/editorial synthesis|rewritten for codespectra/i.test(note)) return false
+  return true
+}
+
 export default async function BlogArticlePage({
   params,
 }: {
@@ -68,10 +77,25 @@ export default async function BlogArticlePage({
 
   const toc = extractToc(post.body || '')
   const safeBody = DOMPurify.sanitize(injectHeadingIds(post.body || ''))
+  const cover = coverForPost({
+    title: post.title,
+    category: post.category,
+    cover_image: post.cover_image,
+  })
+  const showSources = shouldShowSourceNote(post.source_note, post.source_urls)
 
   return (
     <PublicPageWrapper>
-      <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+      {/* Full-bleed cover */}
+      <div className="relative w-full border-b border-border/60">
+        <div className="relative aspect-[21/9] min-h-[220px] w-full max-h-[420px] overflow-hidden bg-muted sm:min-h-[280px]">
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img src={cover} alt="" className="h-full w-full object-cover" />
+          <div className="absolute inset-0 bg-gradient-to-t from-background via-background/20 to-transparent" />
+        </div>
+      </div>
+
+      <div className="w-full min-w-0 px-4 py-8 sm:px-6 lg:px-10 xl:px-12">
         <nav className="mb-6 flex flex-wrap items-center gap-1 text-xs text-muted-foreground">
           <Link href="/" className="hover:text-foreground">
             Home
@@ -85,12 +109,12 @@ export default async function BlogArticlePage({
             {categoryLabel(post.category)}
           </Link>
           <ChevronRight className="h-3 w-3" />
-          <span className="line-clamp-1 max-w-48 text-foreground sm:max-w-xs">{post.title}</span>
+          <span className="line-clamp-1 max-w-[14rem] text-foreground sm:max-w-xs">{post.title}</span>
         </nav>
 
-        <div className="grid gap-10 lg:grid-cols-[220px_minmax(0,1fr)_260px]">
-          <aside className="hidden lg:block">
-            <div className="sticky top-28 space-y-3">
+        <div className="grid gap-10 xl:grid-cols-[1fr_minmax(0,48rem)_1fr]">
+          <aside className="hidden xl:block">
+            <div className="sticky top-28 space-y-3 pr-4">
               <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">
                 On this page
               </p>
@@ -117,10 +141,10 @@ export default async function BlogArticlePage({
             <p className="mb-3 text-sm font-semibold text-teal-600 dark:text-teal-400">
               {categoryLabel(post.category)}
             </p>
-            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl">{post.title}</h1>
-            {post.excerpt && (
-              <p className="mt-4 text-lg italic text-muted-foreground">{post.excerpt}</p>
-            )}
+            <h1 className="text-3xl font-bold tracking-tight sm:text-4xl lg:text-5xl">{post.title}</h1>
+            {post.excerpt ? (
+              <p className="mt-4 text-lg text-muted-foreground">{post.excerpt}</p>
+            ) : null}
             <div className="mt-4 flex flex-wrap items-center gap-3 text-xs text-muted-foreground">
               <span>
                 {post.author_name}
@@ -132,46 +156,35 @@ export default async function BlogArticlePage({
               <span>{formatDate(post.published_at)}</span>
             </div>
 
-            <div className="relative mt-8 aspect-video overflow-hidden rounded-2xl bg-linear-to-br from-teal-600/25 via-emerald-500/10 to-cyan-500/20">
-              {post.cover_image ? (
-                // eslint-disable-next-line @next/next/no-img-element
-                <img src={post.cover_image} alt="" className="h-full w-full object-cover" />
-              ) : (
-                <div className="flex h-full items-center justify-center p-8 text-center">
-                  <p className="max-w-md text-sm font-medium text-teal-800/80 dark:text-teal-200/80">
-                    {post.title}
-                  </p>
-                </div>
-              )}
-            </div>
-
             <div
               className="prose prose-zinc mt-10 max-w-none dark:prose-invert prose-headings:scroll-mt-28 prose-a:text-teal-600 dark:prose-a:text-teal-400"
               dangerouslySetInnerHTML={{ __html: safeBody }}
             />
 
-            {post.source_note && (
-              <p className="mt-10 rounded-xl border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
-                {post.source_note}
-                {post.source_urls?.length ? (
-                  <>
-                    {' '}
-                    Sources:{' '}
-                    {post.source_urls.map((u, i) => (
-                      <a
-                        key={u}
-                        href={u}
-                        className="text-teal-600 underline dark:text-teal-400"
-                        rel="noopener noreferrer"
-                        target="_blank"
-                      >
-                        [{i + 1}]
-                      </a>
-                    ))}
-                  </>
+            {showSources ? (
+              <div className="mt-10 rounded-xl border border-border bg-muted/30 p-4 text-xs text-muted-foreground">
+                {post.source_note && !/editorial synthesis|rewritten for codespectra/i.test(post.source_note) ? (
+                  <p className="mb-2">{post.source_note}</p>
                 ) : null}
-              </p>
-            )}
+                {post.source_urls?.length ? (
+                  <ul className="space-y-1">
+                    {post.source_urls.map((u) => (
+                      <li key={u}>
+                        <a
+                          href={u}
+                          className="inline-flex items-center gap-1 text-teal-600 underline dark:text-teal-400"
+                          rel="noopener noreferrer"
+                          target="_blank"
+                        >
+                          {u.replace(/^https?:\/\//, '')}
+                          <ExternalLink className="h-3 w-3" />
+                        </a>
+                      </li>
+                    ))}
+                  </ul>
+                ) : null}
+              </div>
+            ) : null}
 
             <p className="mt-10">
               <Link href="/blog" className="text-sm text-teal-600 hover:underline dark:text-teal-400">
@@ -180,11 +193,11 @@ export default async function BlogArticlePage({
             </p>
           </article>
 
-          <aside className="space-y-6">
+          <aside className="space-y-6 xl:pl-4">
             <div className="rounded-2xl border border-border bg-card p-5">
-              <h2 className="text-sm font-semibold">Subscribe</h2>
+              <h2 className="text-sm font-semibold">Newsletters</h2>
               <p className="mt-1 text-xs text-muted-foreground">
-                Get product and career Signals in your inbox.
+                Product and campus updates in your inbox.
               </p>
               <Link
                 href="/newsletter"
@@ -194,7 +207,7 @@ export default async function BlogArticlePage({
               </Link>
             </div>
 
-            {related.length > 0 && (
+            {related.length > 0 ? (
               <div>
                 <h2 className="mb-3 text-sm font-semibold text-teal-700 dark:text-teal-400">
                   Related
@@ -212,7 +225,7 @@ export default async function BlogArticlePage({
                   ))}
                 </ul>
               </div>
-            )}
+            ) : null}
           </aside>
         </div>
       </div>

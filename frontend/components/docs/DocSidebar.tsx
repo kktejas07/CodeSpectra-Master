@@ -2,7 +2,7 @@
 
 import Link from 'next/link'
 import { usePathname } from 'next/navigation'
-import { useState, useMemo } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import {
   Search,
   BookOpen,
@@ -11,9 +11,10 @@ import {
   ChevronRight,
   Menu,
   X,
+  FileText,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
-import type { DocSection, DocMeta } from '@/lib/docs'
+import { docHref, type DocSection, type DocMeta } from '@/lib/docs'
 
 const ICON_MAP: Record<string, React.ElementType> = {
   BookOpen,
@@ -26,16 +27,16 @@ interface DocSidebarProps {
 
 export function DocSidebar({ sections }: DocSidebarProps) {
   const pathname = usePathname()
-  const [search, setSearch] = useState('')
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [expandedSections, setExpandedSections] = useState<Set<string>>(
+  const [query, setQuery] = useState('')
+  const [mobileOpen, setMobileOpen] = useState(false)
+  const [expanded, setExpanded] = useState<Set<string>>(
     () => new Set(sections.map((s) => s.id)),
   )
 
-  const currentSlug = pathname.replace(/^\/docs\/?/, '')
+  const currentPath = pathname.replace(/\/$/, '') || '/docs'
 
   const filtered = useMemo(() => {
-    const q = search.trim().toLowerCase()
+    const q = query.trim().toLowerCase()
     if (!q) return sections
     return sections
       .map((s) => ({
@@ -47,10 +48,14 @@ export function DocSidebar({ sections }: DocSidebarProps) {
         ),
       }))
       .filter((s) => s.docs.length > 0)
-  }, [search, sections])
+  }, [query, sections])
 
-  const toggleSection = (id: string) => {
-    setExpandedSections((prev) => {
+  useEffect(() => {
+    setMobileOpen(false)
+  }, [pathname])
+
+  const toggle = (id: string) => {
+    setExpanded((prev) => {
       const next = new Set(prev)
       if (next.has(id)) next.delete(id)
       else next.add(id)
@@ -58,129 +63,128 @@ export function DocSidebar({ sections }: DocSidebarProps) {
     })
   }
 
-  const isActive = (doc: DocMeta) => {
-    if (!currentSlug) return false
-    return currentSlug === doc.slug || currentSlug.endsWith(doc.slug)
-  }
+  const isActive = (doc: DocMeta) => currentPath === docHref(doc)
 
-  return (
+  const nav = (
     <>
-      {/* Mobile toggle */}
-      <button
-        onClick={() => setSidebarOpen(true)}
-        className="fixed bottom-4 left-4 z-50 lg:hidden flex items-center gap-2 rounded-full bg-primary text-primary-foreground px-4 py-2 shadow-lg"
-      >
-        <Menu className="h-4 w-4" />
-        <span className="text-sm font-medium">Docs Menu</span>
-      </button>
+      <div className="flex items-center justify-between gap-2 border-b border-border/60 px-4 py-3">
+        <Link href="/docs" className="flex items-center gap-2 font-semibold tracking-tight">
+          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-teal-500/15 text-teal-600 dark:text-teal-400">
+            <BookOpen className="h-4 w-4" />
+          </span>
+          <span className="text-sm">Docs</span>
+        </Link>
+        <button
+          type="button"
+          onClick={() => setMobileOpen(false)}
+          className="rounded-md p-1.5 text-muted-foreground hover:bg-muted lg:hidden"
+          aria-label="Close docs menu"
+        >
+          <X className="h-4 w-4" />
+        </button>
+      </div>
 
-      {/* Overlay */}
-      {sidebarOpen && (
-        <div
-          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
-          onClick={() => setSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
-      <aside
-        className={cn(
-          'fixed inset-y-0 left-0 z-50 w-72 border-r border-border/40 bg-background/95 backdrop-blur-xl',
-          'flex flex-col',
-          'transition-transform duration-300 lg:sticky lg:top-0 lg:z-auto lg:h-screen',
-          sidebarOpen ? 'translate-x-0' : '-translate-x-full lg:translate-x-0',
-        )}
-        role="navigation"
-        aria-label="Documentation navigation"
-      >
-        <div className="flex items-center justify-between border-b border-border/40 px-4 py-3">
-          <Link
-            href="/docs"
-            className="flex items-center gap-2 font-semibold"
-            onClick={() => setSidebarOpen(false)}
-          >
-            <BookOpen className="h-5 w-5 text-primary" />
-            <span>Documentation</span>
-          </Link>
-          <button
-            onClick={() => setSidebarOpen(false)}
-            className="lg:hidden p-1 hover:bg-muted rounded"
-            aria-label="Close sidebar"
-          >
-            <X className="h-4 w-4" />
-          </button>
-        </div>
-
-        {/* Search */}
-        <div className="relative px-3 py-3 border-b border-border/20">
-          <Search className="absolute left-6 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+      <div className="border-b border-border/40 px-3 py-3">
+        <label className="relative block">
+          <Search className="pointer-events-none absolute left-3 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-muted-foreground" />
           <input
-            type="text"
-            placeholder="Search..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="w-full rounded-lg border border-border/40 bg-background py-2 pl-9 pr-3 text-sm outline-none focus:border-primary/60 focus:ring-1 focus:ring-primary/20"
+            type="search"
+            value={query}
+            onChange={(e) => setQuery(e.target.value)}
+            placeholder="Search docs…"
+            className="w-full rounded-lg border border-border/60 bg-background py-2 pl-9 pr-3 text-sm outline-none ring-teal-500/30 placeholder:text-muted-foreground/70 focus:border-teal-500/50 focus:ring-2"
             aria-label="Search documentation"
           />
-        </div>
+        </label>
+      </div>
 
-        {/* Navigation */}
-        <nav className="flex-1 overflow-y-auto p-3 space-y-1">
-          {filtered.map((section) => {
-            const Icon = (ICON_MAP[section.icon] || BookOpen) as React.ComponentType<{ className?: string }>
-            const isExpanded = expandedSections.has(section.id)
-
+      <nav className="flex-1 space-y-4 overflow-y-auto px-3 py-4" aria-label="Documentation">
+        {filtered.length === 0 ? (
+          <p className="px-2 text-sm text-muted-foreground">No matches.</p>
+        ) : (
+          filtered.map((section) => {
+            const Icon = ICON_MAP[section.icon] || FileText
+            const open = expanded.has(section.id) || query.trim().length > 0
             return (
               <div key={section.id}>
                 <button
-                  onClick={() => toggleSection(section.id)}
-                  className={cn(
-                    'flex w-full items-center gap-2 rounded-lg px-3 py-2 text-sm font-medium transition-colors',
-                    'hover:bg-muted',
-                  )}
+                  type="button"
+                  onClick={() => toggle(section.id)}
+                  className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs font-semibold uppercase tracking-wider text-muted-foreground hover:text-foreground"
                 >
-                  <Icon className={"h-4 w-4 text-muted-foreground shrink-0" as any} />
-                  <span className="flex-1 text-left">{section.label}</span>
-                  {isExpanded ? (
-                    <ChevronDown className="h-3.5 w-3.5 text-muted-foreground" />
+                  <Icon className="h-3.5 w-3.5 shrink-0" />
+                  <span className="flex-1">{section.label}</span>
+                  {open ? (
+                    <ChevronDown className="h-3.5 w-3.5" />
                   ) : (
-                    <ChevronRight className="h-3.5 w-3.5 text-muted-foreground" />
+                    <ChevronRight className="h-3.5 w-3.5" />
                   )}
                 </button>
-
-                {isExpanded && (
-                  <div className="ml-2 mt-1 space-y-0.5 border-l border-border/20 pl-2">
+                {open ? (
+                  <ul className="mt-1 space-y-0.5 border-l border-border/50 ml-3 pl-2">
                     {section.docs.map((doc) => (
-                      <Link
-                        key={doc.slug}
-                        href={`/docs/${doc.section === 'public' ? '' : 'user/'}${doc.slug}`}
-                        onClick={() => setSidebarOpen(false)}
-                        className={cn(
-                          'block rounded-md px-3 py-1.5 text-sm transition-colors',
-                          isActive(doc)
-                            ? 'bg-primary/10 text-primary font-medium'
-                            : 'text-muted-foreground hover:text-foreground hover:bg-muted/50',
-                        )}
-                      >
-                        {doc.title}
-                      </Link>
+                      <li key={`${doc.section}-${doc.slug}`}>
+                        <Link
+                          href={docHref(doc)}
+                          className={cn(
+                            'block rounded-md px-2.5 py-1.5 text-[13px] leading-snug transition-colors',
+                            isActive(doc)
+                              ? 'bg-teal-500/10 font-medium text-teal-700 dark:text-teal-300'
+                              : 'text-muted-foreground hover:bg-muted/60 hover:text-foreground',
+                          )}
+                        >
+                          {doc.title}
+                        </Link>
+                      </li>
                     ))}
-                  </div>
-                )}
+                  </ul>
+                ) : null}
               </div>
             )
-          })}
-        </nav>
+          })
+        )}
+      </nav>
 
-        <div className="border-t border-border/20 px-4 py-3">
-          <Link
-            href="/docs"
-            onClick={() => setSidebarOpen(false)}
-            className="text-xs text-muted-foreground hover:text-foreground transition-colors"
-          >
-            ← Back to docs home
-          </Link>
-        </div>
+      <div className="border-t border-border/50 px-4 py-3 text-xs text-muted-foreground">
+        <Link href="/" className="hover:text-foreground">
+          ← CodeSpectra home
+        </Link>
+      </div>
+    </>
+  )
+
+  return (
+    <>
+      <button
+        type="button"
+        onClick={() => setMobileOpen(true)}
+        className="fixed bottom-5 left-4 z-40 inline-flex items-center gap-2 rounded-full bg-teal-600 px-4 py-2.5 text-sm font-semibold text-white shadow-lg shadow-teal-600/30 lg:hidden"
+      >
+        <Menu className="h-4 w-4" />
+        Docs menu
+      </button>
+
+      {mobileOpen ? (
+        <div
+          className="fixed inset-0 z-40 bg-black/50 backdrop-blur-sm lg:hidden"
+          onClick={() => setMobileOpen(false)}
+          aria-hidden
+        />
+      ) : null}
+
+      {/* Mobile drawer */}
+      <aside
+        className={cn(
+          'fixed inset-y-0 left-0 z-50 flex w-[min(20rem,88vw)] flex-col border-r border-border bg-background transition-transform duration-200 lg:hidden',
+          mobileOpen ? 'translate-x-0' : '-translate-x-full',
+        )}
+      >
+        {nav}
+      </aside>
+
+      {/* Desktop sticky sidebar — offset under marketing header */}
+      <aside className="sticky top-20 hidden h-[calc(100vh-5rem)] w-64 shrink-0 flex-col overflow-hidden border-r border-border/60 bg-background/80 lg:flex xl:w-72">
+        {nav}
       </aside>
     </>
   )

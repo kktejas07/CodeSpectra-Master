@@ -6,6 +6,9 @@
 
 ## Current Claims
 
+| cursor (this session, DOCS-UI) | Redesign /docs into professional docs UI (sidebar/content/TOC), fix bugs | docs page, DocSidebar, DocContent, WORKING.md | DONE — Mintlify-style shell, home cards, TOC, prev/next | 2026-08-22 |
+| cursor (this session, BLOG-NL-UI) | Full-width blog+newsletter; covers; drop unnecessary disclaimer; PublicPage chrome on /newsletter | blog pages, newsletter pages, blog-seed, WORKING.md | DONE — full-bleed covers; PublicPage on /newsletter; SA/WeHive links; no generic disclaimer | 2026-08-22 |
+| cursor (this session, CRON-WIDTH+BLOG) | Full-width cron page + overflow; document CRON_SECRET; guide blog admin/user routes | cron-jobs page, .env.example, WORKING.md | DONE — full width, wrap fixes, CRON_SECRET setup card | 2026-08-22 |
 | cursor (this session, ANON-DOCKER-PATCH) | Dokploy: patch-package runs before patches/ copied → “No patch files found”; TS still fails | frontend/Dockerfile, ensure-anon-aadhaar-types.cjs, WORKING.md | DONE — COPY patches before install; prebuild stub types | 2026-08-22 |
 | cursor (this session, ANON-BUILD-FIX) | Dokploy build fails typechecking @anon-aadhaar/core src (uuid/ArrayBuffer) | frontend/patches/@anon-aadhaar+core+2.4.3.patch, WORKING.md | DONE — patch-package stubs types to dist/index.d.ts | 2026-08-22 |
 | cursor (this session, PROFILE-UX+COURSE) | Resume CTA fix+UI; name-based usernames; course page dedupe; cert preview name+fit | profile edit, username lib/API, courses/[id], CourseCertificatePreview, WORKING.md | DONE — resume Link+UI; LinkedIn-style usernames; course deduped; cert fits+shows user name | 2026-08-22 |
