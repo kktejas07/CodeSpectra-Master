@@ -150,6 +150,7 @@ ${slideRules}
 - On-screen "content" is 3-5 short bullets, not the full narration.
 - Cover WHY → WHAT → HOW → WHERE, then edge cases and a full worked example.
 - Do not say "we will skip" or "as you already know".
+- Do NOT include quiz questions, answer keys, "Quiz 1", or knowledge-check slides — quizzes are a separate interactive step after the module.
 - No markdown fences around the JSON.
 
 TEXT LESSON:

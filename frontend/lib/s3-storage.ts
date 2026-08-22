@@ -145,6 +145,51 @@ export async function s3DeleteObject(key: string): Promise<void> {
   }
 }
 
+/** List object keys under a prefix (for wiping a course’s media). */
+export async function s3ListPrefix(prefix: string): Promise<string[]> {
+  const cfg = await readS3Config()
+  if (!cfg) return []
+  const keys: string[] = []
+  let token: string | undefined
+  do {
+    const host = endpointHost(cfg.endpoint)
+    const path = `/${encodePath(cfg.bucket)}`
+    const pairs: [string, string][] = [
+      ['list-type', '2'],
+      ['prefix', prefix],
+      ['max-keys', '1000'],
+    ]
+    if (token) pairs.push(['continuation-token', token])
+    const query = pairs
+      .map(([k, v]) => `${encodeURIComponent(k)}=${encodeURIComponent(v)}`)
+      .sort()
+      .join('&')
+    const { amz, day } = amzDate()
+    const payloadHash = sha256Hex('')
+    const toSign: Record<string, string> = {
+      host,
+      'x-amz-date': amz,
+      'x-amz-content-sha256': payloadHash,
+    }
+    const headers: Record<string, string> = { ...toSign }
+    headers.authorization = authorization({
+      cfg, method: 'GET', path, query, headers: toSign, payloadHash, amz, day,
+    })
+    const res = await fetch(`${cfg.endpoint}${path}?${query}`, { method: 'GET', headers })
+    if (!res.ok) {
+      const text = await res.text().catch(() => '')
+      throw new Error(`S3 LIST ${res.status}: ${text.slice(0, 200)}`)
+    }
+    const xml = await res.text()
+    for (const m of xml.matchAll(/<Key>([^<]+)<\/Key>/g)) keys.push(m[1])
+    const next = xml.match(/<NextContinuationToken>([^<]+)<\/NextContinuationToken>/)
+    token = next?.[1]
+    const truncated = /<IsTruncated>true<\/IsTruncated>/i.test(xml)
+    if (!truncated) break
+  } while (token)
+  return keys
+}
+
 export async function s3HeadObject(key: string): Promise<boolean> {
   const cfg = await readS3Config()
   if (!cfg) return false

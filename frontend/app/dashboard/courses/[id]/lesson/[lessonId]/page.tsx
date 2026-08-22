@@ -18,6 +18,7 @@ import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { QuizComponent, type QuizQuestion } from '@/components/courses/QuizComponent'
 import { quizLessonId, parseQuizLessonId, fallbackModuleQuiz } from '@/lib/courses/module-quiz'
+import { stripEmbeddedQuizzes, stripQuizSlides } from '@/lib/courses/strip-embedded-quizzes'
 
 interface Resource {
   title?: string
@@ -73,19 +74,12 @@ function resolveMediaUrl(url?: string | null): string | undefined {
 }
 
 function scriptAsMarkdown(script: any[]): string {
-  return script.map((s: any) => {
+  return stripQuizSlides(script).map((s: any) => {
     const bullets = Array.isArray(s.content) ? s.content : s.content ? [s.content] : []
     return `## ${s.title || 'Slide'}\n\n${bullets.map((b: string) => `- ${b}`).join('\n')}`
   }).join('\n\n')
 }
 
-/** Old lessons put Quiz 1/2 answers in the markdown — strip those; real quizzes are interactive. */
-function stripEmbeddedQuizzes(md: string): string {
-  return md
-    .replace(/^#{1,3}\s*Quiz\s*\d+[\s\S]*?(?=^#{1,3}\s|\Z)/gim, '')
-    .replace(/\n{3,}/g, '\n\n')
-    .trim()
-}
 
 // ponytail: one-course memory so lesson→lesson remounts skip the spinner; refetch if you open a different course
 let lessonShellCache: {
