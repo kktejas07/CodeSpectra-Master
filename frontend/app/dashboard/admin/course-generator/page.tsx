@@ -199,7 +199,10 @@ export default function CourseGeneratorPage() {
         credentials: 'include',
         body: JSON.stringify({ techStack: selectedTech, level }),
       })
-      const currData = await currRes.json()
+      const currData = await currRes.json().catch(() => ({}))
+      if (currRes.status === 409) {
+        throw new Error(currData.error || 'Course already exists — delete it or regenerate videos on the existing course.')
+      }
       if (!currRes.ok) throw new Error(currData.error || 'Curriculum generation failed')
 
       const courseId = currData.course?.id || selectedTech.toLowerCase().replace(/\s+/g, '-')
