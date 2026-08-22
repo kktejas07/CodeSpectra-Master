@@ -153,6 +153,7 @@ export const ALL_USER_ROUTES: string[] = [
   
   // Learning & Prep
   '/dashboard/courses',
+  '/dashboard/courses/wishlist',
   '/dashboard/interview-prep',
   
   // Career & Hiring
@@ -176,6 +177,7 @@ export const ALL_USER_ROUTES: string[] = [
   // User & Account
   '/dashboard/profile',
   '/dashboard/notifications',
+  '/dashboard/calendar',
   '/dashboard/billing',
   '/dashboard/pricing',
   '/dashboard/settings',
@@ -287,6 +289,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/scanner': 'Scanner',
   '/dashboard/agent': 'Agent',
   '/dashboard/courses': 'Courses',
+  '/dashboard/courses/wishlist': 'Wishlist',
   '/dashboard/skill-analytics': 'Skill Analytics',
   '/dashboard/identity-verify': 'Identity Verify',
   '/dashboard/leaderboard': 'Leaderboard',
@@ -305,6 +308,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/settings/ai': 'AI Settings',
   '/dashboard/billing': 'Billing',
   '/dashboard/notifications': 'Notifications',
+  '/dashboard/calendar': 'Calendar',
   '/dashboard/notifications/preferences': 'Notification Preferences',
   '/dashboard/support': 'Support',
   '/dashboard/referrals': 'Referrals',

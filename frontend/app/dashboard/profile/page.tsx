@@ -164,6 +164,11 @@ export default function ProfilePage() {
   const [stats, setStats] = useState<Record<string, number | string> | null>(null)
   const [xp, setXp] = useState(0)
   const [level, setLevel] = useState(1)
+  const [globalRank, setGlobalRank] = useState<number | null>(null)
+  const [aboutBio, setAboutBio] = useState<string>('')
+  const [socialLinks, setSocialLinks] = useState<{ linkedin?: string; github?: string; portfolio?: string }>({})
+  const [currentStreak, setCurrentStreak] = useState(0)
+  const [maxStreak, setMaxStreak] = useState(0)
   const [activity, setActivity] = useState<ActivityItem[]>([])
   const [heatmapData, setHeatmapData] = useState<{
     cells: number[][] | null
@@ -205,19 +210,44 @@ export default function ProfilePage() {
         // Ignore local storage parsing errors
       }
 
-      const [userRes, statsRes, activityRes, heatmapRes, achRes] = await Promise.all([
+      const [userRes, statsRes, activityRes, heatmapRes, achRes, lbRes, extRes] = await Promise.all([
         fetch('/api/auth/me').then(r => r.json()).catch(() => null),
         fetch('/api/user/stats').then(r => r.json()).catch(() => null),
         fetch('/api/user/activity?limit=20').then(r => r.json()).catch(() => null),
         fetch('/api/user/heatmap?weeks=52').then(r => r.json()).catch(() => null),
         fetch('/api/achievements').then(r => r.json()).catch(() => null),
+        fetch('/api/leaderboard').then(r => r.json()).catch(() => null),
+        fetch('/api/user/extended-profile', { credentials: 'include' }).then(r => r.json()).catch(() => null),
       ])
 
       if (userRes?.user) setUser(userRes.user)
-      if (statsRes && !statsRes.error) setStats(statsRes)
+      if (statsRes && !statsRes.error) {
+        setStats(statsRes)
+        if (typeof statsRes.streak === 'number') setCurrentStreak(statsRes.streak)
+      }
       if (typeof achRes?.xp === 'number') setXp(achRes.xp)
       if (typeof achRes?.level === 'number') setLevel(achRes.level)
       if (activityRes?.data) setActivity(activityRes.data)
+      if (typeof lbRes?.currentUser?.rank === 'number') setGlobalRank(lbRes.currentUser.rank)
+      else if (typeof lbRes?.rank === 'number') setGlobalRank(lbRes.rank)
+      const ext = extRes?.data
+      if (ext) {
+        if (typeof ext.about === 'string') setAboutBio(ext.about)
+        if (ext.links && typeof ext.links === 'object') setSocialLinks(ext.links)
+        // Prefer server profile for completion score when present
+        try {
+          let score = 0
+          if (ext.phone || ext.basic?.phone) score += 5
+          if (ext.location || ext.basic?.location) score += 5
+          if (ext.about && String(ext.about).trim().length > 10) score += 15
+          if (ext.skills && String(ext.skills).trim().length > 2) score += 15
+          if (Array.isArray(ext.experience) && ext.experience.some((e: any) => e.company?.trim() || e.organisation?.trim())) score += 15
+          if (Array.isArray(ext.education) && ext.education.some((e: any) => e.institution?.trim() || e.college?.trim())) score += 15
+          if (ext.links && (ext.links.linkedin || ext.links.github || ext.links.portfolio)) score += 10
+          if (score > 0) setProfileCompletion(Math.min(100, score))
+          if (ext.avatar || ext.basic?.avatar) setAvatar(ext.avatar || ext.basic.avatar)
+        } catch { /* ignore */ }
+      }
       if (heatmapRes?.cells) {
         setHeatmapData({
           cells: heatmapRes.cells,
@@ -321,7 +351,22 @@ export default function ProfilePage() {
             <p className="mt-1 text-sm text-muted-foreground font-medium">@{user?.email?.split('@')[0]}</p>
             
             <div className="mt-4 flex items-center justify-center gap-2">
-              <Button size="icon" variant="outline" className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground">
+              <Button
+                size="icon"
+                variant="outline"
+                className="h-9 w-9 rounded-full text-muted-foreground hover:text-foreground"
+                title="Copy profile link"
+                onClick={async () => {
+                  const url = typeof window !== 'undefined' ? window.location.href : ''
+                  try {
+                    if (navigator.share) {
+                      await navigator.share({ title: displayName, url })
+                    } else {
+                      await navigator.clipboard.writeText(url)
+                    }
+                  } catch { /* user cancelled */ }
+                }}
+              >
                 <Share2 className="h-4 w-4" />
               </Button>
               <Link href={`/users/${user?.email?.split('@')[0] || user?.id || 'preview'}?preview=true`}>
@@ -400,11 +445,13 @@ export default function ProfilePage() {
               <p className="text-xs font-medium text-muted-foreground text-left">Global Rank</p>
               <div className="mt-2 flex items-center gap-3">
                 <Trophy className="h-7 w-7 text-amber-500 drop-shadow-sm" />
-                <span className="text-3xl font-extrabold text-foreground tracking-tight">1</span>
+                <span className="text-3xl font-extrabold text-foreground tracking-tight">{globalRank != null ? globalRank : '—'}</span>
               </div>
-              <Button size="sm" className="mt-5 w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium h-9 shadow-sm">
-                View Leaderboard
-              </Button>
+              <Link href="/dashboard/leaderboard" className="block mt-5">
+                <Button size="sm" className="w-full bg-blue-600 hover:bg-blue-700 text-white rounded-full font-medium h-9 shadow-sm">
+                  View Leaderboard
+                </Button>
+              </Link>
             </div>
             
             <div className="mt-5 grid grid-cols-2 gap-4 text-sm pt-2">
@@ -436,10 +483,21 @@ export default function ProfilePage() {
         {/* Right Column (Main Content) */}
         <div className="space-y-6 min-w-0">
           <Card className="border-border/60 p-6 shadow-sm">
-            <h2 className="text-lg font-bold text-foreground tracking-tight">About</h2>
-            <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
-              I'm thrilled to participate in the competitions here and showcase my skills. Although winning prizes and recognition is thrilling, my ultimate goal is to gain significant experience and become a potential candidate for a remarkable organization.
-            </p>
+            <div className="flex items-center justify-between mb-2">
+              <h2 className="text-lg font-bold text-foreground tracking-tight">About</h2>
+              <Link href="/dashboard/profile/edit" className="text-xs font-medium text-primary hover:underline">Edit</Link>
+            </div>
+            {aboutBio?.trim() ? (
+              <p className="mt-3 text-sm text-muted-foreground leading-relaxed whitespace-pre-wrap">{aboutBio}</p>
+            ) : (
+              <p className="mt-3 text-sm text-muted-foreground leading-relaxed">
+                No bio yet.{" "}
+                <Link href="/dashboard/profile/edit" className="text-primary hover:underline font-medium">
+                  Add an About section
+                </Link>{" "}
+                so recruiters and teammates can learn who you are.
+              </p>
+            )}
           </Card>
 
           <Card className="border-border/60 p-6 shadow-sm overflow-hidden">

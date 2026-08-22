@@ -6,12 +6,15 @@ import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { Tooltip, TooltipContent, TooltipTrigger } from '@/components/ui/tooltip'
+import { CourseCertificatePreview } from '@/components/courses/CourseCertificatePreview'
+import { AddToCalendarButton } from '@/components/courses/AddToCalendarButton'
 import {
   BookOpen, CheckCircle, Play, Pause, Loader2,
   Star, Clock, Layers, Award, Users, ChevronDown,
   ChevronRight, Lock, ArrowLeft, Volume2, Maximize2,
   GraduationCap, TrendingUp, Zap, Shield, BarChart2, BookMarked,
-  ChevronUp, Share2, Heart, Download, HelpCircle
+  ChevronUp, Share2, Heart, Download, HelpCircle, Check, Copy, Link2
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -125,6 +128,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [openSections, setOpenSections] = useState<Set<string>>(new Set(['0']))
   const [enrolled, setEnrolled] = useState(false)
   const [saved, setSaved] = useState(false)
+  const [shareOpen, setShareOpen] = useState(false)
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
   const [progress, setProgress] = useState<Progress | null>(null)
   const [showQuiz, setShowQuiz] = useState<number | null>(null)
@@ -201,6 +205,74 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
     })
   }
 
+
+  // Persist wishlist across refresh (Mongo-backed).
+  useEffect(() => {
+    if (!courseId) return
+    fetch('/api/user/course-wishlist', { credentials: 'include' })
+      .then(r => r.json())
+      .then(j => {
+        const ids: string[] = Array.isArray(j?.data) ? j.data : []
+        setSaved(ids.includes(courseId))
+      })
+      .catch(() => {})
+  }, [courseId])
+
+  const toggleWishlist = async () => {
+    const next = !saved
+    setSaved(next)
+    try {
+      const res = await csrfFetch('/api/user/course-wishlist', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ courseId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Wishlist update failed')
+      setSaved(!!data.saved)
+      addToast({
+        title: data.saved ? 'Added to wishlist' : 'Removed from wishlist',
+        type: 'success',
+      })
+    } catch (e: any) {
+      setSaved(!next)
+      addToast({ title: e?.message || 'Could not update wishlist', type: 'error' })
+    }
+  }
+
+  const shareCourse = async (channel?: 'copy' | 'linkedin' | 'twitter' | 'native') => {
+    const url = typeof window !== 'undefined' ? window.location.href : ''
+    const title = course?.title || 'CodeSpectra course'
+    try {
+      if (!channel || channel === 'native') {
+        if (navigator.share) {
+          await navigator.share({ title, url, text: course?.description || '' })
+          addToast({ title: 'Shared', type: 'success' })
+          setShareOpen(false)
+          return
+        }
+        channel = 'copy'
+      }
+      if (channel === 'linkedin') {
+        window.open(`https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(url)}`, '_blank', 'noopener,noreferrer')
+        setShareOpen(false)
+        return
+      }
+      if (channel === 'twitter') {
+        window.open(`https://twitter.com/intent/tweet?url=${encodeURIComponent(url)}&text=${encodeURIComponent(title)}`, '_blank', 'noopener,noreferrer')
+        setShareOpen(false)
+        return
+      }
+      await navigator.clipboard.writeText(url)
+      addToast({ title: 'Link copied to clipboard', type: 'success' })
+      setShareOpen(false)
+    } catch (e: any) {
+      if (e?.name === 'AbortError') return
+      addToast({ title: 'Could not share', type: 'error' })
+    }
+  }
+
+
 const handleEnroll = async () => {
     setEnrolled(true)
     addToast({ title: `Enrolling in ${course?.title}...`, type: 'info' })
@@ -248,6 +320,8 @@ const handleEnroll = async () => {
   )
   const continueLesson = allLessons.find(l => l.id === resumeLessonId) || firstLesson
   const totalLessons = allLessons.length
+  const lessonsWithVideo = allLessons.filter((l: any) => !!(l.videoUrl || l.mp4Url || l.video_url)).length
+  const videosReadyPct = totalLessons > 0 ? Math.round((lessonsWithVideo / totalLessons) * 100) : 0
   const totalDuration = allLessons.reduce((acc, l) => acc + (l.duration || 0), 0)
   const hoursOfContent = totalDuration > 0
     ? Math.max(1, Math.round(totalDuration / 3600))
@@ -363,18 +437,61 @@ const handleEnroll = async () => {
                     <Zap className="h-5 w-5 mr-2" /> Enroll Now — Free
                   </Button>
                 )}
-                <button
-                  onClick={() => setSaved(!saved)}
-                  className={cn(
-                    'h-12 w-12 rounded-xl border flex items-center justify-center transition-all',
-                    saved ? 'border-red-500/50 bg-red-500/10 text-red-400' : 'border-white/20 bg-white/5 text-white/60 hover:border-white/40 hover:text-white'
+                <Tooltip>
+                  <TooltipTrigger asChild>
+                    <button
+                      type="button"
+                      aria-label={saved ? 'Remove from wishlist' : 'Add to wishlist'}
+                      onClick={toggleWishlist}
+                      className={cn(
+                        'h-12 w-12 rounded-xl border flex items-center justify-center transition-all',
+                        saved ? 'border-red-500/50 bg-red-500/10 text-red-400' : 'border-white/20 bg-white/5 text-white/60 hover:border-white/40 hover:text-white'
+                      )}
+                    >
+                      <Heart className={cn('h-5 w-5', saved && 'fill-red-400')} />
+                    </button>
+                  </TooltipTrigger>
+                  <TooltipContent side="bottom">
+                    <p>{saved ? 'Remove from wishlist' : 'Add to wishlist'}</p>
+                  </TooltipContent>
+                </Tooltip>
+                <AddToCalendarButton
+                  courseTitle={course.title}
+                  courseUrl={typeof window !== 'undefined' ? window.location.href : ''}
+                />
+                <div className="relative">
+                  <Tooltip>
+                    <TooltipTrigger asChild>
+                      <button
+                        type="button"
+                        aria-label="Share course"
+                        onClick={() => setShareOpen(v => !v)}
+                        className="h-12 w-12 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-white/60 hover:border-white/40 hover:text-white transition-all"
+                      >
+                        <Share2 className="h-5 w-5" />
+                      </button>
+                    </TooltipTrigger>
+                    <TooltipContent side="bottom">
+                      <p>Share course</p>
+                    </TooltipContent>
+                  </Tooltip>
+                  {shareOpen && (
+                    <div className="absolute left-0 top-14 z-30 w-52 rounded-xl border border-border bg-card shadow-xl p-2 space-y-1">
+                      <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-muted text-left" onClick={() => shareCourse('copy')}>
+                        <Copy className="h-4 w-4" /> Copy link
+                      </button>
+                      <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-muted text-left" onClick={() => shareCourse('linkedin')}>
+                        <Link2 className="h-4 w-4" /> LinkedIn
+                      </button>
+                      <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-muted text-left" onClick={() => shareCourse('twitter')}>
+                        <Share2 className="h-4 w-4" /> X / Twitter
+                      </button>
+                      <button type="button" className="w-full flex items-center gap-2 px-3 py-2 rounded-lg text-sm hover:bg-muted text-left" onClick={() => shareCourse('native')}>
+                        <Share2 className="h-4 w-4" /> More…
+                      </button>
+                    </div>
                   )}
-                >
-                  <Heart className={cn('h-5 w-5', saved && 'fill-red-400')} />
-                </button>
-                <button className="h-12 w-12 rounded-xl border border-white/20 bg-white/5 flex items-center justify-center text-white/60 hover:border-white/40 hover:text-white transition-all">
-                  <Share2 className="h-5 w-5" />
-                </button>
+                </div>
               </div>
             </div>
 
@@ -455,7 +572,76 @@ const handleEnroll = async () => {
 
             {/* Video Player Panel - Removed, moved to dedicated lesson page */}
 
-            {/* What you'll learn */}
+            {/* MP4 readiness — soft-launch signal */}
+            {totalLessons > 0 && (
+              <div className={cn(
+                'rounded-2xl border p-4 flex flex-wrap items-center justify-between gap-3',
+                lessonsWithVideo >= totalLessons
+                  ? 'border-emerald-500/30 bg-emerald-500/10'
+                  : lessonsWithVideo > 0
+                    ? 'border-amber-500/30 bg-amber-500/10'
+                    : 'border-border/60 bg-muted/40'
+              )}>
+                <div>
+                  <p className="text-sm font-semibold">
+                    {lessonsWithVideo >= totalLessons
+                      ? 'All lesson videos ready'
+                      : lessonsWithVideo > 0
+                        ? 'Videos generating — soft launch'
+                        : 'Videos not ready yet'}
+                  </p>
+                  <p className="text-xs text-muted-foreground mt-0.5">
+                    {lessonsWithVideo} / {totalLessons} lessons have MP4s ({videosReadyPct}%).{' '}
+                    {lessonsWithVideo < totalLessons
+                      ? 'You can enroll and start modules that are ready; certificate unlocks when you finish.'
+                      : 'Full course is live for enrollment and certification.'}
+                  </p>
+                </div>
+                <Link href="/dashboard/courses/wishlist" className="text-xs font-medium text-primary hover:underline">
+                  View wishlist
+                </Link>
+              </div>
+            )}
+
+            {/* About the course */}
+            <section>
+              <h2 className="text-2xl font-bold mb-4">About the course</h2>
+              <div className="rounded-2xl border border-border/60 bg-card p-6 space-y-4">
+                <p className="text-muted-foreground leading-relaxed">
+                  {course.description || `${course.title} is a structured, hands-on program with short video lessons, practice, and a verified certificate when you finish.`}
+                </p>
+                <div>
+                  <p className="text-sm font-semibold mb-2">Course covers:</p>
+                  <ul className="space-y-2">
+                    {whatYoullLearn.slice(0, 6).map((item, i) => (
+                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
+                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
+                        <span>{item}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </section>
+
+            {/* Skills you'll learn — Unstop-style check pills */}
+            <section>
+              <h2 className="text-2xl font-bold mb-2">Skills you will learn</h2>
+              <p className="text-sm text-muted-foreground mb-5">Practical abilities you pick up across the modules</p>
+              <div className="flex flex-wrap gap-2.5">
+                {(course.tags?.length ? course.tags : whatYoullLearn.slice(0, 8)).map((item, i) => (
+                  <span
+                    key={i}
+                    className="inline-flex items-center gap-1.5 rounded-full border border-sky-500/25 bg-sky-500/10 px-3.5 py-1.5 text-sm font-medium text-sky-700 dark:text-sky-300"
+                  >
+                    <Check className="h-3.5 w-3.5 text-sky-600 dark:text-sky-400" strokeWidth={3} />
+                    {item}
+                  </span>
+                ))}
+              </div>
+            </section>
+
+            {/* What you'll learn — outcomes */}
             <section>
               <h2 className="text-2xl font-bold mb-6">What you'll learn</h2>
               <div className="grid sm:grid-cols-2 gap-3">
@@ -741,10 +927,16 @@ const handleEnroll = async () => {
                 </div>
 
                 <div className="pt-3 border-t border-border/50">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Skills you'll gain</p>
+                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Skills you&apos;ll gain</p>
                   <div className="flex flex-wrap gap-2">
-                    {(course.tags || []).map(t => (
-                      <Badge key={t} variant="secondary" className="text-xs font-medium px-3 py-1">{t}</Badge>
+                    {(course.tags || []).map(tag => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"
+                      >
+                        <Check className="h-3 w-3" strokeWidth={3} />
+                        {tag}
+                      </span>
                     ))}
                   </div>
                 </div>
@@ -784,22 +976,9 @@ const handleEnroll = async () => {
               )}
             </div>
 
-            {/* Certificate mockup */}
-            <div className="flex justify-center">
-              <div className="w-full max-w-sm aspect-4/3 bg-white rounded-2xl shadow-2xl p-5 transform rotate-2 hover:rotate-0 transition-transform duration-500">
-                <div className="w-full h-full border-2 border-dashed border-slate-200 rounded-xl flex flex-col items-center justify-center text-center p-6 gap-4">
-                  <div className="w-14 h-14 rounded-full bg-amber-100 flex items-center justify-center">
-                    <Award className="h-8 w-8 text-amber-500" />
-                  </div>
-                  <div>
-                    <p className="text-xs font-semibold text-slate-400 uppercase tracking-widest">Certificate of Completion</p>
-                    <p className="text-lg font-black text-slate-800 mt-1">{course.title}</p>
-                  </div>
-                  <div className="w-full border-t border-slate-200 pt-3">
-                    <p className="text-xs text-slate-400">Issued by CodeSpectra • Verified</p>
-                  </div>
-                </div>
-              </div>
+            {/* Real SuperAdmin template + SAMPLE watermark */}
+            <div className="flex justify-center transform rotate-1 hover:rotate-0 transition-transform duration-500">
+              <CourseCertificatePreview courseTitle={course.title} />
             </div>
           </div>
         </div>

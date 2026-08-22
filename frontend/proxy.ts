@@ -98,7 +98,8 @@ export default function proxy(request: NextRequest) {
   response.headers.set('Cross-Origin-Resource-Policy', 'same-site')
   response.headers.set(
     'Permissions-Policy',
-    'camera=(self), microphone=(), geolocation=(), interest-cohort=()',
+    // ponytail: geolocation=(self) so profile "Use live location" works on user gesture; empty () caused console Permissions-Policy violations
+    'camera=(self), microphone=(), geolocation=(self), interest-cohort=()',
   )
 
   // CORS — only allow known origins, never reflect arbitrary origins with credentials

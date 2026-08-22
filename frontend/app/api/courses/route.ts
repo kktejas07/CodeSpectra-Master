@@ -166,17 +166,8 @@ const SEED_COURSES = [
     whatYoullLearn: [],
     sections: []
   },
-  {
-    id: 'java-fundamentals',
-    title: 'Java Fundamentals',
-    description: 'Complete Java programming from basics to OOP, collections, streams, and concurrency.',
-    type: 'video', instructor: 'CodeSpectra', level: 'beginner',
-    rating: 4.6, sessions: 20, category: 'Coding',
-    tags: ['Coding', 'Java'],
-    image: '/courses/java.jpg',
-    whatYoullLearn: [],
-    sections: []
-  },
+  // ponytail: no seed `java-fundamentals` — generated catalog course `java-beginner`
+  // is also titled "Java Fundamentals"; seeding both caused a duplicate card.
   {
     id: 'react-deep-dive',
     title: 'React: Hooks & Server Components',
@@ -245,37 +236,141 @@ const SEED_COURSES = [
   },
 ]
 
+/** Prefer generated / content-rich courses when titles collide. */
+function courseRichness(c: Record<string, unknown>): number {
+  const sections = Array.isArray(c.sections)
+    ? c.sections
+    : Array.isArray(c.modules)
+      ? (c.modules as unknown[])
+      : []
+  const lessons = sections.reduce((n: number, s: any) => {
+    const items = s?.lessons || s?.videos || []
+    return n + (Array.isArray(items) ? items.length : 0)
+  }, 0)
+  const generatedBonus = c.id === 'java-beginner' || c.source === 'generated' || c.techStack ? 1000 : 0
+  return generatedBonus + lessons + sections.length * 10 + (Number(c.sessions) || 0)
+}
+
+function dedupeCoursesByTitle<T extends { id?: string; title?: string }>(courses: T[]): T[] {
+  const best = new Map<string, T>()
+  for (const c of courses) {
+    const key = (c.title || '').trim().toLowerCase()
+    if (!key) {
+      best.set(`__id:${c.id || Math.random()}`, c)
+      continue
+    }
+    const prev = best.get(key)
+    if (!prev || courseRichness(c as any) > courseRichness(prev as any)) best.set(key, c)
+  }
+  return [...best.values()]
+}
+
+// Seed stubs superseded by generated catalog tracks (same display title).
+// Prod still had this doc because every GET re-upserted it from SEED_COURSES.
+const OBSOLETE_SEED_IDS = ['java-fundamentals'] as const
+
 export async function GET(request: NextRequest) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
   try {
     const db = await getMongoDb()
     const col = db.collection('courses')
+    const enrollments = db.collection('course_enrollments')
 
-    // Upsert each course — always pushes latest image path and curriculum to existing records
+    // Remove obsolete seed stubs BEFORE re-upserting seeds (so they cannot come back).
+    for (const obsoleteId of OBSOLETE_SEED_IDS) {
+      const generated =
+        obsoleteId === 'java-fundamentals'
+          ? await col.findOne({ id: 'java-beginner' }, { projection: { id: 1 } })
+          : null
+      if (generated) {
+        const old = await enrollments.find({ courseId: obsoleteId }).project({ userId: 1 }).toArray()
+        for (const row of old) {
+          const uid = row.userId
+          if (!uid) continue
+          const exists = await enrollments.findOne({ courseId: generated.id, userId: uid })
+          if (!exists) {
+            await enrollments.updateOne({ _id: row._id }, { $set: { courseId: generated.id } })
+          } else {
+            await enrollments.deleteOne({ _id: row._id })
+          }
+        }
+      }
+      await col.deleteOne({ id: obsoleteId })
+    }
+
+    // Upsert seed catalog — skip any seed whose title already belongs to a generated course.
     const now = new Date().toISOString()
+    const existingGenerated = await col
+      .find({
+        $or: [
+          { source: 'generated' },
+          { techStack: { $exists: true, $ne: null } },
+          { id: { $in: ['java-beginner'] } },
+        ],
+      })
+      .project({ title: 1, id: 1 })
+      .toArray()
+    const generatedTitles = new Set(
+      existingGenerated.map((c) => String(c.title || '').trim().toLowerCase()).filter(Boolean),
+    )
+
     await Promise.all(
-      SEED_COURSES.map(c =>
+      SEED_COURSES.filter((c) => !generatedTitles.has(c.title.trim().toLowerCase())).map((c) =>
         col.updateOne(
           { id: c.id },
           { $set: { ...c, updated_at: now }, $setOnInsert: { enrolled: 0, created_at: now } },
-          { upsert: true }
-        )
-      )
+          { upsert: true },
+        ),
+      ),
     )
 
+    // Title-collision cleanup: if multiple docs share a title, keep the richest and drop the rest.
     const courses = await col.find({}).toArray()
+    const unique = dedupeCoursesByTitle(courses as any[])
+    const keepIds = new Set(unique.map((c) => c.id).filter(Boolean))
+    const dropIds = courses
+      .map((c) => c.id)
+      .filter((id): id is string => Boolean(id) && !keepIds.has(id))
+    if (dropIds.length) {
+      // Migrate enrollments from dropped stubs onto the kept course with the same title when possible.
+      for (const dropId of dropIds) {
+        const dropped = courses.find((c) => c.id === dropId)
+        const keep = unique.find(
+          (c) =>
+            (c.title || '').trim().toLowerCase() === String(dropped?.title || '').trim().toLowerCase(),
+        )
+        if (keep?.id) {
+          const old = await enrollments.find({ courseId: dropId }).project({ userId: 1 }).toArray()
+          for (const row of old) {
+            const uid = row.userId
+            if (!uid) continue
+            const exists = await enrollments.findOne({ courseId: keep.id, userId: uid })
+            if (!exists) await enrollments.updateOne({ _id: row._id }, { $set: { courseId: keep.id } })
+            else await enrollments.deleteOne({ _id: row._id })
+          }
+        }
+      }
+      await col.deleteMany({ id: { $in: dropIds } })
+    }
 
     // Real enrolled count per course from course_enrollments
-    const enrollments = db.collection('course_enrollments')
-    const enriched = await Promise.all(courses.map(async (c) => {
-      const enrolledCount = await enrollments.countDocuments({ courseId: c.id })
-      return {
-        ...c,
-        _id: undefined,
-        enrolled: enrolledCount || (c.enrolled as number) || 0,
-      }
-    }))
+    const enriched = await Promise.all(
+      unique.map(async (c) => {
+        const enrolledCount = await enrollments.countDocuments({ courseId: c.id })
+        const sectionCount = Array.isArray(c.sections)
+          ? c.sections.length
+          : Array.isArray(c.modules)
+            ? c.modules.length
+            : 0
+        return {
+          ...c,
+          _id: undefined,
+          enrolled: enrolledCount || (c.enrolled as number) || 0,
+          sessions: Number(c.sessions) || sectionCount || 0,
+        }
+      }),
+    )
 
     return NextResponse.json({ data: enriched })
   } catch (e) {
