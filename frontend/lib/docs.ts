@@ -6,19 +6,21 @@ import type { DocMeta, DocPage, DocSection, ServeSection } from './docs-shared'
 export type { DocMeta, DocPage, DocSection, ServeSection }
 export { docHref, flattenDocs, getAdjacentDocs } from './docs-shared'
 
-const DOCS_ROOT = (() => {
+function resolveDocsRoot(): string {
   const cwd = process.cwd()
-  // Dev: cwd = frontend/  →  ../docs
-  // Docker: cwd = /app    →  ./docs
-  const siblings = [
+  // Dev monorepo: frontend/ → ../docs (source of truth)
+  // Docker: /app/docs (mirrored via scripts/sync-docs.cjs → frontend/docs)
+  const candidates = [
     path.join(/*turbopackIgnore: true*/ cwd, '..', 'docs'),
     path.join(/*turbopackIgnore: true*/ cwd, 'docs'),
   ]
-  for (const p of siblings) {
-    if (fs.existsSync(p)) return p
+  for (const p of candidates) {
+    if (fs.existsSync(path.join(p, 'public')) || fs.existsSync(path.join(p, 'user'))) {
+      return p
+    }
   }
-  return siblings[0]
-})()
+  return candidates[0]
+}
 
 const SERVE_SECTIONS = ['public', 'user'] as const satisfies readonly ServeSection[]
 
@@ -39,10 +41,11 @@ function nameToTitle(name: string): string {
 }
 
 export function getDocTree(): DocSection[] {
+  const docsRoot = resolveDocsRoot()
   const sections: DocSection[] = []
 
   for (const sectionId of SERVE_SECTIONS) {
-    const sectionDir = path.join(DOCS_ROOT, sectionId)
+    const sectionDir = path.join(docsRoot, sectionId)
     if (!fs.existsSync(sectionDir)) continue
 
     const entries = fs.readdirSync(sectionDir).filter((f) => f.endsWith('.md') && f !== 'README.md')

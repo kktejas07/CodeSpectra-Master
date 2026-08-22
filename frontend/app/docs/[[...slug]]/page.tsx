@@ -85,6 +85,12 @@ const FEATURED: {
 ]
 
 function DocsHome({ sections }: { sections: DocSection[] }) {
+  const totalDocs = sections.reduce((n, s) => n + s.docs.length, 0)
+  const firstPublic = sections.find((s) => s.id === 'public')?.docs[0]
+  const firstUser = sections.find((s) => s.id === 'user')?.docs[0]
+  const startHref = firstPublic ? docHref(firstPublic) : '/docs'
+  const userHref = firstUser ? docHref(firstUser) : '/docs'
+
   return (
     <div className="mx-auto w-full max-w-5xl pb-16">
       <div className="relative mb-12 overflow-hidden rounded-2xl border border-border/60 bg-gradient-to-br from-teal-500/10 via-background to-cyan-500/5 p-8 sm:p-10">
@@ -101,85 +107,97 @@ function DocsHome({ sections }: { sections: DocSection[] }) {
             Guides for getting started, using the product day to day, and integrating with the API.
             Use the sidebar to browse, or jump into a popular topic below.
           </p>
-          <div className="mt-6 flex flex-wrap gap-3">
-            <Link
-              href="/docs/getting-started"
-              className="inline-flex items-center gap-2 rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500"
-            >
-              Start here <ArrowRight className="h-4 w-4" />
-            </Link>
-            <Link
-              href="/docs/user/dashboard-guide"
-              className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:border-teal-500/40 hover:bg-teal-500/5"
-            >
-              User guides
-            </Link>
-          </div>
+          {totalDocs > 0 ? (
+            <div className="mt-6 flex flex-wrap gap-3">
+              <Link
+                href={startHref}
+                className="inline-flex items-center gap-2 rounded-full bg-teal-600 px-4 py-2 text-sm font-semibold text-white hover:bg-teal-500"
+              >
+                Start here <ArrowRight className="h-4 w-4" />
+              </Link>
+              <Link
+                href={userHref}
+                className="inline-flex items-center gap-2 rounded-full border border-border px-4 py-2 text-sm font-semibold hover:border-teal-500/40 hover:bg-teal-500/5"
+              >
+                User guides
+              </Link>
+            </div>
+          ) : (
+            <p className="mt-6 rounded-lg border border-amber-500/40 bg-amber-500/10 px-4 py-3 text-sm text-amber-900 dark:text-amber-100">
+              Docs content is not in this image yet. Redeploy after the frontend includes{' '}
+              <code className="rounded bg-muted px-1">docs/public</code> and{' '}
+              <code className="rounded bg-muted px-1">docs/user</code>.
+            </p>
+          )}
         </div>
       </div>
 
-      <section className="mb-14">
-        <h2 className="mb-4 text-lg font-semibold tracking-tight">Popular topics</h2>
-        <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
-          {FEATURED.map((item) => {
-            const Icon = item.icon
-            return (
-              <Link
-                key={item.href}
-                href={item.href}
-                className="group flex gap-3 rounded-xl border border-border/60 bg-card/40 p-4 transition-colors hover:border-teal-500/40 hover:bg-teal-500/5"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400">
-                  <Icon className="h-5 w-5" />
-                </span>
-                <span className="min-w-0">
-                  <span className="block font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400">
-                    {item.title}
-                  </span>
-                  <span className="mt-1 block text-sm text-muted-foreground">{item.description}</span>
-                </span>
-              </Link>
-            )
-          })}
-        </div>
-      </section>
-
-      <div className="space-y-12">
-        {sections.map((section) => (
-          <section key={section.id}>
-            <div className="mb-4 flex items-end justify-between gap-3 border-b border-border/50 pb-3">
-              <div>
-                <h2 className="text-xl font-semibold tracking-tight">{section.label}</h2>
-                <p className="mt-1 text-sm text-muted-foreground">
-                  {section.id === 'public'
-                    ? 'Open guides — no login required.'
-                    : 'In-product walkthroughs for signed-in users.'}
-                </p>
-              </div>
-              <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
-                {section.docs.length} pages
-              </span>
-            </div>
-            <div className="grid gap-2 sm:grid-cols-2">
-              {section.docs.map((doc, i) => (
-                <Link
-                  key={`${doc.section}-${doc.slug}`}
-                  href={docHref(doc)}
-                  className="group flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:border-border hover:bg-muted/40"
-                >
-                  <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-[11px] font-bold text-muted-foreground">
-                    {String(i + 1).padStart(2, '0')}
-                  </span>
-                  <span className="min-w-0 flex-1 truncate text-sm font-medium group-hover:text-teal-600 dark:group-hover:text-teal-400">
-                    {doc.title}
-                  </span>
-                  <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
-                </Link>
-              ))}
+      {totalDocs > 0 ? (
+        <>
+          <section className="mb-14">
+            <h2 className="mb-4 text-lg font-semibold tracking-tight">Popular topics</h2>
+            <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
+              {FEATURED.map((item) => {
+                const Icon = item.icon
+                return (
+                  <Link
+                    key={item.href}
+                    href={item.href}
+                    className="group flex gap-3 rounded-xl border border-border/60 bg-card/40 p-4 transition-colors hover:border-teal-500/40 hover:bg-teal-500/5"
+                  >
+                    <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-teal-500/10 text-teal-600 dark:text-teal-400">
+                      <Icon className="h-5 w-5" />
+                    </span>
+                    <span className="min-w-0">
+                      <span className="block font-semibold group-hover:text-teal-600 dark:group-hover:text-teal-400">
+                        {item.title}
+                      </span>
+                      <span className="mt-1 block text-sm text-muted-foreground">{item.description}</span>
+                    </span>
+                  </Link>
+                )
+              })}
             </div>
           </section>
-        ))}
-      </div>
+
+          <div className="space-y-12">
+            {sections.map((section) => (
+              <section key={section.id}>
+                <div className="mb-4 flex items-end justify-between gap-3 border-b border-border/50 pb-3">
+                  <div>
+                    <h2 className="text-xl font-semibold tracking-tight">{section.label}</h2>
+                    <p className="mt-1 text-sm text-muted-foreground">
+                      {section.id === 'public'
+                        ? 'Open guides — no login required.'
+                        : 'In-product walkthroughs for signed-in users.'}
+                    </p>
+                  </div>
+                  <span className="rounded-full bg-muted px-2.5 py-0.5 text-[11px] font-medium text-muted-foreground">
+                    {section.docs.length} pages
+                  </span>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  {section.docs.map((doc, i) => (
+                    <Link
+                      key={`${doc.section}-${doc.slug}`}
+                      href={docHref(doc)}
+                      className="group flex items-center gap-3 rounded-lg border border-transparent px-3 py-2.5 transition-colors hover:border-border hover:bg-muted/40"
+                    >
+                      <span className="flex h-7 w-7 shrink-0 items-center justify-center rounded-md bg-muted font-mono text-[11px] font-bold text-muted-foreground">
+                        {String(i + 1).padStart(2, '0')}
+                      </span>
+                      <span className="min-w-0 flex-1 truncate text-sm font-medium group-hover:text-teal-600 dark:group-hover:text-teal-400">
+                        {doc.title}
+                      </span>
+                      <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground opacity-0 transition-opacity group-hover:opacity-100" />
+                    </Link>
+                  ))}
+                </div>
+              </section>
+            ))}
+          </div>
+        </>
+      ) : null}
     </div>
   )
 }
