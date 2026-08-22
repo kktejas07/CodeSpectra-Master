@@ -6,6 +6,7 @@
 
 ## Current Claims
 
+| cursor (this session, ANON-BUILD-FIX) | Dokploy build fails typechecking @anon-aadhaar/core src (uuid/ArrayBuffer) | frontend/patches/@anon-aadhaar+core+2.4.3.patch, WORKING.md | DONE — patch-package stubs types to dist/index.d.ts | 2026-08-22 |
 | cursor (this session, PROFILE-UX+COURSE) | Resume CTA fix+UI; name-based usernames; course page dedupe; cert preview name+fit | profile edit, username lib/API, courses/[id], CourseCertificatePreview, WORKING.md | DONE — resume Link+UI; LinkedIn-style usernames; course deduped; cert fits+shows user name | 2026-08-22 |
 | cursor (this session, ANON-AADHAAR) | Implement Anon Aadhaar + purpose-based KYC provider switch in SuperAdmin | kyc settings, anon verify API/UI, exam/profile hooks, WORKING.md | DONE — purpose routing in SuperAdmin KYC; Anon on exam/profile; identity-verify reads identity_kyc | 2026-08-22 |
 | cursor (this session, CRON-UI) | Improve existing /dashboard/admin/cron-jobs: clear configured+running UI; include Signals ingest | cron-jobs page+API, WORKING.md | DONE — status cards, HTTP catalog (+Signals), run-now, schedules | 2026-08-22 |
