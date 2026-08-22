@@ -1,7 +1,13 @@
 import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { readServerSecrets } from '@/lib/server-secrets-cache'
-import { durationFramesFromSpoken, synthesizeTts } from '@/lib/courses/tts'
+import {
+  durationFramesFromSpoken,
+  estimateSpokenSeconds,
+  synthesizeTts,
+  measureAudioDurationSeconds,
+  alignSlideDurationsToAudio,
+} from '@/lib/courses/tts'
 import { SOFTWARE_FAMILIES, familyFor } from '@/lib/courses/catalog'
 
 export type SlideType = 'title' | 'concept' | 'code' | 'visual' | 'diagram'
@@ -147,7 +153,8 @@ Rules:
 - First slide type MUST be "title" (welcome + what we'll cover).
 ${slideRules}
 - Each spokenText MUST be 140-180 words (this is what makes the video ~8–12 minutes).
-- On-screen "content" is 3-5 short bullets, not the full narration.
+- On-screen "content" is 3-5 short bullets that summarize THE SAME points the narrator is speaking — never put unrelated bullets while spokenText teaches something else.
+- spokenText must teach the slide title + those bullets (same topic); do not digress to a different concept mid-slide.
 - Cover WHY → WHAT → HOW → WHERE, then edge cases and a full worked example.
 - Do not say "we will skip" or "as you already know".
 - Do NOT include quiz questions, answer keys, "Quiz 1", or knowledge-check slides — quizzes are a separate interactive step after the module.
@@ -296,12 +303,16 @@ export async function generateLessonVideo(opts: {
 
   const fullSpoken = slides.map(s => s.spokenText).join(' ')
   const audioBuffer = await synthesizeTts(fullSpoken)
+  // Word-count frame estimates drift from real Google TTS length — align visuals to the MP3.
+  const measured = await measureAudioDurationSeconds(audioBuffer)
+  const audioSeconds = measured > 0 ? measured : estimateSpokenSeconds(fullSpoken)
+  slides = alignSlideDurationsToAudio(slides, audioSeconds, 30)
   const durationSeconds = slides.reduce((n, s) => n + s.durationInFrames, 0) / 30
 
   return {
     textContent,
     script: slides,
     audioBuffer,
-    durationSeconds: Math.max(60, Math.round(durationSeconds)),
+    durationSeconds: Math.max(60, Math.round(durationSeconds || audioSeconds)),
   }
 }

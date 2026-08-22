@@ -6,6 +6,7 @@
 
 ## Current Claims
 
+| cursor (this session, A/V-SYNC) | Lesson MP4s: on-screen slide text drifts from narration audio | frontend/lib/courses/tts.ts, lesson-video.ts, tests, WORKING.md | DONE — measure MP3 (ffprobe/frame parse), alignSlideDurationsToAudio; VIDEO_PROMPT: bullets must match spokenText; tests added. Existing lessons need regen after worker deploy. | 2026-08-22 |
 | cursor (this session, MEDIA-AUTOPLAY-FIX) | Media Player “Autoplay / captions” toggle re-enables after save or still autoplays | frontend/components/ui/video-player.tsx, frontend/lib/platform-general-settings.ts, platform-settings route, WORKING.md | DONE — root cause: Vidstack needs `autoPlay` (camelCase); lowercase `autoplay` ignored so browser/DOM could keep playing. Strict bool merge + captions_default allowlist. | 2026-08-22 |
 | cursor (this session, QUIZ-REGEN-CLEAN) | Remove in-lesson quizzes from text; wipe old R2 media; regenerate java-beginner videos clean | frontend/lib/courses/strip-embedded-quizzes.ts, lesson page, process-job, s3-storage list+delete, prod mongo/R2/worker | DONE — scrubbed Mongo quiz text; wiped course lesson media; R2 prefix empty; worker regenerating all 72 lessons without in-video quizzes | 2026-08-22 |
 | cursor (this session, QUIZ-BUILD-FIX) | Dokploy build failed: module-quiz pulled Mongo into client lesson page | frontend/lib/courses/module-quiz.ts, module-quiz-generate.ts, process-job.ts, generate-quiz route, WORKING.md | DONE — client-safe helpers only in module-quiz.ts; generateModuleQuiz moved server-only | 2026-08-22 |
