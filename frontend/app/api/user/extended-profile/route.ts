@@ -18,48 +18,54 @@ export async function GET() {
     let doc = await db.collection(COL).findOne({ userId: user.id })
     const basic = (doc as any)?.basic || {}
     const username = String(basic.username || (doc as any)?.username || '').trim()
-    if (!username) {
-      const { generateUsernameCandidate } = await import('@/lib/username')
-      let candidate = generateUsernameCandidate({
-        firstName: basic.firstName,
-        lastName: basic.lastName,
-        email: user.email,
-        name: user.name || user.fullName,
-      })
-      // Ensure uniqueness among extended profiles (best-effort)
-      for (let i = 0; i < 5; i++) {
+    const { generateUsernameCandidate, isGenericUsername } = await import('@/lib/username')
+    const identity = {
+      firstName: basic.firstName,
+      lastName: basic.lastName,
+      email: user.email,
+      name: user.name || user.fullName,
+    }
+    const hasRealName = Boolean(
+      String(basic.firstName || '').trim() ||
+        String(basic.lastName || '').trim() ||
+        String(user.name || user.fullName || '').trim(),
+    )
+    // Missing username OR placeholder user1234 once we know their name → LinkedIn-style handle
+    if (!username || (isGenericUsername(username) && hasRealName)) {
+      let candidate = generateUsernameCandidate(identity)
+      // LinkedIn-style: try bare name, then name2, name3, …
+      for (let n = 2; n <= 50; n++) {
         const clash = await db.collection(COL).findOne({
           userId: { $ne: user.id },
           $or: [{ 'basic.username': candidate }, { username: candidate }],
         })
         if (!clash) break
-        candidate = generateUsernameCandidate({
-          firstName: basic.firstName,
-          lastName: basic.lastName,
-          email: user.email,
-          name: user.name || user.fullName,
-          suffix: Math.floor(1000 + Math.random() * 9000),
-        })
+        candidate = generateUsernameCandidate({ ...identity, suffix: n })
       }
-      const now = new Date().toISOString()
-      await db.collection(COL).updateOne(
-        { userId: user.id },
-        {
-          $set: {
-            'basic.username': candidate,
-            username: candidate,
-            userId: user.id,
-            updatedAt: now,
+      if (isGenericUsername(candidate) && hasRealName) {
+        candidate = generateUsernameCandidate({ ...identity, suffix: Math.floor(10 + Math.random() * 90) })
+      }
+      if (candidate && candidate !== username) {
+        const now = new Date().toISOString()
+        await db.collection(COL).updateOne(
+          { userId: user.id },
+          {
+            $set: {
+              'basic.username': candidate,
+              username: candidate,
+              userId: user.id,
+              updatedAt: now,
+            },
+            $setOnInsert: { createdAt: now },
           },
-          $setOnInsert: { createdAt: now },
-        },
-        { upsert: true },
-      )
-      await db.collection('user').updateOne(
-        { $or: [{ id: user.id }, { _id: user.id as any }] },
-        { $set: { username: candidate, updatedAt: new Date() } },
-      )
-      doc = await db.collection(COL).findOne({ userId: user.id })
+          { upsert: true },
+        )
+        await db.collection('user').updateOne(
+          { $or: [{ id: user.id }, { _id: user.id as any }] },
+          { $set: { username: candidate, updatedAt: new Date() } },
+        )
+        doc = await db.collection(COL).findOne({ userId: user.id })
+      }
     }
     if (!doc) return NextResponse.json({ data: null })
     const { _id, userId, ...rest } = doc as any

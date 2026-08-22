@@ -610,18 +610,7 @@ const handleEnroll = async () => {
                 <p className="text-muted-foreground leading-relaxed">
                   {course.description || `${course.title} is a structured, hands-on program with short video lessons, practice, and a verified certificate when you finish.`}
                 </p>
-                <div>
-                  <p className="text-sm font-semibold mb-2">Course covers:</p>
-                  <ul className="space-y-2">
-                    {whatYoullLearn.slice(0, 6).map((item, i) => (
-                      <li key={i} className="flex items-start gap-2 text-sm text-muted-foreground">
-                        <span className="mt-1.5 h-1.5 w-1.5 rounded-full bg-primary shrink-0" />
-                        <span>{item}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
+</div>
             </section>
 
             {/* Skills you'll learn — Unstop-style check pills */}
@@ -925,21 +914,6 @@ const handleEnroll = async () => {
                     </div>
                   ))}
                 </div>
-
-                <div className="pt-3 border-t border-border/50">
-                  <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-3">Skills you&apos;ll gain</p>
-                  <div className="flex flex-wrap gap-2">
-                    {(course.tags || []).map(tag => (
-                      <span
-                        key={tag}
-                        className="inline-flex items-center gap-1 rounded-full border border-emerald-500/25 bg-emerald-500/10 px-2.5 py-1 text-[11px] font-semibold text-emerald-700 dark:text-emerald-300"
-                      >
-                        <Check className="h-3 w-3" strokeWidth={3} />
-                        {tag}
-                      </span>
-                    ))}
-                  </div>
-                </div>
               </Card>
             </div>
           </div>
@@ -978,7 +952,10 @@ const handleEnroll = async () => {
 
             {/* Real SuperAdmin template + SAMPLE watermark */}
             <div className="flex justify-center transform rotate-1 hover:rotate-0 transition-transform duration-500">
-              <CourseCertificatePreview courseTitle={course.title} />
+              <CourseCertificatePreview
+                courseTitle={course.title}
+                recipientName={gate.user?.name || gate.user?.email?.split("@")[0] || undefined}
+              />
             </div>
           </div>
         </div>

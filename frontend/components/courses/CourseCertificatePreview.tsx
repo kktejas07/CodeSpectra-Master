@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   CertificateRenderer,
   type CertificateData,
@@ -11,6 +11,10 @@ const TEMPLATE_KEYS: TemplateKey[] = [
   'classic', 'modern', 'minimal', 'professional', 'corporate', 'academic',
 ]
 
+/** Matches .cert-sheet aspect (globals.css). */
+const CERT_W = 1123
+const CERT_H = 794
+
 function asTemplateKey(v: unknown): TemplateKey {
   const s = String(v || 'classic')
   return (TEMPLATE_KEYS.includes(s as TemplateKey) ? s : 'classic') as TemplateKey
@@ -18,7 +22,7 @@ function asTemplateKey(v: unknown): TemplateKey {
 
 /**
  * Scaled preview of the SuperAdmin-selected certificate template with a SAMPLE
- * watermark (Unstop-style) so the mock cannot be screenshotted as a real cert.
+ * watermark. Fits the container width via ResizeObserver (no overflow).
  */
 export function CourseCertificatePreview({
   courseTitle,
@@ -28,19 +32,36 @@ export function CourseCertificatePreview({
   recipientName?: string
 }) {
   const [template, setTemplate] = useState<TemplateKey>('classic')
+  const boxRef = useRef<HTMLDivElement>(null)
+  const [scale, setScale] = useState(0.35)
 
   useEffect(() => {
     fetch('/api/platform/settings', { credentials: 'include' })
-      .then(r => r.json())
-      .then(j => {
+      .then((r) => r.json())
+      .then((j) => {
         const key = j?.settings?.certificate_template
         if (key) setTemplate(asTemplateKey(key))
       })
       .catch(() => {})
   }, [])
 
+  useEffect(() => {
+    const el = boxRef.current
+    if (!el) return
+    const update = () => {
+      const w = el.clientWidth
+      if (w > 0) setScale(Math.min(1, w / CERT_W))
+    }
+    update()
+    const ro = new ResizeObserver(update)
+    ro.observe(el)
+    return () => ro.disconnect()
+  }, [])
+
+  const displayName = (recipientName || '').trim() || 'Your Name'
+
   const data: CertificateData = {
-    candidateName: recipientName,
+    candidateName: displayName,
     certificationTitle: courseTitle || 'Course',
     level: 'Completion',
     source: 'CodeSpectra Courses',
@@ -59,10 +80,19 @@ export function CourseCertificatePreview({
         </span>
       </div>
 
-      <div className="relative overflow-hidden rounded-xl border border-white/10 shadow-2xl bg-white aspect-4/3">
+      <div
+        ref={boxRef}
+        className="relative w-full overflow-hidden rounded-xl border border-white/10 shadow-2xl bg-white"
+        style={{ aspectRatio: `${CERT_W} / ${CERT_H}` }}
+      >
         <div
-          className="origin-top-left pointer-events-none"
-          style={{ width: 1123, height: 794, transform: 'scale(0.32)', transformOrigin: 'top left' }}
+          className="pointer-events-none origin-top-left"
+          style={{
+            width: CERT_W,
+            height: CERT_H,
+            transform: `scale(${scale})`,
+            transformOrigin: 'top left',
+          }}
         >
           <CertificateRenderer data={data} template={template} />
         </div>
@@ -88,7 +118,7 @@ export function CourseCertificatePreview({
         </div>
       </div>
       <p className="text-center text-[11px] text-white/50 mt-3">
-        Preview uses your SuperAdmin certificate template · watermarked sample
+        Preview for {displayName} · SuperAdmin template · watermarked sample
       </p>
     </div>
   )

@@ -6,6 +6,8 @@
 
 ## Current Claims
 
+| cursor (this session, PROFILE-UX+COURSE) | Resume CTA fix+UI; name-based usernames; course page dedupe; cert preview name+fit | profile edit, username lib/API, courses/[id], CourseCertificatePreview, WORKING.md | DONE — resume Link+UI; LinkedIn-style usernames; course deduped; cert fits+shows user name | 2026-08-22 |
+| cursor (this session, ANON-AADHAAR) | Implement Anon Aadhaar + purpose-based KYC provider switch in SuperAdmin | kyc settings, anon verify API/UI, exam/profile hooks, WORKING.md | DONE — purpose routing in SuperAdmin KYC; Anon on exam/profile; identity-verify reads identity_kyc | 2026-08-22 |
 | cursor (this session, CRON-UI) | Improve existing /dashboard/admin/cron-jobs: clear configured+running UI; include Signals ingest | cron-jobs page+API, WORKING.md | DONE — status cards, HTTP catalog (+Signals), run-now, schedules | 2026-08-22 |
 | cursor (this session, NL-BUILD-TS) | Dokploy yarn build fails: newsletter route `$in` status is `string[]` vs campaign union | frontend/app/api/newsletter/[id]/route.ts, WORKING.md | DONE — as const; push so rebuild typechecks | 2026-08-22 |
 | cursor (this session, SIGNALS-QUALITY) | Research→fact pack→humanize draft; attach sources; explain free vs paid | signals research/rewrite, drafts schema, cron, admin UI, WORKING.md | DONE — multi-pass rewrite; facts+source_urls on drafts; publish carries sources; fetch free / LLM usage | 2026-08-22 |

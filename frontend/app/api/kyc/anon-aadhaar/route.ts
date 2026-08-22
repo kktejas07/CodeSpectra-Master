@@ -1,0 +1,146 @@
+import { NextRequest, NextResponse } from 'next/server'
+import { getAPIUser } from '@/lib/route-auth'
+import { getMongoDb } from '@/lib/mongodb'
+import { getKycPurposeConfig } from '@/lib/kyc-purposes-server'
+
+export const runtime = 'nodejs'
+export const dynamic = 'force-dynamic'
+
+type Body = { proof?: Record<string, unknown>; purpose?: 'exam' | 'profile' }
+
+function userFilter(userId: string) {
+  return { $or: [{ id: userId }, { _id: userId as never }] }
+}
+
+export async function POST(req: NextRequest) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const cfg = await getKycPurposeConfig()
+  const body = (await req.json().catch(() => ({}))) as Body
+  const purpose = body.purpose === 'exam' ? 'exam' : 'profile'
+
+  if (purpose === 'exam' && cfg.exam_aadhaar !== 'anon_aadhaar') {
+    return NextResponse.json({ error: 'Anon Aadhaar is not enabled for exams' }, { status: 400 })
+  }
+  if (purpose === 'profile' && cfg.profile_aadhaar !== 'anon_aadhaar') {
+    return NextResponse.json({ error: 'Anon Aadhaar is not enabled for profile' }, { status: 400 })
+  }
+
+  const proof = body.proof
+  if (!proof || typeof proof !== 'object') {
+    return NextResponse.json({ error: 'proof required' }, { status: 400 })
+  }
+
+  let verifyFn: (p: unknown, useTest?: boolean) => Promise<boolean>
+  try {
+    const core = await import('@anon-aadhaar/core')
+    verifyFn = core.verify as (p: unknown, useTest?: boolean) => Promise<boolean>
+  } catch {
+    return NextResponse.json(
+      { error: '@anon-aadhaar/core missing — run yarn install in frontend/' },
+      { status: 503 },
+    )
+  }
+
+  try {
+    const ok = await verifyFn(proof, cfg.anon_aadhaar_test_mode)
+    if (!ok) return NextResponse.json({ error: 'Invalid Anon Aadhaar proof' }, { status: 400 })
+  } catch (e) {
+    return NextResponse.json(
+      { error: `Proof verification failed: ${e instanceof Error ? e.message : String(e)}` },
+      { status: 400 },
+    )
+  }
+
+  const inner = ((proof as { proof?: Record<string, unknown> }).proof || proof) as Record<
+    string,
+    unknown
+  >
+  const nullifier = String(inner.nullifier || '')
+  const proofSeed = String(inner.nullifierSeed ?? '').replace(/\D/g, '')
+  const cfgSeed = cfg.anon_aadhaar_nullifier_seed.replace(/\D/g, '')
+  if (proofSeed && cfgSeed && proofSeed !== cfgSeed) {
+    return NextResponse.json({ error: 'nullifierSeed mismatch' }, { status: 400 })
+  }
+  if (!nullifier) return NextResponse.json({ error: 'Proof missing nullifier' }, { status: 400 })
+
+  const ageRaw = inner.ageAbove18
+  const revealed = {
+    age_above_18: ageRaw === '1' || ageRaw === 1 || ageRaw === true,
+    gender: inner.gender != null ? String(inner.gender) : undefined,
+    state: inner.state != null ? String(inner.state) : undefined,
+    pincode:
+      inner.pincode != null || inner.pinCode != null
+        ? String(inner.pincode ?? inner.pinCode)
+        : undefined,
+  }
+
+  const db = await getMongoDb()
+  const other = await db.collection('users').findOne({ 'anon_aadhaar.nullifier': nullifier })
+  if (other) {
+    const oid = String((other as { id?: string; _id?: unknown }).id ?? (other as { _id?: unknown })._id)
+    if (oid !== user.id) {
+      return NextResponse.json(
+        { error: 'This Aadhaar is already linked to another account' },
+        { status: 409 },
+      )
+    }
+  }
+
+  const now = new Date().toISOString()
+  await db.collection('users').updateOne(
+    userFilter(user.id),
+    {
+      $set: {
+        anon_aadhaar: {
+          verified: true,
+          nullifier,
+          purpose,
+          test_mode: cfg.anon_aadhaar_test_mode,
+          ...revealed,
+          verified_at: now,
+        },
+        updated_at: now,
+      },
+    },
+  )
+
+  await db.collection('kyc_sessions').insertOne({
+    user_id: user.id,
+    provider: 'anon_aadhaar',
+    purpose,
+    status: 'approved',
+    nullifier,
+    revealed,
+    created_at: now,
+  })
+
+  return NextResponse.json({ ok: true, verified: true, revealed })
+}
+
+export async function GET() {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+
+  const db = await getMongoDb()
+  const doc = await db.collection('users').findOne(userFilter(user.id), {
+    projection: { anon_aadhaar: 1 },
+  })
+  const aa = (doc as { anon_aadhaar?: Record<string, unknown> } | null)?.anon_aadhaar
+  return NextResponse.json({
+    verified: Boolean(aa?.verified),
+    anon_aadhaar: aa
+      ? {
+          verified: aa.verified,
+          age_above_18: aa.age_above_18,
+          gender: aa.gender,
+          state: aa.state,
+          pincode: aa.pincode,
+          verified_at: aa.verified_at,
+          purpose: aa.purpose,
+          test_mode: aa.test_mode,
+        }
+      : null,
+  })
+}

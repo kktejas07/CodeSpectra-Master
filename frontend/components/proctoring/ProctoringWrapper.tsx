@@ -10,7 +10,7 @@ import { EyeGazeTracker, EyeGazeAnalysis } from '@/lib/proctoring/eye-gaze-track
 import { generateFingerprint, fingerprintChanged, type BrowserFingerprint } from '@/lib/proctoring/browser-fingerprint'
 import { captureSnapshot, compareFaces, SNAPSHOT_INTERVAL_MS, type FaceMatchResult } from '@/lib/proctoring/face-match'
 import { KeyboardDynamicsTracker, type KeyboardDynamics } from '@/lib/proctoring/keyboard-dynamics'
-import { AadhaarIDVerificationModal } from './AadhaarIDVerificationModal'
+import { ExamAadhaarGate } from './ExamAadhaarGate'
 import { DeviceAuditModal } from './DeviceAuditModal'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -365,7 +365,13 @@ export function ProctoringWrapper({
       )}
 
       {showIdKycModal && (
-        <AadhaarIDVerificationModal onVerified={() => { setKycVerified(true); setShowIdKycModal(false) }} onCancel={() => setShowIdKycModal(false)} />
+        <ExamAadhaarGate
+          onVerified={() => {
+            setKycVerified(true)
+            setShowIdKycModal(false)
+          }}
+          onCancel={() => setShowIdKycModal(false)}
+        />
       )}
 
       {showDeviceAudit && sessionKind && sessionId && !auditCompleted && (
