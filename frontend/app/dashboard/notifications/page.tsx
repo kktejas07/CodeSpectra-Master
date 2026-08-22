@@ -59,6 +59,19 @@ const DEFAULT_LINKS: Record<string, string> = {
   'scan.completed': '/dashboard/projects',
   'team.invite': '/dashboard/team',
   'team.joined': '/dashboard/team',
+  // Missing this → newsletter taps with empty link fell through to /dashboard
+  newsletter: '/newsletter',
+}
+
+function resolveNotificationLink(n: Notification): string {
+  const raw = (n.link || '').trim()
+  if (raw && raw !== '/dashboard') return raw
+  if (n.type === 'newsletter' || (n.type || '').startsWith('newsletter')) {
+    const id = raw.match(/\/newsletter\/([^/?#]+)/)?.[1]
+    if (id) return `/newsletter/${id}`
+    return '/newsletter'
+  }
+  return DEFAULT_LINKS[n.type] || '/dashboard'
 }
 
 export default function NotificationsPage() {
@@ -151,7 +164,7 @@ export default function NotificationsPage() {
         <div className="space-y-2">
           {filtered.map((n) => {
             const Icon = IconComponent(n.icon || 'bell') as React.ComponentType<{ className?: string }>
-            const resolvedLink = n.link || DEFAULT_LINKS[n.type] || '/dashboard'
+            const resolvedLink = resolveNotificationLink(n)
             return (
               <div key={n.id} className={`rounded-lg border transition-colors ${
                 n.is_read ? 'border-border bg-card hover:bg-muted/30' : 'border-primary/30 bg-primary/10 hover:bg-primary/15'

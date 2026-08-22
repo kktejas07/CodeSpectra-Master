@@ -97,20 +97,29 @@ export async function executeCampaign(campaign: EmailCampaignDoc) {
     // In-app channel - create notification for all subscribed users
     if (campaign.channels.in_app) {
       try {
-        const users = await db.collection('user').find({}).project({ id: 1, _id: 0 }).toArray()
+        // Keep _id — older user docs may lack `id`; projecting `_id:0` produced user_id="undefined"
+        const users = await db.collection('user').find({}).project({ id: 1, _id: 1 }).toArray()
         const notifications = db.collection('notifications')
-        const notifDocs = users.map(u => ({
-          id: newId(),
-          user_id: String(u.id || u._id),
-          title: campaign.subject,
-          message: campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 200) || 'New newsletter',
-          type: 'newsletter',
-          is_read: false,
-          link: `/newsletter/${campaign.id}`,
-          icon: 'mail',
-          category: 'system',
-          created_at: nowIso(),
-        }))
+        const link = `/newsletter/${campaign.id}`
+        const notifDocs = users
+          .map(u => {
+            const uid = String(u.id || u._id || '')
+            if (!uid || uid === 'undefined') return null
+            return {
+              id: newId(),
+              user_id: uid,
+              title: campaign.subject,
+              message: campaign.intro || campaign.body?.replace(/<[^>]*>/g, '').slice(0, 200) || 'New newsletter',
+              type: 'newsletter',
+              is_read: false,
+              link,
+              icon: 'mail',
+              category: 'system',
+              metadata: { campaignId: campaign.id, campaign_id: campaign.campaign_id },
+              created_at: nowIso(),
+            }
+          })
+          .filter((d): d is NonNullable<typeof d> => d !== null)
         if (notifDocs.length > 0) {
           await notifications.insertMany(notifDocs)
           inAppOk = notifDocs.length

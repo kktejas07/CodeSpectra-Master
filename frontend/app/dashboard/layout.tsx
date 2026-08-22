@@ -404,6 +404,7 @@ export default function DashboardLayout({
       // Account
       '/dashboard/profile': User,
       '/dashboard/notifications': Bell,
+      '/dashboard/calendar': CalendarDays,
       '/dashboard/billing': Receipt,
       '/dashboard/pricing': CreditCard,
       '/dashboard/settings': Settings,

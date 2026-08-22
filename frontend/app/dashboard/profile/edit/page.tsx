@@ -10,6 +10,9 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { CAREER_GOAL_OPTIONS, POPULAR_CAREER_GOALS } from '@/lib/career-goals'
+import { generateUsernameCandidate } from '@/lib/username'
 import { ArrowLeft, ArrowRight, Save, CheckCircle2, User, Briefcase, GraduationCap, Code2, Award, Link as LinkIcon, Camera, Sparkles, Plus, Trash2, Eye, Lightbulb, ShieldCheck, X } from 'lucide-react'
 import { FileText, Calendar, MapPin, UploadCloud, FileBadge2, Trophy, UserCircle, Search, MapPinIcon } from 'lucide-react'
 
@@ -57,16 +60,94 @@ export default function EditProfileWizard() {
   const [personalDetails, setPersonalDetails] = useState({ pronouns: '', dob: '', currentAddress: '', permanentAddress: '', sameAsCurrent: false, hobbies: '' })
 
   const [showTips, setShowTips] = useState(false)
-  const [isPhoneVerified, setIsPhoneVerified] = useState(false) // Mock state for UI
+  const [isPhoneVerified, setIsPhoneVerified] = useState(false)
+  const [phoneVerifyBusy, setPhoneVerifyBusy] = useState(false)
+  const [phoneOtpSent, setPhoneOtpSent] = useState(false)
+  const [phoneOtp, setPhoneOtp] = useState('')
+  const [showEmailUpdate, setShowEmailUpdate] = useState(false)
+  const [newEmail, setNewEmail] = useState('')
+  const [emailOtpSent, setEmailOtpSent] = useState(false)
+  const [emailOtp, setEmailOtp] = useState('')
+  const [emailBusy, setEmailBusy] = useState(false)
+  const [careerSearch, setCareerSearch] = useState('')
+  const [aadhaarDeferredNote, setAadhaarDeferredNote] = useState(true)
 
+  // Hydrate from Mongo (fallback: localStorage) so refresh shows real data.
   useEffect(() => {
-    if (!basic.username && basic.firstName && basic.lastName) {
-      setBasic(prev => ({ 
-        ...prev, 
-        username: `${basic.firstName.toLowerCase()}${basic.lastName.toLowerCase()}${Math.floor(1000 + Math.random() * 9000)}` 
-      }))
-    }
-  }, [basic.firstName, basic.lastName, basic.username])
+    let cancelled = false
+    ;(async () => {
+      try {
+        const res = await fetch('/api/user/extended-profile', { credentials: 'include' })
+        const json = await res.json()
+        const data = json?.data
+        if (!cancelled && data) {
+          if (data.basic) setBasic(prev => ({ ...prev, ...data.basic, email: prev.email || user?.email || '' }))
+          if (data.about) setAbout(data.about)
+          if (data.skills) setSkills(typeof data.skills === 'string' ? data.skills : (data.skills || []).join(', '))
+          if (Array.isArray(data.experience) && data.experience.length) setExperience(data.experience)
+          if (Array.isArray(data.education) && data.education.length) setEducation(data.education)
+          if (data.links) setLinks(prev => ({ ...prev, ...data.links }))
+          if (Array.isArray(data.projects) && data.projects.length) setProjects(data.projects)
+          if (Array.isArray(data.achievements) && data.achievements.length) setAchievements(data.achievements)
+          if (Array.isArray(data.certificates) && data.certificates.length) setCertificates(data.certificates)
+          if (data.personalDetails) setPersonalDetails(prev => ({ ...prev, ...data.personalDetails }))
+          return
+        }
+      } catch { /* fall through */ }
+      try {
+        const raw = localStorage.getItem('codeSpectra_extendedProfile')
+        if (!raw || cancelled) return
+        const data = JSON.parse(raw)
+        if (data.about) setAbout(data.about)
+        if (data.skills) setSkills(data.skills)
+        if (data.links) setLinks(prev => ({ ...prev, ...data.links }))
+        if (data.phone || data.location || data.designation || data.avatar) {
+          setBasic(prev => ({
+            ...prev,
+            phone: data.phone || prev.phone,
+            location: data.location || prev.location,
+            designation: data.designation || prev.designation,
+            avatar: data.avatar || prev.avatar,
+            ...(data.basic || {}),
+            email: prev.email || user?.email || '',
+          }))
+        }
+        if (Array.isArray(data.experience) && data.experience.length) setExperience(data.experience)
+        if (Array.isArray(data.education) && data.education.length) setEducation(data.education)
+        if (data.personalDetails) setPersonalDetails(prev => ({ ...prev, ...data.personalDetails }))
+      } catch { /* ignore */ }
+    })()
+    return () => { cancelled = true }
+  }, [user?.email])
+
+  // Auto-generate username for old users (blank) and new users once we have name or email.
+  // New signups do NOT get a username at account creation — only here / API backfill.
+  useEffect(() => {
+    if (basic.username) return
+    const candidate = generateUsernameCandidate({
+      firstName: basic.firstName,
+      lastName: basic.lastName,
+      email: basic.email || user?.email,
+      name: user?.displayName,
+    })
+    if (!candidate || candidate.startsWith('user') && !basic.firstName && !basic.lastName && !(basic.email || user?.email)) return
+    setBasic(prev => prev.username ? prev : { ...prev, username: candidate })
+  }, [basic.firstName, basic.lastName, basic.username, basic.email, user?.email, user?.displayName])
+
+  // Seed email + name + username from auth session when extended profile is empty
+  useEffect(() => {
+    if (!user) return
+    setBasic(prev => {
+      const next = { ...prev }
+      if (!next.email && user.email) next.email = user.email
+      if (!next.firstName && user.displayName) {
+        const parts = user.displayName.trim().split(/\s+/)
+        next.firstName = parts[0] || ''
+        next.lastName = parts.slice(1).join(' ') || next.lastName
+      }
+      return next
+    })
+  }, [user])
 
   const handleLiveLocation = () => {
     if (navigator.geolocation) {
@@ -83,7 +164,7 @@ export default function EditProfileWizard() {
           addToast({ type: 'error', title: 'Failed to reverse geocode location.' });
         }
       }, () => {
-        addToast({ type: 'error', title: 'Location access denied or unavailable.' });
+        addToast({ type: 'error', title: 'Location access denied or blocked by browser policy. You can type your city manually.' });
       });
     } else {
       addToast({ type: 'error', title: 'Geolocation not supported by your browser.' });
@@ -169,11 +250,24 @@ export default function EditProfileWizard() {
 
   const handleSave = async () => {
     setLoading(true)
-    // Simulate API Call to save to extendedProfile data
     try {
-      await new Promise(resolve => setTimeout(resolve, 1000))
-      
       const extendedData = {
+        basic: {
+          firstName: basic.firstName,
+          lastName: basic.lastName,
+          username: basic.username,
+          phone: basic.phone,
+          location: basic.location,
+          designation: basic.designation,
+          organisation: basic.organisation,
+          avatar: basic.avatar,
+          gender: basic.gender,
+          userType: basic.userType,
+          purpose: basic.purpose,
+          workExperience: basic.workExperience,
+          careerGoal: basic.careerGoal,
+          countryCode: basic.countryCode,
+        },
         avatar: basic.avatar,
         phone: basic.phone,
         location: basic.location,
@@ -187,14 +281,30 @@ export default function EditProfileWizard() {
         responsibilities,
         certificates,
         links,
-        personalDetails
+        personalDetails,
       }
-      localStorage.setItem('codeSpectra_extendedProfile', JSON.stringify(extendedData))
-      
-      addToast({ type: 'success', title: 'Profile Updated successfully!' })
+      // Keep a local cache for snappy UI, but Mongo is source of truth.
+      try { localStorage.setItem('codeSpectra_extendedProfile', JSON.stringify(extendedData)) } catch {}
+      const res = await csrfFetch('/api/user/extended-profile', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(extendedData),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Save failed')
+      // Also update display name when possible
+      if (basic.firstName || basic.lastName) {
+        const name = `${basic.firstName} ${basic.lastName}`.trim()
+        await csrfFetch('/api/user/profile', {
+          method: 'PATCH',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ name }),
+        }).catch(() => null)
+      }
+      addToast({ type: 'success', title: 'Profile saved' })
       router.push('/dashboard/profile')
-    } catch (err) {
-      addToast({ type: 'error', title: 'Failed to save profile' })
+    } catch (err: any) {
+      addToast({ type: 'error', title: err?.message || 'Failed to save profile' })
     } finally {
       setLoading(false)
     }
@@ -333,7 +443,7 @@ export default function EditProfileWizard() {
                         <Input type="email" value={basic.email || user?.email || ''} readOnly className="bg-muted text-muted-foreground pr-8 w-full cursor-not-allowed" />
                         {(basic.email || user?.email) && <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2" />}
                       </div>
-                      <Button variant="outline" className="shrink-0 text-xs text-primary">Update</Button>
+                      <Button type="button" variant="outline" className="shrink-0 text-xs text-primary" onClick={() => { setShowEmailUpdate(true); setEmailOtpSent(false); setEmailOtp(''); setNewEmail('') }}>Update</Button>
                     </div>
                   </div>
                   <div className="space-y-2">
@@ -402,24 +512,44 @@ export default function EditProfileWizard() {
                           {isPhoneVerified && <CheckCircle2 className="w-4 h-4 text-emerald-500 absolute right-3 top-1/2 -translate-y-1/2" />}
                         </div>
                         {!isPhoneVerified && basic.phone.length > 5 && (
-                          <Button variant="outline" className="shrink-0 text-xs text-primary" onClick={() => setIsPhoneVerified(true)}>Verify</Button>
+                          <Button variant="outline" className="shrink-0 text-xs text-primary" onClick={async () => {
+                            if (!basic.phone || basic.phone.length < 6) {
+                              addToast({ type: 'error', title: 'Enter a valid mobile number first' })
+                              return
+                            }
+                            setPhoneVerifyBusy(true)
+                            try {
+                              const res = await csrfFetch('/api/user/phone-verify/request', {
+                                method: 'POST',
+                                body: JSON.stringify({ phone: basic.phone, countryCode: basic.countryCode || '+91' }),
+                              })
+                              const json = await res.json()
+                              if (!res.ok) throw new Error(json.error || 'Failed to send code')
+                              setPhoneOtpSent(true)
+                              addToast({ type: 'success', title: json.message || 'Verification code sent to your email' })
+                            } catch (e: any) {
+                              addToast({ type: 'error', title: e?.message || 'Could not start phone verification' })
+                            } finally {
+                              setPhoneVerifyBusy(false)
+                            }
+                          }}>Verify</Button>
                         )}
                       </div>
                     </div>
                   </div>
                   
                   <div className="space-y-2 sm:col-span-2 mt-2">
-                    <div className="flex flex-col sm:flex-row sm:items-center gap-4 p-4 bg-blue-50/50 dark:bg-blue-900/10 border border-blue-100 dark:border-blue-800 rounded-xl">
-                      <div className="bg-blue-100 dark:bg-blue-900/40 p-3 rounded-full shrink-0 mx-auto sm:mx-0">
-                        <ShieldCheck className="w-5 h-5 text-blue-600 dark:text-blue-400" />
+                    <div className="flex flex-col sm:flex-row sm:items-start gap-4 p-4 bg-muted/40 border border-border rounded-xl">
+                      <div className="bg-muted p-3 rounded-full shrink-0 mx-auto sm:mx-0">
+                        <ShieldCheck className="w-5 h-5 text-muted-foreground" />
                       </div>
-                      <div className="flex-1 text-center sm:text-left">
-                        <p className="text-sm font-semibold">Aadhaar Verification</p>
-                        <p className="text-xs text-muted-foreground mt-0.5">Verify with DigiLocker</p>
-                      </div>
-                      <div className="flex items-center gap-2 w-full sm:w-auto">
-                        <Input placeholder="Enter Aadhaar Number" className="w-full sm:w-[200px] h-9 text-xs bg-white dark:bg-background" />
-                        <Button size="sm" className="h-9 text-xs bg-blue-600 hover:bg-blue-700 text-white shrink-0">Verify</Button>
+                      <div className="flex-1 text-center sm:text-left space-y-1">
+                        <p className="text-sm font-semibold">Identity verification (Aadhaar)</p>
+                        <p className="text-xs text-muted-foreground">
+                          DigiLocker / UIDAI eKYC requires a paid government / licensed partner API — there is no free production open-source Aadhaar verifier we can ship legally.
+                          For now this is optional and deferred so we do not fake DigiLocker or store Aadhaar numbers. When we add KYC we will use a compliant provider (or manual ID upload for review).
+                        </p>
+                        <p className="text-[11px] text-muted-foreground/80">Status: Coming later — not required to use CodeSpectra.</p>
                       </div>
                     </div>
                   </div>
@@ -563,292 +693,87 @@ export default function EditProfileWizard() {
 
                   <div className="space-y-2 sm:col-span-2">
                     <Label>Career Goal(s)</Label>
-                    <select 
-                      multiple
-                      size={6}
-                      value={basic.careerGoal.split(',').filter(Boolean)} 
-                      onChange={e => {
-                        const selected = Array.from(e.target.selectedOptions, option => option.value);
-                        setBasic({...basic, careerGoal: selected.join(',')});
-                      }}
-                      className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    >
-                      <option value="" disabled>Hold Ctrl/Cmd to select multiple</option>
-                      <optgroup label="Popular Categories">
-                        <option value="Software Engineer">Software Engineer</option>
-                        <option value="Frontend Developer">Frontend Developer</option>
-                        <option value="Backend Developer">Backend Developer</option>
-                        <option value="Full Stack Developer">Full Stack Developer</option>
-                        <option value="Data Scientist">Data Scientist</option>
-                        <option value="Product Manager">Product Manager</option>
-                      </optgroup>
-                      <optgroup label="All Roles A-Z">
-                        <option value="Accountant">Accountant</option>
-                        <option value="Account Executive">Account Executive</option>
-                        <option value="Account Manager">Account Manager</option>
-                        <option value="Account Payable Clerk">Account Payable Clerk</option>
-                        <option value="Account Receivable Clerk">Account Receivable Clerk</option>
-                        <option value="Administrative Assistant">Administrative Assistant</option>
-                        <option value="Advertising Manager">Advertising Manager</option>
-                        <option value="Agile Coach">Agile Coach</option>
-                        <option value="Analyst">Analyst</option>
-                        <option value="Android Developer">Android Developer</option>
-                        <option value="Animator">Animator</option>
-                        <option value="Application Developer">Application Developer</option>
-                        <option value="Architect">Architect</option>
-                        <option value="Architectural Designer">Architectural Designer</option>
-                        <option value="Architecture Intern">Architecture Intern</option>
-                        <option value="Art Curator">Art Curator</option>
-                        <option value="Art Director">Art Director</option>
-                        <option value="Art Producer">Art Producer</option>
-                        <option value="Art Teacher">Art Teacher</option>
-                        <option value="Art Therapist">Art Therapist</option>
-                        <option value="Assistant Manager">Assistant Manager</option>
-                        <option value="Attorney">Attorney</option>
-                        <option value="Auditor">Auditor</option>
-                        <option value="Benefits Administrator">Benefits Administrator</option>
-                        <option value="Benefits Manager">Benefits Manager</option>
-                        <option value="Benefits Specialist">Benefits Specialist</option>
-                        <option value="Biochemist">Biochemist</option>
-                        <option value="Brand Ambassador">Brand Ambassador</option>
-                        <option value="Brand Manager">Brand Manager</option>
-                        <option value="Business Analyst">Business Analyst</option>
-                        <option value="Business Consultant">Business Consultant</option>
-                        <option value="Business Development Manager">Business Development Manager</option>
-                        <option value="Business Development Representative">Business Development Representative</option>
-                        <option value="Business Intelligence Analyst">Business Intelligence Analyst</option>
-                        <option value="Business Operations Manager">Business Operations Manager</option>
-                        <option value="CEO (Chief Executive Officer)">CEO (Chief Executive Officer)</option>
-                        <option value="CFO (Chief Financial Officer)">CFO (Chief Financial Officer)</option>
-                        <option value="Chef">Chef</option>
-                        <option value="Chemist">Chemist</option>
-                        <option value="Chemist Assistant">Chemist Assistant</option>
-                        <option value="Chief Financial Officer (CFO)">Chief Financial Officer (CFO)</option>
-                        <option value="Chief Operations Officer (COO)">Chief Operations Officer (COO)</option>
-                        <option value="Chief Technology Officer (CTO)">Chief Technology Officer (CTO)</option>
-                        <option value="CIO (Chief Information Officer)">CIO (Chief Information Officer)</option>
-                        <option value="Civil Engineer">Civil Engineer</option>
-                        <option value="Claims Adjuster">Claims Adjuster</option>
-                        <option value="Client Relationship Manager">Client Relationship Manager</option>
-                        <option value="Client Services Coordinator">Client Services Coordinator</option>
-                        <option value="Clinical Psychologist">Clinical Psychologist</option>
-                        <option value="Clinical Research Coordinator">Clinical Research Coordinator</option>
-                        <option value="CMO (Chief Marketing Officer)">CMO (Chief Marketing Officer)</option>
-                        <option value="Computer Programmer">Computer Programmer</option>
-                        <option value="Computer Support Specialist">Computer Support Specialist</option>
-                        <option value="Computer Systems Analyst">Computer Systems Analyst</option>
-                        <option value="Content Manager">Content Manager</option>
-                        <option value="Content Marketing Manager">Content Marketing Manager</option>
-                        <option value="Content Marketing Specialist">Content Marketing Specialist</option>
-                        <option value="Content Strategist">Content Strategist</option>
-                        <option value="Content Writer">Content Writer</option>
-                        <option value="COO (Chief Operating Officer)">COO (Chief Operating Officer)</option>
-                        <option value="Copywriter">Copywriter</option>
-                        <option value="Customer Service Manager">Customer Service Manager</option>
-                        <option value="Customer Service Representative">Customer Service Representative</option>
-                        <option value="Customer Service Supervisor">Customer Service Supervisor</option>
-                        <option value="Customer Success Manager">Customer Success Manager</option>
-                        <option value="Customer Success Specialist">Customer Success Specialist</option>
-                        <option value="Customer Support Specialist">Customer Support Specialist</option>
-                        <option value="Data Analyst">Data Analyst</option>
-                        <option value="Data Architect">Data Architect</option>
-                        <option value="Database Administrator">Database Administrator</option>
-                        <option value="Database Developer">Database Developer</option>
-                        <option value="Data Engineer">Data Engineer</option>
-                        <option value="Data Entry Clerk">Data Entry Clerk</option>
-                        <option value="Data Entry Specialist">Data Entry Specialist</option>
-                        <option value="Data Scientist">Data Scientist</option>
-                        <option value="Designer">Designer</option>
-                        <option value="Developer">Developer</option>
-                        <option value="DevOps Engineer">DevOps Engineer</option>
-                        <option value="Digital Content Creator">Digital Content Creator</option>
-                        <option value="Digital Marketing Manager">Digital Marketing Manager</option>
-                        <option value="Digital Producer">Digital Producer</option>
-                        <option value="Digital Strategist">Digital Strategist</option>
-                        <option value="E-commerce Manager">E-commerce Manager</option>
-                        <option value="E-commerce Specialist">E-commerce Specialist</option>
-                        <option value="Economist">Economist</option>
-                        <option value="Editor">Editor</option>
-                        <option value="Electrical Engineer">Electrical Engineer</option>
-                        <option value="Electrical Technician">Electrical Technician</option>
-                        <option value="Engineer">Engineer</option>
-                        <option value="Environmental Engineer">Environmental Engineer</option>
-                        <option value="Environmental Planner">Environmental Planner</option>
-                        <option value="Environmental Scientist">Environmental Scientist</option>
-                        <option value="Environmental Technician">Environmental Technician</option>
-                        <option value="Event Coordinator">Event Coordinator</option>
-                        <option value="Event Planner">Event Planner</option>
-                        <option value="Executive Assistant">Executive Assistant</option>
-                        <option value="Financial Advisor">Financial Advisor</option>
-                        <option value="Financial Analyst">Financial Analyst</option>
-                        <option value="Financial Controller">Financial Controller</option>
-                        <option value="Financial Planner">Financial Planner</option>
-                        <option value="Founders Office Executive">Founders Office Executive</option>
-                        <option value="Front-End Developer">Front-End Developer</option>
-                        <option value="Front-End Web Developer">Front-End Web Developer</option>
-                        <option value="Front Desk Receptionist">Front Desk Receptionist</option>
-                        <option value="Full Stack Developer">Full Stack Developer</option>
-                        <option value="Game Artist">Game Artist</option>
-                        <option value="Game Designer">Game Designer</option>
-                        <option value="Game Developer">Game Developer</option>
-                        <option value="Game Programmer">Game Programmer</option>
-                        <option value="Graphic Artist">Graphic Artist</option>
-                        <option value="Graphic Designer">Graphic Designer</option>
-                        <option value="Health and Safety Officer">Health and Safety Officer</option>
-                        <option value="Healthcare Administrator">Healthcare Administrator</option>
-                        <option value="Healthcare Analyst">Healthcare Analyst</option>
-                        <option value="Health Educator">Health Educator</option>
-                        <option value="HR Coordinator">HR Coordinator</option>
-                        <option value="HR Generalist">HR Generalist</option>
-                        <option value="HR Manager">HR Manager</option>
-                        <option value="HR Specialist">HR Specialist</option>
-                        <option value="Human Resources Assistant">Human Resources Assistant</option>
-                        <option value="Human Resources Manager">Human Resources Manager</option>
-                        <option value="Illustrator">Illustrator</option>
-                        <option value="Industrial Designer">Industrial Designer</option>
-                        <option value="Industrial Engineer">Industrial Engineer</option>
-                        <option value="Industrial Hygienist">Industrial Hygienist</option>
-                        <option value="Information Security Analyst">Information Security Analyst</option>
-                        <option value="Information Security Manager">Information Security Manager</option>
-                        <option value="Information Security Specialist">Information Security Specialist</option>
-                        <option value="Information Systems Manager">Information Systems Manager</option>
-                        <option value="Information Technology Specialist">Information Technology Specialist</option>
-                        <option value="Inside Sales Manager">Inside Sales Manager</option>
-                        <option value="Inside Sales Representative">Inside Sales Representative</option>
-                        <option value="Instructional Designer">Instructional Designer</option>
-                        <option value="Insurance Agent">Insurance Agent</option>
-                        <option value="Interior Designer">Interior Designer</option>
-                        <option value="Investment Analyst">Investment Analyst</option>
-                        <option value="IT Analyst">IT Analyst</option>
-                        <option value="IT Consultant">IT Consultant</option>
-                        <option value="IT Director">IT Director</option>
-                        <option value="IT Manager">IT Manager</option>
-                        <option value="IT Project Manager">IT Project Manager</option>
-                        <option value="IT Support Technician">IT Support Technician</option>
-                        <option value="Journalist">Journalist</option>
-                        <option value="Landscape Architect">Landscape Architect</option>
-                        <option value="Landscape Designer">Landscape Designer</option>
-                        <option value="Lawyer">Lawyer</option>
-                        <option value="Legal Assistant">Legal Assistant</option>
-                        <option value="Legal Counsel">Legal Counsel</option>
-                        <option value="Legal Secretary">Legal Secretary</option>
-                        <option value="Machine Learning Engineer">Machine Learning Engineer</option>
-                        <option value="Machine Operator">Machine Operator</option>
-                        <option value="Marketing Analyst">Marketing Analyst</option>
-                        <option value="Marketing Assistant">Marketing Assistant</option>
-                        <option value="Marketing Coordinator">Marketing Coordinator</option>
-                        <option value="Marketing Manager">Marketing Manager</option>
-                        <option value="Market Research Analyst">Market Research Analyst</option>
-                        <option value="Materials Engineer">Materials Engineer</option>
-                        <option value="Materials Scientist">Materials Scientist</option>
-                        <option value="Mechanical Engineer">Mechanical Engineer</option>
-                        <option value="Mechanical Technician">Mechanical Technician</option>
-                        <option value="Media Planner">Media Planner</option>
-                        <option value="Medical Assistant">Medical Assistant</option>
-                        <option value="Mobile App Developer">Mobile App Developer</option>
-                        <option value="Mobile Application Designer">Mobile Application Designer</option>
-                        <option value="Mobile Developer">Mobile Developer</option>
-                        <option value="Multimedia Artist">Multimedia Artist</option>
-                        <option value="Network Administrator">Network Administrator</option>
-                        <option value="Network Engineer">Network Engineer</option>
-                        <option value="Network Security Engineer">Network Security Engineer</option>
-                        <option value="Nurse">Nurse</option>
-                        <option value="Occupational Therapist">Occupational Therapist</option>
-                        <option value="Operations Analyst">Operations Analyst</option>
-                        <option value="Operations Coordinator">Operations Coordinator</option>
-                        <option value="Operations Manager">Operations Manager</option>
-                        <option value="Operations Supervisor">Operations Supervisor</option>
-                        <option value="Paralegal">Paralegal</option>
-                        <option value="Pediatrician">Pediatrician</option>
-                        <option value="Pediatric Nurse">Pediatric Nurse</option>
-                        <option value="Personal Assistant">Personal Assistant</option>
-                        <option value="Personal Banker">Personal Banker</option>
-                        <option value="Personal Financial Advisor">Personal Financial Advisor</option>
-                        <option value="Personal Trainer">Personal Trainer</option>
-                        <option value="Pharmacist">Pharmacist</option>
-                        <option value="Pharmacy Manager">Pharmacy Manager</option>
-                        <option value="Pharmacy Technician">Pharmacy Technician</option>
-                        <option value="Photographer">Photographer</option>
-                        <option value="Physical Education Teacher">Physical Education Teacher</option>
-                        <option value="Physical Therapist">Physical Therapist</option>
-                        <option value="Physical Therapist Assistant">Physical Therapist Assistant</option>
-                        <option value="Physical Therapy Aide">Physical Therapy Aide</option>
-                        <option value="Physical Therapy Assistant">Physical Therapy Assistant</option>
-                        <option value="Physician">Physician</option>
-                        <option value="Physician Assistant">Physician Assistant</option>
-                        <option value="Placement Officer">Placement Officer</option>
-                        <option value="Procurement Manager">Procurement Manager</option>
-                        <option value="Product Manager">Product Manager</option>
-                        <option value="Product Marketing Manager">Product Marketing Manager</option>
-                        <option value="Product Owner">Product Owner</option>
-                        <option value="Program Manager">Program Manager</option>
-                        <option value="Project Coordinator">Project Coordinator</option>
-                        <option value="Project Engineer">Project Engineer</option>
-                        <option value="Project Manager">Project Manager</option>
-                        <option value="Psychologist">Psychologist</option>
-                        <option value="Public Health Nurse">Public Health Nurse</option>
-                        <option value="Public Health Specialist">Public Health Specialist</option>
-                        <option value="Public Relations Assistant">Public Relations Assistant</option>
-                        <option value="Public Relations Coordinator">Public Relations Coordinator</option>
-                        <option value="Public Relations Manager">Public Relations Manager</option>
-                        <option value="Public Relations Specialist">Public Relations Specialist</option>
-                        <option value="QA Engineer">QA Engineer</option>
-                        <option value="Quality Assurance Analyst">Quality Assurance Analyst</option>
-                        <option value="Quality Assurance Engineer">Quality Assurance Engineer</option>
-                        <option value="Quality Assurance Manager">Quality Assurance Manager</option>
-                        <option value="Quality Control Inspector">Quality Control Inspector</option>
-                        <option value="Receptionist">Receptionist</option>
-                        <option value="Recruiter">Recruiter</option>
-                        <option value="Recruiting Coordinator">Recruiting Coordinator</option>
-                        <option value="Recruitment Consultant">Recruitment Consultant</option>
-                        <option value="Recruitment Specialist">Recruitment Specialist</option>
-                        <option value="Research Analyst">Research Analyst</option>
-                        <option value="Research Assistant">Research Assistant</option>
-                        <option value="Research Associate">Research Associate</option>
-                        <option value="Researcher">Researcher</option>
-                        <option value="Research Scientist">Research Scientist</option>
-                        <option value="Sales Associate">Sales Associate</option>
-                        <option value="Sales Coordinator">Sales Coordinator</option>
-                        <option value="Sales Executive">Sales Executive</option>
-                        <option value="Sales Manager">Sales Manager</option>
-                        <option value="Sales Representative">Sales Representative</option>
-                        <option value="SEO Specialist">SEO Specialist</option>
-                        <option value="Social Media Coordinator">Social Media Coordinator</option>
-                        <option value="Social Media Manager">Social Media Manager</option>
-                        <option value="Social Media Specialist">Social Media Specialist</option>
-                        <option value="Social Worker">Social Worker</option>
-                        <option value="Software Developer">Software Developer</option>
-                        <option value="Software Engineer">Software Engineer</option>
-                        <option value="Software Tester">Software Tester</option>
-                        <option value="Solutions Architect">Solutions Architect</option>
-                        <option value="Speech-Language Pathologist">Speech-Language Pathologist</option>
-                        <option value="Supply Chain Analyst">Supply Chain Analyst</option>
-                        <option value="Supply Chain Coordinator">Supply Chain Coordinator</option>
-                        <option value="Supply Chain Manager">Supply Chain Manager</option>
-                        <option value="System Administrator">System Administrator</option>
-                        <option value="System Analyst">System Analyst</option>
-                        <option value="Systems Administrator">Systems Administrator</option>
-                        <option value="Systems Analyst">Systems Analyst</option>
-                        <option value="Talent Acquisition Coordinator">Talent Acquisition Coordinator</option>
-                        <option value="Talent Acquisition Manager">Talent Acquisition Manager</option>
-                        <option value="Talent Acquisition Specialist">Talent Acquisition Specialist</option>
-                        <option value="Teacher">Teacher</option>
-                        <option value="Technical Support Engineer">Technical Support Engineer</option>
-                        <option value="Technical Support Specialist">Technical Support Specialist</option>
-                        <option value="Technical Writer">Technical Writer</option>
-                        <option value="UI Designer">UI Designer</option>
-                        <option value="User Experience Designer">User Experience Designer</option>
-                        <option value="User Experience Researcher">User Experience Researcher</option>
-                        <option value="User Interface Designer">User Interface Designer</option>
-                        <option value="UX Designer">UX Designer</option>
-                        <option value="Video Editor">Video Editor</option>
-                        <option value="Video Game Tester">Video Game Tester</option>
-                        <option value="Video Producer">Video Producer</option>
-                        <option value="Web Content Manager">Web Content Manager</option>
-                        <option value="Web Designer">Web Designer</option>
-                        <option value="Web Developer">Web Developer</option>
-                      </optgroup>
-                    </select>
+                    <p className="text-xs text-muted-foreground">Pick one or more roles — search and tap to select.</p>
+                    {basic.careerGoal.split(',').filter(Boolean).length > 0 && (
+                      <div className="flex flex-wrap gap-2 mb-2">
+                        {basic.careerGoal.split(',').filter(Boolean).map(g => (
+                          <button
+                            key={g}
+                            type="button"
+                            onClick={() => setBasic(prev => ({
+                              ...prev,
+                              careerGoal: prev.careerGoal.split(',').filter(Boolean).filter(x => x !== g).join(','),
+                            }))}
+                            className="inline-flex items-center gap-1 rounded-full border border-primary/40 bg-primary/10 px-3 py-1 text-xs font-medium text-primary"
+                          >
+                            {g}
+                            <X className="h-3 w-3" />
+                          </button>
+                        ))}
+                      </div>
+                    )}
+                    <div className="relative">
+                      <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        className="pl-9 h-10"
+                        placeholder="Search roles (e.g. Frontend, Data Scientist)"
+                        value={careerSearch}
+                        onChange={e => setCareerSearch(e.target.value)}
+                      />
+                    </div>
+                    <div className="rounded-lg border border-border bg-muted/20 p-3 max-h-56 overflow-y-auto">
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">Popular</p>
+                      <div className="flex flex-wrap gap-2 mb-3">
+                        {POPULAR_CAREER_GOALS.map(g => {
+                          const selected = basic.careerGoal.split(',').filter(Boolean).includes(g)
+                          return (
+                            <button
+                              key={g}
+                              type="button"
+                              onClick={() => {
+                                const cur = basic.careerGoal.split(',').filter(Boolean)
+                                const next = selected ? cur.filter(x => x !== g) : [...cur, g]
+                                setBasic({ ...basic, careerGoal: next.join(',') })
+                              }}
+                              className={`rounded-full px-3 py-1 text-xs border transition-colors ${
+                                selected
+                                  ? 'border-primary bg-primary text-primary-foreground'
+                                  : 'border-border bg-background hover:bg-muted text-foreground'
+                              }`}
+                            >
+                              {g}
+                            </button>
+                          )
+                        })}
+                      </div>
+                      <p className="text-[10px] uppercase tracking-wide text-muted-foreground mb-2">All roles</p>
+                      <div className="flex flex-wrap gap-2">
+                        {CAREER_GOAL_OPTIONS
+                          .filter(g => !careerSearch || g.toLowerCase().includes(careerSearch.toLowerCase()))
+                          .slice(0, careerSearch ? 80 : 40)
+                          .map(g => {
+                            const selected = basic.careerGoal.split(',').filter(Boolean).includes(g)
+                            return (
+                              <button
+                                key={g}
+                                type="button"
+                                onClick={() => {
+                                  const cur = basic.careerGoal.split(',').filter(Boolean)
+                                  const next = selected ? cur.filter(x => x !== g) : [...cur, g]
+                                  setBasic({ ...basic, careerGoal: next.join(',') })
+                                }}
+                                className={`rounded-full px-3 py-1 text-xs border transition-colors ${
+                                  selected
+                                    ? 'border-primary bg-primary/15 text-primary'
+                                    : 'border-border bg-background hover:bg-muted text-muted-foreground'
+                                }`}
+                              >
+                                {g}
+                              </button>
+                            )
+                          })}
+                      </div>
+                    </div>
                   </div>
 
                   <div className="space-y-2 sm:col-span-2">
@@ -1442,6 +1367,99 @@ export default function EditProfileWizard() {
           </div>
         )
       })()}
+
+      {/* Email update + verify */}
+      {showEmailUpdate && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !emailBusy && setShowEmailUpdate(false)}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Update email</h3>
+              <button type="button" onClick={() => setShowEmailUpdate(false)}><X className="h-4 w-4" /></button>
+            </div>
+            <p className="text-xs text-muted-foreground">We will send a verification code to the new address. Your login email updates only after you verify.</p>
+            <div className="space-y-2">
+              <Label>New email</Label>
+              <Input type="email" value={newEmail} onChange={e => setNewEmail(e.target.value)} placeholder="you@example.com" disabled={emailOtpSent} />
+            </div>
+            {emailOtpSent && (
+              <div className="space-y-2">
+                <Label>Verification code</Label>
+                <Input value={emailOtp} onChange={e => setEmailOtp(e.target.value)} placeholder="6-digit code" />
+              </div>
+            )}
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={() => setShowEmailUpdate(false)} disabled={emailBusy}>Cancel</Button>
+              {!emailOtpSent ? (
+                <Button type="button" disabled={emailBusy || !newEmail.includes('@')} onClick={async () => {
+                  setEmailBusy(true)
+                  try {
+                    const res = await csrfFetch('/api/user/email-change/request', { method: 'POST', body: JSON.stringify({ email: newEmail.trim() }) })
+                    const json = await res.json()
+                    if (!res.ok) throw new Error(json.error || 'Failed')
+                    setEmailOtpSent(true)
+                    addToast({ type: 'success', title: 'Code sent to new email' })
+                  } catch (e: any) {
+                    addToast({ type: 'error', title: e?.message || 'Could not send code' })
+                  } finally { setEmailBusy(false) }
+                }}>Send code</Button>
+              ) : (
+                <Button type="button" disabled={emailBusy || emailOtp.length < 4} onClick={async () => {
+                  setEmailBusy(true)
+                  try {
+                    const res = await csrfFetch('/api/user/email-change/confirm', { method: 'POST', body: JSON.stringify({ email: newEmail.trim(), code: emailOtp.trim() }) })
+                    const json = await res.json()
+                    if (!res.ok) throw new Error(json.error || 'Invalid code')
+                    setBasic(prev => ({ ...prev, email: newEmail.trim() }))
+                    setShowEmailUpdate(false)
+                    addToast({ type: 'success', title: 'Email updated' })
+                  } catch (e: any) {
+                    addToast({ type: 'error', title: e?.message || 'Verification failed' })
+                  } finally { setEmailBusy(false) }
+                }}>Verify & update</Button>
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Phone OTP (emailed — free; SMS provider later) */}
+      {phoneOtpSent && !isPhoneVerified && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 p-4" onClick={() => !phoneVerifyBusy && setPhoneOtpSent(false)}>
+          <div className="w-full max-w-md rounded-xl border border-border bg-card p-5 shadow-xl space-y-4" onClick={e => e.stopPropagation()}>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold">Verify mobile</h3>
+              <button type="button" onClick={() => setPhoneOtpSent(false)}><X className="h-4 w-4" /></button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              SMS OTP needs a paid gateway. For now we email a code to your current login email to confirm this number. SMS can be added later.
+            </p>
+            <div className="space-y-2">
+              <Label>Code from email</Label>
+              <Input value={phoneOtp} onChange={e => setPhoneOtp(e.target.value)} placeholder="6-digit code" />
+            </div>
+            <div className="flex gap-2 justify-end">
+              <Button type="button" variant="outline" onClick={() => setPhoneOtpSent(false)}>Cancel</Button>
+              <Button type="button" disabled={phoneVerifyBusy || phoneOtp.length < 4} onClick={async () => {
+                setPhoneVerifyBusy(true)
+                try {
+                  const res = await csrfFetch('/api/user/phone-verify/confirm', {
+                    method: 'POST',
+                    body: JSON.stringify({ phone: basic.phone, countryCode: basic.countryCode || '+91', code: phoneOtp.trim() }),
+                  })
+                  const json = await res.json()
+                  if (!res.ok) throw new Error(json.error || 'Invalid code')
+                  setIsPhoneVerified(true)
+                  setPhoneOtpSent(false)
+                  addToast({ type: 'success', title: 'Mobile verified' })
+                } catch (e: any) {
+                  addToast({ type: 'error', title: e?.message || 'Verification failed' })
+                } finally { setPhoneVerifyBusy(false) }
+              }}>Confirm</Button>
+            </div>
+          </div>
+        </div>
+      )}
+
     </div>
   )
 }

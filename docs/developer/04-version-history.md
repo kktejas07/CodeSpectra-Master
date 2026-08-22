@@ -9,6 +9,10 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-22 | — | Courses catalog: remove duplicate seed “Java Fundamentals” (`java-fundamentals` Coding/20) when generated `java-beginner` exists; title dedupe + no re-upsert of colliding seeds. | cursor |
+| 2026-08-22 | v0.24.28 | Profile real rank/bio (no mock); Add-to-Calendar (.ics); wishlist page; course share menu; MP4-ready soft-launch banner; extended profile persists to Mongo. | CodeSpectra-Master |
+| 2026-08-22 | v0.24.27 | Course detail UX: wishlist/share tooltips + Mongo persistence; About section; Unstop-style skill pills; SuperAdmin certificate template preview with SAMPLE watermark. | CodeSpectra-Master |
+| 2026-08-22 | v0.24.26 | Courses catalog: remove duplicate seed “Java Fundamentals” (keep generated `java-beginner`); dedupe by title; add pagination (10/page). | CodeSpectra-Master |
 | 2026-08-22 | v0.24.25 | Lesson A/V sync: measure real TTS MP3 length and scale Remotion slide durations to match; prompt requires on-screen bullets to match spokenText. | CodeSpectra-Master |
 | 2026-08-22 | v0.24.24 | Fix lesson player ignoring Autoplay-off: use Vidstack `autoPlay` prop; persist captions_default; coerce media bools. | CodeSpectra-Master |
 | 2026-08-22 | v0.24.23 | Scrub in-lesson quizzes from text; wipe R2 on full regen; regenerate Java Fundamentals without embedded quizzes. | CodeSpectra-Master |
