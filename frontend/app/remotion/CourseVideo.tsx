@@ -5,6 +5,7 @@ import { CodeTypingScene } from './scenes/CodeTypingScene'
 import { ArrayWalkScene } from './scenes/ArrayWalkScene'
 import { BarSortScene } from './scenes/BarSortScene'
 import { TreeBuildScene } from './scenes/TreeBuildScene'
+import { DiagramScene, type DiagramKind } from './scenes/DiagramScene'
 
 export type ScriptItem = {
   id: string
@@ -42,13 +43,20 @@ function bullets(content: ScriptItem['content']): string[] {
   return []
 }
 
-export function visualKind(item: ScriptItem): 'array' | 'sort' | 'tree' | null {
+export function visualKind(item: ScriptItem): 'array' | 'sort' | 'tree' | DiagramKind | null {
   if (item.type !== 'visual' && item.type !== 'diagram') return null
   const explicit = String(item.visual || '').toLowerCase()
-  if (explicit === 'array' || explicit === 'sort' || explicit === 'tree') return explicit
+  if (explicit === 'array' || explicit === 'sort' || explicit === 'tree') return explicit as 'array' | 'sort' | 'tree'
+  if (explicit === 'flow' || explicit === 'icons' || explicit === 'compare') return explicit
+  if (item.type === 'diagram') {
+    if (explicit === 'icons' || /icon|logo|ecosystem/.test(`${item.title}`)) return 'icons'
+    if (explicit === 'compare' || /vs|versus|before|after/.test(`${item.title}`)) return 'compare'
+    return 'flow'
+  }
   const t = `${item.title || ''} ${item.id || ''}`.toLowerCase()
   if (/tree|bst|heap|graph/.test(t)) return 'tree'
   if (/sort|bubble|merge|quick/.test(t)) return 'sort'
+  if (/api|server|client|request|architecture|pipeline|ecosystem/.test(t)) return 'flow'
   return 'array'
 }
 
@@ -84,6 +92,8 @@ export const CourseVideoComposition: React.FC<CourseVideoProps> = ({ script, aud
               <AbsoluteFill>
                 <ArrayWalkScene title={item.title} array={DEFAULT_ARRAY} target={23} explanation={points[0]} />
               </AbsoluteFill>
+            ) : visual === 'flow' || visual === 'icons' || visual === 'compare' ? (
+              <DiagramScene title={item.title} content={points} kind={visual} />
             ) : isCode ? (
               <CodeTypingScene
                 language={item.codeLanguage || 'javascript'}

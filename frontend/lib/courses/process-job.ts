@@ -1,4 +1,5 @@
 import { getMongoDb } from '@/lib/mongodb'
+import { generateModuleQuiz, fallbackModuleQuiz } from '@/lib/courses/module-quiz'
 import { generateLessonVideo } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio, deleteCourseAudio, loadLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath, deleteCourseVideos } from '@/lib/courses/lesson-mp4'
@@ -237,6 +238,50 @@ export async function processVideoJob(jobId: string): Promise<void> {
         )
 
         await new Promise(r => setTimeout(r, 500))
+      }
+
+      // Unstop-style: quiz after module videos
+      try {
+        const latest = await db.collection('courses').findOne({ id: job.courseId })
+        const sec = (latest?.sections || [])[sIdx]
+        if (sec && !(Array.isArray(sec.quiz) && sec.quiz.length)) {
+          await addLog(`Generating module quiz: ${sec.title}`)
+          const tech = (course.tags && course.tags[0]) || course.techStack || 'programming'
+          const quiz = await generateModuleQuiz({
+            moduleTitle: sec.title || `Module ${sIdx + 1}`,
+            lessons: (sec.lessons || []).map((l: any) => ({
+              title: l.title,
+              content: l.content,
+              textContent: l.textContent,
+            })),
+            techStack: String(tech),
+          })
+          const sections2 = [...(latest?.sections || [])]
+          sections2[sIdx] = { ...sections2[sIdx], quiz }
+          await db.collection('courses').updateOne(
+            { id: job.courseId },
+            { $set: { sections: sections2, updated_at: new Date().toISOString() } },
+          )
+          await addLog(`Module quiz ready: ${sec.title} (${quiz.length} questions)`, 'success')
+        }
+      } catch (e: any) {
+        try {
+          const latest = await db.collection('courses').findOne({ id: job.courseId })
+          const sec = (latest?.sections || [])[sIdx]
+          if (sec && !(Array.isArray(sec.quiz) && sec.quiz.length)) {
+            const tech = (course.tags && course.tags[0]) || 'programming'
+            const quiz = fallbackModuleQuiz(sec.title || 'Module', sec.lessons || [], String(tech))
+            const sections2 = [...(latest?.sections || [])]
+            sections2[sIdx] = { ...sections2[sIdx], quiz }
+            await db.collection('courses').updateOne(
+              { id: job.courseId },
+              { $set: { sections: sections2, updated_at: new Date().toISOString() } },
+            )
+            await addLog(`Module quiz fallback: ${sec.title} (${quiz.length} questions)`, 'warning')
+          }
+        } catch (e2: any) {
+          await addLog(`Module quiz failed: ${e2.message}`, 'warning')
+        }
       }
     }
 

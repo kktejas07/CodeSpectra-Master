@@ -7,7 +7,7 @@ export const dynamic = 'force-dynamic'
 
 export async function GET(
   _request: NextRequest,
-  { params }: { params: Promise<{ id: string; lessonId: string }> }
+  { params }: { params: Promise<{ id: string; lessonId: string }> },
 ) {
   const gate = await requireAuth()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
@@ -15,10 +15,6 @@ export async function GET(
   const { id: courseId, lessonId } = await params
   const audio = await lessonAudioPlayback(courseId, lessonId)
   if (!audio) return NextResponse.json({ error: 'Audio not found' }, { status: 404 })
-
-  if (audio.kind === 'redirect') {
-    return NextResponse.redirect(audio.url, 302)
-  }
 
   return new NextResponse(new Uint8Array(audio.data), {
     headers: {

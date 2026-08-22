@@ -7,6 +7,7 @@ import {
   sanitizeCourseTitle,
   slugify,
 } from '@/lib/courses/syllabus'
+import { fallbackModuleQuiz } from '@/lib/courses/module-quiz'
 
 const IMAGE_MAP: Record<string, string> = {
   java: '/courses/java.jpg',
@@ -63,6 +64,13 @@ export function buildCatalogCourse(
       type: 'video' as const,
       videoType: 'ai' as const,
     })),
+    quiz: Array.isArray((section as any).quiz) && (section as any).quiz.length
+      ? (section as any).quiz
+      : fallbackModuleQuiz(
+          section.title || 'Module',
+          (section.lessons?.length ? section.lessons : defaultLessons(section.title || 'Module', techStack, level)),
+          techStack,
+        ),
   }))
 
   const totalLessons = mapped.reduce((n, s) => n + s.lessons.length, 0)

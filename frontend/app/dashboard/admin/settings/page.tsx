@@ -139,7 +139,7 @@ const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'ma
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
 const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
-const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_logo_url', 'video_player_logo_link_url']
+const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_captions_default', 'video_player_logo_url', 'video_player_logo_link_url']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
   postal_recovery: 'Postal — password reset link',
@@ -969,6 +969,16 @@ function SystemSettingsInner() {
                 <Switch
                   checked={form.video_player_muted}
                   onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_muted: c }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Auto-start captions</Label>
+                  <p className="text-sm text-muted-foreground">Turn English subtitles on by default when a lesson has captions</p>
+                </div>
+                <Switch
+                  checked={form.video_player_captions_default}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_captions_default: c }))}
                 />
               </div>
             </div>

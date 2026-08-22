@@ -20,8 +20,26 @@ ENV DIDIT_API_KEY=${DIDIT_API_KEY}
 ENV DIDIT_WEBHOOK_SECRET=${DIDIT_WEBHOOK_SECRET}
 ENV DIDIT_WORKFLOW_ID=${DIDIT_WORKFLOW_ID}
 ENV PISTON_URL=http://piston:2000/api/v2
-RUN apk add --no-cache docker-cli chromium nss freetype harfbuzz ca-certificates ttf-freefont font-noto
+RUN apk add --no-cache docker-cli chromium nss freetype harfbuzz ca-certificates ttf-freefont font-noto gcompat mesa-egl mesa-gbm \
+  && mv /bin/setpriv /bin/setpriv.busybox \
+  && printf '%s\n' \
+    '#!/bin/sh' \
+    '# Remotion passes --pdeathsig; Alpine BusyBox setpriv lacks it. Strip flags and exec.' \
+    'while [ $# -gt 0 ]; do' \
+    '  case "$1" in' \
+    '    --) shift; break ;;' \
+    '    --pdeathsig|--pdeathsig=*) if [ "$1" = "--pdeathsig" ]; then shift; fi; shift ;;' \
+    '    --reuid|--regid|--inh-caps|--ambient-caps) shift; [ $# -gt 0 ] && case "$1" in -*) ;; *) shift ;; esac ;;' \
+    '    -*) shift ;;' \
+    '    *) break ;;' \
+    '  esac' \
+    'done' \
+    'exec "$@"' \
+    > /bin/setpriv \
+  && chmod +x /bin/setpriv
 ENV PUPPETEER_SKIP_DOWNLOAD=true
+# Leave REMOTION_BROWSER_EXECUTABLE unset so Remotion uses chrome-headless-shell
+# (glibc binary via gcompat). Override only if you install a working Chromium.
 WORKDIR /app
 COPY package.json yarn.lock ./
 RUN yarn install --frozen-lockfile
