@@ -9,6 +9,9 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-08-22 | v0.24.25 | Lesson A/V sync: measure real TTS MP3 length and scale Remotion slide durations to match; prompt requires on-screen bullets to match spokenText. | CodeSpectra-Master |
+| 2026-08-22 | v0.24.24 | Fix lesson player ignoring Autoplay-off: use Vidstack `autoPlay` prop; persist captions_default; coerce media bools. | CodeSpectra-Master |
+| 2026-08-22 | v0.24.23 | Scrub in-lesson quizzes from text; wipe R2 on full regen; regenerate Java Fundamentals without embedded quizzes. | CodeSpectra-Master |
 | 2026-08-22 | v0.24.22 | Interactive module quizzes (pick → Check answer → correct/wrong + reteach; review lesson link), not in-video Q&A. Remotion diagram slides (flow/icons/compare), SuperAdmin auto-start captions, same-origin lesson MP4 proxy for R2 playback. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.21 | Admin Generate Course no longer calls the LLM for the full syllabus JSON (timeout → 500). Builds from catalog instantly; worker still writes per-lesson videos. Clearer 409 when the course already exists. | CodeSpectra-Master |
 | 2026-08-21 | v0.24.20 | User course generate uses the same catalog syllabus + video job queue as admin (`/api/user/courses/generate`). Existing catalog courses enroll free; new ones cost 10 AI credits. | CodeSpectra-Master |

@@ -1,5 +1,5 @@
 import { getMongoDb } from '@/lib/mongodb'
-import { lessonVideoKey, readS3Config, s3DeleteObject, s3GetObject, s3PutObject } from '@/lib/s3-storage'
+import { lessonVideoKey, readS3Config, s3DeleteObject, s3GetObject, s3ListPrefix, s3PutObject } from '@/lib/s3-storage'
 
 const COLLECTION = 'course_lesson_video'
 const MONGO_MAX = 15_000_000
@@ -87,10 +87,20 @@ export async function lessonVideoMeta(
 export async function deleteCourseVideos(courseId: string): Promise<void> {
   const db = await getMongoDb()
   const docs = await db.collection(COLLECTION).find({ courseId }).toArray()
+  const deleted = new Set<string>()
   for (const doc of docs) {
     if (typeof doc.objectKey === 'string' && doc.objectKey) {
       try { await s3DeleteObject(doc.objectKey) } catch { /* still drop the mongo row */ }
+      deleted.add(doc.objectKey)
     }
   }
+  // Wipe any orphan R2 keys for this course (old regenerations / stray uploads)
+  try {
+    const orphans = await s3ListPrefix(`courses/${courseId}/`)
+    for (const key of orphans) {
+      if (deleted.has(key)) continue
+      try { await s3DeleteObject(key) } catch { /* best-effort */ }
+    }
+  } catch { /* list may fail on some providers; mongo rows still cleared */ }
   await db.collection(COLLECTION).deleteMany({ courseId })
 }

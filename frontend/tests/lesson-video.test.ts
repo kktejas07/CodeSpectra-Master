@@ -4,7 +4,13 @@
  */
 import { describe, it, expect } from 'vitest'
 import { slidesFromAiJson, withDurations, normalizeBullets } from '@/lib/courses/lesson-video'
-import { durationFramesFromSpoken, estimateSpokenSeconds, splitTextForTts } from '@/lib/courses/tts'
+import {
+  alignSlideDurationsToAudio,
+  durationFramesFromSpoken,
+  estimateSpokenSeconds,
+  measureMp3DurationSeconds,
+  splitTextForTts,
+} from '@/lib/courses/tts'
 import { isStaleRunning, STALE_RUNNING_MS, finalJobStatus } from '@/lib/courses/process-job'
 
 const fiveSlides = {
@@ -88,6 +94,37 @@ describe('splitTextForTts', () => {
     const chunks = splitTextForTts(long)
     expect(chunks.length).toBeGreaterThan(1)
     expect(chunks.every(c => c.length <= 190)).toBe(true)
+  })
+})
+
+describe('alignSlideDurationsToAudio', () => {
+  it('scales slide frames so the timeline equals measured audio length', () => {
+    const slides = [
+      { id: 'a', durationInFrames: 300 },
+      { id: 'b', durationInFrames: 600 },
+    ]
+    // 30s audio @ 30fps → 900 frames; estimated was already 900 → unchanged proportions
+    const same = alignSlideDurationsToAudio(slides, 30, 30)
+    expect(same.reduce((n, s) => n + s.durationInFrames, 0)).toBe(900)
+
+    // 60s audio → double each slide (last absorbs rounding)
+    const doubled = alignSlideDurationsToAudio(slides, 60, 30)
+    expect(doubled.reduce((n, s) => n + s.durationInFrames, 0)).toBe(1800)
+    expect(doubled[0].durationInFrames).toBe(600)
+    expect(doubled[1].durationInFrames).toBe(1200)
+  })
+
+  it('leaves slides alone when audioSeconds is missing', () => {
+    const slides = [{ durationInFrames: 90 }]
+    expect(alignSlideDurationsToAudio(slides, 0, 30)).toEqual(slides)
+  })
+})
+
+describe('measureMp3DurationSeconds', () => {
+  it('returns 0 for empty buffers and a positive fallback for opaque bytes', () => {
+    expect(measureMp3DurationSeconds(Buffer.alloc(0))).toBe(0)
+    // No valid MPEG frames → ~32kbps length heuristic
+    expect(measureMp3DurationSeconds(Buffer.alloc(8000, 0x00))).toBeGreaterThan(0)
   })
 })
 

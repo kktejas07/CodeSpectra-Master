@@ -5,6 +5,7 @@ import { generateLessonVideo } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio, deleteCourseAudio, loadLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath, deleteCourseVideos } from '@/lib/courses/lesson-mp4'
 import { deleteCourseCaptions, lessonCaptionsPath, saveLessonCaptions, vttFromSlides } from '@/lib/courses/lesson-captions'
+import { stripEmbeddedQuizzes, stripQuizSlides } from '@/lib/courses/strip-embedded-quizzes'
 
 export function finalJobStatus(completedItems: number, failedItems: number): 'completed' | 'failed' {
   if (failedItems > 0 || completedItems === 0) return 'failed'
@@ -182,9 +183,9 @@ export async function processVideoJob(jobId: string): Promise<void> {
             console.log('[course-worker] lesson', lesson.title)
             const generated = await generateLessonVideo({ topic, techStack })
             await saveLessonAudio(job.courseId, lesson.id, generated.audioBuffer)
-            script = generated.script
+            script = stripQuizSlides(generated.script || [])
             audio = generated.audioBuffer
-            textContent = generated.textContent
+            textContent = stripEmbeddedQuizzes(generated.textContent || "")
             durationSeconds = generated.durationSeconds
           }
 
