@@ -12,7 +12,6 @@ import { rewriteSignal } from '@/lib/signals/rewrite'
 import { scrapeOgData } from '@/lib/signals/og-scraper'
 import { newSignalId, signalDrafts, type SignalDraftDoc } from '@/lib/db/signal-drafts'
 import { nowIso } from '@/lib/db/blog-posts'
-import { buildNewsCoverPrompt, generateCoverImage } from '@/lib/ai-image'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -82,18 +81,9 @@ export async function POST(req: NextRequest) {
           created_at: now,
           updated_at: now,
         }
-        // Use publisher's og:image to avoid DMCA/context issues, fallback to AI gen
+        // Use publisher's og:image to avoid DMCA/context issues. NO AI generated images allowed per user request.
         if (ogData.image) {
           doc.cover_image = ogData.image
-        } else {
-          try {
-            const cover = await generateCoverImage(
-              buildNewsCoverPrompt({ title: doc.title, excerpt: doc.excerpt, category: feed.category }),
-            )
-            if (cover) doc.cover_image = cover
-          } catch {
-            /* SVG fallback kicks in at render time */
-          }
         }
         await drafts.insertOne(doc)
         created.push(doc.id)
