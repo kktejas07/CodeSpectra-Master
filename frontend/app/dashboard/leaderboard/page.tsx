@@ -33,6 +33,8 @@ export default function LeaderboardPage() {
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [myPoints, setMyPoints] = useState(0)
+  const [myRank, setMyRank] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -44,7 +46,9 @@ export default function LeaderboardPage() {
       if (!res.ok) {
         throw new Error(json.error || `Request failed (${res.status})`)
       }
-      setEntries(json.entries as LeaderboardEntryDTO[])
+      setEntries(Array.isArray(json.entries) ? json.entries : [])
+      setMyPoints(Number(json.currentUser?.points) || 0)
+      setMyRank(typeof json.currentUser?.rank === 'number' ? json.currentUser.rank : null)
     } catch (e) {
       setEntries([])
       setError(e instanceof Error ? e.message : 'Failed to load leaderboard')
@@ -158,8 +162,8 @@ export default function LeaderboardPage() {
                     <div className="flex-1 flex flex-col items-center p-8 space-y-4 pt-12 text-center">
                       <div className="relative">
                         <img
-                          src={ranker.avatar}
-                          alt={ranker.name}
+                          src={ranker.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(ranker.userId || 'x')}`}
+                          alt={ranker.name || 'User'}
                           className="h-24 w-24 rounded-full border-4 border-white shadow-lg object-cover bg-white"
                         />
                         <div className={cn("absolute -bottom-3 -right-3 flex items-center justify-center w-10 h-10 rounded-full font-bold shadow-md border-2 border-white", rankColor)}>
@@ -168,14 +172,14 @@ export default function LeaderboardPage() {
                       </div>
 
                       <div className="pt-2">
-                        <p className="text-xl font-extrabold text-foreground">{ranker.name}</p>
-                        <p className="mt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase h-8 overflow-hidden">{ranker.title}</p>
+                        <p className="text-xl font-extrabold text-foreground">{ranker.name || 'Anonymous'}</p>
+                        <p className="mt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase h-8 overflow-hidden">{ranker.title || ''}</p>
                       </div>
                     </div>
 
                     <div className={cn("py-3 text-center font-bold flex items-center justify-center gap-2 text-white", bottomBar)}>
                       <div className="bg-white/20 p-1 rounded-full">{rankIcon}</div>
-                      {ranker.xp.toLocaleString()} Points
+                      {(ranker.xp || 0).toLocaleString()} Points
                     </div>
                   </Card>
                 )
@@ -196,10 +200,10 @@ export default function LeaderboardPage() {
                   <h3 className="text-xl font-bold">{user?.displayName || "Anonymous User"}</h3>
                   <p className="text-sm text-muted-foreground">{user?.email || "No org available"}</p>
                   <div className="flex items-center gap-4 mt-2">
-                    <Badge variant="secondary" className="bg-white/60 dark:bg-black/20 font-semibold">
-                       <BarChart3 className="w-3 h-3 mr-1 text-blue-500" />
-                       0 Points
-                    </Badge>
+                     <Badge variant="secondary" className="bg-white/60 dark:bg-black/20 font-semibold">
+                        <BarChart3 className="w-3 h-3 mr-1 text-blue-500" />
+                        {myPoints.toLocaleString()} Points
+                     </Badge>
                     <Badge variant="secondary" className="bg-white/60 dark:bg-black/20 font-semibold">
                        <Trophy className="w-3 h-3 mr-1 text-yellow-500" />
                        0 Certificates
@@ -209,10 +213,10 @@ export default function LeaderboardPage() {
               </div>
 
               <div className="relative z-10 flex flex-col items-end">
-                 <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold text-lg bg-blue-100/50 dark:bg-blue-900/30 px-4 py-2 rounded-lg">
-                    <BarChart3 className="w-5 h-5" />
-                    Global Rank: --
-                 </div>
+                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold text-lg bg-blue-100/50 dark:bg-blue-900/30 px-4 py-2 rounded-lg">
+                     <BarChart3 className="w-5 h-5" />
+                     Global Rank: {myRank ? `#${myRank}` : '—'}
+                  </div>
               </div>
             </Card>
 
@@ -258,9 +262,9 @@ export default function LeaderboardPage() {
                             <td className="px-6 py-4">
                               <div className="flex items-center gap-4">
                                 <div className="relative">
-                                   <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center border border-primary/20 shrink-0">
-                                      {u.name.substring(0, 2).toUpperCase()}
-                                   </div>
+                                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center border border-primary/20 shrink-0">
+                                       {((u.name || '').substring(0, 2) || '?').toUpperCase()}
+                                    </div>
                                 </div>
                                 <div>
                                   <p className="font-bold text-foreground group-hover:text-primary transition-colors">{u.name}</p>
@@ -277,9 +281,9 @@ export default function LeaderboardPage() {
                             <td className="px-6 py-4 text-center text-muted-foreground font-semibold">
                                {Math.floor(Math.random() * 2000)} {/* Mock Certificates */}
                             </td>
-                            <td className="px-6 py-4 text-right">
+                             <td className="px-6 py-4 text-right">
                                <span className="font-bold text-blue-500 text-lg tabular-nums">
-                                 {u.xp.toLocaleString()}
+                                 {(u.xp || 0).toLocaleString()}
                                </span>
                             </td>
                           </tr>

@@ -1,6 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
+
+const LIMIT = 80
 
 export async function GET(req: NextRequest) {
   const gate = await requireAuth()
@@ -10,35 +13,47 @@ export async function GET(req: NextRequest) {
 
   try {
     const db = await getMongoDb()
-    
-    // Fetch top 3 users by points
+
+    // ponytail: single collection scan sorted by points; rank = sort position.
+    // Categories (Female/Engineering/etc.) need profile fields we don't store yet.
     const topUsers = await db.collection('users')
-      .find({ points: { $exists: true } })
+      .find({ points: { $gt: 0 } })
       .sort({ points: -1 })
-      .limit(3)
-      .project({ _id: 0, id: 1, name: 1, points: 1, email: 1 })
+      .limit(LIMIT)
+      .project({ _id: 0, id: 1, name: 1, fullName: 1, email: 1, points: 1, avatarUrl: 1 })
       .toArray()
-      
-    // Fetch current user rank
+
+    const entries: LeaderboardEntryDTO[] = topUsers.map((u, i) => ({
+      rank: i + 1,
+      userId: String(u.id ?? ''),
+      name: String(u.fullName || u.name || u.email || 'Anonymous'),
+      title: 'CodeSpectra Learner',
+      level: Math.max(1, Math.floor((Number(u.points) || 0) / 1000) + 1),
+      xp: Number(u.points) || 0,
+      language: '—',
+      languageClass: 'text-muted-foreground',
+      avatar:
+        String(u.avatarUrl || '') ||
+        `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(String(u.id || u.email || i))}`,
+      lastSubmission: null,
+      streak: 0,
+      challengesSolved: 0,
+    }))
+
     const currentUser = await db.collection('users').findOne({ id: gate.user.id })
-    let currentUserRank = 0
-    let currentUserPoints = 0
-    
-    if (currentUser) {
-      currentUserPoints = currentUser.points || 0
-      // Count how many users have more points
-      const betterUsers = await db.collection('users').countDocuments({
-        points: { $gt: currentUserPoints }
-      })
-      currentUserRank = betterUsers + 1
-    }
+    const currentUserPoints = Number(currentUser?.points) || 0
+    const betterUsers =
+      currentUserPoints > 0
+        ? await db.collection('users').countDocuments({ points: { $gt: currentUserPoints } })
+        : 0
+    const currentUserRank = currentUserPoints > 0 ? betterUsers + 1 : null
 
     return NextResponse.json({
-      leaderboard: topUsers,
+      entries,
       currentUser: {
         points: currentUserPoints,
-        rank: currentUserRank
-      }
+        rank: currentUserRank,
+      },
     })
   } catch (error) {
     console.error('[CodeSpectra] Error fetching leaderboard:', error)
