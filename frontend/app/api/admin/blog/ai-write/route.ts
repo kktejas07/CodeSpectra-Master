@@ -43,26 +43,20 @@ Requirements:
 `
 
   try {
-    const aiText = await backendComplete({
-      system: 'You are an expert technical writer.',
-      prompt,
-      model: 'gpt-4o', // Or whatever is standard
-      max_tokens: 3000,
+    const res = await backendComplete({
+      systemMessage: 'You are an expert technical writer.',
+      userMessage: prompt,
+      // Long-form article generation — use the platform's reasoning tier.
+      modelRole: 'reasoning',
     })
+    const aiText = res.ok ? res.text : undefined
 
     if (!aiText) {
       return NextResponse.json({ error: 'Generation failed — empty response' }, { status: 502 })
     }
 
-    // Convert markdown to simple HTML if necessary, but the RichTextEditor might handle markdown,
-    // wait, our UI expects HTML for the body field (RichTextEditor outputs HTML usually).
-    // Let's use simple string replace or just return markdown, wait, `RichTextEditor` uses TipTap?
-    // Let's check `RichTextEditor` usage.
-    
-    // For now, I'll return the AI text. Wait, if RichTextEditor outputs HTML, we should convert Markdown to HTML.
-    // Or we can just let it render Markdown... wait! `RichTextEditor` is Tiptap, Tiptap parses HTML.
-    // Let's just return HTML!
-
+    // The admin blog form body field is HTML (TipTap editor) and the prompt
+    // demands raw HTML output, so pass it through as-is.
     return NextResponse.json({ ok: true, html: aiText })
   } catch (e) {
     console.error('[admin/blog/ai-write]', e)
