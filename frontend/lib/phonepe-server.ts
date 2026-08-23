@@ -144,7 +144,9 @@ export async function verifyPhonePeWebhook(
     .update(rawBody + c.webhookSecret)
     .digest('hex')
 
-  return signature === expected
+  const a = Buffer.from(signature || '')
+  const b = Buffer.from(expected)
+  return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
 
 export interface PhonePeStatusResponse {

@@ -32,7 +32,7 @@ export async function POST(
     }
 
     // The signed-in account must own this invitation
-    if (invite.email.toLowerCase() !== (gate.user.email || '').toLowerCase()) {
+    if ((invite.email || '').toLowerCase() !== (gate.user.email || '').toLowerCase()) {
       return NextResponse.json({ error: 'This invitation belongs to a different account' }, { status: 403 })
     }
 

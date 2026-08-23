@@ -1,12 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server'
-import { requireAuth } from '@/lib/route-auth'
+import { requireAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
 export async function POST(
   request: NextRequest,
   { params }: { params: Promise<{ id: string; submissionId: string }> }
 ) {
-  const gate = await requireAuth()
+  const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   const { id: codeathonId, submissionId } = await params

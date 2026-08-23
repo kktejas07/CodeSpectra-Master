@@ -83,7 +83,7 @@ export async function POST(request: Request) {
           : body.provider === 'opencode'
           ? 'Note: Check your API key at https://opencode.ai/workspace/keys.'
           : ''
-        msg = `Failed to fetch models (401): Missing or invalid API key for ${body.provider.toUpperCase()}. ${note}`
+        msg = `Failed to fetch models (401): Missing or invalid API key for ${(body.provider || '').toUpperCase()}. ${note}`
       }
       return NextResponse.json({ ok: false, message: msg })
     }

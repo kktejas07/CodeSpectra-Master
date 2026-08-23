@@ -12,6 +12,14 @@ import { Bell, Loader2, CheckCheck, Trophy, Shield, CreditCard, Video, Search, U
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { EmptyState } from '@/components/ui/empty-state'
+import DOMPurify from 'isomorphic-dompurify'
+
+function sanitizeHtml(html: string): string {
+  return DOMPurify.sanitize(html || '', {
+    ADD_TAGS: ['img'],
+    ADD_ATTR: ['src', 'alt', 'width', 'height', 'style', 'class'],
+  })
+}
 
 const ICON_MAP: Record<string, React.ElementType> = {
   trophy: Trophy, shield: Shield, 'credit-card': CreditCard, video: Video,
@@ -299,7 +307,7 @@ export default function NotificationsPage() {
               {newsletter.body && (
                 <div
                   className="prose prose-sm prose-zinc dark:prose-invert max-w-none"
-                  dangerouslySetInnerHTML={{ __html: newsletter.body }}
+                  dangerouslySetInnerHTML={{ __html: sanitizeHtml(newsletter.body) }}
                 />
               )}
               {newsletter.cta_text && newsletter.cta_url && (

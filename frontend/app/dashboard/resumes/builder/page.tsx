@@ -333,7 +333,7 @@ export default function ResumeBuilderPage() {
                   {/* Left Column */}
                   <div className="w-[35%] bg-[#2a3b4c] text-white p-8 break-words">
                     <div className="h-24 w-24 rounded-full bg-white/20 mb-6 flex items-center justify-center text-3xl font-bold border-2 border-white/30 overflow-hidden">
-                      {data.personal.fullName.charAt(0) || 'U'}
+                      {((data.personal.fullName || '').charAt(0) || 'U')}
                     </div>
                     <h2 className="text-sm font-bold tracking-widest uppercase text-blue-300 mb-6 border-b border-white/20 pb-2">Contact</h2>
                     <div className="space-y-3 text-sm text-slate-300 mb-8 break-words">
@@ -610,7 +610,7 @@ export default function ResumeBuilderPage() {
                   <div className="w-[40%] bg-[#ff6b6b] text-white p-10 flex flex-col justify-between break-words">
                     <div>
                       <div className="w-32 h-32 bg-white rounded-full mb-8 border-4 border-white/30 flex items-center justify-center overflow-hidden shadow-xl">
-                        <span className="text-5xl font-black text-[#ff6b6b]">{data.personal.fullName.charAt(0) || 'U'}</span>
+                        <span className="text-5xl font-black text-[#ff6b6b]">{((data.personal.fullName || '').charAt(0) || 'U')}</span>
                       </div>
                       <h1 className="text-4xl font-black leading-none mb-2">{data.personal.fullName || 'Your Name'}</h1>
                       <div className="text-lg font-medium text-white/90 mb-10">{data.experience[0]?.role || 'Professional'}</div>

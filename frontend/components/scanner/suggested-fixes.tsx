@@ -120,7 +120,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap gap-y-0.5">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getSeverityColor(issue.severity)}`}>
-                        {issue.severity.toUpperCase()}
+                        {(issue.severity || '').toUpperCase()}
                       </span>
                       <span className="text-sm font-medium text-foreground">{issue.rule}</span>
                     </div>

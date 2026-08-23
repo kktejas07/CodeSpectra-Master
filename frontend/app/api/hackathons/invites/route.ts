@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
   if (invite.accepted_at) return NextResponse.json({ error: 'Invite already used' }, { status: 409 })
   if (new Date(invite.expires_at) < new Date()) return NextResponse.json({ error: 'Invite has expired' }, { status: 410 })
 
-  if (invite.email.toLowerCase() !== (user.email || '').toLowerCase()) {
+  if ((invite.email || '').toLowerCase() !== (user.email || '').toLowerCase()) {
     return NextResponse.json({ error: 'This invite was sent to a different email address' }, { status: 403 })
   }
 
