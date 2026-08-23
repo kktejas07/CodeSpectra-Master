@@ -81,9 +81,10 @@ export const NOTIFICATION_TYPES = {
   'xp.level_up': { category: 'learning', icon: 'trophy', default_title: 'Level Up!', default_link: '/dashboard/leaderboard' },
   'certificate.issued': { category: 'learning', icon: 'award', default_title: 'Certificate Issued', default_link: '/dashboard/certifications' },
 
-  // General
-  'system.announcement': { category: 'system', icon: 'megaphone', default_title: 'Announcement', default_link: '/dashboard' },
-  'system.maintenance': { category: 'system', icon: 'tool', default_title: 'Maintenance Notice', default_link: '/dashboard' },
+  // System & Content Events
+  'system.feedback_received': { category: 'system', icon: 'flag', default_title: 'Feedback Received', default_link: '/dashboard/admin/feedback' },
+  'content.course_generated': { category: 'learning', icon: 'book-open', default_title: 'Course Generated', default_link: '/dashboard/admin/courses' },
+  'content.post_published': { category: 'system', icon: 'file-text', default_title: 'Blog Post Published', default_link: '/dashboard/admin/blog' },
 } as const
 
 export type NotificationType = keyof typeof NOTIFICATION_TYPES
@@ -221,6 +222,22 @@ export async function notifyMany(userIds: string[], input: Omit<NotifyInput, 'us
     if (r) count++
   }
   return count
+}
+
+/**
+ * Broadcast a notification to all superadmins.
+ */
+export async function notifySuperAdmins(input: Omit<NotifyInput, 'user_id'>): Promise<number> {
+  try {
+    const { getMongoDb } = await import('@/lib/mongodb')
+    const db = await getMongoDb()
+    const admins = await db.collection('user').find({ role: 'superadmin' }, { projection: { id: 1, _id: 1 } }).toArray()
+    const userIds = admins.map(a => String(a.id || a._id))
+    return await notifyMany(userIds, input)
+  } catch (e) {
+    console.error('[notifySuperAdmins] Error:', e)
+    return 0
+  }
 }
 
 /**

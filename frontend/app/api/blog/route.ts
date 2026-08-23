@@ -105,6 +105,18 @@ export async function POST(req: NextRequest) {
     }
 
     await col.insertOne(doc)
+    
+    // Notify superadmins if published
+    if (publish) {
+      const { notifySuperAdmins } = await import('@/lib/notifications')
+      await notifySuperAdmins({
+        type: 'content.post_published',
+        title: 'Blog Post Published',
+        message: `A new blog post "${doc.title}" has been published.`,
+        link: `/blog/${doc.slug}`,
+      })
+    }
+    
     return NextResponse.json({ post: doc }, { status: 201 })
   } catch (e) {
     console.error('[blog] POST:', e)
