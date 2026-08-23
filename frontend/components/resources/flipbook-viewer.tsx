@@ -176,7 +176,7 @@ export function FlipbookViewer({ pages }: { pages: EbookPage[] }) {
         {/* Left page (or cover, centered on mobile, right on desktop conceptually but usually cover is just one card) */}
         <div
           className={cn(
-            'flex-1 rounded-2xl border border-border/60 bg-card shadow-sm transition-all relative overflow-hidden',
+            'flex-1 rounded-2xl border border-border/60 bg-card shadow-sm transition-all relative overflow-y-auto overflow-x-hidden',
             isCover ? 'mx-auto max-w-md' : 'rounded-r-none border-r-0 max-md:rounded-r-2xl max-md:border-r'
           )}
         >
@@ -189,7 +189,7 @@ export function FlipbookViewer({ pages }: { pages: EbookPage[] }) {
         {!isCover && (
           <div
             className={cn(
-              'flex-1 rounded-2xl rounded-l-none border border-border/60 border-l-0 bg-card shadow-sm relative overflow-hidden',
+              'flex-1 rounded-2xl rounded-l-none border border-border/60 border-l-0 bg-card shadow-sm relative overflow-y-auto overflow-x-hidden',
               'max-md:hidden'
             )}
           >
