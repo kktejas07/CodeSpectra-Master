@@ -14,7 +14,6 @@ export async function GET(_req: NextRequest, ctx: Ctx) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await ensureEbookSeed('system')
   const { slug } = await ctx.params
   const col = await ebooksCol()
   const doc = await col.findOne({ slug: decodeURIComponent(slug) })

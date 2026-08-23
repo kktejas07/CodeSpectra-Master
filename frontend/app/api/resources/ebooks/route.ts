@@ -33,8 +33,11 @@ export async function GET(req: NextRequest) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
 
-  await ensureEbookSeed('system')
   const col = await ebooksCol()
+  const hasAny = await col.findOne({}, { projection: { _id: 1 } })
+  if (!hasAny) {
+    await ensureEbookSeed('system')
+  }
   const url = new URL(req.url)
   const wantAll = url.searchParams.get('all') === '1'
   const isSa = user.role === 'superadmin'
