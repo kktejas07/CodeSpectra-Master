@@ -30,6 +30,8 @@ export interface SignalDraftDoc {
   facts?: SignalFactStored[]
   /** All public URLs used (seed + linked pages) */
   source_urls?: string[]
+  /** AI-generated cover art URL (falls back to SVG cover when unset) */
+  cover_image?: string
   status: SignalDraftStatus
   blog_slug?: string
   created_at: string

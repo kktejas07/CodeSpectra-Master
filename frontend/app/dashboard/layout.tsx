@@ -110,6 +110,7 @@ import {
   History,
   Bookmark,
   UserRound,
+  MessageSquareWarning,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -447,6 +448,7 @@ export default function DashboardLayout({
       [p.plans]: FileText,
       [p.pricing]: CreditCard,
       '/dashboard/admin/organizations': Building2,
+      '/dashboard/admin/feedback': MessageSquareWarning,
       '/dashboard/admin/coupons': Ticket,
       '/dashboard/admin/announcements': Megaphone,
       '/dashboard/admin/newsletter': Mail,

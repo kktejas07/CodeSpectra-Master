@@ -5,6 +5,7 @@ import { rateLimitGenerateFixes } from '@/lib/upstash-rate-limit'
 import { requireAuth } from '@/lib/route-auth'
 import { codeScans, codeIssues, newId, nowIso } from '@/lib/db/scans'
 import { suggestedFixes } from '@/lib/db/misc'
+import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
 
 const fixSchema = z.object({
   fixes: z
@@ -155,6 +156,12 @@ export async function POST(request: Request): Promise<NextResponse> {
       { status: 429, headers: { 'Retry-After': String(lim.retryAfterSec) } },
     )
   }
+
+  const { balance } = await getUserAiCredits(authedUserId)
+  if (balance < 1) {
+    return NextResponse.json({ success: false, error: 'Insufficient AI credits' }, { status: 402 })
+  }
+  await deductUserAiCredits(authedUserId, 1)
 
   const issueContexts = issues as IssueContext[]
 

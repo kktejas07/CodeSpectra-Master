@@ -34,6 +34,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/organizations',
   '/dashboard/admin/permissions',
   '/dashboard/admin/security',
+  '/dashboard/admin/feedback',
 
   // Hackathons, Problems & Proctoring
   '/dashboard/admin/hackathons',
@@ -267,6 +268,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
   '/dashboard/admin/security': 'Security',
+  '/dashboard/admin/feedback': 'Feedback & Reports',
   '/dashboard/admin/security/email-monitoring': 'Email Monitoring',
   '/dashboard/admin/settings': 'Platform Settings',
   '/dashboard/admin/settings/cloudflare': 'Cloudflare',

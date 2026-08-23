@@ -43,13 +43,22 @@ async function resolveModelInner(userId: string, feature: ModelPrefKey): ReturnT
   try {
     const platformCfg = await readPlatformLlmConfig()
     if (platformCfg) {
-      result.providerOverride = normalizeProvider(platformCfg.provider)
-      result.modelOverride = platformCfg.model
+      const override = platformCfg.taskOverrides?.[feature]
+      if (override?.provider && override?.model) {
+        result.providerOverride = normalizeProvider(override.provider)
+        result.modelOverride = override.model
+        if (override.endpoint) result.endpointOverride = override.endpoint
+      } else {
+        result.providerOverride = normalizeProvider(platformCfg.provider)
+        result.modelOverride = platformCfg.model
+        if (platformCfg.endpoint) {
+          result.endpointOverride = platformCfg.endpoint
+        }
+      }
+      
       // All features use the same single model now, default to 'reasoning' role
       result.modelRole = 'reasoning'
-      if (platformCfg.endpoint) {
-        result.endpointOverride = platformCfg.endpoint
-      }
+      
       if (platformCfg.api_key && typeof platformCfg.api_key === 'string') {
         const { isMaskedSecret } = await import('@/lib/server-secrets-cache')
         if (!isMaskedSecret(platformCfg.api_key)) {

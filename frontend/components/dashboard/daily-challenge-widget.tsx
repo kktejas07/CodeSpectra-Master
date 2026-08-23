@@ -85,7 +85,7 @@ export function DailyChallengeWidget() {
           <h3 className="text-lg font-semibold mb-1">{data.problem.title}</h3>
           {data.problem.topics?.length > 0 && (
             <div className="flex flex-wrap gap-1 mb-3">
-              {data.problem.topics.slice(0, 4).map((t) => (
+              {data.problem.topics?.slice(0, 4).map((t) => (
                 <span
                   key={t}
                   className="rounded border border-border/60 bg-background/40 text-[10px] px-1.5 py-0.5"

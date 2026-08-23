@@ -107,7 +107,7 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
                 <img
                   src={campaign.hero_image}
                   alt={campaign.subject}
-                  className="h-auto w-full rounded-xl object-contain shadow-sm"
+                  className="max-h-[600px] w-full rounded-xl object-contain shadow-sm"
                 />
               </div>
             </aside>

@@ -1,0 +1,7 @@
+feat(feedback): Superadmin Feedback Dashboard implementation
+
+- Added FeedbackSchema and MongoDB collections (`frontend/lib/db/feedback.ts`).
+- Created API endpoints for user submission and admin management (`frontend/app/api/feedback/route.ts`, `frontend/app/api/admin/feedback/route.ts`).
+- Built the interactive admin interface with `DataTable` (`frontend/app/dashboard/admin/feedback/page.tsx`).
+- Registered routes and permissions (`frontend/lib/page-permissions.ts`, `frontend/app/dashboard/layout.tsx`).
+- Tested with successful `yarn build` resolving TypeScript and Next.js 15 routing errors.

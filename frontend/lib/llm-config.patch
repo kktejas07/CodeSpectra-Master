@@ -1,0 +1,28 @@
+--- frontend/lib/llm-config.ts
++++ frontend/lib/llm-config.ts
+@@ -126,16 +126,26 @@
+ export type LLMProviderId = (typeof LLM_PROVIDERS)[number]['id']
+ 
++export interface APIKeyStatus {
++  id: string
++  key: string
++  added_at: string
++  usage_count: number
++  rate_limited_until: number | null
++}
++
+ export interface LLMConfig {
+   provider: LLMProviderId
+   model: string
+   endpoint: string
+   api_key: string
++  keys?: Partial<Record<LLMProviderId, APIKeyStatus[]>>
+ }
+ 
+ export const LLM_CONFIG_DEFAULTS: LLMConfig = {
+   provider: 'gemini',
+   model: 'gemini-2.0-flash',
+   endpoint: '',
+   api_key: '',
++  keys: {},
+ }
