@@ -36,7 +36,7 @@ Requirements:
 - Use standard HTML tags (<h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>, <code>, <pre>).
 - Aim for a length of 800-1500 words of rich, detailed content.
 - Include 2-3 inline images to break up the text and illustrate concepts. For images, use the exact following format:
-  <img src="https://image.pollinations.ai/prompt/An%20isometric%203D%20illustration%20of%20[YOUR_URL_ENCODED_PROMPT],%20modern%20clean%20tech%20aesthetic,%20soft%20pastel%20colors?width=800&height=400&nologo=true&seed=[RANDOM_5_DIGIT_NUMBER]" alt="Description" class="my-6 rounded-xl border border-border object-cover w-full shadow-sm" />
+  <img src="https://image.pollinations.ai/prompt/Isometric%203D%20illustration%20representing%20[YOUR_URL_ENCODED_PROMPT],%20featuring%20a%20cute%203D%20tech%20mascot%20character,%20glowing%20technological%20symbols,%20floating%20glossy%203D%20objects,%20clean%20gradient%20studio%20background,%20soft%20shadows,%20vibrant%20modern%20colors,%20playful%20but%20professional%20tech%20blog%20aesthetic,%20high%20detail%20render,%20no%20text,%20no%20words,%20no%20letters,%20no%20logos?width=800&height=400&nologo=true&seed=[RANDOM_5_DIGIT_NUMBER]" alt="Description" class="my-6 rounded-xl border border-border object-cover w-full shadow-sm" />
   Make sure [YOUR_URL_ENCODED_PROMPT] is a highly descriptive prompt relevant to the section. Generate a random 5-digit number for the [RANDOM_5_DIGIT_NUMBER] to ensure consistency.
 - Maintain a professional, insightful, and practical tone suited for software engineers and tech professionals.
 - Do NOT output any wrapper text like "Here is the post:", and DO NOT wrap the output in markdown \`\`\`html blocks. Just output raw HTML.
