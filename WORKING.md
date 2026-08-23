@@ -160,3 +160,4 @@
 | 2026-08-23 | opencode (this session) | Added "Edit" functionality to the Admin Blog Page list to allow modifying existing blog posts via `PATCH /api/blog/[slug]`. Status: COMPLETED. |
 | 2026-08-23 | opencode (this session) | Fixed Course Deletion in Course Generator to properly hit `/api/admin/courses/[id]`. Removed global `font-mono` override in `layout.tsx` and `globals.css` that was causing course pages to display terrible monospace fonts for long paragraphs, restoring system sans-serif for standard text. Pushed to dev-fixes branch. Status: COMPLETED. |
 | 2026-08-23 | opencode (this session) | Auto-fixed Tailwind v4 canonical classes and arbitrary spaced values across all TSX files in frontend using regex script. Status: COMPLETED. |
+| 2026-08-23 | opencode (this session) | Restored `max-w-7xl mx-auto` layout constraints on the Course Details page that were incorrectly removed by a recent "full-width dashboard pages" commit. Status: COMPLETED. |
