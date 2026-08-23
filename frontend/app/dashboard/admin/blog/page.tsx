@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
+import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import {
   Select,
   SelectContent,
@@ -75,6 +76,29 @@ export default function AdminBlogPage() {
         setCoverImage(data.cover_image || '')
         addToast({ type: 'success', title: 'Cover generated' })
       }
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generation failed' })
+    } finally {
+      setAiSlug(null)
+    }
+  }
+
+  const genBody = async () => {
+    if (!title.trim()) {
+      addToast({ type: 'error', title: 'Add a title first' })
+      return
+    }
+    setAiSlug('__body')
+    try {
+      const res = await csrfFetch('/api/admin/blog/ai-write', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ title, excerpt, category }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Generation failed')
+      setBody(data.html || '')
+      addToast({ type: 'success', title: 'Draft generated' })
     } catch (e) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generation failed' })
     } finally {
@@ -230,13 +254,28 @@ export default function AdminBlogPage() {
               ) : null}
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Body (HTML)</Label>
-              <Textarea
+              <div className="flex items-center justify-between">
+                <Label>Body</Label>
+                <Button
+                  type="button"
+                  variant="secondary"
+                  size="sm"
+                  disabled={aiSlug === '__body' || !title.trim()}
+                  onClick={() => void genBody()}
+                >
+                  {aiSlug === '__body' ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                  )}
+                  AI Draft
+                </Button>
+              </div>
+              <RichTextEditor
                 value={body}
-                onChange={(e) => setBody(e.target.value)}
-                rows={10}
-                placeholder="<h2>Section</h2><p>…</p>"
-                className="font-mono text-xs"
+                onChange={setBody}
+                placeholder="Write your article here..."
+                minHeight={300}
               />
             </div>
           </div>
@@ -264,8 +303,8 @@ export default function AdminBlogPage() {
       ) : (
         <div className="space-y-2">
           {items.map((p) => (
-            <Card key={p.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div className="flex min-w-0 flex-1 items-center gap-3">
+            <Card key={p.id} className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-4">
+              <div className="flex flex-1 min-w-0 items-start sm:items-center gap-4">
                 {p.cover_image ? (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
@@ -278,18 +317,18 @@ export default function AdminBlogPage() {
                     <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
                   </div>
                 )}
-                <div className="min-w-0">
+                <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="truncate font-medium">{p.title}</p>
                     <Badge variant="secondary">{p.category}</Badge>
                     <Badge variant={p.status === 'published' ? 'default' : 'outline'}>{p.status}</Badge>
                   </div>
-                  <p className="mt-1 text-xs text-muted-foreground">
+                  <p className="mt-1 text-xs text-muted-foreground truncate">
                     /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
                   </p>
                 </div>
               </div>
-              <div className="flex gap-2">
+              <div className="flex shrink-0 items-center gap-2 self-end sm:self-auto">
                 <Button
                   variant="outline"
                   size="sm"
