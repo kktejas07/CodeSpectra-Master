@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { notifySuperAdmins } from '@/lib/notifications'
 
 export async function GET(request: NextRequest) {
   const user = await getAPIUser()
@@ -47,6 +48,15 @@ export async function POST(request: NextRequest) {
     }
 
     await db.collection('courses').insertOne(newCourse)
+    
+    // Send notification
+    await notifySuperAdmins({
+      type: 'content.course_generated',
+      title: 'Course Generated',
+      message: `A new course "${newCourse.title}" has been successfully generated.`,
+      link: `/courses/${newCourse.id}`
+    })
+
     return NextResponse.json({ data: newCourse })
   } catch (e) {
     return NextResponse.json({ error: String(e) }, { status: 500 })

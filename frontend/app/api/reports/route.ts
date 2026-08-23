@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { notifySuperAdmins } from '@/lib/notifications'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,21 +23,35 @@ export async function POST(req: NextRequest) {
     if (message.length < 8) return NextResponse.json({ error: 'Please add more detail' }, { status: 400 })
 
     const db = await getMongoDb()
+    
+    // Map to the platform_feedback schema + extra fields
     const doc = {
-      kind,
+      type: kind === 'complaint' ? 'complaint' : 'bug', // Map 'issue' to 'bug' for Admin UI badge
+      content: `Report for [${entityType}] ${entityTitle}: ${message}`,
+      user_id: user?.id || null,
+      status: 'open',
+      created_at: new Date().toISOString(),
+      // Additional metadata
+      original_kind: kind,
       entityType,
       entityId,
       entityTitle,
-      message,
       contactEmail: contactEmail || null,
-      userId: user?.id || null,
       userEmail: user?.email || null,
-      status: 'open',
-      createdAt: new Date().toISOString(),
     }
-    await db.collection('listing_reports').insertOne(doc)
+    
+    await db.collection('platform_feedback').insertOne(doc)
+    
+    // Notify superadmins
+    await notifySuperAdmins({
+      type: 'system.feedback_received',
+      title: 'New Feedback Received',
+      message: `${kind === 'complaint' ? 'Complaint' : 'Issue'} reported for ${entityTitle}`,
+    })
+    
     return NextResponse.json({ ok: true })
   } catch (e) {
+    console.error('[POST /api/reports]', e)
     return NextResponse.json({ error: String(e) }, { status: 500 })
   }
 }
