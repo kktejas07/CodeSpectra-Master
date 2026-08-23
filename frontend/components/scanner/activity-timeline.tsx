@@ -135,7 +135,7 @@ export function ActivityTimeline({ activities = [], loading = false }: ActivityT
               <Card className="p-4 bg-card/30 border border-border hover:shadow-md transition-shadow">
                 <div className="flex gap-4">
                   {/* Timeline dot */}
-                  <div className={`mt-1 w-12 h-12 rounded-full flex items-center justify-center flex-shrink-0 ${getEventColor(activity.eventType)}`}>
+                  <div className={`mt-1 w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${getEventColor(activity.eventType)}`}>
                     {getEventIcon(activity.eventType)}
                   </div>
 

@@ -322,7 +322,7 @@ function MessageBubble({ message }: { message: ChatMessage }) {
     <div className={cn('flex', isUser ? 'justify-end' : 'justify-start')}>
       <div
         className={cn(
-          'max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap break-words',
+          'max-w-[88%] rounded-2xl px-3.5 py-2.5 text-sm whitespace-pre-wrap wrap-break-word',
           isUser
             ? 'bg-primary text-primary-foreground'
             : 'bg-muted/60 text-foreground border border-border/60',

@@ -217,7 +217,7 @@ export async function bootstrap() {
             >
               <Link
                 href={hasSession ? DASHBOARD_HREF : '/auth/signup'}
-                className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00c573] hover:bg-[#3ecf8e] text-slate-950 font-bold px-8 py-3.5 text-base transition-all shadow-xl shadow-[#00c573]/20 hover:shadow-[#00c573]/40 hover:scale-[1.02]"
+                className="inline-flex items-center justify-center gap-2 rounded-full bg-mint-pulse hover:bg-[#3ecf8e] text-slate-950 font-bold px-8 py-3.5 text-base transition-all shadow-xl shadow-mint-pulse/20 hover:shadow-mint-pulse/40 hover:scale-[1.02]"
               >
                 {hasSession ? 'Go to dashboard' : 'Try CodeSpectra'}
                 <ArrowRight className="w-4 h-4" />
@@ -227,7 +227,7 @@ export async function bootstrap() {
         </div>
 
         {/* Subtle bottom fade */}
-        <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-background to-transparent z-10 pointer-events-none" />
+        <div className="absolute bottom-0 left-0 right-0 h-24 bg-linear-to-t from-background to-transparent z-10 pointer-events-none" />
       </section>
 
       {/* One platform section (Prisma path showcase) */}
@@ -244,7 +244,7 @@ export async function bootstrap() {
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-6 lg:gap-8">
             {/* Card 1: Schema to client */}
-            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-[340px]">
+            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-85">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <h3 className="text-xl font-bold text-white">Schema to client</h3>
@@ -262,7 +262,7 @@ export async function bootstrap() {
             </div>
 
             {/* Card 2: Postgres for modern deploys */}
-            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-[340px]">
+            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-85">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <h3 className="text-xl font-bold text-white">Postgres for modern deploys</h3>
@@ -280,7 +280,7 @@ export async function bootstrap() {
             </div>
 
             {/* Card 3: Compute for your app */}
-            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-[340px]">
+            <div className="group relative rounded-2xl border border-slate-800 bg-[#0d131f]/90 p-6 sm:p-8 flex flex-col justify-between overflow-hidden hover:border-teal-500/50 transition-all duration-300 min-h-85">
               <div>
                 <div className="flex items-center justify-between gap-2 mb-4">
                   <h3 className="text-xl font-bold text-white">Compute for your app</h3>
@@ -525,7 +525,7 @@ export async function bootstrap() {
         />
 
         {/* Ambient Teal Radial Spotlight Glow */}
-        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[320px] w-[640px] rounded-full bg-gradient-radial from-[#00c573]/25 via-[#0d3830]/15 to-transparent blur-3xl" />
+        <div className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 h-[320px] w-[640px] rounded-full bg-gradient-radial from-mint-pulse/25 via-[#0d3830]/15 to-transparent blur-3xl" />
 
         <div ref={ctaRef as React.RefObject<HTMLDivElement>} className="max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative z-10">
           {/* Simple Tech Icons Row */}
@@ -557,7 +557,7 @@ export async function bootstrap() {
           <div data-reveal className="flex flex-col sm:flex-row gap-3 justify-center items-center mb-2">
             <Link
               href={hasSession ? DASHBOARD_HREF : '/auth/signup'}
-              className="inline-flex items-center justify-center gap-2 rounded-full bg-[#00c573] hover:bg-[#3ecf8e] text-slate-950 font-bold px-8 py-3.5 text-sm sm:text-base transition-all shadow-2xl shadow-[#00c573]/30 hover:shadow-[#00c573]/50 hover:scale-105"
+              className="inline-flex items-center justify-center gap-2 rounded-full bg-mint-pulse hover:bg-[#3ecf8e] text-slate-950 font-bold px-8 py-3.5 text-sm sm:text-base transition-all shadow-2xl shadow-mint-pulse/30 hover:shadow-mint-pulse/50 hover:scale-105"
             >
               {hasSession ? 'Try it out in the Console' : 'Try it out in the Console'}
               <ArrowRight className="w-4 h-4" />

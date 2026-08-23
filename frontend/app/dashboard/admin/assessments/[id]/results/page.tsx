@@ -237,7 +237,7 @@ function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Re
       {entries.map(({ label, value }) => (
         <div key={label} className="text-xs flex gap-2">
           <span className="text-muted-foreground shrink-0 w-32">{label}:</span>
-          <span className="text-foreground break-words">{value}</span>
+          <span className="text-foreground wrap-break-word">{value}</span>
         </div>
       ))}
     </div>
@@ -1377,7 +1377,7 @@ export default function ExamResultsPage() {
                                   return (
                                     <div
                                       key={oi}
-                                      className={`text-xs rounded-md border px-2.5 py-1 break-words whitespace-pre-wrap w-full text-left ${optClass}`}
+                                      className={`text-xs rounded-md border px-2.5 py-1 wrap-break-word whitespace-pre-wrap w-full text-left ${optClass}`}
                                     >
                                       {opt}
                                       {isSelected ? ' (selected)' : ''}
@@ -1394,7 +1394,7 @@ export default function ExamResultsPage() {
                                 <div>
                                   <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
                                   {userAnswer ? (
-                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border break-words">{userAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border wrap-break-word">{userAnswer}</pre>
                                   ) : (
                                     <span className="text-xs text-muted-foreground italic">No answer provided</span>
                                   )}
@@ -1402,7 +1402,7 @@ export default function ExamResultsPage() {
                                 {modelAnswer && (
                                   <div>
                                     <span className="text-xs font-medium text-emerald-500 block mb-1">Model Answer / Rubric:</span>
-                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto break-words">{modelAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
                                   </div>
                                 )}
 
@@ -1633,7 +1633,7 @@ export default function ExamResultsPage() {
                                       </div>
                                       {evt.meta && Object.keys(evt.meta).length > 0 && (
                                         showRawProctorMeta ? (
-                                          <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
+                                          <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap wrap-break-word border-t border-muted/50">
                                             {JSON.stringify(evt.meta, null, 2)}
                                           </pre>
                                         ) : (

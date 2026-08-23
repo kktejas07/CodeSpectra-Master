@@ -132,7 +132,7 @@ export function BlastRadiusAnalysis({
 
   return (
     <div className="space-y-4">
-      <Card className="p-5 bg-gradient-to-r from-primary/5 to-primary/10 border-primary/20">
+      <Card className="p-5 bg-linear-to-r from-primary/5 to-primary/10 border-primary/20">
         <div className="flex items-center gap-2 mb-3">
           <AlertTriangle className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-foreground">Blast Radius — {components.find(c => c.id === selectedId)?.name}</h3>

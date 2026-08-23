@@ -302,7 +302,7 @@ export default function ExamPage() {
                           {d.correct ? 'Correct' : 'Incorrect'}
                         </span>
                       </div>
-                      <div className="font-mono text-xs break-words whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg">
+                      <div className="font-mono text-xs wrap-break-word whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg">
                         {selectedAnswer}
                       </div>
                     </div>
@@ -320,7 +320,7 @@ export default function ExamPage() {
                           Official Answer
                         </span>
                       </div>
-                      <div className="font-mono text-xs break-words whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg text-green-600 dark:text-green-300 font-semibold">
+                      <div className="font-mono text-xs wrap-break-word whitespace-pre-wrap mt-1 max-h-24 overflow-y-auto bg-black/5 dark:bg-black/25 p-2 rounded-lg text-green-600 dark:text-green-300 font-semibold">
                         {correctAnswer}
                       </div>
                     </div>
@@ -332,7 +332,7 @@ export default function ExamPage() {
                     <span className="text-xs font-semibold text-amber-600 dark:text-amber-400 block mb-1 flex items-center gap-1.5">
                       <AlertTriangle className="h-3.5 w-3.5" /> Evaluator Feedback
                     </span>
-                    <div className="text-sm text-foreground whitespace-pre-wrap break-words">{String((d as any).remarks)}</div>
+                    <div className="text-sm text-foreground whitespace-pre-wrap wrap-break-word">{String((d as any).remarks)}</div>
                   </div>
                 ) : null}
               </Card>

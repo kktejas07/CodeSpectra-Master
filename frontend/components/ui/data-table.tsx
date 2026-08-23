@@ -146,7 +146,7 @@ export function DataTable<T extends { id: string }>({
       {(searchKeys?.length || filters?.length) ? (
         <div className="flex flex-wrap items-center gap-3">
           {searchKeys?.length ? (
-            <div className="relative flex-1 min-w-[200px] max-w-sm">
+            <div className="relative flex-1 min-w-50 max-w-sm">
               <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
               <Input
                 placeholder={searchPlaceholder}
@@ -162,7 +162,7 @@ export function DataTable<T extends { id: string }>({
               value={filterValues[f.key] || 'all'}
               onValueChange={v => { setFilterValues(prev => ({ ...prev, [f.key]: v })); setPage(1) }}
             >
-              <SelectTrigger className="h-9 w-[140px] text-sm">
+              <SelectTrigger className="h-9 w-35 text-sm">
                 <SelectValue placeholder={f.label} />
               </SelectTrigger>
               <SelectContent>

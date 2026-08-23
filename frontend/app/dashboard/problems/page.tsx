@@ -158,7 +158,7 @@ export default function ProblemsListPage() {
                  </div>
                </div>
 
-               <div className="flex-1 overflow-x-auto min-h-[100px] mb-2 -mx-2 px-2 custom-scrollbar">
+               <div className="flex-1 overflow-x-auto min-h-25 mb-2 -mx-2 px-2 custom-scrollbar">
                   {heatmapData ? (
                      <ContributionGraph
                         cells={heatmapData.cells}
@@ -188,7 +188,7 @@ export default function ProblemsListPage() {
            </div>
 
            {/* Problem of the Day Banner */}
-           <Card className="overflow-hidden border-border/60 shadow-sm bg-gradient-to-r from-blue-600 to-blue-800 text-white flex flex-col sm:flex-row items-center justify-between p-1 sm:p-0">
+           <Card className="overflow-hidden border-border/60 shadow-sm bg-linear-to-r from-blue-600 to-blue-800 text-white flex flex-col sm:flex-row items-center justify-between p-1 sm:p-0">
               <div className="p-5 sm:p-6 flex-1">
                 <div className="inline-flex items-center gap-1.5 bg-yellow-400 text-yellow-900 text-[10px] font-bold px-2 py-0.5 rounded-sm uppercase tracking-wider mb-2">
                   <Flame className="h-3 w-3 fill-yellow-900" /> Problem of the day
@@ -377,7 +377,7 @@ export default function ProblemsListPage() {
            </Card>
 
            {/* 100 Days Promo */}
-           <Card className="p-6 border-blue-200/50 bg-gradient-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background shadow-sm flex flex-col items-center text-center">
+           <Card className="p-6 border-blue-200/50 bg-linear-to-br from-blue-50 to-white dark:from-blue-950/30 dark:to-background shadow-sm flex flex-col items-center text-center">
               <h3 className="text-xl font-bold text-foreground mb-2">100 Days<br/>Coding Sprint</h3>
               <p className="text-xs text-muted-foreground mb-6">Transform your coding skills with a 100-day marathon</p>
               

@@ -304,11 +304,11 @@ export default function ProfilePage() {
       {/* Banner */}
       <div className={`h-48 lg:h-64 w-full rounded-b-2xl relative overflow-hidden shadow-sm group ${
         (coverTheme.includes('-3d') || ['dark-tech','gradient-blue','emerald-code'].includes(coverTheme)) ? 'bg-slate-900' :
-        coverTheme === 'blue' ? 'bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800' :
-        coverTheme === 'purple' ? 'bg-gradient-to-r from-purple-700 via-purple-600 to-indigo-800' :
-        coverTheme === 'green' ? 'bg-gradient-to-r from-emerald-700 via-emerald-600 to-teal-800' :
-        coverTheme === 'orange' ? 'bg-gradient-to-r from-orange-600 via-amber-600 to-orange-800' :
-        'bg-gradient-to-r from-slate-800 via-slate-700 to-slate-900'
+        coverTheme === 'blue' ? 'bg-linear-to-r from-blue-700 via-blue-600 to-indigo-800' :
+        coverTheme === 'purple' ? 'bg-linear-to-r from-purple-700 via-purple-600 to-indigo-800' :
+        coverTheme === 'green' ? 'bg-linear-to-r from-emerald-700 via-emerald-600 to-teal-800' :
+        coverTheme === 'orange' ? 'bg-linear-to-r from-orange-600 via-amber-600 to-orange-800' :
+        'bg-linear-to-r from-slate-800 via-slate-700 to-slate-900'
       }`}>
         {(coverTheme.includes('-3d') || ['dark-tech','gradient-blue','emerald-code'].includes(coverTheme)) && (
           <Image
@@ -321,7 +321,7 @@ export default function ProfilePage() {
         )}
         {!(coverTheme.includes('-3d') || ['dark-tech','gradient-blue','emerald-code'].includes(coverTheme)) && (
           <>
-            <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+            <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]" />
             <div className="absolute left-0 right-0 top-0 -z-1 m-auto h-[310px] w-[310px] rounded-full bg-white opacity-20 blur-[100px]" />
           </>
         )}
@@ -339,10 +339,10 @@ export default function ProfilePage() {
           {/* Premium Profile Card */}
           <Card className="border-border/60 p-6 text-center shadow-2xl bg-card/70 backdrop-blur-xl relative overflow-hidden group">
             {/* Glassmorphism gradient accents */}
-            <div className="absolute top-0 right-0 w-32 h-32 bg-[#00c573]/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
+            <div className="absolute top-0 right-0 w-32 h-32 bg-mint-pulse/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
             
-            <div className="relative mx-auto w-fit rounded-full bg-gradient-to-br from-[#00c573] to-emerald-500 p-[3px] shadow-lg">
+            <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-mint-pulse to-emerald-500 p-[3px] shadow-lg">
               <div className="rounded-full bg-background p-1">
                 <img
                   src={avatarSrc}
@@ -381,11 +381,11 @@ export default function ProfilePage() {
             </div>
             
             <div className="mt-6 flex justify-center gap-6 text-sm">
-              <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-[80px]">
+              <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-20">
                 <span className="font-bold text-foreground text-xl">Lvl {level}</span>
                 <span className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mt-1">Level</span>
               </div>
-              <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-[80px]">
+              <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-20">
                 <span className="font-bold text-foreground text-xl">{xp}</span>
                 <span className="text-[10px] uppercase text-emerald-500 tracking-wider font-bold mt-1">XP</span>
               </div>
@@ -442,7 +442,7 @@ export default function ProfilePage() {
               <span className="text-xs font-medium text-emerald-500 hover:underline cursor-pointer">How it works?</span>
             </div>
             
-            <div className="rounded-xl bg-gradient-to-br from-[#00c573]/5 to-emerald-500/5 dark:from-[#00c573]/10 dark:to-emerald-950/30 p-5 text-center border border-[#00c573]/20 dark:border-[#00c573]/30 relative overflow-hidden">
+            <div className="rounded-xl bg-linear-to-br from-mint-pulse/5 to-emerald-500/5 dark:from-mint-pulse/10 dark:to-emerald-950/30 p-5 text-center border border-mint-pulse/20 dark:border-mint-pulse/30 relative overflow-hidden">
               <div className="absolute right-0 top-0 opacity-10">
                 <svg width="80" height="80" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M12 2L2 7l10 5 10-5-10-5zM2 17l10 5 10-5M2 12l10 5 10-5"/></svg>
               </div>
@@ -520,7 +520,7 @@ export default function ProfilePage() {
 
           {/* AI Recommended Practice */}
           <Card className="border-border/60 p-6 shadow-sm relative overflow-hidden">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-gradient-to-br from-[#00c573]/10 to-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
+            <div className="absolute top-0 right-0 w-64 h-64 bg-linear-to-br from-mint-pulse/10 to-emerald-500/10 rounded-full blur-3xl pointer-events-none" />
             <div className="mb-5 flex items-center justify-between relative z-10">
               <div className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-indigo-500" />
@@ -593,7 +593,7 @@ export default function ProfilePage() {
 
       {/* Cover Theme Selection Modal */}
       <Dialog open={coverModalOpen} onOpenChange={setCoverModalOpen}>
-        <DialogContent className="sm:max-w-[700px]">
+        <DialogContent className="sm:max-w-175">
           <DialogHeader>
             <DialogTitle>Customize Cover Banner</DialogTitle>
           </DialogHeader>
@@ -639,9 +639,9 @@ export default function ProfilePage() {
 
             <div className="space-y-3">
               <h4 className="text-sm font-medium text-foreground relative flex items-center w-full">
-                <span className="flex-grow border-t border-border/50"></span>
+                <span className="grow border-t border-border/50"></span>
                 <span className="mx-4 text-muted-foreground text-xs font-semibold">OR</span>
-                <span className="flex-grow border-t border-border/50"></span>
+                <span className="grow border-t border-border/50"></span>
               </h4>
               <div className="mt-4">
                 <h4 className="text-sm font-medium mb-1">Upload Banner</h4>

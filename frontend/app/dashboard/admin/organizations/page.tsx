@@ -441,7 +441,7 @@ export default function TenantsPage() {
       </div>
 
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-[200px]">
+        <div className="relative max-w-sm flex-1 min-w-50">
           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search organizations..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
         </div>
@@ -680,7 +680,7 @@ export default function TenantsPage() {
                               value={normalizeUserRole(m.role)}
                               onValueChange={(v) => void handleUpdateMemberRole(m, v)}
                             >
-                              <SelectTrigger className="h-6 w-auto min-w-[100px] text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
+                              <SelectTrigger className="h-6 w-auto min-w-25 text-[10px] px-2 py-0" onClick={(e) => e.stopPropagation()}>
                                 <SelectValue />
                               </SelectTrigger>
                               <SelectContent>

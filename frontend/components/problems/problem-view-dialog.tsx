@@ -45,7 +45,7 @@ function TcBlock({ label, value }: { label: string; value: string }) {
   return (
     <div className="min-w-0 flex-1 space-y-1">
       <p className="text-[10px] font-medium uppercase tracking-wider text-muted-foreground">{label}</p>
-      <pre className="rounded-md bg-muted/60 px-2 py-1.5 font-mono text-[11px] leading-snug whitespace-pre-wrap break-words">{value || '(empty)'}</pre>
+      <pre className="rounded-md bg-muted/60 px-2 py-1.5 font-mono text-[11px] leading-snug whitespace-pre-wrap wrap-break-word">{value || '(empty)'}</pre>
     </div>
   )
 }

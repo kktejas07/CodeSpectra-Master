@@ -155,7 +155,7 @@ export function PipelineFlow() {
                   {/* Subtle top indicator bar for active item */}
                   <div
                     className={cn(
-                      'absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal-400 to-emerald-400 transition-all duration-300',
+                      'absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-teal-400 to-emerald-400 transition-all duration-300',
                       isActive ? 'opacity-100' : 'opacity-0'
                     )}
                   />
@@ -196,9 +196,9 @@ export function PipelineFlow() {
 
           {/* Active Step Real-time Terminal / Code Snippet Preview (5 Cols) */}
           <div className="lg:col-span-5">
-            <div className="relative rounded-2xl border border-slate-800 bg-[#080d18] p-6 shadow-2xl overflow-hidden min-h-[340px] flex flex-col justify-between">
+            <div className="relative rounded-2xl border border-slate-800 bg-[#080d18] p-6 shadow-2xl overflow-hidden min-h-85 flex flex-col justify-between">
               {/* Radial color backdrop for active step */}
-              <div className={cn("absolute inset-0 bg-gradient-to-br opacity-40 pointer-events-none transition-all duration-500", active.color)} />
+              <div className={cn("absolute inset-0 bg-linear-to-br opacity-40 pointer-events-none transition-all duration-500", active.color)} />
 
               <div>
                 <div className="flex items-center justify-between gap-2 pb-4 border-b border-slate-800/80 mb-5">

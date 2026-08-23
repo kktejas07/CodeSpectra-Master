@@ -333,7 +333,7 @@ export default function PermissionsPage() {
                     <td className="px-3 py-1.5">
                       <div className="flex items-center gap-2">
                         <Badge variant="outline" className="text-[9px] shrink-0">{r.resourceType}</Badge>
-                        <span className="font-mono text-[11px] text-foreground truncate max-w-[280px]" title={r.resource}>{r.label || r.resource.split('/').pop() || r.resource}</span>
+                        <span className="font-mono text-[11px] text-foreground truncate max-w-70" title={r.resource}>{r.label || r.resource.split('/').pop() || r.resource}</span>
                         {isNew && <Badge className="text-[9px] bg-amber-500/20 text-amber-600">new</Badge>}
                       </div>
                     </td>

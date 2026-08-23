@@ -219,13 +219,13 @@ function DiagnosticItem({
     >
       <div className="flex items-start justify-between gap-2">
         <div className="flex items-start gap-2 flex-1 min-w-0">
-          <div className="mt-0.5 flex-shrink-0">{getSeverityIcon(diagnostic.severity)}</div>
+          <div className="mt-0.5 shrink-0">{getSeverityIcon(diagnostic.severity)}</div>
           <div className="flex-1 min-w-0 space-y-1">
             <div className="flex items-start justify-between gap-2">
               <p className="text-sm font-medium text-foreground line-clamp-2">
                 {diagnostic.message}
               </p>
-              <span className="text-xs px-2 py-1 bg-black/10 rounded flex-shrink-0">
+              <span className="text-xs px-2 py-1 bg-black/10 rounded shrink-0">
                 L{diagnostic.line}:C{diagnostic.column}
               </span>
             </div>
@@ -234,7 +234,7 @@ function DiagnosticItem({
             )}
           </div>
         </div>
-        <div className="flex-shrink-0">
+        <div className="shrink-0">
           {isExpanded ? (
             <ChevronUp className="w-4 h-4 text-muted-foreground" />
           ) : (

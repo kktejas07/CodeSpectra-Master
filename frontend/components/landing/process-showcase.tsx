@@ -245,7 +245,7 @@ const StepProgressBar = memo(function StepProgressBar({
     >
       <div
         ref={fillRef}
-        className="h-full w-0 rounded-full bg-gradient-to-r from-emerald-500 to-emerald-400"
+        className="h-full w-0 rounded-full bg-linear-to-r from-emerald-500 to-emerald-400"
       />
     </div>
   )

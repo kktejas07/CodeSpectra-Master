@@ -49,7 +49,7 @@ export function TechStackSection() {
               key={tech.name}
               className="group relative rounded-xl border border-slate-800/90 bg-[#0b101c]/90 p-4 flex flex-col justify-between transition-all duration-300 hover:border-teal-500/50 hover:bg-[#0f1626] hover:-translate-y-0.5 shadow-lg min-h-[140px]"
             >
-              <div className={`absolute top-0 right-0 w-20 h-20 rounded-full bg-gradient-to-br ${tech.color} blur-2xl opacity-40 group-hover:opacity-80 transition-opacity`} />
+              <div className={`absolute top-0 right-0 w-20 h-20 rounded-full bg-linear-to-br ${tech.color} blur-2xl opacity-40 group-hover:opacity-80 transition-opacity`} />
 
               <div>
                 <div className="flex items-center justify-between gap-2 mb-2.5">

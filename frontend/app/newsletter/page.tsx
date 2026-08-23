@@ -51,7 +51,7 @@ export default async function NewsletterIndexPage() {
                     href={href}
                     className="group flex h-full min-w-0 flex-col overflow-hidden rounded-2xl border border-border bg-card transition-colors hover:border-teal-500/40"
                   >
-                    <div className="aspect-[16/9] overflow-hidden bg-gradient-to-br from-teal-600/20 via-emerald-500/10 to-cyan-500/20">
+                    <div className="aspect-[16/9] overflow-hidden bg-linear-to-br from-teal-600/20 via-emerald-500/10 to-cyan-500/20">
                       {c.hero_image ? (
                         // eslint-disable-next-line @next/next/no-img-element
                         <img

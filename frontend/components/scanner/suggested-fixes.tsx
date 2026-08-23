@@ -80,7 +80,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
 
   if (issues.length === 0) {
     return (
-      <Card className="bg-gradient-to-r from-green-500/10 to-green-500/5 border border-green-500/30 p-6 text-center">
+      <Card className="bg-linear-to-r from-green-500/10 to-green-500/5 border border-green-500/30 p-6 text-center">
         <div className="flex flex-col items-center gap-3">
           <Check className="w-8 h-8 text-green-500" />
           <div>
@@ -116,7 +116,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                 className="w-full p-4 flex items-start justify-between gap-4 hover:bg-card/40 transition-colors"
               >
                 <div className="flex items-start gap-3 flex-1 text-left">
-                  <IconComponent className={`w-5 h-5 flex-shrink-0 mt-0.5 ${getSeverityTextColor(issue.severity)}`} />
+                  <IconComponent className={`w-5 h-5 shrink-0 mt-0.5 ${getSeverityTextColor(issue.severity)}`} />
                   <div className="flex-1 min-w-0">
                     <div className="flex items-center gap-2 mb-1 flex-wrap gap-y-0.5">
                       <span className={`px-2 py-0.5 rounded text-xs font-medium border ${getSeverityColor(issue.severity)}`}>
@@ -131,9 +131,9 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                   </div>
                 </div>
                 {isExpanded ? (
-                  <ChevronUp className="w-5 h-5 text-foreground/50 flex-shrink-0" />
+                  <ChevronUp className="w-5 h-5 text-foreground/50 shrink-0" />
                 ) : (
-                  <ChevronDown className="w-5 h-5 text-foreground/50 flex-shrink-0" />
+                  <ChevronDown className="w-5 h-5 text-foreground/50 shrink-0" />
                 )}
               </button>
 
@@ -145,7 +145,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-foreground/70">Current Code</p>
                       <div className="bg-background/50 border border-border rounded p-3">
-                        <pre className="text-xs text-foreground/60 overflow-auto max-h-40 whitespace-pre-wrap break-words">
+                        <pre className="text-xs text-foreground/60 overflow-auto max-h-40 whitespace-pre-wrap wrap-break-word">
                           {issue.message.slice(0, 120)}
                         </pre>
                         <Button
@@ -173,7 +173,7 @@ export function SuggestedFixes({ issues, onApplyFix }: SuggestedFixesProps) {
                     <div className="space-y-2">
                       <p className="text-xs font-medium text-foreground/70">Suggested Fix</p>
                       <div className="bg-green-500/5 border border-green-500/20 rounded p-3">
-                        <pre className="text-xs text-foreground/60 overflow-auto max-h-40 whitespace-pre-wrap break-words">
+                        <pre className="text-xs text-foreground/60 overflow-auto max-h-40 whitespace-pre-wrap wrap-break-word">
                           {issue.type === 'bug'
                             ? '// Fix null safety issue\nconst result = data?.value ?? null;'
                             : issue.type === 'vulnerability'

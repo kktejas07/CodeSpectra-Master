@@ -237,7 +237,7 @@ export default function ResumeBuilderPage() {
                 </Button>
               </div>
               <Textarea 
-                className="min-h-[120px]" 
+                className="min-h-30" 
                 placeholder="Write a brief summary of your professional background..." 
                 value={data.summary} 
                 onChange={e => setData(prev => ({ ...prev, summary: e.target.value }))}
@@ -325,18 +325,18 @@ export default function ResumeBuilderPage() {
           {/* Resume Canvas Wrapper */}
           <div className="flex-1 overflow-y-auto custom-scrollbar flex justify-center pb-20">
             {/* The Resume A4 Paper */}
-            <div className="bg-white shadow-xl rounded-sm w-full max-w-[800px] min-h-[1131px] text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
+            <div className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-[1131px] text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
               
               {/* --- Template: Modern --- */}
               {template === 'modern' && (
                 <div className="flex min-h-[1131px]">
                   {/* Left Column */}
-                  <div className="w-[35%] bg-[#2a3b4c] text-white p-8 break-words">
+                  <div className="w-[35%] bg-[#2a3b4c] text-white p-8 wrap-break-word">
                     <div className="h-24 w-24 rounded-full bg-white/20 mb-6 flex items-center justify-center text-3xl font-bold border-2 border-white/30 overflow-hidden">
                       {((data.personal.fullName || '').charAt(0) || 'U')}
                     </div>
                     <h2 className="text-sm font-bold tracking-widest uppercase text-blue-300 mb-6 border-b border-white/20 pb-2">Contact</h2>
-                    <div className="space-y-3 text-sm text-slate-300 mb-8 break-words">
+                    <div className="space-y-3 text-sm text-slate-300 mb-8 wrap-break-word">
                       {data.personal.email && <div className="break-all">{data.personal.email}</div>}
                       {data.personal.phone && <div>{data.personal.phone}</div>}
                       {data.personal.location && <div>{data.personal.location}</div>}
@@ -362,7 +362,7 @@ export default function ResumeBuilderPage() {
                   </div>
 
                   {/* Right Column */}
-                  <div className="w-[65%] p-8 bg-white break-words">
+                  <div className="w-[65%] p-8 bg-white wrap-break-word">
                     <h1 className="text-4xl font-black text-slate-800 mb-2 uppercase tracking-tight">{data.personal.fullName || 'Your Name'}</h1>
                     <div className="text-lg text-blue-600 font-medium mb-6">{data.experience[0]?.role || 'Professional Title'}</div>
                     
@@ -471,7 +471,7 @@ export default function ResumeBuilderPage() {
 
               {/* --- Template: Elegant --- */}
               {template === 'elegant' && (
-                <div className="p-10 relative bg-[#fafafa]">
+                <div className="p-10 relative bg-snow">
                   <div className="absolute top-0 left-0 w-2 h-full bg-[#1e40af]" />
                   <div className="pl-6">
                     <h1 className="text-5xl font-serif text-[#1e40af] mb-2 tracking-wide">{data.personal.fullName || 'Your Name'}</h1>
@@ -607,7 +607,7 @@ export default function ResumeBuilderPage() {
               {/* --- Template: Creative --- */}
               {template === 'creative' && (
                 <div className="flex min-h-[1131px] bg-[#fdfbf7]">
-                  <div className="w-[40%] bg-[#ff6b6b] text-white p-10 flex flex-col justify-between break-words">
+                  <div className="w-[40%] bg-[#ff6b6b] text-white p-10 flex flex-col justify-between wrap-break-word">
                     <div>
                       <div className="w-32 h-32 bg-white rounded-full mb-8 border-4 border-white/30 flex items-center justify-center overflow-hidden shadow-xl">
                         <span className="text-5xl font-black text-[#ff6b6b]">{((data.personal.fullName || '').charAt(0) || 'U')}</span>
@@ -642,7 +642,7 @@ export default function ResumeBuilderPage() {
                     </div>
                   </div>
 
-                  <div className="w-[60%] p-10 py-16 text-slate-800 break-words">
+                  <div className="w-[60%] p-10 py-16 text-slate-800 wrap-break-word">
                     <div className="mb-12 relative">
                       <div className="absolute -left-10 top-2 w-8 h-1 bg-[#ff6b6b]" />
                       <h2 className="text-2xl font-black uppercase tracking-widest mb-4">Profile</h2>

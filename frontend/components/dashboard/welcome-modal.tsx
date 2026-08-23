@@ -63,8 +63,8 @@ export function WelcomeModal() {
 
   return (
     <Dialog open={open} onOpenChange={handleOpenChange}>
-      <DialogContent showCloseButton={false} className="sm:max-w-[600px] text-center p-0 overflow-hidden">
-        <div className="bg-gradient-to-b from-blue-50 to-background p-8 flex flex-col items-center border-b border-border">
+      <DialogContent showCloseButton={false} className="sm:max-w-150 text-center p-0 overflow-hidden">
+        <div className="bg-linear-to-b from-blue-50 to-background p-8 flex flex-col items-center border-b border-border">
           <div className="h-16 w-16 bg-white rounded-full shadow-md flex items-center justify-center mb-4 ring-4 ring-white">
              <Rocket className="h-8 w-8 text-blue-600" />
           </div>

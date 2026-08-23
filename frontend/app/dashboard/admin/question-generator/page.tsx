@@ -237,12 +237,12 @@ export default function QuestionGeneratorPage() {
                           {Object.entries(sc as Record<string, string>).map(([lang, code]) => (
                             <div key={lang}>
                               <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground px-3 pt-2">{lang}</p>
-                              <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap break-words">{code || '(no starter)'}</pre>
+                              <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap wrap-break-word">{code || '(no starter)'}</pre>
                             </div>
                           ))}
                         </div>
                       ) : (
-                        <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap break-words">{sc as string}</pre>
+                        <pre className="text-xs font-mono p-3 overflow-x-auto whitespace-pre-wrap wrap-break-word">{sc as string}</pre>
                       )}
                     </div>
                   )
@@ -250,7 +250,7 @@ export default function QuestionGeneratorPage() {
 
                 {!((result.problem as { title?: string }).title) && (
                   <pre
-                    className="text-[11px] whitespace-pre-wrap break-words font-mono max-h-[480px] overflow-y-auto rounded border border-border bg-background/40 p-3"
+                    className="text-[11px] whitespace-pre-wrap wrap-break-word font-mono max-h-[480px] overflow-y-auto rounded border border-border bg-background/40 p-3"
                     data-testid="qgen-result"
                   >
                     {JSON.stringify(result.problem, null, 2)}

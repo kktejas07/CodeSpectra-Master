@@ -165,8 +165,8 @@ export default function UserProfilePage({
 
       {/* Full Width Banner */}
       <div className="w-full max-w-[1600px] mx-auto px-4 sm:px-6 lg:px-8 mt-4">
-        <div className="h-48 lg:h-64 w-full rounded-2xl relative overflow-hidden shadow-sm bg-gradient-to-r from-blue-700 via-blue-600 to-indigo-800">
-          <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-[size:24px_24px]" />
+        <div className="h-48 lg:h-64 w-full rounded-2xl relative overflow-hidden shadow-sm bg-linear-to-r from-blue-700 via-blue-600 to-indigo-800">
+          <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]" />
           <div className="absolute left-0 right-0 top-0 -z-1 m-auto h-[310px] w-[310px] rounded-full bg-white opacity-20 blur-[100px]" />
         </div>
       </div>
@@ -180,7 +180,7 @@ export default function UserProfilePage({
               <div className="absolute top-0 right-0 w-32 h-32 bg-blue-500/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none opacity-70" />
               <div className="absolute bottom-0 left-0 w-32 h-32 bg-purple-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none opacity-70" />
               
-              <div className="relative mx-auto w-fit rounded-full bg-gradient-to-br from-blue-500 to-purple-500 p-[3px] shadow-lg">
+              <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-blue-500 to-purple-500 p-[3px] shadow-lg">
                 <div className="rounded-full bg-background p-1">
                   <img src={avatar} alt={user.name} className="h-28 w-28 rounded-full object-cover bg-muted/20" />
                 </div>
@@ -196,11 +196,11 @@ export default function UserProfilePage({
               </div>
               
               <div className="mt-6 flex justify-center gap-6 text-sm">
-                <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-[80px]">
+                <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-20">
                   <span className="font-bold text-foreground text-xl">Lvl {level}</span>
                   <span className="text-[10px] uppercase text-muted-foreground tracking-wider font-bold mt-1">Level</span>
                 </div>
-                <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-[80px]">
+                <div className="flex flex-col items-center p-3 rounded-xl bg-muted/30 min-w-20">
                   <span className="font-bold text-foreground text-xl">{stats.xp.toLocaleString()}</span>
                   <span className="text-[10px] uppercase text-emerald-500 tracking-wider font-bold mt-1">XP</span>
                 </div>
@@ -221,7 +221,7 @@ export default function UserProfilePage({
                 <span className="text-xs font-medium text-blue-500 hover:underline cursor-pointer">How it works?</span>
               </div>
               
-              <div className="rounded-xl bg-gradient-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-5 text-center border border-blue-100 dark:border-blue-900/50 relative overflow-hidden">
+              <div className="rounded-xl bg-linear-to-br from-blue-50 to-indigo-50 dark:from-blue-950/30 dark:to-indigo-950/30 p-5 text-center border border-blue-100 dark:border-blue-900/50 relative overflow-hidden">
                 <p className="text-xs font-medium text-muted-foreground text-left">Global Rank</p>
                 <div className="mt-2 flex items-center gap-3">
                   <Trophy className="h-7 w-7 text-amber-500 drop-shadow-sm" />

@@ -114,7 +114,7 @@ export function CapabilitiesFlow() {
                 {/* Active Indicator Bar */}
                 <div
                   className={cn(
-                    'absolute top-0 left-0 right-0 h-0.5 bg-gradient-to-r from-teal-400 to-emerald-400 transition-all duration-300',
+                    'absolute top-0 left-0 right-0 h-0.5 bg-linear-to-r from-teal-400 to-emerald-400 transition-all duration-300',
                     isActive ? 'opacity-100' : 'opacity-0'
                   )}
                 />

@@ -216,12 +216,12 @@ export default function RolesPage() {
 
       {/* Filters */}
       <div className="flex flex-wrap items-center gap-3">
-        <div className="relative max-w-sm flex-1 min-w-[200px]">
+        <div className="relative max-w-sm flex-1 min-w-50">
           <Search className="absolute left-2 top-2 h-3.5 w-3.5 text-muted-foreground" />
           <Input placeholder="Search users..." value={search} onChange={e => setSearch(e.target.value)} className="pl-7 h-8 text-xs" />
         </div>
         <Select value={roleFilter} onValueChange={setRoleFilter}>
-          <SelectTrigger className="h-8 w-[140px] text-xs">
+          <SelectTrigger className="h-8 w-35 text-xs">
             <SelectValue placeholder="All roles" />
           </SelectTrigger>
           <SelectContent>
@@ -302,7 +302,7 @@ export default function RolesPage() {
                     <select
                       value={u.tenant_id || '__none__'}
                       onChange={e => updateUserTenant(u.id, e.target.value)}
-                      className="text-xs bg-background border border-border rounded px-2 py-1 max-w-[140px]"
+                      className="text-xs bg-background border border-border rounded px-2 py-1 max-w-35"
                       aria-label="Organization"
                     >
                       <option value="__none__">— No org —</option>

@@ -56,7 +56,7 @@ export function CodeReviewPanel({
   const CommentThread = ({ comment, depth = 0 }: { comment: CodeReviewComment; depth?: number }) => (
     <div key={comment.id} style={{ marginLeft: depth > 0 ? '24px' : '0' }} className="space-y-3">
       <div className="flex gap-3">
-        <Avatar className="w-8 h-8 flex-shrink-0">
+        <Avatar className="w-8 h-8 shrink-0">
           <AvatarImage src={comment.author.avatar} alt={comment.author.name} />
           <AvatarFallback>{(comment.author.name || '?').charAt(0).toUpperCase()}</AvatarFallback>
         </Avatar>

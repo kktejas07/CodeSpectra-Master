@@ -161,7 +161,7 @@ export default function CertVerifyPage() {
   }
 
   return (
-    <main className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 py-10 px-4" data-testid="cert-verify-valid">
+    <main className="min-h-screen bg-linear-to-br from-background via-background to-primary/5 py-10 px-4" data-testid="cert-verify-valid">
       {/* Header — hidden in print */}
       <div className="max-w-6xl mx-auto mb-6 print:hidden" data-testid="cert-verify-header">
         <div className="flex flex-wrap items-center justify-between gap-4 mb-4">
