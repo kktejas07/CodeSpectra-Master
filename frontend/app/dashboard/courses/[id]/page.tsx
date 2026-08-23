@@ -381,7 +381,7 @@ const handleEnroll = async () => {
         <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-0 left-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none" />
 
-        <div className="w-full py-10 pb-16 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-16 relative z-10">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-white/50 mb-8">
             <Link href="/dashboard/courses" className="hover:text-white flex items-center gap-1 transition-colors">
@@ -542,7 +542,7 @@ const handleEnroll = async () => {
 
       {/* ── Stats bar ── */}
       <div className="bg-card border-b border-border/60">
-        <div className="w-full">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-5 divide-x divide-border/60">
             {[
               { icon: Layers, label: 'Modules', value: sections.length || 1, color: 'text-purple-500' },
@@ -562,7 +562,7 @@ const handleEnroll = async () => {
       </div>
 
       {/* ── Main Content ── */}
-      <div className="w-full py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left col — main content */}
