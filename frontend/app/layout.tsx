@@ -37,7 +37,7 @@ export default function RootLayout({
       className={`${mono.variable}`}
     >
       <body
-        className="antialiased bg-background text-foreground font-mono"
+        className="antialiased bg-background text-foreground font-sans"
         suppressHydrationWarning
       >
         <script

@@ -69,7 +69,7 @@ export function AdvancedMetrics({
   return (
     <div className="space-y-6">
       {/* Quality Score Banner */}
-      <div className="relative overflow-hidden rounded-lg bg-gradient-to-r from-primary/20 to-primary/10 border border-primary/30 p-6">
+      <div className="relative overflow-hidden rounded-lg bg-linear-to-r from-primary/20 to-primary/10 border border-primary/30 p-6">
         <div className="flex items-center justify-between gap-4">
           <div>
             <p className="text-sm text-foreground/70 mb-2">Overall Code Quality</p>

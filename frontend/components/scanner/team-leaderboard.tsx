@@ -209,7 +209,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
         </Card>
       </div>
 
-      <Card className="border border-purple-500/30 bg-gradient-to-r from-purple-500/10 to-pink-500/10 p-4 space-y-3">
+      <Card className="border border-purple-500/30 bg-linear-to-r from-purple-500/10 to-pink-500/10 p-4 space-y-3">
         <h4 className="font-semibold text-foreground">Team Achievements</h4>
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 text-xs">
           <div className="flex items-center gap-2 rounded bg-background/50 p-2">

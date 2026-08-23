@@ -29,8 +29,8 @@ export function AiCreditsWidget({ className }: { className?: string }) {
 
   if (loading) {
     return (
-      <Card className={cn("overflow-hidden bg-gradient-to-br from-blue-500/10 to-purple-500/10 border-blue-500/20", className)}>
-        <CardContent className="p-4 flex items-center justify-center min-h-[100px]">
+      <Card className={cn("overflow-hidden bg-linear-to-br from-blue-500/10 to-purple-500/10 border-blue-500/20", className)}>
+        <CardContent className="p-4 flex items-center justify-center min-h-25">
           <Loader2 className="h-5 w-5 animate-spin text-blue-500" />
         </CardContent>
       </Card>
@@ -48,7 +48,7 @@ export function AiCreditsWidget({ className }: { className?: string }) {
   return (
     <Card className={cn("overflow-hidden border bg-card relative", className)}>
       {/* Background decoration */}
-      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-gradient-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-2xl pointer-events-none" />
+      <div className="absolute top-0 right-0 -mt-4 -mr-4 w-24 h-24 bg-linear-to-br from-blue-500/20 to-purple-500/20 rounded-full blur-2xl pointer-events-none" />
       
       <CardContent className="p-5">
         <div className="flex items-start justify-between mb-4">

@@ -162,7 +162,7 @@ export default function AgentPage() {
       {/* Header */}
       <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card/60 backdrop-blur">
         <div className="flex items-center gap-3">
-          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-gradient-to-br from-primary via-emerald-500 to-teal-600 shadow-md text-primary-foreground">
+          <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-primary via-emerald-500 to-teal-600 shadow-md text-primary-foreground">
             <Bot className="h-5 w-5" />
           </div>
           <div>

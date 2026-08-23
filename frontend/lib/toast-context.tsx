@@ -67,12 +67,12 @@ function ToastComponent({ toast, onClose }: { toast: Toast; onClose: () => void 
 
   return (
     <div className={`${colors[toast.type]} border px-4 py-3 rounded-lg flex items-start gap-3 animate-in fade-in slide-in-from-bottom-4 duration-300`}>
-      <div className="flex-shrink-0 mt-0.5">{icons[toast.type]}</div>
+      <div className="shrink-0 mt-0.5">{icons[toast.type]}</div>
       <div className="flex-1">
         <p className="font-medium">{toast.title}</p>
         {toast.message && <div className="text-sm opacity-90 mt-1">{toast.message}</div>}
       </div>
-      <button onClick={onClose} className="flex-shrink-0 ml-2 opacity-60 hover:opacity-100">
+      <button onClick={onClose} className="shrink-0 ml-2 opacity-60 hover:opacity-100">
         <X className="w-4 h-4" />
       </button>
     </div>

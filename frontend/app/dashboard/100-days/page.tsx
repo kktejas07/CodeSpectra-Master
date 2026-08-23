@@ -170,7 +170,7 @@ export default function HundredDaysPage() {
                  </div>
                </div>
 
-               <div className="flex-1 overflow-x-auto min-h-[100px] mb-2 -mx-2 px-2 custom-scrollbar">
+               <div className="flex-1 overflow-x-auto min-h-25 mb-2 -mx-2 px-2 custom-scrollbar">
                   {heatmapData ? (
                      <ContributionGraph
                         cells={heatmapData.cells}
@@ -201,7 +201,7 @@ export default function HundredDaysPage() {
           </div>
 
           {/* Current Progress Jar */}
-          <Card className="p-6 border-border/60 shadow-sm bg-gradient-to-r from-blue-50/50 to-transparent dark:from-blue-950/20">
+          <Card className="p-6 border-border/60 shadow-sm bg-linear-to-r from-blue-50/50 to-transparent dark:from-blue-950/20">
              <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex-1">
                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Current progress</p>
@@ -394,7 +394,7 @@ export default function HundredDaysPage() {
                       <div className={`relative w-12 h-12 flex items-center justify-center transform transition-all duration-300 hover:scale-110 cursor-pointer`}>
                         {/* 3D Hexagon effect */}
                         <div className={`absolute inset-0 rounded-xl rotate-45 border shadow-lg ${unlocked ? 'border-amber-400 bg-amber-200/20 shadow-amber-500/30 dark:shadow-amber-900/30' : 'border-muted bg-muted/20 shadow-none grayscale opacity-50'} `}></div>
-                        <div className={`absolute inset-1 rounded-xl rotate-45 border border-white/20 bg-gradient-to-br ${unlocked ? 'from-amber-300 to-amber-600' : 'from-slate-200 to-slate-400 dark:from-slate-700 dark:to-slate-800'} backdrop-blur-sm z-0`}></div>
+                        <div className={`absolute inset-1 rounded-xl rotate-45 border border-white/20 bg-linear-to-br ${unlocked ? 'from-amber-300 to-amber-600' : 'from-slate-200 to-slate-400 dark:from-slate-700 dark:to-slate-800'} backdrop-blur-sm z-0`}></div>
                         
                         <div className="z-10 relative flex flex-col items-center justify-center">
                           {unlocked && <CheckCircle2 className="h-3 w-3 text-white drop-shadow mb-0.5" />}

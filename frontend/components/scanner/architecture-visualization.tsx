@@ -373,7 +373,7 @@ export function ArchitectureVisualization({
       )}
 
       <div className="grid md:grid-cols-5 gap-4">
-        <Card className="p-5 bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
+        <Card className="p-5 bg-linear-to-r from-primary/10 to-primary/5 border-primary/20">
           <p className="text-xs text-foreground/60 mb-1">Overall Grade</p>
           <p className="text-3xl font-bold" style={{ color: HEALTH_GRADE_COLORS[healthSummary.overallGrade] }}>
             {healthSummary.overallGrade}

@@ -427,7 +427,7 @@ export default function AdminExamsPage() {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[640px]">
+        <DialogContent className="sm:max-w-160">
           <DialogHeader>
             <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
           </DialogHeader>
@@ -555,7 +555,7 @@ export default function AdminExamsPage() {
       </Dialog>
 
       <Sheet open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
-        <SheetContent side="right" className="w-full sm:w-[480px] sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-120 sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Invite Candidate</SheetTitle>
             <SheetDescription>
@@ -617,7 +617,7 @@ export default function AdminExamsPage() {
       </Sheet>
 
       <Dialog open={isBulkInviteOpen} onOpenChange={setIsBulkInviteOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Bulk Invite Candidates — {bulkInviteExam?.title}</DialogTitle>
           </DialogHeader>

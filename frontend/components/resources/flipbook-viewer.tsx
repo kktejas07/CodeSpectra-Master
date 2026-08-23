@@ -169,7 +169,7 @@ export function FlipbookViewer({ pages }: { pages: EbookPage[] }) {
       {/* Container scales slightly when flipping */}
       <div
         className={cn(
-          'relative flex min-h-[500px] w-full transition-all duration-250',
+          'relative flex min-h-125 w-full transition-all duration-250',
           flipping ? 'scale-[0.98] opacity-60' : 'scale-100 opacity-100',
         )}
       >

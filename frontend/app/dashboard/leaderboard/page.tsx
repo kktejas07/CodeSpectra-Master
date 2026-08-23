@@ -155,7 +155,7 @@ export default function LeaderboardPage() {
                     key={ranker.userId}
                     className={cn(
                       'relative overflow-hidden rounded-2xl border-2 transition-all hover:shadow-xl flex flex-col',
-                      `bg-gradient-to-b ${cardGradient}`,
+                      `bg-linear-to-b ${cardGradient}`,
                       isRank1 ? 'md:-translate-y-8 z-10 shadow-2xl' : 'opacity-90 hover:opacity-100'
                     )}
                   >

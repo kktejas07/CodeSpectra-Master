@@ -258,7 +258,7 @@ export default function HackathonDetailPage({
         </Link>
       </div>
       <header className="relative overflow-hidden rounded-3xl border border-border/40 bg-card/40 p-8 shadow-sm backdrop-blur-xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-br from-primary/10 via-transparent to-transparent pointer-events-none" />
         <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
           <div className="space-y-3">
             <div className="flex flex-wrap items-center gap-3">
@@ -274,7 +274,7 @@ export default function HackathonDetailPage({
                     <HelpCircle className="h-5 w-5 text-muted-foreground hover:text-foreground cursor-help transition-colors ml-1" />
                   </TooltipTrigger>
                   <TooltipContent side="right" className="border-border/50 bg-background/95 backdrop-blur-xl shadow-xl p-3">
-                    <p className="text-sm max-w-[280px] font-medium leading-relaxed">
+                    <p className="text-sm max-w-70 font-medium leading-relaxed">
                       <span className="font-semibold text-foreground">Slug:</span> /{event.slug}<br/>
                       <span className="font-semibold text-foreground">Capacity:</span> {event.num_teams} teams<br/>
                       <span className="font-semibold text-foreground">Team Size:</span> max {event.max_per_team}<br/>
@@ -341,7 +341,7 @@ export default function HackathonDetailPage({
 
       <Card className="p-6 lg:p-8 border-border/40 bg-card/40 backdrop-blur-xl shadow-sm space-y-5 rounded-3xl">
         <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Judges</h2>
-        <div className="flex flex-wrap gap-2 min-h-[48px] p-3 rounded-xl bg-background/50 border border-border/30 shadow-inner">
+        <div className="flex flex-wrap gap-2 min-h-12 p-3 rounded-xl bg-background/50 border border-border/30 shadow-inner">
           {judgeIds.length === 0 && (
             <p className="text-sm text-muted-foreground self-center px-2 font-medium">No judges assigned.</p>
           )}
@@ -432,7 +432,7 @@ export default function HackathonDetailPage({
                         {t.members.map((m) => m.name).join(', ')}
                       </p>
                     </div>
-                    <Badge variant="default" className="flex-shrink-0 gap-1.5 px-3 py-1.5 shadow-md bg-gradient-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl">
+                    <Badge variant="default" className="shrink-0 gap-1.5 px-3 py-1.5 shadow-md bg-linear-to-r from-primary to-primary/80 hover:from-primary/90 hover:to-primary/70 rounded-xl">
                       <Trophy className="h-3.5 w-3.5" /> <span className="font-extrabold text-sm">{t.xp} XP</span> <span className="opacity-80 ml-1 text-xs">Lv {t.level}</span>
                     </Badge>
                   </div>
@@ -545,7 +545,7 @@ export default function HackathonDetailPage({
 
       {/* Results Management */}
       <Card className="overflow-hidden rounded-3xl border-primary/30 bg-primary/5 relative shadow-sm mt-8">
-        <div className="absolute top-0 left-0 w-1.5 h-full bg-gradient-to-b from-primary to-primary/50" />
+        <div className="absolute top-0 left-0 w-1.5 h-full bg-linear-to-b from-primary to-primary/50" />
         <div className="p-8 md:p-10 flex flex-col md:flex-row md:items-center justify-between gap-8">
           <div className="space-y-3 max-w-2xl">
             <h2 className="flex items-center gap-2.5 text-xl font-extrabold text-foreground tracking-tight">
@@ -558,7 +558,7 @@ export default function HackathonDetailPage({
             </p>
           </div>
           
-          <div className="flex-shrink-0">
+          <div className="shrink-0">
             {event.results_released ? (
               <Badge variant="outline" className="gap-2.5 px-5 py-2.5 text-sm font-bold border-green-500/30 text-green-600 dark:text-green-400 bg-green-500/10 rounded-xl shadow-sm">
                 <CheckCircle className="h-4 w-4" /> Results Released

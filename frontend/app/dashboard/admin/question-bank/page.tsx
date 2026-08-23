@@ -284,7 +284,7 @@ export default function QuestionBankPage() {
           </SelectContent>
         </Select>
         <Select value={degreeFilter || 'all'} onValueChange={v => { setDegreeFilter(v === 'all' ? '' : v); setPage(1) }}>
-          <SelectTrigger className="h-9 w-[140px] text-sm"><SelectValue placeholder="All degrees" /></SelectTrigger>
+          <SelectTrigger className="h-9 w-35 text-sm"><SelectValue placeholder="All degrees" /></SelectTrigger>
           <SelectContent>
             <SelectItem value="all">All degrees</SelectItem>
             {DEGREE_TYPES.map(d => <SelectItem key={d.id} value={d.id}>{d.label}</SelectItem>)}
@@ -327,7 +327,7 @@ export default function QuestionBankPage() {
         </Select>
         <Input
           placeholder="Search questions, subjects, tags..."
-          className="h-9 flex-1 min-w-[200px] max-w-sm text-sm"
+          className="h-9 flex-1 min-w-50 max-w-sm text-sm"
           value={search}
           onChange={e => { setSearch(e.target.value); setPage(1) }}
         />
@@ -368,7 +368,7 @@ export default function QuestionBankPage() {
                   </td>
                   <td className="py-3 px-4">{r.branch ? <Badge variant="outline">{branchLabel(r.branch)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
                   <td className="py-3 px-4 text-xs">{r.level ? <Badge variant="outline">{levelLabel(r.level)}</Badge> : <span className="text-muted-foreground text-xs">—</span>}</td>
-                  <td className="py-3 px-4 max-w-[140px] truncate text-xs">{r.subject || '—'}</td>
+                  <td className="py-3 px-4 max-w-35 truncate text-xs">{r.subject || '—'}</td>
                   <td className="py-3 px-4"><Badge className={diffColor(r.difficulty)}>{r.difficulty}</Badge></td>
                   <td className="py-3 px-4 text-xs">{r.type}</td>
                   <td className="py-3 px-4 text-xs truncate max-w-[130px]">{r.industry ? industryLabel(r.industry) : <span className="text-muted-foreground text-xs">—</span>}</td>

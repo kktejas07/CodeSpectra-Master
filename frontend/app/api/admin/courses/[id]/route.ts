@@ -61,8 +61,17 @@ export async function DELETE(request: NextRequest, { params }: { params: Promise
   const { id } = await params
   try {
     const db = await getMongoDb()
+    
+    // Lazy import so POST/GET path does not load Remotion/worker deps.
+    const { clearCourseVideos } = await import('@/lib/courses/process-job')
+    await clearCourseVideos(id)
+    
     const result = await db.collection('courses').deleteOne({ id })
     
+    await db.collection('generation_jobs').deleteMany({ courseId: id })
+    await db.collection('course_progress').deleteMany({ courseId: id })
+    await db.collection('course_enrollments').deleteMany({ courseId: id })
+
     if (result.deletedCount === 0) {
       return NextResponse.json({ error: 'Course not found' }, { status: 404 })
     }

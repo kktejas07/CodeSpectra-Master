@@ -155,7 +155,7 @@ export function UserManagementTable({
           </SelectContent>
         </Select>
         <Select value={statusFilter} onValueChange={setStatusFilter}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-35">
             <SelectValue placeholder="All Status" />
           </SelectTrigger>
           <SelectContent>
@@ -328,7 +328,7 @@ export function UserManagementTable({
               </Button>
             </div>
             <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
-              <SelectTrigger className="h-8 w-[100px] text-xs">
+              <SelectTrigger className="h-8 w-25 text-xs">
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>

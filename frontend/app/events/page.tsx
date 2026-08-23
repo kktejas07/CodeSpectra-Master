@@ -104,7 +104,7 @@ export default async function PublicEventsPage() {
     <PublicPageWrapper>
       {/* Hero */}
       <div className="relative overflow-hidden border-b border-border/40">
-        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
+        <div className="absolute inset-0 bg-linear-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
         <div className="relative max-w-5xl mx-auto px-6 py-16 text-center">
           <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary mb-6">
             <CalendarDays className="h-3 w-3" />

@@ -68,7 +68,7 @@ export default function AchievementsPage() {
                 <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p className="text-xs max-w-[250px]">Showcase your platform achievements and earned skill badges.</p>
+                <p className="text-xs max-w-62.5">Showcase your platform achievements and earned skill badges.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

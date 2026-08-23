@@ -767,7 +767,7 @@ export default function Security() {
                       <Input
                         type="number"
                         min={0}
-                        className="sm:max-w-[120px]"
+                        className="sm:max-w-30"
                         placeholder="0"
                         defaultValue={String(cur)}
                         onChange={e => setConcurrentLimitDraft(e.target.value)}

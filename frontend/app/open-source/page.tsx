@@ -91,7 +91,7 @@ function Section({ icon: Icon, title, subtitle, items, testid }: {
 export default function OpenSourcePage() {
   return (
     <PublicPageWrapper>
-      <main className="min-h-screen bg-gradient-to-br from-background via-background to-primary/5 py-12 px-4" data-testid="open-source-page">
+      <main className="min-h-screen bg-linear-to-br from-background via-background to-primary/5 py-12 px-4" data-testid="open-source-page">
         <div className="max-w-4xl mx-auto space-y-6">
           <header className="text-center space-y-3 mb-8">
             <Badge variant="outline" className="border-emerald-500/40 text-emerald-500">100% Open Source</Badge>

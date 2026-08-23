@@ -305,7 +305,7 @@ export default function AiInventoryPage() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-[250px]">
+                  <p className="text-xs max-w-62.5">
                     Superadmin control plane: view auto-discovered AI assets, toggle features on/off, add custom endpoints, and review dependency vulnerabilities.
                   </p>
                 </TooltipContent>
@@ -428,7 +428,7 @@ export default function AiInventoryPage() {
               )}
             </Card>
 
-            <Card className="overflow-hidden flex flex-col min-h-[500px]">
+            <Card className="overflow-hidden flex flex-col min-h-125">
               <div className="border-b border-border px-4 py-3 bg-muted/20 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                 <div className="flex items-center gap-2">
                   <span className="font-semibold text-sm">

@@ -215,7 +215,7 @@ export default function InterviewPrepPage() {
                   ))}
                 </div>
               </div>
-              <div className="flex-1 min-w-[200px]">
+              <div className="flex-1 min-w-50">
                 <Label className="text-xs">Search</Label>
                 <Input
                   placeholder="Filter questions..."

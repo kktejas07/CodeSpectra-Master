@@ -972,7 +972,7 @@ export default function AdminCodeathonsPage() {
                   size="sm"
                   onClick={() => void generateAiProblem(setProblemsList)}
                   disabled={generatingAi}
-                  className="h-8 px-4 text-xs gap-1.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-xs"
+                  className="h-8 px-4 text-xs gap-1.5 bg-linear-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 text-white font-semibold shadow-xs"
                 >
                   {generatingAi ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Sparkles className="h-3.5 w-3.5" />}
                   Synthesize Problem via AI
@@ -1145,7 +1145,7 @@ export default function AdminCodeathonsPage() {
       {/* Header Banner */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-gradient-to-br from-emerald-500/20 via-teal-500/15 to-cyan-500/10 border border-emerald-500/30 shadow-sm">
+          <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-linear-to-br from-emerald-500/20 via-teal-500/15 to-cyan-500/10 border border-emerald-500/30 shadow-sm">
             <Trophy className="h-6 w-6 text-emerald-400" />
           </div>
           <div>
@@ -1523,7 +1523,7 @@ export default function AdminCodeathonsPage() {
                         <tr key={s.id} className="hover:bg-muted/20 transition-colors">
                           <td className="p-3">
                             <span className="font-bold text-foreground block">{s.userName}</span>
-                            <span className="text-[10px] text-muted-foreground block truncate max-w-[140px]">{s.userEmail}</span>
+                            <span className="text-[10px] text-muted-foreground block truncate max-w-35">{s.userEmail}</span>
                           </td>
                           <td className="p-3">
                             <span className="font-semibold text-foreground">{s.problemTitle}</span>

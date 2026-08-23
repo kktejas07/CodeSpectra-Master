@@ -61,7 +61,7 @@ export default function ChallengesPage() {
                 <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p className="text-xs max-w-[250px]">Practice coding, system design, and behavioral interviews</p>
+                <p className="text-xs max-w-62.5">Practice coding, system design, and behavioral interviews</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

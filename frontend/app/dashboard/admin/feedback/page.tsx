@@ -178,7 +178,7 @@ export default function AdminFeedbackPage() {
                     <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs max-w-[250px]">View and manage user feedback, bug reports, and complaints.</p>
+                    <p className="text-xs max-w-62.5">View and manage user feedback, bug reports, and complaints.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

@@ -123,17 +123,17 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
   return (
     <div className="space-y-6">
       <div
-        className="mx-auto w-full max-w-[540px] cursor-pointer"
+        className="mx-auto w-full max-w-135 cursor-pointer"
         style={{ perspective: '1000px' }}
         onClick={() => setFlipped(!flipped)}
       >
         <div
-          className="relative h-[340px] w-full transition-transform duration-[600ms]"
+          className="relative h-85 w-full transition-transform duration-600"
           style={{ transformStyle: 'preserve-3d', transform: flipped ? 'rotateY(180deg)' : 'rotateY(0deg)' }}
         >
           {/* Front face */}
           <div
-            className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-800 p-[1px]"
+            className="absolute inset-0 rounded-2xl bg-linear-to-br from-emerald-400 via-emerald-500 to-emerald-800 p-px"
             style={{ backfaceVisibility: 'hidden' }}
           >
             <div className="flex h-full flex-col rounded-2xl bg-white/12 p-5 backdrop-blur-sm" style={{ border: '1px solid rgba(255,255,255,0.2)' }}>
@@ -181,7 +181,7 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
 
           {/* Back face */}
           <div
-            className="absolute inset-0 rounded-2xl bg-gradient-to-br from-emerald-400 via-emerald-500 to-emerald-800 p-[1px]"
+            className="absolute inset-0 rounded-2xl bg-linear-to-br from-emerald-400 via-emerald-500 to-emerald-800 p-px"
             style={{ backfaceVisibility: 'hidden', transform: 'rotateY(180deg)' }}
           >
             <div className="flex h-full flex-col rounded-2xl bg-white/12 p-5 backdrop-blur-sm" style={{ border: '1px solid rgba(255,255,255,0.2)' }}>
@@ -216,13 +216,13 @@ export function DigitalIdCard({ name, email, role, id, issuedAt, expiresAt, kycV
                 </div>
                 <div className="flex flex-col items-center gap-2 shrink-0">
                   {qrDataUrl ? (
-                    <div className="h-[100px] w-[100px] rounded-lg bg-white p-1">
+                    <div className="h-25 w-25 rounded-lg bg-white p-1">
                       {/* eslint-disable-next-line @next/next/no-img-element */}
                       <img src={qrDataUrl} alt="QR" className="h-full w-full" />
                     </div>
                   ) : (
-                    <div className="flex h-[100px] w-[100px] items-center justify-center rounded-lg bg-white p-1">
-                      <div className="flex h-full w-full items-center justify-center bg-gradient-to-br from-emerald-100 to-emerald-200 text-center text-[10px] font-bold text-emerald-800">
+                    <div className="flex h-25 w-25 items-center justify-center rounded-lg bg-white p-1">
+                      <div className="flex h-full w-full items-center justify-center bg-linear-to-br from-emerald-100 to-emerald-200 text-center text-[10px] font-bold text-emerald-800">
                         {initials}
                       </div>
                     </div>

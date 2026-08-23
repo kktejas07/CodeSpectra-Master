@@ -279,7 +279,7 @@ export default function CourseGeneratorPage() {
     setConfirmMessage(`Delete "${title}"? This action cannot be undone. All videos, quizzes, and progress will be permanently removed.`)
     setConfirmAction(() => async () => {
       try {
-        await csrfFetch(`/api/admin/courses/generate-curriculum?courseId=${courseId}`, {
+        await csrfFetch(`/api/admin/courses/${courseId}`, {
           method: 'DELETE',
           credentials: 'include',
         })

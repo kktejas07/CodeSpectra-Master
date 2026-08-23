@@ -142,7 +142,7 @@ export default function AdminCoursesPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3">
-          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-gradient-to-br from-indigo-500/20 via-purple-500/15 to-pink-500/10 border border-indigo-500/20 shadow-sm">
+          <div className="flex h-11 w-11 items-center justify-center rounded-xl bg-linear-to-br from-indigo-500/20 via-purple-500/15 to-pink-500/10 border border-indigo-500/20 shadow-sm">
             <BookOpen className="h-6 w-6 text-indigo-500" />
           </div>
           <div>

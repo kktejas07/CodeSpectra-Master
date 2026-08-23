@@ -160,7 +160,7 @@ export function SecurityHotspots({
               {selectedId === hotspot.id && (
                 <div className="space-y-3 pt-3 border-t border-border">
                   <div className="bg-background rounded-lg p-4 font-mono text-sm">
-                    <pre className="whitespace-pre-wrap break-words text-foreground/70">{hotspot.codeSnippet}</pre>
+                    <pre className="whitespace-pre-wrap wrap-break-word text-foreground/70">{hotspot.codeSnippet}</pre>
                   </div>
 
                   {/* Actions */}

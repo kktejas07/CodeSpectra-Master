@@ -10,16 +10,16 @@ const buttonVariants = cva(
     variants: {
       variant: {
         default:
-          'bg-gradient-to-r from-[#00c573] via-[#10b981] to-[#3ecf8e] text-slate-950 hover:brightness-110 shadow-md shadow-[#00c573]/20 hover:shadow-lg hover:shadow-[#00c573]/35 active:scale-[0.98] border border-[#00c573]/40 font-bold',
+          'bg-linear-to-r from-mint-pulse via-[#10b981] to-[#3ecf8e] text-slate-950 hover:brightness-110 shadow-md shadow-mint-pulse/20 hover:shadow-lg hover:shadow-mint-pulse/35 active:scale-[0.98] border border-mint-pulse/40 font-bold',
         destructive:
-          'bg-gradient-to-r from-red-600 to-rose-600 text-white hover:brightness-110 shadow-md shadow-red-950/30 active:scale-[0.98]',
+          'bg-linear-to-r from-red-600 to-rose-600 text-white hover:brightness-110 shadow-md shadow-red-950/30 active:scale-[0.98]',
         outline:
           'border border-slate-700/80 dark:border-slate-800 bg-background/60 backdrop-blur-xs hover:bg-emerald-950/30 hover:border-emerald-500/40 text-foreground hover:text-white shadow-xs active:scale-[0.98]',
         secondary:
           'bg-slate-900/80 text-emerald-300 hover:bg-slate-800 border border-emerald-500/30 hover:border-emerald-400/50 shadow-xs active:scale-[0.98]',
         ghost:
           'hover:bg-emerald-950/30 text-foreground hover:text-emerald-300 active:scale-[0.98]',
-        link: 'text-[#00c573] dark:text-[#3ecf8e] underline-offset-4 hover:underline',
+        link: 'text-mint-pulse dark:text-[#3ecf8e] underline-offset-4 hover:underline',
       },
       size: {
         default: 'h-9 px-4 py-2 has-[>svg]:px-3',

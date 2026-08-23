@@ -310,7 +310,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ slug
             <div className="space-y-1 max-h-64 overflow-y-auto">
               {activity.map((evt, i) => (
                 <div key={evt.id} className="flex items-center gap-3 text-xs py-1.5 border-b border-border/50 last:border-0">
-                  <span className="w-2 h-2 rounded-full bg-primary flex-shrink-0" />
+                  <span className="w-2 h-2 rounded-full bg-primary shrink-0" />
                   <span className="text-muted-foreground flex-1">{activityLabels[evt.type] || evt.type}</span>
                   {evt.problem_slug && <Badge variant="outline" className="text-[10px]">{evt.problem_slug}</Badge>}
                   <span className="text-muted-foreground font-mono text-[10px]">

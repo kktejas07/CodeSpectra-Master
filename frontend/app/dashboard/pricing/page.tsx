@@ -147,7 +147,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
         {plans.map(plan => {
           const isPro = plan.plan === 'pro'
           return (
-            <Card key={plan.plan} className={`relative p-6 bg-gradient-to-b ${PLAN_COLORS[plan.plan] || ''} ${isPro ? 'ring-2 ring-primary scale-105' : ''}`}>
+            <Card key={plan.plan} className={`relative p-6 bg-linear-to-b ${PLAN_COLORS[plan.plan] || ''} ${isPro ? 'ring-2 ring-primary scale-105' : ''}`}>
               {isPro && <Badge className="absolute -top-3 left-1/2 -translate-x-1/2 bg-primary">Most Popular</Badge>}
               <div className="text-center mb-6">
                 <h2 className="text-xl font-bold text-foreground">{plan.name}</h2>

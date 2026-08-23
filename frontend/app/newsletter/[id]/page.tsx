@@ -101,13 +101,13 @@ export default async function NewsletterPage({ params }: { params: Promise<{ id:
           </article>
           
           {campaign.hero_image && (
-            <aside className="w-full lg:w-[400px] xl:w-[500px] shrink-0">
+            <aside className="w-full lg:w-100 xl:w-125 shrink-0">
               <div className="sticky top-24 rounded-2xl border border-border/50 bg-muted/20 p-2">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={campaign.hero_image}
                   alt={campaign.subject}
-                  className="max-h-[600px] w-full rounded-xl object-contain shadow-sm"
+                  className="max-h-150 w-full rounded-xl object-contain shadow-sm"
                 />
               </div>
             </aside>

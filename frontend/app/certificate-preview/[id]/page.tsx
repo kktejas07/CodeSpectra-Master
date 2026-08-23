@@ -83,7 +83,7 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
 
         {/* The Certificate Itself */}
         <div className="w-full max-w-4xl relative group">
-          <div className="absolute -inset-1 bg-gradient-to-r from-blue-500 to-purple-500 rounded-[22px] blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200" />
+          <div className="absolute -inset-1 bg-linear-to-r from-blue-500 to-purple-500 rounded-[22px] blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200" />
           
           <Card className="relative bg-white dark:bg-slate-950 overflow-hidden border-2 border-blue-500 rounded-[20px] shadow-2xl p-0 aspect-[1.414/1] max-h-[800px] flex flex-col justify-center items-center text-center">
             
