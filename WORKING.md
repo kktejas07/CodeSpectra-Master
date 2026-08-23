@@ -6,7 +6,7 @@
 
 ## Current Claims
 
-| opencode (this session, BLOG-COVERS+EBOOK-UI) | (1) /dashboard/admin/blog: signals→blog posts get static covers only — wire AI image generation from news content; (2) /dashboard/admin/resources + public ebook page: Unstop-style visual redesign, generated 3D-style covers, rich formatting instead of plain text. | TBD (exploring), WORKING.md | IN PROGRESS | 2026-08-22 |
+| opencode (this session, BLOG-COVERS+EBOOK-UI) | DONE — commit 17b9c22. lib/ai-image.ts (context-built prompts → OpenAI images or keyless Pollinations/flux, warm-verified); signals-ingest auto-generates per-draft covers; approve carries cover into post; blog admin thumbnails + AI-cover regen; ebooks coverImageUrl E2E (create/cron/PATCH regen) + 3D card art + reader hero. tsc clean (except other session's feedback WIP), 112 tests pass. | lib/ai-image.ts, signals ingest+admin+queue pages, blog admin page + ai-cover route, ebooks db/API/cron/card/admin/hub/reader | DONE | 2026-08-22 |
 
 | opencode (this session, CSRF-SWEEP+PAYMENTS+AUDIT-FIXES) | DONE — commit 9985822. csrfFetch self-heal, cad proxy route, PhonePe callback state-trust bypass closed + CSRF-exempt, webhook idempotency, Razorpay key from Mongo, Stripe detach IDOR, seed-dev prod-block, collab ceiling note. 112 tests pass. | WORKING.md | DONE | 2026-08-22 |
 

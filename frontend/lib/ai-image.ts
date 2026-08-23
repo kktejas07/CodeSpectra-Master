@@ -18,10 +18,10 @@ export function buildNewsCoverPrompt(opts: {
   const cat = (opts.category || '').replace(/[_-]/g, ' ')
   const topic = [opts.title, opts.excerpt?.slice(0, 160)].filter(Boolean).join(' — ')
   return (
-    `Editorial newsroom cover art about "${topic}"` +
+    `High-quality editorial photograph representing "${topic}"` +
     (cat ? `, ${cat} theme` : '') +
-    `. Modern flat-3D illustration style, bold geometric shapes, tech-forward aesthetic, ` +
-    `vibrant teal and slate color palette, dramatic soft lighting, high detail, no text, no words, no letters`
+    `. Award-winning photojournalism, cinematic lighting, realistic, 8k resolution, highly detailed, ` +
+    `professional color grading, clean composition, no text, no words, no letters`
   )
 }
 

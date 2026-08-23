@@ -5,7 +5,14 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Radio, Check, X, RefreshCw, ExternalLink } from 'lucide-react'
+import { Loader2, Radio, Check, X, RefreshCw, ExternalLink, Eye } from 'lucide-react'
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from '@/components/ui/dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -33,6 +40,7 @@ export default function AdminSignalsPage() {
   const [items, setItems] = useState<Draft[]>([])
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
+  const [previewDraft, setPreviewDraft] = useState<Draft | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -189,6 +197,14 @@ export default function AdminSignalsPage() {
                   <div className="flex gap-2">
                     <Button
                       size="sm"
+                      variant="outline"
+                      disabled={!!busy}
+                      onClick={() => setPreviewDraft(d)}
+                    >
+                      <Eye className="mr-1 h-3.5 w-3.5" /> Preview
+                    </Button>
+                    <Button
+                      size="sm"
                       disabled={!!busy}
                       onClick={() => void run('approve', d.id)}
                     >
@@ -209,6 +225,27 @@ export default function AdminSignalsPage() {
           ))}
         </div>
       )}
+
+      <Dialog open={!!previewDraft} onOpenChange={(open) => !open && setPreviewDraft(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>{previewDraft?.title}</DialogTitle>
+            <DialogDescription>
+              {previewDraft?.category} · {previewDraft?.source_feed}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="mt-4 text-sm space-y-4">
+            {previewDraft?.body ? (
+              <div
+                className="prose prose-sm dark:prose-invert max-w-none"
+                dangerouslySetInnerHTML={{ __html: previewDraft.body }}
+              />
+            ) : (
+              <p className="text-muted-foreground italic">No body content generated.</p>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }
