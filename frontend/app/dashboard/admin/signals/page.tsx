@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Radio, Check, X, RefreshCw, ExternalLink, Eye } from 'lucide-react'
+import { Loader2, Radio, Check, X, RefreshCw, ExternalLink, Eye, Trash2, Undo } from 'lucide-react'
 import {
   Dialog,
   DialogContent,
@@ -61,7 +61,7 @@ export default function AdminSignalsPage() {
 
   if (!gate.ready) return null
 
-  const run = async (action: 'approve' | 'reject' | 'ingest', id?: string) => {
+  const run = async (action: 'approve' | 'reject' | 'ingest' | 'unpublish' | 'delete', id?: string) => {
     setBusy(action + (id || ''))
     try {
       const res = await csrfFetch('/api/admin/signals', {
@@ -81,6 +81,10 @@ export default function AdminSignalsPage() {
         })
       } else if (action === 'approve') {
         addToast({ type: 'success', title: 'Published to Newsroom' })
+      } else if (action === 'unpublish') {
+        addToast({ type: 'success', title: 'Unpublished' })
+      } else if (action === 'delete') {
+        addToast({ type: 'success', title: 'Deleted' })
       } else {
         addToast({ type: 'success', title: 'Rejected' })
       }
@@ -193,7 +197,7 @@ export default function AdminSignalsPage() {
                     ) : null}
                   </p>
                 </div>
-                {d.status === 'pending' && (
+                {d.status === 'pending' ? (
                   <div className="flex gap-2">
                     <Button
                       size="sm"
@@ -217,6 +221,39 @@ export default function AdminSignalsPage() {
                       onClick={() => void run('reject', d.id)}
                     >
                       <X className="mr-1 h-3.5 w-3.5" /> Reject
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={!!busy}
+                      onClick={() => {
+                        if (confirm('Delete this signal?')) void run('delete', d.id)
+                      }}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
+                    </Button>
+                  </div>
+                ) : (
+                  <div className="flex gap-2">
+                    {d.status === 'published' && (
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!!busy}
+                        onClick={() => void run('unpublish', d.id)}
+                      >
+                        <Undo className="mr-1 h-3.5 w-3.5" /> Unpublish
+                      </Button>
+                    )}
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      disabled={!!busy}
+                      onClick={() => {
+                        if (confirm('Delete this signal entirely?')) void run('delete', d.id)
+                      }}
+                    >
+                      <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
                     </Button>
                   </div>
                 )}

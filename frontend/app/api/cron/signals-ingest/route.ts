@@ -9,9 +9,9 @@ import { NextRequest, NextResponse } from 'next/server'
 import { SIGNAL_FEEDS } from '@/lib/signals/feeds'
 import { fetchFeedItems } from '@/lib/signals/rss'
 import { rewriteSignal } from '@/lib/signals/rewrite'
+import { scrapeOgData } from '@/lib/signals/og-scraper'
 import { newSignalId, signalDrafts, type SignalDraftDoc } from '@/lib/db/signal-drafts'
 import { nowIso } from '@/lib/db/blog-posts'
-import { buildNewsCoverPrompt, generateCoverImage } from '@/lib/ai-image'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -48,9 +48,14 @@ export async function POST(req: NextRequest) {
           continue
         }
 
+        // Scrape the actual link for real context (useful for HN feeds that just return URLs)
+        const ogData = await scrapeOgData(item.link)
+        const summaryContext = ogData.description || ogData.title || item.summary
+        const articleTitle = ogData.title || item.title
+
         const rewritten = await rewriteSignal({
-          title: item.title,
-          summary: item.summary,
+          title: articleTitle,
+          summary: summaryContext,
           sourceUrl: item.link,
           category: feed.category,
         })
@@ -76,14 +81,9 @@ export async function POST(req: NextRequest) {
           created_at: now,
           updated_at: now,
         }
-        // Cover art from the news itself — best effort, never blocks the draft.
-        try {
-          const cover = await generateCoverImage(
-            buildNewsCoverPrompt({ title: doc.title, excerpt: doc.excerpt, category: feed.category }),
-          )
-          if (cover) doc.cover_image = cover
-        } catch {
-          /* SVG fallback kicks in at render time */
+        // Use publisher's og:image to avoid DMCA/context issues. NO AI generated images allowed per user request.
+        if (ogData.image) {
+          doc.cover_image = ogData.image
         }
         await drafts.insertOne(doc)
         created.push(doc.id)

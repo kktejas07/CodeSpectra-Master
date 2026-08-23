@@ -142,6 +142,8 @@ Structure HTML exactly:
 <ul><li><a href="URL">label</a></li></ul>
 Voice rules (sound human):
 - Short and medium sentences. No corporate fluff.
+- Write in a deeply human, conversational tone. Do not sound like an AI.
+- MUST create a completely unique, catchy title that is different from the seed title. Do NOT copy the seed title.
 - Ban: "delve", "landscape", "unlock", "in today's rapidly", "moreover", "furthermore", "it is important to note".
 - One concrete skill or tool name in the practice section.
 - One direct line to the reader ("If you're in ECE…").
@@ -177,8 +179,9 @@ async function humanize(args: {
   excerpt: string
   body: string
 }): Promise<{ title: string; excerpt: string; body: string }> {
-  const systemMessage = `You are a sharp tech editor. Improve clarity and human rhythm. Do NOT add new facts or claims.
-Keep all <a href> source links.
+  const systemMessage = `You are a sharp tech editor. Improve clarity and human rhythm so it reads like a real human wrote it.
+Do NOT add new facts or claims. Keep all <a href> source links.
+Ensure the title is catchy, unique, and completely different from the original source title.
 Cut clichés. Prefer concrete verbs. Keep HTML structure.
 Return JSON: {"title":"...","excerpt":"...","body":"..."}`
 
