@@ -343,13 +343,13 @@ export function PublicPageWrapper({
           <div className="flex flex-col gap-6 border-t border-border/40 pt-10 sm:flex-row sm:items-center sm:justify-between">
             <p className="text-xs text-muted-foreground">© 2026 CodeSpectra. All rights reserved.</p>
             <div className="flex flex-wrap items-center gap-4 sm:justify-end">
-              <div className="flex items-center gap-2 rounded-full border border-border/50 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground">
+              <Link href="/status" className="flex items-center gap-2 rounded-full border border-border/50 bg-muted/40 px-3 py-1.5 text-xs text-muted-foreground hover:bg-muted/80 transition-colors">
                 <span className="relative flex h-2 w-2 shrink-0">
                   <span className="absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-40" />
                   <span className="relative inline-flex h-2 w-2 rounded-full bg-emerald-500" />
                 </span>
                 All systems operational
-              </div>
+              </Link>
               <div className="flex items-center gap-5">
                 <Link href="/docs" className="text-muted-foreground transition-colors duration-200 hover:text-foreground" aria-label="Documentation">
                   <Code2 className="h-5 w-5" />

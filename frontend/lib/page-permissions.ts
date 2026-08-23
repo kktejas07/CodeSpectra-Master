@@ -206,8 +206,8 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/agent',
 
   // Misc / Help
+  '/dashboard/feedback',
   '/dashboard/support',
-  '/dashboard/status',
 ]
 
 /**
@@ -337,8 +337,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/calendar': 'Calendar',
   '/dashboard/notifications/preferences': 'Notification Preferences',
   '/dashboard/support': 'Support',
+  '/dashboard/feedback': 'Platform Feedback',
   '/dashboard/referrals': 'Referrals',
-  '/dashboard/status': 'System Status',
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/events': 'Events',

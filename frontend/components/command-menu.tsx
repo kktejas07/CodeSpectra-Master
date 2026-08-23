@@ -94,7 +94,7 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
   '/dashboard/certifications': Award,
   '/dashboard/pricing': CreditCard,
   '/dashboard/settings/ai': Sparkles,
-  '/dashboard/status': MessageSquare,
+  '/dashboard/feedback': MessageSquare,
   '/dashboard/support': MessageSquare,
   '/dashboard/codeathons': Trophy,
   '/dashboard/challenges': CodeIcon,
