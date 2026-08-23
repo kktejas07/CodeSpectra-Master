@@ -6,6 +6,8 @@
 
 ## Current Claims
 
+| opencode (this session, BLOG-QUALITY+STATUS+NOTIFICATIONS) | DONE — Enhanced AI blog prompt for human-like quality + deterministic visual consistency (pollinations seeds); wired feedback and complaint routes to notifySuperAdmins; overhauled public /status page UI with metrics, recharts, and incident history component. tsc clean. | frontend/app/api/admin/blog/ai-write/route.ts, frontend/app/api/feedback/route.ts, frontend/app/status/page.tsx, WORKING.md | DONE | 2026-08-23 |
+
 | opencode (this session, BLOG-COVERS+EBOOK-UI) | DONE — commit 17b9c22. lib/ai-image.ts (context-built prompts → OpenAI images or keyless Pollinations/flux, warm-verified); signals-ingest auto-generates per-draft covers; approve carries cover into post; blog admin thumbnails + AI-cover regen; ebooks coverImageUrl E2E (create/cron/PATCH regen) + 3D card art + reader hero. tsc clean (except other session's feedback WIP), 112 tests pass. | lib/ai-image.ts, signals ingest+admin+queue pages, blog admin page + ai-cover route, ebooks db/API/cron/card/admin/hub/reader | DONE | 2026-08-22 |
 
 | opencode (this session, CSRF-SWEEP+PAYMENTS+AUDIT-FIXES) | DONE — commit 9985822. csrfFetch self-heal, cad proxy route, PhonePe callback state-trust bypass closed + CSRF-exempt, webhook idempotency, Razorpay key from Mongo, Stripe detach IDOR, seed-dev prod-block, collab ceiling note. 112 tests pass. | WORKING.md | DONE | 2026-08-22 |

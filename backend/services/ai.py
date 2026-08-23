@@ -239,7 +239,7 @@ async def handle_complete(request: Request, req: CompleteReq) -> dict[str, Any]:
             raise HTTPException(status_code=500, detail="AI service temporarily unavailable. Please try again.")
 
     raw = "".join(buf).strip()
-    if raw.startswith("API Error") or "Insufficient credits" in raw:
+    if "API Error" in raw or "Insufficient credits" in raw:
         raise HTTPException(status_code=402, detail=raw[:500])
     if req.response_format == "json":
         parsed = parse_json_response(raw)

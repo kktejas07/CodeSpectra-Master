@@ -35,31 +35,53 @@ Requirements:
 - Structure the post with an engaging introduction, deep-dive technical context, real-world examples, and a strong conclusion.
 - Use standard HTML tags (<h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>, <code>, <pre>).
 - Aim for a length of 800-1500 words of rich, detailed content.
-- Include 2-3 inline images to break up the text and illustrate concepts. For images, use the following format:
-  <img src="https://image.pollinations.ai/prompt/An%20isometric%203D%20illustration%20of%20[YOUR_URL_ENCODED_PROMPT]?width=800&height=400&nologo=true" alt="Description" class="my-4 rounded-lg border object-cover w-full" />
-  Make sure [YOUR_URL_ENCODED_PROMPT] is a highly descriptive prompt for a modern, clean, isometric 3D tech illustration relevant to the section.
+- Include 2-3 inline images to break up the text and illustrate concepts. For images, use the exact following format:
+  <img src="https://image.pollinations.ai/prompt/An%20isometric%203D%20illustration%20of%20[YOUR_URL_ENCODED_PROMPT],%20modern%20clean%20tech%20aesthetic,%20soft%20pastel%20colors?width=800&height=400&nologo=true&seed=[RANDOM_5_DIGIT_NUMBER]" alt="Description" class="my-6 rounded-xl border border-border object-cover w-full shadow-sm" />
+  Make sure [YOUR_URL_ENCODED_PROMPT] is a highly descriptive prompt relevant to the section. Generate a random 5-digit number for the [RANDOM_5_DIGIT_NUMBER] to ensure consistency.
 - Maintain a professional, insightful, and practical tone suited for software engineers and tech professionals.
 - Do NOT output any wrapper text like "Here is the post:", and DO NOT wrap the output in markdown \`\`\`html blocks. Just output raw HTML.
 `
 
-  try {
-    const res = await backendComplete({
-      systemMessage: 'You are an expert technical writer.',
-      userMessage: prompt,
-      // Long-form article generation — use the platform's reasoning tier.
-      modelRole: 'reasoning',
-    })
-    const aiText = res.ok ? res.text : undefined
+  const FALLBACK_PROVIDERS = [
+    { provider: 'groq', model: 'openai/gpt-oss-120b' },
+    { provider: 'gemini', model: 'gemini-2.0-flash' },
+    { provider: 'openai', model: 'gpt-4o-mini' },
+    { provider: 'openrouter', model: 'anthropic/claude-3.5-sonnet' },
+    { provider: 'opencode', model: 'deepseek-v4-flash-free' },
+  ]
 
-    if (!aiText) {
-      return NextResponse.json({ error: 'Generation failed — empty response' }, { status: 502 })
+  let lastError = ''
+  let html = ''
+
+  for (const p of FALLBACK_PROVIDERS) {
+    try {
+      const res = await backendComplete({
+        systemMessage: 'You are an expert technical writer.',
+        userMessage: prompt,
+        modelRole: 'reasoning',
+        providerOverride: p.provider,
+        modelOverride: p.model,
+      })
+      if (res.ok && res.text) {
+        html = res.text
+        break
+      } else {
+        lastError = res.text || 'Unknown API error'
+        console.warn(`[admin/blog/ai-write] failed with ${p.provider}:`, lastError)
+      }
+    } catch (e) {
+      lastError = e instanceof Error ? e.message : String(e)
+      console.warn(`[admin/blog/ai-write] failed with ${p.provider}:`, lastError)
     }
-
-    // The admin blog form body field is HTML (TipTap editor) and the prompt
-    // demands raw HTML output, so pass it through as-is.
-    return NextResponse.json({ ok: true, html: aiText })
-  } catch (e) {
-    console.error('[admin/blog/ai-write]', e)
-    return NextResponse.json({ error: 'Content generation failed' }, { status: 500 })
   }
+
+  if (!html) {
+    console.error('[admin/blog/ai-write] all providers failed. Last error:', lastError)
+    return NextResponse.json(
+      { error: `Content generation failed: ${lastError}` }, 
+      { status: 502 }
+    )
+  }
+
+  return NextResponse.json({ ok: true, html })
 }
