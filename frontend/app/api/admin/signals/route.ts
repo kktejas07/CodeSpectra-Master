@@ -75,7 +75,10 @@ export async function POST(req: NextRequest) {
       }
       await col.updateOne(
         { id },
-        { $set: { status: 'pending', blog_slug: null, updated_at: nowIso() } },
+        { 
+          $set: { status: 'pending', updated_at: nowIso() },
+          $unset: { blog_slug: '' }
+        },
       )
       return NextResponse.json({ ok: true, status: 'pending' })
     }
