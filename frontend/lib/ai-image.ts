@@ -18,10 +18,11 @@ export function buildNewsCoverPrompt(opts: {
   const cat = (opts.category || '').replace(/[_-]/g, ' ')
   const topic = [opts.title, opts.excerpt?.slice(0, 160)].filter(Boolean).join(' — ')
   return (
-    `High-quality editorial photograph representing "${topic}"` +
-    (cat ? `, ${cat} theme` : '') +
-    `. Award-winning photojournalism, cinematic lighting, realistic, 8k resolution, highly detailed, ` +
-    `professional color grading, clean composition, no text, no words, no letters`
+    `A high-quality, modern minimalist digital illustration representing "${topic}"` +
+    (cat ? ` in the context of ${cat}` : '') +
+    `. Professional tech startup blog aesthetic, clean vector art style, flat design elements, ` +
+    `vibrant but professional color palette, sleek gradients, uncluttered background, ` +
+    `highly detailed conceptual art, no text, no words, no letters, no logos`
   )
 }
 
