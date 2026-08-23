@@ -27,6 +27,15 @@ export async function POST(req: Request) {
       status: 'open',
     })
 
+    // Notify superadmins
+    const { notifySuperAdmins } = await import('@/lib/notifications')
+    await notifySuperAdmins({
+      type: 'system.feedback_received',
+      title: 'New Feedback Received',
+      message: `A user has submitted a new ${data.type}.`,
+      link: '/dashboard/admin/feedback',
+    })
+
     return NextResponse.json({ success: true, id })
   } catch (error: any) {
     console.error('Failed to submit feedback:', error)

@@ -6,6 +6,8 @@
 
 ## Current Claims
 
+| opencode (this session, BLOG-QUALITY+STATUS+NOTIFICATIONS) | DONE — Enhanced AI blog prompt for human-like quality + deterministic visual consistency (pollinations seeds); wired feedback and complaint routes to notifySuperAdmins; overhauled public /status page UI with metrics, recharts, and incident history component. tsc clean. | frontend/app/api/admin/blog/ai-write/route.ts, frontend/app/api/feedback/route.ts, frontend/app/status/page.tsx, WORKING.md | DONE | 2026-08-23 |
+
 | opencode (this session, BLOG-COVERS+EBOOK-UI) | DONE — commit 17b9c22. lib/ai-image.ts (context-built prompts → OpenAI images or keyless Pollinations/flux, warm-verified); signals-ingest auto-generates per-draft covers; approve carries cover into post; blog admin thumbnails + AI-cover regen; ebooks coverImageUrl E2E (create/cron/PATCH regen) + 3D card art + reader hero. tsc clean (except other session's feedback WIP), 112 tests pass. | lib/ai-image.ts, signals ingest+admin+queue pages, blog admin page + ai-cover route, ebooks db/API/cron/card/admin/hub/reader | DONE | 2026-08-22 |
 
 | opencode (this session, CSRF-SWEEP+PAYMENTS+AUDIT-FIXES) | DONE — commit 9985822. csrfFetch self-heal, cad proxy route, PhonePe callback state-trust bypass closed + CSRF-exempt, webhook idempotency, Razorpay key from Mongo, Stripe detach IDOR, seed-dev prod-block, collab ceiling note. 112 tests pass. | WORKING.md | DONE | 2026-08-22 |
@@ -155,3 +157,4 @@
 | 2026-08-22 | opencode (this session) | Claimed fix for feedback display (platform_feedback vs listing_reports) and new event notifications for feedback, course creation, and blog post publication. Status: COMPLETED. |
 | 2026-08-22 | opencode (this session) | Claimed status page UI revamp, moving from authenticated dashboard to public `/status` route, creating `/api/cron/status-check` to log to `status_logs` collection to persist data instead of mocking. Status: IN PROGRESS. |
 | 2026-08-23 | opencode (this session) | Fixed AI Draft generation in `RichTextEditor` by adding a useEffect to sync external value changes. Changed AI Blog image generation style to match courses (Isometric 3D) by updating `buildNewsCoverPrompt` and the inline image prompt in `ai-write/route.ts`. Status: COMPLETED. |
+| 2026-08-23 | opencode (this session) | Added "Edit" functionality to the Admin Blog Page list to allow modifying existing blog posts via `PATCH /api/blog/[slug]`. Status: COMPLETED. |
