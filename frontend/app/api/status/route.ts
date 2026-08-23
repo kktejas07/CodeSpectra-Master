@@ -9,6 +9,7 @@ type ComponentStatus = { name: string; status: 'operational' | 'degraded' | 'dow
 export async function GET() {
   const components: ComponentStatus[] = []
 
+  // Live Checks
   // MongoDB
   const mongoStart = Date.now()
   try {
@@ -58,9 +59,32 @@ export async function GET() {
   const allOperational = components.every((c) => c.status === 'operational')
   const overallStatus = allOperational ? 'operational' : components.some((c) => c.status === 'down') ? 'down' : 'degraded'
 
+  // Fetch Historical Data
+  let logs: any[] = []
+  try {
+    const db = await getMongoDb()
+    const ninetyDaysAgo = new Date(Date.now() - 90 * 24 * 60 * 60 * 1000).toISOString()
+    logs = await db.collection('status_logs').find({
+      timestamp: { $gte: ninetyDaysAgo }
+    }).sort({ timestamp: 1 }).toArray()
+  } catch (e) {
+    console.error('Failed to fetch historical status logs:', e)
+  }
+
+  // If there are no logs yet (new installation), we mock the history structure so the UI works
+  // We'll create a single log entry representing right now based on the live check
+  if (logs.length === 0) {
+    logs.push({
+      timestamp: new Date().toISOString(),
+      status: overallStatus,
+      components,
+    })
+  }
+
   return NextResponse.json({
     status: overallStatus,
     updated_at: new Date().toISOString(),
     components,
+    historical_logs: logs
   })
 }
