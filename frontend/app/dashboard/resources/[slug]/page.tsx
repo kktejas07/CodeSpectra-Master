@@ -16,6 +16,7 @@ type EbookDetail = {
   description?: string
   topic?: string
   readMinutes?: number
+  coverImageUrl?: string | null
   pages: EbookPage[]
   sourceNote?: string
 }
@@ -70,12 +71,43 @@ export default function EbookReaderPage() {
             <ArrowLeft className="mr-1 h-4 w-4" /> Resources
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold tracking-tight">{ebook.title}</h1>
-        {ebook.subtitle ? <p className="mt-1 text-sm text-muted-foreground">{ebook.subtitle}</p> : null}
-        <p className="mt-2 text-xs text-muted-foreground">
-          {ebook.topic || 'Guide'}
-          {ebook.readMinutes ? ` · ${ebook.readMinutes} min read` : ''}
-        </p>
+
+        {ebook.coverImageUrl ? (
+          <div className="relative overflow-hidden rounded-xl shadow-lg">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={ebook.coverImageUrl}
+              alt=""
+              className="h-56 w-full object-cover sm:h-72"
+            />
+            <div className="absolute inset-0 bg-linear-to-t from-black/85 via-black/35 to-transparent" />
+            <div className="absolute inset-x-0 bottom-0 p-5 text-white sm:p-7">
+              <p className="text-[11px] font-semibold uppercase tracking-[0.2em] text-white/80">
+                {ebook.topic || 'Guide'}
+              </p>
+              <h1 className="mt-1 text-2xl font-bold tracking-tight drop-shadow-sm sm:text-3xl">
+                {ebook.title}
+              </h1>
+              {ebook.subtitle ? (
+                <p className="mt-1 max-w-3xl text-sm text-white/85">{ebook.subtitle}</p>
+              ) : null}
+              <p className="mt-2 text-xs text-white/70">
+                {ebook.readMinutes ? `${ebook.readMinutes} min read` : ''}
+              </p>
+            </div>
+          </div>
+        ) : (
+          <>
+            <h1 className="text-2xl font-bold tracking-tight">{ebook.title}</h1>
+            {ebook.subtitle ? (
+              <p className="mt-1 text-sm text-muted-foreground">{ebook.subtitle}</p>
+            ) : null}
+            <p className="mt-2 text-xs text-muted-foreground">
+              {ebook.topic || 'Guide'}
+              {ebook.readMinutes ? ` · ${ebook.readMinutes} min read` : ''}
+            </p>
+          </>
+        )}
       </div>
 
       <FlipbookViewer pages={ebook.pages || []} />

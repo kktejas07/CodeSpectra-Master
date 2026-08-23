@@ -69,6 +69,7 @@ export default function ResourcesPage() {
             subtitle: e.subtitle ? String(e.subtitle) : undefined,
             topic: e.topic ? String(e.topic) : undefined,
             coverTheme: (e.coverTheme as EbookCardData['coverTheme']) || 'violet',
+            coverImageUrl: (e.coverImageUrl as string | undefined) || undefined,
             readMinutes: typeof e.readMinutes === 'number' ? e.readMinutes : 5,
             status: e.status ? String(e.status) : undefined,
             pageCount: typeof e.pageCount === 'number' ? e.pageCount : undefined,

@@ -10,6 +10,7 @@ import { ebooksCol } from '@/lib/db/ebooks'
 import { generateEbookDraft, topicForDay } from '@/lib/ebooks-generate'
 // topicForDay exported as topicForDay
 import { ensureEbookSeed } from '@/lib/ebooks-seed'
+import { buildEbookCoverPrompt, generateCoverImage } from '@/lib/ai-image'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -53,6 +54,17 @@ export async function POST(req: NextRequest) {
 
   const clash = await col.findOne({ slug: ebook.slug })
   if (clash) ebook.slug = `${ebook.slug}-${dayKey.replace(/-/g, '')}`
+
+  // Automatic AI cover art from the topic — best effort, never blocks the draft.
+  try {
+    const art = await generateCoverImage(
+      buildEbookCoverPrompt({ topic: ebook.topic, title: ebook.title }),
+      { width: 768, height: 1024 },
+    )
+    if (art) ebook.coverImageUrl = art
+  } catch {
+    /* keep gradient cover */
+  }
 
   await col.insertOne(ebook)
   return NextResponse.json({ ok: true, usedAi, slug: ebook.slug, topic, status: ebook.status })

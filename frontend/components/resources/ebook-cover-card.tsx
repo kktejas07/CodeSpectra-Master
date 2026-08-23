@@ -20,6 +20,7 @@ export type EbookCardData = {
   subtitle?: string
   topic?: string
   coverTheme?: EbookCoverTheme
+  coverImageUrl?: string | null
   readMinutes?: number
   status?: string
   pageCount?: number
@@ -51,6 +52,19 @@ export function EbookCoverCard({
           THEME[theme],
         )}
       >
+        {ebook.coverImageUrl ? (
+          <>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={ebook.coverImageUrl}
+              alt=""
+              loading="lazy"
+              className="absolute inset-0 h-full w-full object-cover transition-transform duration-500 group-hover:scale-[1.04]"
+            />
+            {/* Scrim keeps the title readable over the artwork */}
+            <div className="absolute inset-0 bg-linear-to-t from-black/75 via-black/25 to-transparent" />
+          </>
+        ) : null}
         <div className="absolute inset-y-0 left-0 w-2 bg-black/20" />
         <div className="absolute inset-0 bg-[radial-gradient(circle_at_20%_20%,rgba(255,255,255,0.25),transparent_45%)]" />
         <div className="relative flex h-full flex-col justify-between p-4 pl-5">
