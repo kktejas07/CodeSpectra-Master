@@ -37,7 +37,7 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = (await req.json().catch(() => ({}))) as {
-      action?: 'approve' | 'reject' | 'ingest'
+      action?: 'approve' | 'reject' | 'ingest' | 'unpublish' | 'delete'
       id?: string
     }
     const action = body.action || 'approve'
@@ -66,6 +66,27 @@ export async function POST(req: NextRequest) {
         { $set: { status: 'rejected', updated_at: nowIso() } },
       )
       return NextResponse.json({ ok: true, status: 'rejected' })
+    }
+
+    if (action === 'unpublish') {
+      if (draft.blog_slug) {
+        const posts = await blogPosts()
+        await posts.deleteOne({ slug: draft.blog_slug })
+      }
+      await col.updateOne(
+        { id },
+        { $set: { status: 'pending', blog_slug: null, updated_at: nowIso() } },
+      )
+      return NextResponse.json({ ok: true, status: 'pending' })
+    }
+
+    if (action === 'delete') {
+      if (draft.blog_slug) {
+        const posts = await blogPosts()
+        await posts.deleteOne({ slug: draft.blog_slug })
+      }
+      await col.deleteOne({ id })
+      return NextResponse.json({ ok: true, status: 'deleted' })
     }
 
     // approve → publish blog post
