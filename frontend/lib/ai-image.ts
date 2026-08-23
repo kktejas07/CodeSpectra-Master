@@ -20,7 +20,7 @@ export function buildNewsCoverPrompt(opts: {
   return (
     `Isometric 3D illustration representing "${topic}"` +
     (cat ? ` in the context of ${cat}` : '') +
-    `, floating glossy 3D objects, clean gradient studio background, soft shadows, vibrant modern colors, ` +
+    `, featuring a cute 3D tech mascot character, glowing technological symbols, floating glossy 3D objects, clean gradient studio background, soft shadows, vibrant modern colors, ` +
     `playful but professional tech blog aesthetic, high detail render, no text, no words, no letters, no logos`
   )
 }
@@ -28,7 +28,7 @@ export function buildNewsCoverPrompt(opts: {
 export function buildEbookCoverPrompt(opts: { topic?: string; title?: string }): string {
   const subject = opts.topic || opts.title || 'software engineering guide'
   return (
-    `Isometric 3D illustration representing "${subject}", floating glossy 3D objects, ` +
+    `Isometric 3D illustration representing "${subject}", featuring a cute 3D tech mascot character, glowing technological symbols, floating glossy 3D objects, ` +
     `clean gradient studio background, soft shadows, vibrant modern colors, playful but professional, ` +
     `high detail render, no text, no words, no letters`
   )
