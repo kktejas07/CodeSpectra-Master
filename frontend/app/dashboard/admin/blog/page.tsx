@@ -51,6 +51,7 @@ export default function AdminBlogPage() {
   const [authorName, setAuthorName] = useState('CodeSpectra Editorial')
   const [coverImage, setCoverImage] = useState('')
   const [aiSlug, setAiSlug] = useState<string | null>(null)
+  const [editingSlug, setEditingSlug] = useState<string | null>(null)
 
   /** Generate cover art — for an existing post (slug) or the create form (no slug). */
   const genCover = async (slug?: string) => {
@@ -125,15 +126,19 @@ export default function AdminBlogPage() {
 
   if (!gate.ready) return null
 
-  const create = async (publish: boolean) => {
+  const savePost = async (publish: boolean) => {
     if (!title.trim()) {
       addToast({ type: 'error', title: 'Title required' })
       return
     }
     setSaving(true)
     try {
-      const res = await csrfFetch('/api/blog', {
-        method: 'POST',
+      const isEdit = !!editingSlug
+      const url = isEdit ? `/api/blog/${encodeURIComponent(editingSlug)}` : '/api/blog'
+      const method = isEdit ? 'PATCH' : 'POST'
+
+      const res = await csrfFetch(url, {
+        method,
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           title,
@@ -146,9 +151,10 @@ export default function AdminBlogPage() {
         }),
       })
       const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Create failed')
+      if (!res.ok) throw new Error(data.error || 'Save failed')
       addToast({ type: 'success', title: publish ? 'Published' : 'Draft saved' })
       setShowForm(false)
+      setEditingSlug(null)
       setTitle('')
       setExcerpt('')
       setBody('')
@@ -159,6 +165,18 @@ export default function AdminBlogPage() {
     } finally {
       setSaving(false)
     }
+  }
+
+  const editPost = (p: Post) => {
+    setEditingSlug(p.slug)
+    setTitle(p.title || '')
+    setExcerpt(p.excerpt || '')
+    setBody(p.body || '')
+    setCategory((p.category as BlogCategoryId) || 'signals')
+    setAuthorName(p.author_name || 'CodeSpectra Editorial')
+    setCoverImage(p.cover_image || '')
+    setShowForm(true)
+    window.scrollTo({ top: 0, behavior: 'smooth' })
   }
 
   const remove = async (slug: string) => {
@@ -187,7 +205,14 @@ export default function AdminBlogPage() {
             . Prefer publishing newsletters here when they should live forever.
           </p>
         </div>
-        <Button onClick={() => setShowForm((v) => !v)}>
+        <Button onClick={() => {
+          setEditingSlug(null)
+          setTitle('')
+          setExcerpt('')
+          setBody('')
+          setCoverImage('')
+          setShowForm((v) => !v)
+        }}>
           <Plus className="mr-1 h-4 w-4" /> New post
         </Button>
       </div>
@@ -280,14 +305,21 @@ export default function AdminBlogPage() {
             </div>
           </div>
           <div className="flex flex-wrap gap-2">
-            <Button disabled={saving} onClick={() => void create(true)}>
+            <Button disabled={saving} onClick={() => void savePost(true)}>
               {saving ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : null}
-              Publish
+              {editingSlug ? 'Update & Publish' : 'Publish'}
             </Button>
-            <Button variant="outline" disabled={saving} onClick={() => void create(false)}>
+            <Button variant="outline" disabled={saving} onClick={() => void savePost(false)}>
               Save draft
             </Button>
-            <Button variant="ghost" onClick={() => setShowForm(false)}>
+            <Button variant="ghost" onClick={() => {
+              setShowForm(false)
+              setEditingSlug(null)
+              setTitle('')
+              setExcerpt('')
+              setBody('')
+              setCoverImage('')
+            }}>
               Cancel
             </Button>
           </div>
@@ -347,6 +379,9 @@ export default function AdminBlogPage() {
                   <Link href={`/blog/${p.slug}`} target="_blank">
                     <Eye className="mr-1 h-3.5 w-3.5" /> View
                   </Link>
+                </Button>
+                <Button variant="outline" size="sm" onClick={() => editPost(p)}>
+                  Edit
                 </Button>
                 <Button variant="ghost" size="sm" onClick={() => void remove(p.slug)}>
                   <Trash2 className="h-3.5 w-3.5 text-destructive" />
