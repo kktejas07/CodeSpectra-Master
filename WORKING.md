@@ -162,3 +162,4 @@
 | 2026-08-23 | opencode (this session) | Auto-fixed Tailwind v4 canonical classes and arbitrary spaced values across all TSX files in frontend using regex script. Status: COMPLETED. |
 | 2026-08-23 | opencode (this session) | Restored `max-w-7xl mx-auto` layout constraints on the Course Details page that were incorrectly removed by a recent "full-width dashboard pages" commit. Status: COMPLETED. |
 | 2026-08-23 | opencode (this session) | Added unpublish/delete actions to signals admin UI; added OpenGraph scraping to signals-ingest to fetch real publisher images and context for better summaries. Status: COMPLETED. |
+| 2026-08-23 | opencode (this session) | Enforced unique non-copied titles, strictly human-sounding text generation, and disabled AI image generation for Signals. Status: COMPLETED. |
