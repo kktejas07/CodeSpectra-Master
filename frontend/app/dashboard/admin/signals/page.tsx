@@ -12,10 +12,10 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
-} from '@/components/ui/dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 
 type Draft = {
   id: string
@@ -41,6 +41,7 @@ export default function AdminSignalsPage() {
   const [loading, setLoading] = useState(true)
   const [busy, setBusy] = useState<string | null>(null)
   const [previewDraft, setPreviewDraft] = useState<Draft | null>(null)
+  const [confirmAction, setConfirmAction] = useState<{ action: 'delete' | 'unpublish', id: string, message: string } | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -226,9 +227,7 @@ export default function AdminSignalsPage() {
                       size="sm"
                       variant="destructive"
                       disabled={!!busy}
-                      onClick={() => {
-                        if (confirm('Delete this signal?')) void run('delete', d.id)
-                      }}
+                      onClick={() => setConfirmAction({ action: 'delete', id: d.id, message: 'Delete this signal?' })}
                     >
                       <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
                     </Button>
@@ -240,7 +239,7 @@ export default function AdminSignalsPage() {
                         size="sm"
                         variant="outline"
                         disabled={!!busy}
-                        onClick={() => void run('unpublish', d.id)}
+                        onClick={() => setConfirmAction({ action: 'unpublish', id: d.id, message: 'Unpublish this signal?' })}
                       >
                         <Undo className="mr-1 h-3.5 w-3.5" /> Unpublish
                       </Button>
@@ -249,9 +248,7 @@ export default function AdminSignalsPage() {
                       size="sm"
                       variant="destructive"
                       disabled={!!busy}
-                      onClick={() => {
-                        if (confirm('Delete this signal entirely?')) void run('delete', d.id)
-                      }}
+                      onClick={() => setConfirmAction({ action: 'delete', id: d.id, message: 'Delete this signal entirely?' })}
                     >
                       <Trash2 className="mr-1 h-3.5 w-3.5" /> Delete
                     </Button>
@@ -283,6 +280,18 @@ export default function AdminSignalsPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <ConfirmDialog
+        open={!!confirmAction}
+        title="Confirm Action"
+        message={confirmAction?.message || ''}
+        confirmLabel="Confirm"
+        onConfirm={() => {
+          if (confirmAction) void run(confirmAction.action, confirmAction.id)
+          setConfirmAction(null)
+        }}
+        onCancel={() => setConfirmAction(null)}
+      />
     </div>
   )
 }
