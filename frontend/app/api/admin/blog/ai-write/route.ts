@@ -23,17 +23,21 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Title required' }, { status: 400 })
   }
 
-  const prompt = `You are an expert technical writer for the CodeSpectra blog.
-Write a professional, engaging blog post body in Markdown format based on the following:
+  const prompt = `You are a Senior Staff Engineer and expert technical writer for the CodeSpectra engineering blog.
+Your task is to write a highly detailed, professional, and deeply insightful blog post. We want this to read like a human-written, top-tier engineering article (like those from Stripe, Cloudflare, or Netflix engineering blogs). Do not use generic AI buzzwords. Be opinionated, use real-world context, and organize your thoughts meticulously.
 
 Title: ${body.title}
 Category: ${body.category || 'General'}
 Excerpt (optional guidance): ${body.excerpt || 'Write a comprehensive guide.'}
 
 Requirements:
-- Output ONLY valid, clean HTML for the body content. Do not include the title.
+- Output ONLY valid, clean HTML for the body content. Do not include the title (it's already on the page).
+- Structure the post with an engaging introduction, deep-dive technical context, real-world examples, and a strong conclusion.
 - Use standard HTML tags (<h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>, <code>, <pre>).
-- Aim for a length of 500-1000 words.
+- Aim for a length of 800-1500 words of rich, detailed content.
+- Include 2-3 inline images to break up the text and illustrate concepts. For images, use the following format:
+  <img src="https://image.pollinations.ai/prompt/A%20minimalist%20tech%20illustration%20of%20[YOUR_URL_ENCODED_PROMPT]?width=800&height=400&nologo=true" alt="Description" class="my-4 rounded-lg border object-cover w-full" />
+  Make sure [YOUR_URL_ENCODED_PROMPT] is a highly descriptive prompt for a modern, clean, vector-style tech illustration relevant to the section.
 - Maintain a professional, insightful, and practical tone suited for software engineers and tech professionals.
 - Do NOT output any wrapper text like "Here is the post:", and DO NOT wrap the output in markdown \`\`\`html blocks. Just output raw HTML.
 `
