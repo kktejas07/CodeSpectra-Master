@@ -38,6 +38,10 @@ export default function proxy(request: NextRequest) {
     '/api/billing/stripe-webhook',
     '/api/billing/phonepe-webhook',
     '/api/billing/phonepe-callback',
+    // Cron endpoints authenticate with CRON_SECRET (server-to-server), not
+    // browser cookies — CSRF tokens are meaningless here, and requiring them
+    // breaks the admin "run now" self-fetch and external cron callers.
+    '/api/cron/',
     '/api/webhooks/postal',
     '/api/admin/llm-test',
     '/api/proctor/events',

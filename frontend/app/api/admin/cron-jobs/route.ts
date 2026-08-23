@@ -256,6 +256,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
   } catch (e) {
+    console.error('[CRON JOBS POST 500 ERROR]', action, e)
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
