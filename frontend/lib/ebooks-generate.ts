@@ -194,7 +194,11 @@ Return strict JSON only:
     {"type":"stats","title":"...","stats":[{"value":"...","label":"..."}],"items":[{"label":"...","text":"...","color":"teal"}]}
   ]
 }
-Rules: 5–8 pages, original wording, no copyrighted book text, practical and concise.`,
+Rules:
+- Generate 15–20 pages of high-quality content.
+- Provide comprehensive, in-depth information, detailed explanations, and robust examples (do not just write brief summaries).
+- Ensure original wording, no copyrighted book text.
+- Use a mix of sections, journeys, tips, and compare pages to convey the complete topic thoroughly.`,
         userMessage: `Topic: ${topic}\nSuggested title: ${opts.title || topic}`,
         modelRole: 'reasoning',
         responseFormat: 'json',

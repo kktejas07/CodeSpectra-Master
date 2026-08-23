@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
+import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
 
 type AdminEbook = EbookCardData & { id: string; status: string }
@@ -24,6 +25,7 @@ export default function AdminResourcesPage() {
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
   const [coverBusy, setCoverBusy] = useState<string | null>(null)
+  const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; slug: string | null }>({ open: false, slug: null })
 
   /** Regenerate AI cover art for an ebook (topic/title → 3D illustration). */
   async function regenCover(slug: string) {
@@ -47,7 +49,7 @@ export default function AdminResourcesPage() {
 
   const load = useCallback(() => {
     setLoading(true)
-    fetch('/api/resources/ebooks?all=1', { credentials: 'include' })
+    fetch('/api/resources/ebooks?all=1', { credentials: 'include', cache: 'no-store' })
       .then((r) => r.json())
       .then((d) =>
         setItems(
@@ -111,15 +113,26 @@ export default function AdminResourcesPage() {
     void load()
   }
 
-  async function remove(slug: string) {
-    if (!confirm(`Delete ebook “${slug}”?`)) return
-    const r = await csrfFetch(`/api/resources/ebooks/${encodeURIComponent(slug)}`, { method: 'DELETE' })
-    if (!r.ok) {
-      addToast({ type: 'error', title: 'Delete failed' })
-      return
+  function confirmDelete(slug: string) {
+    setDeleteDialog({ open: true, slug })
+  }
+
+  async function remove() {
+    if (!deleteDialog.slug) return
+    const slug = deleteDialog.slug
+    setDeleteDialog({ open: false, slug: null })
+    try {
+      const r = await csrfFetch(`/api/resources/ebooks/${encodeURIComponent(slug)}`, { method: 'DELETE' })
+      if (!r.ok) {
+        const d = await r.json().catch(() => ({}))
+        addToast({ type: 'error', title: d.error || 'Delete failed' })
+        return
+      }
+      addToast({ type: 'success', title: 'Deleted' })
+      void load()
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Delete failed' })
     }
-    addToast({ type: 'success', title: 'Deleted' })
-    void load()
   }
 
   if (!gate.ready || loading) {
@@ -209,13 +222,24 @@ export default function AdminResourcesPage() {
                   <Eye className="h-3.5 w-3.5" />
                 </Link>
               </Button>
-              <Button type="button" size="sm" variant="ghost" onClick={() => void remove(e.slug)}>
+              <Button type="button" size="sm" variant="ghost" onClick={() => confirmDelete(e.slug)}>
                 <Trash2 className="h-3.5 w-3.5 text-destructive" />
               </Button>
             </div>
           </div>
         ))}
       </div>
+
+      <ConfirmDialog
+        open={deleteDialog.open}
+        title="Delete Ebook"
+        message={`Are you sure you want to delete "${deleteDialog.slug}"? This action cannot be undone.`}
+        confirmLabel="Delete"
+        cancelLabel="Cancel"
+        variant="destructive"
+        onConfirm={() => void remove()}
+        onCancel={() => setDeleteDialog({ open: false, slug: null })}
+      />
     </div>
   )
 }
