@@ -70,6 +70,8 @@ export interface PhonePeOrderResponse {
     instrumentResponse?: {
       type?: string
       intentUrl?: string
+      /** Present for desktop/web flows — prefer over intentUrl when set. */
+      redirectUrl?: string
       merchantUrl?: string
     }
   }

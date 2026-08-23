@@ -5,6 +5,11 @@ import { collabDocuments, getOrCreateDocument, nowIso, newId } from '@/lib/db/co
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
+// ponytail: known ceiling — any AUTHENTICATED user with the session UUID can
+// read/write these docs (collab rooms are shared-link by design, ids are
+// randomUUID so unguessable). If rooms ever need per-user ACLs, add a
+// `participants: string[]` field on create and gate all three handlers on it.
+
 /** GET /api/collab/[session] — fetch current document (with ?v= for conditional) */
 export async function GET(req: NextRequest, ctx: { params: Promise<{ session: string }> }) {
   const gate = await requireAuth()

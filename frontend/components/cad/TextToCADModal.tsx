@@ -83,7 +83,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
     setSavedSuccess(false);
 
     try {
-      const res = await fetch('/internal/ai/cad/generate-text-to-cad', {
+      const res = await csrfFetch('/api/cad/generate-text-to-cad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

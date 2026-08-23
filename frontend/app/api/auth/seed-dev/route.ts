@@ -15,6 +15,13 @@ const DEV_ACCOUNTS = [
 ]
 
 export async function POST() {
+  // Resets well-known accounts to a predictable password — a dev bootstrap
+  // primitive, never a prod tool. Blocked in production unless explicitly
+  // re-enabled via env (SEED_DEV_ENABLED=1).
+  if (process.env.NODE_ENV === 'production' && process.env.SEED_DEV_ENABLED !== '1') {
+    return NextResponse.json({ error: 'Disabled in production' }, { status: 404 })
+  }
+
   const gate = await requireSuperAdmin()
   if ('error' in gate) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
