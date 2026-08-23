@@ -18,11 +18,10 @@ export function buildNewsCoverPrompt(opts: {
   const cat = (opts.category || '').replace(/[_-]/g, ' ')
   const topic = [opts.title, opts.excerpt?.slice(0, 160)].filter(Boolean).join(' — ')
   return (
-    `A high-quality, modern minimalist digital illustration representing "${topic}"` +
+    `Isometric 3D illustration representing "${topic}"` +
     (cat ? ` in the context of ${cat}` : '') +
-    `. Professional tech startup blog aesthetic, clean vector art style, flat design elements, ` +
-    `vibrant but professional color palette, sleek gradients, uncluttered background, ` +
-    `highly detailed conceptual art, no text, no words, no letters, no logos`
+    `, floating glossy 3D objects, clean gradient studio background, soft shadows, vibrant modern colors, ` +
+    `playful but professional tech blog aesthetic, high detail render, no text, no words, no letters, no logos`
   )
 }
 

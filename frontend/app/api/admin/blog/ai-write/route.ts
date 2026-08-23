@@ -36,8 +36,8 @@ Requirements:
 - Use standard HTML tags (<h2>, <h3>, <p>, <ul>, <li>, <strong>, <em>, <code>, <pre>).
 - Aim for a length of 800-1500 words of rich, detailed content.
 - Include 2-3 inline images to break up the text and illustrate concepts. For images, use the following format:
-  <img src="https://image.pollinations.ai/prompt/A%20minimalist%20tech%20illustration%20of%20[YOUR_URL_ENCODED_PROMPT]?width=800&height=400&nologo=true" alt="Description" class="my-4 rounded-lg border object-cover w-full" />
-  Make sure [YOUR_URL_ENCODED_PROMPT] is a highly descriptive prompt for a modern, clean, vector-style tech illustration relevant to the section.
+  <img src="https://image.pollinations.ai/prompt/An%20isometric%203D%20illustration%20of%20[YOUR_URL_ENCODED_PROMPT]?width=800&height=400&nologo=true" alt="Description" class="my-4 rounded-lg border object-cover w-full" />
+  Make sure [YOUR_URL_ENCODED_PROMPT] is a highly descriptive prompt for a modern, clean, isometric 3D tech illustration relevant to the section.
 - Maintain a professional, insightful, and practical tone suited for software engineers and tech professionals.
 - Do NOT output any wrapper text like "Here is the post:", and DO NOT wrap the output in markdown \`\`\`html blocks. Just output raw HTML.
 `
