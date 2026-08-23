@@ -70,7 +70,7 @@ export async function POST(request: NextRequest) {
     if (new Date(inv.expires_at).getTime() < Date.now()) {
       return NextResponse.json({ error: 'Invitation has expired' }, { status: 410 })
     }
-    if (inv.email.toLowerCase() !== (gate.user.email || '').toLowerCase()) {
+    if ((inv.email || '').toLowerCase() !== (gate.user.email || '').toLowerCase()) {
       return NextResponse.json({ error: 'This invitation is for another account' }, { status: 403 })
     }
 

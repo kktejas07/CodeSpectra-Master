@@ -43,6 +43,8 @@ export type EbookDoc = {
   description: string
   topic: string
   coverTheme: 'violet' | 'teal' | 'amber' | 'rose' | 'slate'
+  /** AI-generated 3D cover art URL (optional — CSS gradient cover is the fallback) */
+  coverImageUrl?: string
   readMinutes: number
   pages: EbookPage[]
   status: EbookStatus

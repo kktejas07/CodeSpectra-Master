@@ -250,7 +250,7 @@ export function PublicPageWrapper({
       <footer className="relative overflow-hidden border-t border-border/40 bg-muted/15 py-20 dark:bg-muted/10 lg:py-24">
         <FooterAnimatedBackdrop />
         <div className="relative z-10 mx-auto max-w-7xl px-4 sm:px-6 lg:px-8">
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-8 md:gap-12 mb-12">
+          <div className="grid grid-cols-2 md:grid-cols-6 gap-8 md:gap-12 mb-12">
             <div className="col-span-2 md:col-span-1">
               <Link href="/" className="group flex items-center gap-2.5 mb-6">
                 <div className="flex items-center justify-center rounded-xl bg-linear-to-br from-teal-500/20 via-emerald-500/10 to-cyan-500/20 p-1.5 border border-teal-500/40 shadow-sm shadow-teal-500/20">
@@ -298,6 +298,46 @@ export function PublicPageWrapper({
                 <li><Link href="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Terms</Link></li>
                 <li><Link href="/cookies" className="text-sm text-muted-foreground hover:text-foreground transition-colors duration-200">Cookies</Link></li>
               </ul>
+            </div>
+            <div className="col-span-2 md:col-span-1">
+              <h4 className="font-semibold text-foreground text-sm mb-6">Newsletter</h4>
+              <p className="text-sm text-muted-foreground mb-4">Subscribe to our newsletter to get the latest updates.</p>
+              <form 
+                className="space-y-2"
+                onSubmit={async (e) => {
+                  e.preventDefault()
+                  const form = e.currentTarget
+                  const formData = new FormData(form)
+                  const email = formData.get('email') as string
+                  if (!email) return
+                  const btn = form.querySelector('button')
+                  if (btn) btn.disabled = true
+                  try {
+                    await fetch('/api/newsletter/subscribe', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ email })
+                    })
+                    alert('Subscribed successfully!')
+                    form.reset()
+                  } catch (err) {
+                    alert('Failed to subscribe.')
+                  } finally {
+                    if (btn) btn.disabled = false
+                  }
+                }}
+              >
+                <input
+                  type="email"
+                  name="email"
+                  required
+                  placeholder="Enter your email"
+                  className="w-full bg-background border border-border rounded-md px-3 py-2 text-sm text-foreground focus:outline-hidden focus:ring-2 focus:ring-primary"
+                />
+                <Button type="submit" size="sm" className="w-full">
+                  Subscribe
+                </Button>
+              </form>
             </div>
           </div>
           <div className="flex flex-col gap-6 border-t border-border/40 pt-10 sm:flex-row sm:items-center sm:justify-between">

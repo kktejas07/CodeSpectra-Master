@@ -29,13 +29,19 @@ async function getBackendSecrets(): Promise<{
     const { readPlatformLlmConfig } = await import('@/lib/ai/get-user-model')
     const [secrets, platformLlm] = await Promise.all([readServerSecrets(), readPlatformLlmConfig()])
     const llmKey = platformLlm?.api_key && typeof platformLlm.api_key === 'string' && !isMaskedSecret(platformLlm.api_key) ? platformLlm.api_key.trim() : ''
+    const { getRoundRobinKey } = await import('@/lib/ai/get-round-robin-key')
+    
+    const rrKey = platformLlm?.provider ? await getRoundRobinKey(platformLlm.provider) : null;
+    
+    const fallbackKey = rrKey || llmKey
+    
     return {
-      anthropic: fromEnv.anthropic || (secrets.anthropic_api_key?.trim() || llmKey),
-      gemini: fromEnv.gemini || (secrets.gemini_api_key?.trim() || llmKey),
-      openai: fromEnv.openai || (secrets.openai_api_key?.trim() || llmKey),
-      openrouter: fromEnv.openrouter || (secrets.openrouter_api_key?.trim() || llmKey),
-      opencode: fromEnv.opencode || (secrets.opencode_api_key?.trim() || llmKey),
-      groq: fromEnv.groq || (secrets.groq_api_key?.trim() || llmKey),
+      anthropic: fromEnv.anthropic || (secrets.anthropic_api_key?.trim() || (platformLlm?.provider === 'anthropic' ? fallbackKey : '')),
+      gemini: fromEnv.gemini || (secrets.gemini_api_key?.trim() || (platformLlm?.provider === 'gemini' ? fallbackKey : '')),
+      openai: fromEnv.openai || (secrets.openai_api_key?.trim() || (platformLlm?.provider === 'openai' ? fallbackKey : '')),
+      openrouter: fromEnv.openrouter || (secrets.openrouter_api_key?.trim() || (platformLlm?.provider === 'openrouter' ? fallbackKey : '')),
+      opencode: fromEnv.opencode || (secrets.opencode_api_key?.trim() || (platformLlm?.provider === 'opencode' ? fallbackKey : '')),
+      groq: fromEnv.groq || (secrets.groq_api_key?.trim() || (platformLlm?.provider === 'groq' ? fallbackKey : '')),
     }
   } catch {
     return fromEnv

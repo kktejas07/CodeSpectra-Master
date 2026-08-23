@@ -15,7 +15,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Newspaper, Plus, Trash2, Eye } from 'lucide-react'
+import { Loader2, Newspaper, Plus, Trash2, Eye, Sparkles, ImageIcon } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -32,6 +32,7 @@ type Post = {
   author_name: string
   published_at?: string | null
   read_minutes: number
+  cover_image?: string | null
 }
 
 export default function AdminBlogPage() {
@@ -48,6 +49,38 @@ export default function AdminBlogPage() {
   const [category, setCategory] = useState<BlogCategoryId>('signals')
   const [authorName, setAuthorName] = useState('CodeSpectra Editorial')
   const [coverImage, setCoverImage] = useState('')
+  const [aiSlug, setAiSlug] = useState<string | null>(null)
+
+  /** Generate cover art — for an existing post (slug) or the create form (no slug). */
+  const genCover = async (slug?: string) => {
+    if (!slug && !title.trim()) {
+      addToast({ type: 'error', title: 'Add a title first' })
+      return
+    }
+    setAiSlug(slug || '__form')
+    try {
+      const res = await csrfFetch('/api/admin/blog/ai-cover', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(
+          slug ? { slug } : { title, excerpt, category },
+        ),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Generation failed')
+      if (slug) {
+        addToast({ type: 'success', title: 'Cover art updated' })
+        await load()
+      } else {
+        setCoverImage(data.cover_image || '')
+        addToast({ type: 'success', title: 'Cover generated' })
+      }
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generation failed' })
+    } finally {
+      setAiSlug(null)
+    }
+  }
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -166,12 +199,35 @@ export default function AdminBlogPage() {
               <Textarea value={excerpt} onChange={(e) => setExcerpt(e.target.value)} rows={2} />
             </div>
             <div className="space-y-1.5 sm:col-span-2">
-              <Label>Cover image URL (optional)</Label>
-              <Input
-                value={coverImage}
-                onChange={(e) => setCoverImage(e.target.value)}
-                placeholder="https://…"
-              />
+              <Label>Cover image</Label>
+              <div className="flex gap-2">
+                <Input
+                  value={coverImage}
+                  onChange={(e) => setCoverImage(e.target.value)}
+                  placeholder="https://… (or generate AI art from the title)"
+                />
+                <Button
+                  type="button"
+                  variant="secondary"
+                  disabled={aiSlug === '__form' || !title.trim()}
+                  onClick={() => void genCover()}
+                >
+                  {aiSlug === '__form' ? (
+                    <Loader2 className="mr-1 h-4 w-4 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-1 h-4 w-4 text-teal-500" />
+                  )}
+                  Generate
+                </Button>
+              </div>
+              {coverImage ? (
+                // eslint-disable-next-line @next/next/no-img-element
+                <img
+                  src={coverImage}
+                  alt="Cover preview"
+                  className="mt-1 h-32 w-full rounded-md border object-cover"
+                />
+              ) : null}
             </div>
             <div className="space-y-1.5 sm:col-span-2">
               <Label>Body (HTML)</Label>
@@ -209,17 +265,45 @@ export default function AdminBlogPage() {
         <div className="space-y-2">
           {items.map((p) => (
             <Card key={p.id} className="flex flex-wrap items-center justify-between gap-3 p-4">
-              <div className="min-w-0">
-                <div className="flex flex-wrap items-center gap-2">
-                  <p className="font-medium">{p.title}</p>
-                  <Badge variant="secondary">{p.category}</Badge>
-                  <Badge variant={p.status === 'published' ? 'default' : 'outline'}>{p.status}</Badge>
+              <div className="flex min-w-0 flex-1 items-center gap-3">
+                {p.cover_image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={p.cover_image}
+                    alt=""
+                    className="h-14 w-24 shrink-0 rounded-md border object-cover"
+                  />
+                ) : (
+                  <div className="flex h-14 w-24 shrink-0 items-center justify-center rounded-md border bg-muted/40">
+                    <ImageIcon className="h-5 w-5 text-muted-foreground/50" />
+                  </div>
+                )}
+                <div className="min-w-0">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <p className="truncate font-medium">{p.title}</p>
+                    <Badge variant="secondary">{p.category}</Badge>
+                    <Badge variant={p.status === 'published' ? 'default' : 'outline'}>{p.status}</Badge>
+                  </div>
+                  <p className="mt-1 text-xs text-muted-foreground">
+                    /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
+                  </p>
                 </div>
-                <p className="mt-1 text-xs text-muted-foreground">
-                  /blog/{p.slug} · {p.read_minutes} min · {p.author_name}
-                </p>
               </div>
               <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={aiSlug === p.slug}
+                  onClick={() => void genCover(p.slug)}
+                  title="Generate AI cover art from the article"
+                >
+                  {aiSlug === p.slug ? (
+                    <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                  ) : (
+                    <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                  )}
+                  AI cover
+                </Button>
                 <Button variant="outline" size="sm" asChild>
                   <Link href={`/blog/${p.slug}`} target="_blank">
                     <Eye className="mr-1 h-3.5 w-3.5" /> View

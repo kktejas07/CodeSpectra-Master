@@ -14,6 +14,7 @@ vi.mock('@/lib/mongodb', () => ({
 
 vi.mock('@/lib/razorpay-server', () => ({
   isRazorpayConfigured: vi.fn().mockResolvedValue(true),
+  getPublishableKeyId: vi.fn().mockResolvedValue('rzp_test_abc123'),
   getRazorpay: vi.fn().mockResolvedValue({
     orders: { create: vi.fn().mockResolvedValue({ id: 'order_abc123', amount: 49900, currency: 'INR', receipt: 'test', status: 'created' }) },
   }),

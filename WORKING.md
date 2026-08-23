@@ -6,6 +6,12 @@
 
 ## Current Claims
 
+| opencode (this session, BLOG-COVERS+EBOOK-UI) | (1) /dashboard/admin/blog: signals→blog posts get static covers only — wire AI image generation from news content; (2) /dashboard/admin/resources + public ebook page: Unstop-style visual redesign, generated 3D-style covers, rich formatting instead of plain text. | TBD (exploring), WORKING.md | IN PROGRESS | 2026-08-22 |
+
+| opencode (this session, CSRF-SWEEP+PAYMENTS+AUDIT-FIXES) | DONE — commit 9985822. csrfFetch self-heal, cad proxy route, PhonePe callback state-trust bypass closed + CSRF-exempt, webhook idempotency, Razorpay key from Mongo, Stripe detach IDOR, seed-dev prod-block, collab ceiling note. 112 tests pass. | WORKING.md | DONE | 2026-08-22 |
+
+| opencode (this session, FULL-SECURITY-AUDIT) | Whole-repo audit + fixes: Didit/postal webhooks fail-closed, PhonePe timing-safe compare, GitHub OAuth open redirect, notifications DOMPurify XSS fix, codeathon review IDOR→requireAdmin, /api/reports clamps, 12 null-safety guards. tsc clean, 112 tests pass, build green. Did NOT touch antigravity's uncommitted files. | postal+didit webhooks, phonepe-server.ts, github/oauth/start, notifications page, codeathon review route, reports route, llm-config test/models, resumes builder, scanner page+suggested-fixes, 5 invite-email routes, docs/developer/04-version-history.md, WORKING.md | DONE | 2026-08-22 |
+
 | antigravity (this session, REVIEWS-AND-CREDITS) | Update kyc status with anon aadhaar, fix blog padding, and update resume AI credits | frontend/app/api/kyc/didit/status/route.ts, frontend/app/blog/[slug]/page.tsx, frontend/app/blog/page.tsx, frontend/app/dashboard/resumes/builder/page.tsx, WORKING.md | DONE | 2026-08-22 |
 
 | cursor (this session, REMOVE-POC-VIDEO) | Remove AI Video Generator PoC button from Course Management; production is course-generator | courses page, poc-video page, page-permissions, WORKING.md | DONE — removed button + deleted poc-video page + dropped permission route | 2026-08-22 |

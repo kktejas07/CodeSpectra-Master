@@ -70,6 +70,8 @@ export interface PhonePeOrderResponse {
     instrumentResponse?: {
       type?: string
       intentUrl?: string
+      /** Present for desktop/web flows — prefer over intentUrl when set. */
+      redirectUrl?: string
       merchantUrl?: string
     }
   }
@@ -144,7 +146,9 @@ export async function verifyPhonePeWebhook(
     .update(rawBody + c.webhookSecret)
     .digest('hex')
 
-  return signature === expected
+  const a = Buffer.from(signature || '')
+  const b = Buffer.from(expected)
+  return a.length === b.length && crypto.timingSafeEqual(a, b)
 }
 
 export interface PhonePeStatusResponse {

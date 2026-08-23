@@ -37,6 +37,7 @@ export default function proxy(request: NextRequest) {
     '/api/billing/webhook',
     '/api/billing/stripe-webhook',
     '/api/billing/phonepe-webhook',
+    '/api/billing/phonepe-callback',
     '/api/webhooks/postal',
     '/api/admin/llm-test',
     '/api/proctor/events',

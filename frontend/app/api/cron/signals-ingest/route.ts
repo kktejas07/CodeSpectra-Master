@@ -11,6 +11,7 @@ import { fetchFeedItems } from '@/lib/signals/rss'
 import { rewriteSignal } from '@/lib/signals/rewrite'
 import { newSignalId, signalDrafts, type SignalDraftDoc } from '@/lib/db/signal-drafts'
 import { nowIso } from '@/lib/db/blog-posts'
+import { buildNewsCoverPrompt, generateCoverImage } from '@/lib/ai-image'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -74,6 +75,15 @@ export async function POST(req: NextRequest) {
           status: 'pending',
           created_at: now,
           updated_at: now,
+        }
+        // Cover art from the news itself — best effort, never blocks the draft.
+        try {
+          const cover = await generateCoverImage(
+            buildNewsCoverPrompt({ title: doc.title, excerpt: doc.excerpt, category: feed.category }),
+          )
+          if (cover) doc.cover_image = cover
+        } catch {
+          /* SVG fallback kicks in at render time */
         }
         await drafts.insertOne(doc)
         created.push(doc.id)

@@ -102,28 +102,41 @@ export default async function PublicEventsPage() {
 
   return (
     <PublicPageWrapper>
-      <main className="mx-auto max-w-5xl px-6 py-10 space-y-8">
-        <div className="text-center space-y-2">
-          <h1 className="text-3xl font-bold">Events</h1>
-          <p className="text-muted-foreground">Hackathons, codeathons, and coding competitions</p>
+      {/* Hero */}
+      <div className="relative overflow-hidden border-b border-border/40">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/5 via-transparent to-primary/3 pointer-events-none" />
+        <div className="relative max-w-5xl mx-auto px-6 py-16 text-center">
+          <div className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/5 px-3 py-1 text-xs font-medium text-primary mb-6">
+            <CalendarDays className="h-3 w-3" />
+            Learn & Connect
+          </div>
+          <h1 className="text-4xl sm:text-5xl font-bold tracking-tight mb-4">
+            Events
+          </h1>
+          <p className="text-muted-foreground text-lg max-w-2xl mx-auto">
+            Hackathons, codeathons, and coding competitions.
+          </p>
         </div>
+      </div>
 
+      <div className="mx-auto max-w-5xl px-6 py-12">
         {events.length === 0 ? (
-          <Card className="p-8 text-center">
-            <Trophy className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-            <p className="text-sm text-muted-foreground">No events available yet</p>
+          <Card className="p-8 text-center border-border/60">
+            <Trophy className="h-8 w-8 mx-auto mb-2 text-muted-foreground/50" />
+            <h2 className="text-xl font-semibold mb-2">No events available yet</h2>
+            <p className="text-sm text-muted-foreground">Sign up to get notified when new events are added.</p>
             <Link href="/auth/signup">
-              <Button size="sm" className="mt-4">Sign up to get notified</Button>
+              <Button size="sm" className="mt-4">Get Started</Button>
             </Link>
           </Card>
         ) : (
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {events.map((event: any) => (
               <EventCard key={`${event.type}-${event.id}`} event={event} />
             ))}
           </div>
         )}
-      </main>
+      </div>
     </PublicPageWrapper>
   )
 }

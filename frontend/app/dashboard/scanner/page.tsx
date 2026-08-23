@@ -153,7 +153,7 @@ function CodeScannerPageInner() {
           setRuntimes(list)
           const map: Record<string,string> = {}
           for (const r of list) {
-            map[r.language.toLowerCase()] = r.language
+            map[(r.language || '').toLowerCase()] = r.language
             for (const a of r.aliases || []) map[a.toLowerCase()] = r.language
           }
           setRuntimeMap(map)

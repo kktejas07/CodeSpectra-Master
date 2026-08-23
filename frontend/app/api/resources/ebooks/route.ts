@@ -3,6 +3,7 @@ import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
 import { ebooksCol, type EbookDoc } from '@/lib/db/ebooks'
 import { ensureEbookSeed } from '@/lib/ebooks-seed'
 import { generateEbookDraft } from '@/lib/ebooks-generate'
+import { buildEbookCoverPrompt, generateCoverImage } from '@/lib/ai-image'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -17,6 +18,7 @@ function publicShape(e: EbookDoc) {
     description: e.description,
     topic: e.topic,
     coverTheme: e.coverTheme,
+    coverImageUrl: e.coverImageUrl,
     readMinutes: e.readMinutes,
     status: e.status,
     pageCount: e.pages?.length || 0,
@@ -65,6 +67,17 @@ export async function POST(req: NextRequest) {
   const col = await ebooksCol()
   const clash = await col.findOne({ slug: ebook.slug })
   if (clash) ebook.slug = `${ebook.slug}-${Date.now().toString(36)}`
+
+  // Eye-catching 3D cover art — best effort, CSS cover remains the fallback.
+  try {
+    const art = await generateCoverImage(
+      buildEbookCoverPrompt({ topic: ebook.topic, title: ebook.title }),
+      { width: 768, height: 1024 },
+    )
+    if (art) ebook.coverImageUrl = art
+  } catch {
+    /* keep gradient cover */
+  }
 
   await col.insertOne(ebook)
   return NextResponse.json({ ok: true, usedAi, item: { ...publicShape(ebook), pages: ebook.pages } })

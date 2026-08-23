@@ -2,7 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
-import { Loader2, Plus, Eye, Trash2, Check } from 'lucide-react'
+import { Loader2, Plus, Eye, Trash2, Check, Sparkles } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -23,6 +23,27 @@ export default function AdminResourcesPage() {
   const [topic, setTopic] = useState('')
   const [title, setTitle] = useState('')
   const [busy, setBusy] = useState(false)
+  const [coverBusy, setCoverBusy] = useState<string | null>(null)
+
+  /** Regenerate AI cover art for an ebook (topic/title → 3D illustration). */
+  async function regenCover(slug: string) {
+    setCoverBusy(slug)
+    try {
+      const r = await csrfFetch(`/api/resources/ebooks/${encodeURIComponent(slug)}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ action: 'regenerate-cover' }),
+      })
+      const d = await r.json().catch(() => ({}))
+      if (!r.ok) throw new Error(d.error || 'Generation failed')
+      addToast({ type: 'success', title: 'New cover generated' })
+      void load()
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generation failed' })
+    } finally {
+      setCoverBusy(null)
+    }
+  }
 
   const load = useCallback(() => {
     setLoading(true)
@@ -37,6 +58,7 @@ export default function AdminResourcesPage() {
             subtitle: e.subtitle ? String(e.subtitle) : undefined,
             topic: e.topic ? String(e.topic) : undefined,
             coverTheme: (e.coverTheme as EbookCardData['coverTheme']) || 'violet',
+            coverImageUrl: (e.coverImageUrl as string | undefined) || undefined,
             readMinutes: typeof e.readMinutes === 'number' ? e.readMinutes : 5,
             status: String(e.status || 'draft'),
             pageCount: typeof e.pageCount === 'number' ? e.pageCount : undefined,
@@ -158,6 +180,21 @@ export default function AdminResourcesPage() {
               {e.pageCount != null ? <Badge variant="secondary">{e.pageCount} pages</Badge> : null}
             </div>
             <div className="flex flex-wrap gap-1">
+              <Button
+                type="button"
+                size="sm"
+                variant="outline"
+                disabled={coverBusy === e.slug}
+                onClick={() => void regenCover(e.slug)}
+                title="Generate new AI cover art from the topic"
+              >
+                {coverBusy === e.slug ? (
+                  <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                ) : (
+                  <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
+                )}
+                AI cover
+              </Button>
               {e.status !== 'published' ? (
                 <Button type="button" size="sm" variant="secondary" onClick={() => void setStatus(e.slug, 'published')}>
                   <Check className="mr-1 h-3.5 w-3.5" /> Publish

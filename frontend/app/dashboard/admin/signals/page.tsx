@@ -21,6 +21,7 @@ type Draft = {
   angle?: string
   facts?: { claim: string; source_url: string; date?: string }[]
   source_urls?: string[]
+  cover_image?: string | null
   status: string
   blog_slug?: string
   created_at: string
@@ -127,6 +128,14 @@ export default function AdminSignalsPage() {
           {items.map((d) => (
             <Card key={d.id} className="space-y-2 p-4">
               <div className="flex flex-wrap items-start justify-between gap-3">
+                {d.cover_image ? (
+                  // eslint-disable-next-line @next/next/no-img-element
+                  <img
+                    src={d.cover_image}
+                    alt=""
+                    className="h-20 w-36 shrink-0 rounded-md border object-cover"
+                  />
+                ) : null}
                 <div className="min-w-0 flex-1">
                   <div className="flex flex-wrap items-center gap-2">
                     <p className="font-medium">{d.title}</p>

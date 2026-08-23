@@ -3,6 +3,7 @@ import { getAPIUser } from '@/lib/route-auth'
 import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import { rateLimitAIRedis } from '@/lib/upstash-rate-limit'
+import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -114,6 +115,12 @@ export async function POST(req: NextRequest) {
       { status: 429 },
     )
   }
+
+  const { balance } = await getUserAiCredits(user.id)
+  if (balance < 1) {
+    return NextResponse.json({ error: 'Insufficient AI credits' }, { status: 402 })
+  }
+  await deductUserAiCredits(user.id, 1)
 
   let body: Req
   try {

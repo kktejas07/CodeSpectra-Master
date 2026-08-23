@@ -74,8 +74,16 @@ export class StripeAdapter implements PaymentGatewayAdapter {
     }))
   }
 
-  async detachPaymentMethod(methodId: string): Promise<void> {
+  async detachPaymentMethod(userId: string, email: string, methodId: string): Promise<void> {
     const stripe = getClient()
+    // Ownership check: the method must belong to THIS user's Stripe customer.
+    const customers = await stripe.customers.list({ email, limit: 1 })
+    const customer = customers.data[0]
+    if (!customer) throw new Error('Payment method not found')
+    const pm = await stripe.paymentMethods.retrieve(methodId)
+    if (pm.customer !== customer.id) {
+      throw new Error('Payment method does not belong to this account')
+    }
     await stripe.paymentMethods.detach(methodId)
   }
 }

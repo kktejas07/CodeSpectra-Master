@@ -58,7 +58,12 @@ export async function GET(req: NextRequest) {
   }
 
   const url = new URL(req.url)
-  const redirect = url.searchParams.get('redirect') || '/dashboard/admin/settings'
+  const rawRedirect = url.searchParams.get('redirect') || '/dashboard/admin/settings'
+  // Open-redirect guard: only same-origin relative paths are allowed.
+  const redirect =
+    rawRedirect.startsWith('/') && !rawRedirect.startsWith('//') && !rawRedirect.includes('://')
+      ? rawRedirect
+      : '/dashboard/admin/settings'
 
   // Persist state so the callback can validate it and resolve user_id.
   const state = randomBytes(24).toString('hex')

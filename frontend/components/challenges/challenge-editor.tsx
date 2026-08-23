@@ -214,7 +214,7 @@ export function ChallengeEditor({
     setRunning(true)
     setTestResults(null)
     try {
-      const res = await fetch('/api/submissions', {
+      const res = await csrfFetch('/api/submissions', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',

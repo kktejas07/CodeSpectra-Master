@@ -62,6 +62,10 @@ export async function POST(req: NextRequest) {
     }
 
     if (state === 'COMPLETED' || state === 'SUCCESS') {
+      // Idempotency: PhonePe retries webhooks — never double-activate.
+      if (order.status === 'paid') {
+        return NextResponse.json({ success: true })
+      }
       // Payment successful
       await orders.updateOne(
         { id: order.id },
@@ -95,7 +99,7 @@ export async function POST(req: NextRequest) {
       const plan = BILLING_PLANS[order.plan_id]
       const { getMongoDb } = await import('@/lib/mongodb')
       const db = await getMongoDb()
-      const user = await db.collection('user').findOne({ _id: order.user_id as any })
+      const user = await db.collection('user').findOne({ id: order.user_id })
       if (user?.email && plan) {
         const template = plan.kind === 'subscription'
           ? emailTemplates.subscriptionConfirmation(plan.name, amount, plan.currency)

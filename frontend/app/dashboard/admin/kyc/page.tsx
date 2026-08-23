@@ -124,26 +124,19 @@ export default function AdminKycPage() {
     { key: 'face_match_similarity', header: 'Face Match', cell: (r) => r.face_match_similarity ? `${r.face_match_similarity}%` : '—' },
     { key: 'created_at', header: 'Date', cell: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString() : '—' },
     { key: 'actions', header: 'Actions', cell: (r) => (
-      <div className="flex items-center justify-end gap-2">
-        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }}>
-          <Eye className="h-3.5 w-3.5" />
+      <div className="flex items-center justify-end gap-1">
+        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title="View Details">
+          <Eye className="h-4 w-4" />
         </Button>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="h-8 w-8 p-0">
-              <span className="sr-only">Open menu</span>
-              <MoreHorizontal className="h-4 w-4" />
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuItem onClick={() => alert('Reminder email sent!')}>
-              <Mail className="mr-2 h-4 w-4" /> Send Reminder
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDelete(r.id)} className="text-destructive focus:bg-destructive/10">
-              <Trash2 className="mr-2 h-4 w-4" /> Delete Record
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+        <Button size="sm" variant="ghost" onClick={() => alert('Reminder email sent!')} title="Send Reminder">
+          <Mail className="h-4 w-4 text-blue-500" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => alert('Re-verification requested')} title="Request Re-verify">
+          <ShieldCheck className="h-4 w-4 text-amber-500" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)} title="Delete Record">
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
       </div>
     )},
   ]

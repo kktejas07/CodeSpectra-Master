@@ -11,11 +11,11 @@ export async function POST(req: NextRequest) {
     const user = await getAPIUser()
     const body = await req.json().catch(() => ({}))
     const kind = body.kind === 'complaint' ? 'complaint' : body.kind === 'issue' ? 'issue' : null
-    const entityType = String(body.entityType || '').trim()
-    const entityId = String(body.entityId || '').trim()
-    const entityTitle = String(body.entityTitle || '').trim()
-    const message = String(body.message || '').trim()
-    const contactEmail = String(body.contactEmail || user?.email || '').trim()
+    const entityType = String(body.entityType || '').trim().slice(0, 100)
+    const entityId = String(body.entityId || '').trim().slice(0, 200)
+    const entityTitle = String(body.entityTitle || '').trim().slice(0, 300)
+    const message = String(body.message || '').trim().slice(0, 4000)
+    const contactEmail = String(body.contactEmail || user?.email || '').trim().slice(0, 320)
 
     if (!kind) return NextResponse.json({ error: 'kind required' }, { status: 400 })
     if (!entityType || !entityId) return NextResponse.json({ error: 'entity required' }, { status: 400 })

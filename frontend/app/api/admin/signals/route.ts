@@ -88,7 +88,8 @@ export async function POST(req: NextRequest) {
       author_name: 'CodeSpectra Signals',
       author_role: 'Editorial',
       status: 'published',
-      cover_image: coverForPost({ title: draft.title, category: draft.category }),
+      // Prefer the AI-generated art from the ingest pass; SVG fallback otherwise.
+      cover_image: draft.cover_image || coverForPost({ title: draft.title, category: draft.category }),
       source_urls: sourceUrls,
       // Short feed attribution only — no long “editorial synthesis” disclaimer.
       source_note: draft.source_feed

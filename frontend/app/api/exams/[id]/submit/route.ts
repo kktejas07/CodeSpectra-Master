@@ -44,7 +44,7 @@ export async function POST(
       if (invite.status === 'used') {
         return NextResponse.json({ error: 'This invitation has already been used' }, { status: 403 })
       }
-      if (invite.email.toLowerCase() !== email.toLowerCase()) {
+      if ((invite.email || '').toLowerCase() !== (email || '').toLowerCase()) {
         return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different account.' }, { status: 403 })
       }
       await db.collection('candidate_invites').updateOne(
