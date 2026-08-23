@@ -436,7 +436,7 @@ function EmailRow({ log }: { log: EmailLog }) {
       <tr className="border-b border-border/40 hover:bg-muted/30 cursor-pointer transition-colors" onClick={() => setExpanded(!expanded)}>
         <td className="py-3 px-4 text-xs text-muted-foreground whitespace-nowrap">{time.toLocaleString()}</td>
         <td className="py-3 px-4 text-sm font-mono">{log.to_email}</td>
-        <td className="py-3 px-4 text-sm max-w-[250px] truncate" title={log.subject}>{log.subject}</td>
+        <td className="py-3 px-4 text-sm max-w-62.5 truncate" title={log.subject}>{log.subject}</td>
         <td className="py-3 px-4">
           <Badge variant="outline" className={`text-[10px] ${CATEGORY_COLORS[log.category] || ''}`}>{log.category}</Badge>
         </td>

@@ -325,11 +325,11 @@ export default function ResumeBuilderPage() {
           {/* Resume Canvas Wrapper */}
           <div className="flex-1 overflow-y-auto custom-scrollbar flex justify-center pb-20">
             {/* The Resume A4 Paper */}
-            <div className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-[1131px] text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
+            <div className="bg-white shadow-xl rounded-sm w-full max-w-200 min-h-282.75 text-slate-900 overflow-hidden shrink-0 transition-all duration-300">
               
               {/* --- Template: Modern --- */}
               {template === 'modern' && (
-                <div className="flex min-h-[1131px]">
+                <div className="flex min-h-282.75">
                   {/* Left Column */}
                   <div className="w-[35%] bg-[#2a3b4c] text-white p-8 wrap-break-word">
                     <div className="h-24 w-24 rounded-full bg-white/20 mb-6 flex items-center justify-center text-3xl font-bold border-2 border-white/30 overflow-hidden">
@@ -499,7 +499,7 @@ export default function ResumeBuilderPage() {
                       <div className="space-y-6">
                         {data.experience.map(exp => (
                           <div key={exp.id} className="relative pl-6 border-l-2 border-slate-200 ml-2">
-                            <div className="absolute -left-[9px] top-1.5 w-4 h-4 rounded-full bg-white border-2 border-[#1e40af]" />
+                            <div className="absolute -left-2.25 top-1.5 w-4 h-4 rounded-full bg-white border-2 border-[#1e40af]" />
                             <div className="bg-white p-5 rounded shadow-sm border border-slate-100">
                               <div className="flex justify-between items-baseline mb-1">
                                 <h3 className="font-bold text-slate-800 text-lg">{exp.role}</h3>
@@ -606,7 +606,7 @@ export default function ResumeBuilderPage() {
 
               {/* --- Template: Creative --- */}
               {template === 'creative' && (
-                <div className="flex min-h-[1131px] bg-[#fdfbf7]">
+                <div className="flex min-h-282.75 bg-[#fdfbf7]">
                   <div className="w-[40%] bg-[#ff6b6b] text-white p-10 flex flex-col justify-between wrap-break-word">
                     <div>
                       <div className="w-32 h-32 bg-white rounded-full mb-8 border-4 border-white/30 flex items-center justify-center overflow-hidden shadow-xl">

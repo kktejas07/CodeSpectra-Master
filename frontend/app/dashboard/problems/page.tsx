@@ -266,7 +266,7 @@ export default function ProblemsListPage() {
                             <div className="col-span-2 flex items-center justify-center gap-2">
                                <span className="text-xs font-bold text-foreground">43.62%</span>
                                {/* Mock bar chart visual */}
-                               <div className="flex items-end h-3 gap-[1px]">
+                               <div className="flex items-end h-3 gap-px">
                                  <div className="w-[2px] h-full bg-blue-500" />
                                  <div className="w-[2px] h-full bg-blue-500" />
                                  <div className="w-[2px] h-[70%] bg-blue-500" />

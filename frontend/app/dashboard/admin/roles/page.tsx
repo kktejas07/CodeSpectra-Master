@@ -188,7 +188,7 @@ export default function RolesPage() {
                     <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs max-w-[250px]">Assign roles to users. Manage role permissions to control what each role can access.</p>
+                    <p className="text-xs max-w-62.5">Assign roles to users. Manage role permissions to control what each role can access.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>

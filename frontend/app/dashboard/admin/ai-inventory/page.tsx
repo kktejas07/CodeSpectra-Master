@@ -305,7 +305,7 @@ export default function AiInventoryPage() {
                   <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1" />
                 </TooltipTrigger>
                 <TooltipContent side="right">
-                  <p className="text-xs max-w-[250px]">
+                  <p className="text-xs max-w-62.5">
                     Superadmin control plane: view auto-discovered AI assets, toggle features on/off, add custom endpoints, and review dependency vulnerabilities.
                   </p>
                 </TooltipContent>

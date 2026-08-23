@@ -65,7 +65,7 @@ export default function QuestionGeneratorPage() {
                 <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help ml-1 inline-block" />
               </TooltipTrigger>
               <TooltipContent side="right">
-                <p className="text-xs max-w-[250px]">Generate fresh coding interview problems on demand &mdash; tuned for the role you&apos;re hiring for. Optionally publish straight to the Problems library.</p>
+                <p className="text-xs max-w-62.5">Generate fresh coding interview problems on demand &mdash; tuned for the role you&apos;re hiring for. Optionally publish straight to the Problems library.</p>
               </TooltipContent>
             </Tooltip>
           </TooltipProvider>

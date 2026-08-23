@@ -76,7 +76,7 @@ export default function SpeedInsightsPage() {
             <h1 className="text-3xl font-bold text-foreground">Speed Insights</h1>
             <div className="flex items-center gap-1.5 mt-1">
               <p className="text-muted-foreground">Core Web Vitals from real user sessions</p>
-              <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent side="right"><p className="text-xs max-w-[250px]">Real User Monitoring (RUM) — p75 percentiles from web_vitals_events. Events posted from the dashboard shell via POST /api/analytics/web-vitals.</p></TooltipContent></Tooltip></TooltipProvider>
+              <TooltipProvider><Tooltip><TooltipTrigger asChild><HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" /></TooltipTrigger><TooltipContent side="right"><p className="text-xs max-w-62.5">Real User Monitoring (RUM) — p75 percentiles from web_vitals_events. Events posted from the dashboard shell via POST /api/analytics/web-vitals.</p></TooltipContent></Tooltip></TooltipProvider>
             </div>
           </div>
         </div>

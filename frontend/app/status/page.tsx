@@ -193,7 +193,7 @@ export default function StatusPage() {
                     </div>
                     
                     {/* Uptime Bars */}
-                    <div className="flex gap-[2px] h-10 w-full">
+                    <div className="flex gap-0.5 h-10 w-full">
                       {compHistory.map((hStatus, i) => (
                         <div 
                           key={i} 

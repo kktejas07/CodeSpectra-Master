@@ -322,7 +322,7 @@ export default function ProfilePage() {
         {!(coverTheme.includes('-3d') || ['dark-tech','gradient-blue','emerald-code'].includes(coverTheme)) && (
           <>
             <div className="absolute inset-0 opacity-30 bg-[linear-gradient(to_right,#80808012_1px,transparent_1px),linear-gradient(to_bottom,#80808012_1px,transparent_1px)] bg-size-[24px_24px]" />
-            <div className="absolute left-0 right-0 top-0 -z-1 m-auto h-[310px] w-[310px] rounded-full bg-white opacity-20 blur-[100px]" />
+            <div className="absolute left-0 right-0 top-0 -z-1 m-auto h-77.5 w-77.5 rounded-full bg-white opacity-20 blur-[100px]" />
           </>
         )}
         
@@ -342,7 +342,7 @@ export default function ProfilePage() {
             <div className="absolute top-0 right-0 w-32 h-32 bg-mint-pulse/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
             
-            <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-mint-pulse to-emerald-500 p-[3px] shadow-lg">
+            <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-mint-pulse to-emerald-500 p-0.75 shadow-lg">
               <div className="rounded-full bg-background p-1">
                 <img
                   src={avatarSrc}
