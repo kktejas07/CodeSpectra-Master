@@ -396,10 +396,10 @@ const handleEnroll = async () => {
             <div className="lg:col-span-3 space-y-6">
               {/* Category + level badge */}
               <div className="flex flex-wrap items-center gap-3">
-                <Badge className="bg-blue-500/20 text-blue-300 border-blue-500/30 px-3 py-1">
+                <Badge variant="secondary" className="bg-blue-500/20 text-blue-300 border-blue-500/30 px-3 py-1">
                   {course.category || course.tags?.[0] || 'Course'}
                 </Badge>
-                <Badge className="bg-white/10 text-white/80 border-white/20 capitalize px-3 py-1">
+                <Badge variant="secondary" className="bg-white/10 text-white/80 border-white/20 capitalize px-3 py-1">
                   {course.level || 'All levels'}
                 </Badge>
               </div>
