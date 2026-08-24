@@ -126,20 +126,16 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
       }
 
       try {
-        const detection = await withTimeout<{
-          detection: { box: { width: number; height: number } }
-          landmarks: {
-            getNose: () => Array<{ x: number }>
-            getLeftEye: () => Array<{ x: number }>
-            getRightEye: () => Array<{ x: number }>
-          }
-        } | undefined>(
-          faceapi
-            .detectSingleFace(videoRef.current, detectOptions())
-            .withFaceLandmarks(true),
-          DETECT_TIMEOUT_MS,
-          'Face detection timed out',
-        )
+        const detection = await faceapi
+          .detectSingleFace(videoRef.current, detectOptions())
+          .withFaceLandmarks(true) as {
+            detection: { box: { width: number; height: number } }
+            landmarks: {
+              getNose: () => Array<{ x: number }>
+              getLeftEye: () => Array<{ x: number }>
+              getRightEye: () => Array<{ x: number }>
+            }
+          } | undefined
 
         if (runIdRef.current !== runId) return
 
@@ -172,14 +168,10 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
         }
 
         setMessage('Capturing biometric template...')
-        const fullDetection = await withTimeout<{ descriptor: Float32Array } | undefined>(
-          faceapi
-            .detectSingleFace(videoRef.current, detectOptions())
-            .withFaceLandmarks(true)
-            .withFaceDescriptor(),
-          DETECT_TIMEOUT_MS * 2,
-          'Biometric capture timed out',
-        )
+        const fullDetection = await faceapi
+          .detectSingleFace(videoRef.current, detectOptions())
+          .withFaceLandmarks(true)
+          .withFaceDescriptor() as { descriptor: Float32Array } | undefined
 
         if (runIdRef.current !== runId) return
 
