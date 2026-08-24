@@ -16,7 +16,7 @@ export async function GET(req: NextRequest) {
 
     // ponytail: single collection scan sorted by points; rank = sort position.
     // Categories (Female/Engineering/etc.) need profile fields we don't store yet.
-    const topUsers = await db.collection('users')
+    const topUsers = await db.collection('user')
       .find({ points: { $gt: 0 } })
       .sort({ points: -1 })
       .limit(LIMIT)
@@ -40,11 +40,11 @@ export async function GET(req: NextRequest) {
       challengesSolved: 0,
     }))
 
-    const currentUser = await db.collection('users').findOne({ id: gate.user.id })
+    const currentUser = await db.collection('user').findOne({ id: gate.user.id })
     const currentUserPoints = Number(currentUser?.points) || 0
     const betterUsers =
       currentUserPoints > 0
-        ? await db.collection('users').countDocuments({ points: { $gt: currentUserPoints } })
+        ? await db.collection('user').countDocuments({ points: { $gt: currentUserPoints } })
         : 0
     const currentUserRank = currentUserPoints > 0 ? betterUsers + 1 : null
 
