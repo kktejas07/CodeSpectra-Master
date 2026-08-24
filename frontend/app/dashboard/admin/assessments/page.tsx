@@ -338,10 +338,10 @@ export default function AdminExamsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => openInviteModal(r)} disabled={!r.published} className="gap-2">
+            <DropdownMenuItem onSelect={() => setTimeout(() => openInviteModal(r), 0)} disabled={!r.published} className="gap-2">
               <Send className="h-4 w-4" /> Invite Candidate
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }} disabled={!r.published} className="gap-2">
+            <DropdownMenuItem onSelect={() => setTimeout(() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }, 0)} disabled={!r.published} className="gap-2">
               <Users className="h-4 w-4" /> Bulk Invite
             </DropdownMenuItem>
             {r.published && (
