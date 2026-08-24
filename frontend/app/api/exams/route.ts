@@ -126,10 +126,15 @@ export async function GET() {
     ]).toArray()
     const statsMap = new Map(stats.map(s => [s._id, s]))
 
-    const invitesAgg = await db.collection('candidate_invites').aggregate([
-      { $group: { _id: '$exam_id', count: { $sum: 1 } } }
-    ]).toArray()
-    const invitesMap = new Map(invitesAgg.map(i => [i._id, i.count]))
+    const allInvites = await db.collection('candidate_invites').find({}, { projection: { target_url: 1, assigned_assessments: 1 } }).toArray()
+    const invitesMap = new Map<string, number>()
+    for (const inv of allInvites) {
+      const urls = [inv.target_url, ...(inv.assigned_assessments || []).map((a: any) => a.target_url)].filter(Boolean)
+      const examIds = urls.map(url => url.match(/\/assessment\/([a-zA-Z0-9-]+)/)?.[1]).filter(Boolean)
+      for (const eid of examIds) {
+        invitesMap.set(eid, (invitesMap.get(eid) || 0) + 1)
+      }
+    }
 
     // Get current user's submissions to set completed/pending status
     const userSubmissions = await db.collection('exam_submissions').find({ user_id: gate.user.id }).toArray()
