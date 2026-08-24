@@ -22,7 +22,7 @@ export function useCurrency() {
   const [currency, setCurrency] = useState('USD')
 
   useEffect(() => {
-    fetch('/api/admin/platform-settings', { credentials: 'include' })
+    fetch('/api/platform/settings')
       .then(r => r.json())
       .then(d => {
         if (d?.settings?.platform_currency) setCurrency(d.settings.platform_currency)
