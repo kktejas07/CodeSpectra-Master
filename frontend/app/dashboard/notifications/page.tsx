@@ -255,7 +255,6 @@ export default function NotificationsPage() {
                     </div>
                     {n.message && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>}
                     <div className="flex items-center gap-2 mt-1.5">
-                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/60 text-muted-foreground">{n.type}</span>
                       <span className="text-[10px] text-primary">
                         {isNewsletter(n) ? 'Tap to read →' : 'Tap to view →'}
                       </span>
