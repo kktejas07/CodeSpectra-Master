@@ -359,7 +359,7 @@ export default function AdminExamsPage() {
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/edit`)} className="gap-2">
               <Edit className="h-4 w-4" /> Edit Assessment
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive">
               <Trash2 className="h-4 w-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -588,11 +588,11 @@ export default function AdminExamsPage() {
           ) : (
             <div className="space-y-4 px-4 pb-4">
               <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
-                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
+                <div className="flex items-center gap-2 text-green-600 mb-2">
                   <CheckCircle2 className="h-5 w-5" />
                   <p className="font-medium">Invitation sent!</p>
                 </div>
-                <p className="text-sm text-green-700/80 dark:text-green-400/80">
+                <p className="text-sm text-green-600/80">
                   Link emailed to <strong>{candEmail}</strong>
                 </p>
               </div>
@@ -647,13 +647,13 @@ export default function AdminExamsPage() {
                     <strong>CSV:</strong> One candidate per line — <code>email,name</code> or <code>jane@example.com,Jane</code>
                     <br />Names are optional. Header row is detected automatically.
                   </p>
-                  <div className="max-h-[250px] overflow-y-auto border rounded-md">
+                  <div className="max-h-62.5 overflow-y-auto border rounded-md">
                     <Textarea
                       value={bulkCsvText}
                       onChange={(e) => { setBulkCsvText(e.target.value); setBulkPreview(null) }}
                       rows={8}
                       placeholder={'email,name\njohn@example.com,John\njane@example.com,Jane'}
-                      className="font-mono text-sm min-h-[150px] border-0 focus-visible:ring-0 rounded-none"
+                      className="font-mono text-sm min-h-37.5 border-0 focus-visible:ring-0 rounded-none"
                     />
                   </div>
                 </div>
