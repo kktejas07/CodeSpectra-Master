@@ -165,3 +165,4 @@
 | 2026-08-23 | opencode (this session) | Enforced unique non-copied titles, strictly human-sounding text generation, and disabled AI image generation for Signals. Status: COMPLETED. |
 | antigravity | mock test error fix | frontend/app/dashboard/mock-tests/[id]/take/page.tsx, frontend/lib/use-currency.ts | done | 2026-08-24T15:21:12Z |
 | antigravity | fix build syntax error | frontend/app/dashboard/admin/signals/page.tsx | done | 2026-08-24T16:20:51Z |
+| antigravity | fix assessment attempts data mapping | frontend/app/api/user/assessments/route.ts | done | 2026-08-24T16:58:32Z |
