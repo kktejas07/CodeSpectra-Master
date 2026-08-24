@@ -276,7 +276,7 @@ export default function TakeMockTestPage() {
               <Label
                 key={idx}
                 htmlFor={`option-${idx}`}
-                className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all hover:bg-muted/50 [&:has([data-state=checked])]:border-primary [&:has([data-state=checked])]:ring-1 [&:has([data-state=checked])]:ring-primary`}
+                className={`flex items-center gap-3 p-4 rounded-xl border cursor-pointer transition-all hover:bg-muted/50 has-data-[state=checked]:border-primary has-data-[state=checked]:ring-1 has-data-[state=checked]:ring-primary`}
               >
                 <RadioGroupItem value={idx.toString()} id={`option-${idx}`} />
                 <span className="font-normal text-base leading-relaxed">{option}</span>

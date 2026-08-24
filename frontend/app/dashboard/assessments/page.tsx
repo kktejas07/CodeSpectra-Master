@@ -92,7 +92,7 @@ export default function MyAssessmentsPage() {
           : l === 'intermediate' ? 'bg-yellow-500/20 text-yellow-700'
           : l === 'advanced' ? 'bg-red-500/20 text-red-700'
           : 'bg-muted text-muted-foreground'
-        return <Badge variant="outline" className={`text-xs ${color}`}>{row.level}</Badge>
+        return <Badge variant="outline" className={`text-xs ${color}`}>{row.level || '—'}</Badge>
       },
     },
     {
