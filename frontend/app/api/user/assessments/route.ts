@@ -26,24 +26,28 @@ export async function GET() {
 
     const attempts = submissions.map((s: any) => {
       const exam = examMap.get(s.exam_id)
+      const scorePercentage = s.max_score > 0 ? Math.round((s.score / s.max_score) * 100) : 0
+      const passed = s.max_score > 0 && s.score >= s.max_score * 0.6
+
       return {
         id: s.id,
         exam_id: s.exam_id,
-        exam_title: exam?.title || 'Unknown Assessment',
+        title: exam?.title || 'Unknown Assessment',
         level: exam?.level || null,
         duration: exam?.duration || null,
-        score: s.score,
+        score: scorePercentage,
         max_score: s.max_score,
+        passed,
         has_pending_review: s.has_pending_review || false,
         score_released: s.score_released || false,
-        created_at: s.created_at,
+        submitted_at: s.submitted_at || s.created_at,
       }
     })
 
     const total = attempts.length
-    const passed = attempts.filter((a: any) => a.max_score > 0 && a.score >= a.max_score * 0.6).length
+    const passed = attempts.filter((a: any) => a.passed).length
     const avgScore = total > 0
-      ? Math.round(attempts.reduce((sum: number, a: any) => sum + (a.max_score > 0 ? (a.score / a.max_score) * 100 : 0), 0) / total)
+      ? Math.round(attempts.reduce((sum: number, a: any) => sum + (a.score || 0), 0) / total)
       : 0
 
     // ---- Available: assigned (pending/active invites) + open published exams ----
