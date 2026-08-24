@@ -12,8 +12,8 @@ interface FaceCameraProps {
 }
 
 const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model'
-const DETECT_TIMEOUT_MS = 3000
-const CAPTURE_BUDGET_MS = 12000
+const DETECT_TIMEOUT_MS = 8000
+const CAPTURE_BUDGET_MS = 25000
 
 function detectOptions() {
   return new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.35, inputSize: 320 })
@@ -267,7 +267,7 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
         {status === 'captured' && (
           <div className="absolute inset-0 z-10 flex flex-col items-center justify-center bg-emerald-500/20 backdrop-blur-sm p-6 text-center">
             <ShieldCheck className="w-12 h-12 text-emerald-500 mb-4" />
-            <p className="text-sm font-medium text-emerald-600 dark:text-emerald-400">{message}</p>
+            <p className="text-sm font-medium text-emerald-600">{message}</p>
           </div>
         )}
       </div>
