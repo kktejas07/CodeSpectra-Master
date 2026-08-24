@@ -36,6 +36,8 @@ interface Exam {
   screening_type?: string
   tenant_id?: string | null
   createdAt?: string
+  invites?: number
+  released?: number
 }
 
 interface Tenant {
@@ -316,7 +318,6 @@ export default function AdminExamsPage() {
       const tenant = tenants.find(t => t.id === r.tenant_id)
       return tenant?.name || <span className="text-muted-foreground">Unknown</span>
     }},
-    { key: 'branch', header: 'Branch', sortable: true, cell: (r) => r.branch ? BRANCHES.find(b => b.id === r.branch)?.short || r.branch : 'General' },
     { key: 'screening', header: 'Screening', sortable: true, cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
     { key: 'level', header: 'Level', sortable: true, cell: (r) => r.level },
     { key: 'duration', header: 'Duration', sortable: true, cell: (r) => `${r.duration} min` },
@@ -327,7 +328,11 @@ export default function AdminExamsPage() {
       </Badge>
     )},
     { key: 'stats', header: 'Stats', cell: (r) => (
-      <span className="text-xs text-muted-foreground">{r.attempts} attempts · {r.avgScore}% avg</span>
+      <div className="flex flex-col gap-0.5 text-xs text-muted-foreground whitespace-nowrap">
+        <span>{r.invites || 0} invites sent</span>
+        <span>{r.attempts || 0} submitted</span>
+        <span>{r.released || 0} released</span>
+      </div>
     )},
     { key: 'actions', header: '', cell: (r) => (
       <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
