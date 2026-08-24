@@ -51,7 +51,10 @@ export default function TakeMockTestPage() {
           count: 15
         })
       })
-      if (!res.ok) throw new Error('Failed to generate test')
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => null)
+        throw new Error(errorData?.error || 'Failed to generate test')
+      }
       const data = await res.json()
       setQuestions(data.questions || [])
     } catch (err: any) {
