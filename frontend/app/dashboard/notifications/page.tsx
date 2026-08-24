@@ -21,6 +21,17 @@ function sanitizeHtml(html: string): string {
   })
 }
 
+function formatNotificationType(typeStr?: string): string {
+  if (!typeStr) return 'System'
+  if (typeStr === 'auth.login') return 'Security'
+  if (typeStr === 'content.post_published') return 'Announcement'
+  if (typeStr === 'xp.awarded') return 'Achievement'
+  return typeStr
+    .split(/[._]/)
+    .map(w => w.charAt(0).toUpperCase() + w.slice(1))
+    .join(' ')
+}
+
 const ICON_MAP: Record<string, React.ElementType> = {
   trophy: Trophy, shield: Shield, 'credit-card': CreditCard, video: Video,
   search: Search, users: Users, award: Award, 'log-in': LogIn,
@@ -255,6 +266,9 @@ export default function NotificationsPage() {
                     </div>
                     {n.message && <p className="text-xs text-muted-foreground mt-0.5 line-clamp-2">{n.message}</p>}
                     <div className="flex items-center gap-2 mt-1.5">
+                      <span className="text-[10px] px-1.5 py-0.5 rounded-full bg-muted/60 text-muted-foreground">
+                        {formatNotificationType(n.type)}
+                      </span>
                       <span className="text-[10px] text-primary">
                         {isNewsletter(n) ? 'Tap to read →' : 'Tap to view →'}
                       </span>
