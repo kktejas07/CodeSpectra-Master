@@ -112,18 +112,24 @@ export async function GET() {
     }
     const data = await db.collection('exams').find(filter).toArray()
     
-    // Aggregate attempts and average scores from submissions
+    // Aggregate attempts, released scores, and average scores from submissions
     const stats = await db.collection('exam_submissions').aggregate([
       {
         $group: {
           _id: '$exam_id',
           attempts: { $sum: 1 },
+          released: { $sum: { $cond: [ { $gt: ["$released_at", null] }, 1, 0 ] } },
           totalScore: { $sum: '$score' },
           totalMaxScore: { $sum: '$max_score' },
         }
       }
     ]).toArray()
     const statsMap = new Map(stats.map(s => [s._id, s]))
+
+    const invitesAgg = await db.collection('candidate_invites').aggregate([
+      { $group: { _id: '$exam_id', count: { $sum: 1 } } }
+    ]).toArray()
+    const invitesMap = new Map(invitesAgg.map(i => [i._id, i.count]))
 
     // Get current user's submissions to set completed/pending status
     const userSubmissions = await db.collection('exam_submissions').find({ user_id: gate.user.id }).toArray()
@@ -144,6 +150,8 @@ export async function GET() {
       return {
         ...safeExam,
         attempts: examStats.attempts,
+        released: examStats.released || 0,
+        invites: invitesMap.get(exam.id) || 0,
         avgScore: avgPercent,
         status: userSub ? (isReleased ? 'completed' : 'submitted') : 'pending',
         ...(isReleased && { score: Math.round((userSub.score / (userSub.max_score || 1)) * 100) }),
