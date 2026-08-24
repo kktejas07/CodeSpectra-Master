@@ -12,6 +12,7 @@ import {
   DialogHeader,
   DialogTitle,
   DialogDescription,
+} from '@/components/ui/dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
