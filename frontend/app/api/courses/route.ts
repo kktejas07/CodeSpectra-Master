@@ -277,82 +277,23 @@ export async function GET(request: NextRequest) {
     const col = db.collection('courses')
     const enrollments = db.collection('course_enrollments')
 
-    // Remove obsolete seed stubs BEFORE re-upserting seeds (so they cannot come back).
-    for (const obsoleteId of OBSOLETE_SEED_IDS) {
-      const generated =
-        obsoleteId === 'java-fundamentals'
-          ? await col.findOne({ id: 'java-beginner' }, { projection: { id: 1 } })
-          : null
-      if (generated) {
-        const old = await enrollments.find({ courseId: obsoleteId }).project({ userId: 1 }).toArray()
-        for (const row of old) {
-          const uid = row.userId
-          if (!uid) continue
-          const exists = await enrollments.findOne({ courseId: generated.id, userId: uid })
-          if (!exists) {
-            await enrollments.updateOne({ _id: row._id }, { $set: { courseId: generated.id } })
-          } else {
-            await enrollments.deleteOne({ _id: row._id })
-          }
-        }
-      }
-      await col.deleteOne({ id: obsoleteId })
+    // Seed catalog only if the database is completely empty
+    const courseCount = await col.countDocuments()
+    if (courseCount === 0) {
+      const now = new Date().toISOString()
+      await Promise.all(
+        SEED_COURSES.map((c) =>
+          col.updateOne(
+            { id: c.id },
+            { $setOnInsert: { ...c, updated_at: now, created_at: now, enrolled: 0 } },
+            { upsert: true }
+          )
+        )
+      )
     }
 
-    // Upsert seed catalog — skip any seed whose title already belongs to a generated course.
-    const now = new Date().toISOString()
-    const existingGenerated = await col
-      .find({
-        $or: [
-          { source: 'generated' },
-          { techStack: { $exists: true, $ne: null } },
-          { id: { $in: ['java-beginner'] } },
-        ],
-      })
-      .project({ title: 1, id: 1 })
-      .toArray()
-    const generatedTitles = new Set(
-      existingGenerated.map((c) => String(c.title || '').trim().toLowerCase()).filter(Boolean),
-    )
-
-    await Promise.all(
-      SEED_COURSES.filter((c) => !generatedTitles.has(c.title.trim().toLowerCase())).map((c) =>
-        col.updateOne(
-          { id: c.id },
-          { $set: { ...c, updated_at: now }, $setOnInsert: { enrolled: 0, created_at: now } },
-          { upsert: true },
-        ),
-      ),
-    )
-
-    // Title-collision cleanup: if multiple docs share a title, keep the richest and drop the rest.
     const courses = await col.find({}).toArray()
     const unique = dedupeCoursesByTitle(courses as any[])
-    const keepIds = new Set(unique.map((c) => c.id).filter(Boolean))
-    const dropIds = courses
-      .map((c) => c.id)
-      .filter((id): id is string => Boolean(id) && !keepIds.has(id))
-    if (dropIds.length) {
-      // Migrate enrollments from dropped stubs onto the kept course with the same title when possible.
-      for (const dropId of dropIds) {
-        const dropped = courses.find((c) => c.id === dropId)
-        const keep = unique.find(
-          (c) =>
-            (c.title || '').trim().toLowerCase() === String(dropped?.title || '').trim().toLowerCase(),
-        )
-        if (keep?.id) {
-          const old = await enrollments.find({ courseId: dropId }).project({ userId: 1 }).toArray()
-          for (const row of old) {
-            const uid = row.userId
-            if (!uid) continue
-            const exists = await enrollments.findOne({ courseId: keep.id, userId: uid })
-            if (!exists) await enrollments.updateOne({ _id: row._id }, { $set: { courseId: keep.id } })
-            else await enrollments.deleteOne({ _id: row._id })
-          }
-        }
-      }
-      await col.deleteMany({ id: { $in: dropIds } })
-    }
 
     // Real enrolled count per course from course_enrollments
     const enriched = await Promise.all(

@@ -50,7 +50,7 @@ function courseMediaStats(course: any) {
   return { total, mp4Ready, scriptOnly, pending: Math.max(0, total - mp4Ready) }
 }
 
-export default function CourseGeneratorPage() {
+export default function CourseGeneratorTab() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
 
@@ -351,13 +351,6 @@ export default function CourseGeneratorPage() {
 
   return (
     <div className="space-y-6">
-      {/* Header */}
-      <div>
-        <h1 className="text-2xl font-bold">Course Generator</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          Generate courses with AI videos, quizzes, and certificates
-        </p>
-      </div>
 
       {/* Main Grid */}
       <div className="grid lg:grid-cols-3 gap-6">

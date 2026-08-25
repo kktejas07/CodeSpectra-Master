@@ -7,7 +7,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
-import { Plus, Loader2, Trash2, BookOpen, Save, Video, ArrowLeft, Wand2, HelpCircle } from 'lucide-react'
+import { Plus, Loader2, Trash2, BookOpen, Save, Video, ArrowLeft, Wand2, HelpCircle, GripVertical } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -79,6 +79,8 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
   const [saving, setSaving] = useState(false)
   const [generating, setGenerating] = useState<string | null>(null)
   const [generatingQuiz, setGeneratingQuiz] = useState<number | null>(null)
+  const [draggedSectionIndex, setDraggedSectionIndex] = useState<number | null>(null)
+  const [draggedLesson, setDraggedLesson] = useState<{sIndex: number, lIndex: number} | null>(null)
 
   useEffect(() => {
     setLoading(true)
@@ -167,6 +169,59 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
     const newSections = [...course.sections]
     newSections[sectionIndex].lessons.splice(lessonIndex, 1)
     setCourse({ ...course, sections: newSections })
+  }
+
+  // --- Drag and Drop for Sections ---
+  const onSectionDragStart = (e: React.DragEvent, index: number) => {
+    setDraggedSectionIndex(index)
+  }
+
+  const onSectionDragOver = (e: React.DragEvent) => {
+    e.preventDefault() 
+  }
+
+  const onSectionDrop = (e: React.DragEvent, dropIndex: number) => {
+    e.preventDefault()
+    if (draggedSectionIndex === null || draggedSectionIndex === dropIndex || !course) return
+    
+    const newSections = [...(course.sections || [])]
+    const [draggedItem] = newSections.splice(draggedSectionIndex, 1)
+    newSections.splice(dropIndex, 0, draggedItem)
+    
+    setCourse({ ...course, sections: newSections })
+    setDraggedSectionIndex(null)
+  }
+
+  // --- Drag and Drop for Lessons ---
+  const onLessonDragStart = (e: React.DragEvent, sIndex: number, lIndex: number) => {
+    e.stopPropagation() 
+    setDraggedLesson({ sIndex, lIndex })
+  }
+
+  const onLessonDragOver = (e: React.DragEvent) => {
+    e.preventDefault()
+  }
+
+  const onLessonDrop = (e: React.DragEvent, dropSIndex: number, dropLIndex: number) => {
+    e.preventDefault()
+    e.stopPropagation()
+    if (!draggedLesson || !course || !course.sections) return
+    
+    if (draggedLesson.sIndex !== dropSIndex) return
+    if (draggedLesson.lIndex === dropLIndex) return
+
+    const newSections = [...course.sections]
+    const section = { ...newSections[dropSIndex] }
+    const newLessons = [...section.lessons]
+    
+    const [draggedItem] = newLessons.splice(draggedLesson.lIndex, 1)
+    newLessons.splice(dropLIndex, 0, draggedItem)
+    
+    section.lessons = newLessons
+    newSections[dropSIndex] = section
+    
+    setCourse({ ...course, sections: newSections })
+    setDraggedLesson(null)
   }
 
   const handleGenerateVideo = async (sectionIndex: number, lessonIndex: number) => {
@@ -464,8 +519,18 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
 
           <div className="space-y-6">
             {course.sections?.map((section, sIndex) => (
-              <div key={section.slug} className="bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm">
+              <div 
+                key={section.slug || `section-${sIndex}`} 
+                className={`bg-card border border-border/50 rounded-xl overflow-hidden shadow-sm transition-all ${draggedSectionIndex === sIndex ? 'opacity-50 border-primary' : ''}`}
+                draggable
+                onDragStart={(e) => onSectionDragStart(e, sIndex)}
+                onDragOver={onSectionDragOver}
+                onDrop={(e) => onSectionDrop(e, sIndex)}
+              >
                 <div className="bg-muted/30 p-4 border-b border-border flex items-center gap-4">
+                  <div className="cursor-grab hover:text-primary text-muted-foreground p-1">
+                    <GripVertical className="w-5 h-5" />
+                  </div>
                   <div className="flex-1">
                     <Input 
                       value={section.title}
@@ -483,8 +548,18 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                 
                 <div className="p-4 space-y-4">
                   {section.lessons.map((lesson, lIndex) => (
-                    <div key={lesson.id} className="border border-border/60 rounded-lg p-4 bg-background shadow-sm space-y-4 transition-all hover:border-border">
+                    <div 
+                      key={lesson.id || `lesson-${lIndex}`} 
+                      className={`border border-border/60 rounded-lg p-4 bg-background shadow-sm space-y-4 transition-all hover:border-border ${draggedLesson?.sIndex === sIndex && draggedLesson?.lIndex === lIndex ? 'opacity-50 border-primary' : ''}`}
+                      draggable
+                      onDragStart={(e) => onLessonDragStart(e, sIndex, lIndex)}
+                      onDragOver={onLessonDragOver}
+                      onDrop={(e) => onLessonDrop(e, sIndex, lIndex)}
+                    >
                       <div className="flex items-start gap-4">
+                        <div className="mt-7 cursor-grab hover:text-primary text-muted-foreground">
+                          <GripVertical className="w-4 h-4" />
+                        </div>
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
                           <div className="space-y-1">
                             <Label className="text-xs text-muted-foreground">Lesson Title</Label>

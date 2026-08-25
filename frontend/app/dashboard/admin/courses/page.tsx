@@ -14,6 +14,8 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { useRouter } from 'next/navigation'
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
+import CourseGeneratorTab from './course-generator-tab'
 
 interface Course {
   id: string
@@ -166,12 +168,19 @@ export default function AdminCoursesPage() {
         </div>
       </div>
 
-      {loading ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin mr-2 text-indigo-500" />
-          Loading courses...
-        </div>
-      ) : (
+      <Tabs defaultValue="manage" className="space-y-6">
+        <TabsList className="grid w-full grid-cols-2 max-w-100">
+          <TabsTrigger value="manage">Manage Courses</TabsTrigger>
+          <TabsTrigger value="generator">AI Course Generator</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="manage" className="space-y-6">
+          {loading ? (
+            <div className="flex items-center justify-center py-20 text-muted-foreground">
+              <Loader2 className="h-6 w-6 animate-spin mr-2 text-indigo-500" />
+              Loading courses...
+            </div>
+          ) : (
         <DataTable
           columns={columns}
           data={courses}
@@ -189,6 +198,12 @@ export default function AdminCoursesPage() {
           emptyMessage="No courses yet. Click 'Create Course' to get started."
         />
       )}
+        </TabsContent>
+
+        <TabsContent value="generator" className="m-0 border-none p-0 outline-none">
+          <CourseGeneratorTab />
+        </TabsContent>
+      </Tabs>
 
       <Dialog open={createOpen} onOpenChange={setCreateOpen}>
         <DialogContent className="sm:max-w-xl max-h-[90vh] flex flex-col p-0 overflow-hidden border-border bg-card/95 backdrop-blur-xl shadow-2xl">
