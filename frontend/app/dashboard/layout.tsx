@@ -470,7 +470,6 @@ export default function DashboardLayout({
       [p.workflows]: Workflow,
       '/dashboard/admin/cron-jobs': Timer,
       [p.questionGenerator]: Bot,
-      '/dashboard/admin/course-generator': Wand2,
       '/dashboard/admin/courses': BookOpen,
       [DASHBOARD_ROUTES.organization.team]: Users2,
       '/dashboard/admin/requisitions': Briefcase,
