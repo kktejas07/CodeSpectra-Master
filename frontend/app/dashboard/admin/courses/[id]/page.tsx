@@ -528,7 +528,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                 onDrop={(e) => onSectionDrop(e, sIndex)}
               >
                 <div className="bg-muted/30 p-4 border-b border-border flex items-center gap-4">
-                  <div className="cursor-grab hover:text-primary active:cursor-grabbing text-muted-foreground p-1">
+                  <div className="cursor-grab hover:text-primary text-muted-foreground p-1">
                     <GripVertical className="w-5 h-5" />
                   </div>
                   <div className="flex-1">
@@ -557,7 +557,7 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
                       onDrop={(e) => onLessonDrop(e, sIndex, lIndex)}
                     >
                       <div className="flex items-start gap-4">
-                        <div className="mt-7 cursor-grab hover:text-primary active:cursor-grabbing text-muted-foreground">
+                        <div className="mt-7 cursor-grab hover:text-primary text-muted-foreground">
                           <GripVertical className="w-4 h-4" />
                         </div>
                         <div className="flex-1 grid grid-cols-1 md:grid-cols-2 gap-4">
