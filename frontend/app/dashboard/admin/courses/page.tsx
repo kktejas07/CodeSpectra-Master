@@ -169,7 +169,7 @@ export default function AdminCoursesPage() {
       </div>
 
       <Tabs defaultValue="manage" className="space-y-6">
-        <TabsList className="grid w-full grid-cols-2 max-w-[400px]">
+        <TabsList className="grid w-full grid-cols-2 max-w-100">
           <TabsTrigger value="manage">Manage Courses</TabsTrigger>
           <TabsTrigger value="generator">AI Course Generator</TabsTrigger>
         </TabsList>

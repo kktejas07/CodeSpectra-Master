@@ -760,7 +760,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/4 dark:from-background dark:via-background dark:to-primary/10">
+    <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
       <ActivityHeartbeat />
       <WebVitalsReporter />
       <AnalyticsTracker />
@@ -1089,7 +1089,7 @@ export default function DashboardLayout({
         {/* Face biometric enrollment warning */}
         {userRole === 'user' && fbUser?.has_enrolled_face === false && (
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-2 text-amber-600">
               <AlertCircle className="h-5 w-5 shrink-0" />
               <p><strong>Action Required:</strong> Please complete your face biometric enrollment to take proctored assessments.</p>
             </div>
