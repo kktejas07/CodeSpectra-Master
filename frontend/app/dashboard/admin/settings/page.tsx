@@ -36,7 +36,9 @@ import {
   ScrollText,
   Trophy,
   Video,
+  Upload,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -369,6 +371,65 @@ function SystemSettingsInner() {
   const toggleVisible = useCallback((key: string) => {
     setVisibleFields((v) => ({ ...v, [key]: !v[key] }))
   }, [])
+
+  const handleExcelImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 })
+
+      const providerMap: Record<string, string> = {
+        'openai': 'openai_api_key',
+        'anthropic': 'anthropic_api_key',
+        'google gemini': 'gemini_api_key',
+        'gemini': 'gemini_api_key',
+        'groq': 'groq_api_key',
+        'openrouter': 'openrouter_api_key',
+        'nvidia': 'nvidia_api_key',
+        'opencode': 'opencode_api_key',
+      }
+
+      let imported = 0
+      const skipped: string[] = []
+
+      for (const row of rows) {
+        if (!Array.isArray(row) || row.length < 3) continue
+        const name = String(row[1] || '').trim()
+        const apiKey = String(row[2] || '').trim()
+
+        if (!name || !apiKey || apiKey.startsWith('Our platform')) continue
+
+        const normalizedName = name.toLowerCase()
+        const secretKey = providerMap[normalizedName]
+
+        if (secretKey) {
+          setSecretsDraft((d) => ({ ...d, [secretKey]: apiKey }))
+          imported++
+        } else {
+          skipped.push(name)
+        }
+      }
+
+      if (imported > 0) {
+        addToast({
+          type: 'success',
+          title: `Imported ${imported} API key${imported > 1 ? 's' : ''}`,
+          message: skipped.length > 0 ? `Skipped: ${skipped.join(', ')}` : undefined,
+        })
+      } else {
+        addToast({ type: 'error', title: 'No matching providers found', message: 'Check that your Excel file has OpenAI, Anthropic, Gemini, Groq, OpenRouter, or NVIDIA keys.' })
+      }
+    } catch (err) {
+      addToast({ type: 'error', title: 'Failed to parse Excel file', message: err instanceof Error ? err.message : 'Invalid file format' })
+    }
+
+    e.target.value = ''
+  }, [addToast])
 
   useEffect(() => {
     return () => { Object.values(timers.current).forEach(clearTimeout) }
@@ -2362,6 +2423,19 @@ function SystemSettingsInner() {
                   Configure API keys. Add multiple keys separated by commas for automatic rotation on rate limits.
                   Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
                 </p>
+                <div className="flex items-center gap-3 mb-6">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border/60 bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm font-medium">
+                    <Upload className="h-4 w-4" />
+                    Import from Excel
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={handleExcelImport}
+                    />
+                  </label>
+                  <span className="text-xs text-muted-foreground">Supports .xlsx, .xls, .csv with columns: Name, API Key</span>
+                </div>
                 <div className="space-y-5">
                   {['gemini','opencode','groq','openrouter','openai','anthropic','nvidia'].map((provider) => {
                     const meta: Record<string,any> = {
