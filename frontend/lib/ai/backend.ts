@@ -5,6 +5,10 @@
  * INTERNAL_BACKEND_URL env, defaults to localhost:8001). These calls happen
  * ONLY server-side from Next.js API route handlers — never expose this from
  * the browser.
+ *
+ * Uses OmniRouter-style provider fallback: when a provider hits rate limits,
+ * quota exhaustion, or errors, automatically rotates to the next available
+ * provider with exponential backoff.
  */
 
 const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
@@ -139,80 +143,9 @@ export async function backendComplete(args: {
   feature?: string
   userId?: string
 }): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string; usage?: { input_tokens: number, output_tokens: number } }> {
-  const start = Date.now()
-  let success = true
-  let error: string | undefined
-  let parsedRes: any
-
-  try {
-    const headers = await backendHeaders({ apiKeyOverride: args.apiKeyOverride })
-    const res = await fetch(`${BACKEND}/internal/ai/complete`, {
-      method: 'POST',
-      headers,
-      signal: AbortSignal.timeout(180_000),
-      body: JSON.stringify({
-        session_id: args.sessionId ?? 'default',
-        system_message: args.systemMessage,
-        user_message: args.userMessage,
-        model_role: args.modelRole ?? 'fast',
-        response_format: args.responseFormat ?? 'text',
-        ...(args.providerOverride && args.modelOverride ? {
-          provider_override: args.providerOverride,
-          model_override: args.modelOverride,
-          endpoint_override: args.endpointOverride || '',
-        } : {}),
-        ...(args.apiKeyOverride ? { api_key_override: args.apiKeyOverride } : {}),
-      }),
-    })
-    
-    if (!res.ok) {
-      const text = await res.text()
-      success = false
-      error = text
-      return { ok: false, text }
-    }
-    
-    parsedRes = await res.json()
-    return parsedRes
-  } catch (e) {
-    success = false
-    const cause = e instanceof Error ? e.message : 'Unknown error'
-    error = `AI backend unreachable at ${BACKEND}: ${cause}`
-    throw new Error(error)
-  } finally {
-    const latencyMs = Date.now() - start
-    if (args.feature) {
-      import('@/lib/db/analytics').then(async ({ analyticsAiUsage, estimateAiCost, newId, nowIso }) => {
-        try {
-          const inputTokens = parsedRes?.usage?.input_tokens || parsedRes?.prompt_tokens || 0
-          const outputTokens = parsedRes?.usage?.output_tokens || parsedRes?.completion_tokens || 0
-          const model = args.modelOverride || 'unknown'
-          const provider = args.providerOverride || 'unknown'
-          const totalTokens = inputTokens + outputTokens
-          const cost = estimateAiCost(model, inputTokens, outputTokens)
-
-          const col = await analyticsAiUsage()
-          await col.insertOne({
-            id: newId(),
-            user_id: args.userId,
-            feature: args.feature,
-            provider,
-            model,
-            input_tokens: inputTokens,
-            output_tokens: outputTokens,
-            total_tokens: totalTokens,
-            estimated_cost: cost,
-            latency_ms: latencyMs,
-            success,
-            error,
-            timestamp: nowIso(),
-          } as any)
-        } catch {
-          // Silent
-        }
-      }).catch(() => null)
-    }
-  }
+  // Use OmniRouter-style provider fallback for automatic failover
+  const { backendCompleteWithFallback } = await import('@/lib/ai/provider-fallback')
+  return backendCompleteWithFallback(args)
 }
 
 export async function backendGet<T = unknown>(
