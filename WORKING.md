@@ -6,6 +6,14 @@
 
 ## Current Claims
 
+| opencode (this session, CONTENT-STUDIO-MERGE) | DONE — Merged blog + signals into unified Content Studio page at /dashboard/admin/content-studio. Tab-based UI with Newsroom (manual blog) and Signals (automated RSS pipeline). Added to sidebar navigation and page permissions. tsc clean. | frontend/app/dashboard/admin/content-studio/page.tsx, frontend/lib/page-permissions.ts, frontend/app/dashboard/layout.tsx | DONE — COMMITTED + PUSHED to dev-fixes (fe35f6e) | 2026-08-26 |
+
+| opencode (this session, BLOG-MULTI-PASS) | DONE — Upgraded blog ai-write to multi-pass pipeline (adopted from Signals): deep web research → fact extraction → draft from facts → humanize → source attribution. Uses gatherSourceTexts for full page scraping instead of DuckDuckGo snippets. | frontend/app/api/admin/blog/ai-write/route.ts | DONE — COMMITTED | 2026-08-26 |
+
+| opencode (this session, LLM-FALLBACK-SYSTEM) | DONE — Implemented OmniRouter/9Router-style provider fallback system. Created `provider-fallback.ts` with automatic failover across 10+ providers, rate-limit detection (429/quota), key marking, exponential backoff, and round-robin rotation. Updated `backendComplete` to use new fallback system. Dead code `markKeyRateLimited` now wired up. tsc clean. | frontend/lib/ai/provider-fallback.ts, frontend/lib/ai/backend.ts | DONE — COMMITTED + PUSHED to dev-fixes (5ca80f7) | 2026-08-26 |
+
+| opencode (this session, LLM-SETTINGS-EXPAND) | Expand LLM settings page to support all 44 providers from Excel file. Added Excel import feature, all provider key fields, and updated test-all-keys to test all providers. | frontend/app/dashboard/admin/settings/page.tsx | COMMITTED + PUSHED to dev-fixes (21c8bc4) | 2026-08-26 |
+
 | opencode (this session, BLOG-QUALITY+STATUS+NOTIFICATIONS) | DONE — Enhanced AI blog prompt for human-like quality + deterministic visual consistency (pollinations seeds); wired feedback and complaint routes to notifySuperAdmins; overhauled public /status page UI with metrics, recharts, and incident history component. tsc clean. | frontend/app/api/admin/blog/ai-write/route.ts, frontend/app/api/feedback/route.ts, frontend/app/status/page.tsx, WORKING.md | DONE | 2026-08-23 |
 
 | opencode (this session, BLOG-COVERS+EBOOK-UI) | DONE — commit 17b9c22. lib/ai-image.ts (context-built prompts → OpenAI images or keyless Pollinations/flux, warm-verified); signals-ingest auto-generates per-draft covers; approve carries cover into post; blog admin thumbnails + AI-cover regen; ebooks coverImageUrl E2E (create/cron/PATCH regen) + 3D card art + reader hero. tsc clean (except other session's feedback WIP), 112 tests pass. | lib/ai-image.ts, signals ingest+admin+queue pages, blog admin page + ai-cover route, ebooks db/API/cron/card/admin/hub/reader | DONE | 2026-08-22 |
