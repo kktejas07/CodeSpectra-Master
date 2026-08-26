@@ -15,8 +15,16 @@ export async function saveLessonMp4(courseId: string, lessonId: string, video: B
   let stored: 'object' | 'mongo' = 'mongo'
 
   if (cfg) {
-    await s3PutObject(objectKey, video, 'video/mp4')
-    stored = 'object'
+    try {
+      await s3PutObject(objectKey, video, 'video/mp4')
+      stored = 'object'
+    } catch (e) {
+      console.warn('[lesson-mp4] S3 upload failed, falling back to MongoDB:', (e as Error).message?.slice(0, 120))
+      if (video.length > MONGO_MAX) {
+        throw new Error(`S3 upload failed AND MP4 (${(video.length / 1e6).toFixed(1)}MB) exceeds MongoDB limit. Fix S3 or reduce video size.`)
+      }
+      stored = 'mongo'
+    }
   } else if (video.length > MONGO_MAX) {
     throw new Error('Configure object storage (Settings → Cloudflare) — MP4 is too large for Mongo')
   }
