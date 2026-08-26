@@ -197,7 +197,7 @@ export default function CronJobsPage() {
             <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
             Refresh
           </Button>
-          <Button onClick={() => void runAction('run-tick')} disabled={!!busy}>
+          <Button onClick={() => void runAction('run-tick')} disabled={!!busy} className="text-white font-bold">
             {busy === 'run-tick' ? (
               <Loader2 className="mr-2 h-4 w-4 animate-spin" />
             ) : (
@@ -431,7 +431,7 @@ export default function CronJobsPage() {
                   <Button
                     size="sm"
                     variant="outline"
-                    className="shrink-0 self-start"
+                    className="shrink-0 self-start text-foreground"
                     disabled={!!busy}
                     onClick={() => void runAction('run-endpoint', { path: job.path })}
                   >
@@ -506,6 +506,7 @@ export default function CronJobsPage() {
                         size="sm"
                         variant="outline"
                         disabled={!!busy}
+                        className="text-foreground"
                         onClick={() => void runAction('toggle-workflow', { workflowId: w.id })}
                       >
                         <Power className="mr-1 h-3.5 w-3.5" />
