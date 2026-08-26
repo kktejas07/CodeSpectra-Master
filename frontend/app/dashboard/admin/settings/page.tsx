@@ -36,7 +36,9 @@ import {
   ScrollText,
   Trophy,
   Video,
+  Upload,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -183,6 +185,44 @@ type SecretsDraft = {
   opencode_api_key: string
   openrouter_api_key: string
   nvidia_api_key: string
+  deepseek_api_key: string
+  cerebras_api_key: string
+  mistral_api_key: string
+  cohere_api_key: string
+  fireworks_api_key: string
+  xai_api_key: string
+  replicate_api_key: string
+  elevenlabs_api_key: string
+  assemblyai_api_key: string
+  deepgram_api_key: string
+  deepinfra_api_key: string
+  novita_api_key: string
+  stability_api_key: string
+  fal_api_key: string
+  ai21_api_key: string
+  kimi_api_key: string
+  lemonfox_api_key: string
+  huggingface_api_key: string
+  cloudflare_workers_api_key: string
+  sambanova_api_key: string
+  nscale_api_key: string
+  chutes_api_key: string
+  modelscope_api_key: string
+  langchain_api_key: string
+  langfuse_api_key: string
+  pinecone_api_key: string
+  qdrant_api_key: string
+  tavily_api_key: string
+  firecrawl_api_key: string
+  serper_api_key: string
+  jina_api_key: string
+  exa_api_key: string
+  notion_api_key: string
+  slack_api_key: string
+  google_knowledge_graph_api_key: string
+  browserbase_api_key: string
+  brightdata_api_key: string
+  scrapingbee_api_key: string
   internal_backend_secret: string
 }
 
@@ -223,6 +263,44 @@ const emptySecretsDraft = (): SecretsDraft => ({
   opencode_api_key: '',
   openrouter_api_key: '',
   nvidia_api_key: '',
+  deepseek_api_key: '',
+  cerebras_api_key: '',
+  mistral_api_key: '',
+  cohere_api_key: '',
+  fireworks_api_key: '',
+  xai_api_key: '',
+  replicate_api_key: '',
+  elevenlabs_api_key: '',
+  assemblyai_api_key: '',
+  deepgram_api_key: '',
+  deepinfra_api_key: '',
+  novita_api_key: '',
+  stability_api_key: '',
+  fal_api_key: '',
+  ai21_api_key: '',
+  kimi_api_key: '',
+  lemonfox_api_key: '',
+  huggingface_api_key: '',
+  cloudflare_workers_api_key: '',
+  sambanova_api_key: '',
+  nscale_api_key: '',
+  chutes_api_key: '',
+  modelscope_api_key: '',
+  langchain_api_key: '',
+  langfuse_api_key: '',
+  pinecone_api_key: '',
+  qdrant_api_key: '',
+  tavily_api_key: '',
+  firecrawl_api_key: '',
+  serper_api_key: '',
+  jina_api_key: '',
+  exa_api_key: '',
+  notion_api_key: '',
+  slack_api_key: '',
+  google_knowledge_graph_api_key: '',
+  browserbase_api_key: '',
+  brightdata_api_key: '',
+  scrapingbee_api_key: '',
   internal_backend_secret: '',
 })
 
@@ -369,6 +447,112 @@ function SystemSettingsInner() {
   const toggleVisible = useCallback((key: string) => {
     setVisibleFields((v) => ({ ...v, [key]: !v[key] }))
   }, [])
+
+  const handleExcelImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 })
+
+      const providerMap: Record<string, string> = {
+        'openai': 'openai_api_key',
+        'anthropic': 'anthropic_api_key',
+        'google gemini': 'gemini_api_key',
+        'gemini': 'gemini_api_key',
+        'groq': 'groq_api_key',
+        'openrouter': 'openrouter_api_key',
+        'nvidia': 'nvidia_api_key',
+        'opencode': 'opencode_api_key',
+        'deepseek': 'deepseek_api_key',
+        'cerebras': 'cerebras_api_key',
+        'mistral': 'mistral_api_key',
+        'cohere': 'cohere_api_key',
+        'fireworks': 'fireworks_api_key',
+        'xai (grok)': 'xai_api_key',
+        'xai': 'xai_api_key',
+        'replicate': 'replicate_api_key',
+        'elevenlabs': 'elevenlabs_api_key',
+        'assemblyai': 'assemblyai_api_key',
+        'deepgram': 'deepgram_api_key',
+        'deepinfra': 'deepinfra_api_key',
+        'novita': 'novita_api_key',
+        'stability ai': 'stability_api_key',
+        'stability': 'stability_api_key',
+        'fal.ai': 'fal_api_key',
+        'fal': 'fal_api_key',
+        'ai21': 'ai21_api_key',
+        'kimi (moonshot)': 'kimi_api_key',
+        'kimi': 'kimi_api_key',
+        'lemonfox': 'lemonfox_api_key',
+        'hugging face': 'huggingface_api_key',
+        'huggingface': 'huggingface_api_key',
+        'cloudflare workers ai': 'cloudflare_workers_api_key',
+        'cloudflare': 'cloudflare_workers_api_key',
+        'sambanova': 'sambanova_api_key',
+        'nscale': 'nscale_api_key',
+        'chutes': 'chutes_api_key',
+        'modelscope': 'modelscope_api_key',
+        'langchain (hub)': 'langchain_api_key',
+        'langchain': 'langchain_api_key',
+        'langfuse': 'langfuse_api_key',
+        'pinecone': 'pinecone_api_key',
+        'qdrant': 'qdrant_api_key',
+        'tavily': 'tavily_api_key',
+        'firecrawl': 'firecrawl_api_key',
+        'serper': 'serper_api_key',
+        'jina ai': 'jina_api_key',
+        'jina': 'jina_api_key',
+        'exa': 'exa_api_key',
+        'notion': 'notion_api_key',
+        'slack': 'slack_api_key',
+        'google knowledge graph': 'google_knowledge_graph_api_key',
+        'browserbase': 'browserbase_api_key',
+        'bright data': 'brightdata_api_key',
+        'brightdata': 'brightdata_api_key',
+        'scrapingbee': 'scrapingbee_api_key',
+      }
+
+      let imported = 0
+      const skipped: string[] = []
+
+      for (const row of rows) {
+        if (!Array.isArray(row) || row.length < 3) continue
+        const name = String(row[1] || '').trim()
+        const apiKey = String(row[2] || '').trim()
+
+        if (!name || !apiKey || apiKey.startsWith('Our platform')) continue
+
+        const normalizedName = name.toLowerCase()
+        const secretKey = providerMap[normalizedName]
+
+        if (secretKey) {
+          setSecretsDraft((d) => ({ ...d, [secretKey]: apiKey }))
+          imported++
+        } else {
+          skipped.push(name)
+        }
+      }
+
+      if (imported > 0) {
+        addToast({
+          type: 'success',
+          title: `Imported ${imported} API key${imported > 1 ? 's' : ''}`,
+          message: skipped.length > 0 ? `Skipped: ${skipped.join(', ')}` : undefined,
+        })
+      } else {
+        addToast({ type: 'error', title: 'No matching providers found', message: 'Check that your Excel file has OpenAI, Anthropic, Gemini, Groq, OpenRouter, or NVIDIA keys.' })
+      }
+    } catch (err) {
+      addToast({ type: 'error', title: 'Failed to parse Excel file', message: err instanceof Error ? err.message : 'Invalid file format' })
+    }
+
+    e.target.value = ''
+  }, [addToast])
 
   useEffect(() => {
     return () => { Object.values(timers.current).forEach(clearTimeout) }
@@ -2362,22 +2546,70 @@ function SystemSettingsInner() {
                   Configure API keys. Add multiple keys separated by commas for automatic rotation on rate limits.
                   Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
                 </p>
+                <div className="flex items-center gap-3 mb-6">
+                  <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border/60 bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm font-medium">
+                    <Upload className="h-4 w-4" />
+                    Import from Excel
+                    <input
+                      type="file"
+                      accept=".xlsx,.xls,.csv"
+                      className="hidden"
+                      onChange={handleExcelImport}
+                    />
+                  </label>
+                  <span className="text-xs text-muted-foreground">Supports .xlsx, .xls, .csv with columns: Name, API Key</span>
+                </div>
                 <div className="space-y-5">
-                  {['gemini','opencode','groq','openrouter','openai','anthropic','nvidia'].map((provider) => {
-                    const meta: Record<string,any> = {
-                      gemini: { label: 'Google Gemini', placeholder: 'AIza...', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier. Used for code analysis, hints, and fast completions.', key: 'gemini_api_key' },
-                      opencode: { label: 'OpenCode', placeholder: 'ock_...', url: 'https://opencode.ai/keys', urlLabel: 'OpenCode Keys', desc: 'Free & paid. Claude, GPT, Gemini, DeepSeek models. Free models: deepseek-v4-flash-free, mimo-v2.5-free, ling-3.0-flash-free.', key: 'opencode_api_key' },
-                      groq: { label: 'Groq', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama 3.3, Mixtral, Gemma, DeepSeek R1.', key: 'groq_api_key' },
-                      openrouter: { label: 'OpenRouter', placeholder: 'sk-or-...', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. Access 300+ models including free tiers of Gemini, Claude, Llama.', key: 'openrouter_api_key' },
-                      openai: { label: 'OpenAI', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'Paid. GPT-4o, GPT-4-turbo, o1, o3 models.', key: 'openai_api_key' },
-                      anthropic: { label: 'Anthropic Claude', placeholder: 'sk-ant-...', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Paid. Deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
-                      nvidia: { label: 'NVIDIA NIM', placeholder: 'nvapi-...', url: 'https://console.anthropic.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models via NVIDIA infrastructure.', key: 'nvidia_api_key' },
-                    }
-                    const info = meta[provider]
-                    const keyValue = (secretsDraft as any)[info.key] || ""
+                  {[
+                    { id: 'gemini', label: 'Google Gemini', placeholder: 'AIza...', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier. Code analysis, hints, fast completions.', key: 'gemini_api_key' },
+                    { id: 'opencode', label: 'OpenCode', placeholder: 'ock_...', url: 'https://opencode.ai/keys', urlLabel: 'OpenCode Keys', desc: 'Free & paid. Claude, GPT, Gemini, DeepSeek models.', key: 'opencode_api_key' },
+                    { id: 'groq', label: 'Groq', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama, Mixtral, Gemma.', key: 'groq_api_key' },
+                    { id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. 300+ models including free tiers.', key: 'openrouter_api_key' },
+                    { id: 'openai', label: 'OpenAI', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'Paid. GPT-4o, GPT-4-turbo, o1, o3 models.', key: 'openai_api_key' },
+                    { id: 'anthropic', label: 'Anthropic Claude', placeholder: 'sk-ant-...', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Paid. Deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
+                    { id: 'nvidia', label: 'NVIDIA NIM', placeholder: 'nvapi-...', url: 'https://build.nvidia.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models.', key: 'nvidia_api_key' },
+                    { id: 'deepseek', label: 'DeepSeek', placeholder: 'sk-...', url: 'https://platform.deepseek.com', urlLabel: 'DeepSeek Platform', desc: 'Paid. DeepSeek V3, R1 reasoning models.', key: 'deepseek_api_key' },
+                    { id: 'cerebras', label: 'Cerebras', placeholder: 'csk-...', url: 'https://cloud.cerebras.ai', urlLabel: 'Cerebras Cloud', desc: 'Paid. Ultra-fast inference on Cerebras wafer-scale.', key: 'cerebras_api_key' },
+                    { id: 'mistral', label: 'Mistral AI', placeholder: '...', url: 'https://console.mistral.ai', urlLabel: 'Mistral Console', desc: 'Paid. Mistral Large, Mixtral, Codestral.', key: 'mistral_api_key' },
+                    { id: 'cohere', label: 'Cohere', placeholder: 'cohere_...', url: 'https://dashboard.cohere.com', urlLabel: 'Cohere Dashboard', desc: 'Paid. Command R+, embeddings, rerank.', key: 'cohere_api_key' },
+                    { id: 'fireworks', label: 'Fireworks AI', placeholder: 'fw_...', url: 'https://fireworks.ai', urlLabel: 'Fireworks AI', desc: 'Paid. Fast inference for open-source models.', key: 'fireworks_api_key' },
+                    { id: 'xai', label: 'xAI (Grok)', placeholder: 'xai-...', url: 'https://console.x.ai', urlLabel: 'xAI Console', desc: 'Paid. Grok-2, Grok-3 models.', key: 'xai_api_key' },
+                    { id: 'replicate', label: 'Replicate', placeholder: 'r8_...', url: 'https://replicate.com', urlLabel: 'Replicate', desc: 'Paid. Run open-source models via API.', key: 'replicate_api_key' },
+                    { id: 'elevenlabs', label: 'ElevenLabs', placeholder: 'sk_...', url: 'https://elevenlabs.io', urlLabel: 'ElevenLabs', desc: 'Paid. Text-to-speech, voice cloning.', key: 'elevenlabs_api_key' },
+                    { id: 'assemblyai', label: 'AssemblyAI', placeholder: '...', url: 'https://www.assemblyai.com', urlLabel: 'AssemblyAI', desc: 'Paid. Speech-to-text, transcription.', key: 'assemblyai_api_key' },
+                    { id: 'deepgram', label: 'Deepgram', placeholder: '...', url: 'https://console.deepgram.com', urlLabel: 'Deepgram Console', desc: 'Paid. Speech-to-text, voice AI.', key: 'deepgram_api_key' },
+                    { id: 'deepinfra', label: 'DeepInfra', placeholder: '...', url: 'https://deepinfra.com', urlLabel: 'DeepInfra', desc: 'Paid. Serverless inference for open models.', key: 'deepinfra_api_key' },
+                    { id: 'novita', label: 'Novita AI', placeholder: 'sk_...', url: 'https://novita.ai', urlLabel: 'Novita AI', desc: 'Paid. LLM inference, image generation.', key: 'novita_api_key' },
+                    { id: 'stability', label: 'Stability AI', placeholder: 'sk-...', url: 'https://platform.stability.ai', urlLabel: 'Stability AI', desc: 'Paid. Stable Diffusion, image generation.', key: 'stability_api_key' },
+                    { id: 'fal', label: 'Fal.ai', placeholder: '...', url: 'https://fal.ai', urlLabel: 'Fal.ai', desc: 'Paid. Fast AI inference, image/video models.', key: 'fal_api_key' },
+                    { id: 'ai21', label: 'AI21 Labs', placeholder: '...', url: 'https://www.ai21.com', urlLabel: 'AI21 Labs', desc: 'Paid. Jamba, language models.', key: 'ai21_api_key' },
+                    { id: 'kimi', label: 'Kimi (Moonshot)', placeholder: '...', url: 'https://platform.moonshot.cn', urlLabel: 'Moonshot Platform', desc: 'Paid. Kimi long-context models.', key: 'kimi_api_key' },
+                    { id: 'lemonfox', label: 'Lemonfox', placeholder: '...', url: 'https://lemonfox.ai', urlLabel: 'Lemonfox', desc: 'Paid. Fast inference for open models.', key: 'lemonfox_api_key' },
+                    { id: 'huggingface', label: 'Hugging Face', placeholder: 'hf_...', url: 'https://huggingface.co/settings/tokens', urlLabel: 'HF Tokens', desc: 'Free & paid. Access 500k+ models.', key: 'huggingface_api_key' },
+                    { id: 'cloudflare_workers', label: 'Cloudflare Workers AI', placeholder: 'cfat_...', url: 'https://dash.cloudflare.com', urlLabel: 'Cloudflare Dashboard', desc: 'Paid. AI inference on Cloudflare network.', key: 'cloudflare_workers_api_key' },
+                    { id: 'sambanova', label: 'SambaNova', placeholder: '...', url: 'https://cloud.sambanova.ai', urlLabel: 'SambaNova Cloud', desc: 'Paid. Fast inference on SambaNova RDU.', key: 'sambanova_api_key' },
+                    { id: 'nscale', label: 'nScale', placeholder: '...', url: 'https://nscale.com', urlLabel: 'nScale', desc: 'Paid. Managed inference platform.', key: 'nscale_api_key' },
+                    { id: 'chutes', label: 'Chutes', placeholder: 'cpk_...', url: 'https://chutes.ai', urlLabel: 'Chutes AI', desc: 'Paid. Serverless AI inference.', key: 'chutes_api_key' },
+                    { id: 'modelscope', label: 'ModelScope', placeholder: '...', url: 'https://modelscope.cn', urlLabel: 'ModelScope', desc: 'Free & paid. Chinese AI model hub.', key: 'modelscope_api_key' },
+                    { id: 'langchain', label: 'LangChain Hub', placeholder: 'lsv2_...', url: 'https://smith.langchain.com', urlLabel: 'LangSmith', desc: 'Paid. LLM observability, prompts, chains.', key: 'langchain_api_key' },
+                    { id: 'langfuse', label: 'Langfuse', placeholder: 'sk-lf-...', url: 'https://langfuse.com', urlLabel: 'Langfuse', desc: 'Free & paid. LLM observability & tracing.', key: 'langfuse_api_key' },
+                    { id: 'pinecone', label: 'Pinecone', placeholder: 'pcsk_...', url: 'https://app.pinecone.io', urlLabel: 'Pinecone Console', desc: 'Paid. Vector database for embeddings.', key: 'pinecone_api_key' },
+                    { id: 'qdrant', label: 'Qdrant', placeholder: '...', url: 'https://cloud.qdrant.io', urlLabel: 'Qdrant Cloud', desc: 'Free & paid. Vector search engine.', key: 'qdrant_api_key' },
+                    { id: 'tavily', label: 'Tavily', placeholder: 'tvly-...', url: 'https://tavily.com', urlLabel: 'Tavily', desc: 'Paid. Web search for AI agents.', key: 'tavily_api_key' },
+                    { id: 'firecrawl', label: 'Firecrawl', placeholder: 'fc-...', url: 'https://firecrawl.dev', urlLabel: 'Firecrawl', desc: 'Paid. Web scraping for AI.', key: 'firecrawl_api_key' },
+                    { id: 'serper', label: 'Serper', placeholder: '...', url: 'https://serper.dev', urlLabel: 'Serper', desc: 'Paid. Google search API for AI.', key: 'serper_api_key' },
+                    { id: 'jina', label: 'Jina AI', placeholder: 'jina_...', url: 'https://jina.ai', urlLabel: 'Jina AI', desc: 'Free & paid. Embeddings, reader, search.', key: 'jina_api_key' },
+                    { id: 'exa', label: 'Exa', placeholder: '...', url: 'https://exa.ai', urlLabel: 'Exa', desc: 'Paid. Neural search engine.', key: 'exa_api_key' },
+                    { id: 'notion', label: 'Notion', placeholder: 'ntn_...', url: 'https://www.notion.so/my-integrations', urlLabel: 'Notion Integrations', desc: 'Paid. Notion API for AI apps.', key: 'notion_api_key' },
+                    { id: 'slack', label: 'Slack', placeholder: 'xapp-...', url: 'https://api.slack.com/apps', urlLabel: 'Slack API', desc: 'Paid. Slack integration for AI bots.', key: 'slack_api_key' },
+                    { id: 'google_knowledge', label: 'Google Knowledge Graph', placeholder: 'AIza...', url: 'https://console.cloud.google.com', urlLabel: 'GCP Console', desc: 'Free tier. Knowledge Graph Search API.', key: 'google_knowledge_graph_api_key' },
+                    { id: 'browserbase', label: 'Browserbase', placeholder: 'bb_...', url: 'https://browserbase.com', urlLabel: 'Browserbase', desc: 'Paid. Headless browser for AI agents.', key: 'browserbase_api_key' },
+                    { id: 'brightdata', label: 'Bright Data', placeholder: '...', url: 'https://brightdata.com', urlLabel: 'Bright Data', desc: 'Paid. Web data platform, proxies.', key: 'brightdata_api_key' },
+                    { id: 'scrapingbee', label: 'ScrapingBee', placeholder: '...', url: 'https://www.scrapingbee.com', urlLabel: 'ScrapingBee', desc: 'Paid. Web scraping API.', key: 'scrapingbee_api_key' },
+                  ].map((info) => {
                     const hasKey = (secretsMeta as any)['has_' + info.key]
                     return (
-                      <div key={provider} className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
+                      <div key={info.id} className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
                         <div className="flex items-center justify-between">
                           <p className="text-sm font-semibold">{info.label}</p>
                           {hasKey ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-xs uppercase">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-xs uppercase">Not Set</span>}
@@ -2399,11 +2631,11 @@ function SystemSettingsInner() {
                   })}
                 </div>
                 <p className="mt-3 text-xs text-muted-foreground">
-                  Provider fallback order (auto-selects): Gemini → OpenCode → Groq → OpenRouter → OpenAI → Anthropic → NVIDIA.
+                  Provider fallback order (auto-selects): Gemini → Groq → OpenRouter → OpenAI → Anthropic → NVIDIA + 38 more providers.
                 </p>
                 <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
                   <Button variant="outline" size="sm" onClick={async () => {
-                    const providers = ['gemini','opencode','groq','openrouter','openai','anthropic','nvidia']
+                    const providers = ['gemini','opencode','groq','openrouter','openai','anthropic','nvidia','deepseek','cerebras','mistral','cohere','fireworks','xai','replicate','elevenlabs','assemblyai','deepgram','deepinfra','novita','stability','fal','ai21','kimi','lemonfox','huggingface','cloudflare_workers','sambanova','nscale','chutes','modelscope','langchain','langfuse','pinecone','qdrant','tavily','firecrawl','serper','jina','exa','notion','slack','google_knowledge','browserbase','brightdata','scrapingbee']
                     const results: React.ReactNode[] = []
                     for (const p of providers) {
                       try {
