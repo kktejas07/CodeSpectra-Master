@@ -39,9 +39,8 @@ export async function GET() {
   }
 
   try {
-    // Use single Date.now() reference to avoid millisecond drift between since/until
     const nowMs = Date.now()
-    const sinceSec = Math.floor(nowMs / 1000) - 259200 // exactly 3 days ago (seconds)
+    const sinceSec = Math.floor(nowMs / 1000) - 259200 // 3 days
     const since = new Date(sinceSec * 1000).toISOString()
     const until = new Date(Math.floor(nowMs / 1000) * 1000).toISOString()
 
@@ -49,7 +48,7 @@ export async function GET() {
     const zoneResult = await cfFetch(apiToken, `/zones/${zoneId}`)
     const zoneName = (zoneResult.result as any)?.name || ''
 
-    // GraphQL query for HTTP request totals (3-day hourly groups)
+    // GraphQL: HTTP request totals (3-day hourly groups)
     const gqlResult = await cfGraphQL(
       apiToken,
       `query GetZoneMetrics($zoneTag: String!, $since: String!, $until: String!) {
@@ -68,6 +67,9 @@ export async function GET() {
               uniq {
                 uniques
               }
+              dimensions {
+                datetime
+              }
             }
           }
         }
@@ -77,6 +79,7 @@ export async function GET() {
 
     const groups = gqlResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
     const totals = { bytes: 0, cachedBytes: 0, requests: 0, cachedRequests: 0, uniques: 0 }
+    const timeSeries: Array<{ datetime: string; requests: number; cached: number; bandwidth: number }> = []
 
     for (const g of groups as any[]) {
       if (g.sum) {
@@ -88,9 +91,17 @@ export async function GET() {
       if (g.uniq) {
         totals.uniques += g.uniq.uniques || 0
       }
+      if (g.dimensions?.datetime) {
+        timeSeries.push({
+          datetime: g.dimensions.datetime,
+          requests: g.sum?.requests || 0,
+          cached: g.sum?.cachedRequests || 0,
+          bandwidth: g.sum?.bytes || 0,
+        })
+      }
     }
 
-    // Query per-country request counts
+    // GraphQL: Per-country request counts
     const countryResult = await cfGraphQL(
       apiToken,
       `query GetCountryMetrics($zoneTag: String!, $since: String!, $until: String!) {
@@ -125,6 +136,11 @@ export async function GET() {
       .slice(0, 50)
       .map(([country, requests]) => ({ country, requests }))
 
+    // Estimate real-time visitors from recent hourly data
+    const recentHours = timeSeries.slice(-3)
+    const avgRequestsPerHour = recentHours.reduce((sum, h) => sum + h.requests, 0) / Math.max(recentHours.length, 1)
+    const estimatedConcurrent = Math.max(1, Math.round(avgRequestsPerHour / 60)) // rough per-minute
+
     return NextResponse.json({
       configured: true,
       zone: zoneName,
@@ -136,6 +152,11 @@ export async function GET() {
         cacheRatio: totals.requests > 0 ? Math.round((totals.cachedRequests / totals.requests) * 100) : 0,
       },
       topCountries,
+      timeSeries,
+      realtime: {
+        estimatedVisitorsPerMinute: estimatedConcurrent,
+        requestsPerHour: Math.round(avgRequestsPerHour),
+      },
     })
   } catch (e) {
     const msg = (e as Error).message

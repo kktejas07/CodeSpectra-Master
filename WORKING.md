@@ -6,6 +6,10 @@
 
 ## Current Claims
 
+| opencode (this session, CRON-BUTTON-FIX) | DONE — Added explicit text colors to cron-jobs page buttons (Run tick now, Run now, Pause/Activate) for visibility. tsc clean. | frontend/app/dashboard/admin/cron-jobs/page.tsx | DONE — COMMITTED + PUSHED to dev-fixes (90360d9) | 2026-08-26 |
+
+| opencode (this session, CDN-REALTIME) | DONE — Enhanced CDN page with real-time visitor counter (visitors/min + req/hr), traffic over time chart (recharts AreaChart), updated Cloudflare analytics API to return timeSeries + realtime estimates. tsc clean. | frontend/app/dashboard/admin/cdn/page.tsx, frontend/app/api/admin/cloudflare-analytics/route.ts | DONE — COMMITTED + PUSHED to dev-fixes (e5a1490) | 2026-08-26 |
+
 | opencode (this session, CONTENT-STUDIO-MERGE) | DONE — Merged blog + signals into unified Content Studio page at /dashboard/admin/content-studio. Tab-based UI with Newsroom (manual blog) and Signals (automated RSS pipeline). Added to sidebar navigation and page permissions. tsc clean. | frontend/app/dashboard/admin/content-studio/page.tsx, frontend/lib/page-permissions.ts, frontend/app/dashboard/layout.tsx | DONE — COMMITTED + PUSHED to dev-fixes (fe35f6e) | 2026-08-26 |
 
 | opencode (this session, BLOG-MULTI-PASS) | DONE — Upgraded blog ai-write to multi-pass pipeline (adopted from Signals): deep web research → fact extraction → draft from facts → humanize → source attribution. Uses gatherSourceTexts for full page scraping instead of DuckDuckGo snippets. | frontend/app/api/admin/blog/ai-write/route.ts | DONE — COMMITTED | 2026-08-26 |

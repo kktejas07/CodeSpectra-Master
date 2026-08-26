@@ -16,7 +16,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select'
-import { Loader2, Newspaper, Plus, Trash2, Eye, Sparkles, ImageIcon } from 'lucide-react'
+import { Switch } from '@/components/ui/switch'
+import { Loader2, Newspaper, Plus, Trash2, Eye, Sparkles, ImageIcon, Globe } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -50,6 +51,7 @@ export default function AdminBlogPage() {
   const [category, setCategory] = useState<BlogCategoryId>('signals')
   const [authorName, setAuthorName] = useState('CodeSpectra Editorial')
   const [coverImage, setCoverImage] = useState('')
+  const [doResearch, setDoResearch] = useState(true)
   const [aiSlug, setAiSlug] = useState<string | null>(null)
   const [editingSlug, setEditingSlug] = useState<string | null>(null)
 
@@ -94,7 +96,7 @@ export default function AdminBlogPage() {
       const res = await csrfFetch('/api/admin/blog/ai-write', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ title, excerpt, category }),
+        body: JSON.stringify({ title, excerpt, category, research: doResearch }),
       })
       const data = await res.json()
       if (!res.ok) throw new Error(data.error || 'Generation failed')
@@ -278,6 +280,18 @@ export default function AdminBlogPage() {
                 />
               ) : null}
             </div>
+            <div className="space-y-1.5 sm:col-span-2 mt-4 pt-4 border-t">
+              <div className="flex items-center justify-between mb-2">
+                <div>
+                  <Label className="text-base flex items-center gap-2">
+                    <Globe className="h-4 w-4" /> Live Web Research
+                  </Label>
+                  <p className="text-sm text-muted-foreground">Search the web for the latest breaking news on this topic before writing.</p>
+                </div>
+                <Switch checked={doResearch} onCheckedChange={setDoResearch} />
+              </div>
+            </div>
+
             <div className="space-y-1.5 sm:col-span-2">
               <div className="flex items-center justify-between">
                 <Label>Body</Label>
@@ -293,7 +307,7 @@ export default function AdminBlogPage() {
                   ) : (
                     <Sparkles className="mr-1 h-3.5 w-3.5 text-teal-500" />
                   )}
-                  AI Draft
+                  {aiSlug === '__body' && doResearch ? 'Researching & Drafting...' : 'AI Draft'}
                 </Button>
               </div>
               <RichTextEditor
