@@ -15,13 +15,26 @@ export function buildNewsCoverPrompt(opts: {
   excerpt?: string
   category?: string
 }): string {
-  const cat = (opts.category || '').replace(/[_-]/g, ' ')
-  const topic = [opts.title, opts.excerpt?.slice(0, 160)].filter(Boolean).join(' — ')
+  const cat = (opts.category || '').toLowerCase()
+  const topic = opts.title || ''
+
+  // Category-specific visual styles for realistic, relevant covers
+  const categoryStyles: Record<string, string> = {
+    signals: `Professional editorial photograph with dramatic lighting, abstract data visualization overlays, modern tech aesthetic, shallow depth of field, cinematic color grading`,
+    product: `Sleek product photography with clean studio lighting, minimalist composition, premium tech device showcase, soft gradient background, professional commercial style`,
+    engineering: `Abstract code visualization with glowing terminal screens, dark moody developer workspace, neon accent lights, bokeh background, hacker aesthetic photography`,
+    careers: `Professional workspace photography, modern office environment, diverse team collaboration, natural lighting, corporate lifestyle photography`,
+    campus: `Vibrant campus life photography, students in modern learning environment, bright natural lighting, educational technology, candid documentary style`,
+    playbook: `Strategic business photography, abstract network visualization, modern dashboard interface, clean data presentation, professional infographic style`,
+  }
+
+  const style = categoryStyles[cat] || `Professional editorial photography with modern tech aesthetic, clean composition, dramatic lighting, shallow depth of field`
+
+  // Build a prompt that generates realistic, topic-relevant imagery
   return (
-    `Isometric 3D illustration representing "${topic}"` +
-    (cat ? ` in the context of ${cat}` : '') +
-    `, featuring a cute 3D tech mascot character, glowing technological symbols, floating glossy 3D objects, clean gradient studio background, soft shadows, vibrant modern colors, ` +
-    `playful but professional tech blog aesthetic, high detail render, no text, no words, no letters, no logos`
+    `Professional photograph representing "${topic}", ${style}, ` +
+    `high resolution, magazine quality, editorial cover image, ` +
+    `no text, no words, no letters, no logos, no watermarks`
   )
 }
 
