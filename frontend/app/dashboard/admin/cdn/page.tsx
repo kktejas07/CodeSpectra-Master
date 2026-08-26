@@ -9,14 +9,17 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 import { Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle, 
-  MapPin, CheckCircle2, Activity, Loader2, Settings, Info,
+  MapPin, CheckCircle2, Activity, Loader2, Settings, Info, Users, Clock, TrendingUp,
 } from 'lucide-react'
 import { WorldMap } from '@/components/gamification/world-map'
+import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
 interface CloudflareData {
   configured: boolean
   traffic?: { requests: number; cached: number; bytes: number; uniques: number; cacheRatio: number }
   topCountries?: Array<{ country: string; requests: number }>
+  timeSeries?: Array<{ datetime: string; requests: number; cached: number; bandwidth: number }>
+  realtime?: { estimatedVisitorsPerMinute: number; requestsPerHour: number }
   error?: string
 }
 
@@ -48,6 +51,19 @@ function mapCountries(topCountries: Array<{ country: string; requests: number }>
     name: c.country,
     count: c.requests,
   }))
+}
+
+function formatTimeSeriesData(data: Array<{ datetime: string; requests: number }>) {
+  return data.map(d => {
+    const date = new Date(d.datetime)
+    const hour = date.getHours()
+    const day = date.toLocaleDateString('en-US', { month: 'short', day: 'numeric' })
+    return {
+      ...d,
+      label: `${day} ${hour}:00`,
+      shortLabel: `${hour}h`,
+    }
+  }).slice(-24) // Last 24 hours for readability
 }
 
 export default function CdnAdminPage() {
@@ -113,7 +129,7 @@ export default function CdnAdminPage() {
           const nextState = !rule.enabled
           toast({
             type: 'success',
-            title: `Waf Rule ${nextState ? 'Enabled' : 'Disabled'}`,
+            title: `WAF Rule ${nextState ? 'Enabled' : 'Disabled'}`,
             message: `Successfully modified security status for "${rule.name}"`,
           })
           return { ...rule, enabled: nextState }
@@ -125,6 +141,8 @@ export default function CdnAdminPage() {
     })
   }, [toast])
 
+  const chartData = cfData?.timeSeries ? formatTimeSeriesData(cfData.timeSeries) : []
+
   return (
     <div className="space-y-8">
       {/* Title Header */}
@@ -134,7 +152,7 @@ export default function CdnAdminPage() {
             CDN & Edge Operations
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
-            Manage global content delivery network, edge cache, WAF rules, and monitor node latency status.
+            Monitor global traffic, cache performance, and visitor geography in real-time.
           </p>
         </div>
         <div className="flex items-center gap-2">
@@ -147,6 +165,35 @@ export default function CdnAdminPage() {
           </Badge>
         </div>
       </div>
+
+      {/* Real-time Visitors Banner */}
+      {cfData?.configured && cfData.realtime && (
+        <Card className="p-4 bg-gradient-to-r from-emerald-500/10 to-teal-500/10 border border-emerald-500/20">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-emerald-500/20">
+                <Users className="h-6 w-6 text-emerald-600" />
+              </div>
+              <div>
+                <p className="text-sm font-medium text-muted-foreground">Estimated Real-Time Activity</p>
+                <div className="flex items-baseline gap-2">
+                  <span className="text-3xl font-bold text-emerald-600">
+                    {cfData.realtime.estimatedVisitorsPerMinute.toLocaleString()}
+                  </span>
+                  <span className="text-sm text-muted-foreground">visitors/min</span>
+                </div>
+              </div>
+            </div>
+            <div className="text-right">
+              <div className="flex items-center gap-1 text-sm text-muted-foreground">
+                <Clock className="h-4 w-4" />
+                {cfData.realtime.requestsPerHour.toLocaleString()} req/hr
+              </div>
+              <p className="text-xs text-muted-foreground mt-1">Updated every 30s</p>
+            </div>
+          </div>
+        </Card>
+      )}
 
       {/* Grid: 4 Metric Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
@@ -215,16 +262,81 @@ export default function CdnAdminPage() {
                   <li>Create a Cloudflare account and add your domain</li>
                   <li>Find your Zone ID on the Cloudflare dashboard (right sidebar)</li>
                   <li>Create an API Token with Zone Analytics and Cache Purge permissions</li>
-                  <li>Enter both in Settings</li>
+                  <li>Enter both in Settings → Cloudflare</li>
                 </ol>
               </div>
               <Link
-                href="/dashboard/admin/settings"
+                href="/dashboard/admin/settings?section=cloudflare"
                 className="inline-flex items-center gap-1.5 text-sm font-medium text-primary hover:underline"
               >
                 <Settings className="h-4 w-4" />
                 Go to Settings
               </Link>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {/* Traffic Chart */}
+      {cfData?.configured && chartData.length > 0 && (
+        <Card className="p-6 border border-muted-foreground/10 bg-card/30">
+          <div className="flex items-center gap-3 border-b border-muted/50 pb-4 mb-4">
+            <div className="p-2 rounded bg-teal-500/10 text-teal-500">
+              <TrendingUp className="h-5 w-5" />
+            </div>
+            <div>
+              <h3 className="font-semibold text-lg">Traffic Over Time</h3>
+              <p className="text-xs text-muted-foreground">Last 24 hours of HTTP requests (hourly buckets)</p>
+            </div>
+          </div>
+          <div className="h-72">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRequests" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#8b5cf6" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#8b5cf6" stopOpacity={0}/>
+                  </linearGradient>
+                  <linearGradient id="colorCached" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#10b981" stopOpacity={0.3}/>
+                    <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" />
+                <XAxis 
+                  dataKey="shortLabel" 
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <YAxis 
+                  tick={{ fontSize: 11, fill: 'hsl(var(--muted-foreground))' }}
+                  axisLine={false}
+                  tickLine={false}
+                />
+                <Tooltip 
+                  contentStyle={{ 
+                    backgroundColor: 'hsl(var(--card))', 
+                    border: '1px solid hsl(var(--border))',
+                    borderRadius: '8px',
+                    fontSize: '12px',
+                  }}
+                  labelFormatter={(label) => `Hour: ${label}`}
+                  formatter={(value, name) => [Number(value).toLocaleString(), name === 'requests' ? 'Total Requests' : 'Cached']}
+                />
+                <Area type="monotone" dataKey="requests" stroke="#8b5cf6" fillOpacity={1} fill="url(#colorRequests)" />
+                <Area type="monotone" dataKey="cached" stroke="#10b981" fillOpacity={1} fill="url(#colorCached)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+          <div className="flex items-center gap-4 mt-4 text-xs text-muted-foreground">
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-violet-500"></div>
+              Total Requests
+            </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-3 h-3 rounded-full bg-emerald-500"></div>
+              Cached Requests
             </div>
           </div>
         </Card>
@@ -357,6 +469,7 @@ export default function CdnAdminPage() {
                     {cfData.topCountries.slice(0, 10).map((c, i) => (
                       <div key={c.country} className="flex items-center justify-between p-2 rounded-lg bg-card/50 border border-muted-foreground/5">
                         <div className="flex items-center gap-3">
+                          <span className="text-xs font-bold text-muted-foreground w-5">{i + 1}</span>
                           <MapPin className="h-4 w-4 text-fuchsia-500 shrink-0" />
                           <p className="text-sm font-medium">{c.country}</p>
                         </div>
