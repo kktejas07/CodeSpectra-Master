@@ -6,7 +6,8 @@
  *
  * Features:
  * - Reads from superadmin-configured keys (platform_settings.secrets)
- * - Round-robin selection across multiple keys per provider
+ * - Supports multiple keys per provider (comma-separated)
+ * - Round-robin selection across multiple keys
  * - Rate-limit detection and automatic rotation
  * - Fallback to environment variables
  * - Usage tracking integration
@@ -94,13 +95,17 @@ interface ApiKeyResult {
   source: 'round-robin' | 'secret' | 'env' | 'llm-config'
 }
 
+// Track round-robin index per provider for comma-separated keys
+const roundRobinIndex = new Map<ProviderId, number>()
+
 /**
  * Get an API key for a specific provider with round-robin support.
  *
  * Priority order:
  * 1. Round-robin key from LLM config (multiple keys per provider)
- * 2. Single key from server secrets (platform_settings.secrets)
- * 3. Environment variable
+ * 2. Round-robin across comma-separated keys from server secrets
+ * 3. Single key from server secrets (platform_settings.secrets)
+ * 4. Environment variable
  *
  * @param provider - The provider to get a key for
  * @returns The API key and metadata, or null if no key is configured
@@ -113,12 +118,22 @@ export async function getApiKey(provider: ProviderId): Promise<ApiKeyResult | nu
       return { key: rrKey, provider, source: 'round-robin' }
     }
 
-    // 2. Try single key from server secrets
+    // 2. Try comma-separated keys from server secrets
     const secrets = await readServerSecrets()
     const secretField = PROVIDER_SECRET_MAP[provider]
     const secretValue = secrets[secretField as keyof typeof secrets]
     if (typeof secretValue === 'string' && secretValue.trim() && !isMaskedSecret(secretValue)) {
-      return { key: secretValue.trim(), provider, source: 'secret' }
+      // Check if multiple keys (comma-separated)
+      const keys = secretValue.split(',').map(k => k.trim()).filter(Boolean)
+      if (keys.length > 1) {
+        // Round-robin across multiple keys
+        const idx = roundRobinIndex.get(provider) || 0
+        const selectedIdx = idx % keys.length
+        roundRobinIndex.set(provider, selectedIdx + 1)
+        return { key: keys[selectedIdx], provider, source: 'secret' }
+      }
+      // Single key
+      return { key: keys[0], provider, source: 'secret' }
     }
 
     // 3. Try environment variable

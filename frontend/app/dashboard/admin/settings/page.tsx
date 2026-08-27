@@ -602,7 +602,16 @@ function SystemSettingsInner() {
         const secretKey = providerMap[normalizedName] || providerMap[providerName.toLowerCase().replace(/\s.*$/, '').trim()]
 
         if (secretKey) {
-          setSecretsDraft((d) => ({ ...d, [secretKey]: apiKey }))
+          // Append key instead of overwriting (supports multiple keys per provider)
+          setSecretsDraft((d) => {
+            const existing = (d as any)[secretKey] || ''
+            const existingKeys = existing ? existing.split(',').map((k: string) => k.trim()).filter(Boolean) : []
+            // Avoid duplicate keys
+            if (!existingKeys.includes(apiKey)) {
+              existingKeys.push(apiKey)
+            }
+            return { ...d, [secretKey]: existingKeys.join(', ') }
+          })
           importedKeys.push(secretKey)
           imported++
         } else {
@@ -2633,13 +2642,13 @@ function SystemSettingsInner() {
                 </div>
                 <div className="space-y-5">
                   {[
-                    { id: 'gemini', label: 'Google Gemini', placeholder: 'AIza...', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier. Code analysis, hints, fast completions.', key: 'gemini_api_key' },
-                    { id: 'opencode', label: 'OpenCode', placeholder: 'ock_...', url: 'https://opencode.ai/keys', urlLabel: 'OpenCode Keys', desc: 'Free & paid. Claude, GPT, Gemini, DeepSeek models.', key: 'opencode_api_key' },
-                    { id: 'groq', label: 'Groq', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama, Mixtral, Gemma.', key: 'groq_api_key' },
-                    { id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. 300+ models including free tiers.', key: 'openrouter_api_key' },
-                    { id: 'openai', label: 'OpenAI', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'Paid. GPT-4o, GPT-4-turbo, o1, o3 models.', key: 'openai_api_key' },
-                    { id: 'anthropic', label: 'Anthropic Claude', placeholder: 'sk-ant-...', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Paid. Deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
-                    { id: 'nvidia', label: 'NVIDIA NIM', placeholder: 'nvapi-...', url: 'https://build.nvidia.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models.', key: 'nvidia_api_key' },
+                    { id: 'gemini', label: 'Google Gemini', placeholder: 'AIza... (comma-separate for multiple keys)', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier. Code analysis, hints, fast completions.', key: 'gemini_api_key' },
+                    { id: 'opencode', label: 'OpenCode', placeholder: 'ock_... (comma-separate for multiple keys)', url: 'https://opencode.ai/keys', urlLabel: 'OpenCode Keys', desc: 'Free & paid. Claude, GPT, Gemini, DeepSeek models.', key: 'opencode_api_key' },
+                    { id: 'groq', label: 'Groq', placeholder: 'gsk_... (comma-separate for multiple keys)', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama, Mixtral, Gemma.', key: 'groq_api_key' },
+                    { id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-... (comma-separate for multiple keys)', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. 300+ models including free tiers.', key: 'openrouter_api_key' },
+                    { id: 'openai', label: 'OpenAI', placeholder: 'sk-... (comma-separate for multiple keys)', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'Paid. GPT-4o, GPT-4-turbo, o1, o3 models.', key: 'openai_api_key' },
+                    { id: 'anthropic', label: 'Anthropic Claude', placeholder: 'sk-ant-... (comma-separate for multiple keys)', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Paid. Deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
+                    { id: 'nvidia', label: 'NVIDIA NIM', placeholder: 'nvapi-... (comma-separate for multiple keys)', url: 'https://build.nvidia.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models.', key: 'nvidia_api_key' },
                     { id: 'deepseek', label: 'DeepSeek', placeholder: 'sk-...', url: 'https://platform.deepseek.com', urlLabel: 'DeepSeek Platform', desc: 'Paid. DeepSeek V3, R1 reasoning models.', key: 'deepseek_api_key' },
                     { id: 'cerebras', label: 'Cerebras', placeholder: 'csk-...', url: 'https://cloud.cerebras.ai', urlLabel: 'Cerebras Cloud', desc: 'Paid. Ultra-fast inference on Cerebras wafer-scale.', key: 'cerebras_api_key' },
                     { id: 'mistral', label: 'Mistral AI', placeholder: '...', url: 'https://console.mistral.ai', urlLabel: 'Mistral Console', desc: 'Paid. Mistral Large, Mixtral, Codestral.', key: 'mistral_api_key' },
