@@ -132,6 +132,8 @@ export default function CandidateAssessmentPage() {
   const answerEventsRef = useRef<AnswerEvent[]>([])
   const questionViewTimeRef = useRef<number>(Date.now())
   const questionViewIdRef = useRef<string>('')
+  const startedAtRef = useRef<number>(0)
+  const questionTimingsRef = useRef<Record<string, number>>({})
 
 interface RunResult {
   passed: boolean
@@ -156,6 +158,9 @@ interface RunResult {
         action: 'skip',
         timeSpent,
       })
+      // Track cumulative time per question
+      questionTimingsRef.current[questionViewIdRef.current] = 
+        (questionTimingsRef.current[questionViewIdRef.current] || 0) + timeSpent
     }
     questionViewIdRef.current = qId
     questionViewTimeRef.current = Date.now()
@@ -170,6 +175,9 @@ interface RunResult {
       timeSpent,
       answerLength: (answers[qId] || '').length,
     })
+    // Track cumulative time per question
+    questionTimingsRef.current[qId] = (questionTimingsRef.current[qId] || 0) + timeSpent
+    questionViewTimeRef.current = Date.now()
   }, [answers])
 
   // Shuffle options once when exam loads or starts
@@ -185,6 +193,13 @@ interface RunResult {
     }
     setShuffledOpts(map)
   }, [exam])
+
+  // Track question views when currentQIndex changes
+  useEffect(() => {
+    if (hasStarted && exam?.questionList?.[currentQIndex]) {
+      trackQuestionView(exam.questionList[currentQIndex].id)
+    }
+  }, [currentQIndex, hasStarted, exam, trackQuestionView])
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -328,6 +343,7 @@ interface RunResult {
   const handleStart = () => {
     if (!exam) return
     setHasStarted(true)
+    startedAtRef.current = Date.now()
     // Convert duration (minutes) to seconds
     setTimeLeft(exam.duration * 60)
   }
@@ -416,7 +432,11 @@ interface RunResult {
           auto_submitted: autoSubmitted,
           idPhoto,
           facePhoto,
-          inviteToken: searchParams.get('inviteToken')
+          inviteToken: searchParams.get('inviteToken'),
+          // Timing data
+          question_timings: questionTimingsRef.current,
+          total_time_ms: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
+          started_at: startedAtRef.current ? new Date(startedAtRef.current).toISOString() : null,
         }),
         credentials: 'include',
       })
@@ -742,6 +762,7 @@ interface RunResult {
                             } else {
                               setAnswers(prev => ({ ...prev, [currentQ.id]: opt }))
                             }
+                            trackAnswer(currentQ.id, 'answer')
                           }}
                           className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
                         />
@@ -773,6 +794,7 @@ interface RunResult {
                                 const arr = [...fillAnswers]
                                 arr[idx] = e.target.value
                                 setAnswers(prev => ({ ...prev, [currentQ.id]: arr.map(s => s.trim()).join(', ') }))
+                                trackAnswer(currentQ.id, 'answer')
                               }}
                               placeholder={`Answer for blank ${idx + 1}...`}
                               className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
@@ -792,7 +814,10 @@ interface RunResult {
                       <input
                         type="text"
                         value={typeof answers[currentQ.id] === 'string' ? answers[currentQ.id] as string : ''}
-                        onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
+                        onChange={(e) => {
+                          setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))
+                          trackAnswer(currentQ.id, 'answer')
+                        }}
                         placeholder="Type your answer..."
                         className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                         autoComplete="off"
@@ -822,6 +847,7 @@ interface RunResult {
                       } catch {}
                     }
                     setAnswers(prev => ({ ...prev, [currentQ.id]: JSON.stringify({ language: lang, code }) }))
+                    trackAnswer(currentQ.id, 'answer')
                   }}
                   language={(() => {
                     if (answers[currentQ.id]) {
@@ -844,7 +870,10 @@ interface RunResult {
                   </div>
                   <textarea 
                     value={(answers[currentQ.id] as string) || ''}
-                    onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
+                    onChange={(e) => {
+                      setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))
+                      trackAnswer(currentQ.id, 'answer')
+                    }}
                     placeholder="Write your response here..."
                     className="w-full h-96 p-4 text-sm bg-card text-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                     spellCheck={false}
