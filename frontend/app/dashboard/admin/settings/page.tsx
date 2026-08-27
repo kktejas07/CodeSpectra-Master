@@ -571,34 +571,52 @@ function SystemSettingsInner() {
 
       for (const row of rows) {
         if (!Array.isArray(row)) continue
-        // Handle both 2-column and 3-column CSVs
-        const name = String(row[1] || row[0] || '').trim()
-        const apiKey = String(row[2] || row[1] || '').trim()
+        
+        // Detect if first row is header
+        const firstCell = String(row[0] || '').trim().toLowerCase()
+        if (firstCell === 'provider' || firstCell === 'name' || firstCell === 's.no') continue
+        
+        // Get provider name and API key based on column positions
+        // CSV format: Provider, API KEY (2 columns) OR S.No, Name, API Key (3 columns)
+        let providerName = ''
+        let apiKey = ''
+        
+        if (row.length >= 3) {
+          // 3-column format: S.No, Name, API Key
+          providerName = String(row[1] || '').trim()
+          apiKey = String(row[2] || '').trim()
+        } else if (row.length >= 2) {
+          // 2-column format: Provider, API KEY
+          providerName = String(row[0] || '').trim()
+          apiKey = String(row[1] || '').trim()
+        }
+        
+        if (!providerName || !apiKey) continue
+        
+        // Skip entries that are clearly not API keys
+        const lowerKey = apiKey.toLowerCase()
+        if (lowerKey.includes('issue') || lowerKey.includes('problem') || lowerKey.includes('login') ||
+            lowerKey.includes('asking') || lowerKey.includes('need subscription') ||
+            lowerKey.includes('buy credits') || lowerKey.includes('not found') ||
+            lowerKey.includes('no login') || lowerKey.includes('no api key') ||
+            lowerKey.includes('there is no') || lowerKey.includes('site can') ||
+            lowerKey.includes('password:') || lowerKey.length < 10) continue
 
-        if (!name || !apiKey) continue
-        // Skip header rows
-        if (name.toLowerCase() === 'provider' || name.toLowerCase() === 'name') continue
-        // Skip entries that are clearly not API keys (error messages, etc.)
-        if (apiKey.includes('issue') || apiKey.includes('problem') || apiKey.includes('login') ||
-            apiKey.includes('Asking') || apiKey.includes('Need subscription') ||
-            apiKey.includes('Buy credits') || apiKey.includes('not found') ||
-            apiKey.includes('no login') || apiKey.includes('no API key') ||
-            apiKey.includes('There is no') || apiKey.includes('site can') ||
-            apiKey.includes('password:') || apiKey.length < 10) continue
-
-        const normalizedName = name.toLowerCase()
+        // Normalize provider name for matching
+        const normalizedName = providerName.toLowerCase()
           .replace(/^https?:\/\//, '')  // Strip protocol
           .replace(/\s.*$/, '')  // Strip everything after first space
           .replace(/\{.*$/, '')  // Strip everything after {
           .replace(/\/.*$/, '')  // Strip path
           .trim()
-        const secretKey = providerMap[normalizedName] || providerMap[name.toLowerCase().replace(/\s.*$/, '').trim()]
+        
+        const secretKey = providerMap[normalizedName] || providerMap[providerName.toLowerCase().replace(/\s.*$/, '').trim()]
 
         if (secretKey) {
           setSecretsDraft((d) => ({ ...d, [secretKey]: apiKey }))
           imported++
         } else {
-          skipped.push(name)
+          skipped.push(providerName)
         }
       }
 
