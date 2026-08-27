@@ -133,6 +133,10 @@ export default function ProblemDetailPage() {
   const [feedbackContent, setFeedbackContent] = useState('')
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
 
+  // Discussion state
+  const [newDiscussion, setNewDiscussion] = useState('')
+  const [postingDiscussion, setPostingDiscussion] = useState(false)
+
   // Timer state
   const [timerSeconds, setTimerSeconds] = useState(0)
   const [timerRunning, setTimerRunning] = useState(false)
@@ -269,6 +273,27 @@ export default function ProblemDetailPage() {
       setAiMentorResponse('Network error. Please try again.')
     }
     setAiMentorLoading(false)
+  }
+
+  // Post discussion function
+  const postDiscussion = async () => {
+    if (!newDiscussion.trim() || !slug) return
+    setPostingDiscussion(true)
+    try {
+      const res = await csrfFetch(`/api/problems/${slug}/discussions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content: newDiscussion }),
+      })
+      if (res.ok) {
+        setNewDiscussion('')
+        // Refresh discussions
+        const dRes = await fetch(`/api/problems/${slug}/discussions`)
+        const dData = await dRes.json()
+        setDiscussions(dData.discussions || [])
+      }
+    } catch {}
+    setPostingDiscussion(false)
   }
 
   useEffect(() => {
@@ -553,22 +578,41 @@ export default function ProblemDetailPage() {
                            </div>
                         </div>
                      </details>
-                     <details className="group border border-border rounded-lg bg-card overflow-hidden">
-                        <summary className="flex items-center justify-between p-3 font-semibold text-sm cursor-pointer hover:bg-muted/30 transition-colors">
-                           Discussion Channel <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
-                        </summary>
-                        <div className="p-3 text-sm text-muted-foreground border-t border-border bg-muted/10 h-64 overflow-y-auto">
-                           {discussionsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 
-                            discussions.length === 0 ? <p className="text-xs">No discussions yet.</p> :
-                            discussions.map(d => (
-                              <div key={d.id} className="mb-3 border-b border-border pb-2 last:border-0">
-                                 <div className="font-bold text-xs text-foreground flex items-center gap-2"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${d.user_name}`} className="h-5 w-5 rounded-full bg-slate-200" /> {d.user_name}</div>
-                                 <p className="text-xs mt-1 text-foreground/80">{d.content}</p>
-                              </div>
-                            ))
-                           }
-                        </div>
-                     </details>
+                      <details className="group border border-border rounded-lg bg-card overflow-hidden">
+                         <summary className="flex items-center justify-between p-3 font-semibold text-sm cursor-pointer hover:bg-muted/30 transition-colors">
+                            Discussion Channel <ChevronDown className="h-4 w-4 text-muted-foreground group-open:rotate-180 transition-transform" />
+                         </summary>
+                         <div className="p-3 border-t border-border bg-muted/10 h-80 overflow-y-auto">
+                            {discussionsLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : 
+                             discussions.length === 0 ? <p className="text-xs text-muted-foreground">No discussions yet. Be the first to start a discussion!</p> :
+                             discussions.map(d => (
+                               <div key={d.id} className="mb-3 border-b border-border pb-2 last:border-0">
+                                  <div className="font-bold text-xs text-foreground flex items-center gap-2"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${d.user_name}`} className="h-5 w-5 rounded-full bg-slate-200" /> {d.user_name}</div>
+                                  <p className="text-xs mt-1 text-foreground/80">{d.content}</p>
+                                  <p className="text-[10px] text-muted-foreground mt-1">{new Date(d.created_at).toLocaleString()}</p>
+                               </div>
+                             ))
+                            }
+                            {/* Discussion input */}
+                            <div className="mt-3 pt-3 border-t border-border">
+                              <textarea
+                                value={newDiscussion}
+                                onChange={(e) => setNewDiscussion(e.target.value)}
+                                placeholder="Start a discussion..."
+                                className="w-full h-16 p-2 text-xs rounded-md border border-input bg-background resize-none focus:outline-none focus:ring-1 focus:ring-primary"
+                              />
+                              <Button 
+                                size="sm" 
+                                className="mt-2 w-full" 
+                                onClick={postDiscussion}
+                                disabled={!newDiscussion.trim() || postingDiscussion}
+                              >
+                                {postingDiscussion ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <MessageSquare className="h-3 w-3 mr-1" />}
+                                Post
+                              </Button>
+                            </div>
+                         </div>
+                      </details>
                   </div>
                 </>
              )}

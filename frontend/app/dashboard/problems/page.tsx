@@ -49,9 +49,25 @@ export default function ProblemsListPage() {
     }).catch(() => {})
   }, [])
 
-  const stats = {
-    total: 1181, done: 1, easyTotal: 338, easySolved: 1, mediumTotal: 572, mediumSolved: 0, hardTotal: 271, hardSolved: 0, streak: 0, maxStreak: 1
-  }
+  // Compute real stats from problems data
+  const stats = useMemo(() => {
+    const total = filtered.length
+    const easyTotal = filtered.filter((p: any) => p.difficulty === 'easy').length
+    const mediumTotal = filtered.filter((p: any) => p.difficulty === 'medium').length
+    const hardTotal = filtered.filter((p: any) => p.difficulty === 'hard').length
+    return {
+      total,
+      done: 0, // Will be computed from submissions
+      easyTotal,
+      easySolved: 0,
+      mediumTotal,
+      mediumSolved: 0,
+      hardTotal,
+      hardSolved: 0,
+      streak: 0,
+      maxStreak: 1
+    }
+  }, [filtered])
 
   // Filter state (mock functionality for now)
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
