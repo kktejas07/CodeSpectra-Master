@@ -74,10 +74,21 @@ export async function POST(request: NextRequest) {
     }
     if (errorMsg) update.delivery_error = errorMsg
 
+    // Update candidate_invites collection
     await db.collection('candidate_invites').updateOne(
       { postal_message_id: postalMessageId },
       { $set: update }
     )
+
+    // Also update email_logs collection for monitoring
+    try {
+      await db.collection('email_logs').updateOne(
+        { postal_message_id: postalMessageId },
+        { $set: { delivery_status: deliveryStatus, delivery_updated_at: now, ...(errorMsg ? { delivery_error: errorMsg } : {}) } }
+      )
+    } catch {
+      // email_logs update is best-effort
+    }
 
     return NextResponse.json({ ok: true, matched: true, status: deliveryStatus })
   } catch (e: unknown) {

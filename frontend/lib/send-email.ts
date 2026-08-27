@@ -3,6 +3,7 @@ import { logger } from '@/lib/logger'
 
 export async function sendEmail(to: string, template: { subject: string; html: string }, cc?: string, opts?: { category?: string; campaignId?: string }) {
   let postalMessageId: number | null = null
+  let error: string | null = null
 
   try {
     const { sendEmailViaPostal } = await import('@/lib/transactional-mail')
@@ -10,7 +11,9 @@ export async function sendEmail(to: string, template: { subject: string; html: s
     postalMessageId = result.messageId
     logger.email(`[Email] Sent via Postal`, { to, subject: template.subject })
   } catch (e) {
-    logger.email(`[Email] Postal unavailable — logged only`, { to, subject: template.subject })
+    error = e instanceof Error ? e.message : String(e)
+    logger.error(`[Email] Postal FAILED: ${error}`, { to, subject: template.subject })
+    console.error('[Email] Postal send failed:', e)
   }
 
   // Fire-and-forget log to email_logs collection for monitoring
@@ -24,5 +27,5 @@ export async function sendEmail(to: string, template: { subject: string; html: s
     // Don't break email send if logging fails
   })
 
-  return { success: true, provider: postalMessageId ? 'postal' as const : 'log' as const, postalMessageId }
+  return { success: postalMessageId !== null, provider: postalMessageId ? 'postal' as const : 'log' as const, postalMessageId, error }
 }
