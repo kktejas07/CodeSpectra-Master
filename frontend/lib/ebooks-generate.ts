@@ -170,8 +170,10 @@ export async function generateEbookDraft(opts: {
   status?: EbookDoc['status']
   createdBy: string
   useAi?: boolean
+  pageCount?: number
 }): Promise<{ ebook: EbookDoc; usedAi: boolean }> {
   const topic = opts.topic.trim() || 'Career essentials'
+  const targetPages = opts.pageCount || 12
   let pages = templatePages(topic)
   let usedAi = false
 
@@ -191,15 +193,22 @@ Return strict JSON only:
     {"type":"journey","title":"...","steps":[{"n":"01","title":"...","text":"..."}]},
     {"type":"tips","title":"...","bullets":["..."]},
     {"type":"compare","title":"...","left":{"title":"...","points":["..."]},"right":{"title":"...","points":["..."]}},
-    {"type":"stats","title":"...","stats":[{"value":"...","label":"..."}],"items":[{"label":"...","text":"...","color":"teal"}]}
+    {"type":"stats","title":"...","stats":[{"value":"...","label":"..."}],"items":[{"label":"...","text":"...","color":"teal"}]},
+    {"type":"infographic","title":"...","body":"...","stats":[{"value":"...","label":"..."}],"bullets":["..."]},
+    {"type":"code","title":"...","body":"...","code":"...","language":"..."},
+    {"type":"quiz","title":"...","questions":[{"question":"...","options":["A","B","C","D"],"correct":0,"explanation":"..."}]},
+    {"type":"timeline","title":"...","timeline":[{"year":"...","title":"...","description":"..."}]},
+    {"type":"callout","title":"...","body":"...","calloutType":"tip","bullets":["..."]}
   ]
 }
 Rules:
-- Generate 15–20 pages of high-quality content.
-- Provide comprehensive, in-depth information, detailed explanations, and robust examples (do not just write brief summaries).
+- Generate exactly ${targetPages} pages of high-quality content.
+- Use a MIX of page types: sections, infographics, code examples, quizzes, timelines, callouts, tips, compares, stats, journeys.
+- Each page should have an imagePrompt field (for AI illustration).
+- Provide comprehensive, in-depth information with concrete examples.
 - Ensure original wording, no copyrighted book text.
-- Use a mix of sections, journeys, tips, and compare pages to convey the complete topic thoroughly.`,
-        userMessage: `Topic: ${topic}\nSuggested title: ${opts.title || topic}`,
+- Make it engaging with visual variety — don't use the same type twice in a row.`,
+        userMessage: `Topic: ${topic}\nSuggested title: ${opts.title || topic}\nTarget pages: ${targetPages}`,
         modelRole: 'reasoning',
         responseFormat: 'json',
       })

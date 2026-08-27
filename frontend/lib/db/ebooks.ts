@@ -15,6 +15,11 @@ export type EbookPageType =
   | 'journey'
   | 'tips'
   | 'image'
+  | 'infographic'
+  | 'code'
+  | 'quiz'
+  | 'timeline'
+  | 'callout'
 
 export type EbookPage = {
   type: EbookPageType
@@ -31,6 +36,12 @@ export type EbookPage = {
   quoteBy?: string
   imageUrl?: string
   imageAlt?: string
+  // New page types
+  code?: string
+  language?: string
+  questions?: { question: string; options: string[]; correct: number; explanation: string }[]
+  timeline?: { year: string; title: string; description: string }[]
+  calloutType?: 'tip' | 'warning' | 'info' | 'success'
 }
 
 export type EbookStatus = 'draft' | 'published' | 'archived'

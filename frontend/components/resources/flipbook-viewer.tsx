@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useRef, useCallback } from 'react'
-import { ChevronLeft, ChevronRight, Download, Loader2 } from 'lucide-react'
+import { ChevronLeft, ChevronRight, Download, Loader2, Code, Lightbulb, AlertTriangle, Info, CheckCircle, Clock, HelpCircle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { cn } from '@/lib/utils'
 import type { EbookPage } from '@/lib/db/ebooks'
@@ -120,6 +120,141 @@ function PageBody({ page }: { page: EbookPage }) {
               </div>
             </div>
           ))}
+        </div>
+      </div>
+    )
+  }
+
+  // NEW: Infographic page
+  if (page.type === 'infographic') {
+    return (
+      <div className="space-y-4 p-4">
+        <h3 className="text-xl font-semibold">{page.title}</h3>
+        {page.stats && (
+          <div className="grid grid-cols-2 gap-3">
+            {page.stats.map((s, i) => (
+              <div key={i} className="rounded-xl border border-primary/20 bg-gradient-to-br from-primary/5 to-primary/10 p-4 text-center">
+                <p className="text-3xl font-bold text-primary">{s.value}</p>
+                <p className="text-xs text-muted-foreground mt-1">{s.label}</p>
+              </div>
+            ))}
+          </div>
+        )}
+        {page.body && <p className="text-sm text-muted-foreground">{page.body}</p>}
+        {page.bullets && (
+          <ul className="space-y-2">
+            {page.bullets.map((b, i) => (
+              <li key={i} className="flex items-start gap-2 text-sm">
+                <CheckCircle className="mt-0.5 h-4 w-4 shrink-0 text-green-500" />
+                <span>{b}</span>
+              </li>
+            ))}
+          </ul>
+        )}
+      </div>
+    )
+  }
+
+  // NEW: Code page
+  if (page.type === 'code') {
+    return (
+      <div className="space-y-4 p-4">
+        <div className="flex items-center gap-2">
+          <Code className="h-5 w-5 text-blue-500" />
+          <h3 className="text-xl font-semibold">{page.title}</h3>
+        </div>
+        {page.body && <p className="text-sm text-muted-foreground">{page.body}</p>}
+        {page.code && (
+          <div className="rounded-lg bg-gray-900 p-4 overflow-x-auto">
+            <pre className="text-xs text-green-400 font-mono whitespace-pre-wrap">{page.code}</pre>
+          </div>
+        )}
+        {page.language && (
+          <p className="text-xs text-muted-foreground text-right">Language: {page.language}</p>
+        )}
+      </div>
+    )
+  }
+
+  // NEW: Quiz page
+  if (page.type === 'quiz') {
+    return (
+      <div className="space-y-4 p-4">
+        <div className="flex items-center gap-2">
+          <HelpCircle className="h-5 w-5 text-purple-500" />
+          <h3 className="text-xl font-semibold">{page.title || 'Quiz Time'}</h3>
+        </div>
+        {(page.questions || []).map((q, qi) => (
+          <div key={qi} className="space-y-2 rounded-lg border border-purple-500/20 bg-purple-500/5 p-3">
+            <p className="text-sm font-semibold">Q{qi + 1}: {q.question}</p>
+            <div className="space-y-1">
+              {q.options.map((opt, oi) => (
+                <div key={oi} className={cn(
+                  "text-xs px-2 py-1 rounded",
+                  oi === q.correct ? "bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-400" : "bg-muted/50"
+                )}>
+                  {String.fromCharCode(65 + oi)}. {opt}
+                </div>
+              ))}
+            </div>
+            <p className="text-xs text-muted-foreground italic">💡 {q.explanation}</p>
+          </div>
+        ))}
+      </div>
+    )
+  }
+
+  // NEW: Timeline page
+  if (page.type === 'timeline') {
+    return (
+      <div className="space-y-4 p-4">
+        <div className="flex items-center gap-2">
+          <Clock className="h-5 w-5 text-orange-500" />
+          <h3 className="text-xl font-semibold">{page.title}</h3>
+        </div>
+        <div className="relative space-y-4 pl-6">
+          <div className="absolute left-2 top-0 bottom-0 w-0.5 bg-orange-200 dark:bg-orange-800" />
+          {(page.timeline || []).map((t, i) => (
+            <div key={i} className="relative">
+              <div className="absolute -left-4 top-1 h-3 w-3 rounded-full bg-orange-500" />
+              <div>
+                <p className="text-xs font-bold text-orange-600">{t.year}</p>
+                <p className="text-sm font-semibold">{t.title}</p>
+                <p className="text-xs text-muted-foreground">{t.description}</p>
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
+  }
+
+  // NEW: Callout page
+  if (page.type === 'callout') {
+    const icons = { tip: Lightbulb, warning: AlertTriangle, info: Info, success: CheckCircle }
+    const colors = {
+      tip: 'border-blue-500/20 bg-blue-500/5 text-blue-600',
+      warning: 'border-amber-500/20 bg-amber-500/5 text-amber-600',
+      info: 'border-cyan-500/20 bg-cyan-500/5 text-cyan-600',
+      success: 'border-green-500/20 bg-green-500/5 text-green-600',
+    }
+    const Icon = icons[page.calloutType || 'info']
+    const colorClass = colors[page.calloutType || 'info']
+    return (
+      <div className="space-y-4 p-4">
+        <div className={cn("rounded-lg border p-4", colorClass)}>
+          <div className="flex items-center gap-2 mb-2">
+            <Icon className="h-5 w-5" />
+            <h3 className="text-lg font-semibold">{page.title}</h3>
+          </div>
+          {page.body && <p className="text-sm">{page.body}</p>}
+          {page.bullets && (
+            <ul className="mt-2 space-y-1">
+              {page.bullets.map((b, i) => (
+                <li key={i} className="text-sm">• {b}</li>
+              ))}
+            </ul>
+          )}
         </div>
       </div>
     )
