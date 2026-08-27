@@ -586,8 +586,13 @@ function SystemSettingsInner() {
             apiKey.includes('There is no') || apiKey.includes('site can') ||
             apiKey.includes('password:') || apiKey.length < 10) continue
 
-        const normalizedName = name.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
-        const secretKey = providerMap[normalizedName] || providerMap[name.toLowerCase()]
+        const normalizedName = name.toLowerCase()
+          .replace(/^https?:\/\//, '')  // Strip protocol
+          .replace(/\s.*$/, '')  // Strip everything after first space
+          .replace(/\{.*$/, '')  // Strip everything after {
+          .replace(/\/.*$/, '')  // Strip path
+          .trim()
+        const secretKey = providerMap[normalizedName] || providerMap[name.toLowerCase().replace(/\s.*$/, '').trim()]
 
         if (secretKey) {
           setSecretsDraft((d) => ({ ...d, [secretKey]: apiKey }))
