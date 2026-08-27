@@ -101,40 +101,57 @@ export async function GET() {
       }
     }
 
-    // GraphQL: Per-country request counts
-    const countryResult = await cfGraphQL(
-      apiToken,
-      `query GetCountryMetrics($zoneTag: String!, $since: String!, $until: String!) {
-        viewer {
-          zones(filter: {zoneTag: $zoneTag}) {
-            httpRequests1hGroups(
-              limit: 100,
-              filter: {datetime_geq: $since, datetime_leq: $until},
-              orderBy: [sum_requests_DESC]
-            ) {
-              dimensions {
-                clientCountryName
-              }
-              sum {
-                requests
+    // GraphQL: Per-country request counts (use REST API as fallback if GraphQL fails)
+    let topCountries: Array<{ country: string; requests: number }> = []
+    try {
+      const countryResult = await cfGraphQL(
+        apiToken,
+        `query GetCountryMetrics($zoneTag: String!, $since: String!, $until: String!) {
+          viewer {
+            zones(filter: {zoneTag: $zoneTag}) {
+              httpRequests1hGroups(
+                limit: 100,
+                filter: {datetime_geq: $since, datetime_leq: $until},
+                orderBy: [sum_requests_DESC]
+              ) {
+                dimensions {
+                  clientCountryName
+                }
+                sum {
+                  requests
+                }
               }
             }
           }
-        }
-      }`,
-      { zoneTag: zoneId, since, until }
-    )
+        }`,
+        { zoneTag: zoneId, since, until }
+      )
 
-    const countryGroups = countryResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
-    const countryMap = new Map<string, number>()
-    for (const g of countryGroups as any[]) {
-      const name = g?.dimensions?.clientCountryName || 'Unknown'
-      countryMap.set(name, (countryMap.get(name) || 0) + (g?.sum?.requests || 0))
+      const countryGroups = countryResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
+      const countryMap = new Map<string, number>()
+      for (const g of countryGroups as any[]) {
+        const name = g?.dimensions?.clientCountryName || 'Unknown'
+        countryMap.set(name, (countryMap.get(name) || 0) + (g?.sum?.requests || 0))
+      }
+      topCountries = Array.from(countryMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 50)
+        .map(([country, requests]) => ({ country, requests }))
+    } catch (countryErr) {
+      console.warn('[cloudflare-analytics] Country GraphQL failed, trying REST:', (countryErr as Error).message)
+      // Fallback: use REST API for country analytics
+      try {
+        const analyticsRes = await cfFetch(apiToken, `/zones/${zoneId}/analytics/dashboard?since=${sinceSec}&until=${Math.floor(Date.now() / 1000)}`)
+        const dashboard = analyticsRes?.result?.totals?.[0] || {}
+        const countryData = dashboard?.timeseries?.[0]?.domains_by_country || {}
+        topCountries = Object.entries(countryData)
+          .sort(([, a], [, b]) => (b as number) - (a as number))
+          .slice(0, 50)
+          .map(([country, requests]) => ({ country, requests: requests as number }))
+      } catch {
+        // Both failed — return empty countries
+      }
     }
-    const topCountries = Array.from(countryMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 50)
-      .map(([country, requests]) => ({ country, requests }))
 
     // Estimate real-time visitors from recent hourly data
     const recentHours = timeSeries.slice(-3)

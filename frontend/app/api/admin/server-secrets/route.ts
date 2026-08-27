@@ -113,7 +113,11 @@ export async function PATCH(request: Request) {
     if (v === null) {
       patch[k] = undefined as never
     } else if (typeof v === 'string') {
-      if (isMaskedSecret(v)) continue
+      if (isMaskedSecret(v)) {
+        // Don't skip cloudflare_api_token if it's masked — user didn't change it
+        if (k === 'cloudflare_api_token') continue
+        continue
+      }
       patch[k] = v as never
     }
   }
