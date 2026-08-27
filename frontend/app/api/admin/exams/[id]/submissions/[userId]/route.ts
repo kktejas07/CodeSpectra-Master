@@ -57,6 +57,10 @@ export async function GET(
         released_at: submission.released_at || null,
         id_photo: submission.id_photo || null,
         face_photo: submission.face_photo || null,
+        // Timing data
+        question_timings: submission.question_timings || {},
+        total_time_ms: submission.total_time_ms || 0,
+        started_at: submission.started_at || null,
       },
       proctorEvents: events.map((e: Record<string, unknown>) => ({
         event_type: e.event_type,

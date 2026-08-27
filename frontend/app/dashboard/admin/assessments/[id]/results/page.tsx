@@ -79,6 +79,9 @@ interface ReviewData {
     released_at: string | null
     id_photo?: string | null
     face_photo?: string | null
+    question_timings?: Record<string, number>
+    total_time_ms?: number
+    started_at?: string | null
   }
   proctorEvents: Array<{ event_type: string; meta: Record<string, unknown>; created_at: string }>
   candidate: { name: string; email: string }
@@ -1265,7 +1268,7 @@ export default function ExamResultsPage() {
               {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 print-review-body">
                   {/* Candidate Info */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
                       <span className="text-muted-foreground block text-xs">Score</span>
                       <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
@@ -1288,6 +1291,17 @@ export default function ExamResultsPage() {
                           ? new Date(reviewData.submission.submitted_at).toLocaleString()
                           : '--'}
                       </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Time Used</span>
+                      <span className="text-xl font-bold">
+                        {reviewData.submission.total_time_ms
+                          ? `${Math.floor(reviewData.submission.total_time_ms / 60000)}m ${Math.floor((reviewData.submission.total_time_ms % 60000) / 1000)}s`
+                          : '--'}
+                      </span>
+                      {reviewData.submission.total_time_ms && reviewData.submission.total_time_ms < 60000 && (
+                        <span className="block text-xs text-amber-500 mt-0.5">⚠ Very fast submission</span>
+                      )}
                     </div>
                   </div>
 
@@ -1312,9 +1326,13 @@ export default function ExamResultsPage() {
                         const isManuallyGraded = detail?.awarded !== undefined && !isPendingReview
                         const modelAnswer = q.answer || q.correct_answer || ''
                         const maxPoints = q.points || q.score || detail?.points || 10
+                        const timeSpent = reviewData.submission.question_timings?.[q.id] || 0
+                        const isSuspiciouslyFast = timeSpent > 0 && timeSpent < 3000
+                        const totalTimeMs = reviewData.submission.total_time_ms || 0
+                        const isSuspiciouslySlow = timeSpent > 0 && totalTimeMs > 0 && timeSpent > totalTimeMs * 0.5
 
                         return (
-                          <div key={q.id} className={`border rounded-lg p-3 sm:p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
+                          <div key={q.id} className={`border rounded-lg p-3 sm:p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''} ${isSuspiciouslyFast ? 'border-red-500/40 bg-red-500/5' : ''}`}>
                             <div className="flex items-start justify-between gap-2 sm:gap-4">
                               <div className="flex-1 min-w-0">
                                 <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
@@ -1327,8 +1345,23 @@ export default function ExamResultsPage() {
                                   </ReactMarkdown>
                                 </div>
                               </div>
+                              {/* Timing display */}
+                              {timeSpent > 0 && (
+                                <div className="flex items-center gap-1 text-xs shrink-0">
+                                  <Clock className="w-3 h-3 text-muted-foreground" />
+                                  <span className={isSuspiciouslyFast ? 'text-red-500 font-semibold' : isSuspiciouslySlow ? 'text-amber-500 font-semibold' : 'text-muted-foreground'}>
+                                    {timeSpent < 1000 ? `${timeSpent}ms` : `${(timeSpent / 1000).toFixed(1)}s`}
+                                  </span>
+                                  {isSuspiciouslyFast && (
+                                    <Badge variant="outline" className="text-[10px] text-red-500 border-red-500/30 bg-red-500/10 ml-1">Fast</Badge>
+                                  )}
+                                  {isSuspiciouslySlow && (
+                                    <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30 bg-amber-500/10 ml-1">Slow</Badge>
+                                  )}
+                                </div>
+                              )}
                               {isPendingReview ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 shrink-0">
                                   {detail?.requires_human_review && (
                                     <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0">
                                       <AlertTriangle className="w-3 h-3 mr-1" /> AI Uncertain

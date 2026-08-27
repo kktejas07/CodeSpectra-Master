@@ -23,6 +23,7 @@ export default function AdminResourcesPage() {
   const [loading, setLoading] = useState(true)
   const [topic, setTopic] = useState('')
   const [title, setTitle] = useState('')
+  const [pageCount, setPageCount] = useState(12)
   const [busy, setBusy] = useState(false)
   const [coverBusy, setCoverBusy] = useState<string | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; slug: string | null }>({ open: false, slug: null })
@@ -83,11 +84,11 @@ export default function AdminResourcesPage() {
       const r = await csrfFetch('/api/resources/ebooks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: topic.trim(), title: title.trim() || undefined, useAi: true }),
+        body: JSON.stringify({ topic: topic.trim(), title: title.trim() || undefined, useAi: true, pageCount }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Generate failed')
-      addToast({ type: 'success', title: d.usedAi ? 'Draft generated with AI' : 'Draft generated from template' })
+      addToast({ type: 'success', title: d.usedAi ? `Draft generated with AI (${pageCount} pages)` : 'Draft generated from template' })
       setTopic('')
       setTitle('')
       void load()
@@ -156,7 +157,7 @@ export default function AdminResourcesPage() {
         <h2 className="flex items-center gap-2 font-semibold">
           <Plus className="h-4 w-4" /> Generate ebook
         </h2>
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
           <div className="space-y-1.5">
             <Label htmlFor="topic">Topic</Label>
             <Input
@@ -175,10 +176,29 @@ export default function AdminResourcesPage() {
               onChange={(e) => setTitle(e.target.value)}
             />
           </div>
+          <div className="space-y-1.5">
+            <Label htmlFor="pageCount">Pages</Label>
+            <div className="flex gap-1">
+              {[6, 12, 16, 24, 50].map((n) => (
+                <button
+                  key={n}
+                  type="button"
+                  onClick={() => setPageCount(n)}
+                  className={`px-3 py-1.5 text-xs font-medium rounded-md transition-colors ${
+                    pageCount === n
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted hover:bg-muted/80 text-muted-foreground'
+                  }`}
+                >
+                  {n}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <Button type="button" disabled={!topic.trim() || busy} onClick={() => void generate()}>
-          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Plus className="mr-2 h-4 w-4" />}
-          Generate draft
+          {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
+          {busy ? `Generating ${pageCount} pages...` : `Generate ${pageCount}-page ebook`}
         </Button>
       </Card>
 
