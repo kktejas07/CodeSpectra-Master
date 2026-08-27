@@ -1,8 +1,9 @@
-import { generateText } from 'ai'
 import { NextResponse } from 'next/server'
 import { z } from 'zod'
 import { requireAuth } from '@/lib/route-auth'
 import { getArenaChallenge, type ArenaChallenge } from '@/lib/arena-challenges'
+import { backendComplete } from '@/lib/ai/backend'
+import { getApiKey } from '@/lib/ai/get-api-key'
 
 const adaptSchema = z.object({
   title: z.string(),
@@ -54,21 +55,21 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: 'Unknown challenge' }, { status: 404 })
   }
 
-  if (!process.env.OPENAI_API_KEY) {
+  // Check if any AI provider is configured
+  const key = await getApiKey('openai')
+  if (!key) {
     return NextResponse.json({
       source: 'static' as const,
       challenge: base,
       notice:
-        'Set OPENAI_API_KEY for AI-adaptive variants. Until then, the curated seed from `lib/arena-challenges.ts` is returned.',
+        'No AI provider configured. Set an API key in Settings → LLM. Until then, the curated seed from `lib/arena-challenges.ts` is returned.',
     })
   }
 
   try {
-    const result = await generateText({
-      model: 'openai/gpt-4o-mini',
-      system:
-        'You write concise competitive-programming style prompts. Reply with a single JSON object only — no markdown, no commentary.',
-      prompt: `Seed problem (do not copy wording; invent a fresh variant of similar difficulty and topic):
+    const result = await backendComplete({
+      systemMessage: 'You write concise competitive-programming style prompts. Reply with a single JSON object only — no markdown, no commentary.',
+      userMessage: `Seed problem (do not copy wording; invent a fresh variant of similar difficulty and topic):
 title: ${base.title}
 summary: ${base.shortDescription}
 difficulty: ${base.difficulty}
@@ -83,9 +84,12 @@ Return JSON with exactly these keys:
 - constraints (array of 2-5 strings)
 
 Keep numbers realistic and ensure one clear correct idea.`,
+      modelRole: 'fast',
+      responseFormat: 'json',
+      feature: 'arena-adapt',
     })
 
-    const raw = extractJsonObject(result.text)
+    const raw = extractJsonObject(result.text || '{}')
     const v = adaptSchema.parse(raw)
 
     const merged: ArenaChallenge = {

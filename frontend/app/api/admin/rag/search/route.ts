@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { getApiKey } from '@/lib/ai/get-api-key'
 
 export const dynamic = 'force-dynamic'
 
@@ -18,22 +19,15 @@ export async function POST(request: Request) {
   if (!query) return NextResponse.json({ error: 'Query is required' }, { status: 400 })
 
   try {
-    const db = await getMongoDb()
-    const sec = await db.collection('platform_settings').findOne({ key: 'secrets' })
-    const val = (sec?.value as Record<string, string>) || {}
-    let apiKey = process.env.OPENAI_API_KEY || val.openai_api_key || val.openrouter_api_key || val.opencode_api_key || ''
-    if (!apiKey) {
-      const llm = await db.collection('platform_settings').findOne({ key: 'llm' })
-      const llmVal = (llm?.value as Record<string, string>) || {}
-      if (llmVal.api_key && !llmVal.api_key.includes('•')) {
-        apiKey = llmVal.api_key
-      }
-    }
-    if (!apiKey) {
+    // Resolve API key using unified utility with round-robin support
+    const keyResult = await getApiKey('openai') || await getApiKey('openrouter') || await getApiKey('opencode')
+    if (!keyResult) {
       return NextResponse.json({ error: 'AI API key not configured in Superadmin settings' }, { status: 503 })
     }
+    const apiKey = keyResult.key
+    const isOr = keyResult.provider === 'openrouter' || keyResult.provider === 'opencode'
 
-    const isOr = apiKey.startsWith('sk-or-') || val.openrouter_api_key === apiKey
+    const db = await getMongoDb()
     const embedUrl = isOr ? 'https://openrouter.ai/api/v1/embeddings' : 'https://api.openai.com/v1/embeddings'
     const embedModel = isOr ? 'openai/text-embedding-3-small' : 'text-embedding-ada-002'
 

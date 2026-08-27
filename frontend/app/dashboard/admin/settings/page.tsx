@@ -475,7 +475,6 @@ function SystemSettingsInner() {
         'mistral': 'mistral_api_key',
         'cohere': 'cohere_api_key',
         'fireworks': 'fireworks_api_key',
-        'xai (grok)': 'xai_api_key',
         'xai': 'xai_api_key',
         'replicate': 'replicate_api_key',
         'elevenlabs': 'elevenlabs_api_key',
@@ -488,7 +487,6 @@ function SystemSettingsInner() {
         'fal.ai': 'fal_api_key',
         'fal': 'fal_api_key',
         'ai21': 'ai21_api_key',
-        'kimi (moonshot)': 'kimi_api_key',
         'kimi': 'kimi_api_key',
         'lemonfox': 'lemonfox_api_key',
         'hugging face': 'huggingface_api_key',
@@ -499,7 +497,6 @@ function SystemSettingsInner() {
         'nscale': 'nscale_api_key',
         'chutes': 'chutes_api_key',
         'modelscope': 'modelscope_api_key',
-        'langchain (hub)': 'langchain_api_key',
         'langchain': 'langchain_api_key',
         'langfuse': 'langfuse_api_key',
         'pinecone': 'pinecone_api_key',
@@ -522,9 +519,9 @@ function SystemSettingsInner() {
         'console.groq.com': 'groq_api_key',
         'cloud.cerebras.ai': 'cerebras_api_key',
         'console.mistral.ai': 'mistral_api_key',
-        'huggingface.co/settings/tokens': 'huggingface_api_key',
-        'openrouter.ai/keys': 'openrouter_api_key',
-        'github.com/marketplace/models': 'openrouter_api_key',
+        'huggingface.co': 'huggingface_api_key',
+        'openrouter.ai': 'openrouter_api_key',
+        'github.com': 'openrouter_api_key',
         'build.nvidia.com': 'nvidia_api_key',
         'workers.ai': 'cloudflare_workers_api_key',
         'platform.deepseek.com': 'deepseek_api_key',
@@ -537,14 +534,11 @@ function SystemSettingsInner() {
         'deepinfra.com': 'deepinfra_api_key',
         'fireworks.ai': 'fireworks_api_key',
         'novita.ai': 'novita_api_key',
-        'together.ai': 'deepinfra_api_key',
         'replicate.com': 'replicate_api_key',
         'tavily.com': 'tavily_api_key',
         'serper.dev': 'serper_api_key',
-        'brave.com/search/api': 'serper_api_key',
         'exa.ai': 'exa_api_key',
-        'jina.ai/reader': 'jina_api_key',
-        'docs.perplexity.ai': 'openrouter_api_key',
+        'jina.ai': 'jina_api_key',
         'firecrawl.dev': 'firecrawl_api_key',
         'console.deepgram.com': 'deepgram_api_key',
         'assemblyai.com': 'assemblyai_api_key',
@@ -552,41 +546,36 @@ function SystemSettingsInner() {
         'lemonfox.ai': 'lemonfox_api_key',
         'platform.stability.ai': 'stability_api_key',
         'ollama.com': 'openrouter_api_key',
-        'searxng.github.io': 'serper_api_key',
-        'localai.io': 'openrouter_api_key',
-        'nousresearch.com': 'deepinfra_api_key',
         'platform.kimi.ai': 'kimi_api_key',
-        'endpoints.ai.cloud.ovh.net': 'openrouter_api_key',
         'huggingface.co/docs/inference-providers': 'huggingface_api_key',
         'cloud.sambanova.com': 'sambanova_api_key',
-        'freethe.ai': 'openrouter_api_key',
-        'koboldai.org': 'openrouter_api_key',
-        'edenai.run': 'openrouter_api_key',
         'skillboss.com': 'openrouter_api_key',
         'aionlabs.ai': 'openrouter_api_key',
       }
 
       let imported = 0
       const skipped: string[] = []
+      const importedKeys: string[] = []
 
       for (const row of rows) {
         if (!Array.isArray(row)) continue
         
-        // Detect if first row is header
-        const firstCell = String(row[0] || '').trim().toLowerCase()
-        if (firstCell === 'provider' || firstCell === 'name' || firstCell === 's.no') continue
+        // Skip empty rows
+        const firstCell = String(row[0] || '').trim()
+        const secondCell = String(row[1] || '').trim()
+        if (!firstCell && !secondCell) continue
         
-        // Get provider name and API key based on column positions
-        // CSV format: Provider, API KEY (2 columns) OR S.No, Name, API Key (3 columns)
+        // Skip header rows
+        if (firstCell.toLowerCase() === 'provider' || firstCell.toLowerCase() === 'name' || firstCell.toLowerCase() === 's.no') continue
+        
+        // Get provider name and API key
         let providerName = ''
         let apiKey = ''
         
         if (row.length >= 3) {
-          // 3-column format: S.No, Name, API Key
           providerName = String(row[1] || '').trim()
           apiKey = String(row[2] || '').trim()
         } else if (row.length >= 2) {
-          // 2-column format: Provider, API KEY
           providerName = String(row[0] || '').trim()
           apiKey = String(row[1] || '').trim()
         }
@@ -614,6 +603,7 @@ function SystemSettingsInner() {
 
         if (secretKey) {
           setSecretsDraft((d) => ({ ...d, [secretKey]: apiKey }))
+          importedKeys.push(secretKey)
           imported++
         } else {
           skipped.push(providerName)
@@ -624,7 +614,7 @@ function SystemSettingsInner() {
         addToast({
           type: 'success',
           title: `Imported ${imported} API key${imported > 1 ? 's' : ''}`,
-          message: skipped.length > 0 ? `Skipped: ${skipped.join(', ')}` : undefined,
+          message: `Keys for: ${importedKeys.join(', ')}${skipped.length > 0 ? `\nSkipped: ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '...' : ''}` : ''}`,
         })
       } else {
         addToast({ type: 'error', title: 'No matching providers found', message: 'Check that your file has valid API keys for supported providers.' })

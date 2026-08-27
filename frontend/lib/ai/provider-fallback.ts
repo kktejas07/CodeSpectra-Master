@@ -155,25 +155,11 @@ async function getAvailableProviders(): Promise<{
   }[] = []
 
   for (const entry of PROVIDER_FALLBACK_CHAIN) {
-    // Get key from secrets or round-robin
-    let apiKey = ''
-
-    // Try round-robin key first (multiple keys per provider)
-    if (llmConfig?.keys?.[entry.provider]?.length > 0) {
-      const rrKey = await getRoundRobinKey(entry.provider)
-      if (rrKey) apiKey = rrKey
-    }
-
-    // Fallback to single key from secrets
-    if (!apiKey) {
-      const secretVal = secrets[entry.secretKey]
-      if (typeof secretVal === 'string' && secretVal.trim() && !isMaskedSecret(secretVal)) {
-        apiKey = secretVal.trim()
-      }
-    }
-
-    // Skip if no key
-    if (!apiKey) continue
+    // Get key using the unified getApiKey utility
+    const { getApiKey } = await import('@/lib/ai/get-api-key')
+    const keyResult = await getApiKey(entry.provider as any)
+    
+    if (!keyResult) continue
 
     // Skip if all keys for this provider are rate-limited
     if (llmConfig?.keys?.[entry.provider]?.length > 0) {
@@ -189,7 +175,7 @@ async function getAvailableProviders(): Promise<{
       provider: entry.provider,
       model: entry.model,
       endpoint: entry.endpoint,
-      apiKey,
+      apiKey: keyResult.key,
       free: entry.free,
     })
   }

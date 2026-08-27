@@ -9,6 +9,11 @@
  * Uses OmniRouter-style provider fallback: when a provider hits rate limits,
  * quota exhaustion, or errors, automatically rotates to the next available
  * provider with exponential backoff.
+ *
+ * All API keys are resolved via the unified getApiKey() utility which supports:
+ * - Round-robin across multiple keys per provider
+ * - Rate-limit detection and automatic rotation
+ * - Fallback to environment variables
  */
 
 const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
@@ -20,35 +25,36 @@ const BACKEND = process.env.INTERNAL_BACKEND_URL
 async function getBackendSecrets(): Promise<{
   anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string; groq: string
 }> {
-  const fromEnv = {
-    anthropic: process.env.ANTHROPIC_API_KEY?.trim() || '',
-    gemini: process.env.GEMINI_API_KEY?.trim() || '',
-    openai: process.env.OPENAI_API_KEY?.trim() || '',
-    openrouter: process.env.OPENROUTER_API_KEY?.trim() || '',
-    opencode: process.env.OPENCODE_API_KEY?.trim() || '',
-    groq: process.env.GROQ_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '',
-  }
   try {
-    const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
-    const { readPlatformLlmConfig } = await import('@/lib/ai/get-user-model')
-    const [secrets, platformLlm] = await Promise.all([readServerSecrets(), readPlatformLlmConfig()])
-    const llmKey = platformLlm?.api_key && typeof platformLlm.api_key === 'string' && !isMaskedSecret(platformLlm.api_key) ? platformLlm.api_key.trim() : ''
-    const { getRoundRobinKey } = await import('@/lib/ai/get-round-robin-key')
+    const { getApiKey } = await import('@/lib/ai/get-api-key')
     
-    const rrKey = platformLlm?.provider ? await getRoundRobinKey(platformLlm.provider) : null;
-    
-    const fallbackKey = rrKey || llmKey
+    const [anthropicKey, geminiKey, openaiKey, openrouterKey, opencodeKey, groqKey] = await Promise.all([
+      getApiKey('anthropic'),
+      getApiKey('gemini'),
+      getApiKey('openai'),
+      getApiKey('openrouter'),
+      getApiKey('opencode'),
+      getApiKey('groq'),
+    ])
     
     return {
-      anthropic: fromEnv.anthropic || (secrets.anthropic_api_key?.trim() || (platformLlm?.provider === 'anthropic' ? fallbackKey : '')),
-      gemini: fromEnv.gemini || (secrets.gemini_api_key?.trim() || (platformLlm?.provider === 'gemini' ? fallbackKey : '')),
-      openai: fromEnv.openai || (secrets.openai_api_key?.trim() || (platformLlm?.provider === 'openai' ? fallbackKey : '')),
-      openrouter: fromEnv.openrouter || (secrets.openrouter_api_key?.trim() || (platformLlm?.provider === 'openrouter' ? fallbackKey : '')),
-      opencode: fromEnv.opencode || (secrets.opencode_api_key?.trim() || (platformLlm?.provider === 'opencode' ? fallbackKey : '')),
-      groq: fromEnv.groq || (secrets.groq_api_key?.trim() || (platformLlm?.provider === 'groq' ? fallbackKey : '')),
+      anthropic: anthropicKey?.key || '',
+      gemini: geminiKey?.key || '',
+      openai: openaiKey?.key || '',
+      openrouter: openrouterKey?.key || '',
+      opencode: opencodeKey?.key || '',
+      groq: groqKey?.key || '',
     }
   } catch {
-    return fromEnv
+    // Fallback to env vars only
+    return {
+      anthropic: process.env.ANTHROPIC_API_KEY?.trim() || '',
+      gemini: process.env.GEMINI_API_KEY?.trim() || '',
+      openai: process.env.OPENAI_API_KEY?.trim() || '',
+      openrouter: process.env.OPENROUTER_API_KEY?.trim() || '',
+      opencode: process.env.OPENCODE_API_KEY?.trim() || '',
+      groq: process.env.GROQ_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '',
+    }
   }
 }
 

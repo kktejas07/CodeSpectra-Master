@@ -191,12 +191,29 @@ export const AI_COST_RATES: Record<string, { input: number; output: number }> = 
   'gpt-4o-mini': { input: 0.15, output: 0.60 },
   'gpt-4o': { input: 2.50, output: 10.00 },
   'gpt-4-turbo': { input: 10.00, output: 30.00 },
+  'gpt-4.1': { input: 2.00, output: 8.00 },
+  'gpt-4.1-mini': { input: 0.40, output: 1.60 },
+  'gpt-4.1-nano': { input: 0.10, output: 0.40 },
+  'o3': { input: 10.00, output: 40.00 },
+  'o3-mini': { input: 1.10, output: 4.40 },
+  'o4-mini': { input: 1.10, output: 4.40 },
   'claude-3-5-sonnet': { input: 3.00, output: 15.00 },
+  'claude-3-5-haiku': { input: 0.80, output: 4.00 },
   'claude-3-haiku': { input: 0.25, output: 1.25 },
+  'claude-sonnet-4': { input: 3.00, output: 15.00 },
   'gemini-2.0-flash': { input: 0.10, output: 0.40 },
+  'gemini-2.0-flash-lite': { input: 0.075, output: 0.30 },
   'gemini-2.5-pro': { input: 1.25, output: 10.00 },
+  'gemini-1.5-pro': { input: 1.25, output: 5.00 },
+  'gemini-1.5-flash': { input: 0.075, output: 0.30 },
   'llama-3.3-70b': { input: 0.59, output: 0.79 },
+  'llama-3.1-8b': { input: 0.05, output: 0.08 },
   'deepseek-v4-pro': { input: 0.27, output: 1.10 },
+  'deepseek-chat': { input: 0.14, output: 0.28 },
+  'mistral-large': { input: 2.00, output: 6.00 },
+  'mistral-small': { input: 0.10, output: 0.30 },
+  'command-r-plus': { input: 2.50, output: 10.00 },
+  'grok-2': { input: 2.00, output: 10.00 },
 }
 
 export function estimateAiCost(model: string, inputTokens: number, outputTokens: number): number {
@@ -207,4 +224,20 @@ export function estimateAiCost(model: string, inputTokens: number, outputTokens:
 
 export async function analyticsAiUsage(): Promise<Collection<AiUsageEvent>> {
   return (await db()).collection<AiUsageEvent>('analytics_ai_usage')
+}
+
+/**
+ * Track AI usage event. Call this after every AI API call to log usage.
+ */
+export async function trackAiUsage(event: Omit<AiUsageEvent, 'id' | 'timestamp'>): Promise<void> {
+  try {
+    const col = await analyticsAiUsage()
+    await col.insertOne({
+      id: newId(),
+      timestamp: nowIso(),
+      ...event,
+    })
+  } catch (e) {
+    console.error('[analytics] Failed to track AI usage:', e)
+  }
 }
