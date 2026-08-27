@@ -128,6 +128,7 @@ export async function GET() {
       )
 
       const countryGroups = countryResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
+      console.log('[cloudflare-analytics] Country groups count:', countryGroups.length)
       const countryMap = new Map<string, number>()
       for (const g of countryGroups as any[]) {
         const name = g?.dimensions?.clientCountryName || 'Unknown'
@@ -137,19 +138,49 @@ export async function GET() {
         .sort((a, b) => b[1] - a[1])
         .slice(0, 50)
         .map(([country, requests]) => ({ country, requests }))
+      console.log('[cloudflare-analytics] Top countries:', topCountries.length)
     } catch (countryErr) {
-      console.warn('[cloudflare-analytics] Country GraphQL failed, trying REST:', (countryErr as Error).message)
+      console.warn('[cloudflare-analytics] Country GraphQL failed:', (countryErr as Error).message)
       // Fallback: use REST API for country analytics
       try {
-        const analyticsRes = await cfFetch(apiToken, `/zones/${zoneId}/analytics/dashboard?since=${sinceSec}&until=${Math.floor(Date.now() / 1000)}`)
-        const dashboard = analyticsRes?.result?.totals?.[0] || {}
-        const countryData = dashboard?.timeseries?.[0]?.domains_by_country || {}
-        topCountries = Object.entries(countryData)
-          .sort(([, a], [, b]) => (b as number) - (a as number))
+        const sinceParam = new Date(sinceSec * 1000).toISOString().split('T')[0]
+        const untilParam = new Date().toISOString().split('T')[0]
+        const analyticsRes = await cfFetch(apiToken, `/zones/${zoneId}/analytics/dashboard?since=${sinceParam}&until=${untilParam}&continuous=true`)
+        console.log('[cloudflare-analytics] REST analytics keys:', Object.keys(analyticsRes?.result || {}))
+        
+        // Try different possible response structures
+        const result = analyticsRes?.result || {}
+        const countries: Record<string, number> = {}
+        
+        // Structure 1: totals[0].taxonomiess
+        if (result.totals?.[0]?.taxonomies) {
+          for (const tax of result.totals[0].taxonomies) {
+            if (tax?.name && tax?.requests?.total) {
+              countries[tax.name] = tax.requests.total
+            }
+          }
+        }
+        
+        // Structure 2: timeseries with country data
+        if (Object.keys(countries).length === 0 && result.timeseries) {
+          for (const ts of result.timeseries) {
+            if (ts?.taxonomies) {
+              for (const tax of ts.taxonomies) {
+                if (tax?.name && tax?.requests?.total) {
+                  countries[tax.name] = (countries[tax.name] || 0) + tax.requests.total
+                }
+              }
+            }
+          }
+        }
+        
+        topCountries = Object.entries(countries)
+          .sort(([, a], [, b]) => b - a)
           .slice(0, 50)
-          .map(([country, requests]) => ({ country, requests: requests as number }))
-      } catch {
-        // Both failed — return empty countries
+          .map(([country, requests]) => ({ country, requests }))
+        console.log('[cloudflare-analytics] REST countries:', topCountries.length)
+      } catch (restErr) {
+        console.error('[cloudflare-analytics] REST fallback failed:', (restErr as Error).message)
       }
     }
 
