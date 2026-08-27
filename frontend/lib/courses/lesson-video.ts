@@ -210,10 +210,9 @@ const PROVIDER_MODELS: { provider: string; model: string; endpoint?: string }[] 
 
 let rr = 0
 
-/** Fail over across configured keys. No proxy / limit-bypass. */
+/** Fail over across configured keys. Uses unified getApiKey() with round-robin. */
 async function completeWithFallback(args: Parameters<typeof backendComplete>[0]) {
   const primary = await platformModelOverrides()
-  const secrets = await readServerSecrets() as Record<string, unknown>
   const nvidia = PROVIDER_MODELS.filter(p => p.provider === 'nvidia')
   const rest = [
     ...(primary.providerOverride && primary.modelOverride && primary.providerOverride !== 'openrouter' && primary.providerOverride !== 'nvidia'
@@ -226,15 +225,25 @@ async function completeWithFallback(args: Parameters<typeof backendComplete>[0])
   const seen = new Set<string>()
   let last = 'No LLM provider with a key is configured'
   let waitedRateLimit = false
+
+  // Import the unified getApiKey utility
+  const { getApiKey } = await import('@/lib/ai/get-api-key')
+
   for (const p of chain) {
     if (!p.provider || !p.model) continue
     const id = `${p.provider}:${p.model}`
     if (seen.has(id)) continue
     seen.add(id)
-    const secretField = PROVIDER_SECRET[p.provider]
+
+    // Get API key using unified utility (supports round-robin)
     const fromPrimary = p.provider === primary.providerOverride ? primary.apiKeyOverride : ''
-    const apiKey = fromPrimary || (secretField && typeof secrets[secretField] === 'string' ? String(secrets[secretField]).trim() : '')
+    let apiKey = fromPrimary
+    if (!apiKey) {
+      const keyResult = await getApiKey(p.provider as any)
+      apiKey = keyResult?.key || ''
+    }
     if (!apiKey) continue
+
     console.log('[course-worker] trying', p.provider, p.model)
     try {
       const res = await backendComplete({
