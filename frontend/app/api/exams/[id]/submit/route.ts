@@ -20,6 +20,9 @@ export async function POST(
     idPhoto?: string
     facePhoto?: string
     inviteToken?: string
+    question_timings?: Record<string, number>
+    total_time_ms?: number
+    started_at?: string | null
   }
 
   const gate = await requireAuth().catch(() => null)
@@ -156,6 +159,10 @@ export async function POST(
         ip: req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || '',
         geo: req.headers.get('cf-ipcountry') || req.headers.get('x-vercel-ip-country') || null
       },
+      // Timing data
+      question_timings: body.question_timings || {},
+      total_time_ms: body.total_time_ms || 0,
+      started_at: body.started_at || null,
       created_at: nowIso(),
     }
     await submissions.insertOne(submission)
