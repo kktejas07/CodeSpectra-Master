@@ -101,10 +101,9 @@ function pagesFromAi(obj: Record<string, unknown> | null, topic: string): EbookP
     if (!raw || typeof raw !== 'object') continue
     const p = raw as Record<string, unknown>
     const type = String(p.type || 'section') as EbookPage['type']
+    const validTypes = ['cover', 'toc', 'section', 'compare', 'stats', 'journey', 'tips', 'infographic', 'code', 'quiz', 'timeline', 'callout']
     pages.push({
-      type: ['cover', 'toc', 'section', 'compare', 'stats', 'journey', 'tips'].includes(type)
-        ? type
-        : 'section',
+      type: validTypes.includes(type) ? type : 'section',
       title: p.title ? String(p.title) : undefined,
       subtitle: p.subtitle ? String(p.subtitle) : undefined,
       body: p.body ? String(p.body) : undefined,
@@ -151,6 +150,31 @@ function pagesFromAi(obj: Record<string, unknown> | null, topic: string): EbookP
         : undefined,
       quote: p.quote ? String(p.quote) : undefined,
       quoteBy: p.quoteBy ? String(p.quoteBy) : undefined,
+      // New page types
+      code: p.code ? String(p.code) : undefined,
+      language: p.language ? String(p.language) : undefined,
+      questions: Array.isArray(p.questions)
+        ? p.questions.map((q: unknown) => {
+            const x = (q || {}) as Record<string, unknown>
+            return {
+              question: String(x.question || ''),
+              options: Array.isArray(x.options) ? x.options.map(String) : [],
+              correct: typeof x.correct === 'number' ? x.correct : 0,
+              explanation: String(x.explanation || ''),
+            }
+          })
+        : undefined,
+      timeline: Array.isArray(p.timeline)
+        ? p.timeline.map((t: unknown) => {
+            const x = (t || {}) as Record<string, unknown>
+            return {
+              year: String(x.year || ''),
+              title: String(x.title || ''),
+              description: String(x.description || ''),
+            }
+          })
+        : undefined,
+      calloutType: p.calloutType ? String(p.calloutType) as EbookPage['calloutType'] : undefined,
     })
   }
   if (pages.length < 3) return null
