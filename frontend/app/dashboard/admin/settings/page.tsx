@@ -459,7 +459,9 @@ function SystemSettingsInner() {
       const worksheet = workbook.Sheets[sheetName]
       const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 })
 
+      // Map provider names/URLs to secret keys
       const providerMap: Record<string, string> = {
+        // By name
         'openai': 'openai_api_key',
         'anthropic': 'anthropic_api_key',
         'google gemini': 'gemini_api_key',
@@ -515,20 +517,77 @@ function SystemSettingsInner() {
         'bright data': 'brightdata_api_key',
         'brightdata': 'brightdata_api_key',
         'scrapingbee': 'scrapingbee_api_key',
+        // By URL/domain
+        'aistudio.google.com': 'gemini_api_key',
+        'console.groq.com': 'groq_api_key',
+        'cloud.cerebras.ai': 'cerebras_api_key',
+        'console.mistral.ai': 'mistral_api_key',
+        'huggingface.co/settings/tokens': 'huggingface_api_key',
+        'openrouter.ai/keys': 'openrouter_api_key',
+        'github.com/marketplace/models': 'openrouter_api_key',
+        'build.nvidia.com': 'nvidia_api_key',
+        'workers.ai': 'cloudflare_workers_api_key',
+        'platform.deepseek.com': 'deepseek_api_key',
+        'console.x.ai': 'xai_api_key',
+        'console.anthropic.com': 'anthropic_api_key',
+        'platform.openai.com': 'openai_api_key',
+        'dashboard.cohere.com': 'cohere_api_key',
+        'ai21.com': 'ai21_api_key',
+        'bailian.console.alibabacloud.com': 'deepseek_api_key',
+        'deepinfra.com': 'deepinfra_api_key',
+        'fireworks.ai': 'fireworks_api_key',
+        'novita.ai': 'novita_api_key',
+        'together.ai': 'deepinfra_api_key',
+        'replicate.com': 'replicate_api_key',
+        'tavily.com': 'tavily_api_key',
+        'serper.dev': 'serper_api_key',
+        'brave.com/search/api': 'serper_api_key',
+        'exa.ai': 'exa_api_key',
+        'jina.ai/reader': 'jina_api_key',
+        'docs.perplexity.ai': 'openrouter_api_key',
+        'firecrawl.dev': 'firecrawl_api_key',
+        'console.deepgram.com': 'deepgram_api_key',
+        'assemblyai.com': 'assemblyai_api_key',
+        'elevenlabs.io': 'elevenlabs_api_key',
+        'lemonfox.ai': 'lemonfox_api_key',
+        'platform.stability.ai': 'stability_api_key',
+        'ollama.com': 'openrouter_api_key',
+        'searxng.github.io': 'serper_api_key',
+        'localai.io': 'openrouter_api_key',
+        'nousresearch.com': 'deepinfra_api_key',
+        'platform.kimi.ai': 'kimi_api_key',
+        'endpoints.ai.cloud.ovh.net': 'openrouter_api_key',
+        'huggingface.co/docs/inference-providers': 'huggingface_api_key',
+        'cloud.sambanova.com': 'sambanova_api_key',
+        'freethe.ai': 'openrouter_api_key',
+        'koboldai.org': 'openrouter_api_key',
+        'edenai.run': 'openrouter_api_key',
+        'skillboss.com': 'openrouter_api_key',
+        'aionlabs.ai': 'openrouter_api_key',
       }
 
       let imported = 0
       const skipped: string[] = []
 
       for (const row of rows) {
-        if (!Array.isArray(row) || row.length < 3) continue
-        const name = String(row[1] || '').trim()
-        const apiKey = String(row[2] || '').trim()
+        if (!Array.isArray(row)) continue
+        // Handle both 2-column and 3-column CSVs
+        const name = String(row[1] || row[0] || '').trim()
+        const apiKey = String(row[2] || row[1] || '').trim()
 
-        if (!name || !apiKey || apiKey.startsWith('Our platform')) continue
+        if (!name || !apiKey) continue
+        // Skip header rows
+        if (name.toLowerCase() === 'provider' || name.toLowerCase() === 'name') continue
+        // Skip entries that are clearly not API keys (error messages, etc.)
+        if (apiKey.includes('issue') || apiKey.includes('problem') || apiKey.includes('login') ||
+            apiKey.includes('Asking') || apiKey.includes('Need subscription') ||
+            apiKey.includes('Buy credits') || apiKey.includes('not found') ||
+            apiKey.includes('no login') || apiKey.includes('no API key') ||
+            apiKey.includes('There is no') || apiKey.includes('site can') ||
+            apiKey.includes('password:') || apiKey.length < 10) continue
 
-        const normalizedName = name.toLowerCase()
-        const secretKey = providerMap[normalizedName]
+        const normalizedName = name.toLowerCase().replace(/^https?:\/\//, '').replace(/\/.*$/, '')
+        const secretKey = providerMap[normalizedName] || providerMap[name.toLowerCase()]
 
         if (secretKey) {
           setSecretsDraft((d) => ({ ...d, [secretKey]: apiKey }))
@@ -545,7 +604,7 @@ function SystemSettingsInner() {
           message: skipped.length > 0 ? `Skipped: ${skipped.join(', ')}` : undefined,
         })
       } else {
-        addToast({ type: 'error', title: 'No matching providers found', message: 'Check that your Excel file has OpenAI, Anthropic, Gemini, Groq, OpenRouter, or NVIDIA keys.' })
+        addToast({ type: 'error', title: 'No matching providers found', message: 'Check that your file has valid API keys for supported providers.' })
       }
     } catch (err) {
       addToast({ type: 'error', title: 'Failed to parse Excel file', message: err instanceof Error ? err.message : 'Invalid file format' })
