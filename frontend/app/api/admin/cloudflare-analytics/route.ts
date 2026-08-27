@@ -160,6 +160,7 @@ export async function GET() {
     })
   } catch (e) {
     const msg = (e as Error).message
+    console.error('[cloudflare-analytics] Error:', msg)
     if (
       msg.includes('Authentication error') ||
       msg.includes('Invalid token') ||
@@ -167,7 +168,7 @@ export async function GET() {
       msg.includes('forbidden') ||
       msg.includes('Unauthorized')
     ) {
-      return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token' })
+      return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token. Check that your token has Zone Analytics Read permission.' })
     }
     if (msg.includes('zone not found') || msg.includes('No zone')) {
       return NextResponse.json({ configured: false, error: 'Cloudflare zone not found — check Zone ID' })

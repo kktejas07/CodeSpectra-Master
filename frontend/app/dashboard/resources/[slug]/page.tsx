@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Loader2 } from 'lucide-react'
@@ -41,6 +41,118 @@ export default function EbookReaderPage() {
       .catch((e) => setError(e.message || 'Failed to load'))
       .finally(() => setLoading(false))
   }, [gate.ready, slug])
+
+  const handleExportPdf = useCallback(async () => {
+    if (!ebook?.pages?.length) return
+
+    // Dynamically import html2canvas and jspdf
+    const [{ default: html2canvas }, { default: jsPDF }] = await Promise.all([
+      import('html2canvas'),
+      import('jspdf'),
+    ])
+
+    const pdf = new jsPDF('p', 'mm', 'a4')
+    const pageWidth = pdf.internal.pageSize.getWidth()
+    const pageHeight = pdf.internal.pageSize.getHeight()
+
+    // Create a temporary container for rendering each page
+    const container = document.createElement('div')
+    container.style.position = 'fixed'
+    container.style.left = '-9999px'
+    container.style.top = '0'
+    container.style.width = '800px'
+    container.style.background = 'white'
+    container.style.padding = '40px'
+    container.style.fontFamily = 'system-ui, -apple-system, sans-serif'
+    document.body.appendChild(container)
+
+    for (let i = 0; i < ebook.pages.length; i++) {
+      const page = ebook.pages[i]
+
+      // Build HTML for this page
+      let html = `<div style="max-width:720px;margin:0 auto;">`
+      html += `<h1 style="font-size:24px;font-weight:bold;margin-bottom:16px;">${ebook.title}</h1>`
+
+      if (page.title && page.type !== 'cover') {
+        html += `<h2 style="font-size:20px;font-weight:600;margin-bottom:12px;color:#059669;">${page.title}</h2>`
+      }
+
+      if (page.body) {
+        html += `<p style="font-size:14px;line-height:1.7;color:#374151;margin-bottom:12px;">${page.body}</p>`
+      }
+
+      if (page.bullets?.length) {
+        html += `<ul style="margin:8px 0;padding-left:20px;">`
+        for (const b of page.bullets) {
+          html += `<li style="font-size:14px;line-height:1.6;margin-bottom:6px;color:#374151;">${b}</li>`
+        }
+        html += `</ul>`
+      }
+
+      if (page.items?.length) {
+        html += `<ul style="margin:8px 0;padding-left:20px;">`
+        for (const it of page.items) {
+          html += `<li style="font-size:14px;line-height:1.6;margin-bottom:6px;"><strong>${it.label}</strong> ${it.text}</li>`
+        }
+        html += `</ul>`
+      }
+
+      if (page.steps?.length) {
+        for (const s of page.steps) {
+          html += `<div style="margin-bottom:12px;"><strong style="color:#059669;">${s.n}. ${s.title}</strong><br/><span style="font-size:13px;color:#6b7280;">${s.text}</span></div>`
+        }
+      }
+
+      if (page.stats?.length) {
+        html += `<div style="display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin:12px 0;">`
+        for (const s of page.stats) {
+          html += `<div style="text-align:center;padding:12px;border:1px solid #e5e7eb;border-radius:8px;"><div style="font-size:24px;font-weight:bold;color:#059669;">${s.value}</div><div style="font-size:12px;color:#6b7280;">${s.label}</div></div>`
+        }
+        html += `</div>`
+      }
+
+      if (page.left && page.right) {
+        html += `<div style="display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:12px 0;">`
+        html += `<div style="padding:12px;border:1px solid #d1fae5;border-radius:8px;background:#ecfdf5;"><strong style="color:#059669;">${page.left.title}</strong><ul style="margin-top:8px;padding-left:16px;">`
+        for (const pt of page.left.points) html += `<li style="font-size:13px;margin-bottom:4px;">${pt}</li>`
+        html += `</ul></div>`
+        html += `<div style="padding:12px;border:1px solid #fecdd3;border-radius:8px;background:#fff1f2;"><strong style="color:#e11d48;">${page.right.title}</strong><ul style="margin-top:8px;padding-left:16px;">`
+        for (const pt of page.right.points) html += `<li style="font-size:13px;margin-bottom:4px;">${pt}</li>`
+        html += `</ul></div></div>`
+      }
+
+      if (page.quote) {
+        html += `<blockquote style="border-left:4px solid #059669;padding-left:16px;font-style:italic;color:#6b7280;margin:12px 0;">${page.quote}${page.quoteBy ? `<br/><cite style="font-size:12px;">— ${page.quoteBy}</cite>` : ''}</blockquote>`
+      }
+
+      html += `</div>`
+
+      container.innerHTML = html
+
+      try {
+        const canvas = await html2canvas(container, {
+          scale: 2,
+          useCORS: true,
+          backgroundColor: '#ffffff',
+        })
+
+        const imgData = canvas.toDataURL('image/png')
+        const imgWidth = pageWidth - 20 // 10mm margins
+        const imgHeight = (canvas.height * imgWidth) / canvas.width
+
+        if (i > 0) pdf.addPage()
+        pdf.addImage(imgData, 'PNG', 10, 10, imgWidth, Math.min(imgHeight, pageHeight - 20))
+      } catch {
+        // Skip failed pages
+      }
+    }
+
+    document.body.removeChild(container)
+
+    // Download the PDF
+    const filename = (ebook.title || 'ebook').replace(/[^a-zA-Z0-9]/g, '_').toLowerCase()
+    pdf.save(`${filename}.pdf`)
+  }, [ebook])
 
   if (!gate.ready || loading) {
     return (
@@ -110,7 +222,7 @@ export default function EbookReaderPage() {
         )}
       </div>
 
-      <FlipbookViewer pages={ebook.pages || []} />
+      <FlipbookViewer pages={ebook.pages || []} title={ebook.title} onExportPdf={handleExportPdf} />
 
       {ebook.sourceNote ? (
         <p className="text-center text-[11px] text-muted-foreground">{ebook.sourceNote}</p>

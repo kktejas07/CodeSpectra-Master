@@ -184,8 +184,14 @@ CRITICAL RULES:
    <blockquote><strong>Key Takeaways</strong><ul><li>[Core finding]</li><li>[Actionable recommendation]</li><li>[Strategic implication]</li></ul></blockquote>
 3. **BANNED WORDS**: "delve", "tapestry", "robust", "seamlessly", "game-changer", "landscape", "crucial", "testament", "revolutionize", "multifaceted", "embark", "in today's rapidly", "moreover", "furthermore".
 4. **Internal Linking Zones**: Create 3-5 opportunities: [INTERNAL-LINK: anchor text → description]
-5. **Visual Media**: Include 2-3 inline images:
-   <img src="https://image.pollinations.ai/prompt/Isometric%203D%20illustration%20representing%20[YOUR_URL_ENCODED_PROMPT],%20featuring%20a%20cute%203D%20tech%20mascot%20character,%20glowing%20technological%20symbols,%20floating%20glossy%203D%20objects,%20clean%20gradient%20studio%20background,%20soft%20shadows,%20vibrant%20modern%20colors,%20playful%20but%20professional%20tech%20blog%20aesthetic,%20high%20detail%20render,%20no%20text?width=800&height=400&nologo=true&seed=[RANDOM_5_DIGIT_NUMBER]" alt="Description" class="my-6 rounded-xl border border-border object-cover w-full shadow-sm" />
+5. **Visual Media**: Include 2-3 inline images using topic-relevant photographic styles (NOT cartoon illustrations):
+   <img src="https://image.pollinations.ai/prompt/[YOUR_URL_ENCODED_TOPIC_RELEVANT_PHOTOGRAPHIC_PROMPT],%20professional%20photography,%20editorial%20quality,%20dramatic%20lighting,%20no%20text?width=800&height=400&nologo=true&seed=[RANDOM_5_DIGIT_NUMBER]" alt="Description" class="my-6 rounded-xl border border-border object-cover w-full shadow-sm" />
+   Example prompts per category:
+   - signals: "abstract data visualization, glowing network nodes, dark tech background"
+   - engineering: "code on screen, developer workspace, neon terminal lights"
+   - product: "modern tech device, clean studio photography, minimalist"
+   - careers: "professional workspace, modern office, natural lighting"
+   - campus: "students learning technology, modern classroom, bright lighting"
 6. **Length**: 800-1500 words. Professional, opinionated, practical tone.
 7. **Voice**: Write like a real human engineer sharing insights. Short sentences. Concrete examples.
 Return JSON: {"title":"...","excerpt":"...","body":"<h2>..."}`

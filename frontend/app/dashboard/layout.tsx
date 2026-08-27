@@ -456,7 +456,6 @@ export default function DashboardLayout({
       '/dashboard/admin/blog': Newspaper,
       '/dashboard/admin/content-studio': Zap,
       '/dashboard/admin/resources': Library,
-      '/dashboard/admin/signals': Radio,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/rag': BrainCircuit,
       '/dashboard/admin/ai-inventory': Sparkles,
