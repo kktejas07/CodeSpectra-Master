@@ -1,26 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
-import type { ServerSecretsRecord } from '@/lib/server-secrets-cache'
 import { parseIdOcrPayload, type IdOcrResult } from '@/lib/assessment/id-ocr-parse'
-
-async function getBackendSecrets(): Promise<{ gemini: string; openrouter: string; nvidia: string }> {
-  const fromEnv = {
-    gemini: process.env.GEMINI_API_KEY?.trim() || '',
-    openrouter: process.env.OPENROUTER_API_KEY?.trim() || '',
-    nvidia: process.env.NVIDIA_API_KEY?.trim() || '',
-  }
-  try {
-    const { readServerSecrets } = await import('@/lib/server-secrets-cache')
-    const secrets = await readServerSecrets() as ServerSecretsRecord
-    return {
-      gemini: fromEnv.gemini || secrets.gemini_api_key?.trim() || '',
-      openrouter: fromEnv.openrouter || secrets.openrouter_api_key?.trim() || '',
-      nvidia: fromEnv.nvidia || secrets.nvidia_api_key?.trim() || '',
-    }
-  } catch {
-    return fromEnv
-  }
-}
+import { getApiKey } from '@/lib/ai/get-api-key'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -89,21 +70,26 @@ export async function POST(req: Request) {
     const dataUrl = `data:image/jpeg;base64,${base64Data}`
     const userName = user.name || ''
 
-    const keys = await getBackendSecrets()
+    // Get API keys using unified utility with round-robin support
+    const [openrouterKey, nvidiaKey, geminiKey] = await Promise.all([
+      getApiKey('openrouter'),
+      getApiKey('nvidia'),
+      getApiKey('gemini'),
+    ])
 
     // Try working vision providers in reliability order, each hard-capped so
     // the route always answers before Cloudflare's origin timeout (~100s).
     const attempts: Array<{ label: string; run: () => Promise<IdOcrResult | null> }> = []
-    if (keys.openrouter) {
+    if (openrouterKey) {
       attempts.push({
         label: 'openrouter',
-        run: () => openAICompatOCR(dataUrl, keys.openrouter, 'https://openrouter.ai/api/v1', 'openai/gpt-4o-mini', 'openrouter'),
+        run: () => openAICompatOCR(dataUrl, openrouterKey.key, 'https://openrouter.ai/api/v1', 'openai/gpt-4o-mini', 'openrouter'),
       })
     }
-    if (keys.nvidia) {
+    if (nvidiaKey) {
       attempts.push({
         label: 'nvidia',
-        run: () => openAICompatOCR(dataUrl, keys.nvidia, 'https://integrate.api.nvidia.com/v1', 'meta/llama-3.2-11b-vision-instruct', 'nvidia'),
+        run: () => openAICompatOCR(dataUrl, nvidiaKey.key, 'https://integrate.api.nvidia.com/v1', 'meta/llama-3.2-11b-vision-instruct', 'nvidia'),
       })
     }
 
@@ -127,9 +113,9 @@ export async function POST(req: Request) {
       }
     }
 
-    if (keys.gemini) {
+    if (geminiKey) {
       try {
-        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${keys.gemini}`, {
+        const geminiRes = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey.key}`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
