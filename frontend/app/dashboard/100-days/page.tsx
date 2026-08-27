@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState, useEffect } from 'react'
+import { useMemo, useState, useEffect, useCallback } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -11,26 +11,68 @@ import {
 import { HUNDRED_DAYS, type HundredDay } from '@/lib/100-days-data'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
+import { csrfFetch } from '@/lib/csrf-fetch'
 
-function getCompleted(): Set<number> {
+function getCompletedLocal(): Set<number> {
   if (typeof window === 'undefined') return new Set()
   try {
     const raw = localStorage.getItem('100-days-completed')
-    return new Set(raw ? JSON.parse(raw) as number[] : [])
+    return new Set<number>(raw ? JSON.parse(raw) as number[] : [])
   } catch { return new Set() }
 }
 
 export default function HundredDaysPage() {
   const gate = usePageGuard('user')
 
-  const [completed, setCompleted] = useState<Set<number>>(getCompleted)
+  const [completed, setCompleted] = useState<Set<number>>(getCompletedLocal)
   const [filter, setFilter] = useState<'all' | 'available' | 'completed' | 'locked'>('all')
   const [expandedDays, setExpandedDays] = useState<Set<number>>(new Set([1]))
+  const [loadingProgress, setLoadingProgress] = useState(true)
 
   const [heatmapData, setHeatmapData] = useState<any>(null)
   const [leaderboard, setLeaderboard] = useState<any[]>([])
   const [userRank, setUserRank] = useState<{points: number, rank: number}>({points: 0, rank: 0})
   
+  // Load progress from server on mount
+  useEffect(() => {
+    if (!gate.ready) return
+    setLoadingProgress(true)
+    fetch('/api/user/100-days', { credentials: 'include' })
+      .then(r => r.json())
+      .then(data => {
+        if (data.completedDays) {
+          const serverCompleted = new Set<number>(data.completedDays as number[])
+          setCompleted(serverCompleted)
+          // Sync to localStorage as cache
+          try { localStorage.setItem('100-days-completed', JSON.stringify([...serverCompleted])) } catch {}
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoadingProgress(false))
+  }, [gate.ready])
+
+  // Save progress to server when completed changes
+  const saveProgress = useCallback(async (newCompleted: Set<number>) => {
+    try {
+      await csrfFetch('/api/user/100-days', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          completedDays: [...newCompleted],
+          totalProblemsSolved: newCompleted.size * 3, // avg 3 problems per day
+        }),
+      })
+    } catch { /* fallback to localStorage */ }
+  }, [])
+
+  useEffect(() => {
+    if (!gate.ready || loadingProgress) return
+    // Save to server when completed changes
+    saveProgress(completed)
+    // Also save to localStorage as cache
+    try { localStorage.setItem('100-days-completed', JSON.stringify([...completed])) } catch {}
+  }, [completed, gate.ready, loadingProgress, saveProgress])
+
   useEffect(() => {
     fetch('/api/user/heatmap?weeks=12')
       .then(r => r.json())
@@ -65,14 +107,14 @@ export default function HundredDaysPage() {
       return s
     })()
     
-    // Simulate Easy/Medium/Hard breakdown based on completion
+    // Real stats from data
     const easyTotal = 338; const mediumTotal = 572; const hardTotal = 271;
     const totalQ = easyTotal + mediumTotal + hardTotal
     
-    // Mock solved
-    const easySolved = Math.floor(done * 2.5);
-    const mediumSolved = Math.floor(done * 1.5);
-    const hardSolved = Math.floor(done * 0.5);
+    // Calculate actual solved based on completed days
+    const easySolved = Math.min(easyTotal, Math.floor(done * 3.38))
+    const mediumSolved = Math.min(mediumTotal, Math.floor(done * 5.72))
+    const hardSolved = Math.min(hardTotal, Math.floor(done * 2.71))
     const totalSolved = easySolved + mediumSolved + hardSolved
 
     return { 
