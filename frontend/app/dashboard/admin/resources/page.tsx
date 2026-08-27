@@ -13,6 +13,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
+import { EbookOutlineReview } from '@/components/resources/ebook-outline-review'
 
 type AdminEbook = EbookCardData & { id: string; status: string }
 
@@ -27,6 +28,13 @@ export default function AdminResourcesPage() {
   const [busy, setBusy] = useState(false)
   const [coverBusy, setCoverBusy] = useState<string | null>(null)
   const [deleteDialog, setDeleteDialog] = useState<{ open: boolean; slug: string | null }>({ open: false, slug: null })
+
+  // Outline review state
+  const [outlineReview, setOutlineReview] = useState<{
+    show: boolean
+    topic: string
+    outline: Array<{ id: string; title: string; type: string; description: string }>
+  } | null>(null)
 
   /** Regenerate AI cover art for an ebook (topic/title → 3D illustration). */
   async function regenCover(slug: string) {
@@ -81,16 +89,49 @@ export default function AdminResourcesPage() {
     if (!topic.trim() || busy) return
     setBusy(true)
     try {
+      // First, generate outline for review
+      const outlineRes = await csrfFetch('/api/resources/ebooks/outline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topic: topic.trim(), title: title.trim() || undefined, pageCount }),
+      })
+      const outlineData = await outlineRes.json().catch(() => ({}))
+      if (!outlineRes.ok) throw new Error(outlineData.error || 'Outline generation failed')
+
+      // Show outline review
+      setOutlineReview({
+        show: true,
+        topic: topic.trim(),
+        outline: outlineData.outline || [],
+      })
+    } catch (e) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Outline generation failed' })
+    } finally {
+      setBusy(false)
+    }
+  }
+
+  async function confirmOutline(outline: Array<{ id: string; title: string; type: string; description: string }>) {
+    if (!outlineReview) return
+    setBusy(true)
+    try {
       const r = await csrfFetch('/api/resources/ebooks', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ topic: topic.trim(), title: title.trim() || undefined, useAi: true, pageCount }),
+        body: JSON.stringify({
+          topic: outlineReview.topic,
+          title: title.trim() || undefined,
+          useAi: true,
+          pageCount,
+          outline,
+        }),
       })
       const d = await r.json().catch(() => ({}))
       if (!r.ok) throw new Error(d.error || 'Generate failed')
       addToast({ type: 'success', title: d.usedAi ? `Draft generated with AI (${pageCount} pages)` : 'Draft generated from template' })
       setTopic('')
       setTitle('')
+      setOutlineReview(null)
       void load()
     } catch (e) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Generate failed' })
@@ -198,9 +239,24 @@ export default function AdminResourcesPage() {
         </div>
         <Button type="button" disabled={!topic.trim() || busy} onClick={() => void generate()}>
           {busy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Sparkles className="mr-2 h-4 w-4" />}
-          {busy ? `Generating ${pageCount} pages...` : `Generate ${pageCount}-page ebook`}
+          {busy ? `Generating outline...` : `Generate ${pageCount}-page ebook`}
         </Button>
       </Card>
+
+      {/* Outline Review Modal */}
+      {outlineReview?.show && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4">
+          <div className="w-full max-w-2xl max-h-[90vh] overflow-y-auto">
+            <EbookOutlineReview
+              topic={outlineReview.topic}
+              outline={outlineReview.outline}
+              onConfirm={confirmOutline}
+              onCancel={() => setOutlineReview(null)}
+              loading={busy}
+            />
+          </div>
+        </div>
+      )}
 
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
         {items.map((e) => (
