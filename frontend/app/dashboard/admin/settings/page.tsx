@@ -2609,23 +2609,28 @@ function SystemSettingsInner() {
                   ].map((info) => {
                     const hasKey = (secretsMeta as any)['has_' + info.key]
                     return (
-                      <div key={info.id} className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold">{info.label}</p>
-                          {hasKey ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-xs uppercase">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-xs uppercase">Not Set</span>}
+                      <div key={info.id} className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 p-3 hover:border-primary/30 transition-colors">
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <p className="text-sm font-semibold truncate">{info.label}</p>
+                            {hasKey ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5 text-[10px] uppercase shrink-0">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase shrink-0">Not Set</span>}
+                          </div>
+                          <p className="text-[11px] text-muted-foreground truncate">{info.desc}</p>
                         </div>
-                        <p className="text-xs text-muted-foreground">{info.desc} <a href={info.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{info.urlLabel}</a>.</p>
-                        <div className="relative">
+                        <div className="relative w-64 shrink-0">
                           <Input type={(visibleFields as any)[info.key] ? 'text' : 'password'} autoComplete="off"
                             value={((visibleFields as any)[info.key] ? (revealedValues[info.key] ?? '') : '') || (hasKey ? '••••••••' : '')}
                             onChange={(e) => setSecretsDraft((d) => ({ ...d, [info.key]: e.target.value }))}
-                            className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                            placeholder={info.placeholder + " (key1,key2 for rotation)"} />
+                            className="h-8 rounded-md border-border/60 bg-background font-mono text-xs pr-8"
+                            placeholder={info.placeholder} />
                           <button type="button" tabIndex={-1} onClick={() => handleRevealToggle(info.key)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility">
-                            {(visibleFields as any)[info.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility">
+                            {(visibleFields as any)[info.key] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
                           </button>
                         </div>
+                        <a href={info.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline shrink-0" title={`Get key from ${info.urlLabel}`}>
+                          Get Key →
+                        </a>
                       </div>
                     )
                   })}
@@ -2633,6 +2638,29 @@ function SystemSettingsInner() {
                 <p className="mt-3 text-xs text-muted-foreground">
                   Provider fallback order (auto-selects): Gemini → Groq → OpenRouter → OpenAI → Anthropic → NVIDIA + 38 more providers.
                 </p>
+
+                {/* Provider categories */}
+                <div className="mt-6 space-y-4">
+                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Provider Categories</p>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
+                    {[
+                      { label: 'LLM Providers', count: 12, color: 'bg-purple-500/10 text-purple-600' },
+                      { label: 'Speech & Voice', count: 4, color: 'bg-blue-500/10 text-blue-600' },
+                      { label: 'Vector Databases', count: 4, color: 'bg-green-500/10 text-green-600' },
+                      { label: 'Search & Web', count: 8, color: 'bg-orange-500/10 text-orange-600' },
+                      { label: 'Observability', count: 4, color: 'bg-cyan-500/10 text-cyan-600' },
+                      { label: 'Integrations', count: 4, color: 'bg-pink-500/10 text-pink-600' },
+                      { label: 'Image & Video', count: 3, color: 'bg-amber-500/10 text-amber-600' },
+                      { label: 'Other', count: 5, color: 'bg-gray-500/10 text-gray-600' },
+                    ].map((cat) => (
+                      <div key={cat.label} className={`p-3 rounded-lg ${cat.color} text-center`}>
+                        <p className="text-lg font-bold">{cat.count}</p>
+                        <p className="text-[10px] font-medium">{cat.label}</p>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
                   <Button variant="outline" size="sm" onClick={async () => {
                     const providers = ['gemini','opencode','groq','openrouter','openai','anthropic','nvidia','deepseek','cerebras','mistral','cohere','fireworks','xai','replicate','elevenlabs','assemblyai','deepgram','deepinfra','novita','stability','fal','ai21','kimi','lemonfox','huggingface','cloudflare_workers','sambanova','nscale','chutes','modelscope','langchain','langfuse','pinecone','qdrant','tavily','firecrawl','serper','jina','exa','notion','slack','google_knowledge','browserbase','brightdata','scrapingbee']

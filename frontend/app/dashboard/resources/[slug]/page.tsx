@@ -3,10 +3,11 @@
 import { useEffect, useState, useCallback } from 'react'
 import Link from 'next/link'
 import { useParams } from 'next/navigation'
-import { ArrowLeft, Loader2 } from 'lucide-react'
+import { ArrowLeft, Loader2, HelpCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { Button } from '@/components/ui/button'
 import { FlipbookViewer } from '@/components/resources/flipbook-viewer'
+import { EbookQuiz } from '@/components/resources/ebook-quiz'
 import type { EbookPage } from '@/lib/db/ebooks'
 
 type EbookDetail = {
@@ -28,6 +29,12 @@ export default function EbookReaderPage() {
   const [ebook, setEbook] = useState<EbookDetail | null>(null)
   const [error, setError] = useState<string | null>(null)
   const [loading, setLoading] = useState(true)
+  const [showQuiz, setShowQuiz] = useState(false)
+
+  // Extract quiz questions from ebook pages
+  const quizQuestions = ebook?.pages
+    ?.filter(p => p.type === 'quiz' && p.questions)
+    .flatMap(p => p.questions || []) || []
 
   useEffect(() => {
     if (!gate.ready || !slug) return
@@ -223,6 +230,25 @@ export default function EbookReaderPage() {
       </div>
 
       <FlipbookViewer pages={ebook.pages || []} title={ebook.title} onExportPdf={handleExportPdf} />
+
+      {/* Quiz Section */}
+      {quizQuestions.length > 0 && !showQuiz && (
+        <div className="text-center py-6">
+          <Button onClick={() => setShowQuiz(true)} size="lg" className="gap-2">
+            <HelpCircle className="h-5 w-5" />
+            Take Quiz ({quizQuestions.length} questions)
+          </Button>
+          <p className="text-xs text-muted-foreground mt-2">Test your understanding of this ebook</p>
+        </div>
+      )}
+
+      {showQuiz && quizQuestions.length > 0 && (
+        <div className="max-w-2xl mx-auto">
+          <EbookQuiz questions={quizQuestions} onComplete={(score, total) => {
+            console.log(`Quiz completed: ${score}/${total}`)
+          }} />
+        </div>
+      )}
 
       {ebook.sourceNote ? (
         <p className="text-center text-[11px] text-muted-foreground">{ebook.sourceNote}</p>

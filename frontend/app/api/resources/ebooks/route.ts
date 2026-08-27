@@ -1,13 +1,43 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser, requireSuperAdmin } from '@/lib/route-auth'
-import { ebooksCol, type EbookDoc } from '@/lib/db/ebooks'
+import { ebooksCol, type EbookDoc, type EbookPage } from '@/lib/db/ebooks'
 import { ensureEbookSeed } from '@/lib/ebooks-seed'
 import { generateEbookDraft } from '@/lib/ebooks-generate'
 import { buildEbookCoverPrompt, generateCoverImage } from '@/lib/ai-image'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
-export const maxDuration = 120
+export const maxDuration = 180
+
+/** Generate a topic-relevant illustration for a page */
+async function generatePageIllustration(page: EbookPage, topic: string): Promise<string | null> {
+  const pageType = page.type || 'section'
+  const pageTitle = page.title || topic
+
+  // Build a topic-specific prompt based on page type
+  const prompts: Record<string, string> = {
+    section: `Professional photograph representing "${pageTitle}" in the context of ${topic}, modern tech aesthetic, clean composition, dramatic lighting, no text`,
+    infographic: `Data visualization infographic style image for "${pageTitle}", charts and graphs, modern tech colors, clean design, no text`,
+    code: `Developer workspace with code on screen, terminal, modern IDE, dark theme, neon accents, no text`,
+    quiz: `Interactive quiz concept, question marks, lightbulb moments, modern educational design, no text`,
+    timeline: `Historical timeline visualization, milestones, progress, modern design, no text`,
+    callout: `Warning or tip concept, shield or lightbulb, professional tech style, no text`,
+    journey: `Journey roadmap visualization, steps, progress path, modern design, no text`,
+    tips: `Best practices concept, checklist, professional tips, clean design, no text`,
+    compare: `Comparison visualization, before/after, side by side, modern design, no text`,
+    stats: `Statistics and numbers visualization, data charts, modern tech style, no text`,
+    cover: `Book cover illustration for "${pageTitle}", professional design, vibrant colors, no text`,
+  }
+
+  const prompt = prompts[pageType] || prompts.section
+
+  try {
+    const art = await generateCoverImage(prompt, { width: 800, height: 450 })
+    return art
+  } catch {
+    return null
+  }
+}
 
 function publicShape(e: EbookDoc) {
   return {
@@ -80,6 +110,26 @@ export async function POST(req: NextRequest) {
     if (art) ebook.coverImageUrl = art
   } catch {
     /* keep gradient cover */
+  }
+
+  // Generate per-chapter illustrations for section and infographic pages
+  if (ebook.pages && ebook.pages.length > 0) {
+    const pagesWithIllustrations = await Promise.all(
+      ebook.pages.map(async (page, idx) => {
+        if (['section', 'infographic', 'journey', 'compare', 'stats'].includes(page.type) && !page.imageUrl) {
+          try {
+            const illustration = await generatePageIllustration(page, ebook.topic)
+            if (illustration) {
+              return { ...page, imageUrl: illustration }
+            }
+          } catch {
+            /* keep page without illustration */
+          }
+        }
+        return page
+      })
+    )
+    ebook.pages = pagesWithIllustrations
   }
 
   await col.insertOne(ebook)
