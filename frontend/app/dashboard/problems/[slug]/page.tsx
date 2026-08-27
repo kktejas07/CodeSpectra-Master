@@ -4,7 +4,7 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ArrowLeft, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Loader2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle } from 'lucide-react'
+import { ArrowLeft, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Loader2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useLockedFeatures } from '@/lib/use-page-guard'
@@ -132,6 +132,18 @@ export default function ProblemDetailPage() {
   const [feedbackType, setFeedbackType] = useState<'bug' | 'suggestion' | 'feature'>('suggestion')
   const [feedbackContent, setFeedbackContent] = useState('')
   const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
+
+  // Timer state
+  const [timerSeconds, setTimerSeconds] = useState(0)
+  const [timerRunning, setTimerRunning] = useState(false)
+  const timerRef = useRef<NodeJS.Timeout | null>(null)
+
+  // AI Mentor state
+  const [aiMentorOpen, setAiMentorOpen] = useState(false)
+  const [aiMentorMessage, setAiMentorMessage] = useState('')
+  const [aiMentorResponse, setAiMentorResponse] = useState('')
+  const [aiMentorLoading, setAiMentorLoading] = useState(false)
+
   const sourceRef = useRef(source)
   sourceRef.current = source
 
@@ -203,6 +215,60 @@ export default function ProblemDetailPage() {
       }
     } catch {}
     setFeedbackSubmitting(false)
+  }
+
+  // Timer functions
+  const startTimer = () => {
+    if (timerRunning) return
+    setTimerRunning(true)
+    timerRef.current = setInterval(() => {
+      setTimerSeconds(s => s + 1)
+    }, 1000)
+  }
+
+  const stopTimer = () => {
+    setTimerRunning(false)
+    if (timerRef.current) {
+      clearInterval(timerRef.current)
+      timerRef.current = null
+    }
+  }
+
+  const resetTimer = () => {
+    stopTimer()
+    setTimerSeconds(0)
+  }
+
+  const formatTimer = (seconds: number) => {
+    const h = Math.floor(seconds / 3600)
+    const m = Math.floor((seconds % 3600) / 60)
+    const s = seconds % 60
+    return `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
+  }
+
+  // AI Mentor function
+  const askAiMentor = async () => {
+    if (!aiMentorMessage.trim() || !problem) return
+    setAiMentorLoading(true)
+    setAiMentorResponse('')
+    try {
+      const res = await csrfFetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `You are a coding mentor. Help the student with this problem: ${problem.title}\n\nProblem description: ${problem.statement_md}\n\nStudent question: ${aiMentorMessage}\n\nProvide a helpful, educational response. Don't give the full solution directly - guide them to think through it.`,
+        }),
+      })
+      const data = await res.json()
+      if (res.ok) {
+        setAiMentorResponse(data.response || data.message || 'No response received.')
+      } else {
+        setAiMentorResponse('Sorry, I could not process your request. Please try again.')
+      }
+    } catch {
+      setAiMentorResponse('Network error. Please try again.')
+    }
+    setAiMentorLoading(false)
   }
 
   useEffect(() => {
@@ -386,14 +452,27 @@ export default function ProblemDetailPage() {
              </button>
            </div>
            
-           <button onClick={() => setIsInfoPanelOpen(true)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-             <HelpCircle className="h-4 w-4" />
-           </button>
+            <button onClick={() => setIsInfoPanelOpen(true)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+              <HelpCircle className="h-4 w-4" />
+            </button>
 
-           <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-muted/50 px-3 py-1.5 rounded-md border border-border/50">
-             <Timer className="h-4 w-4 text-blue-500" />
-             <span className="text-foreground">00:00:00</span>
-           </div>
+            {/* AI Mentor Button */}
+            <button onClick={() => setAiMentorOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md hover:from-purple-600 hover:to-blue-600 transition-colors">
+              <Sparkles className="h-3.5 w-3.5" />
+              Ask AI
+            </button>
+
+            {/* Functional Timer */}
+            <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-muted/50 px-3 py-1.5 rounded-md border border-border/50">
+              <Timer className="h-4 w-4 text-blue-500" />
+              <span className="text-foreground">{formatTimer(timerSeconds)}</span>
+              <button onClick={timerRunning ? stopTimer : startTimer} className="ml-1 p-0.5 hover:bg-muted rounded">
+                {timerRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+              </button>
+              <button onClick={resetTimer} className="p-0.5 hover:bg-muted rounded">
+                <RotateCcw className="h-3 w-3" />
+              </button>
+            </div>
 
            <Button variant="outline" size="sm" className="rounded-md border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950" onClick={() => router.push('/dashboard/problems')}>
              Exit
@@ -673,28 +752,68 @@ export default function ProblemDetailPage() {
            </div>
          )}
 
-         {/* Feedback Modal */}
-         {feedbackOpen && (
-           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
-             <div className="bg-background rounded-xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
-               <h3 className="text-lg font-bold mb-4">
-                 {feedbackType === 'bug' ? 'Report Bug' : feedbackType === 'feature' ? 'Request Feature' : 'Suggest Idea'}
-               </h3>
-               <textarea
-                 value={feedbackContent}
-                 onChange={(e) => setFeedbackContent(e.target.value)}
-                 placeholder="Describe your feedback..."
-                 className="w-full h-32 p-3 text-sm rounded-lg border border-input bg-background resize-none"
-               />
-               <div className="flex justify-end gap-2 mt-4">
-                 <Button variant="outline" size="sm" onClick={() => setFeedbackOpen(false)}>Cancel</Button>
-                 <Button size="sm" onClick={submitFeedback} disabled={feedbackSubmitting || !feedbackContent.trim()}>
-                   {feedbackSubmitting ? 'Submitting...' : 'Submit'}
-                 </Button>
-               </div>
-             </div>
-           </div>
-         )}
+          {/* Feedback Modal */}
+          {feedbackOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
+              <div className="bg-background rounded-xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+                <h3 className="text-lg font-bold mb-4">
+                  {feedbackType === 'bug' ? 'Report Bug' : feedbackType === 'feature' ? 'Request Feature' : 'Suggest Idea'}
+                </h3>
+                <textarea
+                  value={feedbackContent}
+                  onChange={(e) => setFeedbackContent(e.target.value)}
+                  placeholder="Describe your feedback..."
+                  className="w-full h-32 p-3 text-sm rounded-lg border border-input bg-background resize-none"
+                />
+                <div className="flex justify-end gap-2 mt-4">
+                  <Button variant="outline" size="sm" onClick={() => setFeedbackOpen(false)}>Cancel</Button>
+                  <Button size="sm" onClick={submitFeedback} disabled={feedbackSubmitting || !feedbackContent.trim()}>
+                    {feedbackSubmitting ? 'Submitting...' : 'Submit'}
+                  </Button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* AI Mentor Modal */}
+          {aiMentorOpen && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setAiMentorOpen(false)}>
+              <div className="bg-background rounded-xl border p-6 w-full max-w-lg mx-4 max-h-[80vh] flex flex-col" onClick={(e) => e.stopPropagation()}>
+                <div className="flex items-center gap-2 mb-4">
+                  <Sparkles className="h-5 w-5 text-purple-500" />
+                  <h3 className="text-lg font-bold">AI Mentor</h3>
+                </div>
+                <p className="text-xs text-muted-foreground mb-4">
+                  Ask questions about the problem. The AI will guide you without giving the full solution.
+                </p>
+                <div className="flex-1 overflow-y-auto mb-4 p-3 bg-muted/30 rounded-lg min-h-[100px]">
+                  {aiMentorResponse ? (
+                    <p className="text-sm whitespace-pre-wrap">{aiMentorResponse}</p>
+                  ) : aiMentorLoading ? (
+                    <div className="flex items-center gap-2 text-muted-foreground">
+                      <Loader2 className="h-4 w-4 animate-spin" /> Thinking...
+                    </div>
+                  ) : (
+                    <p className="text-sm text-muted-foreground italic">Ask me anything about this problem...</p>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={aiMentorMessage}
+                    onChange={(e) => setAiMentorMessage(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && askAiMentor()}
+                    placeholder="e.g. How should I approach this problem?"
+                    className="flex-1 p-2 text-sm rounded-lg border border-input bg-background"
+                  />
+                  <Button size="sm" onClick={askAiMentor} disabled={aiMentorLoading || !aiMentorMessage.trim()}>
+                    <Send className="h-4 w-4" />
+                  </Button>
+                </div>
+                <Button variant="ghost" size="sm" className="mt-2" onClick={() => setAiMentorOpen(false)}>Close</Button>
+              </div>
+            </div>
+          )}
 
       </div>
     </div>
