@@ -126,6 +126,12 @@ export default function ProblemDetailPage() {
   const [result, setResult] = useState<RunResponse | null>(null)
   const [analysis, setAnalysis] = useState<Record<string, unknown> | null>(null)
   const [analysisLoading, setAnalysisLoading] = useState(false)
+  
+  // Feedback modal state
+  const [feedbackOpen, setFeedbackOpen] = useState(false)
+  const [feedbackType, setFeedbackType] = useState<'bug' | 'suggestion' | 'feature'>('suggestion')
+  const [feedbackContent, setFeedbackContent] = useState('')
+  const [feedbackSubmitting, setFeedbackSubmitting] = useState(false)
   const sourceRef = useRef(source)
   sourceRef.current = source
 
@@ -177,6 +183,27 @@ export default function ProblemDetailPage() {
       })
       .catch(() => {})
   }, [problem?.id, problem?.slug, problem?.title])
+
+  const submitFeedback = async () => {
+    if (!feedbackContent.trim()) return
+    setFeedbackSubmitting(true)
+    try {
+      const res = await csrfFetch('/api/feedback', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: feedbackType,
+          content: `[Problem: ${problem?.title || slug}] ${feedbackContent}`,
+        }),
+      })
+      if (res.ok) {
+        setFeedbackOpen(false)
+        setFeedbackContent('')
+        alert('Thank you for your feedback!')
+      }
+    } catch {}
+    setFeedbackSubmitting(false)
+  }
 
   useEffect(() => {
     if (!slug) return
@@ -338,14 +365,15 @@ export default function ProblemDetailPage() {
         </div>
         
         <div className="flex items-center gap-5">
-           <button className="text-xs font-semibold text-muted-foreground hover:text-foreground">Request a Feature</button>
+           <button onClick={() => { setFeedbackType('feature'); setFeedbackOpen(true) }} className="text-xs font-semibold text-muted-foreground hover:text-foreground">Request a Feature</button>
            <div className="flex items-center gap-1">
-             <button className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
+             <button onClick={() => { setFeedbackType('bug'); setFeedbackOpen(true) }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
                <Bug className="h-4 w-4" />
                <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Report Bug</div>
              </button>
-             <button className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+             <button onClick={() => { setFeedbackType('suggestion'); setFeedbackOpen(true) }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
                <Lightbulb className="h-4 w-4" />
+               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Suggest Idea</div>
              </button>
            </div>
            
@@ -643,7 +671,30 @@ export default function ProblemDetailPage() {
                  </div>
               </div>
            </div>
-        )}
+         )}
+
+         {/* Feedback Modal */}
+         {feedbackOpen && (
+           <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50" onClick={() => setFeedbackOpen(false)}>
+             <div className="bg-background rounded-xl border p-6 w-full max-w-md mx-4" onClick={(e) => e.stopPropagation()}>
+               <h3 className="text-lg font-bold mb-4">
+                 {feedbackType === 'bug' ? 'Report Bug' : feedbackType === 'feature' ? 'Request Feature' : 'Suggest Idea'}
+               </h3>
+               <textarea
+                 value={feedbackContent}
+                 onChange={(e) => setFeedbackContent(e.target.value)}
+                 placeholder="Describe your feedback..."
+                 className="w-full h-32 p-3 text-sm rounded-lg border border-input bg-background resize-none"
+               />
+               <div className="flex justify-end gap-2 mt-4">
+                 <Button variant="outline" size="sm" onClick={() => setFeedbackOpen(false)}>Cancel</Button>
+                 <Button size="sm" onClick={submitFeedback} disabled={feedbackSubmitting || !feedbackContent.trim()}>
+                   {feedbackSubmitting ? 'Submitting...' : 'Submit'}
+                 </Button>
+               </div>
+             </div>
+           </div>
+         )}
 
       </div>
     </div>

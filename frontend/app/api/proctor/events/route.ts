@@ -25,30 +25,40 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
     return NextResponse.json({ error: 'session_id + event_type required' }, { status: 400 })
   }
 
-  const ua = req.headers.get('user-agent') || ''
-  const parsed = parseUserAgent(ua)
-  const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
+  try {
+    const ua = req.headers.get('user-agent') || ''
+    const parsed = parseUserAgent(ua)
+    const ip = req.headers.get('x-forwarded-for')?.split(',')[0]?.trim() || req.headers.get('x-real-ip') || ''
 
-  const col = await proctorEvents()
-  const doc = {
-    id: newId(),
-    user_id: user.id,
-    session_kind: body.session_kind || 'problem',
-    session_id: body.session_id,
-    event_type: body.event_type.slice(0, 64),
-    meta: { ...(body.meta || {}), ua, browser: parsed.browser, os: parsed.os, device: parsed.device, ip },
-    created_at: nowIso(),
+    const col = await proctorEvents()
+    const doc = {
+      id: newId(),
+      user_id: user.id,
+      session_kind: body.session_kind || 'problem',
+      session_id: body.session_id,
+      event_type: body.event_type.slice(0, 64),
+      meta: { ...(body.meta || {}), ua, browser: parsed.browser, os: parsed.os, device: parsed.device, ip },
+      created_at: nowIso(),
+    }
+    await col.insertOne(doc)
+    return NextResponse.json({ ok: true, id: doc.id })
+  } catch (e) {
+    console.error('[proctor/events] write failed:', e)
+    return NextResponse.json({ error: 'Event write failed' }, { status: 500 })
   }
-  await col.insertOne(doc)
-  return NextResponse.json({ ok: true, id: doc.id })
 }
 
 export async function GET(req: NextRequest): Promise<NextResponse> {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  const sessionId = req.nextUrl.searchParams.get('session_id') || ''
-  const col = await proctorEvents()
-  const q = sessionId ? { user_id: user.id, session_id: sessionId } : { user_id: user.id }
-  const rows = await col.find(q).sort({ created_at: -1 }).limit(200).toArray()
-  return NextResponse.json({ events: rows })
+  try {
+    const sessionId = req.nextUrl.searchParams.get('session_id') || ''
+    const col = await proctorEvents()
+    const q = sessionId ? { user_id: user.id, session_id: sessionId } : { user_id: user.id }
+    const rows = await col.find(q).sort({ created_at: -1 }).limit(200).toArray()
+    return NextResponse.json({ events: rows })
+  } catch (e) {
+    console.error('[proctor/events] read failed:', e)
+    return NextResponse.json({ events: [] })
+  }
 }
