@@ -2,22 +2,63 @@
 
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
-import { Loader2, Activity, DollarSign, Zap } from 'lucide-react'
+import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
+import { Loader2, Activity, DollarSign, Zap, RefreshCw, TrendingUp, BarChart3, Clock, CheckCircle, XCircle } from 'lucide-react'
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, LineChart, Line, PieChart, Pie, Cell } from 'recharts'
 
+interface AiUsageData {
+  summary: {
+    totalTokens: number
+    totalCost: number
+    requestsCount: number
+    avgLatency: number
+    successRate: number
+  }
+  dailyChartData: Array<{ date: string; tokens: number; cost: number }>
+  featureChartData: Array<{ name: string; value: number }>
+  modelStats: Array<{
+    model: string
+    provider: string
+    requests: number
+    tokens: number
+    cost: number
+    avgLatency: number
+    successRate: number
+  }>
+  providerStats: Array<{
+    provider: string
+    requests: number
+    tokens: number
+    cost: number
+  }>
+}
+
 export function AiAnalyticsDashboard() {
-  const [data, setData] = useState<any>(null)
+  const [data, setData] = useState<AiUsageData | null>(null)
   const [loading, setLoading] = useState(true)
+  const [refreshing, setRefreshing] = useState(false)
+  const [activeTab, setActiveTab] = useState<'overview' | 'models' | 'providers'>('overview')
+
+  const fetchData = async () => {
+    try {
+      const res = await fetch('/api/admin/platform/ai-usage', { credentials: 'include' })
+      const json = await res.json()
+      if (json.summary) setData(json)
+    } catch (e) {
+      console.error('Failed to fetch AI usage data:', e)
+    }
+  }
 
   useEffect(() => {
-    fetch('/api/admin/platform/ai-usage')
-      .then(res => res.json())
-      .then(json => {
-        if (json.summary) setData(json)
-      })
-      .catch(console.error)
-      .finally(() => setLoading(false))
+    fetchData().finally(() => setLoading(false))
   }, [])
+
+  const handleRefresh = async () => {
+    setRefreshing(true)
+    await fetchData()
+    setRefreshing(false)
+  }
 
   if (loading) {
     return (
@@ -29,93 +70,201 @@ export function AiAnalyticsDashboard() {
 
   if (!data) return null
 
-  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6']
+  const COLORS = ['#10b981', '#3b82f6', '#f59e0b', '#ec4899', '#8b5cf6', '#06b6d4', '#f97316', '#84cc16']
 
   return (
     <Card className="rounded-xl border-border/60 p-6 mt-6">
-      <div className="flex items-center gap-2 mb-6">
-        <Activity className="h-5 w-5 text-primary" />
-        <h3 className="font-semibold text-foreground">AI Usage Analytics (30 Days)</h3>
+      <div className="flex items-center justify-between mb-6">
+        <div className="flex items-center gap-2">
+          <Activity className="h-5 w-5 text-primary" />
+          <h3 className="font-semibold text-foreground">AI Usage Analytics</h3>
+          <Badge variant="secondary" className="text-[10px]">30 Days</Badge>
+        </div>
+        <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
+          <RefreshCw className={`h-4 w-4 mr-1 ${refreshing ? 'animate-spin' : ''}`} />
+          Refresh
+        </Button>
       </div>
       
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mb-8">
+      {/* Summary Cards */}
+      <div className="grid grid-cols-2 md:grid-cols-5 gap-4 mb-6">
         <div className="p-4 rounded-lg bg-card/40 border border-border/50">
           <p className="text-xs text-muted-foreground mb-1">Total Tokens</p>
-          <p className="text-2xl font-semibold">{data.summary.totalTokens.toLocaleString()}</p>
+          <p className="text-2xl font-bold">{data.summary.totalTokens.toLocaleString()}</p>
         </div>
         <div className="p-4 rounded-lg bg-card/40 border border-border/50">
           <p className="text-xs text-muted-foreground mb-1">Est. Cost</p>
           <div className="flex items-center gap-1">
             <DollarSign className="h-4 w-4 text-emerald-500" />
-            <p className="text-2xl font-semibold">{data.summary.totalCost.toFixed(4)}</p>
+            <p className="text-2xl font-bold">{data.summary.totalCost.toFixed(4)}</p>
           </div>
         </div>
         <div className="p-4 rounded-lg bg-card/40 border border-border/50">
           <p className="text-xs text-muted-foreground mb-1">Total Requests</p>
-          <p className="text-2xl font-semibold">{data.summary.requestsCount.toLocaleString()}</p>
+          <p className="text-2xl font-bold">{data.summary.requestsCount.toLocaleString()}</p>
         </div>
         <div className="p-4 rounded-lg bg-card/40 border border-border/50">
           <p className="text-xs text-muted-foreground mb-1">Avg Latency</p>
           <div className="flex items-center gap-1">
             <Zap className="h-4 w-4 text-amber-500" />
-            <p className="text-2xl font-semibold">{data.summary.avgLatency}ms</p>
+            <p className="text-2xl font-bold">{data.summary.avgLatency}ms</p>
+          </div>
+        </div>
+        <div className="p-4 rounded-lg bg-card/40 border border-border/50">
+          <p className="text-xs text-muted-foreground mb-1">Success Rate</p>
+          <div className="flex items-center gap-1">
+            <CheckCircle className="h-4 w-4 text-emerald-500" />
+            <p className="text-2xl font-bold">{data.summary.successRate}%</p>
           </div>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        <div className="lg:col-span-2">
-          <p className="text-sm font-medium mb-4">Daily Token Usage</p>
-          <div className="h-[250px] w-full">
+      {/* Tab Navigation */}
+      <div className="flex gap-1 mb-6 border-b border-border/50">
+        {[
+          { id: 'overview', label: 'Overview' },
+          { id: 'models', label: 'By Model' },
+          { id: 'providers', label: 'By Provider' },
+        ].map((tab) => (
+          <button
+            key={tab.id}
+            onClick={() => setActiveTab(tab.id as any)}
+            className={`px-4 py-2 text-sm font-medium border-b-2 transition-colors ${
+              activeTab === tab.id
+                ? 'border-primary text-primary'
+                : 'border-transparent text-muted-foreground hover:text-foreground'
+            }`}
+          >
+            {tab.label}
+          </button>
+        ))}
+      </div>
+
+      {/* Tab Content */}
+      {activeTab === 'overview' && (
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+          <div className="lg:col-span-2">
+            <p className="text-sm font-medium mb-4">Daily Token Usage</p>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <LineChart data={data.dailyChartData}>
+                  <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                  <Line type="monotone" dataKey="tokens" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
+                </LineChart>
+              </ResponsiveContainer>
+            </div>
+          </div>
+          
+          <div>
+            <p className="text-sm font-medium mb-4">Usage by Feature</p>
+            <div className="h-[250px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data.featureChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={60}
+                    outerRadius={80}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    {data.featureChartData.map((entry: any, index: number) => (
+                      <Cell key={index} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
+                    labelStyle={{ color: 'hsl(var(--foreground))' }}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
+            <div className="flex flex-wrap gap-2 mt-4">
+              {data.featureChartData.map((entry: any, index: number) => (
+                <div key={index} className="flex items-center gap-1.5 text-xs">
+                  <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
+                  <span className="text-muted-foreground capitalize">{entry.name.replace(/_/g, ' ')}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'models' && (
+        <div className="space-y-4">
+          <p className="text-sm font-medium">Model Usage Statistics</p>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border/50">
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Model</th>
+                  <th className="text-left py-3 px-4 font-medium text-muted-foreground">Provider</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Requests</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Tokens</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Cost</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Avg Latency</th>
+                  <th className="text-right py-3 px-4 font-medium text-muted-foreground">Success</th>
+                </tr>
+              </thead>
+              <tbody>
+                {data.modelStats.map((model, index) => (
+                  <tr key={index} className="border-b border-border/30 hover:bg-muted/30">
+                    <td className="py-3 px-4 font-mono text-xs">{model.model}</td>
+                    <td className="py-3 px-4">
+                      <Badge variant="outline" className="text-[10px]">{model.provider}</Badge>
+                    </td>
+                    <td className="py-3 px-4 text-right">{model.requests.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right">{model.tokens.toLocaleString()}</td>
+                    <td className="py-3 px-4 text-right font-mono">${model.cost.toFixed(4)}</td>
+                    <td className="py-3 px-4 text-right">{model.avgLatency}ms</td>
+                    <td className="py-3 px-4 text-right">
+                      <span className={model.successRate >= 95 ? 'text-emerald-500' : model.successRate >= 80 ? 'text-amber-500' : 'text-red-500'}>
+                        {model.successRate}%
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      )}
+
+      {activeTab === 'providers' && (
+        <div className="space-y-4">
+          <p className="text-sm font-medium">Provider Usage Statistics</p>
+          <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={data.dailyChartData}>
-                <XAxis dataKey="date" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
+              <BarChart data={data.providerStats}>
+                <XAxis dataKey="provider" stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                 <YAxis stroke="#888888" fontSize={12} tickLine={false} axisLine={false} />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
                   labelStyle={{ color: 'hsl(var(--foreground))' }}
                 />
-                <Line type="monotone" dataKey="tokens" stroke="hsl(var(--primary))" strokeWidth={2} dot={false} />
-              </LineChart>
+                <Bar dataKey="requests" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
-        </div>
-        
-        <div>
-          <p className="text-sm font-medium mb-4">Usage by Feature</p>
-          <div className="h-[250px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data.featureChartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={60}
-                  outerRadius={80}
-                  paddingAngle={5}
-                  dataKey="value"
-                >
-                  {data.featureChartData.map((entry: any, index: number) => (
-                    <Cell key={index} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  contentStyle={{ backgroundColor: 'hsl(var(--card))', border: '1px solid hsl(var(--border))', borderRadius: '8px' }}
-                  labelStyle={{ color: 'hsl(var(--foreground))' }}
-                />
-              </PieChart>
-            </ResponsiveContainer>
-          </div>
-          <div className="flex flex-wrap gap-2 mt-4">
-            {data.featureChartData.map((entry: any, index: number) => (
-              <div key={index} className="flex items-center gap-1.5 text-xs">
-                <span className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: COLORS[index % COLORS.length] }} />
-                <span className="text-muted-foreground capitalize">{entry.name.replace(/_/g, ' ')}</span>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+            {data.providerStats.map((provider, index) => (
+              <div key={index} className="p-4 rounded-lg bg-card/40 border border-border/50">
+                <p className="text-sm font-medium capitalize">{provider.provider}</p>
+                <p className="text-xs text-muted-foreground">{provider.requests.toLocaleString()} requests</p>
+                <p className="text-xs text-muted-foreground">{provider.tokens.toLocaleString()} tokens</p>
+                <p className="text-xs font-mono text-emerald-500">${provider.cost.toFixed(4)}</p>
               </div>
             ))}
           </div>
         </div>
-      </div>
+      )}
     </Card>
   )
 }
