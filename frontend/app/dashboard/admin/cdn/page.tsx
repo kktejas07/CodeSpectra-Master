@@ -244,13 +244,18 @@ export default function CdnAdminPage() {
 
       {/* Cloudflare not configured setup message */}
       {!cfLoading && cfData && !cfData.configured && (
-        <Card className="p-6 border border-primary/20 bg-primary/5">
+        <Card className="p-6 border border-amber-500/30 bg-amber-500/5">
           <div className="flex items-start gap-4">
-            <div className="p-2 rounded-lg bg-primary/10 text-primary shrink-0">
-              <Info className="h-5 w-5" />
+            <div className="p-2 rounded-lg bg-amber-500/10 text-amber-600 shrink-0">
+              <AlertTriangle className="h-5 w-5" />
             </div>
             <div className="space-y-3 flex-1">
               <h3 className="font-semibold text-lg">Cloudflare CDN Not Configured</h3>
+              {cfData.error && (
+                <div className="rounded-md bg-amber-500/10 border border-amber-500/20 p-3 text-sm text-amber-700 dark:text-amber-300">
+                  <strong>Error:</strong> {cfData.error}
+                </div>
+              )}
               <p className="text-sm text-muted-foreground leading-relaxed">
                 Cloudflare CDN accelerates your site by caching content at edge locations worldwide, 
                 reduces origin server load, and provides DDoS protection, WAF rules, and analytics. 
@@ -261,7 +266,7 @@ export default function CdnAdminPage() {
                 <ol className="list-decimal list-inside space-y-1">
                   <li>Create a Cloudflare account and add your domain</li>
                   <li>Find your Zone ID on the Cloudflare dashboard (right sidebar)</li>
-                  <li>Create an API Token with Zone Analytics and Cache Purge permissions</li>
+                  <li>Create an API Token with these permissions: <strong>Zone: Analytics Read</strong>, <strong>Zone: Cache Purge</strong>, <strong>Zone: Read</strong></li>
                   <li>Enter both in Settings → Cloudflare</li>
                 </ol>
               </div>
