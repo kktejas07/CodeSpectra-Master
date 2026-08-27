@@ -138,6 +138,46 @@ export async function getApiKey(provider: ProviderId): Promise<ApiKeyResult | nu
 }
 
 /**
+ * Track AI usage event. Call this after every AI API call to log usage.
+ * This is a convenience wrapper around the analytics module.
+ */
+export async function trackAiUsage(event: {
+  user_id?: string
+  feature: string
+  provider: string
+  model: string
+  input_tokens?: number
+  output_tokens?: number
+  latency_ms?: number
+  success: boolean
+  error?: string
+}): Promise<void> {
+  try {
+    const { trackAiUsage: trackUsage } = await import('@/lib/db/analytics')
+    const inputTokens = event.input_tokens || 0
+    const outputTokens = event.output_tokens || 0
+    const { estimateAiCost } = await import('@/lib/db/analytics')
+    const cost = estimateAiCost(event.model, inputTokens, outputTokens)
+
+    await trackUsage({
+      user_id: event.user_id,
+      feature: event.feature,
+      provider: event.provider,
+      model: event.model,
+      input_tokens: inputTokens,
+      output_tokens: outputTokens,
+      total_tokens: inputTokens + outputTokens,
+      estimated_cost: cost,
+      latency_ms: event.latency_ms || 0,
+      success: event.success,
+      error: event.error,
+    })
+  } catch (e) {
+    console.error('[get-api-key] Failed to track usage:', e)
+  }
+}
+
+/**
  * Get an API key for a provider from a list of fallback providers.
  * Tries each provider in order until one with a key is found.
  *
