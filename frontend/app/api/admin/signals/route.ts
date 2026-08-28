@@ -43,14 +43,72 @@ export async function POST(req: NextRequest) {
     const action = body.action || 'approve'
 
     if (action === 'ingest') {
-      const port = process.env.PORT || 80
-      const secret = process.env.CRON_SECRET || ''
-      const res = await fetch(
-        `http://127.0.0.1:${port}/api/cron/signals-ingest?secret=${encodeURIComponent(secret)}`,
-        { method: 'POST' },
-      )
-      const data = await res.json()
-      return NextResponse.json(data, { status: res.status })
+      // Call the ingest function directly instead of via HTTP
+      // This avoids CRON_SECRET issues and self-request problems
+      try {
+        const { fetchFeedItems } = await import('@/lib/signals/rss')
+        const { rewriteSignal } = await import('@/lib/signals/rewrite')
+        const { scrapeOgData } = await import('@/lib/signals/og-scraper')
+        const { SIGNAL_FEEDS } = await import('@/lib/signals/feeds')
+        const { newSignalId, signalDrafts: getDrafts } = await import('@/lib/db/signal-drafts')
+        const { nowIso } = await import('@/lib/db/blog-posts')
+        
+        const drafts = await getDrafts()
+        const created: string[] = []
+        const skipped: string[] = []
+        const errors: string[] = []
+        
+        for (const feed of SIGNAL_FEEDS) {
+          try {
+            const items = await fetchFeedItems(feed.url, 1)
+            for (const item of items) {
+              const exists = await drafts.findOne({ source_url: item.link })
+              if (exists) {
+                skipped.push(item.link)
+                continue
+              }
+              
+              const ogData = await scrapeOgData(item.link)
+              const summaryContext = ogData.description || ogData.title || item.summary
+              const articleTitle = ogData.title || item.title
+              
+              const rewritten = await rewriteSignal({
+                title: articleTitle,
+                summary: summaryContext,
+                sourceUrl: item.link,
+                category: feed.category,
+              })
+              
+              const now = nowIso()
+              const sourceUrls = rewritten?.source_urls?.length ? rewritten.source_urls : [item.link]
+              await drafts.insertOne({
+                id: newSignalId(),
+                title: rewritten?.title || item.title,
+                excerpt: rewritten?.excerpt || item.summary?.slice(0, 220) || item.title,
+                body: rewritten?.body || `<p>${item.summary || item.title}</p><p><a href="${item.link}" rel="noopener noreferrer">Source</a></p>`,
+                category: feed.category,
+                source_url: item.link,
+                source_title: item.title,
+                source_feed: feed.id,
+                angle: rewritten?.angle,
+                facts: rewritten?.facts,
+                source_urls: sourceUrls,
+                status: 'pending',
+                created_at: now,
+                updated_at: now,
+              })
+              created.push(item.link)
+            }
+          } catch (e) {
+            errors.push(`${feed.id}: ${e instanceof Error ? e.message : String(e)}`)
+          }
+        }
+        
+        return NextResponse.json({ created: created.length, skipped: skipped.length, errors })
+      } catch (e) {
+        console.error('[signals] Ingest error:', e)
+        return NextResponse.json({ error: String(e), created: 0 }, { status: 500 })
+      }
     }
 
     const id = String(body.id || '').trim()
