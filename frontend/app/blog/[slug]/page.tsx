@@ -6,7 +6,6 @@ import { blogPosts, categoryLabel } from '@/lib/db/blog-posts'
 import { ensureBlogSeed } from '@/lib/blog-seed'
 import { coverForPost } from '@/lib/blog-covers'
 import { Clock, ChevronRight, ExternalLink } from 'lucide-react'
-import { ListingTrustFooter } from '@/components/trust/listing-trust-footer'
 
 export const dynamic = 'force-dynamic'
 
@@ -186,14 +185,6 @@ export default async function BlogArticlePage({
                 ) : null}
               </div>
             ) : null}
-
-            <ListingTrustFooter
-              entityType="blog"
-              entityId={post.slug}
-              entityTitle={post.title}
-              organizerName={post.author_name || 'CodeSpectra Editorial'}
-              updatedAt={post.updated_at || post.published_at}
-            />
 
             <p className="mt-10">
               <Link href="/blog" className="text-sm text-teal-600 hover:underline dark:text-teal-400">

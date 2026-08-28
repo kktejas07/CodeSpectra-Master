@@ -58,15 +58,16 @@ async function extractFacts(args: {
 Extract ONLY verifiable facts from the provided source texts. Do not invent.
 Return strict JSON:
 {
-  "angle": "one-line CodeSpectra angle for students/builders",
+  "angle": "one-line angle for students/builders",
   "facts": [{"claim":"...","source_url":"https://...","date":"YYYY-MM-DD or empty"}],
   "source_urls": ["https://..."]
 }
 Rules:
-- 4–10 facts max. Prefer names, numbers, dates, product/company actions.
+- 4–10 facts max. Prefer names, numbers, dates, product/company actions, technical specifics.
 - Every fact must include the source_url it came from (must be one of the provided URLs).
 - If sources conflict, prefer the more primary/company source and skip the weaker claim.
-- Never quote long passages; paraphrase claims in your own short words.`
+- Never quote long passages; paraphrase claims in your own short words.
+- Each fact should be a single, specific claim — not a summary paragraph.`
 
   const userMessage = `Seed headline: ${args.title}
 Feed summary: ${args.summary || '(none)'}
@@ -128,26 +129,31 @@ async function draftFromFacts(args: {
     .map((f, i) => `${i + 1}. ${f.claim}${f.date ? ` (${f.date})` : ''} [${f.source_url}]`)
     .join('\n')
 
-  const systemMessage = `You are a CodeSpectra staff writer (Signals).
-Write ONLY from the fact list. Do not invent companies, dates, or numbers.
-Audience: Indian students + early-career engineers.
-Structure HTML exactly:
-<h2>What happened</h2>
-<p>...</p>
-<h2>Why builders should care</h2>
-<p>...</p>
-<h2>What to practice this week</h2>
-<ul><li>...</li></ul>
-<h2>Sources</h2>
-<ul><li><a href="URL">label</a></li></ul>
-Voice rules (sound human):
-- Short and medium sentences. No corporate fluff.
-- Write in a deeply human, conversational tone. Do not sound like an AI.
-- MUST create a completely unique, catchy title that is different from the seed title. Do NOT copy the seed title.
-- Ban: "delve", "landscape", "unlock", "in today's rapidly", "moreover", "furthermore", "it is important to note".
-- One concrete skill or tool name in the practice section.
-- One direct line to the reader ("If you're in ECE…").
-Return JSON: {"title":"...","excerpt":"...","body":"<h2>..."}`
+  const systemMessage = `You are a sharp tech writer for CodeSpectra Signals — a builder-focused news digest for Indian students and early-career engineers.
+
+Write a complete, polished blog post. Do NOT invent companies, dates, or numbers.
+
+AUDIENCE: Indian CS/ECE students and junior engineers (0-3 years experience). Write for someone building things, not reading a textbook.
+
+VOICE — sound like a real human, not AI:
+- First or second person ("I", "you"). Direct, punchy sentences.
+- Use concrete analogies: "Think of X as Y for Z".
+- One casual aside per post is fine ("honestly, this is the part that matters").
+- NO corporate fluff, NO "in today's rapidly evolving landscape", NO "it is important to note".
+- BANNED words: "delve", "landscape", "unlock", "moreover", "furthermore", "seamless", "cutting-edge", "game-changer".
+
+STRUCTURE (return as JSON with "title", "excerpt", "body"):
+1. <h2>What happened</h2> — 2-3 paragraphs. Lead with the most interesting fact. Explain what the news means in one sentence.
+2. <h2>Why this matters for builders</h2> — 2-3 paragraphs. Connect it to what the reader is building or learning right now. Name a specific tool, library, or technique.
+3. <h2>What to try this week</h2> — 3-4 <li> items. Each must name ONE concrete thing: a tool to install, a repo to clone, a concept to practice. No vague advice.
+4. Do NOT include a Sources section — it's rendered separately by the blog page.
+
+TITLE rules:
+- Must be completely different from the source title
+- Use a number, question, or strong opinion ("Why X matters", "The Y problem nobody talks about", "3 things about Z")
+- Max 90 characters
+
+EXCERPT: One sentence, max 160 chars, that makes someone want to click.`
 
   const userMessage = `Category: ${args.category}
 Angle: ${args.angle}
@@ -156,7 +162,7 @@ Seed title hint: ${args.titleHint}
 FACTS:
 ${factBlock || '(thin facts — be conservative, say what is known vs unknown)'}
 
-Write the Signal.`
+Write the full post as JSON.`
 
   const res = await backendComplete({
     systemMessage,
@@ -179,10 +185,15 @@ async function humanize(args: {
   excerpt: string
   body: string
 }): Promise<{ title: string; excerpt: string; body: string }> {
-  const systemMessage = `You are a sharp tech editor. Improve clarity and human rhythm so it reads like a real human wrote it.
-Do NOT add new facts or claims. Keep all <a href> source links.
-Ensure the title is catchy, unique, and completely different from the original source title.
-Cut clichés. Prefer concrete verbs. Keep HTML structure.
+  const systemMessage = `You are a sharp tech editor. Polish this blog post for clarity, rhythm, and voice.
+
+RULES:
+- Do NOT add new facts or claims. Do NOT add a Sources section.
+- Keep all existing <a href> source links.
+- Ensure the title is catchy and completely different from any source title.
+- Cut clichés. Prefer concrete verbs. Keep the HTML structure intact.
+- Make every sentence earn its place — if it doesn't inform or move the reader forward, cut it.
+- The body MUST be complete — do not truncate mid-sentence. End every paragraph properly.
 Return JSON: {"title":"...","excerpt":"...","body":"..."}`
 
   const res = await backendComplete({
@@ -263,12 +274,11 @@ export async function researchThenDraft(args: {
   if (!drafted) return null
 
   const polished = await humanize(drafted)
-  const body = ensureSourcesFooter(polished.body, sourceUrls)
 
   return {
     title: polished.title,
     excerpt: polished.excerpt,
-    body,
+    body: polished.body,
     facts: usableFacts,
     source_urls: sourceUrls,
     angle,

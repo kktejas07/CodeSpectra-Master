@@ -205,19 +205,8 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    // Step 5: Add source footer
-    let bodyHtml = post.body
-    if (source_urls.length > 0 && !/<h2[^>]*>\s*Sources\s*<\/h2>/i.test(bodyHtml)) {
-      const lis = source_urls.map(u => {
-        let label = u
-        try { label = new URL(u).hostname.replace(/^www\./, '') } catch {}
-        return `<li><a href="${u}" rel="noopener noreferrer" target="_blank">${label}</a></li>`
-      }).join('')
-      bodyHtml += `\n<h2>Sources</h2>\n<ul>${lis}</ul>`
-    }
-
-    // Step 6: Save as draft
-    console.log('[auto-draft] Step 6: Saving draft')
+    // Step 5: Save as draft (sources are rendered by the blog page, not baked into body)
+    console.log('[auto-draft] Step 5: Saving draft')
     const slug = slugify(post.title)
     const col = await blogPosts()
     await col.insertOne({
@@ -225,13 +214,14 @@ export async function POST(req: NextRequest) {
       slug,
       title: post.title,
       excerpt: post.excerpt,
-      body: bodyHtml,
+      body: post.body,
       category,
       tags: [],
       author_name: 'CodeSpectra Editorial',
       status: 'draft',
-      read_minutes: Math.ceil(bodyHtml.replace(/<[^>]*>/g, '').split(/\s+/).length / 200),
+      read_minutes: Math.ceil(post.body.replace(/<[^>]*>/g, '').split(/\s+/).length / 200),
       cover_image: undefined,
+      source_urls: source_urls.length > 0 ? source_urls : undefined,
       published_at: undefined,
       created_at: new Date().toISOString(),
       updated_at: new Date().toISOString(),
