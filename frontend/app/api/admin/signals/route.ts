@@ -58,7 +58,7 @@ export async function POST(req: NextRequest) {
         const skipped: string[] = []
         const errors: string[] = []
         
-        for (const feed of SIGNAL_FEEDS) {
+        for (const feed of SIGNAL_FEEDS.slice(0, 3)) {
           try {
             const items = await fetchFeedItems(feed.url, 1)
             for (const item of items) {
