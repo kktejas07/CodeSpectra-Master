@@ -453,7 +453,6 @@ export default function DashboardLayout({
       '/dashboard/admin/coupons': Ticket,
       '/dashboard/admin/announcements': Megaphone,
       '/dashboard/admin/newsletter': Mail,
-      '/dashboard/admin/blog': Newspaper,
       '/dashboard/admin/content-studio': Zap,
       '/dashboard/admin/resources': Library,
       '/dashboard/admin/hackathons': Trophy,

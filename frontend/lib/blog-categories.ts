@@ -6,6 +6,12 @@ export const BLOG_CATEGORIES = [
   { id: 'careers', label: 'Careers', description: 'Skills, roles, roadmaps' },
   { id: 'campus', label: 'Campus', description: 'Hackathons, colleges, community' },
   { id: 'playbook', label: 'Playbook', description: 'Guides and deep dives' },
+  { id: 'tutorials', label: 'Tutorials', description: 'Step-by-step coding guides' },
+  { id: 'interviews', label: 'Interviews', description: 'Interview prep and experiences' },
+  { id: 'open-source', label: 'Open Source', description: 'OSS projects, contributions, and tools' },
+  { id: 'ai-ml', label: 'AI & ML', description: 'Artificial intelligence and machine learning' },
+  { id: 'devops', label: 'DevOps', description: 'Infrastructure, CI/CD, and deployment' },
+  { id: 'database', label: 'Database', description: 'SQL, NoSQL, and data engineering' },
 ] as const
 
 export type BlogCategoryId = (typeof BLOG_CATEGORIES)[number]['id']
