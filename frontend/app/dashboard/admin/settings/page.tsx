@@ -52,6 +52,7 @@ import {
 } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloudflare-section'
+import { LlmSettingsTabs } from '@/components/dashboard/settings/llm-settings-tabs'
 import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
 import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
 import KycSettingsSection from '@/app/dashboard/admin/settings/kyc/page'
@@ -2621,161 +2622,13 @@ function SystemSettingsInner() {
               <Card className="rounded-xl border-border/60 p-6">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">AI & LLM API Keys</h3>
+                  <h3 className="font-semibold text-foreground">AI & LLM Configuration</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-6">
-                  Configure API keys. Add multiple keys separated by commas for automatic rotation on rate limits.
-                  Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
+                  Configure API keys, view usage stats, and manage routing. Supports multiple keys per provider with automatic rotation.
                 </p>
-                <div className="flex items-center gap-3 mb-6">
-                  <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border/60 bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm font-medium">
-                    <Upload className="h-4 w-4" />
-                    Import from Excel
-                    <input
-                      type="file"
-                      accept=".xlsx,.xls,.csv"
-                      className="hidden"
-                      onChange={handleExcelImport}
-                    />
-                  </label>
-                  <span className="text-xs text-muted-foreground">Supports .xlsx, .xls, .csv with columns: Name, API Key</span>
-                </div>
-                <div className="space-y-5">
-                  {[
-                    { id: 'gemini', label: 'Google Gemini', placeholder: 'AIza... (comma-separate for multiple keys)', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier. Code analysis, hints, fast completions.', key: 'gemini_api_key' },
-                    { id: 'opencode', label: 'OpenCode', placeholder: 'ock_... (comma-separate for multiple keys)', url: 'https://opencode.ai/keys', urlLabel: 'OpenCode Keys', desc: 'Free & paid. Claude, GPT, Gemini, DeepSeek models.', key: 'opencode_api_key' },
-                    { id: 'groq', label: 'Groq', placeholder: 'gsk_... (comma-separate for multiple keys)', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama, Mixtral, Gemma.', key: 'groq_api_key' },
-                    { id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-... (comma-separate for multiple keys)', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. 300+ models including free tiers.', key: 'openrouter_api_key' },
-                    { id: 'openai', label: 'OpenAI', placeholder: 'sk-... (comma-separate for multiple keys)', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'Paid. GPT-4o, GPT-4-turbo, o1, o3 models.', key: 'openai_api_key' },
-                    { id: 'anthropic', label: 'Anthropic Claude', placeholder: 'sk-ant-... (comma-separate for multiple keys)', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Paid. Deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
-                    { id: 'nvidia', label: 'NVIDIA NIM', placeholder: 'nvapi-... (comma-separate for multiple keys)', url: 'https://build.nvidia.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models.', key: 'nvidia_api_key' },
-                    { id: 'deepseek', label: 'DeepSeek', placeholder: 'sk-...', url: 'https://platform.deepseek.com', urlLabel: 'DeepSeek Platform', desc: 'Paid. DeepSeek V3, R1 reasoning models.', key: 'deepseek_api_key' },
-                    { id: 'cerebras', label: 'Cerebras', placeholder: 'csk-...', url: 'https://cloud.cerebras.ai', urlLabel: 'Cerebras Cloud', desc: 'Paid. Ultra-fast inference on Cerebras wafer-scale.', key: 'cerebras_api_key' },
-                    { id: 'mistral', label: 'Mistral AI', placeholder: '...', url: 'https://console.mistral.ai', urlLabel: 'Mistral Console', desc: 'Paid. Mistral Large, Mixtral, Codestral.', key: 'mistral_api_key' },
-                    { id: 'cohere', label: 'Cohere', placeholder: 'cohere_...', url: 'https://dashboard.cohere.com', urlLabel: 'Cohere Dashboard', desc: 'Paid. Command R+, embeddings, rerank.', key: 'cohere_api_key' },
-                    { id: 'fireworks', label: 'Fireworks AI', placeholder: 'fw_...', url: 'https://fireworks.ai', urlLabel: 'Fireworks AI', desc: 'Paid. Fast inference for open-source models.', key: 'fireworks_api_key' },
-                    { id: 'xai', label: 'xAI (Grok)', placeholder: 'xai-...', url: 'https://console.x.ai', urlLabel: 'xAI Console', desc: 'Paid. Grok-2, Grok-3 models.', key: 'xai_api_key' },
-                    { id: 'replicate', label: 'Replicate', placeholder: 'r8_...', url: 'https://replicate.com', urlLabel: 'Replicate', desc: 'Paid. Run open-source models via API.', key: 'replicate_api_key' },
-                    { id: 'elevenlabs', label: 'ElevenLabs', placeholder: 'sk_...', url: 'https://elevenlabs.io', urlLabel: 'ElevenLabs', desc: 'Paid. Text-to-speech, voice cloning.', key: 'elevenlabs_api_key' },
-                    { id: 'assemblyai', label: 'AssemblyAI', placeholder: '...', url: 'https://www.assemblyai.com', urlLabel: 'AssemblyAI', desc: 'Paid. Speech-to-text, transcription.', key: 'assemblyai_api_key' },
-                    { id: 'deepgram', label: 'Deepgram', placeholder: '...', url: 'https://console.deepgram.com', urlLabel: 'Deepgram Console', desc: 'Paid. Speech-to-text, voice AI.', key: 'deepgram_api_key' },
-                    { id: 'deepinfra', label: 'DeepInfra', placeholder: '...', url: 'https://deepinfra.com', urlLabel: 'DeepInfra', desc: 'Paid. Serverless inference for open models.', key: 'deepinfra_api_key' },
-                    { id: 'novita', label: 'Novita AI', placeholder: 'sk_...', url: 'https://novita.ai', urlLabel: 'Novita AI', desc: 'Paid. LLM inference, image generation.', key: 'novita_api_key' },
-                    { id: 'stability', label: 'Stability AI', placeholder: 'sk-...', url: 'https://platform.stability.ai', urlLabel: 'Stability AI', desc: 'Paid. Stable Diffusion, image generation.', key: 'stability_api_key' },
-                    { id: 'fal', label: 'Fal.ai', placeholder: '...', url: 'https://fal.ai', urlLabel: 'Fal.ai', desc: 'Paid. Fast AI inference, image/video models.', key: 'fal_api_key' },
-                    { id: 'ai21', label: 'AI21 Labs', placeholder: '...', url: 'https://www.ai21.com', urlLabel: 'AI21 Labs', desc: 'Paid. Jamba, language models.', key: 'ai21_api_key' },
-                    { id: 'kimi', label: 'Kimi (Moonshot)', placeholder: '...', url: 'https://platform.moonshot.cn', urlLabel: 'Moonshot Platform', desc: 'Paid. Kimi long-context models.', key: 'kimi_api_key' },
-                    { id: 'lemonfox', label: 'Lemonfox', placeholder: '...', url: 'https://lemonfox.ai', urlLabel: 'Lemonfox', desc: 'Paid. Fast inference for open models.', key: 'lemonfox_api_key' },
-                    { id: 'huggingface', label: 'Hugging Face', placeholder: 'hf_...', url: 'https://huggingface.co/settings/tokens', urlLabel: 'HF Tokens', desc: 'Free & paid. Access 500k+ models.', key: 'huggingface_api_key' },
-                    { id: 'cloudflare_workers', label: 'Cloudflare Workers AI', placeholder: 'cfat_...', url: 'https://dash.cloudflare.com', urlLabel: 'Cloudflare Dashboard', desc: 'Paid. AI inference on Cloudflare network.', key: 'cloudflare_workers_api_key' },
-                    { id: 'sambanova', label: 'SambaNova', placeholder: '...', url: 'https://cloud.sambanova.ai', urlLabel: 'SambaNova Cloud', desc: 'Paid. Fast inference on SambaNova RDU.', key: 'sambanova_api_key' },
-                    { id: 'nscale', label: 'nScale', placeholder: '...', url: 'https://nscale.com', urlLabel: 'nScale', desc: 'Paid. Managed inference platform.', key: 'nscale_api_key' },
-                    { id: 'chutes', label: 'Chutes', placeholder: 'cpk_...', url: 'https://chutes.ai', urlLabel: 'Chutes AI', desc: 'Paid. Serverless AI inference.', key: 'chutes_api_key' },
-                    { id: 'modelscope', label: 'ModelScope', placeholder: '...', url: 'https://modelscope.cn', urlLabel: 'ModelScope', desc: 'Free & paid. Chinese AI model hub.', key: 'modelscope_api_key' },
-                    { id: 'langchain', label: 'LangChain Hub', placeholder: 'lsv2_...', url: 'https://smith.langchain.com', urlLabel: 'LangSmith', desc: 'Paid. LLM observability, prompts, chains.', key: 'langchain_api_key' },
-                    { id: 'langfuse', label: 'Langfuse', placeholder: 'sk-lf-...', url: 'https://langfuse.com', urlLabel: 'Langfuse', desc: 'Free & paid. LLM observability & tracing.', key: 'langfuse_api_key' },
-                    { id: 'pinecone', label: 'Pinecone', placeholder: 'pcsk_...', url: 'https://app.pinecone.io', urlLabel: 'Pinecone Console', desc: 'Paid. Vector database for embeddings.', key: 'pinecone_api_key' },
-                    { id: 'qdrant', label: 'Qdrant', placeholder: '...', url: 'https://cloud.qdrant.io', urlLabel: 'Qdrant Cloud', desc: 'Free & paid. Vector search engine.', key: 'qdrant_api_key' },
-                    { id: 'tavily', label: 'Tavily', placeholder: 'tvly-...', url: 'https://tavily.com', urlLabel: 'Tavily', desc: 'Paid. Web search for AI agents.', key: 'tavily_api_key' },
-                    { id: 'firecrawl', label: 'Firecrawl', placeholder: 'fc-...', url: 'https://firecrawl.dev', urlLabel: 'Firecrawl', desc: 'Paid. Web scraping for AI.', key: 'firecrawl_api_key' },
-                    { id: 'serper', label: 'Serper', placeholder: '...', url: 'https://serper.dev', urlLabel: 'Serper', desc: 'Paid. Google search API for AI.', key: 'serper_api_key' },
-                    { id: 'jina', label: 'Jina AI', placeholder: 'jina_...', url: 'https://jina.ai', urlLabel: 'Jina AI', desc: 'Free & paid. Embeddings, reader, search.', key: 'jina_api_key' },
-                    { id: 'exa', label: 'Exa', placeholder: '...', url: 'https://exa.ai', urlLabel: 'Exa', desc: 'Paid. Neural search engine.', key: 'exa_api_key' },
-                    { id: 'notion', label: 'Notion', placeholder: 'ntn_...', url: 'https://www.notion.so/my-integrations', urlLabel: 'Notion Integrations', desc: 'Paid. Notion API for AI apps.', key: 'notion_api_key' },
-                    { id: 'slack', label: 'Slack', placeholder: 'xapp-...', url: 'https://api.slack.com/apps', urlLabel: 'Slack API', desc: 'Paid. Slack integration for AI bots.', key: 'slack_api_key' },
-                    { id: 'google_knowledge', label: 'Google Knowledge Graph', placeholder: 'AIza...', url: 'https://console.cloud.google.com', urlLabel: 'GCP Console', desc: 'Free tier. Knowledge Graph Search API.', key: 'google_knowledge_graph_api_key' },
-                    { id: 'browserbase', label: 'Browserbase', placeholder: 'bb_...', url: 'https://browserbase.com', urlLabel: 'Browserbase', desc: 'Paid. Headless browser for AI agents.', key: 'browserbase_api_key' },
-                    { id: 'brightdata', label: 'Bright Data', placeholder: '...', url: 'https://brightdata.com', urlLabel: 'Bright Data', desc: 'Paid. Web data platform, proxies.', key: 'brightdata_api_key' },
-                    { id: 'scrapingbee', label: 'ScrapingBee', placeholder: '...', url: 'https://www.scrapingbee.com', urlLabel: 'ScrapingBee', desc: 'Paid. Web scraping API.', key: 'scrapingbee_api_key' },
-                  ].map((info) => {
-                    const hasKey = (secretsMeta as any)['has_' + info.key]
-                    return (
-                      <div key={info.id} className="flex items-center gap-3 rounded-lg border border-border/60 bg-card/40 p-3 hover:border-primary/30 transition-colors">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="text-sm font-semibold truncate">{info.label}</p>
-                            {hasKey ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-1.5 py-0.5 text-[10px] uppercase shrink-0">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-1.5 py-0.5 text-[10px] uppercase shrink-0">Not Set</span>}
-                          </div>
-                          <p className="text-[11px] text-muted-foreground truncate">{info.desc}</p>
-                        </div>
-                        <div className="relative w-64 shrink-0">
-                          <Input type={(visibleFields as any)[info.key] ? 'text' : 'password'} autoComplete="off"
-                            value={((visibleFields as any)[info.key] ? (revealedValues[info.key] ?? '') : '') || (hasKey ? '••••••••' : '')}
-                            onChange={(e) => setSecretsDraft((d) => ({ ...d, [info.key]: e.target.value }))}
-                            className="h-8 rounded-md border-border/60 bg-background font-mono text-xs pr-8"
-                            placeholder={info.placeholder} />
-                          <button type="button" tabIndex={-1} onClick={() => handleRevealToggle(info.key)}
-                            className="absolute right-1.5 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility">
-                            {(visibleFields as any)[info.key] ? <EyeOff className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
-                          </button>
-                        </div>
-                        <a href={info.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline shrink-0" title={`Get key from ${info.urlLabel}`}>
-                          Get Key →
-                        </a>
-                      </div>
-                    )
-                  })}
-                </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Provider fallback order (auto-selects): Gemini → Groq → OpenRouter → OpenAI → Anthropic → NVIDIA + 38 more providers.
-                </p>
-
-                {/* Provider categories */}
-                <div className="mt-6 space-y-4">
-                  <p className="text-xs font-semibold uppercase tracking-wider text-muted-foreground">Provider Categories</p>
-                  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-2">
-                    {[
-                      { label: 'LLM Providers', count: 12, color: 'bg-purple-500/10 text-purple-600' },
-                      { label: 'Speech & Voice', count: 4, color: 'bg-blue-500/10 text-blue-600' },
-                      { label: 'Vector Databases', count: 4, color: 'bg-green-500/10 text-green-600' },
-                      { label: 'Search & Web', count: 8, color: 'bg-orange-500/10 text-orange-600' },
-                      { label: 'Observability', count: 4, color: 'bg-cyan-500/10 text-cyan-600' },
-                      { label: 'Integrations', count: 4, color: 'bg-pink-500/10 text-pink-600' },
-                      { label: 'Image & Video', count: 3, color: 'bg-amber-500/10 text-amber-600' },
-                      { label: 'Other', count: 5, color: 'bg-gray-500/10 text-gray-600' },
-                    ].map((cat) => (
-                      <div key={cat.label} className={`p-3 rounded-lg ${cat.color} text-center`}>
-                        <p className="text-lg font-bold">{cat.count}</p>
-                        <p className="text-[10px] font-medium">{cat.label}</p>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-
-                <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
-                  <Button variant="outline" size="sm" onClick={async () => {
-                    const providers = ['gemini','opencode','groq','openrouter','openai','anthropic','nvidia','deepseek','cerebras','mistral','cohere','fireworks','xai','replicate','elevenlabs','assemblyai','deepgram','deepinfra','novita','stability','fal','ai21','kimi','lemonfox','huggingface','cloudflare_workers','sambanova','nscale','chutes','modelscope','langchain','langfuse','pinecone','qdrant','tavily','firecrawl','serper','jina','exa','notion','slack','google_knowledge','browserbase','brightdata','scrapingbee']
-                    const results: React.ReactNode[] = []
-                    for (const p of providers) {
-                      try {
-                        const r = await csrfFetch('/api/admin/llm-test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ provider: p }) })
-                        const d = await r.json()
-                        results.push(
-                          <span key={p} className="flex items-center gap-1">
-                            {d.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                            {p}{!d.ok ? `: ${d.error}` : ''}
-                          </span>
-                        )
-                      } catch { 
-                        results.push(
-                          <span key={p} className="flex items-center gap-1">
-                            <XCircle className="h-4 w-4 text-red-500" />
-                            {p}: network error
-                          </span>
-                        ) 
-                      }
-                    }
-                    addToast({ type: 'info', title: 'Key Test Results', message: <div className="flex flex-col gap-1.5 mt-2">{results}</div>, duration: 15000 })
-                  }}>
-                    <Zap className="h-3 w-3 mr-1" />Test All Keys
-                  </Button>
-                  <Button onClick={() => saveSecrets()} disabled={savingKey === "integrations"} className="gap-2">
-                    {savingKey === "integrations" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Save Keys
-                  </Button>
-                </div>
               </Card>
-              <AiAnalyticsDashboard />
+              <LlmSettingsTabs />
             </div>
           ) : section === 'gamification' ? (
             <Card className="rounded-xl border-border/60 shadow-sm">
