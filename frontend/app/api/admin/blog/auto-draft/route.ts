@@ -43,22 +43,26 @@ function parseJsonObject(res: { ok: boolean; json?: unknown; text?: string; raw?
 }
 
 async function rewriteTitle(originalTitle: string): Promise<string> {
-  const res = await backendComplete({
-    systemMessage: `You are an expert editor. Rewrite the given title to be unique, engaging, and completely different from the original.
+  try {
+    const res = await backendComplete({
+      systemMessage: `You are an expert editor. Rewrite the given title to be unique, engaging, and completely different from the original.
 Rules:
 - Keep the core topic/meaning
 - Make it sound original and fresh
 - Use different words and structure
 - Make it engaging for developers/students
 - Return ONLY the new title text, nothing else`,
-    userMessage: `Original title: "${originalTitle}"\n\nRewrite this title to be unique:`,
-    modelRole: 'fast',
-    feature: 'blog-title-rewrite',
-  })
-  
-  if (res.ok && res.text) {
-    const rewritten = res.text.trim().replace(/^["']|["']$/g, '').slice(0, 160)
-    if (rewritten.length > 10) return rewritten
+      userMessage: `Original title: "${originalTitle}"\n\nRewrite this title to be unique:`,
+      modelRole: 'fast',
+      feature: 'blog-title-rewrite',
+    })
+    
+    if (res.ok && res.text) {
+      const rewritten = res.text.trim().replace(/^["']|["']$/g, '').slice(0, 160)
+      if (rewritten.length > 10) return rewritten
+    }
+  } catch (e) {
+    console.warn('[auto-draft] Title rewrite failed, using original:', e)
   }
   return `${originalTitle} — What Developers Need to Know`
 }
@@ -95,27 +99,32 @@ async function extractFacts(args: {
     .map((p, i) => `--- SOURCE ${i + 1}: ${p.url}\nTitle: ${p.title || '(none)'}\n${p.text.slice(0, 3500)}`)
     .join('\n\n')
 
-  const res = await backendComplete({
-    systemMessage: `You are a research desk. Extract ONLY verifiable facts. Return strict JSON:
+  try {
+    const res = await backendComplete({
+      systemMessage: `You are a research desk. Extract ONLY verifiable facts. Return strict JSON:
 {
   "angle": "one-line angle for students/builders",
   "facts": [{"claim":"...","source_url":"https://...","date":""}],
   "source_urls": ["https://..."]
 }
 Rules: 4-10 facts, include source_url, no invented info.`,
-    userMessage: `Title: ${args.title}\nCategory: ${args.category}\n\nSNIPPETS:\n${args.snippets || '(none)'}\n\nPAGES:\n${corpus || '(none)'}`,
-    modelRole: 'reasoning',
-    responseFormat: 'json',
-    feature: 'blog-auto-facts',
-  })
+      userMessage: `Title: ${args.title}\nCategory: ${args.category}\n\nSNIPPETS:\n${args.snippets || '(none)'}\n\nPAGES:\n${corpus || '(none)'}`,
+      modelRole: 'reasoning',
+      responseFormat: 'json',
+      feature: 'blog-auto-facts',
+    })
 
-  const raw = parseJsonObject(res)
-  const facts = Array.isArray(raw?.facts) ? (raw!.facts as any[]).filter(f => f?.claim && f?.source_url) : []
-  const source_urls = Array.isArray(raw?.source_urls) ? (raw!.source_urls as string[]).filter(u => u?.startsWith('http')) : []
-  return {
-    facts: facts.slice(0, 10),
-    angle: String(raw?.angle || '').slice(0, 200),
-    source_urls: source_urls.slice(0, 6),
+    const raw = parseJsonObject(res)
+    const facts = Array.isArray(raw?.facts) ? (raw!.facts as any[]).filter(f => f?.claim && f?.source_url) : []
+    const source_urls = Array.isArray(raw?.source_urls) ? (raw!.source_urls as string[]).filter(u => u?.startsWith('http')) : []
+    return {
+      facts: facts.slice(0, 10),
+      angle: String(raw?.angle || '').slice(0, 200),
+      source_urls: source_urls.slice(0, 6),
+    }
+  } catch (e) {
+    console.warn('[auto-draft] Fact extraction failed, returning empty:', e)
+    return { facts: [], angle: '', source_urls: [] }
   }
 }
 
@@ -181,11 +190,19 @@ export async function POST(req: NextRequest) {
       pages,
     })
 
-    // Step 4: Write post
+    // Step 4: Write post (with fallback if AI fails)
     console.log('[auto-draft] Step 4: Writing post from', facts.length, 'facts')
-    const post = await writePost({ title: uniqueTitle, category, angle, facts, snippets })
+    let post = await writePost({ title: uniqueTitle, category, angle, facts, snippets })
     if (!post) {
-      return NextResponse.json({ error: 'Post generation failed' }, { status: 502 })
+      // Fallback: generate a basic draft from the research facts
+      console.warn('[auto-draft] AI write failed, generating fallback draft from facts')
+      const factBlock = facts.map((f, i) => `<li>${f.claim} <a href="${f.source_url}" rel="noopener noreferrer">source</a></li>`).join('\n')
+      const sourceLinks = source_urls.map(u => `<li><a href="${u}" rel="noopener noreferrer">${u}</a></li>`).join('\n')
+      post = {
+        title: uniqueTitle,
+        excerpt: angle || `What developers need to know about ${topic}`,
+        body: `<h2>What happened</h2>\n<p>${angle || topic}</p>\n<h2>Key facts</h2>\n<ul>\n${factBlock || '<li>Research in progress</li>'}</ul>\n<h2>Sources</h2>\n<ul>\n${sourceLinks || '<li>Links pending</li>'}</ul>`,
+      }
     }
 
     // Step 5: Add source footer
