@@ -28,4 +28,22 @@ export const SIGNAL_FEEDS: {
     url: 'https://dev.to/feed',
     category: 'careers',
   },
+  {
+    id: 'techcrunch-ai',
+    name: 'TechCrunch AI',
+    url: 'https://techcrunch.com/category/artificial-intelligence/feed/',
+    category: 'signals',
+  },
+  {
+    id: 'the-verge-ai',
+    name: 'The Verge AI',
+    url: 'https://www.theverge.com/rss/ai-artificial-intelligence/index.xml',
+    category: 'signals',
+  },
+  {
+    id: 'arstechnica-ai',
+    name: 'Ars Technica AI',
+    url: 'https://feeds.arstechnica.com/arstechnica/technology-lab',
+    category: 'engineering',
+  },
 ]
