@@ -98,12 +98,15 @@ export async function POST(req: NextRequest) {
                 updated_at: now,
               })
               created.push(item.link)
+              console.log(`[signals] Created draft: ${item.title}`)
             }
           } catch (e) {
+            console.error(`[signals] Feed error:`, e)
             errors.push(`${feed.id}: ${e instanceof Error ? e.message : String(e)}`)
           }
         }
         
+        console.log(`[signals] Done: ${created.length} created, ${skipped.length} skipped, ${errors.length} errors`)
         return NextResponse.json({ created: created.length, skipped: skipped.length, errors })
       } catch (e) {
         console.error('[signals] Ingest error:', e)
