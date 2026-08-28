@@ -61,23 +61,30 @@ export async function POST(req: NextRequest) {
         for (const feed of SIGNAL_FEEDS.slice(0, 3)) {
           try {
             const items = await fetchFeedItems(feed.url, 1)
+            console.log(`[signals] Feed ${feed.id}: fetched ${items.length} items`)
             for (const item of items) {
               const exists = await drafts.findOne({ source_url: item.link })
               if (exists) {
                 skipped.push(item.link)
+                console.log(`[signals] Skipped (exists): ${item.title}`)
                 continue
               }
               
-              const ogData = await scrapeOgData(item.link)
-              const summaryContext = ogData.description || ogData.title || item.summary
-              const articleTitle = ogData.title || item.title
-              
-              const rewritten = await rewriteSignal({
-                title: articleTitle,
-                summary: summaryContext,
-                sourceUrl: item.link,
-                category: feed.category,
-              })
+              let rewritten: Awaited<ReturnType<typeof rewriteSignal>> = null
+              try {
+                const ogData = await scrapeOgData(item.link)
+                const summaryContext = ogData.description || ogData.title || item.summary
+                const articleTitle = ogData.title || item.title
+                
+                rewritten = await rewriteSignal({
+                  title: articleTitle,
+                  summary: summaryContext,
+                  sourceUrl: item.link,
+                  category: feed.category,
+                })
+              } catch (rewriteErr) {
+                console.warn(`[signals] AI rewrite failed for ${item.link}, using fallback draft:`, rewriteErr)
+              }
               
               const now = nowIso()
               const sourceUrls = rewritten?.source_urls?.length ? rewritten.source_urls : [item.link]
@@ -98,10 +105,10 @@ export async function POST(req: NextRequest) {
                 updated_at: now,
               })
               created.push(item.link)
-              console.log(`[signals] Created draft: ${item.title}`)
+              console.log(`[signals] Created draft: ${item.title}${rewritten ? ' (AI)' : ' (fallback)'}`)
             }
           } catch (e) {
-            console.error(`[signals] Feed error:`, e)
+            console.error(`[signals] Feed ${feed.id} error:`, e)
             errors.push(`${feed.id}: ${e instanceof Error ? e.message : String(e)}`)
           }
         }
