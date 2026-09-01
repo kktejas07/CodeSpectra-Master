@@ -761,7 +761,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                       />
                     </div>
 
-                    <div className="flex gap-3 pt-2">
+                    <div className="grid grid-cols-2 gap-3 pt-2">
                       <Button variant="outline" className="w-full" onClick={() => { setIsJudgeSheetOpen(false) }}>Cancel</Button>
                       <Button className="w-full" onClick={async () => {
                         await submitScore()
