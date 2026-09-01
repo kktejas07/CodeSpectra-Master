@@ -223,43 +223,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     setRejectionReason('')
   }, [rejectingSub, rejectionReason, updateSubmissionStatus])
 
-  useEffect(() => {
-    if (tab === 'submissions') {
-      void loadSubmissions()
-      // Poll for submission status updates every 10 seconds
-      const interval = setInterval(() => void loadSubmissions(), 10000)
-      return () => clearInterval(interval)
-    }
-    if (tab === 'leaderboard') void loadLeaderboard()
-    if (tab === 'judge') void loadJudgeSubmissions()
-  }, [tab, loadSubmissions, loadLeaderboard, loadJudgeSubmissions])
-
-  if (!gate.ready || loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" /> Loading event…
-    </div>
-  }
-
-  if (!event) {
-    return <div className="p-10 text-center">
-      <p className="text-sm text-destructive">Event not found</p>
-      <Link href="/dashboard/events" className="mt-3 inline-block text-sm text-primary hover:underline">← Back to Events</Link>
-    </div>
-  }
-
-  const now = Date.now()
-  const starts = new Date(event.starts_at).getTime()
-  const ends = new Date(event.ends_at).getTime()
-  const isLive = now >= starts && now <= ends
-  const isClosed = now > ends || event.status === 'closed'
-  const isUpcoming = now < starts
-  const canSubmit = isLive && myTeam && event.status !== 'closed'
-
-  const statusColor = isLive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
-    : isClosed ? 'bg-muted text-muted-foreground'
-    : 'bg-blue-500/10 text-blue-600 border-blue-500/30'
-  const statusLabel = isLive ? 'Live' : isClosed ? 'Ended' : 'Upcoming'
-
   const groupedSubmissions = useMemo(() => {
     const map = new Map<string, any>()
     for (const sub of judgeSubmissions) {
@@ -332,6 +295,44 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       )
     }
   ], [])
+
+  useEffect(() => {
+    if (tab === 'submissions') {
+      void loadSubmissions()
+      // Poll for submission status updates every 10 seconds
+      const interval = setInterval(() => void loadSubmissions(), 10000)
+      return () => clearInterval(interval)
+    }
+    if (tab === 'leaderboard') void loadLeaderboard()
+    if (tab === 'judge') void loadJudgeSubmissions()
+  }, [tab, loadSubmissions, loadLeaderboard, loadJudgeSubmissions])
+
+  if (!gate.ready || loading) {
+    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
+      <Loader2 className="h-5 w-5 animate-spin" /> Loading event…
+    </div>
+  }
+
+  if (!event) {
+    return <div className="p-10 text-center">
+      <p className="text-sm text-destructive">Event not found</p>
+      <Link href="/dashboard/events" className="mt-3 inline-block text-sm text-primary hover:underline">← Back to Events</Link>
+    </div>
+  }
+
+  const now = Date.now()
+  const starts = new Date(event.starts_at).getTime()
+  const ends = new Date(event.ends_at).getTime()
+  const isLive = now >= starts && now <= ends
+  const isClosed = now > ends || event.status === 'closed'
+  const isUpcoming = now < starts
+  const canSubmit = isLive && myTeam && event.status !== 'closed'
+
+  const statusColor = isLive ? 'bg-emerald-500/10 text-emerald-600 border-emerald-500/30'
+    : isClosed ? 'bg-muted text-muted-foreground'
+    : 'bg-blue-500/10 text-blue-600 border-blue-500/30'
+  const statusLabel = isLive ? 'Live' : isClosed ? 'Ended' : 'Upcoming'
+
 
   return (
     <div className="space-y-6">
