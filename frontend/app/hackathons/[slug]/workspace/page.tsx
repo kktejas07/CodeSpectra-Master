@@ -506,7 +506,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const isLive = hackathon.status === 'live' && nowDate >= starts.getTime() && nowDate <= ends.getTime()
   const isClosed = nowDate > ends.getTime() || hackathon.status === 'closed'
 
-  const solvedCount = submissions.filter(s => s.status === 'released').length
+  const solvedCount = new Set(submissions.map(s => s.problem_slug)).size
 
   return (
     <div className="min-h-screen bg-background">
@@ -645,7 +645,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                         ) : status === 'under_review' ? (
                           <AlertCircle className="h-4 w-4 text-yellow-500" />
                         ) : status === 'pending' && sub ? (
-                          <Clock className="h-4 w-4 text-yellow-500" />
+                          <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : isMyClaim ? (
                           <Hand className="h-4 w-4 text-blue-400" />
                         ) : (
@@ -658,8 +658,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             <span className="text-xs text-muted-foreground">{task.points} pts</span>
                             {task.required && <span className="text-[10px] text-muted-foreground">Required</span>}
                             {sub && status !== 'accepted' && (
-                              <Badge variant="secondary" className="text-[10px]">
-                                {status === 'pending' ? 'Submitted' : status}
+                              <Badge variant="default" className="text-[10px] bg-green-500/20 text-green-500 hover:bg-green-500/30">
+                                {status === 'pending' ? 'Solution Submitted' : status === 'under_review' ? 'Under Review' : status}
                               </Badge>
                             )}
                             {sub && sub.score !== null && (
