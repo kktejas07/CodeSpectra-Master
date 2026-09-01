@@ -1,6 +1,6 @@
 'use client'
 
-import { use, useCallback, useEffect, useState } from 'react'
+import { use, useCallback, useEffect, useState, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
@@ -13,6 +13,10 @@ import { Textarea } from '@/components/ui/textarea'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter,
 } from '@/components/ui/dialog'
+import {
+  Sheet, SheetContent, SheetHeader, SheetTitle,
+} from '@/components/ui/sheet'
+import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import {
   Loader2, ArrowLeft, Trophy, Users, Clock, CalendarDays, Timer,
   CheckCircle, ListChecks, Shield, Settings, Eye, Send, Copy,
@@ -97,6 +101,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [judgeSubmissions, setJudgeSubmissions] = useState<any[]>([])
   const [judgeLoading, setJudgeLoading] = useState(false)
   const [selectedSub, setSelectedSub] = useState<any>(null)
+  const [isJudgeSheetOpen, setIsJudgeSheetOpen] = useState(false)
   const [scoring, setScoring] = useState(false)
   const [scoreForm, setScoreForm] = useState<{ score: number; feedback: string; rubric_scores?: { criteria: { name: string; score: number }[]; total_score: number; feedback: string } }>({ score: 0, feedback: '' })
   
@@ -254,6 +259,79 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     : isClosed ? 'bg-muted text-muted-foreground'
     : 'bg-blue-500/10 text-blue-600 border-blue-500/30'
   const statusLabel = isLive ? 'Live' : isClosed ? 'Ended' : 'Upcoming'
+
+  const groupedSubmissions = useMemo(() => {
+    const map = new Map<string, any>()
+    for (const sub of judgeSubmissions) {
+      const key = `${sub.team_id}_${sub.problem_slug}`
+      if (!map.has(key)) {
+        map.set(key, { ...sub, history: [sub] })
+      } else {
+        const existing = map.get(key)
+        existing.history.push(sub)
+        if (new Date(sub.submitted_at) > new Date(existing.submitted_at)) {
+          map.set(key, { ...sub, history: existing.history })
+        }
+      }
+    }
+    for (const v of map.values()) {
+      v.history.sort((a: any, b: any) => new Date(b.submitted_at).getTime() - new Date(a.submitted_at).getTime())
+    }
+    return Array.from(map.values())
+  }, [judgeSubmissions])
+
+  const columns: DataTableColumn<any>[] = useMemo(() => [
+    {
+      key: 'team_name',
+      header: 'Team',
+      sortable: true,
+      cell: (row: any) => <span className="font-medium text-sm">{row.team_name}</span>
+    },
+    {
+      key: 'problem_slug',
+      header: 'Problem',
+      sortable: true,
+      cell: (row: any) => <span className="text-sm">{row.problem_slug}</span>
+    },
+    {
+      key: 'status',
+      header: 'Status',
+      cell: (row: any) => (
+        <Badge variant="outline" className={`text-[10px] ${(STATUS_CONFIG[row.status] || STATUS_CONFIG.submitted).color}`}>
+          {(STATUS_CONFIG[row.status] || STATUS_CONFIG.submitted).label}
+        </Badge>
+      )
+    },
+    {
+      key: 'score',
+      header: 'Score',
+      sortable: true,
+      cell: (row: any) => row.score !== null ? <span className="text-sm font-medium">{row.score}/100</span> : <span className="text-sm text-muted-foreground">-</span>
+    },
+    {
+      key: 'submitted_at',
+      header: 'Latest Submission',
+      sortable: true,
+      cell: (row: any) => <span className="text-xs text-muted-foreground">{new Date(row.submitted_at).toLocaleString()}</span>
+    },
+    {
+      key: 'actions',
+      header: 'Action',
+      cell: (row: any) => (
+        <Button size="sm" variant="outline" onClick={() => {
+          setSelectedSub(row)
+          setScoreForm({
+            score: row.score ?? 0,
+            feedback: row.feedback ?? '',
+            rubric_scores: row.rubric_scores?.[0] || undefined,
+          })
+          setIsJudgeSheetOpen(true)
+        }}>
+          Evaluate
+        </Button>
+      )
+    }
+  ], [])
 
   return (
     <div className="space-y-6">
@@ -512,199 +590,216 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
               <Shield className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
               <p className="text-sm text-muted-foreground">No submissions to review</p>
             </Card>
-          ) : selectedSub ? (
-            /* Submission Detail + Scoring */
-            <Card className="p-5 space-y-4">
-              <div className="flex items-center justify-between">
-                <div>
-                  <Button variant="ghost" size="sm" onClick={() => { setSelectedSub(null); setScoreForm({ score: 0, feedback: '' }) }}>
-                    ← Back to list
-                  </Button>
-                  <h3 className="font-semibold mt-2">{selectedSub.team_name} — {selectedSub.problem_slug}</h3>
-                </div>
-                <Badge variant={selectedSub.status === 'released' ? 'default' : 'outline'}>{selectedSub.status}</Badge>
-              </div>
-
-              {/* Submission Info */}
-              <div className="grid grid-cols-2 gap-4 text-sm p-3 rounded border bg-muted/30">
-                <div>
-                  <span className="text-muted-foreground text-xs block">Submitted</span>
-                  <span className="font-medium">{new Date(selectedSub.submitted_at).toLocaleString()}</span>
-                </div>
-                <div>
-                  <span className="text-muted-foreground text-xs block">Current Score</span>
-                  <span className="font-medium">{selectedSub.score ?? 'Not scored'}</span>
-                </div>
-              </div>
-
-              {/* Links */}
-              <div className="flex flex-wrap gap-2">
-                {selectedSub.repo_url && (
-                  <a href={selectedSub.repo_url} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" variant="outline" className="gap-1.5"><Code className="w-3.5 h-3.5" /> GitHub Repo</Button>
-                  </a>
-                )}
-                {selectedSub.video_url && (
-                  <a href={selectedSub.video_url} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" variant="outline" className="gap-1.5"><Eye className="w-3.5 h-3.5" /> Video Demo</Button>
-                  </a>
-                )}
-                {selectedSub.live_url && (
-                  <a href={selectedSub.live_url} target="_blank" rel="noopener noreferrer">
-                    <Button size="sm" variant="outline" className="gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> Live URL</Button>
-                  </a>
-                )}
-              </div>
-
-              {selectedSub.comment && (
-                <div className="p-3 rounded border bg-muted/30 text-sm">
-                  <span className="text-muted-foreground text-xs block mb-1">Team Comment</span>
-                  {selectedSub.comment}
-                </div>
-              )}
-
-              {selectedSub.code && (
-                <div className="space-y-1">
-                  <Label className="text-xs">Submitted Code</Label>
-                  <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto max-h-60 overflow-y-auto border">{selectedSub.code}</pre>
-                </div>
-              )}
-
-              {/* Scoring Form */}
-              <div className="border-t pt-4 space-y-4">
-                <h4 className="text-sm font-semibold">Score Submission</h4>
-
-                {event.features?.judging_rubrics ? (
-                  /* Rubric-based scoring */
-                  <div className="space-y-3">
-                    {event.features.rubric_criteria.map((c, i) => (
-                      <div key={i} className="space-y-1">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-xs">{c.name} ({c.weight}%)</Label>
-                          <span className="text-xs text-muted-foreground">
-                            {scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0} / {c.weight}
-                          </span>
-                        </div>
-                        <input
-                          type="range"
-                          min={0}
-                          max={c.weight}
-                          value={scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0}
-                          onChange={(e) => {
-                            const newCriteria = [...(scoreForm.rubric_scores?.criteria || event.features!.rubric_criteria.map(() => ({ name: '', score: 0 })))]
-                            newCriteria[i] = { name: c.name, score: Number(e.target.value) }
-                            const total = newCriteria.reduce((sum, cr) => sum + cr.score, 0)
-                            setScoreForm(f => ({
-                              ...f,
-                              rubric_scores: { criteria: newCriteria, total_score: total, feedback: f.feedback }
-                            }))
-                          }}
-                          className="w-full"
-                        />
-                      </div>
-                    ))}
-                    <div className="flex items-center justify-between p-2 rounded bg-muted/50">
-                      <span className="text-sm font-medium">Total Score</span>
-                      <span className="text-lg font-bold">{scoreForm.rubric_scores?.total_score ?? 0} / 100</span>
-                    </div>
-                  </div>
-                ) : (
-                  /* Simple 0-100 scoring */
-                  <div className="space-y-2">
-                    <Label>Score (0-100)</Label>
-                    <Input
-                      type="number"
-                      min={0}
-                      max={100}
-                      value={scoreForm.score}
-                      onChange={(e) => setScoreForm(f => ({ ...f, score: Number(e.target.value) }))}
-                    />
-                  </div>
-                )}
-
-                <div className="space-y-2">
-                  <Label>Feedback</Label>
-                  <Textarea
-                    rows={3}
-                    value={scoreForm.feedback}
-                    onChange={(e) => setScoreForm(f => ({ ...f, feedback: e.target.value }))}
-                    placeholder="Feedback for the team..."
-                  />
-                </div>
-
-                <div className="flex gap-2">
-                  <Button variant="outline" onClick={() => { setSelectedSub(null); setScoreForm({ score: 0, feedback: '' }) }}>Cancel</Button>
-                  <Button onClick={submitScore} disabled={scoring}>
-                    {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
-                    Submit Score
-                  </Button>
-                </div>
-              </div>
-            </Card>
           ) : (
-            /* Submission List */
-            <Card className="divide-y">
-              {judgeSubmissions.map((sub: any) => (
-                <div key={sub.id} className="p-3 hover:bg-muted/50">
-                  <div className="flex items-center justify-between cursor-pointer" onClick={() => {
-                    setSelectedSub(sub)
-                    setScoreForm({
-                      score: sub.score ?? 0,
-                      feedback: sub.feedback ?? '',
-                      rubric_scores: sub.rubric_scores?.[0] || undefined,
-                    })
-                  }}>
-                    <div className="flex-1 min-w-0">
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium text-sm truncate">{sub.team_name}</span>
-                        <span className="text-xs text-muted-foreground">—</span>
-                        <span className="text-xs text-muted-foreground truncate">{sub.problem_slug}</span>
-                      </div>
-                      <div className="flex items-center gap-2 mt-0.5">
-                        <Badge variant="outline" className={`text-[10px] ${(STATUS_CONFIG[sub.status] || STATUS_CONFIG.submitted).color}`}>
-                          {(STATUS_CONFIG[sub.status] || STATUS_CONFIG.submitted).label}
-                        </Badge>
-                        {sub.score !== null && <span className="text-xs font-medium">{sub.score}/100</span>}
-                        <span className="text-xs text-muted-foreground">{new Date(sub.submitted_at).toLocaleString()}</span>
-                      </div>
+            <div className="space-y-4">
+              <Card className="p-5 flex items-center justify-between border-blue-500/20 bg-blue-500/5">
+                <div>
+                  <h3 className="font-semibold text-sm text-blue-500">Judging Dashboard</h3>
+                  <p className="text-xs text-muted-foreground">Showing latest submissions grouped by team and problem.</p>
+                </div>
+                <div className="text-right">
+                  <p className="text-2xl font-bold font-mono">{groupedSubmissions.length}</p>
+                  <p className="text-xs text-muted-foreground">Total Unique Submissions</p>
+                </div>
+              </Card>
+              <DataTable 
+                columns={columns} 
+                data={groupedSubmissions} 
+                searchPlaceholder="Search by team or problem..." 
+                searchKeys={['team_name', 'problem_slug']} 
+              />
+            </div>
+          )}
+
+          {/* Evaluate Submission Sheet */}
+          <Sheet open={isJudgeSheetOpen} onOpenChange={setIsJudgeSheetOpen}>
+            <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto">
+              <SheetHeader className="mb-4">
+                <SheetTitle>Evaluate Submission</SheetTitle>
+              </SheetHeader>
+              {selectedSub && (
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="font-semibold text-sm">{selectedSub.team_name}</h3>
+                      <p className="text-xs text-muted-foreground">{selectedSub.problem_slug}</p>
                     </div>
-                    <ChevronRight className="w-4 h-4 text-muted-foreground shrink-0" />
+                    <Badge variant={selectedSub.status === 'released' ? 'default' : 'outline'}>{selectedSub.status}</Badge>
                   </div>
+
                   {/* Status action buttons */}
-                  <div className="flex gap-2 mt-2 pt-2 border-t">
-                    {sub.status === 'submitted' && (
-                      <Button size="sm" variant="outline" onClick={() => updateSubmissionStatus(sub.id, 'under_review')}>
+                  <div className="flex gap-2">
+                    {selectedSub.status === 'submitted' && (
+                      <Button size="sm" variant="outline" className="w-full" onClick={() => updateSubmissionStatus(selectedSub.id, 'under_review')}>
                         <Eye className="w-3.5 h-3.5 mr-1" /> Start Review
                       </Button>
                     )}
-                    {sub.status === 'under_review' && (
+                    {selectedSub.status === 'under_review' && (
                       <>
-                        <Button size="sm" variant="outline" onClick={() => updateSubmissionStatus(sub.id, 'review_completed')}>
-                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete Review
+                        <Button size="sm" variant="outline" className="w-full" onClick={() => updateSubmissionStatus(selectedSub.id, 'review_completed')}>
+                          <CheckCircle className="w-3.5 h-3.5 mr-1" /> Complete
                         </Button>
-                        <Button size="sm" variant="outline" className="text-emerald-600" onClick={() => updateSubmissionStatus(sub.id, 'accepted')}>
+                        <Button size="sm" variant="outline" className="w-full text-emerald-600" onClick={() => updateSubmissionStatus(selectedSub.id, 'accepted')}>
                           <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Accept
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-rose-600" onClick={() => { setRejectingSub(sub); setRejectionReason('') }}>
-                          <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
                         </Button>
                       </>
                     )}
-                    {sub.status === 'review_completed' && (
-                      <>
-                        <Button size="sm" variant="outline" className="text-emerald-600" onClick={() => updateSubmissionStatus(sub.id, 'accepted')}>
-                          <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Accept
-                        </Button>
-                        <Button size="sm" variant="outline" className="text-rose-600" onClick={() => { setRejectingSub(sub); setRejectionReason('') }}>
-                          <XCircle className="w-3.5 h-3.5 mr-1" /> Reject
-                        </Button>
-                      </>
+                    {selectedSub.status === 'review_completed' && (
+                      <Button size="sm" variant="outline" className="w-full text-emerald-600" onClick={() => updateSubmissionStatus(selectedSub.id, 'accepted')}>
+                        <CheckCircle2 className="w-3.5 h-3.5 mr-1" /> Accept
+                      </Button>
                     )}
                   </div>
+
+                  {/* Submission Info */}
+                  <div className="grid grid-cols-2 gap-4 text-sm p-3 rounded border bg-muted/30">
+                    <div>
+                      <span className="text-muted-foreground text-xs block">Submitted</span>
+                      <span className="font-medium">{new Date(selectedSub.submitted_at).toLocaleString()}</span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground text-xs block">Current Score</span>
+                      <span className="font-medium">{selectedSub.score ?? 'Not scored'}</span>
+                    </div>
+                  </div>
+
+                  {/* Links */}
+                  <div className="flex flex-wrap gap-2">
+                    {selectedSub.repo_url && (
+                      <a href={selectedSub.repo_url} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="gap-1.5"><Code className="w-3.5 h-3.5" /> GitHub Repo</Button>
+                      </a>
+                    )}
+                    {selectedSub.video_url && (
+                      <a href={selectedSub.video_url} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="gap-1.5"><Eye className="w-3.5 h-3.5" /> Video Demo</Button>
+                      </a>
+                    )}
+                    {selectedSub.live_url && (
+                      <a href={selectedSub.live_url} target="_blank" rel="noopener noreferrer">
+                        <Button size="sm" variant="outline" className="gap-1.5"><ExternalLink className="w-3.5 h-3.5" /> Live URL</Button>
+                      </a>
+                    )}
+                  </div>
+
+                  {selectedSub.comment && (
+                    <div className="p-3 rounded border bg-muted/30 text-sm">
+                      <span className="text-muted-foreground text-xs block mb-1">Team Comment</span>
+                      {selectedSub.comment}
+                    </div>
+                  )}
+
+                  {selectedSub.code && (
+                    <div className="space-y-1">
+                      <Label className="text-xs">Submitted Code</Label>
+                      <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto max-h-60 overflow-y-auto border">{selectedSub.code}</pre>
+                    </div>
+                  )}
+
+                  {/* Scoring Form */}
+                  <div className="border-t pt-4 space-y-4">
+                    <h4 className="text-sm font-semibold">Score Submission</h4>
+
+                    {event.features?.judging_rubrics ? (
+                      /* Rubric-based scoring */
+                      <div className="space-y-3">
+                        {event.features.rubric_criteria.map((c, i) => (
+                          <div key={i} className="space-y-1">
+                            <div className="flex items-center justify-between">
+                              <Label className="text-xs">{c.name} ({c.weight}%)</Label>
+                              <span className="text-xs text-muted-foreground">
+                                {scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0} / {c.weight}
+                              </span>
+                            </div>
+                            <input
+                              type="range"
+                              min={0}
+                              max={c.weight}
+                              value={scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0}
+                              onChange={(e) => {
+                                const newCriteria = [...(scoreForm.rubric_scores?.criteria || event.features!.rubric_criteria.map(() => ({ name: '', score: 0 })))]
+                                newCriteria[i] = { name: c.name, score: Number(e.target.value) }
+                                const total = newCriteria.reduce((sum, cr) => sum + cr.score, 0)
+                                setScoreForm(f => ({
+                                  ...f,
+                                  rubric_scores: { criteria: newCriteria, total_score: total, feedback: f.feedback }
+                                }))
+                              }}
+                              className="w-full"
+                            />
+                          </div>
+                        ))}
+                        <div className="flex items-center justify-between p-2 rounded bg-muted/50">
+                          <span className="text-sm font-medium">Total Score</span>
+                          <span className="text-lg font-bold">{scoreForm.rubric_scores?.total_score ?? 0} / 100</span>
+                        </div>
+                      </div>
+                    ) : (
+                      /* Simple 0-100 scoring */
+                      <div className="space-y-2">
+                        <Label>Score (0-100)</Label>
+                        <Input
+                          type="number"
+                          min={0}
+                          max={100}
+                          value={scoreForm.score}
+                          onChange={(e) => setScoreForm(f => ({ ...f, score: Number(e.target.value) }))}
+                        />
+                      </div>
+                    )}
+
+                    <div className="space-y-2">
+                      <Label>Feedback</Label>
+                      <Textarea
+                        rows={3}
+                        value={scoreForm.feedback}
+                        onChange={(e) => setScoreForm(f => ({ ...f, feedback: e.target.value }))}
+                        placeholder="Feedback for the team..."
+                      />
+                    </div>
+
+                    <div className="flex gap-2">
+                      <Button variant="outline" className="w-full" onClick={() => { setIsJudgeSheetOpen(false) }}>Cancel</Button>
+                      <Button className="w-full" onClick={async () => {
+                        await submitScore()
+                        setIsJudgeSheetOpen(false)
+                      }} disabled={scoring}>
+                        {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                        Submit Score
+                      </Button>
+                    </div>
+                  </div>
+
+                  {/* Revision History */}
+                  {selectedSub.history && selectedSub.history.length > 1 && (
+                    <div className="border-t pt-4 space-y-3">
+                      <h4 className="text-sm font-semibold flex items-center justify-between">
+                        Revision History
+                        <Badge variant="outline">{selectedSub.history.length - 1} Previous</Badge>
+                      </h4>
+                      <div className="space-y-2">
+                        {selectedSub.history.slice(1).map((rev: any, idx: number) => (
+                          <div key={rev.id} className="text-xs border p-2 rounded bg-muted/10 space-y-2">
+                            <div className="flex justify-between items-center">
+                              <span className="font-medium text-foreground">Revision {selectedSub.history.length - idx - 1}</span>
+                              <span className="text-muted-foreground">{new Date(rev.submitted_at).toLocaleString()}</span>
+                            </div>
+                            {(rev.repo_url || rev.live_url) && (
+                              <div className="flex gap-2">
+                                {rev.repo_url && <a href={rev.repo_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Repo</a>}
+                                {rev.live_url && <a href={rev.live_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Live</a>}
+                              </div>
+                            )}
+                            {rev.comment && <div className="text-muted-foreground mt-1">"{rev.comment}"</div>}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
-              ))}
-            </Card>
-          )}
+              )}
+            </SheetContent>
+          </Sheet>
         </TabsContent>
 
         {/* Results Tab */}
