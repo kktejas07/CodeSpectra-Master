@@ -197,28 +197,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     } finally { setScoring(false) }
   }, [event?.id, selectedSub, scoreForm, event?.features?.judging_rubrics, loadJudgeSubmissions, addToast])
 
-  const exportResults = useCallback(() => {
-    if (!groupedSubmissions || groupedSubmissions.length === 0) return
-    const csvContent = [
-      ['Team', 'Problem', 'Status', 'Score', 'Submitted At', 'Repo URL', 'Live URL'].join(','),
-      ...groupedSubmissions.map(sub => [
-        `"${sub.team_name || ''}"`,
-        `"${sub.problem_slug || ''}"`,
-        `"${sub.status || ''}"`,
-        `"${sub.score ?? ''}"`,
-        `"${new Date(sub.submitted_at).toLocaleString()}"`,
-        `"${sub.repo_url || ''}"`,
-        `"${sub.live_url || ''}"`
-      ].join(','))
-    ].join('\n')
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = `hackathon_${event?.id}_results.csv`
-    a.click()
-    URL.revokeObjectURL(url)
-  }, [groupedSubmissions, event?.id])
+
 
   const updateSubmissionStatus = useCallback(async (submissionId: string, newStatus: string, rejectionReason?: string) => {
     if (!event) return
@@ -267,6 +246,29 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     }
     return Array.from(map.values())
   }, [judgeSubmissions])
+
+  const exportResults = useCallback(() => {
+    if (!groupedSubmissions || groupedSubmissions.length === 0) return
+    const csvContent = [
+      ['Team', 'Problem', 'Status', 'Score', 'Submitted At', 'Repo URL', 'Live URL'].join(','),
+      ...groupedSubmissions.map(sub => [
+        `"${sub.team_name || ''}"`,
+        `"${sub.problem_slug || ''}"`,
+        `"${sub.status || ''}"`,
+        `"${sub.score ?? ''}"`,
+        `"${new Date(sub.submitted_at).toLocaleString()}"`,
+        `"${sub.repo_url || ''}"`,
+        `"${sub.live_url || ''}"`
+      ].join(','))
+    ].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `hackathon_${event?.id}_results.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [groupedSubmissions, event?.id])
 
   const columns: DataTableColumn<any>[] = useMemo(() => [
     {
