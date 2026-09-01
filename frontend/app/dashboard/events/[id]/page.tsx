@@ -19,7 +19,7 @@ import {
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import {
   Loader2, ArrowLeft, Trophy, Users, Clock, CalendarDays, Timer,
-  CheckCircle, ListChecks, Shield, Settings, Eye, Send, Copy,
+  CheckCircle, Download, ListChecks, Shield, Settings, Eye, Send, Copy,
   Code, Target, Star, Medal, Award, ChevronRight, ExternalLink,
   CheckCircle2, XCircle,
 } from 'lucide-react'
@@ -108,6 +108,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Rejection state
   const [rejectingSub, setRejectingSub] = useState<any>(null)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [isEditingScore, setIsEditingScore] = useState(false)
 
   const isAdmin = authUser && ['superadmin', 'admin', 'tenant_admin'].includes((authUser as any).role || '')
   const isJudge = event?.judges?.includes(authUser?.uid || '') || false
@@ -189,11 +190,35 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       addToast({ type: 'success', title: 'Score submitted' })
       setSelectedSub(null)
       setScoreForm({ score: 0, feedback: '' })
+      setIsEditingScore(false)
       void loadJudgeSubmissions()
     } catch (e: any) {
       addToast({ type: 'error', title: e.message || 'Failed to submit score' })
     } finally { setScoring(false) }
   }, [event?.id, selectedSub, scoreForm, event?.features?.judging_rubrics, loadJudgeSubmissions, addToast])
+
+  const exportResults = useCallback(() => {
+    if (!groupedSubmissions || groupedSubmissions.length === 0) return
+    const csvContent = [
+      ['Team', 'Problem', 'Status', 'Score', 'Submitted At', 'Repo URL', 'Live URL'].join(','),
+      ...groupedSubmissions.map(sub => [
+        `"${sub.team_name || ''}"`,
+        `"${sub.problem_slug || ''}"`,
+        `"${sub.status || ''}"`,
+        `"${sub.score ?? ''}"`,
+        `"${new Date(sub.submitted_at).toLocaleString()}"`,
+        `"${sub.repo_url || ''}"`,
+        `"${sub.live_url || ''}"`
+      ].join(','))
+    ].join('\n')
+    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = `hackathon_${event?.id}_results.csv`
+    a.click()
+    URL.revokeObjectURL(url)
+  }, [groupedSubmissions, event?.id])
 
   const updateSubmissionStatus = useCallback(async (submissionId: string, newStatus: string, rejectionReason?: string) => {
     if (!event) return
@@ -281,17 +306,16 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       key: 'actions',
       header: 'Action',
       cell: (row: any) => (
-        <Button size="sm" variant="outline" onClick={() => {
+        <Button size="sm" onClick={() => {
           setSelectedSub(row)
           setScoreForm({
-            score: row.score ?? 0,
-            feedback: row.feedback ?? '',
-            rubric_scores: row.rubric_scores?.[0] || undefined,
+            score: row.score || 0,
+            feedback: row.feedback || '',
+            rubric_scores: row.rubric_scores || null
           })
+          setIsEditingScore(false)
           setIsJudgeSheetOpen(true)
-        }}>
-          Evaluate
-        </Button>
+        }}>Evaluate</Button>
       )
     }
   ], [])
@@ -598,9 +622,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   <h3 className="font-semibold text-sm text-blue-500">Judging Dashboard</h3>
                   <p className="text-xs text-muted-foreground">Showing latest submissions grouped by team and problem.</p>
                 </div>
-                <div className="text-right">
-                  <p className="text-2xl font-bold font-mono">{groupedSubmissions.length}</p>
-                  <p className="text-xs text-muted-foreground">Total Unique Submissions</p>
+                <div className="flex items-center gap-4">
+                  <div className="text-right">
+                    <p className="text-2xl font-bold font-mono">{groupedSubmissions.length}</p>
+                    <p className="text-xs text-muted-foreground">Total Unique Submissions</p>
+                  </div>
+                  <Button size="sm" variant="outline" onClick={exportResults} className="h-9">
+                    <Download className="w-4 h-4 mr-2" /> Export CSV
+                  </Button>
                 </div>
               </Card>
               <DataTable 
@@ -698,119 +727,168 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   )}
 
                   {/* Scoring Form */}
-                  <div className="border-t pt-6 space-y-5">
-                    <h4 className="text-base font-semibold">Score Submission</h4>
-
-                    {event.features?.judging_rubrics ? (
-                      /* Rubric-based scoring */
-                      <div className="space-y-4">
-                        {event.features.rubric_criteria.map((c, i) => (
-                          <div key={i} className="space-y-2">
-                            <div className="flex items-center justify-between">
-                              <Label className="text-sm font-medium">{c.name} <span className="text-muted-foreground font-normal">({c.weight}%)</span></Label>
-                              <span className="text-sm font-semibold text-primary">
-                                {scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0} <span className="text-muted-foreground font-normal">/ {c.weight}</span>
-                              </span>
-                            </div>
-                            <input
-                              type="range"
-                              min={0}
-                              max={c.weight}
-                              value={scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0}
-                              onChange={(e) => {
-                                const newCriteria = [...(scoreForm.rubric_scores?.criteria || event.features!.rubric_criteria.map(() => ({ name: '', score: 0 })))]
-                                newCriteria[i] = { name: c.name, score: Number(e.target.value) }
-                                const total = newCriteria.reduce((sum, cr) => sum + cr.score, 0)
-                                setScoreForm(f => ({
-                                  ...f,
-                                  rubric_scores: { criteria: newCriteria, total_score: total, feedback: f.feedback }
-                                }))
-                              }}
-                              className="w-full accent-primary"
-                            />
-                          </div>
-                        ))}
-                        <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/10 mt-2">
-                          <span className="text-sm font-medium text-primary">Total Score</span>
-                          <span className="text-xl font-bold text-primary">{scoreForm.rubric_scores?.total_score ?? 0} <span className="text-sm text-muted-foreground font-normal">/ 100</span></span>
-                        </div>
+                  {selectedSub.score !== null && !isEditingScore ? (
+                    <div className="border-t pt-6 space-y-4">
+                      <div className="flex items-center justify-between">
+                        <h4 className="text-base font-semibold">Score Summary</h4>
+                        <Button size="sm" variant="outline" onClick={() => setIsEditingScore(true)}>
+                          Edit Score
+                        </Button>
                       </div>
-                    ) : (
-                      /* Simple 0-100 scoring */
+                      <div className="p-4 rounded-xl border bg-primary/5 space-y-2">
+                        <div className="flex items-center justify-between">
+                          <span className="font-medium text-sm">Total Score</span>
+                          <span className="text-lg font-bold text-primary">{selectedSub.score} <span className="text-sm text-muted-foreground font-normal">/ {selectedSub.max_score}</span></span>
+                        </div>
+                        {selectedSub.feedback && (
+                          <div className="pt-2 border-t border-primary/10">
+                            <span className="text-xs text-muted-foreground block mb-1">Feedback Provided</span>
+                            <p className="text-sm">{selectedSub.feedback}</p>
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="border-t pt-6 space-y-5">
+                      <h4 className="text-base font-semibold">Score Submission</h4>
+
+                      {event.features?.judging_rubrics ? (
+                        /* Rubric-based scoring */
+                        <div className="space-y-4">
+                          {event.features.rubric_criteria.map((c, i) => (
+                            <div key={i} className="space-y-2">
+                              <div className="flex items-center justify-between">
+                                <Label className="text-sm font-medium">{c.name} <span className="text-muted-foreground font-normal">({c.weight}%)</span></Label>
+                                <span className="text-sm font-semibold text-primary">
+                                  {scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0} <span className="text-muted-foreground font-normal">/ {c.weight}</span>
+                                </span>
+                              </div>
+                              <input
+                                type="range"
+                                min={0}
+                                max={c.weight}
+                                value={scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0}
+                                onChange={(e) => {
+                                  const newCriteria = [...(scoreForm.rubric_scores?.criteria || event.features!.rubric_criteria.map(() => ({ name: '', score: 0 })))]
+                                  newCriteria[i] = { name: c.name, score: Number(e.target.value) }
+                                  const total = newCriteria.reduce((sum, cr) => sum + cr.score, 0)
+                                  setScoreForm(f => ({
+                                    ...f,
+                                    rubric_scores: { criteria: newCriteria, total_score: total, feedback: f.feedback }
+                                  }))
+                                }}
+                                className="w-full accent-primary"
+                              />
+                            </div>
+                          ))}
+                          <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/10 mt-2">
+                            <span className="text-sm font-medium text-primary">Total Score</span>
+                            <span className="text-xl font-bold text-primary">{scoreForm.rubric_scores?.total_score ?? 0} <span className="text-sm text-muted-foreground font-normal">/ 100</span></span>
+                          </div>
+                        </div>
+                      ) : (
+                        /* Simple 0-100 scoring */
+                        <div className="space-y-2">
+                          <Label>Score (0-100)</Label>
+                          <Input
+                            type="number"
+                            min={0}
+                            max={100}
+                            value={scoreForm.score}
+                            onChange={(e) => setScoreForm(f => ({ ...f, score: Number(e.target.value) }))}
+                            className="w-full"
+                          />
+                        </div>
+                      )}
+
                       <div className="space-y-2">
-                        <Label>Score (0-100)</Label>
-                        <Input
-                          type="number"
-                          min={0}
-                          max={100}
-                          value={scoreForm.score}
-                          onChange={(e) => setScoreForm(f => ({ ...f, score: Number(e.target.value) }))}
-                          className="w-full"
+                        <Label>Feedback</Label>
+                        <Textarea
+                          rows={4}
+                          value={scoreForm.feedback}
+                          onChange={(e) => setScoreForm(f => ({ ...f, feedback: e.target.value }))}
+                          placeholder="Provide constructive feedback for the team..."
+                          className="resize-none"
                         />
                       </div>
-                    )}
 
-                    <div className="space-y-2">
-                      <Label>Feedback</Label>
-                      <Textarea
-                        rows={4}
-                        value={scoreForm.feedback}
-                        onChange={(e) => setScoreForm(f => ({ ...f, feedback: e.target.value }))}
-                        placeholder="Provide constructive feedback for the team..."
-                        className="resize-none"
-                      />
+                      <div className="grid grid-cols-2 gap-3 pt-2">
+                        <Button variant="outline" className="w-full" onClick={() => { setIsJudgeSheetOpen(false) }}>Cancel</Button>
+                        <Button className="w-full" onClick={async () => {
+                          await submitScore()
+                          setIsJudgeSheetOpen(false)
+                        }} disabled={scoring}>
+                          {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
+                          Submit Score
+                        </Button>
+                      </div>
                     </div>
-
-                    <div className="flex gap-3 pt-2">
-                      <Button variant="outline" className="w-full" onClick={() => { setIsJudgeSheetOpen(false) }}>Cancel</Button>
-                      <Button className="w-full" onClick={async () => {
-                        await submitScore()
-                        setIsJudgeSheetOpen(false)
-                      }} disabled={scoring}>
-                        {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
-                        Submit Score
-                      </Button>
-                    </div>
-                  </div>
+                  )}
 
                   {/* Revision History */}
                   {selectedSub.history && selectedSub.history.length > 1 && (
                     <div className="border-t pt-6 space-y-4">
                       <h4 className="text-base font-semibold flex items-center justify-between">
                         Revision History
-                        <Badge variant="secondary" className="font-normal">{selectedSub.history.length - 1} Previous</Badge>
+                        <Badge variant="secondary" className="font-normal">{selectedSub.history.length} Total</Badge>
                       </h4>
                       <div className="space-y-3">
-                        {selectedSub.history.slice(1).map((rev: any, idx: number) => (
-                          <div key={rev.id} className="text-sm border p-4 rounded-xl bg-muted/5 space-y-3 hover:bg-muted/10 transition-colors">
-                            <div className="flex justify-between items-start">
-                              <div>
-                                <span className="font-semibold text-foreground block">Revision {selectedSub.history.length - idx - 1}</span>
-                                <span className="text-muted-foreground text-xs">{new Date(rev.submitted_at).toLocaleString()}</span>
+                        {selectedSub.history.map((rev: any, idx: number) => {
+                          const isCurrent = rev.id === selectedSub.id
+                          return (
+                            <div 
+                              key={rev.id} 
+                              className={`text-sm border p-4 rounded-xl space-y-3 transition-colors ${
+                                isCurrent 
+                                  ? 'bg-primary/10 border-primary/20' 
+                                  : 'bg-muted/5 hover:bg-muted/10 cursor-pointer'
+                              }`}
+                              onClick={() => {
+                                if (!isCurrent) {
+                                  setSelectedSub({ ...rev, history: selectedSub.history })
+                                  setScoreForm({
+                                    score: rev.score || 0,
+                                    feedback: rev.feedback || '',
+                                    rubric_scores: rev.rubric_scores || null
+                                  })
+                                  setIsEditingScore(false)
+                                }
+                              }}
+                            >
+                              <div className="flex justify-between items-start">
+                                <div>
+                                  <span className="font-semibold text-foreground block">
+                                    Revision {selectedSub.history.length - idx} {isCurrent && <span className="text-[10px] text-primary ml-2 uppercase">(Viewing)</span>}
+                                  </span>
+                                  <span className="text-muted-foreground text-xs">{new Date(rev.submitted_at).toLocaleString()}</span>
+                                </div>
+                                <div className="text-right">
+                                  <Badge variant="outline" className="text-[10px]">{rev.status}</Badge>
+                                  {rev.score !== null && <span className="block mt-1 text-xs font-medium text-primary">Score: {rev.score}</span>}
+                                </div>
                               </div>
-                              <Badge variant="outline" className="text-[10px]">{rev.status}</Badge>
+                              {(rev.repo_url || rev.live_url) && (
+                                <div className="flex flex-wrap gap-2">
+                                  {rev.repo_url && (
+                                    <a href={rev.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 font-medium">
+                                      <Code className="w-3 h-3 mr-1" /> Repo
+                                    </a>
+                                  )}
+                                  {rev.live_url && (
+                                    <a href={rev.live_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 font-medium">
+                                      <ExternalLink className="w-3 h-3 mr-1" /> Live
+                                    </a>
+                                  )}
+                                </div>
+                              )}
+                              {rev.comment && (
+                                <div className="text-muted-foreground text-xs bg-background/50 p-2 rounded border mt-2">
+                                  "{rev.comment}"
+                                </div>
+                              )}
                             </div>
-                            {(rev.repo_url || rev.live_url) && (
-                              <div className="flex flex-wrap gap-2">
-                                {rev.repo_url && (
-                                  <a href={rev.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 font-medium">
-                                    <Code className="w-3 h-3 mr-1" /> Repo
-                                  </a>
-                                )}
-                                {rev.live_url && (
-                                  <a href={rev.live_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 font-medium">
-                                    <ExternalLink className="w-3 h-3 mr-1" /> Live
-                                  </a>
-                                )}
-                              </div>
-                            )}
-                            {rev.comment && (
-                              <div className="text-muted-foreground text-xs bg-background/50 p-2 rounded border mt-2">
-                                "{rev.comment}"
-                              </div>
-                            )}
-                          </div>
-                        ))}
+                          )
+                        })}
                       </div>
                     </div>
                   )}
