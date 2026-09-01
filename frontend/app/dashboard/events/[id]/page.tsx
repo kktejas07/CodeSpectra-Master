@@ -614,12 +614,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Evaluate Submission Sheet */}
           <Sheet open={isJudgeSheetOpen} onOpenChange={setIsJudgeSheetOpen}>
-            <SheetContent side="right" className="w-[400px] sm:w-[540px] overflow-y-auto">
-              <SheetHeader className="mb-4">
+            <SheetContent side="right" className="w-full sm:max-w-[540px] overflow-y-auto p-0">
+              <SheetHeader className="p-6 pb-4 border-b">
                 <SheetTitle>Evaluate Submission</SheetTitle>
               </SheetHeader>
               {selectedSub && (
-                <div className="space-y-4">
+                <div className="p-6 space-y-6">
                   <div className="flex items-center justify-between">
                     <div>
                       <h3 className="font-semibold text-sm">{selectedSub.team_name}</h3>
@@ -653,14 +653,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
 
                   {/* Submission Info */}
-                  <div className="grid grid-cols-2 gap-4 text-sm p-3 rounded border bg-muted/30">
+                  <div className="grid grid-cols-2 gap-4 text-sm p-4 rounded-xl border bg-muted/20">
                     <div>
-                      <span className="text-muted-foreground text-xs block">Submitted</span>
-                      <span className="font-medium">{new Date(selectedSub.submitted_at).toLocaleString()}</span>
+                      <span className="text-muted-foreground text-xs font-medium block mb-1">Submitted</span>
+                      <span className="font-semibold">{new Date(selectedSub.submitted_at).toLocaleString()}</span>
                     </div>
                     <div>
-                      <span className="text-muted-foreground text-xs block">Current Score</span>
-                      <span className="font-medium">{selectedSub.score ?? 'Not scored'}</span>
+                      <span className="text-muted-foreground text-xs font-medium block mb-1">Current Score</span>
+                      <span className="font-semibold text-primary">{selectedSub.score ?? 'Not scored'}</span>
                     </div>
                   </div>
 
@@ -684,9 +684,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   </div>
 
                   {selectedSub.comment && (
-                    <div className="p-3 rounded border bg-muted/30 text-sm">
-                      <span className="text-muted-foreground text-xs block mb-1">Team Comment</span>
-                      {selectedSub.comment}
+                    <div className="p-4 rounded-xl border bg-muted/20 text-sm">
+                      <span className="text-muted-foreground text-xs font-medium block mb-2">Team Comment</span>
+                      <p className="text-foreground leading-relaxed">{selectedSub.comment}</p>
                     </div>
                   )}
 
@@ -698,18 +698,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   )}
 
                   {/* Scoring Form */}
-                  <div className="border-t pt-4 space-y-4">
-                    <h4 className="text-sm font-semibold">Score Submission</h4>
+                  <div className="border-t pt-6 space-y-5">
+                    <h4 className="text-base font-semibold">Score Submission</h4>
 
                     {event.features?.judging_rubrics ? (
                       /* Rubric-based scoring */
-                      <div className="space-y-3">
+                      <div className="space-y-4">
                         {event.features.rubric_criteria.map((c, i) => (
-                          <div key={i} className="space-y-1">
+                          <div key={i} className="space-y-2">
                             <div className="flex items-center justify-between">
-                              <Label className="text-xs">{c.name} ({c.weight}%)</Label>
-                              <span className="text-xs text-muted-foreground">
-                                {scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0} / {c.weight}
+                              <Label className="text-sm font-medium">{c.name} <span className="text-muted-foreground font-normal">({c.weight}%)</span></Label>
+                              <span className="text-sm font-semibold text-primary">
+                                {scoreForm.rubric_scores?.criteria?.[i]?.score ?? 0} <span className="text-muted-foreground font-normal">/ {c.weight}</span>
                               </span>
                             </div>
                             <input
@@ -726,13 +726,13 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                                   rubric_scores: { criteria: newCriteria, total_score: total, feedback: f.feedback }
                                 }))
                               }}
-                              className="w-full"
+                              className="w-full accent-primary"
                             />
                           </div>
                         ))}
-                        <div className="flex items-center justify-between p-2 rounded bg-muted/50">
-                          <span className="text-sm font-medium">Total Score</span>
-                          <span className="text-lg font-bold">{scoreForm.rubric_scores?.total_score ?? 0} / 100</span>
+                        <div className="flex items-center justify-between p-4 rounded-xl bg-primary/5 border border-primary/10 mt-2">
+                          <span className="text-sm font-medium text-primary">Total Score</span>
+                          <span className="text-xl font-bold text-primary">{scoreForm.rubric_scores?.total_score ?? 0} <span className="text-sm text-muted-foreground font-normal">/ 100</span></span>
                         </div>
                       </div>
                     ) : (
@@ -745,6 +745,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                           max={100}
                           value={scoreForm.score}
                           onChange={(e) => setScoreForm(f => ({ ...f, score: Number(e.target.value) }))}
+                          className="w-full"
                         />
                       </div>
                     )}
@@ -752,20 +753,21 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <div className="space-y-2">
                       <Label>Feedback</Label>
                       <Textarea
-                        rows={3}
+                        rows={4}
                         value={scoreForm.feedback}
                         onChange={(e) => setScoreForm(f => ({ ...f, feedback: e.target.value }))}
-                        placeholder="Feedback for the team..."
+                        placeholder="Provide constructive feedback for the team..."
+                        className="resize-none"
                       />
                     </div>
 
-                    <div className="flex gap-2">
+                    <div className="flex gap-3 pt-2">
                       <Button variant="outline" className="w-full" onClick={() => { setIsJudgeSheetOpen(false) }}>Cancel</Button>
                       <Button className="w-full" onClick={async () => {
                         await submitScore()
                         setIsJudgeSheetOpen(false)
                       }} disabled={scoring}>
-                        {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-1" /> : <Send className="w-4 h-4 mr-1" />}
+                        {scoring ? <Loader2 className="w-4 h-4 animate-spin mr-2" /> : <Send className="w-4 h-4 mr-2" />}
                         Submit Score
                       </Button>
                     </div>
@@ -773,25 +775,40 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
                   {/* Revision History */}
                   {selectedSub.history && selectedSub.history.length > 1 && (
-                    <div className="border-t pt-4 space-y-3">
-                      <h4 className="text-sm font-semibold flex items-center justify-between">
+                    <div className="border-t pt-6 space-y-4">
+                      <h4 className="text-base font-semibold flex items-center justify-between">
                         Revision History
-                        <Badge variant="outline">{selectedSub.history.length - 1} Previous</Badge>
+                        <Badge variant="secondary" className="font-normal">{selectedSub.history.length - 1} Previous</Badge>
                       </h4>
-                      <div className="space-y-2">
+                      <div className="space-y-3">
                         {selectedSub.history.slice(1).map((rev: any, idx: number) => (
-                          <div key={rev.id} className="text-xs border p-2 rounded bg-muted/10 space-y-2">
-                            <div className="flex justify-between items-center">
-                              <span className="font-medium text-foreground">Revision {selectedSub.history.length - idx - 1}</span>
-                              <span className="text-muted-foreground">{new Date(rev.submitted_at).toLocaleString()}</span>
+                          <div key={rev.id} className="text-sm border p-4 rounded-xl bg-muted/5 space-y-3 hover:bg-muted/10 transition-colors">
+                            <div className="flex justify-between items-start">
+                              <div>
+                                <span className="font-semibold text-foreground block">Revision {selectedSub.history.length - idx - 1}</span>
+                                <span className="text-muted-foreground text-xs">{new Date(rev.submitted_at).toLocaleString()}</span>
+                              </div>
+                              <Badge variant="outline" className="text-[10px]">{rev.status}</Badge>
                             </div>
                             {(rev.repo_url || rev.live_url) && (
-                              <div className="flex gap-2">
-                                {rev.repo_url && <a href={rev.repo_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Repo</a>}
-                                {rev.live_url && <a href={rev.live_url} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Live</a>}
+                              <div className="flex flex-wrap gap-2">
+                                {rev.repo_url && (
+                                  <a href={rev.repo_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 font-medium">
+                                    <Code className="w-3 h-3 mr-1" /> Repo
+                                  </a>
+                                )}
+                                {rev.live_url && (
+                                  <a href={rev.live_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center text-xs text-blue-500 hover:text-blue-600 font-medium">
+                                    <ExternalLink className="w-3 h-3 mr-1" /> Live
+                                  </a>
+                                )}
                               </div>
                             )}
-                            {rev.comment && <div className="text-muted-foreground mt-1">"{rev.comment}"</div>}
+                            {rev.comment && (
+                              <div className="text-muted-foreground text-xs bg-background/50 p-2 rounded border mt-2">
+                                "{rev.comment}"
+                              </div>
+                            )}
                           </div>
                         ))}
                       </div>
