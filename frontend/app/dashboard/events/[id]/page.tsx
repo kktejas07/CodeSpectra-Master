@@ -108,6 +108,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // Rejection state
   const [rejectingSub, setRejectingSub] = useState<any>(null)
   const [rejectionReason, setRejectionReason] = useState('')
+  const [releasingResults, setReleasingResults] = useState(false)
   const [isEditingScore, setIsEditingScore] = useState(false)
 
   const isAdmin = authUser && ['superadmin', 'admin', 'tenant_admin'].includes((authUser as any).role || '')
@@ -226,6 +227,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     setRejectingSub(null)
     setRejectionReason('')
   }, [rejectingSub, rejectionReason, updateSubmissionStatus])
+
+  const handleReleaseResults = useCallback(async () => {
+    if (!event?.id) return
+    if (!window.confirm('Are you sure you want to release the results? Unreviewed submissions will be scored as 0. This cannot be undone.')) return
+    setReleasingResults(true)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${event.id}/release-results`, { method: 'POST' })
+      if (!res.ok) throw new Error(await res.text())
+      addToast({ type: 'success', title: 'Results released!' })
+      window.location.reload()
+    } catch (err: any) {
+      addToast({ type: 'error', title: 'Error releasing results', message: err.message })
+    } finally {
+      setReleasingResults(false)
+    }
+  }, [event?.id, addToast])
 
   const groupedSubmissions = useMemo(() => {
     const map = new Map<string, any>()
@@ -629,6 +646,12 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                     <p className="text-2xl font-bold font-mono">{groupedSubmissions.length}</p>
                     <p className="text-xs text-muted-foreground">Total Unique Submissions</p>
                   </div>
+                  {isAdmin && !event?.results_released && (
+                    <Button size="sm" variant="default" onClick={handleReleaseResults} disabled={releasingResults} className="h-9">
+                      {releasingResults ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Award className="w-4 h-4 mr-2" />}
+                      Release Scores
+                    </Button>
+                  )}
                   <Button size="sm" variant="outline" onClick={exportResults} className="h-9">
                     <Download className="w-4 h-4 mr-2" /> Export CSV
                   </Button>
