@@ -430,6 +430,7 @@ export default function HackathonsAdminPage() {
                   value={form.num_teams}
                   onChange={(v) => setForm((f) => ({ ...f, num_teams: v }))}
                   min={1}
+                  max={1000}
                   hint="Total number of teams that can compete in this event."
                 />
                 <NumberField
@@ -939,6 +940,7 @@ export default function HackathonsAdminPage() {
                     value={form.solve_limit}
                     onChange={(v) => setForm((f) => ({ ...f, solve_limit: v }))}
                     min={0}
+                    max={1000}
                     hint="Max problems a team can attempt. 0 = no limit."
                   />
                 </div>
