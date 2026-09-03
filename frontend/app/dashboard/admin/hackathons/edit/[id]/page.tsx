@@ -573,7 +573,6 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         {step === 2 && (
           <div className="space-y-6">
             <h3 className="font-semibold text-lg">Assign Problems</h3>
-            )}
             <p className="text-sm text-muted-foreground">
               Choose how to add problems — pick from your library, write your own, or generate with AI.
             </p>
