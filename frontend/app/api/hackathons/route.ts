@@ -116,7 +116,7 @@ export async function POST(req: NextRequest) {
   }
 
   if (!body.name) return NextResponse.json({ error: 'name required' }, { status: 400 })
-  const numTeams = Math.min(500, Math.max(1, Number(body.num_teams) || 8))
+  const numTeams = Math.min(1000, Math.max(1, Number(body.num_teams) || 8))
   const maxPerTeam = Math.min(20, Math.max(1, Number(body.max_per_team) || 4))
   const timeoutMin = Math.min(7 * 24 * 60, Math.max(5, Number(body.timeout_minutes) || 60))
   const startsAt = body.starts_at ? new Date(body.starts_at) : new Date()
