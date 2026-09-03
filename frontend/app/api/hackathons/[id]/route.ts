@@ -117,17 +117,6 @@ export async function PATCH(
     $set.judges = body.judges
   }
   
-  // Lock tasks, rules, scoring during live/closed
-  const hasProtectedFields = body.tasks !== undefined || body.rules !== undefined || body.scoring !== undefined
-  if ((cur.status === 'live' || cur.status === 'closed') && hasProtectedFields) {
-    return NextResponse.json({ error: 'Cannot modify tasks, rules, or scoring during live/closed event' }, { status: 409 })
-  }
-  
-  // Lock features during live/closed
-  if ((cur.status === 'live' || cur.status === 'closed') && body.features) {
-    return NextResponse.json({ error: 'Cannot modify features during live/closed event' }, { status: 409 })
-  }
-  
   if (Array.isArray(body.tasks)) {
     $set.tasks = body.tasks.map((t: any, i: number) => ({
       problem_slug: String(t.problem_slug || ''),
