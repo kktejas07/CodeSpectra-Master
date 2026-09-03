@@ -101,7 +101,7 @@ export async function PATCH(
     const validTransitions: Record<string, string[]> = {
       draft: ['open', 'closed'],
       open: ['live', 'draft', 'closed'],
-      live: ['closed', 'open'],
+      live: ['closed', 'open', 'draft'],
       closed: ['open'],
     }
     if (!validTransitions[cur.status]?.includes(body.status)) {
