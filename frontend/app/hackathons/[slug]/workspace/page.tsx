@@ -36,7 +36,7 @@ import ReactMarkdown from 'react-markdown'
 
 const Editor = dynamic(() => import("@monaco-editor/react"), {
   ssr: false,
-  loading: () => <div className="flex items-center justify-center h-75 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>,
+  loading: () => <div className="flex items-center justify-center h-[300px] text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /></div>,
 });
 
 const TOP_LANGUAGES = [
@@ -792,7 +792,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         )}
 
         <Dialog open={emailInviteOpen} onOpenChange={setEmailInviteOpen}>
-          <DialogContent className="sm:max-w-105">
+          <DialogContent className="sm:max-w-[420px]">
             <DialogHeader>
               <DialogTitle>Invite by email</DialogTitle>
             </DialogHeader>
@@ -825,7 +825,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       </main>
 
       <Dialog open={!!submittingFor} onOpenChange={(o) => { if (!o) closeSubmitModal() }}>
-        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-137.5">
+        <DialogContent className="max-h-[90vh] overflow-y-auto sm:max-w-[550px]">
           {submittingFor && (
             <>
               <DialogHeader>
@@ -888,7 +888,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
               </div>
               <div className="space-y-2">
                   <Label htmlFor="code">Code (optional)</Label>
-                  <div className="h-50 rounded-md border border-border overflow-hidden">
+                  <div className="h-[200px] rounded-md border border-border overflow-hidden">
                     <Editor
                       height="100%"
                       language={TOP_LANGUAGES.find(l => l.id === editorLanguage)?.monaco || "plaintext"}
@@ -961,7 +961,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       </Dialog>
 
       <Sheet open={!!selectedProblem} onOpenChange={(o) => { if (!o) closeProblemPanel() }}>
-        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col [&>button.absolute]:hidden">
+        <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col [&>button]:hidden">
           {selectedProblem && (
             <>
               <div className="shrink-0 border-b border-border px-6 py-5 sm:px-8 flex items-start justify-between bg-muted/30">
@@ -988,10 +988,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
                   </div>
                 ) : problemDetail?.statement_md ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none wrap-break-word leading-relaxed [&_p]:mb-3 [&_ul]:pl-4 [&_ul]:mb-3">
-                    <div className="[&_li]:mb-1 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-muted [&_code]:text-xs [&_code]:font-mono [&_strong]:font-semibold">
-                      <ReactMarkdown>{problemDetail.statement_md}</ReactMarkdown>
-                    </div>
+                  <div className="prose prose-sm dark:prose-invert max-w-none wrap-break-word leading-relaxed [&_p]:mb-3 [&_ul]:pl-4 [&_ul]:mb-3 [&_li]:mb-1 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-muted [&_code]:text-xs [&_code]:font-mono [&_strong]:font-semibold">
+                    <ReactMarkdown>{problemDetail.statement_md}</ReactMarkdown>
                   </div>
                 ) : (
                   <p className="text-sm text-muted-foreground py-8 text-center">No problem description available.</p>
@@ -1059,7 +1057,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                       {TOP_LANGUAGES.map(l => (<option key={l.id} value={l.id}>{l.label}</option>))}
                     </select>
                   </div>
-                  <div className="h-62.5 rounded-lg border border-border overflow-hidden">
+                  <div className="h-[250px] rounded-lg border border-border overflow-hidden">
                     <Editor
                       height="100%"
                       language={TOP_LANGUAGES.find(l => l.id === sheetLang)?.monaco || "plaintext"}
