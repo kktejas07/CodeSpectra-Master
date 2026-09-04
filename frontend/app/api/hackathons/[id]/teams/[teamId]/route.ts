@@ -69,9 +69,7 @@ export async function PATCH(
 ) {
   const user = await getAPIUser()
   if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (!isAdmin(user.role)) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+
   const { id, teamId } = await ctx.params
   let body: {
     name?: string
@@ -87,6 +85,13 @@ export async function PATCH(
 
   const team = await resolveTeam(id, teamId)
   if (!team) return NextResponse.json({ error: 'not found' }, { status: 404 })
+
+  const isCaptain = Array.isArray(team.members) && team.members.some((m: { user_id?: string; role?: string }) => m.user_id === user.id && m.role === 'captain')
+  const userIsAdmin = isAdmin(user.role)
+
+  if (!userIsAdmin && !isCaptain) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
 
   // tenant_admin can only manage teams in their own tenant's hackathon
   const hk = await (await hackathons()).findOne({ $or: [{ id }, { slug: id }] })
