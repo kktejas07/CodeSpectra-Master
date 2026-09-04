@@ -29,6 +29,7 @@ import {
   Gavel,
   FileBarChart,
   ExternalLink,
+  Save,
 } from 'lucide-react'
 import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -66,6 +67,7 @@ interface Team {
 interface GrantState {
   xp: string
   achievement: string
+  rename?: string
   busy: boolean
 }
 
@@ -145,25 +147,30 @@ export default function HackathonDetailPage({
   function updateGrant(teamId: string, patch: Partial<GrantState>) {
     setGrant((g) => ({
       ...g,
-      [teamId]: { ...{ xp: '', achievement: '', busy: false }, ...g[teamId], ...patch },
+      [teamId]: { ...{ xp: '', achievement: '', rename: '', busy: false }, ...g[teamId], ...patch },
     }))
   }
 
-  async function applyGrant(team: Team, op: 'xp' | 'ach' | 'sub') {
-    const state = grant[team.id] || { xp: '', achievement: '', busy: false }
+  async function applyGrant(team: Team, op: 'xp' | 'ach' | 'sub' | 'rename') {
+    const state = grant[team.id] || { xp: '', achievement: '', rename: '', busy: false }
     updateGrant(team.id, { busy: true })
     try {
       const body: Record<string, unknown> = {}
       if (op === 'xp' && state.xp) body.xp_delta = Number(state.xp)
       if (op === 'ach' && state.achievement) body.achievement = state.achievement
       if (op === 'sub') body.submission = true
+      if (op === 'rename' && state.rename) body.name = state.rename
       const res = await csrfFetch(`/api/hackathons/${id}/teams/${team.id}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body),
       })
       if (!res.ok) throw new Error('patch failed')
-      updateGrant(team.id, { xp: op === 'xp' ? '' : state.xp, achievement: op === 'ach' ? '' : state.achievement })
+      updateGrant(team.id, { 
+        xp: op === 'xp' ? '' : state.xp, 
+        achievement: op === 'ach' ? '' : state.achievement,
+        rename: op === 'rename' ? '' : state.rename
+      })
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -483,6 +490,28 @@ export default function HackathonDetailPage({
                     </TooltipProvider>
                   </div>
                   
+                  <div className="flex gap-3 mb-3">
+                    <div className="flex flex-1 relative">
+                      <Input
+                        placeholder="New Team Name"
+                        value={g.rename || ''}
+                        onChange={(e) => updateGrant(t.id, { rename: e.target.value })}
+                        className="h-10 pr-10 text-sm font-medium bg-background/70 border-border/50 rounded-xl focus-visible:ring-primary/50 shadow-sm"
+                        data-testid={`grant-rename-${t.slug}`}
+                      />
+                      <Button
+                        size="icon"
+                        variant="ghost"
+                        className="absolute right-1 top-1 h-8 w-8 rounded-lg text-primary hover:bg-primary/10 transition-colors"
+                        onClick={() => applyGrant(t, 'rename')}
+                        disabled={g.busy || !g.rename}
+                        data-testid={`grant-rename-apply-${t.slug}`}
+                      >
+                        <Save className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
                   <div className="flex gap-3">
                     <div className="flex flex-1 relative">
                       <Input
