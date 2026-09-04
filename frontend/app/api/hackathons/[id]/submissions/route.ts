@@ -50,7 +50,17 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   if (hk.solve_limit && hk.solve_limit > 0) {
     const selected = team.selected_problems || []
     if (!selected.includes(body.problem_slug)) {
-      return NextResponse.json({ error: `You have not selected this problem. You can only solve up to ${hk.solve_limit} problem(s).` }, { status: 403 })
+      if (selected.length < hk.solve_limit) {
+        // Auto-select the problem since they haven't reached the limit
+        selected.push(body.problem_slug)
+        const teamsCol = await hackathonTeams()
+        await teamsCol.updateOne(
+          { id: team.id },
+          { $set: { selected_problems: selected, updated_at: nowIso() } }
+        )
+      } else {
+        return NextResponse.json({ error: `You have not selected this problem. You can only solve up to ${hk.solve_limit} problem(s).` }, { status: 403 })
+      }
     }
   }
 
