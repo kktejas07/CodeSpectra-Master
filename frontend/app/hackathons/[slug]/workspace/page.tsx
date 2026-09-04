@@ -1103,28 +1103,15 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     const selected = team?.selected_problems || []
                     const isSelected = selected.includes(selectedProblem.problem_slug)
                     
-                    if (solveLimit > 0 && !isSelected) {
-                      if (selected.length >= solveLimit) {
-                        const selectedTitle = hackathon.tasks.find(t => t.problem_slug === selected[0])?.problem_title || selected[0]
-                        return (
-                          <div className="text-xs space-y-1">
-                            <div className="text-destructive flex items-center gap-1.5">
-                              <AlertCircle className="h-4 w-4" /> Limit Reached
-                            </div>
-                            <p className="text-muted-foreground">You selected: <span className="font-medium text-foreground">{selectedTitle}</span></p>
-                          </div>
-                        )
-                      }
+                    if (solveLimit > 0 && !isSelected && selected.length >= solveLimit) {
+                      const selectedTitle = hackathon.tasks.find(t => t.problem_slug === selected[0])?.problem_title || selected[0]
                       return (
-                        <Button
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => void handleLockProblem(selectedProblem.problem_slug)}
-                          disabled={lockingProblem}
-                        >
-                          {lockingProblem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                          {lockingProblem ? 'Selecting...' : 'Select Problem to Solve'}
-                        </Button>
+                        <div className="text-xs space-y-1">
+                          <div className="text-destructive flex items-center gap-1.5">
+                            <AlertCircle className="h-4 w-4" /> Limit Reached
+                          </div>
+                          <p className="text-muted-foreground">You selected: <span className="font-medium text-foreground">{selectedTitle}</span></p>
+                        </div>
                       )
                     }
 
