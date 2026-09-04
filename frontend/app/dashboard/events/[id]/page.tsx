@@ -28,7 +28,6 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { useTour } from '@/components/tour/tour-context'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -171,28 +170,6 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     } catch { /* ignore */ }
     finally { setJudgeLoading(false) }
   }, [event?.id, isAdmin, isJudge])
-
-  // Initialize tour on first visit to this event page
-  useEffect(() => {
-    if (gate.ready && event && !localStorage.getItem(`has_seen_event_${id}_tour`)) {
-      const eventTour = [
-        {
-          target: '[data-tour="event-header"]',
-          title: 'Event Overview',
-          description: 'View event details, status, and key information.',
-          position: 'bottom',
-        },
-        {
-          target: '[data-tour="event-tabs"]',
-          title: 'Event Tabs',
-          description: 'Navigate between Overview, Problems, Submissions, Leaderboard, and more.',
-          position: 'bottom',
-        },
-      ]
-      startTour(eventTour, `event-${id}`)
-      setTourSeen(`event-${id}`)
-    }
-  }, [gate.ready, event, id, startTour, setTourSeen])
 
   const submitScore = useCallback(async () => {
     if (!event || !selectedSub) return
@@ -403,7 +380,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4" data-tour="event-header">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div className="space-y-1 min-w-0">
           <div className="flex items-center gap-2 text-muted-foreground hover:text-foreground cursor-pointer text-sm" onClick={() => router.push('/dashboard/events')}>
             <ArrowLeft className="h-4 w-4" /> Back to Events
@@ -691,7 +668,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
           {/* Evaluate Submission Sheet */}
           <Sheet open={isJudgeSheetOpen} onOpenChange={setIsJudgeSheetOpen}>
-            <SheetContent side="right" className="w-full sm:max-w-135 overflow-y-auto p-0">
+            <SheetContent side="right" className="w-full sm:max-w-[540px] overflow-y-auto p-0">
               <SheetHeader className="p-6 pb-4 border-b">
                 <SheetTitle>Evaluate Submission</SheetTitle>
               </SheetHeader>
@@ -989,7 +966,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
 
       {/* Rejection Dialog */}
       <Dialog open={!!rejectingSub} onOpenChange={() => setRejectingSub(null)}>
-        <DialogContent className="sm:max-w-106.25">
+        <DialogContent className="sm:max-w-[425px]">
           <DialogHeader>
             <DialogTitle>Reject Submission</DialogTitle>
           </DialogHeader>
