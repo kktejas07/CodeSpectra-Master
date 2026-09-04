@@ -21,9 +21,12 @@ export async function GET(
   const hk = await resolveHackathon(id)
   if (!hk) return NextResponse.json({ error: 'hackathon not found' }, { status: 404 })
 
+  const team = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': user.id })
+  if (!team) return NextResponse.json({ items: [] })
+
   const claims = await hackathonClaims()
   const items = await claims
-    .find({ hackathon_id: hk.id }, { projection: { _id: 0 } })
+    .find({ hackathon_id: hk.id, team_id: team.id }, { projection: { _id: 0 } })
     .toArray()
   return NextResponse.json({ items })
 }
@@ -55,21 +58,21 @@ export async function POST(
   const now = nowIso()
   const claims = await hackathonClaims()
 
-  // Check if claim already exists and is still active (not expired)
-  const existing = await claims.findOne({ hackathon_id: hk.id, problem_slug })
+  // Check if claim already exists in this team and is still active (not expired)
+  const existing = await claims.findOne({ hackathon_id: hk.id, team_id: team.id, problem_slug })
   if (existing && new Date(existing.expires_at).getTime() > Date.now()) {
-    const existingTeam = await (await hackathonTeams()).findOne({ hackathon_id: hk.id, 'members.user_id': existing.user_id })
-    if (!existingTeam || existingTeam.id !== team.id) {
-      return NextResponse.json({ error: 'Problem already claimed by another team' }, { status: 409 })
+    if (existing.user_id !== user.id) {
+      return NextResponse.json({ error: `Problem already claimed by ${existing.user_name}` }, { status: 409 })
     }
   }
 
   const expires_at = new Date(Date.now() + CLAIM_TTL_MS).toISOString()
   await claims.updateOne(
-    { hackathon_id: hk.id, problem_slug },
+    { hackathon_id: hk.id, team_id: team.id, problem_slug },
     {
       $set: {
         hackathon_id: hk.id,
+        team_id: team.id,
         problem_slug,
         user_id: user.id,
         user_name: user.name || user.email || 'Anonymous',
