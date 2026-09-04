@@ -25,7 +25,7 @@ import {
 import {
   Loader2, Trophy, Users, Clock, CalendarDays, Timer,
   CheckCircle, AlertCircle, ArrowRight, Copy, Sparkles, Shield, ListChecks,
-  Hand, Eye, Send, X, Code, FileText, ChevronDown, ChevronUp, RefreshCw,
+  Hand, Eye, Send, X, Code, FileText, ChevronDown, ChevronUp, RefreshCw, Pencil,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { useToast } from '@/lib/toast-context'
@@ -112,6 +112,10 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const [emailInviteOpen, setEmailInviteOpen] = useState(false)
   const [inviteEmail, setInviteEmail] = useState('')
   const [sendingInvite, setSendingInvite] = useState(false)
+
+  const [renameDialogOpen, setRenameDialogOpen] = useState(false)
+  const [editTeamName, setEditTeamName] = useState('')
+  const [renaming, setRenaming] = useState(false)
 
   const [submittingFor, setSubmittingFor] = useState<{ problem_slug: string; problem_title: string; points: number } | null>(null)
   const [viewingSubmission, setViewingSubmission] = useState<Submission | null>(null)
@@ -253,6 +257,25 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
       setEmailInviteOpen(false)
     } catch { addToast({ type: 'error', title: 'Failed to send invite' }) }
     finally { setSendingInvite(false) }
+  }
+
+  const handleRenameTeam = async () => {
+    const currentTeam = teams.find((t) => t.members.some((m) => m.user_id === hasSession))
+    if (!currentTeam || !editTeamName.trim()) return
+    setRenaming(true)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${slug}/teams/${currentTeam.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editTeamName.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) { addToast({ type: 'error', title: data.error || 'Failed to rename team' }); return }
+      addToast({ type: 'success', title: `Team renamed to "${editTeamName.trim()}"` })
+      setRenameDialogOpen(false)
+      await load()
+    } catch { addToast({ type: 'error', title: 'Failed to update team name' }) }
+    finally { setRenaming(false) }
   }
 
   async function claimProblem(slug: string) {
@@ -535,6 +558,17 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
             <div className="flex items-center gap-3 mb-4">
               <Trophy className="h-5 w-5 text-primary" />
               <h2 className="text-lg font-bold">{team.name}</h2>
+              {(team.members.some(m => m.user_id === hasSession && m.role === 'captain') || ['admin', 'superadmin', 'tenant_admin'].includes((authUser as any)?.role || '')) && (
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
+                  onClick={() => { setEditTeamName(team.name); setRenameDialogOpen(true) }}
+                  title="Rename team"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                </Button>
+              )}
               <Badge variant="outline">{team.members.length}/{hackathon.max_per_team} members</Badge>
               <Badge><Sparkles className="h-3 w-3 mr-1" /> {team.xp} XP</Badge>
               <span className="text-xs text-muted-foreground ml-auto">{team.submissions} submissions</span>
@@ -1146,6 +1180,36 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
           )}
         </SheetContent>
       </Sheet>
+
+      <Dialog open={renameDialogOpen} onOpenChange={setRenameDialogOpen}>
+        <DialogContent className="sm:max-w-[420px]">
+          <DialogHeader>
+            <DialogTitle>Rename Team</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-2">
+            <div>
+              <Label htmlFor="workspace-edit-team-name">New Team Name</Label>
+              <Input
+                id="workspace-edit-team-name"
+                placeholder="e.g. PARADISE"
+                value={editTeamName}
+                onChange={e => setEditTeamName(e.target.value)}
+                onKeyDown={e => e.key === 'Enter' && void handleRenameTeam()}
+              />
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Update your team&apos;s display name on the leaderboard and event workspace.
+            </p>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setRenameDialogOpen(false)}>Cancel</Button>
+            <Button onClick={() => void handleRenameTeam()} disabled={renaming || !editTeamName.trim()}>
+              {renaming ? <Loader2 className="h-4 w-4 animate-spin" /> : <Pencil className="h-4 w-4" />}
+              Save Name
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   )
 }

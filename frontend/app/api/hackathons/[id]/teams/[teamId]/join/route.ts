@@ -30,7 +30,14 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
     'members.user_id': user.id,
   })
   if (already) {
-    return NextResponse.json({ error: `already on a team in this event`, team: already.slug, team_name: already.name }, { status: 409 })
+    if (already.id === team.id) {
+      return NextResponse.json({ error: `Already a member of this team`, team: already.slug, team_name: already.name }, { status: 409 })
+    }
+    if (already.members.length === 1 && (already.submissions || 0) === 0) {
+      await teamsCol.deleteOne({ id: already.id })
+    } else {
+      return NextResponse.json({ error: `already on a team in this event`, team: already.slug, team_name: already.name }, { status: 409 })
+    }
   }
 
   await teamsCol.updateOne(

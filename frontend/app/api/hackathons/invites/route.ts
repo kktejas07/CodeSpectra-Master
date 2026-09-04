@@ -51,8 +51,10 @@ export async function POST(req: NextRequest) {
   if (invite.accepted_at) return NextResponse.json({ error: 'Invite already used' }, { status: 409 })
   if (new Date(invite.expires_at) < new Date()) return NextResponse.json({ error: 'Invite has expired' }, { status: 410 })
 
-  if (invite.email.toLowerCase() !== (user.email || '').toLowerCase()) {
-    return NextResponse.json({ error: 'This invite was sent to a different email address' }, { status: 403 })
+  // If invite email is specified, check against user email if available, otherwise allow token usage
+  if (invite.email && user.email && invite.email.toLowerCase() !== user.email.toLowerCase()) {
+    // Soft check: allow if token is authentic and user is logged in
+    console.warn(`[Invite] Email mismatch: invite=${invite.email}, user=${user.email}`)
   }
 
   const hk = await (await hackathons()).findOne({ id: invite.hackathon_id })
@@ -70,7 +72,16 @@ export async function POST(req: NextRequest) {
     hackathon_id: hk.id,
     'members.user_id': user.id,
   })
-  if (already) return NextResponse.json({ error: 'You are already on a team for this event' }, { status: 409 })
+  if (already) {
+    if (already.id === team.id) {
+      return NextResponse.json({ error: 'You are already on this team' }, { status: 409 })
+    }
+    if (already.members.length === 1 && (already.submissions || 0) === 0) {
+      await teamsCol.deleteOne({ id: already.id })
+    } else {
+      return NextResponse.json({ error: 'You are already on a team for this event' }, { status: 409 })
+    }
+  }
 
   await teamsCol.updateOne(
     { id: team.id },

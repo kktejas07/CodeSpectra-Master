@@ -26,6 +26,9 @@ import {
   HelpCircle,
   CheckCircle,
   Timer,
+  Pencil,
+  UserPlus,
+  X,
 } from 'lucide-react'
 import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
@@ -85,6 +88,11 @@ export default function HackathonDetailPage({
   const [judgeSearchResults, setJudgeSearchResults] = useState<Array<{ id: string; name: string; email: string }>>([])
   const [judgeSearching, setJudgeSearching] = useState(false)
   const [judgeNames, setJudgeNames] = useState<Record<string, string>>({})
+
+  const [editingTeamId, setEditingTeamId] = useState<string | null>(null)
+  const [editNameInput, setEditNameInput] = useState('')
+  const [addingMemberTeamId, setAddingMemberTeamId] = useState<string | null>(null)
+  const [addMemberInput, setAddMemberInput] = useState('')
 
   const load = useCallback(async () => {
     try {
@@ -173,6 +181,53 @@ export default function HackathonDetailPage({
     if (!await confirmDialog({ title: 'Confirmation', description: `Disqualify "${team.name}"?` })) return
     try {
       await csrfFetch(`/api/hackathons/${id}/teams/${team.id}`, { method: 'DELETE' })
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function saveTeamName(team: Team) {
+    if (!editNameInput.trim()) return
+    try {
+      const res = await csrfFetch(`/api/hackathons/${id}/teams/${team.id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: editNameInput.trim() }),
+      })
+      if (!res.ok) throw new Error('Failed to update team name')
+      setEditingTeamId(null)
+      setEditNameInput('')
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function addMemberToTeam(team: Team) {
+    if (!addMemberInput.trim()) return
+    try {
+      const res = await csrfFetch(`/api/hackathons/${id}/teams/${team.id}/members`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ user: addMemberInput.trim() }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Failed to add member')
+      setAddingMemberTeamId(null)
+      setAddMemberInput('')
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    }
+  }
+
+  async function removeMemberFromTeam(team: Team, userId: string) {
+    try {
+      const res = await csrfFetch(`/api/hackathons/${id}/teams/${team.id}/members?user_id=${encodeURIComponent(userId)}`, {
+        method: 'DELETE',
+      })
+      if (!res.ok) throw new Error('Failed to remove member')
       await load()
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
@@ -368,16 +423,67 @@ export default function HackathonDetailPage({
             return (
               <Card key={t.id} className="space-y-3 p-5" data-testid={`team-card-${t.slug}`}>
                 <div className="flex items-start justify-between">
-                  <div>
+                  <div className="flex-1 mr-2">
                     <p className="text-[10px] uppercase tracking-wider text-muted-foreground">
                       Rank #{i + 1}
                     </p>
-                    <h3 className="text-lg font-semibold">{t.name}</h3>
-                    <p className="text-[11px] text-muted-foreground">
-                      {t.members.map((m) => m.name).join(', ')}
-                    </p>
+                    {editingTeamId === t.id ? (
+                      <div className="flex gap-1.5 mt-1">
+                        <Input
+                          value={editNameInput}
+                          onChange={(e) => setEditNameInput(e.target.value)}
+                          className="h-7 text-xs flex-1"
+                          onKeyDown={(e) => e.key === 'Enter' && void saveTeamName(t)}
+                        />
+                        <Button size="sm" className="h-7 text-xs px-2" onClick={() => saveTeamName(t)}>Save</Button>
+                        <Button size="sm" variant="ghost" className="h-7 text-xs px-2" onClick={() => setEditingTeamId(null)}>Cancel</Button>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <h3 className="text-lg font-semibold">{t.name}</h3>
+                        <button
+                          onClick={() => { setEditingTeamId(t.id); setEditNameInput(t.name) }}
+                          className="text-muted-foreground hover:text-foreground"
+                          title="Rename team"
+                        >
+                          <Pencil className="h-3.5 w-3.5" />
+                        </button>
+                      </div>
+                    )}
+                    <div className="flex flex-wrap gap-1 mt-1.5">
+                      {t.members.map((m) => (
+                        <Badge key={(m as any).user_id || m.name} variant={(m as any).role === 'captain' ? 'default' : 'secondary'} className="text-[10px] gap-1 px-1.5 py-0.5">
+                          {m.name} {(m as any).role === 'captain' && '(Captain)'}
+                          {(m as any).user_id && (
+                            <button onClick={() => removeMemberFromTeam(t, (m as any).user_id)} className="ml-1 opacity-70 hover:opacity-100" title="Remove member">×</button>
+                          )}
+                        </Badge>
+                      ))}
+                      {addingMemberTeamId === t.id ? (
+                        <div className="flex gap-1 items-center mt-1">
+                          <Input
+                            placeholder="Email, name or ID"
+                            value={addMemberInput}
+                            onChange={(e) => setAddMemberInput(e.target.value)}
+                            className="h-6 text-[10px] w-36 px-1.5"
+                            onKeyDown={(e) => e.key === 'Enter' && void addMemberToTeam(t)}
+                          />
+                          <Button size="sm" className="h-6 text-[10px] px-1.5" onClick={() => addMemberToTeam(t)}>Add</Button>
+                          <Button size="sm" variant="ghost" className="h-6 text-[10px] px-1" onClick={() => setAddingMemberTeamId(null)}>
+                            <X className="h-3 w-3" />
+                          </Button>
+                        </div>
+                      ) : (
+                        <button
+                          onClick={() => { setAddingMemberTeamId(t.id); setAddMemberInput('') }}
+                          className="inline-flex items-center gap-0.5 text-[10px] text-primary hover:underline ml-1"
+                        >
+                          <UserPlus className="h-3 w-3" /> Add member
+                        </button>
+                      )}
+                    </div>
                   </div>
-                  <Badge className="gap-1">
+                  <Badge className="gap-1 flex-shrink-0">
                     <Trophy className="h-3 w-3" /> {t.xp} XP · Lv {t.level}
                   </Badge>
                 </div>
