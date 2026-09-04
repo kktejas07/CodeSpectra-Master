@@ -10,7 +10,7 @@ const VIEWS: readonly LearningView[] = ['all', 'my-courses', 'saved']
 const LEVELS: readonly LearningLevel[] = ['all', 'beginner', 'intermediate', 'advanced']
 const TYPES: readonly LearningType[] = ['all', 'video', 'audio', 'text']
 
-export const LEARNING_HUB_DEFAULT = '/dashboard/learning?view=all&level=all&type=all'
+export const LEARNING_HUB_DEFAULT = '/dashboard/courses'
 
 function parseView(raw: string | null): LearningView {
   if (raw && (VIEWS as readonly string[]).includes(raw)) return raw as LearningView
@@ -42,7 +42,7 @@ export function parseLearningParams(sp: ReadonlyURLSearchParams | null): {
   }
 }
 
-/** Build `/dashboard/learning` URL; merges with current query unless overrides are passed. */
+/** Build `/dashboard/courses` URL; merges with current query unless overrides are passed. */
 export function learningHref(
   current: ReadonlyURLSearchParams | null,
   updates: Partial<{ view: LearningView; level: LearningLevel; type: LearningType }>
@@ -51,5 +51,11 @@ export function learningHref(
   const view = updates.view ?? base.view
   const level = updates.level ?? base.level
   const type = updates.type ?? base.type
-  return `/dashboard/learning?view=${encodeURIComponent(view)}&level=${encodeURIComponent(level)}&type=${encodeURIComponent(type)}`
+  const params = new URLSearchParams()
+  if (view !== 'all') params.set('view', view)
+  if (level !== 'all') params.set('level', level)
+  if (type !== 'all') params.set('type', type)
+  
+  const query = params.toString()
+  return query ? `/dashboard/courses?${query}` : '/dashboard/courses'
 }

@@ -73,7 +73,7 @@ export function DeveloperRankBanner({
   const progressPercent = Math.min(100, Math.round((currentLevelXP / 1000) * 100))
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-gradient-to-r from-[#081512] via-[#09131c] to-[#070b14] p-6 shadow-xl shadow-black/40">
+    <div className="relative overflow-hidden rounded-2xl border border-emerald-500/25 bg-linear-to-r from-[#081512] via-[#09131c] to-[#070b14] p-6 shadow-xl shadow-black/40">
       {/* Background Matrix & Circuit Accents */}
       <div className="absolute top-0 right-0 w-96 h-full opacity-20 pointer-events-none bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-emerald-400 via-transparent to-transparent" />
       <div className="absolute -bottom-6 -right-6 w-40 h-40 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
@@ -81,9 +81,9 @@ export function DeveloperRankBanner({
       <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-6">
         {/* Left Side: Avatar / Level Badge & Greeting */}
         <div className="flex items-center gap-4">
-          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-gradient-to-br from-[#06241a] to-[#0a3525] border-2 border-emerald-500/40 shadow-lg shadow-emerald-950/40">
+          <div className="relative flex h-14 w-14 shrink-0 items-center justify-center rounded-2xl bg-linear-to-br from-[#06241a] to-[#0a3525] border-2 border-emerald-500/40 shadow-lg shadow-emerald-950/40">
             <Sparkles className="h-7 w-7 text-emerald-400 animate-pulse" />
-            <div className="absolute -bottom-1 -right-1 bg-gradient-to-r from-[#00c573] to-[#06b6d4] text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full shadow-xs">
+            <div className="absolute -bottom-1 -right-1 bg-linear-to-r from-mint-pulse to-[#06b6d4] text-slate-950 text-[10px] font-black px-1.5 py-0.2 rounded-full shadow-xs">
               L{level}
             </div>
           </div>
@@ -114,7 +114,7 @@ export function DeveloperRankBanner({
             {/* Dual Gradient Progress Bar */}
             <div className="h-2 w-full rounded-full bg-slate-900 border border-slate-800 overflow-hidden">
               <div
-                className="h-full rounded-full bg-gradient-to-r from-[#00c573] via-[#10b981] to-[#06b6d4] transition-all duration-700 shadow-sm shadow-emerald-500/50"
+                className="h-full rounded-full bg-linear-to-r from-mint-pulse via-[#10b981] to-[#06b6d4] transition-all duration-700 shadow-sm shadow-emerald-500/50"
                 style={{ width: `${Math.max(8, progressPercent)}%` }}
               />
             </div>

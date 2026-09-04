@@ -5,6 +5,7 @@ import { Db, MongoClient } from "mongodb";
  *
  * Env:
  *   - MONGODB_URI            Primary connection string (Atlas SRV recommended)
+ *   - MONGO_URL              Alias used by some Swarm/Dokploy specs
  *   - MONGODB_URI_FALLBACK   Optional fallback (e.g. mongodb://localhost:27017)
  *   - MONGODB_DB_NAME        Logical DB name (default: "codespectra")
  *
@@ -13,7 +14,7 @@ import { Db, MongoClient } from "mongodb";
  * requests use the cached working client.
  */
 
-const uri = process.env.MONGODB_URI;
+const uri = process.env.MONGODB_URI || process.env.MONGO_URL;
 const uriFallback = process.env.MONGODB_URI_FALLBACK;
 const dbName = process.env.MONGODB_DB_NAME || "codespectra";
 
@@ -48,7 +49,7 @@ async function connect(targetUri: string): Promise<MongoClient> {
 async function buildClient(): Promise<MongoClient> {
   if (!uri) {
     throw new Error(
-      "MONGODB_URI is not defined. Add it to .env.local before using MongoDB-backed features.",
+      "MONGODB_URI (or MONGO_URL) is not defined. Add it to .env.local before using MongoDB-backed features.",
     );
   }
   try {

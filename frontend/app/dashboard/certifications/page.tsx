@@ -32,7 +32,7 @@ export default function CertificationsPage() {
       {/* Honesty callout */}
       <Card className="p-4 border-primary/20 bg-primary/5">
         <div className="flex items-start gap-3">
-          <FileBadge2 className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <FileBadge2 className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">How this works</p>
             <p>
@@ -85,7 +85,7 @@ export default function CertificationsPage() {
       {/* Platform certs note */}
       <Card className="p-5 border-border/40">
         <div className="flex items-start gap-3">
-          <BookOpen className="h-5 w-5 text-primary flex-shrink-0 mt-0.5" />
+          <BookOpen className="h-5 w-5 text-primary shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground">
             <p className="font-medium text-foreground mb-1">Also on CodeSpectra</p>
             <p>

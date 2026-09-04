@@ -91,3 +91,22 @@ export async function GET(): Promise<NextResponse> {
     return NextResponse.json({ error: 'Failed to fetch KYC records' }, { status: 500 })
   }
 }
+
+export async function DELETE(req: Request) {
+  const user = await getAPIUser()
+  if (!user || (user.role !== 'superadmin' && user.role !== 'tenant_admin')) {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+
+  try {
+    const url = new URL(req.url)
+    const id = url.searchParams.get('id')
+    if (!id) return NextResponse.json({ error: 'Missing ID' }, { status: 400 })
+
+    const db = await getMongoDb()
+    await db.collection('kyc_sessions').deleteOne({ id })
+    return NextResponse.json({ success: true })
+  } catch (e) {
+    return NextResponse.json({ error: 'Failed to delete record' }, { status: 500 })
+  }
+}

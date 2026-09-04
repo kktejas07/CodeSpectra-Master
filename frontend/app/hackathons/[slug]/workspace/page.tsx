@@ -529,7 +529,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
   const isLive = hackathon.status === 'live' && nowDate >= starts.getTime() && nowDate <= ends.getTime()
   const isClosed = nowDate > ends.getTime() || hackathon.status === 'closed'
 
-  const solvedCount = submissions.filter(s => s.status === 'released').length
+  const solvedCount = new Set(submissions.map(s => s.problem_slug)).size
 
   return (
     <div className="min-h-screen bg-background">
@@ -679,7 +679,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                         ) : status === 'under_review' ? (
                           <AlertCircle className="h-4 w-4 text-yellow-500" />
                         ) : status === 'pending' && sub ? (
-                          <Clock className="h-4 w-4 text-yellow-500" />
+                          <CheckCircle className="h-4 w-4 text-green-500" />
                         ) : isMyClaim ? (
                           <Hand className="h-4 w-4 text-blue-400" />
                         ) : (
@@ -692,8 +692,8 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                             <span className="text-xs text-muted-foreground">{task.points} pts</span>
                             {task.required && <span className="text-[10px] text-muted-foreground">Required</span>}
                             {sub && status !== 'accepted' && (
-                              <Badge variant="secondary" className="text-[10px]">
-                                {status === 'pending' ? 'Submitted' : status}
+                              <Badge variant="default" className="text-[10px] bg-green-500/20 text-green-500 hover:bg-green-500/30">
+                                {status === 'pending' ? 'Solution Submitted' : status === 'under_review' ? 'Under Review' : status}
                               </Badge>
                             )}
                             {sub && sub.score !== null && (
@@ -998,7 +998,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
         <SheetContent side="right" className="w-full sm:max-w-xl p-0 flex flex-col [&>button]:hidden">
           {selectedProblem && (
             <>
-              <div className="flex-shrink-0 border-b border-border px-6 py-5 sm:px-8 flex items-start justify-between bg-muted/30">
+              <div className="shrink-0 border-b border-border px-6 py-5 sm:px-8 flex items-start justify-between bg-muted/30">
                 <div className="min-w-0 flex-1">
                   <SheetTitle className="text-xl font-bold truncate pr-4">{selectedProblem.problem_title || selectedProblem.problem_slug}</SheetTitle>
                   <div className="flex items-center gap-2 mt-2">
@@ -1022,7 +1022,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     <Loader2 className="h-4 w-4 animate-spin" /> Loading problem...
                   </div>
                 ) : problemDetail?.statement_md ? (
-                  <div className="prose prose-sm dark:prose-invert max-w-none break-words leading-relaxed [&_p]:mb-3 [&_ul]:pl-4 [&_ul]:mb-3 [&_li]:mb-1 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-muted [&_code]:text-xs [&_code]:font-mono [&_strong]:font-semibold">
+                  <div className="prose prose-sm dark:prose-invert max-w-none wrap-break-word leading-relaxed [&_p]:mb-3 [&_ul]:pl-4 [&_ul]:mb-3 [&_li]:mb-1 [&_code]:px-1.5 [&_code]:py-0.5 [&_code]:rounded [&_code]:bg-muted [&_code]:text-xs [&_code]:font-mono [&_strong]:font-semibold">
                     <ReactMarkdown>{problemDetail.statement_md}</ReactMarkdown>
                   </div>
                 ) : (
@@ -1125,7 +1125,7 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
               </div>
 
               {isLive && (
-                <div className="flex-shrink-0 border-t border-border p-6 sm:px-8 flex items-center gap-3">
+                <div className="shrink-0 border-t border-border p-6 sm:px-8 flex items-center gap-3">
                   <div className="flex items-center gap-2 text-xs text-muted-foreground mr-auto">
                     <span className="font-medium text-foreground">{selectedProblem.points}</span> pts
                   </div>
@@ -1137,28 +1137,15 @@ export default function HackathonWorkspacePage({ params }: { params: Promise<{ s
                     const selected = team?.selected_problems || []
                     const isSelected = selected.includes(selectedProblem.problem_slug)
                     
-                    if (solveLimit > 0 && !isSelected) {
-                      if (selected.length >= solveLimit) {
-                        const selectedTitle = hackathon.tasks.find(t => t.problem_slug === selected[0])?.problem_title || selected[0]
-                        return (
-                          <div className="text-xs space-y-1">
-                            <div className="text-destructive flex items-center gap-1.5">
-                              <AlertCircle className="h-4 w-4" /> Limit Reached
-                            </div>
-                            <p className="text-muted-foreground">You selected: <span className="font-medium text-foreground">{selectedTitle}</span></p>
-                          </div>
-                        )
-                      }
+                    if (solveLimit > 0 && !isSelected && selected.length >= solveLimit) {
+                      const selectedTitle = hackathon.tasks.find(t => t.problem_slug === selected[0])?.problem_title || selected[0]
                       return (
-                        <Button
-                          size="sm"
-                          className="gap-2"
-                          onClick={() => void handleLockProblem(selectedProblem.problem_slug)}
-                          disabled={lockingProblem}
-                        >
-                          {lockingProblem ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle className="h-3.5 w-3.5" />}
-                          {lockingProblem ? 'Selecting...' : 'Select Problem to Solve'}
-                        </Button>
+                        <div className="text-xs space-y-1">
+                          <div className="text-destructive flex items-center gap-1.5">
+                            <AlertCircle className="h-4 w-4" /> Limit Reached
+                          </div>
+                          <p className="text-muted-foreground">You selected: <span className="font-medium text-foreground">{selectedTitle}</span></p>
+                        </div>
                       )
                     }
 

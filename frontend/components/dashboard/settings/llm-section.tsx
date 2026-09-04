@@ -14,8 +14,9 @@ import {
 } from '@/components/ui/select'
 import { useToast } from '@/lib/toast-context'
 import { LLM_PROVIDERS, getProviderDefaults, type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
-import { Save, Loader2, Sparkles, Eye, EyeOff, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
+import { Save, Loader2, Sparkles, CheckCircle2, XCircle, RefreshCw } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { LlmKeysManager } from './llm-keys-manager'
 
 export function LlmSettingsSection() {
   const toast = useToast()
@@ -25,9 +26,6 @@ export function LlmSettingsSection() {
   const [saving, setSaving] = useState(false)
   const [testing, setTesting] = useState(false)
   const [testResult, setTestResult] = useState<{ ok: boolean; message: string } | null>(null)
-  const [showKey, setShowKey] = useState(false)
-  const [revealedKey, setRevealedKey] = useState('')
-  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null)
   const [fetchedModels, setFetchedModels] = useState<string[] | null>(null)
   const [fetchingModels, setFetchingModels] = useState(false)
 
@@ -76,23 +74,7 @@ export function LlmSettingsSection() {
     }
   }
 
-  async function handleRevealToggle() {
-    if (showKey) {
-      if (timerRef.current) clearTimeout(timerRef.current)
-      setShowKey(false)
-      setRevealedKey('')
-    } else {
-      const res = await fetch('/api/admin/llm-config/reveal', { credentials: 'include' })
-      const json = await res.json().catch(() => ({}))
-      if (res.ok && json.value) setRevealedKey(json.value)
-      setShowKey(true)
-      if (timerRef.current) clearTimeout(timerRef.current)
-      timerRef.current = setTimeout(() => {
-        setShowKey(false)
-        setRevealedKey('')
-      }, 30_000)
-    }
-  }
+
 
   async function handleTest() {
     if (!draft) return
@@ -140,9 +122,7 @@ export function LlmSettingsSection() {
     }
   }
 
-  useEffect(() => {
-    return () => { if (timerRef.current) clearTimeout(timerRef.current) }
-  }, [])
+
 
   if (loading) {
     return <div className="flex min-h-[20vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading…</div>
@@ -240,25 +220,90 @@ export function LlmSettingsSection() {
             />
           </div>
 
-          <div className="space-y-2">
-            <Label htmlFor="api_key">API Key</Label>
-            <div className="relative">
-              <Input
-                id="api_key"
-                type={showKey ? 'text' : 'password'}
-                value={showKey ? revealedKey : ''}
-                onChange={e => updateField('api_key', e.target.value)}
-                placeholder="••••••••"
-                className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                autoComplete="off"
-              />
-              <button
-                type="button"
-                onClick={handleRevealToggle}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
-              >
-                {showKey ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-              </button>
+          <div className="pt-4 border-t border-border/60">
+            <LlmKeysManager
+              provider={draft?.provider || 'gemini'}
+              keys={draft?.keys || {}}
+              onChange={(newKeys) => updateField('keys', newKeys)}
+            />
+          </div>
+
+          <div className="pt-8 border-t border-border/60 space-y-6">
+            <div>
+              <h3 className="text-lg font-medium">Task Routing (Overrides)</h3>
+              <p className="text-sm text-muted-foreground mb-4">
+                Assign specific models to specific platform tasks. If a task isn't overridden here, it will fall back to the global default model above.
+              </p>
+              
+              <div className="grid gap-4 sm:grid-cols-2">
+                {[
+                  { id: 'chat_model', label: 'AI Assistants & Chat' },
+                  { id: 'review_model', label: 'Code Reviews & AI Fixes' },
+                  { id: 'hints_model', label: 'Code Analysis & Hints' },
+                  { id: 'grade_model', label: 'Mock Tests & Exam Grading' },
+                  { id: 'interview_model', label: 'AI Interview Generation' },
+                  { id: 'cover_letter_model', label: 'AI Cover Letters' },
+                  { id: 'practice_model', label: 'Practice Challenges' },
+                ].map(task => {
+                  const override = draft?.taskOverrides?.[task.id]
+                  return (
+                    <div key={task.id} className="space-y-2 p-4 border border-border/60 rounded-lg bg-background/50">
+                      <Label className="text-sm font-semibold">{task.label}</Label>
+                      
+                      <div className="space-y-3 pt-2">
+                        <div className="space-y-1">
+                          <Label className="text-xs text-muted-foreground">Provider</Label>
+                          <Select 
+                            value={override?.provider || 'default'} 
+                            onValueChange={v => {
+                              const newOverrides = { ...draft?.taskOverrides }
+                              if (v === 'default') {
+                                delete newOverrides[task.id]
+                              } else {
+                                const defs = getProviderDefaults(v as LLMProviderId)
+                                newOverrides[task.id] = { 
+                                  provider: v as LLMProviderId, 
+                                  model: defs?.models[0] || '',
+                                  endpoint: defs?.endpoint || ''
+                                }
+                              }
+                              updateField('taskOverrides', newOverrides)
+                            }}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue placeholder="Use global default" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="default">Use Global Default</SelectItem>
+                              {LLM_PROVIDERS.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.label}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        {override?.provider && (
+                          <div className="space-y-1">
+                            <Label className="text-xs text-muted-foreground">Model</Label>
+                            <Input
+                              value={override.model}
+                              onChange={e => {
+                                const newOverrides = { ...draft?.taskOverrides }
+                                if (newOverrides[task.id]) {
+                                  newOverrides[task.id] = { ...newOverrides[task.id]!, model: e.target.value }
+                                }
+                                updateField('taskOverrides', newOverrides)
+                              }}
+                              className="h-8 text-xs font-mono"
+                              placeholder="e.g. stealth/ox-alpha"
+                            />
+                          </div>
+                        )}
+                      </div>
+                    </div>
+                  )
+                })}
+              </div>
             </div>
           </div>
         </div>

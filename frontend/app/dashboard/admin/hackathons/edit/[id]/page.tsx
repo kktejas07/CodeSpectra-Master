@@ -345,8 +345,6 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     if (!form.name.trim()) return
     setBusy(true); setError(null)
     try {
-      // Use form.status for locked checks (the status being set)
-      const isLocked = form.status === 'live' || form.status === 'closed'
       const body: Record<string, unknown> = {
         name: form.name,
         description: form.description,
@@ -361,17 +359,15 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         cert_template: form.cert_template,
         solve_limit: form.solve_limit || undefined,
         features: form.features,
-      }
-      if (!isLocked) {
-        body.tasks = form.tasks.map((t) => ({
+        tasks: form.tasks.map((t) => ({
           problem_slug: t.slug,
           problem_title: t.title,
           points: t.points,
           difficulty: t.difficulty,
           required: t.required,
-        }))
-        body.rules = form.rules
-        body.scoring = form.scoring
+        })),
+        rules: form.rules,
+        scoring: form.scoring,
       }
       const res = await csrfFetch(`/api/hackathons/${encodeURIComponent(id)}`, {
         method: 'PATCH',
@@ -441,7 +437,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                 value={form.num_teams}
                 onChange={(v) => setForm((f) => ({ ...f, num_teams: v }))}
                 min={1}
-                max={500}
+                max={1000}
                 hint="Total number of teams that can compete in this event."
               />
               <NumberField
@@ -569,7 +565,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               </div>
             </div>
 
-            <Button onClick={() => setStep(2)} disabled={form.status === 'live' || form.status === 'closed'}>Next: Problems →</Button>
+            <Button onClick={() => setStep(2)}>Next: Problems →</Button>
           </div>
         )}
 
@@ -577,11 +573,6 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         {step === 2 && (
           <div className="space-y-6">
             <h3 className="font-semibold text-lg">Assign Problems</h3>
-            {(form.status === 'live' || form.status === 'closed') && (
-              <Card className="border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>⚠ Locked</strong> — Problems cannot be modified while the event is {form.status}. Go back to Basics to update other settings.
-              </Card>
-            )}
             <p className="text-sm text-muted-foreground">
               Choose how to add problems — pick from your library, write your own, or generate with AI.
             </p>
@@ -885,7 +876,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
 
             <div className="flex gap-2">
               <Button variant="outline" onClick={() => setStep(1)}>← Back</Button>
-              <Button onClick={() => setStep(3)} disabled={form.status === 'live' || form.status === 'closed'}>Next: Rules →</Button>
+              <Button onClick={() => setStep(3)}>Next: Rules →</Button>
             </div>
           </div>
         )}
@@ -894,11 +885,6 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
         {step === 3 && (
           <div className="space-y-6">
             <h3 className="font-semibold text-lg">Rules & Scoring</h3>
-            {(form.status === 'live' || form.status === 'closed') && (
-              <Card className="border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>⚠ Locked</strong> — Rules & Scoring cannot be modified while the event is {form.status}. Go back to Basics to update other settings.
-              </Card>
-            )}
 
             <div className="space-y-4">
               {form.rules.map((r, i) => (
@@ -965,7 +951,7 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
                   value={form.solve_limit}
                   onChange={(v) => setForm((f) => ({ ...f, solve_limit: v }))}
                   min={0}
-                  max={500}
+                  max={1000}
                   hint="Max problems a team can attempt. 0 = no limit."
                 />
               </div>
@@ -1010,12 +996,6 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
               <h3 className="font-semibold text-lg">Features & Visibility</h3>
               <p className="text-sm text-muted-foreground mt-1">Toggle features on/off for this event.</p>
             </div>
-
-            {(form.status === 'live' || form.status === 'closed') && (
-              <Card className="border-yellow-400/40 bg-yellow-50 dark:bg-yellow-950/20 p-3 text-sm text-yellow-800 dark:text-yellow-200">
-                <strong>⚠ Features Locked</strong> — Cannot change features during {form.status} event.
-              </Card>
-            )}
 
             {/* Team & Participation */}
             <div className="space-y-3">

@@ -36,7 +36,9 @@ import {
   ScrollText,
   Trophy,
   Video,
+  Upload,
 } from 'lucide-react'
+import * as XLSX from 'xlsx'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Switch } from '@/components/ui/switch'
@@ -50,6 +52,7 @@ import {
 } from '@/components/ui/select'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloudflare-section'
+import { LlmSettingsTabs } from '@/components/dashboard/settings/llm-settings-tabs'
 import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
 import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
 import KycSettingsSection from '@/app/dashboard/admin/settings/kyc/page'
@@ -139,7 +142,7 @@ const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'ma
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
 const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
-const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_logo_url', 'video_player_logo_link_url']
+const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_captions_default', 'video_player_logo_url', 'video_player_logo_link_url']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
   postal_recovery: 'Postal — password reset link',
@@ -183,6 +186,44 @@ type SecretsDraft = {
   opencode_api_key: string
   openrouter_api_key: string
   nvidia_api_key: string
+  deepseek_api_key: string
+  cerebras_api_key: string
+  mistral_api_key: string
+  cohere_api_key: string
+  fireworks_api_key: string
+  xai_api_key: string
+  replicate_api_key: string
+  elevenlabs_api_key: string
+  assemblyai_api_key: string
+  deepgram_api_key: string
+  deepinfra_api_key: string
+  novita_api_key: string
+  stability_api_key: string
+  fal_api_key: string
+  ai21_api_key: string
+  kimi_api_key: string
+  lemonfox_api_key: string
+  huggingface_api_key: string
+  cloudflare_workers_api_key: string
+  sambanova_api_key: string
+  nscale_api_key: string
+  chutes_api_key: string
+  modelscope_api_key: string
+  langchain_api_key: string
+  langfuse_api_key: string
+  pinecone_api_key: string
+  qdrant_api_key: string
+  tavily_api_key: string
+  firecrawl_api_key: string
+  serper_api_key: string
+  jina_api_key: string
+  exa_api_key: string
+  notion_api_key: string
+  slack_api_key: string
+  google_knowledge_graph_api_key: string
+  browserbase_api_key: string
+  brightdata_api_key: string
+  scrapingbee_api_key: string
   internal_backend_secret: string
 }
 
@@ -223,6 +264,44 @@ const emptySecretsDraft = (): SecretsDraft => ({
   opencode_api_key: '',
   openrouter_api_key: '',
   nvidia_api_key: '',
+  deepseek_api_key: '',
+  cerebras_api_key: '',
+  mistral_api_key: '',
+  cohere_api_key: '',
+  fireworks_api_key: '',
+  xai_api_key: '',
+  replicate_api_key: '',
+  elevenlabs_api_key: '',
+  assemblyai_api_key: '',
+  deepgram_api_key: '',
+  deepinfra_api_key: '',
+  novita_api_key: '',
+  stability_api_key: '',
+  fal_api_key: '',
+  ai21_api_key: '',
+  kimi_api_key: '',
+  lemonfox_api_key: '',
+  huggingface_api_key: '',
+  cloudflare_workers_api_key: '',
+  sambanova_api_key: '',
+  nscale_api_key: '',
+  chutes_api_key: '',
+  modelscope_api_key: '',
+  langchain_api_key: '',
+  langfuse_api_key: '',
+  pinecone_api_key: '',
+  qdrant_api_key: '',
+  tavily_api_key: '',
+  firecrawl_api_key: '',
+  serper_api_key: '',
+  jina_api_key: '',
+  exa_api_key: '',
+  notion_api_key: '',
+  slack_api_key: '',
+  google_knowledge_graph_api_key: '',
+  browserbase_api_key: '',
+  brightdata_api_key: '',
+  scrapingbee_api_key: '',
   internal_backend_secret: '',
 })
 
@@ -275,7 +354,7 @@ function EmailTemplatesSection() {
                 <div className="border-b border-border/40 bg-muted/20 px-4 py-2 text-xs text-muted-foreground font-mono">
                   Subject: {preview.subject}
                 </div>
-                <div className="p-4 max-h-[400px] overflow-y-auto">
+                <div className="p-4 max-h-100 overflow-y-auto">
                   <div
                     className="prose prose-sm max-w-none dark:prose-invert [&_h1]:text-lg [&_h1]:font-bold [&_h1]:mb-2 [&_p]:mb-2 [&_ul]:list-disc [&_ul]:pl-4 [&_li]:mb-1"
                     dangerouslySetInnerHTML={{ __html: preview.html }}
@@ -369,6 +448,193 @@ function SystemSettingsInner() {
   const toggleVisible = useCallback((key: string) => {
     setVisibleFields((v) => ({ ...v, [key]: !v[key] }))
   }, [])
+
+  const handleExcelImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (!file) return
+
+    try {
+      const data = await file.arrayBuffer()
+      const workbook = XLSX.read(data, { type: 'array' })
+      const sheetName = workbook.SheetNames[0]
+      const worksheet = workbook.Sheets[sheetName]
+      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(worksheet, { header: 1 })
+
+      // Map provider names/URLs to secret keys
+      const providerMap: Record<string, string> = {
+        // By name
+        'openai': 'openai_api_key',
+        'anthropic': 'anthropic_api_key',
+        'google gemini': 'gemini_api_key',
+        'gemini': 'gemini_api_key',
+        'groq': 'groq_api_key',
+        'openrouter': 'openrouter_api_key',
+        'nvidia': 'nvidia_api_key',
+        'opencode': 'opencode_api_key',
+        'deepseek': 'deepseek_api_key',
+        'cerebras': 'cerebras_api_key',
+        'mistral': 'mistral_api_key',
+        'cohere': 'cohere_api_key',
+        'fireworks': 'fireworks_api_key',
+        'xai': 'xai_api_key',
+        'replicate': 'replicate_api_key',
+        'elevenlabs': 'elevenlabs_api_key',
+        'assemblyai': 'assemblyai_api_key',
+        'deepgram': 'deepgram_api_key',
+        'deepinfra': 'deepinfra_api_key',
+        'novita': 'novita_api_key',
+        'stability ai': 'stability_api_key',
+        'stability': 'stability_api_key',
+        'fal.ai': 'fal_api_key',
+        'fal': 'fal_api_key',
+        'ai21': 'ai21_api_key',
+        'kimi': 'kimi_api_key',
+        'lemonfox': 'lemonfox_api_key',
+        'hugging face': 'huggingface_api_key',
+        'huggingface': 'huggingface_api_key',
+        'cloudflare workers ai': 'cloudflare_workers_api_key',
+        'cloudflare': 'cloudflare_workers_api_key',
+        'sambanova': 'sambanova_api_key',
+        'nscale': 'nscale_api_key',
+        'chutes': 'chutes_api_key',
+        'modelscope': 'modelscope_api_key',
+        'langchain': 'langchain_api_key',
+        'langfuse': 'langfuse_api_key',
+        'pinecone': 'pinecone_api_key',
+        'qdrant': 'qdrant_api_key',
+        'tavily': 'tavily_api_key',
+        'firecrawl': 'firecrawl_api_key',
+        'serper': 'serper_api_key',
+        'jina ai': 'jina_api_key',
+        'jina': 'jina_api_key',
+        'exa': 'exa_api_key',
+        'notion': 'notion_api_key',
+        'slack': 'slack_api_key',
+        'google knowledge graph': 'google_knowledge_graph_api_key',
+        'browserbase': 'browserbase_api_key',
+        'bright data': 'brightdata_api_key',
+        'brightdata': 'brightdata_api_key',
+        'scrapingbee': 'scrapingbee_api_key',
+        // By URL/domain
+        'aistudio.google.com': 'gemini_api_key',
+        'console.groq.com': 'groq_api_key',
+        'cloud.cerebras.ai': 'cerebras_api_key',
+        'console.mistral.ai': 'mistral_api_key',
+        'huggingface.co': 'huggingface_api_key',
+        'openrouter.ai': 'openrouter_api_key',
+        'github.com': 'openrouter_api_key',
+        'build.nvidia.com': 'nvidia_api_key',
+        'workers.ai': 'cloudflare_workers_api_key',
+        'platform.deepseek.com': 'deepseek_api_key',
+        'console.x.ai': 'xai_api_key',
+        'console.anthropic.com': 'anthropic_api_key',
+        'platform.openai.com': 'openai_api_key',
+        'dashboard.cohere.com': 'cohere_api_key',
+        'ai21.com': 'ai21_api_key',
+        'bailian.console.alibabacloud.com': 'deepseek_api_key',
+        'deepinfra.com': 'deepinfra_api_key',
+        'fireworks.ai': 'fireworks_api_key',
+        'novita.ai': 'novita_api_key',
+        'replicate.com': 'replicate_api_key',
+        'tavily.com': 'tavily_api_key',
+        'serper.dev': 'serper_api_key',
+        'exa.ai': 'exa_api_key',
+        'jina.ai': 'jina_api_key',
+        'firecrawl.dev': 'firecrawl_api_key',
+        'console.deepgram.com': 'deepgram_api_key',
+        'assemblyai.com': 'assemblyai_api_key',
+        'elevenlabs.io': 'elevenlabs_api_key',
+        'lemonfox.ai': 'lemonfox_api_key',
+        'platform.stability.ai': 'stability_api_key',
+        'ollama.com': 'openrouter_api_key',
+        'platform.kimi.ai': 'kimi_api_key',
+        'huggingface.co/docs/inference-providers': 'huggingface_api_key',
+        'cloud.sambanova.com': 'sambanova_api_key',
+        'skillboss.com': 'openrouter_api_key',
+        'aionlabs.ai': 'openrouter_api_key',
+      }
+
+      let imported = 0
+      const skipped: string[] = []
+      const importedKeys: string[] = []
+
+      for (const row of rows) {
+        if (!Array.isArray(row)) continue
+        
+        // Skip empty rows
+        const firstCell = String(row[0] || '').trim()
+        const secondCell = String(row[1] || '').trim()
+        if (!firstCell && !secondCell) continue
+        
+        // Skip header rows
+        if (firstCell.toLowerCase() === 'provider' || firstCell.toLowerCase() === 'name' || firstCell.toLowerCase() === 's.no') continue
+        
+        // Get provider name and API key
+        let providerName = ''
+        let apiKey = ''
+        
+        if (row.length >= 3) {
+          providerName = String(row[1] || '').trim()
+          apiKey = String(row[2] || '').trim()
+        } else if (row.length >= 2) {
+          providerName = String(row[0] || '').trim()
+          apiKey = String(row[1] || '').trim()
+        }
+        
+        if (!providerName || !apiKey) continue
+        
+        // Skip entries that are clearly not API keys
+        const lowerKey = apiKey.toLowerCase()
+        if (lowerKey.includes('issue') || lowerKey.includes('problem') || lowerKey.includes('login') ||
+            lowerKey.includes('asking') || lowerKey.includes('need subscription') ||
+            lowerKey.includes('buy credits') || lowerKey.includes('not found') ||
+            lowerKey.includes('no login') || lowerKey.includes('no api key') ||
+            lowerKey.includes('there is no') || lowerKey.includes('site can') ||
+            lowerKey.includes('password:') || lowerKey.length < 10) continue
+
+        // Normalize provider name for matching
+        const normalizedName = providerName.toLowerCase()
+          .replace(/^https?:\/\//, '')  // Strip protocol
+          .replace(/\s.*$/, '')  // Strip everything after first space
+          .replace(/\{.*$/, '')  // Strip everything after {
+          .replace(/\/.*$/, '')  // Strip path
+          .trim()
+        
+        const secretKey = providerMap[normalizedName] || providerMap[providerName.toLowerCase().replace(/\s.*$/, '').trim()]
+
+        if (secretKey) {
+          // Append key instead of overwriting (supports multiple keys per provider)
+          setSecretsDraft((d) => {
+            const existing = (d as any)[secretKey] || ''
+            const existingKeys = existing ? existing.split(',').map((k: string) => k.trim()).filter(Boolean) : []
+            // Avoid duplicate keys
+            if (!existingKeys.includes(apiKey)) {
+              existingKeys.push(apiKey)
+            }
+            return { ...d, [secretKey]: existingKeys.join(', ') }
+          })
+          importedKeys.push(secretKey)
+          imported++
+        } else {
+          skipped.push(providerName)
+        }
+      }
+
+      if (imported > 0) {
+        addToast({
+          type: 'success',
+          title: `Imported ${imported} API key${imported > 1 ? 's' : ''}`,
+          message: `Keys for: ${importedKeys.join(', ')}${skipped.length > 0 ? `\nSkipped: ${skipped.slice(0, 5).join(', ')}${skipped.length > 5 ? '...' : ''}` : ''}`,
+        })
+      } else {
+        addToast({ type: 'error', title: 'No matching providers found', message: 'Check that your file has valid API keys for supported providers.' })
+      }
+    } catch (err) {
+      addToast({ type: 'error', title: 'Failed to parse Excel file', message: err instanceof Error ? err.message : 'Invalid file format' })
+    }
+
+    e.target.value = ''
+  }, [addToast])
 
   useEffect(() => {
     return () => { Object.values(timers.current).forEach(clearTimeout) }
@@ -932,7 +1198,7 @@ function SystemSettingsInner() {
             <div>
               <h2 className="text-lg font-semibold tracking-tight">Media Player Settings</h2>
               <p className="text-sm text-muted-foreground mt-1">
-                Configure global defaults for the Vidstack video player.
+                Configure global defaults for the Vidstack video player. After saving, hard-refresh a lesson page to verify autoplay stays off when disabled.
               </p>
             </div>
             <div className="rounded-full bg-primary/10 p-2 text-primary">
@@ -969,6 +1235,16 @@ function SystemSettingsInner() {
                 <Switch
                   checked={form.video_player_muted}
                   onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_muted: c }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Auto-start captions</Label>
+                  <p className="text-sm text-muted-foreground">Turn English subtitles on by default when a lesson has captions</p>
+                </div>
+                <Switch
+                  checked={form.video_player_captions_default}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_captions_default: c }))}
                 />
               </div>
             </div>
@@ -1393,7 +1669,7 @@ function SystemSettingsInner() {
             `}</style>
 
             <Dialog open={!!previewTemplate} onOpenChange={(o) => { if (!o) setPreviewTemplate(null) }}>
-              <DialogContent className="!max-w-[95vw] !w-[1400px] max-h-[95vh] overflow-y-auto">
+              <DialogContent className="max-w-[95vw]! w-350! max-h-[95vh] overflow-y-auto">
                 <DialogHeader>
                   <DialogTitle>Certificate Preview — {TEMPLATES.find((t) => t.key === previewTemplate)?.label || previewTemplate}</DialogTitle>
                   <DialogDescription>
@@ -1401,7 +1677,7 @@ function SystemSettingsInner() {
                   </DialogDescription>
                 </DialogHeader>
                 {previewTemplate && (
-                  <div className="w-full max-w-[1100px] mx-auto">
+                  <div className="w-full max-w-275 mx-auto">
                     <div className="overflow-hidden rounded-lg border shadow-sm">
                       <CertificateRenderer data={CERT_PREVIEW_DATA} template={previewTemplate} />
                     </div>
@@ -2346,85 +2622,13 @@ function SystemSettingsInner() {
               <Card className="rounded-xl border-border/60 p-6">
                 <div className="flex items-center gap-2 mb-1">
                   <Sparkles className="h-5 w-5 text-primary" />
-                  <h3 className="font-semibold text-foreground">AI & LLM API Keys</h3>
+                  <h3 className="font-semibold text-foreground">AI & LLM Configuration</h3>
                 </div>
                 <p className="text-xs text-muted-foreground mb-6">
-                  Configure API keys. Add multiple keys separated by commas for automatic rotation on rate limits.
-                  Failed providers auto-fallback: Gemini → Groq → OpenAI → Anthropic.
+                  Configure API keys, view usage stats, and manage routing. Supports multiple keys per provider with automatic rotation.
                 </p>
-                <div className="space-y-5">
-                  {['gemini','opencode','groq','openrouter','openai','anthropic','nvidia'].map((provider) => {
-                    const meta: Record<string,any> = {
-                      gemini: { label: 'Google Gemini', placeholder: 'AIza...', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier. Used for code analysis, hints, and fast completions.', key: 'gemini_api_key' },
-                      opencode: { label: 'OpenCode', placeholder: 'ock_...', url: 'https://opencode.ai/keys', urlLabel: 'OpenCode Keys', desc: 'Free & paid. Claude, GPT, Gemini, DeepSeek models. Free models: deepseek-v4-flash-free, mimo-v2.5-free, ling-3.0-flash-free.', key: 'opencode_api_key' },
-                      groq: { label: 'Groq', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama 3.3, Mixtral, Gemma, DeepSeek R1.', key: 'groq_api_key' },
-                      openrouter: { label: 'OpenRouter', placeholder: 'sk-or-...', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. Access 300+ models including free tiers of Gemini, Claude, Llama.', key: 'openrouter_api_key' },
-                      openai: { label: 'OpenAI', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'OpenAI Platform', desc: 'Paid. GPT-4o, GPT-4-turbo, o1, o3 models.', key: 'openai_api_key' },
-                      anthropic: { label: 'Anthropic Claude', placeholder: 'sk-ant-...', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Paid. Deep code review, agentic fixes, and chat.', key: 'anthropic_api_key' },
-                      nvidia: { label: 'NVIDIA NIM', placeholder: 'nvapi-...', url: 'https://console.anthropic.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models via NVIDIA infrastructure.', key: 'nvidia_api_key' },
-                    }
-                    const info = meta[provider]
-                    const keyValue = (secretsDraft as any)[info.key] || ""
-                    const hasKey = (secretsMeta as any)['has_' + info.key]
-                    return (
-                      <div key={provider} className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4">
-                        <div className="flex items-center justify-between">
-                          <p className="text-sm font-semibold">{info.label}</p>
-                          {hasKey ? <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-xs uppercase">Active</span> : <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-xs uppercase">Not Set</span>}
-                        </div>
-                        <p className="text-xs text-muted-foreground">{info.desc} <a href={info.url} target="_blank" rel="noopener noreferrer" className="text-primary underline">{info.urlLabel}</a>.</p>
-                        <div className="relative">
-                          <Input type={(visibleFields as any)[info.key] ? 'text' : 'password'} autoComplete="off"
-                            value={((visibleFields as any)[info.key] ? (revealedValues[info.key] ?? '') : '') || (hasKey ? '••••••••' : '')}
-                            onChange={(e) => setSecretsDraft((d) => ({ ...d, [info.key]: e.target.value }))}
-                            className="h-10 rounded-lg border-border/60 bg-background font-mono text-sm pr-10"
-                            placeholder={info.placeholder + " (key1,key2 for rotation)"} />
-                          <button type="button" tabIndex={-1} onClick={() => handleRevealToggle(info.key)}
-                            className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility">
-                            {(visibleFields as any)[info.key] ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
-                          </button>
-                        </div>
-                      </div>
-                    )
-                  })}
-                </div>
-                <p className="mt-3 text-xs text-muted-foreground">
-                  Provider fallback order (auto-selects): Gemini → OpenCode → Groq → OpenRouter → OpenAI → Anthropic → NVIDIA.
-                </p>
-                <div className="flex justify-between mt-6 pt-4 border-t border-border/40">
-                  <Button variant="outline" size="sm" onClick={async () => {
-                    const providers = ['gemini','opencode','groq','openrouter','openai','anthropic','nvidia']
-                    const results: React.ReactNode[] = []
-                    for (const p of providers) {
-                      try {
-                        const r = await csrfFetch('/api/admin/llm-test', { method: 'POST', headers: {'Content-Type':'application/json'}, body: JSON.stringify({ provider: p }) })
-                        const d = await r.json()
-                        results.push(
-                          <span key={p} className="flex items-center gap-1">
-                            {d.ok ? <CheckCircle2 className="h-4 w-4 text-green-500" /> : <XCircle className="h-4 w-4 text-red-500" />}
-                            {p}{!d.ok ? `: ${d.error}` : ''}
-                          </span>
-                        )
-                      } catch { 
-                        results.push(
-                          <span key={p} className="flex items-center gap-1">
-                            <XCircle className="h-4 w-4 text-red-500" />
-                            {p}: network error
-                          </span>
-                        ) 
-                      }
-                    }
-                    addToast({ type: 'info', title: 'Key Test Results', message: <div className="flex flex-col gap-1.5 mt-2">{results}</div>, duration: 15000 })
-                  }}>
-                    <Zap className="h-3 w-3 mr-1" />Test All Keys
-                  </Button>
-                  <Button onClick={() => saveSecrets()} disabled={savingKey === "integrations"} className="gap-2">
-                    {savingKey === "integrations" ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
-                    Save Keys
-                  </Button>
-                </div>
               </Card>
-              <AiAnalyticsDashboard />
+              <LlmSettingsTabs />
             </div>
           ) : section === 'gamification' ? (
             <Card className="rounded-xl border-border/60 shadow-sm">

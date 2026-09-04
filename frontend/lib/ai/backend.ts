@@ -5,36 +5,56 @@
  * INTERNAL_BACKEND_URL env, defaults to localhost:8001). These calls happen
  * ONLY server-side from Next.js API route handlers — never expose this from
  * the browser.
+ *
+ * Uses OmniRouter-style provider fallback: when a provider hits rate limits,
+ * quota exhaustion, or errors, automatically rotates to the next available
+ * provider with exponential backoff.
+ *
+ * All API keys are resolved via the unified getApiKey() utility which supports:
+ * - Round-robin across multiple keys per provider
+ * - Rate-limit detection and automatic rotation
+ * - Fallback to environment variables
  */
 
-const BACKEND = process.env.INTERNAL_BACKEND_URL || (process.env.NODE_ENV === 'production' ? 'http://codespectra-backend-cd7lq6:8000' : 'http://localhost:8001')
+const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
+const BACKEND = process.env.INTERNAL_BACKEND_URL
+  || ((process.env.COURSE_WORKER === '1' || process.env.NODE_ENV === 'production')
+    ? PROD_BACKEND
+    : 'http://localhost:8001')
 
 async function getBackendSecrets(): Promise<{
   anthropic: string; gemini: string; openai: string; openrouter: string; opencode: string; groq: string
 }> {
-  const fromEnv = {
-    anthropic: process.env.ANTHROPIC_API_KEY?.trim() || '',
-    gemini: process.env.GEMINI_API_KEY?.trim() || '',
-    openai: process.env.OPENAI_API_KEY?.trim() || '',
-    openrouter: process.env.OPENROUTER_API_KEY?.trim() || '',
-    opencode: process.env.OPENCODE_API_KEY?.trim() || '',
-    groq: process.env.GROQ_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '',
-  }
   try {
-    const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
-    const { readPlatformLlmConfig } = await import('@/lib/ai/get-user-model')
-    const [secrets, platformLlm] = await Promise.all([readServerSecrets(), readPlatformLlmConfig()])
-    const llmKey = platformLlm?.api_key && typeof platformLlm.api_key === 'string' && !isMaskedSecret(platformLlm.api_key) ? platformLlm.api_key.trim() : ''
+    const { getApiKey } = await import('@/lib/ai/get-api-key')
+    
+    const [anthropicKey, geminiKey, openaiKey, openrouterKey, opencodeKey, groqKey] = await Promise.all([
+      getApiKey('anthropic'),
+      getApiKey('gemini'),
+      getApiKey('openai'),
+      getApiKey('openrouter'),
+      getApiKey('opencode'),
+      getApiKey('groq'),
+    ])
+    
     return {
-      anthropic: fromEnv.anthropic || (secrets.anthropic_api_key?.trim() || llmKey),
-      gemini: fromEnv.gemini || (secrets.gemini_api_key?.trim() || llmKey),
-      openai: fromEnv.openai || (secrets.openai_api_key?.trim() || llmKey),
-      openrouter: fromEnv.openrouter || (secrets.openrouter_api_key?.trim() || llmKey),
-      opencode: fromEnv.opencode || (secrets.opencode_api_key?.trim() || llmKey),
-      groq: fromEnv.groq || (secrets.groq_api_key?.trim() || llmKey),
+      anthropic: anthropicKey?.key || '',
+      gemini: geminiKey?.key || '',
+      openai: openaiKey?.key || '',
+      openrouter: openrouterKey?.key || '',
+      opencode: opencodeKey?.key || '',
+      groq: groqKey?.key || '',
     }
   } catch {
-    return fromEnv
+    // Fallback to env vars only
+    return {
+      anthropic: process.env.ANTHROPIC_API_KEY?.trim() || '',
+      gemini: process.env.GEMINI_API_KEY?.trim() || '',
+      openai: process.env.OPENAI_API_KEY?.trim() || '',
+      openrouter: process.env.OPENROUTER_API_KEY?.trim() || '',
+      opencode: process.env.OPENCODE_API_KEY?.trim() || '',
+      groq: process.env.GROQ_API_KEY?.trim() || process.env.OPENAI_API_KEY?.trim() || '',
+    }
   }
 }
 
@@ -129,78 +149,9 @@ export async function backendComplete(args: {
   feature?: string
   userId?: string
 }): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string; usage?: { input_tokens: number, output_tokens: number } }> {
-  const start = Date.now()
-  let success = true
-  let error: string | undefined
-  let parsedRes: any
-
-  try {
-    const headers = await backendHeaders({ apiKeyOverride: args.apiKeyOverride })
-    const res = await fetch(`${BACKEND}/internal/ai/complete`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        session_id: args.sessionId ?? 'default',
-        system_message: args.systemMessage,
-        user_message: args.userMessage,
-        model_role: args.modelRole ?? 'fast',
-        response_format: args.responseFormat ?? 'text',
-        ...(args.providerOverride && args.modelOverride ? {
-          provider_override: args.providerOverride,
-          model_override: args.modelOverride,
-          endpoint_override: args.endpointOverride || '',
-        } : {}),
-        ...(args.apiKeyOverride ? { api_key_override: args.apiKeyOverride } : {}),
-      }),
-    })
-    
-    if (!res.ok) {
-      const text = await res.text()
-      success = false
-      error = text
-      return { ok: false, text }
-    }
-    
-    parsedRes = await res.json()
-    return parsedRes
-  } catch (e) {
-    success = false
-    error = e instanceof Error ? e.message : 'Unknown error'
-    throw e
-  } finally {
-    const latencyMs = Date.now() - start
-    if (args.feature) {
-      import('@/lib/db/analytics').then(async ({ analyticsAiUsage, estimateAiCost, newId, nowIso }) => {
-        try {
-          const inputTokens = parsedRes?.usage?.input_tokens || parsedRes?.prompt_tokens || 0
-          const outputTokens = parsedRes?.usage?.output_tokens || parsedRes?.completion_tokens || 0
-          const model = args.modelOverride || 'unknown'
-          const provider = args.providerOverride || 'unknown'
-          const totalTokens = inputTokens + outputTokens
-          const cost = estimateAiCost(model, inputTokens, outputTokens)
-
-          const col = await analyticsAiUsage()
-          await col.insertOne({
-            id: newId(),
-            user_id: args.userId,
-            feature: args.feature,
-            provider,
-            model,
-            input_tokens: inputTokens,
-            output_tokens: outputTokens,
-            total_tokens: totalTokens,
-            estimated_cost: cost,
-            latency_ms: latencyMs,
-            success,
-            error,
-            timestamp: nowIso(),
-          } as any)
-        } catch {
-          // Silent
-        }
-      }).catch(() => null)
-    }
-  }
+  // Use OmniRouter-style provider fallback for automatic failover
+  const { backendCompleteWithFallback } = await import('@/lib/ai/provider-fallback')
+  return backendCompleteWithFallback(args)
 }
 
 export async function backendGet<T = unknown>(

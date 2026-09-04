@@ -1,0 +1,14 @@
+# SkillSpector baseline — findings listed here are suppressed on future scans.
+# Edit 'reason' fields and add glob 'rules' as needed. See docs/SUPPRESSION.md.
+version: 2
+scanner_version: 2.11.0
+rules: []
+fingerprints:
+- hash: sha256:9b9fba72c213826edb380ee79c6d7bc19ae0825fb1f9b86b45a74b28f0afbdf9
+  rule_id: SC2
+  file: penetration-testing-with-strix/SKILL.md
+  reason: Accepted finding (auto-generated baseline)
+- hash: sha256:33b7be6c22b357e4558be04f4d8430d5e66481e7fcb90fc984e25b93b9b2f41b
+  rule_id: E1
+  file: penetration-testing-with-strix/SKILL.md
+  reason: Accepted finding (auto-generated baseline)

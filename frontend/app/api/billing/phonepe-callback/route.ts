@@ -28,7 +28,6 @@ export const dynamic = 'force-dynamic'
 
 export async function POST(req: NextRequest) {
   let merchantTransactionId = ''
-  let state = ''
 
   const contentType = req.headers.get('content-type') || ''
 
@@ -36,11 +35,9 @@ export async function POST(req: NextRequest) {
     if (contentType.includes('application/json')) {
       const body = await req.json()
       merchantTransactionId = String(body.merchantTransactionId || '')
-      state = String(body.state || body.status || '')
     } else {
       const formData = await req.formData()
       merchantTransactionId = String(formData.get('merchantTransactionId') || '')
-      state = String(formData.get('state') || formData.get('status') || '')
     }
   } catch {
     return NextResponse.redirect(`${process.env.NEXT_PUBLIC_APP_URL}/dashboard/billing?payment=phonepe&status=failed`)
@@ -54,19 +51,18 @@ export async function POST(req: NextRequest) {
   let status = 'failed'
 
   try {
-    // First check if PhonePe indicated success directly
-    if (state === 'COMPLETED' || state === 'SUCCESS') {
-      await processSuccessfulPayment(merchantTransactionId, 0, '')
-      status = 'success'
-    } else {
-      // Query PhonePe for actual status
-      const statusResponse = await getPhonePeTransactionStatus(merchantTransactionId)
-      if (statusResponse.success && statusResponse.data) {
-        state = statusResponse.data.state
-        if (state === 'COMPLETED' || state === 'SUCCESS') {
-          status = 'success'
-          await processSuccessfulPayment(merchantTransactionId, statusResponse.data.amount, statusResponse.data.transactionId)
-        }
+    // NEVER trust the state claimed by the callback body — anyone can POST
+    // `state: 'COMPLETED'`. Always re-check the transaction server-side.
+    const statusResponse = await getPhonePeTransactionStatus(merchantTransactionId)
+    if (statusResponse.success && statusResponse.data) {
+      const verifiedState = statusResponse.data.state
+      if (verifiedState === 'COMPLETED' || verifiedState === 'SUCCESS') {
+        status = 'success'
+        await processSuccessfulPayment(merchantTransactionId, statusResponse.data.amount, statusResponse.data.transactionId)
+      } else if (verifiedState === 'FAILED') {
+        status = 'failed'
+      } else {
+        status = 'pending'
       }
     }
   } catch (e) {
@@ -116,7 +112,7 @@ async function processSuccessfulPayment(merchantTransactionId: string, amount: n
   const plan = BILLING_PLANS[order.plan_id]
   if (plan) {
     const db = await getMongoDb()
-    const user = await db.collection('user').findOne({ _id: order.user_id as any })
+    const user = await db.collection('user').findOne({ id: order.user_id })
     if (user?.email) {
       const template = plan.kind === 'subscription'
         ? emailTemplates.subscriptionConfirmation(plan.name, finalAmount, plan.currency)

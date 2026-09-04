@@ -35,6 +35,7 @@ interface CandidateResult {
   score: number | null
   maxScore: number | null
   submittedAt: string | null
+  invitedAt: string | null
   proctoringFlags: number
   idPhoto?: string | null
   facePhoto?: string | null
@@ -78,6 +79,9 @@ interface ReviewData {
     released_at: string | null
     id_photo?: string | null
     face_photo?: string | null
+    question_timings?: Record<string, number>
+    total_time_ms?: number
+    started_at?: string | null
   }
   proctorEvents: Array<{ event_type: string; meta: Record<string, unknown>; created_at: string }>
   candidate: { name: string; email: string }
@@ -236,7 +240,7 @@ function ProctorMetaDetails({ event_type, meta }: { event_type: string; meta: Re
       {entries.map(({ label, value }) => (
         <div key={label} className="text-xs flex gap-2">
           <span className="text-muted-foreground shrink-0 w-32">{label}:</span>
-          <span className="text-foreground break-words">{value}</span>
+          <span className="text-foreground wrap-break-word">{value}</span>
         </div>
       ))}
     </div>
@@ -265,6 +269,7 @@ export default function ExamResultsPage() {
   const [showProctorLog, setShowProctorLog] = useState(true)
   const [showRawProctorMeta, setShowRawProctorMeta] = useState(false)
   const [proctorFilter, setProctorFilter] = useState<'all' | 'high' | 'warn' | 'info'>('all')
+  const [resultFilter, setResultFilter] = useState<'all' | 'completed' | 'in_progress' | 'pending' | 'ungraded' | 'flagged'>('all')
   const [exportingReport, setExportingReport] = useState(false)
   const [showReleaseAllConfirm, setShowReleaseAllConfirm] = useState(false)
 
@@ -883,11 +888,38 @@ export default function ExamResultsPage() {
     {
       key: 'name',
       header: 'Candidate',
+      sortable: true,
       cell: (row: CandidateResult) => (
         <div>
           <div className="font-medium text-foreground">{row.name}</div>
           <div className="text-xs text-muted-foreground">{row.email}</div>
         </div>
+      ),
+    },
+    {
+      key: 'invitedAt',
+      header: 'Invited',
+      sortable: true,
+      cell: (row: CandidateResult) => (
+        row.invitedAt ? (
+          <div>
+            <div className="text-sm">{new Date(row.invitedAt).toLocaleDateString()}</div>
+            <div className="text-xs text-muted-foreground">{new Date(row.invitedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+        ) : <span className="text-xs text-muted-foreground">--</span>
+      ),
+    },
+    {
+      key: 'submittedAt',
+      header: 'Submitted',
+      sortable: true,
+      cell: (row: CandidateResult) => (
+        row.submittedAt ? (
+          <div>
+            <div className="text-sm">{new Date(row.submittedAt).toLocaleDateString()}</div>
+            <div className="text-xs text-muted-foreground">{new Date(row.submittedAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</div>
+          </div>
+        ) : <span className="text-xs text-muted-foreground">--</span>
       ),
     },
     {
@@ -960,6 +992,7 @@ export default function ExamResultsPage() {
     {
       key: 'score',
       header: 'Score',
+      sortable: true,
       cell: (row: CandidateResult) => (
         <div className="font-mono font-medium">
           {row.score !== null ? `${row.score}%` : '--'}
@@ -1048,6 +1081,21 @@ export default function ExamResultsPage() {
   const unreleasedCount = results.filter(r => r.status === 'completed' && !r.released).length
   const pendingGradingCount = results.filter(r => r.status === 'completed' && r.graded === false).length
 
+  const inProgressCount = results.filter(r => r.status === 'in_progress').length
+  const pendingCount = results.filter(r => r.status === 'pending').length
+  const flaggedCount = results.filter(r => r.proctoringFlags > 0).length
+
+  const filteredResults = results.filter(r => {
+    switch (resultFilter) {
+      case 'completed': return r.status === 'completed'
+      case 'in_progress': return r.status === 'in_progress'
+      case 'pending': return r.status === 'pending'
+      case 'ungraded': return r.status === 'completed' && r.graded === false
+      case 'flagged': return r.proctoringFlags > 0
+      default: return true
+    }
+  })
+
   return (
     <div className="space-y-6 pb-12">
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
@@ -1120,9 +1168,37 @@ export default function ExamResultsPage() {
         </div>
       </div>
 
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+        {([
+          ['all', 'All Invited', results.length, 'text-foreground', ''],
+          ['pending', 'Invited', pendingCount, 'text-muted-foreground', ''],
+          ['in_progress', 'In Progress', inProgressCount, 'text-blue-600 dark:text-blue-400', ''],
+          ['completed', 'Submitted', completedCount, 'text-emerald-600 dark:text-emerald-400', ''],
+          ['ungraded', 'Awaiting Grading', pendingGradingCount, 'text-amber-600 dark:text-amber-400', ''],
+          ['flagged', 'Flagged Review', flaggedCount, 'text-red-600 dark:text-red-400', ''],
+        ] as const).map(([key, label, count, color, _]) => (
+          <button
+            key={key}
+            type="button"
+            onClick={() => setResultFilter(key)}
+            className={`rounded-lg border p-3 text-left transition-colors ${resultFilter === key ? 'border-primary bg-primary/5 ring-1 ring-primary/30' : 'border-border bg-card hover:bg-muted/50'} ${count === 0 ? 'opacity-60' : ''}`}
+          >
+            <div className={`text-2xl font-bold ${color}`}>{count}</div>
+            <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
+          </button>
+        ))}
+      </div>
+
+      {resultFilter !== 'all' && (
+        <div className="flex items-center gap-2 text-sm">
+          <span className="text-muted-foreground">Showing {filteredResults.length} of {results.length} candidates.</span>
+          <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setResultFilter('all')}>Show all</Button>
+        </div>
+      )}
+
       <div className="bg-card border rounded-lg p-1">
         <DataTable 
-          data={results} 
+          data={filteredResults} 
           columns={columns} 
           searchKeys={['name', 'email']}
           searchPlaceholder="Search candidates..."
@@ -1192,7 +1268,7 @@ export default function ExamResultsPage() {
               {/* Scrollable content */}
               <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 sm:px-6 py-4 sm:py-6 space-y-4 sm:space-y-6 print-review-body">
                   {/* Candidate Info */}
-                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
+                  <div className="grid grid-cols-1 sm:grid-cols-4 gap-4 text-sm border rounded-lg p-4 bg-muted/30">
                     <div>
                       <span className="text-muted-foreground block text-xs">Score</span>
                       <span className="text-xl font-bold">{reviewData.submission.score}/{reviewData.submission.max_score}</span>
@@ -1215,6 +1291,17 @@ export default function ExamResultsPage() {
                           ? new Date(reviewData.submission.submitted_at).toLocaleString()
                           : '--'}
                       </span>
+                    </div>
+                    <div>
+                      <span className="text-muted-foreground block text-xs">Time Used</span>
+                      <span className="text-xl font-bold">
+                        {reviewData.submission.total_time_ms
+                          ? `${Math.floor(reviewData.submission.total_time_ms / 60000)}m ${Math.floor((reviewData.submission.total_time_ms % 60000) / 1000)}s`
+                          : '--'}
+                      </span>
+                      {reviewData.submission.total_time_ms && reviewData.submission.total_time_ms < 60000 && (
+                        <span className="block text-xs text-amber-500 mt-0.5">⚠ Very fast submission</span>
+                      )}
                     </div>
                   </div>
 
@@ -1239,9 +1326,13 @@ export default function ExamResultsPage() {
                         const isManuallyGraded = detail?.awarded !== undefined && !isPendingReview
                         const modelAnswer = q.answer || q.correct_answer || ''
                         const maxPoints = q.points || q.score || detail?.points || 10
+                        const timeSpent = reviewData.submission.question_timings?.[q.id] || 0
+                        const isSuspiciouslyFast = timeSpent > 0 && timeSpent < 3000
+                        const totalTimeMs = reviewData.submission.total_time_ms || 0
+                        const isSuspiciouslySlow = timeSpent > 0 && totalTimeMs > 0 && timeSpent > totalTimeMs * 0.5
 
                         return (
-                          <div key={q.id} className={`border rounded-lg p-3 sm:p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''}`}>
+                          <div key={q.id} className={`border rounded-lg p-3 sm:p-4 space-y-2 ${isPendingReview ? 'border-amber-500/40 bg-amber-500/5' : ''} ${isSuspiciouslyFast ? 'border-red-500/40 bg-red-500/5' : ''}`}>
                             <div className="flex items-start justify-between gap-2 sm:gap-4">
                               <div className="flex-1 min-w-0">
                                 <span className="text-xs text-muted-foreground">Q{i + 1}. {q.type}</span>
@@ -1254,8 +1345,23 @@ export default function ExamResultsPage() {
                                   </ReactMarkdown>
                                 </div>
                               </div>
+                              {/* Timing display */}
+                              {timeSpent > 0 && (
+                                <div className="flex items-center gap-1 text-xs shrink-0">
+                                  <Clock className="w-3 h-3 text-muted-foreground" />
+                                  <span className={isSuspiciouslyFast ? 'text-red-500 font-semibold' : isSuspiciouslySlow ? 'text-amber-500 font-semibold' : 'text-muted-foreground'}>
+                                    {timeSpent < 1000 ? `${timeSpent}ms` : `${(timeSpent / 1000).toFixed(1)}s`}
+                                  </span>
+                                  {isSuspiciouslyFast && (
+                                    <Badge variant="outline" className="text-[10px] text-red-500 border-red-500/30 bg-red-500/10 ml-1">Fast</Badge>
+                                  )}
+                                  {isSuspiciouslySlow && (
+                                    <Badge variant="outline" className="text-[10px] text-amber-500 border-amber-500/30 bg-amber-500/10 ml-1">Slow</Badge>
+                                  )}
+                                </div>
+                              )}
                               {isPendingReview ? (
-                                <div className="flex items-center gap-2">
+                                <div className="flex items-center gap-2 shrink-0">
                                   {detail?.requires_human_review && (
                                     <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0">
                                       <AlertTriangle className="w-3 h-3 mr-1" /> AI Uncertain
@@ -1304,7 +1410,7 @@ export default function ExamResultsPage() {
                                   return (
                                     <div
                                       key={oi}
-                                      className={`text-xs rounded-md border px-2.5 py-1 break-words whitespace-pre-wrap w-full text-left ${optClass}`}
+                                      className={`text-xs rounded-md border px-2.5 py-1 wrap-break-word whitespace-pre-wrap w-full text-left ${optClass}`}
                                     >
                                       {opt}
                                       {isSelected ? ' (selected)' : ''}
@@ -1321,7 +1427,7 @@ export default function ExamResultsPage() {
                                 <div>
                                   <span className="text-xs font-medium text-muted-foreground block mb-1">Candidate&apos;s Answer:</span>
                                   {userAnswer ? (
-                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border break-words">{userAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-muted p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto border wrap-break-word">{userAnswer}</pre>
                                   ) : (
                                     <span className="text-xs text-muted-foreground italic">No answer provided</span>
                                   )}
@@ -1329,7 +1435,7 @@ export default function ExamResultsPage() {
                                 {modelAnswer && (
                                   <div>
                                     <span className="text-xs font-medium text-emerald-500 block mb-1">Model Answer / Rubric:</span>
-                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto break-words">{modelAnswer}</pre>
+                                    <pre className="text-xs font-mono bg-emerald-500/5 border border-emerald-500/20 text-emerald-600 dark:text-emerald-400 p-3 rounded-lg overflow-x-auto whitespace-pre-wrap max-h-40 overflow-y-auto wrap-break-word">{modelAnswer}</pre>
                                   </div>
                                 )}
 
@@ -1560,7 +1666,7 @@ export default function ExamResultsPage() {
                                       </div>
                                       {evt.meta && Object.keys(evt.meta).length > 0 && (
                                         showRawProctorMeta ? (
-                                          <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap break-words border-t border-muted/50">
+                                          <pre className="px-4 pb-3 text-[11px] font-mono text-muted-foreground whitespace-pre-wrap wrap-break-word border-t border-muted/50">
                                             {JSON.stringify(evt.meta, null, 2)}
                                           </pre>
                                         ) : (

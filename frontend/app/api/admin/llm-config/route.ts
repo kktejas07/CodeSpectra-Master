@@ -7,7 +7,16 @@ import { LLM_CONFIG_DEFAULTS, LLM_PROVIDERS, type LLMConfig, type LLMProviderId 
 const PLATFORM_KEY = 'llm'
 
 function maskConfig(cfg: LLMConfig): LLMConfig {
-  return { ...cfg, api_key: maskSecret(cfg.api_key) || '' }
+  const maskedKeys: LLMConfig['keys'] = {}
+  if (cfg.keys) {
+    for (const [provider, keys] of Object.entries(cfg.keys)) {
+      maskedKeys[provider as LLMProviderId] = (keys || []).map(k => ({
+        ...k,
+        key: maskSecret(k.key) || ''
+      }))
+    }
+  }
+  return { ...cfg, api_key: maskSecret(cfg.api_key) || '', keys: maskedKeys }
 }
 
 export async function GET() {
@@ -53,6 +62,23 @@ export async function PATCH(request: Request) {
     model: typeof body.model === 'string' && body.model.trim() ? body.model.trim() : prev.model,
     endpoint: rawEndpoint,
     api_key: typeof body.api_key === 'string' && !isMaskedSecret(body.api_key) ? body.api_key.trim() : (isMaskedSecret(prev.api_key) ? '' : prev.api_key),
+    keys: body.keys || prev.keys || {},
+    taskOverrides: body.taskOverrides || prev.taskOverrides || {},
+  }
+
+  // Special logic for keys: if a sent key is masked, restore the original value.
+  if (next.keys && prev.keys) {
+    for (const [provider, keysArray] of Object.entries(next.keys)) {
+      const pId = provider as LLMProviderId
+      const prevKeysArray = prev.keys[pId] || []
+      next.keys[pId] = (keysArray || []).map(k => {
+        if (isMaskedSecret(k.key)) {
+          const old = prevKeysArray.find(pk => pk.id === k.id)
+          if (old) return { ...k, key: old.key }
+        }
+        return k
+      })
+    }
   }
 
   await db.collection('platform_settings').updateOne(

@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 import { backendComplete } from '@/lib/ai/backend'
+import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
 
 export const runtime = 'nodejs'
@@ -88,7 +89,13 @@ export async function GET() {
       const userId = gate.user.id
       const [submissions, invites] = await Promise.all([
         db.collection('exam_submissions').find({ user_id: userId }).project({ exam_id: 1 }).toArray(),
-        db.collection('candidate_invites').find({ user_id: userId }).project({ target_url: 1, assigned_assessments: 1 }).toArray(),
+        db.collection('candidate_invites').find({
+          $or: [
+            { user_id: userId },
+            { email: gate.user.email },
+            { email: { $regex: new RegExp(`^${String(gate.user.email).replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}$`, 'i') } },
+          ],
+        }).project({ target_url: 1, assigned_assessments: 1, email: 1 }).toArray(),
       ])
       const userExamIds = new Set<string>()
       submissions.forEach((s: any) => { if (s.exam_id) userExamIds.add(s.exam_id) })
@@ -105,18 +112,29 @@ export async function GET() {
     }
     const data = await db.collection('exams').find(filter).toArray()
     
-    // Aggregate attempts and average scores from submissions
+    // Aggregate attempts, released scores, and average scores from submissions
     const stats = await db.collection('exam_submissions').aggregate([
       {
         $group: {
           _id: '$exam_id',
           attempts: { $sum: 1 },
+          released: { $sum: { $cond: [ { $gt: ["$released_at", null] }, 1, 0 ] } },
           totalScore: { $sum: '$score' },
           totalMaxScore: { $sum: '$max_score' },
         }
       }
     ]).toArray()
     const statsMap = new Map(stats.map(s => [s._id, s]))
+
+    const allInvites = await db.collection('candidate_invites').find({}, { projection: { target_url: 1, assigned_assessments: 1 } }).toArray()
+    const invitesMap = new Map<string, number>()
+    for (const inv of allInvites) {
+      const urls = [inv.target_url, ...(inv.assigned_assessments || []).map((a: any) => a.target_url)].filter(Boolean)
+      const examIds = urls.map(url => url.match(/\/assessment\/([a-zA-Z0-9-]+)/)?.[1]).filter(Boolean)
+      for (const eid of examIds) {
+        invitesMap.set(eid, (invitesMap.get(eid) || 0) + 1)
+      }
+    }
 
     // Get current user's submissions to set completed/pending status
     const userSubmissions = await db.collection('exam_submissions').find({ user_id: gate.user.id }).toArray()
@@ -137,6 +155,8 @@ export async function GET() {
       return {
         ...safeExam,
         attempts: examStats.attempts,
+        released: examStats.released || 0,
+        invites: invitesMap.get(exam.id) || 0,
         avgScore: avgPercent,
         status: userSub ? (isReleased ? 'completed' : 'submitted') : 'pending',
         ...(isReleased && { score: Math.round((userSub.score / (userSub.max_score || 1)) * 100) }),
@@ -221,6 +241,7 @@ export async function POST(request: Request) {
           systemMessage: 'You are a senior technical assessor who creates realistic job screening questions. Each question must test a distinct skill with realistic distractors. Return ONLY valid JSON.',
           userMessage: aiPrompt,
           responseFormat: 'json',
+          ...(await platformModelOverrides()),
         })
         const rawJson = aiRes.ok ? (aiRes.json || (aiRes.text ? tryParseJsonArray(aiRes.text) : null)) : null
         if (rawJson && Array.isArray(rawJson) && rawJson.length > 0) {

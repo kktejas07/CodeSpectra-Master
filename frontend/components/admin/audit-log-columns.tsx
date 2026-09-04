@@ -189,7 +189,10 @@ export const auditLogColumns: DataTableColumn<AuditRow>[] = [
     key: 'actor', header: 'Actor',
     cell: (row) => (
       <div className="space-y-0.5">
-        <p className="font-medium text-foreground">{maskIdentity(row.actor)}</p>
+        <p className="font-medium text-foreground">{unmaskIdentity(row.actor)}</p>
+        {row.actorName && row.actorName !== row.actor ? (
+          <p className="text-xs text-muted-foreground">{row.actorName}</p>
+        ) : null}
         {row.actorIp ? (
           <p className="flex items-center gap-1 text-xs text-muted-foreground">
             <MapPin className="h-3 w-3" /> {maskIp(row.actorIp)}
@@ -213,7 +216,7 @@ export const auditLogColumns: DataTableColumn<AuditRow>[] = [
   {
     key: 'resource', header: 'Resource',
     cell: (row) => {
-      const { label, value } = parseResource(row.resource)
+      const { label, value } = parseResource(row.resource, true)
       return (
         <div className="flex items-start gap-2">
           <span className="mt-0.5 shrink-0 text-muted-foreground">{resourceIcon(row.resourceType)}</span>

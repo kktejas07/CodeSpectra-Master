@@ -39,9 +39,8 @@ export async function GET() {
   }
 
   try {
-    // Use single Date.now() reference to avoid millisecond drift between since/until
     const nowMs = Date.now()
-    const sinceSec = Math.floor(nowMs / 1000) - 259200 // exactly 3 days ago (seconds)
+    const sinceSec = Math.floor(nowMs / 1000) - 259200 // 3 days
     const since = new Date(sinceSec * 1000).toISOString()
     const until = new Date(Math.floor(nowMs / 1000) * 1000).toISOString()
 
@@ -49,7 +48,7 @@ export async function GET() {
     const zoneResult = await cfFetch(apiToken, `/zones/${zoneId}`)
     const zoneName = (zoneResult.result as any)?.name || ''
 
-    // GraphQL query for HTTP request totals (3-day hourly groups)
+    // GraphQL: HTTP request totals (3-day hourly groups)
     const gqlResult = await cfGraphQL(
       apiToken,
       `query GetZoneMetrics($zoneTag: String!, $since: String!, $until: String!) {
@@ -68,6 +67,9 @@ export async function GET() {
               uniq {
                 uniques
               }
+              dimensions {
+                datetime
+              }
             }
           }
         }
@@ -77,6 +79,7 @@ export async function GET() {
 
     const groups = gqlResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
     const totals = { bytes: 0, cachedBytes: 0, requests: 0, cachedRequests: 0, uniques: 0 }
+    const timeSeries: Array<{ datetime: string; requests: number; cached: number; bandwidth: number }> = []
 
     for (const g of groups as any[]) {
       if (g.sum) {
@@ -88,42 +91,103 @@ export async function GET() {
       if (g.uniq) {
         totals.uniques += g.uniq.uniques || 0
       }
+      if (g.dimensions?.datetime) {
+        timeSeries.push({
+          datetime: g.dimensions.datetime,
+          requests: g.sum?.requests || 0,
+          cached: g.sum?.cachedRequests || 0,
+          bandwidth: g.sum?.bytes || 0,
+        })
+      }
     }
 
-    // Query per-country request counts
-    const countryResult = await cfGraphQL(
-      apiToken,
-      `query GetCountryMetrics($zoneTag: String!, $since: String!, $until: String!) {
-        viewer {
-          zones(filter: {zoneTag: $zoneTag}) {
-            httpRequests1hGroups(
-              limit: 100,
-              filter: {datetime_geq: $since, datetime_leq: $until},
-              orderBy: [sum_requests_DESC]
-            ) {
-              dimensions {
-                clientCountryName
+    // GraphQL: Per-country request counts (use REST API as fallback if GraphQL fails)
+    let topCountries: Array<{ country: string; requests: number }> = []
+    try {
+      const countryResult = await cfGraphQL(
+        apiToken,
+        `query GetCountryMetrics($zoneTag: String!, $since: String!, $until: String!) {
+          viewer {
+            zones(filter: {zoneTag: $zoneTag}) {
+              httpRequests1hGroups(
+                limit: 100,
+                filter: {datetime_geq: $since, datetime_leq: $until},
+                orderBy: [sum_requests_DESC]
+              ) {
+                dimensions {
+                  clientCountryName
+                }
+                sum {
+                  requests
+                }
               }
-              sum {
-                requests
+            }
+          }
+        }`,
+        { zoneTag: zoneId, since, until }
+      )
+
+      const countryGroups = countryResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
+      console.log('[cloudflare-analytics] Country groups count:', countryGroups.length)
+      const countryMap = new Map<string, number>()
+      for (const g of countryGroups as any[]) {
+        const name = g?.dimensions?.clientCountryName || 'Unknown'
+        countryMap.set(name, (countryMap.get(name) || 0) + (g?.sum?.requests || 0))
+      }
+      topCountries = Array.from(countryMap.entries())
+        .sort((a, b) => b[1] - a[1])
+        .slice(0, 50)
+        .map(([country, requests]) => ({ country, requests }))
+      console.log('[cloudflare-analytics] Top countries:', topCountries.length)
+    } catch (countryErr) {
+      console.warn('[cloudflare-analytics] Country GraphQL failed:', (countryErr as Error).message)
+      // Fallback: use REST API for country analytics
+      try {
+        const sinceParam = new Date(sinceSec * 1000).toISOString().split('T')[0]
+        const untilParam = new Date().toISOString().split('T')[0]
+        const analyticsRes = await cfFetch(apiToken, `/zones/${zoneId}/analytics/dashboard?since=${sinceParam}&until=${untilParam}&continuous=true`)
+        console.log('[cloudflare-analytics] REST analytics keys:', Object.keys(analyticsRes?.result || {}))
+        
+        // Try different possible response structures
+        const result = analyticsRes?.result || {}
+        const countries: Record<string, number> = {}
+        
+        // Structure 1: totals[0].taxonomiess
+        if (result.totals?.[0]?.taxonomies) {
+          for (const tax of result.totals[0].taxonomies) {
+            if (tax?.name && tax?.requests?.total) {
+              countries[tax.name] = tax.requests.total
+            }
+          }
+        }
+        
+        // Structure 2: timeseries with country data
+        if (Object.keys(countries).length === 0 && result.timeseries) {
+          for (const ts of result.timeseries) {
+            if (ts?.taxonomies) {
+              for (const tax of ts.taxonomies) {
+                if (tax?.name && tax?.requests?.total) {
+                  countries[tax.name] = (countries[tax.name] || 0) + tax.requests.total
+                }
               }
             }
           }
         }
-      }`,
-      { zoneTag: zoneId, since, until }
-    )
-
-    const countryGroups = countryResult?.data?.viewer?.zones?.[0]?.httpRequests1hGroups || []
-    const countryMap = new Map<string, number>()
-    for (const g of countryGroups as any[]) {
-      const name = g?.dimensions?.clientCountryName || 'Unknown'
-      countryMap.set(name, (countryMap.get(name) || 0) + (g?.sum?.requests || 0))
+        
+        topCountries = Object.entries(countries)
+          .sort(([, a], [, b]) => b - a)
+          .slice(0, 50)
+          .map(([country, requests]) => ({ country, requests }))
+        console.log('[cloudflare-analytics] REST countries:', topCountries.length)
+      } catch (restErr) {
+        console.error('[cloudflare-analytics] REST fallback failed:', (restErr as Error).message)
+      }
     }
-    const topCountries = Array.from(countryMap.entries())
-      .sort((a, b) => b[1] - a[1])
-      .slice(0, 50)
-      .map(([country, requests]) => ({ country, requests }))
+
+    // Estimate real-time visitors from recent hourly data
+    const recentHours = timeSeries.slice(-3)
+    const avgRequestsPerHour = recentHours.reduce((sum, h) => sum + h.requests, 0) / Math.max(recentHours.length, 1)
+    const estimatedConcurrent = Math.max(1, Math.round(avgRequestsPerHour / 60)) // rough per-minute
 
     return NextResponse.json({
       configured: true,
@@ -136,9 +200,15 @@ export async function GET() {
         cacheRatio: totals.requests > 0 ? Math.round((totals.cachedRequests / totals.requests) * 100) : 0,
       },
       topCountries,
+      timeSeries,
+      realtime: {
+        estimatedVisitorsPerMinute: estimatedConcurrent,
+        requestsPerHour: Math.round(avgRequestsPerHour),
+      },
     })
   } catch (e) {
     const msg = (e as Error).message
+    console.error('[cloudflare-analytics] Error:', msg)
     if (
       msg.includes('Authentication error') ||
       msg.includes('Invalid token') ||
@@ -146,7 +216,7 @@ export async function GET() {
       msg.includes('forbidden') ||
       msg.includes('Unauthorized')
     ) {
-      return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token' })
+      return NextResponse.json({ configured: false, error: 'Invalid or expired Cloudflare API token. Check that your token has Zone Analytics Read permission.' })
     }
     if (msg.includes('zone not found') || msg.includes('No zone')) {
       return NextResponse.json({ configured: false, error: 'Cloudflare zone not found — check Zone ID' })

@@ -17,9 +17,15 @@ const nextConfig = {
     '*.preview.emergentagent.com',
     '*.preview.emergentcf.cloud',
   ],
-  serverExternalPackages: ['mongodb', 'nodemailer', 'bcryptjs'],
+  serverExternalPackages: ['mongodb', 'nodemailer', 'bcryptjs', '@remotion/renderer', '@remotion/bundler'],
   typescript: {
     ignoreBuildErrors: false, // SECURITY: TypeScript errors must be fixed, not silently ignored
+  },
+  webpack: (config) => {
+    config.ignoreWarnings = [
+      { module: /node_modules\/@vladmandic\/face-api/ }
+    ]
+    return config
   },
   images: {
     unoptimized: true,
@@ -32,6 +38,9 @@ const nextConfig = {
         permanent: true,
       },
     ]
+  },
+  compiler: {
+    removeConsole: process.env.NODE_ENV === 'production' ? { exclude: ['error'] } : false,
   },
 }
 

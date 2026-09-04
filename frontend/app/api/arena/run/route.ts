@@ -1,6 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { executeOnce } from '@/lib/piston'
+import { getMongoDb } from '@/lib/mongodb'
+import { newId, nowIso } from '@/lib/db/ai'
 
 function normalize(s: string): string {
   return s.replace(/\r\n/g, '\n').replace(/[ \t]+$/gm, '').replace(/\n+$/g, '')
@@ -17,6 +19,7 @@ export async function POST(request: NextRequest) {
     language?: string
     test_cases?: Array<{ input: string; expected_output: string }>
     mode?: 'run' | 'submit'
+    challenge_id?: string
   }
   try {
     body = await request.json()
@@ -24,7 +27,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Invalid JSON' }, { status: 400 })
   }
 
-  const { source_code: source, language: lang, test_cases = [], mode = 'run' } = body
+  const { source_code: source, language: lang, test_cases = [], mode = 'run', challenge_id } = body
 
   if (!source || !lang) {
     return NextResponse.json({ error: 'source_code and language are required' }, { status: 400 })
@@ -88,6 +91,28 @@ export async function POST(request: NextRequest) {
         stderr: msg,
         time_ms: 0,
       })
+    }
+  }
+
+  // Save submission to database if mode is 'submit'
+  if (mode === 'submit' && challenge_id) {
+    try {
+      const db = await getMongoDb()
+      await db.collection('arena_submissions').insertOne({
+        id: newId(),
+        userId: gate.user.id,
+        challengeId: challenge_id,
+        language: lang,
+        sourceCode: source,
+        status: aggregateStatus,
+        passedTests: passed,
+        totalTests: test_cases.length,
+        totalTimeMs: totalTime,
+        results,
+        createdAt: nowIso(),
+      })
+    } catch (e) {
+      console.error('[arena] Failed to save submission:', e)
     }
   }
 

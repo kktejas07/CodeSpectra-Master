@@ -132,7 +132,7 @@ export function ModernCertificate({ data }: { data: CertificateData }) {
   return (
     <div
       data-testid="cert-canvas-modern"
-      className="cert-sheet bg-gradient-to-br from-[#0f172a] via-[#1e293b] to-[#0a5d3b] text-white relative overflow-hidden"
+      className="cert-sheet bg-linear-to-br from-[#0f172a] via-[#1e293b] to-[#0a5d3b] text-white relative overflow-hidden"
     >
       {/* Geometric accents */}
       <div className="absolute -top-32 -left-32 w-96 h-96 rounded-full bg-emerald-400/20 blur-3xl" />
@@ -171,7 +171,7 @@ export function ModernCertificate({ data }: { data: CertificateData }) {
               <CheckCircle2 className="w-4 h-4" />
               Verified level
             </div>
-            <p className="text-6xl font-black mt-2 tracking-tight break-words" data-testid="cert-level">{data.level}</p>
+            <p className="text-6xl font-black mt-2 tracking-tight wrap-break-word" data-testid="cert-level">{data.level}</p>
             <p className="text-xs text-white/50 mt-1">{scoreText(data)} · verified</p>
           </div>
 
@@ -255,13 +255,13 @@ export function ProfessionalCertificate({ data }: { data: CertificateData }) {
   return (
     <div
       data-testid="cert-canvas-professional"
-      className="cert-sheet bg-gradient-to-br from-[#f0f4ff] to-[#e8eeff] text-[#1a2744] relative overflow-hidden"
+      className="cert-sheet bg-linear-to-br from-[#f0f4ff] to-[#e8eeff] text-[#1a2744] relative overflow-hidden"
     >
       {/* Blue accent bar */}
-      <div className="absolute top-0 left-0 right-0 h-3 bg-gradient-to-r from-[#2563eb] via-[#3b82f6] to-[#2563eb]" />
-      <div className="absolute bottom-0 left-0 right-0 h-3 bg-gradient-to-r from-[#2563eb] via-[#3b82f6] to-[#2563eb]" />
+      <div className="absolute top-0 left-0 right-0 h-3 bg-linear-to-r from-[#2563eb] via-[#3b82f6] to-[#2563eb]" />
+      <div className="absolute bottom-0 left-0 right-0 h-3 bg-linear-to-r from-[#2563eb] via-[#3b82f6] to-[#2563eb]" />
       {/* Side accent */}
-      <div className="absolute left-0 top-0 bottom-0 w-24 bg-gradient-to-b from-[#2563eb] to-[#1d4ed8] opacity-90" />
+      <div className="absolute left-0 top-0 bottom-0 w-24 bg-linear-to-b from-[#2563eb] to-[#1d4ed8] opacity-90" />
 
       <div className="relative h-full flex flex-col items-center justify-center pl-20 pr-24 py-16 text-center">
         <div className="absolute top-16 right-20 flex items-center gap-3">
@@ -320,8 +320,8 @@ export function CorporateCertificate({ data }: { data: CertificateData }) {
       className="cert-sheet bg-[#0c1829] text-white relative overflow-hidden"
     >
       {/* Gold geometric accents */}
-      <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#c9a84c] to-transparent" />
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-transparent via-[#c9a84c] to-transparent" />
+      <div className="absolute top-0 left-0 right-0 h-1 bg-linear-to-r from-transparent via-[#c9a84c] to-transparent" />
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-linear-to-r from-transparent via-[#c9a84c] to-transparent" />
       <div className="absolute top-8 left-8 right-8 h-px bg-[#c9a84c]/20" />
       <div className="absolute bottom-8 left-8 right-8 h-px bg-[#c9a84c]/20" />
       {/* Corner accents */}

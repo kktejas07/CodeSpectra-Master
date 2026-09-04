@@ -24,6 +24,7 @@ import {
   JUDGE_ROUTES,
   ALL_USER_ROUTES,
   ROUTE_LABELS,
+  isPlatformAdminRoute,
 } from '@/lib/page-permissions'
 import {
   DASHBOARD_ROUTES,
@@ -93,7 +94,7 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
   '/dashboard/certifications': Award,
   '/dashboard/pricing': CreditCard,
   '/dashboard/settings/ai': Sparkles,
-  '/dashboard/status': MessageSquare,
+  '/dashboard/feedback': MessageSquare,
   '/dashboard/support': MessageSquare,
   '/dashboard/codeathons': Trophy,
   '/dashboard/challenges': CodeIcon,
@@ -187,6 +188,10 @@ export function CommandMenu({
         !deniedRoutes.has(item.route) &&
         !Array.from(deniedRoutes).some(r => item.route.startsWith(r + '/'))
       )
+    }
+
+    if (!isSuperAdmin(role)) {
+      filtered = filtered.filter(item => !isPlatformAdminRoute(item.route))
     }
 
     const overview = {

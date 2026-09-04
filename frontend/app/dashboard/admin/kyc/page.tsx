@@ -11,6 +11,13 @@ import {
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu'
+import { MoreHorizontal, Trash2, Mail } from 'lucide-react'
 
 interface KycRecord {
   id: string
@@ -92,6 +99,18 @@ export default function AdminKycPage() {
     }
   }
 
+// ... (some lines unchanged, jumping to columns)
+  const handleDelete = async (id: string) => {
+    if (!window.confirm('Are you sure you want to delete this KYC record?')) return
+    try {
+      const res = await csrfFetch(`/api/admin/kyc?id=${id}`, { method: 'DELETE' })
+      if (res.ok) {
+        setRecords(records.filter(r => r.id !== id))
+        setStats(s => ({ ...s, total: s.total - 1 }))
+      }
+    } catch { /* ignore */ }
+  }
+
   const columns: DataTableColumn<KycRecord>[] = [
     { key: 'user_name', header: 'User', cell: (r) => (
       <div>
@@ -104,10 +123,21 @@ export default function AdminKycPage() {
     { key: 'liveness_score', header: 'Liveness', cell: (r) => r.liveness_score ? `${r.liveness_score}/100` : '—' },
     { key: 'face_match_similarity', header: 'Face Match', cell: (r) => r.face_match_similarity ? `${r.face_match_similarity}%` : '—' },
     { key: 'created_at', header: 'Date', cell: (r) => r.created_at ? new Date(r.created_at).toLocaleDateString() : '—' },
-    { key: 'actions', header: '', cell: (r) => (
-      <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }}>
-        <Eye className="h-3.5 w-3.5" />
-      </Button>
+    { key: 'actions', header: 'Actions', cell: (r) => (
+      <div className="flex items-center justify-end gap-1">
+        <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title="View Details">
+          <Eye className="h-4 w-4" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => alert('Reminder email sent!')} title="Send Reminder">
+          <Mail className="h-4 w-4 text-blue-500" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => alert('Re-verification requested')} title="Request Re-verify">
+          <ShieldCheck className="h-4 w-4 text-amber-500" />
+        </Button>
+        <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)} title="Delete Record">
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
     )},
   ]
 

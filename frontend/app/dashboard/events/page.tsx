@@ -8,11 +8,13 @@ import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
   Loader2, Trophy, Users, Clock, CalendarDays,
-  ArrowRight, Timer, Zap, Code, Target,
+  ArrowRight, Timer, Zap, Code, Target, Gavel,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { isAdmin, type UserRole } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
+import { EmptyState } from '@/components/ui/empty-state'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -21,6 +23,7 @@ interface Hackathon {
   event_type?: string
   tasks: { problem_slug: string; problem_title: string; points: number; difficulty: string; required: boolean }[]
   banner_url?: string
+  judges?: string[]
   features?: { team_formation: boolean; demo_video: string; leaderboard_visibility: string }
 }
 
@@ -54,6 +57,7 @@ type EventItem = {
   banner_url?: string
   raw: Hackathon | Codeathon
   myTeam?: Team
+  detailHref?: string
 }
 
 function EventCard({ event }: { event: EventItem }) {
@@ -70,9 +74,10 @@ function EventCard({ event }: { event: EventItem }) {
 
   const statusLabel = isLive ? 'Live' : isClosed ? 'Ended' : 'Upcoming'
 
-  const detailUrl = event.type === 'hackathon'
-    ? `/hackathons/${(event.raw as Hackathon).slug}`
-    : `/dashboard/codeathons/${event.id}`
+  const detailUrl = event.detailHref
+    || (event.type === 'hackathon'
+      ? `/hackathons/${(event.raw as Hackathon).slug}`
+      : `/dashboard/codeathons/${event.id}`)
 
   return (
     <Card className="overflow-hidden hover:border-primary/40 transition-colors group">
@@ -90,6 +95,11 @@ function EventCard({ event }: { event: EventItem }) {
                 {event.type === 'hackathon' ? <Trophy className="w-2.5 h-2.5 mr-1" /> : <Code className="w-2.5 h-2.5 mr-1" />}
                 {event.type === 'hackathon' ? 'Hackathon' : 'Codeathon'}
               </Badge>
+              {event.type === 'hackathon' && event.detailHref && (
+                <Badge variant="secondary" className="text-[10px] text-amber-600 border-amber-500/30 bg-amber-500/10">
+                  <Gavel className="w-2.5 h-2.5 mr-1" /> Judge
+                </Badge>
+              )}
             </div>
             <h3 className="font-semibold text-sm truncate">{event.title}</h3>
             {event.description && (
@@ -183,6 +193,7 @@ export default function EventsPage() {
       const items: EventItem[] = []
 
       for (const h of (hData.items || [])) {
+        const canReview = isAdmin((gate.user?.role || 'user') as UserRole) || ((h.judges || []).includes(hasSession || ''))
         items.push({
           type: 'hackathon',
           id: h.id,
@@ -197,6 +208,7 @@ export default function EventsPage() {
           banner_url: h.banner_url,
           raw: h,
           myTeam: myTeamsMap[h.id],
+          detailHref: canReview ? `/dashboard/events/${h.id}?tab=judge` : undefined,
         })
       }
 
@@ -272,12 +284,12 @@ export default function EventsPage() {
 
         <TabsContent value={tab} className="mt-4">
           {filtered.length === 0 ? (
-            <Card className="p-8 text-center">
-              <Trophy className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">
-                {tab === 'my' ? 'You haven\'t joined any events yet' : 'No events found'}
-              </p>
-            </Card>
+            <EmptyState 
+              title={tab === 'my' ? 'No events joined' : 'No events found'} 
+              description={tab === 'my' ? "You haven't joined any events yet. Explore upcoming hackathons and codeathons to participate!" : "There are currently no events matching this category."}
+              actionLabel={tab === 'my' ? 'Explore Events' : undefined}
+              onAction={tab === 'my' ? () => setTab('all') : undefined}
+            />
           ) : (
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
               {filtered.map((event) => (

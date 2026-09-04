@@ -1,10 +1,11 @@
-import { generateText } from 'ai'
 import { z } from 'zod'
 import { NextResponse } from 'next/server'
 import { rateLimitGenerateFixes } from '@/lib/upstash-rate-limit'
 import { requireAuth } from '@/lib/route-auth'
 import { codeScans, codeIssues, newId, nowIso } from '@/lib/db/scans'
 import { suggestedFixes } from '@/lib/db/misc'
+import { getUserAiCredits, deductUserAiCredits } from '@/lib/user-credits'
+import { backendComplete } from '@/lib/ai/backend'
 
 const fixSchema = z.object({
   fixes: z
@@ -156,12 +157,17 @@ export async function POST(request: Request): Promise<NextResponse> {
     )
   }
 
+  const { balance } = await getUserAiCredits(authedUserId)
+  if (balance < 1) {
+    return NextResponse.json({ success: false, error: 'Insufficient AI credits' }, { status: 402 })
+  }
+  await deductUserAiCredits(authedUserId, 1)
+
   const issueContexts = issues as IssueContext[]
 
   try {
-    const result = await generateText({
-      model: 'openai/gpt-4o-mini',
-      system: `You are an expert code fixer. Generate concrete, actionable fixes for code issues.
+    const result = await backendComplete({
+      systemMessage: `You are an expert code fixer. Generate concrete, actionable fixes for code issues.
 
       For each issue, provide:
       1. The original problematic code snippet
@@ -174,7 +180,7 @@ export async function POST(request: Request): Promise<NextResponse> {
       - Production-ready
       - Following best practices
       - Easy to understand`,
-      prompt: `Generate fixes for the following ${language} code issues:
+      userMessage: `Generate fixes for the following ${language} code issues:
 
 Code:
 \`\`\`${language}
@@ -185,7 +191,9 @@ Issues to fix:
 ${issues.map((issue: { severity?: string; message?: string }, index: number) => `${index + 1}. [${issue.severity}] ${issue.message}`).join('\n')}
 
 Return ONLY valid JSON matching the schema.`,
-      // output: z.object({ fixes: fixSchema.shape.fixes }), // ponytail: AI SDK v6 removed zod output support
+      modelRole: 'fast',
+      responseFormat: 'json',
+      feature: 'generate-fixes',
     })
 
     const fixes = JSON.parse(result.text || '[]') as any[]

@@ -1,0 +1,124 @@
+[
+  {
+    "title": "C++ Basics",
+    "slug": "cpp-basics",
+    "lessons": [
+      { "title": "Introduction to DSA & C++ Setup", "type": "video" },
+      { "title": "Variables, Data Types & Operators", "type": "video" },
+      { "title": "Input, Output & Type Casting", "type": "video" },
+      { "title": "If-Else & Switch", "type": "video" },
+      { "title": "Loops", "type": "video" },
+      { "title": "Functions", "type": "video" },
+      { "title": "Arrays", "type": "video" },
+      { "title": "Strings", "type": "video" },
+      { "title": "Pointers & References", "type": "video" },
+      { "title": "Structs, Classes & Objects", "type": "video" }
+    ]
+  },
+  {
+    "title": "STL",
+    "slug": "stl",
+    "lessons": [
+      { "title": "Introduction to STL", "type": "video" },
+      { "title": "Vector", "type": "video" },
+      { "title": "Pair & Tuple", "type": "video" },
+      { "title": "Set & Multiset", "type": "video" },
+      { "title": "Map & Unordered Map", "type": "video" },
+      { "title": "Stack", "type": "video" },
+      { "title": "Queue & Deque", "type": "video" },
+      { "title": "Priority Queue", "type": "video" },
+      { "title": "Iterators", "type": "video" }
+    ]
+  },
+  {
+    "title": "DSA Foundations",
+    "slug": "dsa-foundations",
+    "lessons": [
+      { "title": "Time & Space Complexity", "type": "video" },
+      { "title": "Big-O, Ω and Θ", "type": "video" },
+      { "title": "Array Traversal", "type": "video" },
+      { "title": "Insert/Delete in Array", "type": "video" },
+      { "title": "Prefix Sum", "type": "video" },
+      { "title": "Two Pointer Technique", "type": "video" },
+      { "title": "Sliding Window", "type": "video" },
+      { "title": "Kadane's Algorithm", "type": "video" },
+      { "title": "String Manipulation", "type": "video" },
+      { "title": "Character Frequency", "type": "video" },
+      { "title": "Palindrome", "type": "video" },
+      { "title": "Anagrams", "type": "video" },
+      { "title": "Introduction to Recursion", "type": "video" },
+      { "title": "Recursion Tree", "type": "video" },
+      { "title": "Backtracking Basics", "type": "video" }
+    ]
+  },
+  {
+    "title": "Linear Data Structures",
+    "slug": "linear-data-structures",
+    "lessons": [
+      { "title": "Singly Linked List", "type": "video" },
+      { "title": "Insert/Delete Linked List", "type": "video" },
+      { "title": "Reverse Linked List", "type": "video" },
+      { "title": "Fast & Slow Pointers", "type": "video" },
+      { "title": "Stack Implementation", "type": "video" },
+      { "title": "Balanced Parentheses", "type": "video" },
+      { "title": "Queue Implementation", "type": "video" },
+      { "title": "Linear Search", "type": "video" },
+      { "title": "Binary Search", "type": "video" },
+      { "title": "Binary Search on Answer", "type": "video" },
+      { "title": "Bubble Sort", "type": "video" },
+      { "title": "Selection Sort", "type": "video" },
+      { "title": "Insertion Sort", "type": "video" },
+      { "title": "Merge Sort", "type": "video" },
+      { "title": "Quick Sort", "type": "video" },
+      { "title": "Hashing Fundamentals", "type": "video" },
+      { "title": "Frequency Maps", "type": "video" }
+    ]
+  },
+  {
+    "title": "Trees & Heaps",
+    "slug": "trees-heaps",
+    "lessons": [
+      { "title": "Binary Tree Fundamentals", "type": "video" },
+      { "title": "Tree Traversals", "type": "video" },
+      { "title": "Level Order Traversal", "type": "video" },
+      { "title": "Binary Search Tree", "type": "video" },
+      { "title": "BST Search/Insert/Delete", "type": "video" },
+      { "title": "Heap Fundamentals", "type": "video" },
+      { "title": "Min Heap & Max Heap", "type": "video" },
+      { "title": "Priority Queue Problems", "type": "video" }
+    ]
+  },
+  {
+    "title": "Graphs",
+    "slug": "graphs",
+    "lessons": [
+      { "title": "Graph Fundamentals", "type": "video" },
+      { "title": "BFS", "type": "video" },
+      { "title": "DFS", "type": "video" },
+      { "title": "Connected Components", "type": "video" },
+      { "title": "Shortest Path Introduction", "type": "video" }
+    ]
+  },
+  {
+    "title": "Algorithms",
+    "slug": "algorithms",
+    "lessons": [
+      { "title": "Greedy Algorithm Fundamentals", "type": "video" },
+      { "title": "Activity Selection", "type": "video" },
+      { "title": "Introduction to Dynamic Programming", "type": "video" },
+      { "title": "Memoization", "type": "video" },
+      { "title": "Tabulation", "type": "video" },
+      { "title": "Classic DP Problems", "type": "video" }
+    ]
+  },
+  {
+    "title": "Interview Preparation",
+    "slug": "interview-preparation",
+    "lessons": [
+      { "title": "Easy DSA Problems", "type": "video" },
+      { "title": "Medium DSA Problems", "type": "video" },
+      { "title": "Interview Patterns", "type": "video" },
+      { "title": "Complete DSA Roadmap & Interview Strategy", "type": "video" }
+    ]
+  }
+]

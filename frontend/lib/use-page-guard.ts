@@ -1,9 +1,9 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
-import { usePathname } from 'next/navigation'
+import { usePathname, useRouter } from 'next/navigation'
 import { useRoleGate } from '@/lib/use-role-gate'
-import { getRequiredRoleForRoute } from '@/lib/page-permissions'
+import { getRequiredRoleForRoute, isPlatformAdminRoute } from '@/lib/page-permissions'
 import { isSuperAdmin, isAdmin, isJudge, type UserRole } from '@/lib/rbac'
 
 /** Shared cache for locked pages & features — avoids per-hook fetches */
@@ -14,9 +14,12 @@ let fetchPromise: Promise<LockedData> | null = null
 function fetchLockedData(): Promise<LockedData> {
   if (cachedLockedData) return Promise.resolve(cachedLockedData)
   if (fetchPromise) return fetchPromise
-  fetchPromise = fetch('/api/platform/locked-pages')
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
+  fetchPromise = fetch('/api/platform/locked-pages', { signal: controller.signal })
     .then(r => r.ok ? r.json() : { locked_pages: [], locked_features: [] })
     .then(data => {
+      clearTimeout(timeout)
       const locked: LockedData = {
         locked_pages: Array.isArray(data?.locked_pages) ? data.locked_pages : [],
         locked_features: Array.isArray(data?.locked_features) ? data.locked_features : [],
@@ -25,6 +28,8 @@ function fetchLockedData(): Promise<LockedData> {
       return locked
     })
     .catch(() => {
+      clearTimeout(timeout)
+      fetchPromise = null // allow retry next time
       cachedLockedData = { locked_pages: [], locked_features: [] }
       return cachedLockedData
     })
@@ -50,26 +55,33 @@ export function usePageGuard(
 ) {
   const gate = useRoleGate({ require: 'auth' })
   const pathname = usePathname()
+  const router = useRouter()
   const [dbAllowed, setDbAllowed] = useState<boolean | null>(null)
-  const [lockedPages, setLockedPages] = useState<string[]>([])
-  const [locksLoaded, setLocksLoaded] = useState(false)
+  const [lockedPages, setLockedPages] = useState<string[]>(() => cachedLockedData?.locked_pages ?? [])
+  const [locksLoaded, setLocksLoaded] = useState(() => cachedLockedData !== null)
 
   const requiredRole = typeof routeOrRole === 'string' && routeOrRole.startsWith('/')
     ? getRequiredRoleForRoute(routeOrRole)
     : routeOrRole as 'superadmin' | 'tenant_admin' | 'judge' | 'user'
 
+  const platformAdminPage = isPlatformAdminRoute(pathname) || requiredRole === 'superadmin'
+
   const staticAllowed = gate.user && (() => {
+    if (platformAdminPage) return isSuperAdmin(gate.user.role)
     if (requiredRole === 'user') return true
-    if (requiredRole === 'superadmin') return isSuperAdmin(gate.user.role)
     if (requiredRole === 'tenant_admin') return isAdmin(gate.user.role)
     if (requiredRole === 'judge') return isJudge(gate.user.role) || isAdmin(gate.user.role)
     return false
   })()
 
-  // If static check fails, try DB permissions (superadmin may have granted access)
+  // DB grants cannot open platform-admin pages. Other extra pages still can.
   useEffect(() => {
     if (staticAllowed || !gate.ready || !gate.user) {
-      setDbAllowed(staticAllowed)
+      setDbAllowed(!!staticAllowed)
+      return
+    }
+    if (platformAdminPage) {
+      setDbAllowed(false)
       return
     }
     let cancelled = false
@@ -85,7 +97,8 @@ export function usePageGuard(
     fetch('/api/admin/permissions/roles', { credentials: 'include' })
       .then(r => r.ok ? r.json() : null)
       .then(data => {
-        if (cancelled || !data?.roles) return
+        if (cancelled) return
+        if (!data?.roles) { setDbAllowed(false); return }
         const roleData = data.roles.find((r: any) => r.role === gate.user!.role)
         if (!roleData) { setDbAllowed(false); return }
         const perms = (roleData.permissions || []) as any[]
@@ -98,9 +111,8 @@ export function usePageGuard(
       .catch(() => { setDbAllowed(false) })
 
     return () => { cancelled = true }
-  }, [staticAllowed, gate.ready, gate.user, routeOrRole])
+  }, [staticAllowed, gate.ready, gate.user, routeOrRole, platformAdminPage])
 
-  // Fetch locked pages
   useEffect(() => {
     let cancelled = false
     fetchLockedPages().then(pages => {
@@ -112,21 +124,25 @@ export function usePageGuard(
     return () => { cancelled = true }
   }, [])
 
-  // Check if current pathname is locked (superadmins bypass)
   const locked = gate.ready && locksLoaded && !(gate.user && isSuperAdmin(gate.user.role)) && (() => {
     const base = pathname.split('?')[0]
     return lockedPages.some(route => base === route || base.startsWith(route + '/'))
   })()
 
-  const allowed = gate.ready && (staticAllowed || dbAllowed === true)
-  const loading = !gate.ready || (staticAllowed === false && dbAllowed === null)
+  const decided = gate.ready && locksLoaded && (staticAllowed || dbAllowed !== null)
+  const allowed = Boolean(decided && !locked && (staticAllowed || dbAllowed === true))
+
+  useEffect(() => {
+    if (!decided || allowed) return
+    router.replace('/dashboard')
+  }, [decided, allowed, router])
 
   return {
-    ready: gate.ready && (staticAllowed || dbAllowed !== null) && locksLoaded,
+    ready: allowed,
     allowed,
     locked: !!locked,
     user: gate.user,
-    loading,
+    loading: !decided || !allowed,
   }
 }
 

@@ -22,12 +22,15 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'openwa_api_key',
   'nvidia_api_key',
   'cloudflare_api_token',
+  'r2_secret_access_key',
+  's3_secret_access_key',
   'phonepe_salt_key',
   'phonepe_webhook_secret',
   'stripe_secret_key',
   'stripe_webhook_secret',
   'upstash_redis_rest_token',
   'internal_backend_secret',
+  'session_secret',
 ]
 
 export async function GET(request: Request) {

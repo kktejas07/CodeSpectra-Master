@@ -86,7 +86,7 @@ export function CodeDiffViewer({
               </button>
             </div>
             <div className="bg-red-500/5 border border-red-500/20 rounded p-3 font-mono text-xs overflow-x-auto">
-              <pre className="text-foreground/80 whitespace-pre-wrap break-words">
+              <pre className="text-foreground/80 whitespace-pre-wrap wrap-break-word">
                 {originalCode}
               </pre>
             </div>
@@ -108,7 +108,7 @@ export function CodeDiffViewer({
               </button>
             </div>
             <div className="bg-green-500/5 border border-green-500/20 rounded p-3 font-mono text-xs overflow-x-auto">
-              <pre className="text-foreground/80 whitespace-pre-wrap break-words">
+              <pre className="text-foreground/80 whitespace-pre-wrap wrap-break-word">
                 {suggestedCode}
               </pre>
             </div>
@@ -119,7 +119,7 @@ export function CodeDiffViewer({
         <div className="space-y-2">
           <p className="text-xs font-semibold text-foreground/60 uppercase">Updated Code</p>
           <div className="bg-card border border-border rounded p-3 font-mono text-xs overflow-x-auto">
-            <pre className="text-foreground/80 whitespace-pre-wrap break-words">
+            <pre className="text-foreground/80 whitespace-pre-wrap wrap-break-word">
               {suggestedCode}
             </pre>
           </div>

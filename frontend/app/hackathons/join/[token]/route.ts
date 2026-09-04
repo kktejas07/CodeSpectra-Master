@@ -19,7 +19,7 @@ export async function GET(req: NextRequest, ctx: { params: Promise<{ token: stri
   const invite = await invitesCol.findOne({ token })
   if (!invite) return NextResponse.json({ error: 'Invalid invite' }, { status: 404 })
 
-  if (invite.email.toLowerCase() !== (user.email || '').toLowerCase()) {
+  if ((invite.email || '').toLowerCase() !== (user.email || '').toLowerCase()) {
     return NextResponse.json({ error: 'This invite was sent to a different email' }, { status: 403 })
   }
   if (invite.accepted_at) return NextResponse.json({ error: 'Invite already used' }, { status: 409 })

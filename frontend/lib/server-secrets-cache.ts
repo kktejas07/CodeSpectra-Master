@@ -60,9 +60,21 @@ export type ServerSecretsRecord = {
   // --- Upstash Redis (rate limiting) -------------------------------------
   upstash_redis_rest_url?: string
   upstash_redis_rest_token?: string
+  // --- Session signing (frontend JWT fallback when SESSION_SECRET env is missing) ----
+  session_secret?: string
   // --- Cloudflare --------------------------------------------------------
   cloudflare_zone_id?: string
   cloudflare_api_token?: string
+  r2_account_id?: string
+  r2_access_key_id?: string
+  r2_secret_access_key?: string
+  r2_bucket?: string
+  s3_provider?: string
+  s3_endpoint?: string
+  s3_region?: string
+  s3_bucket?: string
+  s3_access_key_id?: string
+  s3_secret_access_key?: string
   // --- PhonePe -----------------------------------------------------------
   phonepe_merchant_id?: string
   phonepe_salt_key?: string
@@ -93,16 +105,20 @@ async function settingsCol(): Promise<Collection<PlatformSettingDoc>> {
 
 let cached: ServerSecretsRecord | null = null
 let cacheValid = false
+let cacheAt = 0
 let inflight: Promise<ServerSecretsRecord | null> | null = null
+// ponytail: 30s TTL so the course-worker process sees SuperAdmin storage changes without a restart
+const CACHE_MS = 30_000
 
 export function invalidateServerSecretsCache(): void {
   cached = null
   cacheValid = false
+  cacheAt = 0
   inflight = null
 }
 
 export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
-  if (cacheValid && cached !== null) return cached
+  if (cacheValid && cached !== null && Date.now() - cacheAt < CACHE_MS) return cached
   if (inflight) {
     const result = await inflight
     return result || {}
@@ -117,6 +133,7 @@ export async function warmServerSecretsCache(): Promise<ServerSecretsRecord> {
       cached = {}
     } finally {
       cacheValid = true
+      cacheAt = Date.now()
     }
     return cached!
   })()

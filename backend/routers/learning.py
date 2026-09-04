@@ -247,10 +247,54 @@ async def recommend_next_lesson(
             "message": f"Recommended: Review {weak_topics[0]} before continuing"
         }
 
-    # Otherwise recommend next sequential lesson
     next_lesson = req.get("next_lesson", {})
     return {
         "type": "continue",
         "lesson": next_lesson,
         "message": "Ready for the next lesson!"
     }
+
+
+@router.post("/courses/{course_id}/chat")
+async def handle_course_chat(
+    course_id: str,
+    request: Request,
+    req: Dict[str, Any],
+    auth=Depends(require_auth)
+) -> Dict[str, Any]:
+    """Handle chat specific to a course or lesson."""
+    await check_rate_limit(f"course-chat:{auth.user.id if hasattr(auth, 'user') else 'anon'}", 20, 60)
+    
+    message = req.get("message", "")
+    lesson_id = req.get("lesson_id")
+    
+    if not message:
+        return {"ok": False, "error": "Message is required"}
+        
+    system = (
+        "You are an AI Teaching Assistant for a programming course. "
+        "Answer the student's questions accurately, focusing on the concepts taught in the course. "
+        "Provide code examples when relevant, and keep your explanations clear and concise."
+    )
+    
+    user = (
+        f"Student Question: {message}\n"
+    )
+    if lesson_id:
+        user += f"Context: The student is currently viewing lesson ID: {lesson_id}\n"
+        
+    chat = build_chat(
+        "reasoning",
+        f"course-chat:{auth.user.id}:{course_id}",
+        system,
+        request.headers,
+    )
+    
+    buf: list[str] = []
+    async for ev in chat.stream_message(UserMessage(text=user)):
+        if isinstance(ev, TextDelta):
+            buf.append(ev.content)
+        elif isinstance(ev, StreamDone):
+            break
+            
+    return {"ok": True, "reply": "".join(buf).strip()}

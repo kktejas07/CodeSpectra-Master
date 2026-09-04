@@ -1,14 +1,52 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import {
+  RefreshCw,
+  Play,
+  Power,
+  Activity,
+  Clock,
+  Database,
+  Zap,
+  AlertTriangle,
+  Loader2,
+  CheckCircle2,
+  XCircle,
+  Timer,
+  Radio,
+  KeyRound,
+  ExternalLink,
+} from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { RefreshCw, Play, Power, Activity, Clock, Database, Zap, AlertTriangle, Loader2 } from 'lucide-react'
+import { Card } from '@/components/ui/card'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
-interface ScheduledWorkflow {
+type LoopRow = {
+  id: string
+  name: string
+  what: string
+  recommend: string
+  status: 'running' | 'disabled'
+}
+
+type HttpJob = {
+  id: string
+  path: string
+  name: string
+  what: string
+  recommend: string
+  cronHint: string
+  auth: string
+  configured: boolean
+  status: 'ready' | 'needs_secret'
+}
+
+type WorkflowRow = {
   id: string
   name: string
   description: string
@@ -18,37 +56,60 @@ interface ScheduledWorkflow {
   created_at: string
 }
 
-interface RunRow {
+type RunRow = {
   id: string
   workflow_id: string
-  status: 'success' | 'failed' | 'partial'
+  status: string
   started_at: string
-  finished_at: string
-  duration_ms: number
+  finished_at?: string
+  duration_ms?: number
 }
 
-interface SchedulerInfo {
-  inProcessLoop: boolean
-  disabledEnv: string | null
-  cronSecretSet: boolean
-  redis: { configured: boolean; connected: boolean; mode: string | null; latencyMs: number | null; error: string | null }
-}
-
-interface ResponseShape {
-  ok: boolean
-  scheduler: SchedulerInfo
-  endpoints: { path: string; what: string }[]
-  trialExpiryLoop: { enabledByDefault: boolean; intervalHours: number }
-  scheduledWorkflows: ScheduledWorkflow[]
+type CronPayload = {
+  error?: string
+  scheduler: {
+    inProcessLoop: boolean
+    disabledEnv: string | null
+    cronSecretSet: boolean
+    redis: {
+      configured: boolean
+      connected: boolean
+      mode: string | null
+      latencyMs: number | null
+      error: string | null
+    }
+  }
+  loops: LoopRow[]
+  httpJobs: HttpJob[]
+  scheduledWorkflows: WorkflowRow[]
   recentRuns: RunRow[]
   queue: { pending: number; total: number }
-  error?: string
+}
+
+function StatusPill({
+  ok,
+  okLabel,
+  badLabel,
+}: {
+  ok: boolean
+  okLabel: string
+  badLabel: string
+}) {
+  return ok ? (
+    <Badge className="shrink-0 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+      {okLabel}
+    </Badge>
+  ) : (
+    <Badge className="max-w-full shrink-0 whitespace-normal wrap-break-word bg-amber-500/15 text-left text-amber-800 dark:text-amber-300">
+      {badLabel}
+    </Badge>
+  )
 }
 
 export default function CronJobsPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
-  const [data, setData] = useState<ResponseShape | null>(null)
+  const [data, setData] = useState<CronPayload | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
   const [busy, setBusy] = useState<string | null>(null)
@@ -57,10 +118,10 @@ export default function CronJobsPage() {
     setLoading(true)
     setError(null)
     try {
-      const res = await fetch('/api/admin/cron-jobs', { credentials: 'include' })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error((json as { error?: string }).error || `HTTP ${res.status}`)
-      setData(json as ResponseShape)
+      const res = await fetch('/api/admin/cron-jobs', { credentials: 'include', cache: 'no-store' })
+      const json = (await res.json().catch(() => ({}))) as CronPayload
+      if (!res.ok) throw new Error(json.error || `HTTP ${res.status}`)
+      setData(json)
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e))
     } finally {
@@ -69,176 +130,460 @@ export default function CronJobsPage() {
   }, [])
 
   useEffect(() => {
-    if (!gate.ready) return
-    void load()
+    if (gate.ready) void load()
   }, [gate.ready, load])
 
-  const act = useCallback(async (action: string, workflowId?: string) => {
-    setBusy(action)
-    try {
-      const wfId = typeof workflowId === 'string' && workflowId.length ? workflowId : undefined
-      const res = await csrfFetch('/api/admin/cron-jobs', {
-        method: 'POST',
-        credentials: 'include',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(wfId ? { action, workflowId: wfId } : { action }),
-      })
-      const json = await res.json().catch(() => ({}))
-      if (!res.ok) throw new Error((json as { error?: string }).error || `HTTP ${res.status}`)
-      addToast({
-        type: 'success',
-        title: action === 'run-tick' ? 'Scheduler tick complete' : action === 'run-workflow' ? 'Workflow run started' : 'Workflow updated',
-        message: JSON.stringify(json).slice(0, 300),
-      })
-      await load()
-    } catch (e) {
-      addToast({ type: 'error', title: 'Action failed', message: e instanceof Error ? e.message : String(e) })
-    } finally {
-      setBusy(null)
-    }
-  }, [addToast, load])
+  const runAction = useCallback(
+    async (action: string, extra?: { workflowId?: string; path?: string }) => {
+      const key = action + (extra?.path || extra?.workflowId || '')
+      setBusy(key)
+      try {
+        const res = await csrfFetch('/api/admin/cron-jobs', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action, ...extra }),
+        })
+        const json = await res.json().catch(() => ({}))
+        if (!res.ok || json.error) throw new Error(json.error || `HTTP ${res.status}`)
+        addToast({
+          type: 'success',
+          title:
+            action === 'run-tick'
+              ? 'Scheduler tick ran'
+              : action === 'run-endpoint'
+                ? `Ran ${extra?.path}`
+                : action === 'run-workflow'
+                  ? 'Workflow started'
+                  : 'Workflow updated',
+        })
+        await load()
+      } catch (e) {
+        addToast({
+          type: 'error',
+          title: 'Action failed',
+          message: e instanceof Error ? e.message : String(e),
+        })
+      } finally {
+        setBusy(null)
+      }
+    },
+    [addToast, load],
+  )
 
   if (!gate.ready) {
-    return <div className="flex min-h-[60vh] items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>
+    return (
+      <div className="flex min-h-[50vh] items-center justify-center">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    )
   }
 
-  const statusBadge = (ok: boolean, labelOk: string, labelBad: string) =>
-    ok ? <Badge className="bg-emerald-500/15 text-emerald-300">{labelOk}</Badge> : <Badge className="bg-red-500/15 text-red-300">{labelBad}</Badge>
+  const secretMissing = Boolean(data && !data.scheduler.cronSecretSet)
 
   return (
-    <div className="mx-auto max-w-6xl space-y-8 p-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold tracking-tight">Cron Jobs</h1>
-          <p className="text-sm text-muted-foreground">Scheduler loop, workflow schedules, cron endpoints and recent runs.</p>
+    <div className="w-full min-w-0 space-y-6 p-4 sm:p-6">
+      <div className="flex flex-wrap items-start justify-between gap-3">
+        <div className="min-w-0 flex-1">
+          <h1 className="flex items-center gap-2 text-2xl font-bold tracking-tight">
+            <Timer className="h-6 w-6 shrink-0 text-teal-600" /> Cron jobs
+          </h1>
+          <p className="mt-1 max-w-3xl text-sm text-muted-foreground">
+            What is configured, what is running, and what your external cron provider should call.
+            The secret stays on the server — use <strong>Run now</strong> here to test.
+          </p>
         </div>
-        <div className="flex items-center gap-2">
-          <Button variant="outline" onClick={() => void load()} disabled={loading}>
-            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} /> Refresh
+        <div className="flex shrink-0 gap-2">
+          <Button variant="outline" onClick={() => void load()} disabled={loading || !!busy}>
+            <RefreshCw className={`mr-2 h-4 w-4 ${loading ? 'animate-spin' : ''}`} />
+            Refresh
           </Button>
-          <Button onClick={() => void act('run-tick')} disabled={busy !== null}>
-            {busy === 'run-tick' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Play className="mr-2 h-4 w-4" />}
+          <Button onClick={() => void runAction('run-tick')} disabled={!!busy} className="text-white font-bold">
+            {busy === 'run-tick' ? (
+              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            ) : (
+              <Play className="mr-2 h-4 w-4" />
+            )}
             Run tick now
           </Button>
         </div>
       </div>
 
       {error && (
-        <div className="flex items-center gap-2 rounded-lg border border-red-500/30 bg-red-500/10 p-3 text-sm text-red-300">
-          <AlertTriangle className="h-4 w-4" /> {error}
+        <div className="flex items-start gap-2 rounded-lg border border-destructive/30 bg-destructive/10 p-3 text-sm text-destructive">
+          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0" />
+          <span className="min-w-0 wrap-break-word">{error}</span>
         </div>
       )}
 
+      {secretMissing && (
+        <Card className="border-amber-500/40 bg-amber-500/5 p-4 sm:p-5">
+          <div className="flex gap-3">
+            <KeyRound className="mt-0.5 h-5 w-5 shrink-0 text-amber-600" />
+            <div className="min-w-0 space-y-2 text-sm">
+              <p className="font-semibold text-amber-900 dark:text-amber-200">
+                Set <code className="rounded bg-muted px-1">CRON_SECRET</code> so external cron can
+                call these URLs
+              </p>
+              <ol className="list-decimal space-y-1.5 pl-4 text-muted-foreground">
+                <li>
+                  Generate a secret:{' '}
+                  <code className="break-all rounded bg-muted px-1 text-[11px]">
+                    openssl rand -hex 32
+                  </code>
+                </li>
+                <li>
+                  In <strong>Dokploy → frontend service → Environment</strong>, add{' '}
+                  <code className="break-all rounded bg-muted px-1 text-[11px]">
+                    CRON_SECRET=&lt;paste value&gt;
+                  </code>{' '}
+                  and redeploy / restart.
+                </li>
+                <li>
+                  Point cron at e.g.{' '}
+                  <code className="break-all rounded bg-muted px-1 text-[11px]">
+                    https://your-domain/api/cron/tick?secret=YOUR_SECRET
+                  </code>{' '}
+                  (or header{' '}
+                  <code className="break-all rounded bg-muted px-1 text-[11px]">
+                    Authorization: Bearer YOUR_SECRET
+                  </code>
+                  ).
+                </li>
+              </ol>
+              <p className="text-xs text-muted-foreground">
+                In-process loops still run without this. Only HTTP cron endpoints need the secret.
+                Locally: put it in <code className="rounded bg-muted px-1">.env.local</code> (see{' '}
+                <code className="rounded bg-muted px-1">.env.example</code>).
+              </p>
+            </div>
+          </div>
+        </Card>
+      )}
+
+      {loading && !data ? (
+        <div className="flex justify-center py-16">
+          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        </div>
+      ) : null}
+
       {data && (
         <>
-          {/* Scheduler health */}
-          <section className="rounded-lg border border-border/60 bg-card/40 p-5">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Activity className="h-4 w-4" /> Scheduler engine</h2>
-            <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
-              <div className="rounded-md border border-border/60 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">In-process loop (60s)</p>
-                <div className="mt-1">{statusBadge(data.scheduler.inProcessLoop, 'Running', 'Disabled')}
-                  {data.scheduler.disabledEnv && <p className="mt-1 text-[10px] text-muted-foreground">NEXT_PUBLIC_DISABLE_SCHEDULER={data.scheduler.disabledEnv}</p>}
-                </div>
+          <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+            <Card className="min-w-0 p-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Scheduler loop
+              </p>
+              <div className="mt-2 flex items-center gap-2">
+                {data.scheduler.inProcessLoop ? (
+                  <CheckCircle2 className="h-4 w-4 shrink-0 text-emerald-600" />
+                ) : (
+                  <XCircle className="h-4 w-4 shrink-0 text-amber-600" />
+                )}
+                <span className="text-sm font-semibold">
+                  {data.scheduler.inProcessLoop ? 'Running' : 'Disabled'}
+                </span>
               </div>
-              <div className="rounded-md border border-border/60 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">CRON_SECRET set</p>
-                <div className="mt-1">{statusBadge(data.scheduler.cronSecretSet, 'Yes', 'Not set')}</div>
-              </div>
-              <div className="rounded-md border border-border/60 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Redis (distributed lock)</p>
-                <div className="mt-1">{statusBadge(data.scheduler.redis.connected, data.scheduler.redis.configured ? 'Connected' : 'Configured', data.scheduler.redis.configured ? 'Disconnected' : 'Not configured')}
-                  {data.scheduler.redis.mode && <p className="mt-1 text-[10px] text-muted-foreground">{data.scheduler.redis.mode}{data.scheduler.redis.latencyMs != null ? ` · ${data.scheduler.redis.latencyMs}ms` : ''}</p>}
-                  {data.scheduler.redis.error && <p className="mt-1 break-all text-[10px] text-red-400">{data.scheduler.redis.error}</p>}
-                </div>
-              </div>
-              <div className="rounded-md border border-border/60 p-3">
-                <p className="text-[10px] uppercase tracking-wider text-muted-foreground">GitHub scan queue</p>
-                <div className="mt-1"><Badge className="bg-primary/15 text-primary">{data.queue.pending} pending</Badge> <span className="text-xs text-muted-foreground">/ {data.queue.total} total</span></div>
-              </div>
-            </div>
-            <div className="mt-3 rounded-md border border-border/60 p-3">
-              <p className="text-[10px] uppercase tracking-wider text-muted-foreground">Trial expiry loop (24h)</p>
-              <div className="mt-1">{statusBadge(data.trialExpiryLoop.enabledByDefault, `Enabled every ${data.trialExpiryLoop.intervalHours}h`, 'Disabled')}</div>
-            </div>
-          </section>
+              {data.scheduler.disabledEnv ? (
+                <p className="mt-1 break-all text-[11px] text-muted-foreground">
+                  NEXT_PUBLIC_DISABLE_SCHEDULER={data.scheduler.disabledEnv}
+                </p>
+              ) : null}
+            </Card>
 
-          {/* HTTP cron endpoints */}
-          <section className="rounded-lg border border-border/60 bg-card/40 p-5">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Zap className="h-4 w-4" /> HTTP cron endpoints</h2>
+            <Card className="min-w-0 p-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                CRON_SECRET
+              </p>
+              <div className="mt-2">
+                <StatusPill
+                  ok={data.scheduler.cronSecretSet}
+                  okLabel="Set"
+                  badLabel="Missing — external cron will fail"
+                />
+              </div>
+            </Card>
+
+            <Card className="min-w-0 p-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                Redis lock
+              </p>
+              <div className="mt-2">
+                <StatusPill
+                  ok={data.scheduler.redis.connected}
+                  okLabel={data.scheduler.redis.configured ? 'Connected' : 'Configured'}
+                  badLabel={data.scheduler.redis.configured ? 'Disconnected' : 'Not configured'}
+                />
+              </div>
+              {data.scheduler.redis.mode ? (
+                <p className="mt-1 truncate text-[11px] text-muted-foreground">
+                  {data.scheduler.redis.mode}
+                  {data.scheduler.redis.latencyMs != null
+                    ? ` · ${data.scheduler.redis.latencyMs}ms`
+                    : ''}
+                </p>
+              ) : null}
+            </Card>
+
+            <Card className="min-w-0 p-4">
+              <p className="text-[11px] font-medium uppercase tracking-wide text-muted-foreground">
+                GitHub scan queue
+              </p>
+              <p className="mt-2 text-sm font-semibold">
+                {data.queue.pending}{' '}
+                <span className="font-normal text-muted-foreground">
+                  pending / {data.queue.total}
+                </span>
+              </p>
+            </Card>
+          </div>
+
+          <Card className="min-w-0 overflow-hidden">
+            <div className="border-b border-border/60 px-4 py-3 sm:px-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Activity className="h-4 w-4 shrink-0" /> Built-in loops
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Run inside the app process when the server is alive.
+              </p>
+            </div>
             <div className="divide-y divide-border/60">
-              {data.endpoints.map((e) => (
-                <div key={e.path} className="flex items-center justify-between py-2.5">
-                  <div>
-                    <code className="rounded bg-muted px-1.5 py-0.5 text-xs">{e.path}</code>
-                    <p className="mt-0.5 text-xs text-muted-foreground">{e.what}</p>
+              {data.loops.map((loop) => (
+                <div
+                  key={loop.id}
+                  className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-start sm:justify-between sm:px-5"
+                >
+                  <div className="min-w-0 flex-1">
+                    <p className="text-sm font-medium">{loop.name}</p>
+                    <p className="mt-0.5 wrap-break-word text-xs text-muted-foreground">{loop.what}</p>
+                    <p className="mt-1 wrap-break-word text-[11px] text-muted-foreground">
+                      Suggested: {loop.recommend}
+                    </p>
                   </div>
-                  <Badge variant="outline">External</Badge>
+                  <StatusPill
+                    ok={loop.status === 'running'}
+                    okLabel="Running"
+                    badLabel="Disabled"
+                  />
                 </div>
               ))}
             </div>
-          </section>
+          </Card>
 
-          {/* Scheduled workflows */}
-          <section className="rounded-lg border border-border/60 bg-card/40 p-5">
-            <h2 className="mb-3 flex items-center justify-between text-sm font-semibold">
-              <span className="flex items-center gap-2"><Clock className="h-4 w-4" /> Scheduled workflows ({data.scheduledWorkflows.length})</span>
-            </h2>
+          <Card className="min-w-0 overflow-hidden">
+            <div className="border-b border-border/60 px-4 py-3 sm:px-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Zap className="h-4 w-4 shrink-0" /> HTTP cron endpoints
+              </h2>
+              <p className="mt-0.5 wrap-break-word text-xs text-muted-foreground">
+                Point Dokploy / cron-job.org / GitHub Actions at these URLs with{' '}
+                <code className="rounded bg-muted px-1">?secret=CRON_SECRET</code>.
+              </p>
+            </div>
+            <div className="divide-y divide-border/60">
+              {data.httpJobs.map((job) => (
+                <div
+                  key={job.id}
+                  className="flex flex-col gap-3 px-4 py-4 sm:flex-row sm:items-start sm:justify-between sm:px-5"
+                >
+                  <div className="min-w-0 flex-1 space-y-1">
+                    <div className="flex flex-wrap items-center gap-2">
+                      <p className="text-sm font-medium">{job.name}</p>
+                      <StatusPill
+                        ok={job.status === 'ready'}
+                        okLabel="Ready"
+                        badLabel="Needs CRON_SECRET"
+                      />
+                      {job.id === 'signals-ingest' ? (
+                        <Badge variant="outline" className="gap-1 text-[10px]">
+                          <Radio className="h-3 w-3" /> Signals
+                        </Badge>
+                      ) : null}
+                    </div>
+                    <p className="wrap-break-word text-xs text-muted-foreground">{job.what}</p>
+                    <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
+                      <code className="max-w-full break-all rounded bg-muted px-1.5 py-0.5">
+                        {job.path}
+                      </code>
+                      <span className="wrap-break-word text-muted-foreground">
+                        Schedule: {job.recommend}
+                      </span>
+                      <code className="rounded bg-muted/70 px-1.5 py-0.5 text-muted-foreground">
+                        {job.cronHint}
+                      </code>
+                    </div>
+                    {job.id === 'signals-ingest' ? (
+                      <p className="wrap-break-word text-[11px] text-muted-foreground">
+                        Drafts land in{' '}
+                        <Link
+                          href="/dashboard/admin/signals"
+                          className="text-teal-600 hover:underline"
+                        >
+                          Signals
+                        </Link>{' '}
+                        for human approve →{' '}
+                        <Link href="/dashboard/admin/blog" className="text-teal-600 hover:underline">
+                          Newsroom
+                        </Link>
+                        .
+                      </p>
+                    ) : null}
+                  </div>
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="shrink-0 self-start text-foreground"
+                    disabled={!!busy}
+                    onClick={() => void runAction('run-endpoint', { path: job.path })}
+                  >
+                    {busy === `run-endpoint${job.path}` ? (
+                      <Loader2 className="mr-1 h-3.5 w-3.5 animate-spin" />
+                    ) : (
+                      <Play className="mr-1 h-3.5 w-3.5" />
+                    )}
+                    Run now
+                  </Button>
+                </div>
+              ))}
+            </div>
+          </Card>
+
+          <Card className="min-w-0 overflow-hidden">
+            <div className="border-b border-border/60 px-4 py-3 sm:px-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Clock className="h-4 w-4 shrink-0" /> Scheduled workflows (
+                {data.scheduledWorkflows.length})
+              </h2>
+              <p className="mt-0.5 text-xs text-muted-foreground">
+                Automation workflows with a schedule trigger — fired by the tick above.
+              </p>
+            </div>
             {data.scheduledWorkflows.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No schedule-trigger workflows configured. Create one in the Workflows builder.</p>
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-5">
+                No schedule workflows yet. Create one in Workflows with trigger = schedule.
+              </p>
             ) : (
               <div className="divide-y divide-border/60">
                 {data.scheduledWorkflows.map((w) => (
-                  <div key={w.id} className="flex flex-wrap items-center justify-between gap-3 py-3">
-                    <div className="min-w-0">
-                      <p className="text-sm font-medium text-foreground">{w.name}</p>
-                      <p className="mt-0.5 line-clamp-1 text-xs text-muted-foreground">{w.description || '—'}</p>
-                      <div className="mt-1 flex flex-wrap items-center gap-2">
-                        <code className="rounded bg-muted px-1.5 py-0.5 text-[11px]">{w.cron}</code>
-                        <span className="text-[11px] text-muted-foreground">{w.nodes} nodes · created {new Date(w.created_at).toLocaleDateString()}</span>
+                  <div
+                    key={w.id}
+                    className="flex flex-col gap-3 px-4 py-3 sm:flex-row sm:items-center sm:justify-between sm:px-5"
+                  >
+                    <div className="min-w-0 flex-1">
+                      <p className="truncate text-sm font-medium">{w.name}</p>
+                      <p className="mt-0.5 line-clamp-2 wrap-break-word text-xs text-muted-foreground">
+                        {w.description || '—'}
+                      </p>
+                      <div className="mt-1 flex flex-wrap items-center gap-2 text-[11px] text-muted-foreground">
+                        <code className="break-all rounded bg-muted px-1.5 py-0.5">
+                          {w.cron || 'no cron'}
+                        </code>
+                        <span>
+                          {w.nodes} nodes · {new Date(w.created_at).toLocaleDateString()}
+                        </span>
                       </div>
                     </div>
-                    <div className="flex shrink-0 items-center gap-2">
-                      {w.is_active ? <Badge className="bg-emerald-500/15 text-emerald-300">Active</Badge> : <Badge className="bg-slate-500/15 text-slate-300">Paused</Badge>}
-                      <Button size="sm" variant="outline" onClick={() => void act('run-workflow', w.id)} disabled={busy !== null}>
-                        {busy === 'run-workflow' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Play className="h-3.5 w-3.5" />} Run
+                    <div className="flex shrink-0 flex-wrap items-center gap-2">
+                      {w.is_active ? (
+                        <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                          Active
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline">Paused</Badge>
+                      )}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!!busy}
+                        onClick={() => void runAction('run-workflow', { workflowId: w.id })}
+                      >
+                        {busy === `run-workflow${w.id}` ? (
+                          <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                        ) : (
+                          <Play className="h-3.5 w-3.5" />
+                        )}
                       </Button>
-                      <Button size="sm" variant="outline" onClick={() => void act('toggle-workflow', w.id)} disabled={busy !== null}>
-                        <Power className="h-3.5 w-3.5" /> {w.is_active ? 'Pause' : 'Activate'}
+                      <Button
+                        size="sm"
+                        variant="outline"
+                        disabled={!!busy}
+                        className="text-foreground"
+                        onClick={() => void runAction('toggle-workflow', { workflowId: w.id })}
+                      >
+                        <Power className="mr-1 h-3.5 w-3.5" />
+                        {w.is_active ? 'Pause' : 'Activate'}
                       </Button>
                     </div>
                   </div>
                 ))}
               </div>
             )}
-          </section>
+          </Card>
 
-          {/* Recent runs */}
-          <section className="rounded-lg border border-border/60 bg-card/40 p-5">
-            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold"><Database className="h-4 w-4" /> Recent runs</h2>
+          <Card className="min-w-0 overflow-hidden">
+            <div className="border-b border-border/60 px-4 py-3 sm:px-5">
+              <h2 className="flex items-center gap-2 text-sm font-semibold">
+                <Database className="h-4 w-4 shrink-0" /> Recent workflow runs
+              </h2>
+            </div>
             {data.recentRuns.length === 0 ? (
-              <p className="text-sm text-muted-foreground">No workflow runs recorded yet.</p>
+              <p className="px-4 py-8 text-center text-sm text-muted-foreground sm:px-5">
+                No runs recorded yet.
+              </p>
             ) : (
               <div className="divide-y divide-border/60">
                 {data.recentRuns.map((r) => (
-                  <div key={r.id} className="flex items-center justify-between gap-3 py-2.5">
+                  <div
+                    key={r.id}
+                    className="flex items-center justify-between gap-3 px-4 py-2.5 sm:px-5"
+                  >
                     <div className="min-w-0">
-                      <p className="text-sm font-medium">{r.workflow_id}</p>
-                      <p className="text-[11px] text-muted-foreground">{new Date(r.started_at).toLocaleString()}{r.duration_ms ? ` · ${r.duration_ms}ms` : ''}</p>
+                      <p className="truncate text-sm font-medium">{r.workflow_id}</p>
+                      <p className="text-[11px] text-muted-foreground">
+                        {new Date(r.started_at).toLocaleString()}
+                        {r.duration_ms != null ? ` · ${r.duration_ms}ms` : ''}
+                      </p>
                     </div>
-                    {r.status === 'success' ? <Badge className="bg-emerald-500/15 text-emerald-300">Success</Badge>
-                      : r.status === 'partial' ? <Badge className="bg-amber-500/15 text-amber-300">Partial</Badge>
-                        : <Badge className="bg-red-500/15 text-red-300">Failed</Badge>}
+                    {r.status === 'success' ? (
+                      <Badge className="shrink-0 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                        Success
+                      </Badge>
+                    ) : r.status === 'partial' ? (
+                      <Badge className="shrink-0 bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                        Partial
+                      </Badge>
+                    ) : (
+                      <Badge className="shrink-0 bg-red-500/15 text-red-700 dark:text-red-300">
+                        Failed
+                      </Badge>
+                    )}
                   </div>
                 ))}
               </div>
             )}
-          </section>
-        </>
-      )}
+          </Card>
 
-      {loading && !data && (
-        <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin" /></div>
+          <p className="flex flex-wrap items-center gap-x-3 gap-y-1 text-xs text-muted-foreground">
+            <span className="inline-flex items-center gap-1">
+              <ExternalLink className="h-3 w-3" />
+              Public blog:{' '}
+              <Link href="/blog" className="text-teal-600 hover:underline" target="_blank">
+                /blog
+              </Link>
+            </span>
+            <span>
+              Admin Newsroom:{' '}
+              <Link href="/dashboard/admin/blog" className="text-teal-600 hover:underline">
+                /dashboard/admin/blog
+              </Link>
+            </span>
+            <span>
+              Signals queue:{' '}
+              <Link href="/dashboard/admin/signals" className="text-teal-600 hover:underline">
+                /dashboard/admin/signals
+              </Link>
+            </span>
+          </p>
+        </>
       )}
     </div>
   )

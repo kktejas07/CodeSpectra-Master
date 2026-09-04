@@ -66,6 +66,10 @@ export async function POST(request: NextRequest): Promise<NextResponse> {
     ) {
       return NextResponse.json({ error: 'bad sig' }, { status: 401 })
     }
+  } else if (process.env.NODE_ENV === 'production') {
+    // Fail-closed: unsigned KYC decisions must never be applied in production.
+    logger.error('[Didit webhook] DIDIT_WEBHOOK_SECRET not configured — rejecting')
+    return NextResponse.json({ error: 'webhook secret not configured' }, { status: 500 })
   }
 
   // 4. Idempotency — dedupe on event_id

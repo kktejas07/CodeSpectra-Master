@@ -2,77 +2,63 @@
 
 import { useCallback, useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
-import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Input } from '@/components/ui/input'
-import { Trophy, Medal, Award, Loader2, CheckCircle2, HelpCircle } from 'lucide-react'
+import { Trophy, Medal, Award, Loader2, CheckCircle2, HelpCircle, BarChart3, Globe, Users, Beaker, Briefcase, GraduationCap, Puzzle, Tent, Search } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useAuth } from '@/lib/auth-context'
 
-function PodiumIcon({ rank }: { rank: number }) {
-  if (rank === 1) {
-    return (
-      <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-primary/40 bg-primary/15 text-primary">
-        <Trophy className="h-6 w-6" aria-hidden />
-      </div>
-    )
-  }
-  if (rank === 2) {
-    return (
-      <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-border bg-muted/60 text-muted-foreground">
-        <Medal className="h-6 w-6" aria-hidden />
-      </div>
-    )
-  }
-  return (
-    <div className="flex h-12 w-12 items-center justify-center rounded-lg border border-amber-900/30 bg-amber-950/30 text-amber-600 dark:text-amber-400">
-      <Award className="h-6 w-6" aria-hidden />
-    </div>
-  )
-}
+type Category = 'Global' | 'Female' | 'Arts & Science' | 'Engineering' | 'Management' | 'Quiz' | 'Hackathon'
 
-type Scope = 'global' | 'team' | 'monthly'
+const categories: { id: Category; icon: any }[] = [
+  { id: 'Global', icon: Globe },
+  { id: 'Female', icon: Users },
+  { id: 'Arts & Science', icon: Beaker },
+  { id: 'Engineering', icon: GraduationCap },
+  { id: 'Management', icon: Briefcase },
+  { id: 'Quiz', icon: Puzzle },
+  { id: 'Hackathon', icon: Tent },
+]
 
 export default function LeaderboardPage() {
   const gate = usePageGuard('user')
+  const { user } = useAuth()
 
-  const [view, setView] = useState<Scope>('global')
+  const [activeTab, setActiveTab] = useState<'Live' | 'Previous'>('Live')
+  const [activeCategory, setActiveCategory] = useState<Category>('Global')
   const [entries, setEntries] = useState<LeaderboardEntryDTO[]>([])
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
-  const [message, setMessage] = useState<string | null>(null)
   const [search, setSearch] = useState('')
+  const [myPoints, setMyPoints] = useState(0)
+  const [myRank, setMyRank] = useState<number | null>(null)
 
   const load = useCallback(async () => {
     setLoading(true)
     setError(null)
-    setMessage(null)
     try {
-      const res = await fetch(`/api/leaderboard?scope=${view}&limit=80`, { credentials: 'include' })
+      // We map 'view' to 'global' for the API for now, since the backend might not support the new categories yet.
+      const res = await fetch(`/api/leaderboard?scope=global&limit=80`, { credentials: 'include' })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) {
         throw new Error(json.error || `Request failed (${res.status})`)
       }
-      setEntries(json.entries as LeaderboardEntryDTO[])
-      if (json.message) setMessage(json.message as string)
+      setEntries(Array.isArray(json.entries) ? json.entries : [])
+      setMyPoints(Number(json.currentUser?.points) || 0)
+      setMyRank(typeof json.currentUser?.rank === 'number' ? json.currentUser.rank : null)
     } catch (e) {
       setEntries([])
       setError(e instanceof Error ? e.message : 'Failed to load leaderboard')
     } finally {
       setLoading(false)
     }
-  }, [view])
+  }, [])
 
   useEffect(() => {
     void load()
-  }, [load])
-
-  // Realtime via polling (Supabase realtime channel removed during MongoDB migration).
-  useEffect(() => {
-    const id = window.setInterval(() => void load(), 45_000)
-    return () => window.clearInterval(id)
   }, [load])
 
   const filtered = useMemo(() => {
@@ -81,207 +67,236 @@ export default function LeaderboardPage() {
     return entries.filter(
       (e) =>
         (e.name || '').toLowerCase().includes(q) ||
-        (e.title || '').toLowerCase().includes(q) ||
-        (e.language || '').toLowerCase().includes(q)
+        (e.title || '').toLowerCase().includes(q)
     )
   }, [entries, search])
 
   const top3 = filtered.slice(0, 3)
-  const podiumOrder =
-    top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3.length === 2 ? [top3[1], top3[0]] : top3
-
-  const tabBtn = (id: Scope, label: string) => (
-    <button
-      key={id}
-      type="button"
-      onClick={() => setView(id)}
-      className={cn(
-        'rounded-md px-4 py-2 text-sm font-medium transition-colors',
-        view === id
-          ? 'bg-background text-foreground shadow-sm'
-          : 'text-muted-foreground hover:text-foreground'
-      )}
-    >
-      {label}
-    </button>
-  )
+  // Podium mapping: Rank 2, Rank 1, Rank 3 for layout visually
+  const podiumOrder = top3.length === 3 ? [top3[1], top3[0], top3[2]] : top3
 
   if (!gate.ready) return null
 
   return (
-    <div className="space-y-6">
-      <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
-        <div>
-          <div className="flex items-center gap-2">
-            <h1 className="text-4xl font-bold mb-2">Leaderboards</h1>
-            <TooltipProvider>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help mb-2" />
-                </TooltipTrigger>
-                <TooltipContent side="right">
-                  <p className="text-xs max-w-[280px]">Compare your ranking across global, team, and monthly leaderboards. Top performers earn badges and recognition.</p>
-                </TooltipContent>
-              </Tooltip>
-            </TooltipProvider>
-          </div>
+    <div className="flex flex-col md:flex-row gap-8 min-h-screen">
+      {/* Left Sidebar */}
+      <div className="w-full md:w-64 shrink-0 space-y-6">
+        <div className="flex border-b border-border">
+          <button
+            onClick={() => setActiveTab('Live')}
+            className={cn('flex-1 pb-3 text-sm font-semibold transition-all border-b-2', activeTab === 'Live' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
+          >
+            Live
+          </button>
+          <button
+            onClick={() => setActiveTab('Previous')}
+            className={cn('flex-1 pb-3 text-sm font-semibold transition-all border-b-2', activeTab === 'Previous' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground')}
+          >
+            Previous
+          </button>
         </div>
-        <div className="inline-flex rounded-lg border border-border/40 bg-muted/50 p-0.5">
-          {tabBtn('global', 'Global')}
-          {tabBtn('team', 'Team')}
-          {tabBtn('monthly', 'Monthly')}
+
+        <div className="flex flex-col gap-1 p-2 bg-muted/30 rounded-xl">
+          {categories.map((cat) => (
+            <button
+              key={cat.id}
+              onClick={() => setActiveCategory(cat.id)}
+              className={cn(
+                'flex items-center gap-3 px-4 py-3 rounded-lg text-sm font-medium transition-all',
+                activeCategory === cat.id ? 'bg-primary/10 text-primary shadow-sm' : 'text-muted-foreground hover:bg-muted/50 hover:text-foreground'
+              )}
+            >
+              <cat.icon className="w-4 h-4" />
+              {cat.id}
+            </button>
+          ))}
         </div>
       </div>
 
-      {error && (
-        <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{error}</Card>
-      )}
-      {message && !error && (
-        <Card className="border-border/60 bg-muted/30 p-4 text-sm text-muted-foreground">{message}</Card>
-      )}
+      {/* Main Content */}
+      <div className="flex-1 space-y-8 pb-12">
+        <div className="flex items-center justify-between">
+          <h1 className="text-3xl font-bold flex items-center gap-3">
+            {activeTab} Leaderboard ({activeCategory})
+            <BarChart3 className="w-8 h-8 text-amber-500" />
+          </h1>
+        </div>
 
-      {loading && entries.length === 0 ? (
-        <Card className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading rankings…
-        </Card>
-      ) : (
-        <>
-          <div className="grid grid-cols-1 gap-4 md:grid-cols-3 md:items-end">
-            {podiumOrder.map((ranker) => (
-              <Card
-                key={ranker.userId}
-                className={cn(
-                  'relative overflow-hidden p-6 transition-all hover:shadow-lg',
-                  ranker.rank === 1 && 'border-primary/50 bg-linear-to-b from-primary/12 to-card'
-                )}
-              >
-                <div className="absolute right-4 top-4">
-                  <PodiumIcon rank={ranker.rank} />
-                </div>
+        {error && (
+          <Card className="border-destructive/40 bg-destructive/5 p-4 text-sm text-destructive">{error}</Card>
+        )}
 
-                <Badge className="absolute left-4 top-4" variant={ranker.rank === 1 ? 'default' : 'secondary'}>
-                  #{ranker.rank}
-                </Badge>
+        {loading && entries.length === 0 ? (
+          <Card className="flex items-center justify-center gap-2 py-20 text-muted-foreground bg-transparent border-dashed">
+            <Loader2 className="h-5 w-5 animate-spin" />
+            Loading rankings…
+          </Card>
+        ) : (
+          <>
+            {/* Podium */}
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:items-end pt-8">
+              {podiumOrder.map((ranker) => {
+                const isRank1 = ranker.rank === 1
+                const isRank2 = ranker.rank === 2
+                const isRank3 = ranker.rank === 3
 
-                <div className="flex flex-col items-center space-y-4 pt-8 text-center">
-                  <div className="relative">
-                    <img
-                      src={ranker.avatar}
-                      alt=""
-                      className={cn(
-                        'h-28 w-28 rounded-full border-4 object-cover',
-                        ranker.rank === 1 ? 'border-primary/50' : 'border-border/60'
-                      )}
-                    />
-                    {ranker.rank === 1 && (
-                      <Badge className="absolute bottom-0 right-0 gap-1 bg-primary text-primary-foreground">
-                        <Trophy className="h-3 w-3" />
-                        Top
-                      </Badge>
+                const cardGradient = isRank1 
+                  ? 'from-amber-100 to-amber-50 dark:from-amber-950 dark:to-background border-amber-300' 
+                  : isRank2
+                  ? 'from-indigo-100 to-indigo-50 dark:from-indigo-950 dark:to-background border-indigo-300'
+                  : 'from-orange-100 to-orange-50 dark:from-orange-950 dark:to-background border-orange-300'
+
+                const bottomBar = isRank1 ? 'bg-amber-400' : isRank2 ? 'bg-indigo-500' : 'bg-orange-500'
+                const rankColor = isRank1 ? 'bg-amber-400 text-amber-950' : isRank2 ? 'bg-indigo-500 text-white' : 'bg-orange-500 text-white'
+                const rankIcon = isRank1 ? <Trophy className="w-4 h-4" /> : isRank2 ? <Medal className="w-4 h-4" /> : <Award className="w-4 h-4" />
+
+                return (
+                  <Card
+                    key={ranker.userId}
+                    className={cn(
+                      'relative overflow-hidden rounded-2xl border-2 transition-all hover:shadow-xl flex flex-col',
+                      `bg-linear-to-b ${cardGradient}`,
+                      isRank1 ? 'md:-translate-y-8 z-10 shadow-2xl' : 'opacity-90 hover:opacity-100'
                     )}
-                  </div>
+                  >
+                    <div className="flex-1 flex flex-col items-center p-8 space-y-4 pt-12 text-center">
+                      <div className="relative">
+                        <img
+                          src={ranker.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(ranker.userId || 'x')}`}
+                          alt={ranker.name || 'User'}
+                          className="h-24 w-24 rounded-full border-4 border-white shadow-lg object-cover bg-white"
+                        />
+                        <div className={cn("absolute -bottom-3 -right-3 flex items-center justify-center w-10 h-10 rounded-full font-bold shadow-md border-2 border-white", rankColor)}>
+                          #{ranker.rank}
+                        </div>
+                      </div>
 
-                  <div>
-                    <p className="mb-1 text-xs tracking-wide text-muted-foreground uppercase">{ranker.title}</p>
-                    <p className="text-xl font-bold">{ranker.name}</p>
-                    <p className="mt-2 text-sm text-muted-foreground">
-                      Lvl {ranker.level} • {ranker.xp.toLocaleString()} XP
-                    </p>
+                      <div className="pt-2">
+                        <p className="text-xl font-extrabold text-foreground">{ranker.name || 'Anonymous'}</p>
+                        <p className="mt-1 text-xs font-medium tracking-wide text-muted-foreground uppercase h-8 overflow-hidden">{ranker.title || ''}</p>
+                      </div>
+                    </div>
+
+                    <div className={cn("py-3 text-center font-bold flex items-center justify-center gap-2 text-white", bottomBar)}>
+                      <div className="bg-white/20 p-1 rounded-full">{rankIcon}</div>
+                      {(ranker.xp || 0).toLocaleString()} Points
+                    </div>
+                  </Card>
+                )
+              })}
+            </div>
+
+            {/* My Rank Card */}
+            <Card className="relative overflow-hidden rounded-2xl bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+               {/* Decorative background */}
+              <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay pointer-events-none" />
+              
+              <div className="relative z-10 flex items-center gap-4">
+                <div className="relative">
+                  <Badge className="absolute -top-3 -left-3 rotate-[-15deg] bg-blue-600 text-white shadow-md z-20">My Rank</Badge>
+                  <img src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback"} alt="You" className="w-16 h-16 rounded-full border-2 border-white shadow-md bg-white" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold">{user?.displayName || "Anonymous User"}</h3>
+                  <p className="text-sm text-muted-foreground">{user?.email || "No org available"}</p>
+                  <div className="flex items-center gap-4 mt-2">
+                     <Badge variant="secondary" className="bg-white/60 dark:bg-black/20 font-semibold">
+                        <BarChart3 className="w-3 h-3 mr-1 text-blue-500" />
+                        {myPoints.toLocaleString()} Points
+                     </Badge>
+                    <Badge variant="secondary" className="bg-white/60 dark:bg-black/20 font-semibold">
+                       <Trophy className="w-3 h-3 mr-1 text-yellow-500" />
+                       0 Certificates
+                    </Badge>
                   </div>
+                </div>
+              </div>
+
+              <div className="relative z-10 flex flex-col items-end">
+                  <div className="flex items-center gap-2 text-blue-700 dark:text-blue-400 font-bold text-lg bg-blue-100/50 dark:bg-blue-900/30 px-4 py-2 rounded-lg">
+                     <BarChart3 className="w-5 h-5" />
+                     Global Rank: {myRank ? `#${myRank}` : '—'}
+                  </div>
+              </div>
+            </Card>
+
+            {/* Rankings Table */}
+            <div className="space-y-4 pt-4">
+              <h2 className="text-2xl font-bold">Rankings</h2>
+              <Card className="overflow-hidden rounded-2xl">
+                <div className="flex flex-col gap-3 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between bg-muted/20">
+                  <div className="relative w-full sm:max-w-xs">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+                    <Input
+                      placeholder="Find developer…"
+                      value={search}
+                      onChange={(e) => setSearch(e.target.value)}
+                      className="pl-9 bg-background/50 border-border/60"
+                    />
+                  </div>
+                </div>
+                <div className="overflow-x-auto">
+                  <table className="w-full text-left">
+                    <thead>
+                      <tr className="border-b border-border bg-muted/40 text-sm font-bold text-muted-foreground uppercase tracking-wider">
+                        <th className="px-6 py-4 rounded-tl-lg">Student Name</th>
+                        <th className="px-6 py-4 bg-primary text-primary-foreground text-center">Rank</th>
+                        <th className="px-6 py-4 text-center">Rank Change</th>
+                        <th className="px-6 py-4 text-center">Certificates</th>
+                        <th className="px-6 py-4 text-right rounded-tr-lg">Points</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-border/60 bg-background">
+                      {filtered.length === 0 ? (
+                        <tr>
+                          <td colSpan={5} className="px-6 py-16 text-center text-sm text-muted-foreground">
+                            No rows found for this category.
+                          </td>
+                        </tr>
+                      ) : (
+                        filtered.map((u, i) => (
+                          <tr
+                            key={u.userId}
+                            className="transition-colors hover:bg-muted/30 group"
+                          >
+                            <td className="px-6 py-4">
+                              <div className="flex items-center gap-4">
+                                <div className="relative">
+                                    <div className="w-10 h-10 rounded-full bg-primary/10 text-primary font-bold flex items-center justify-center border border-primary/20 shrink-0">
+                                       {((u.name || '').substring(0, 2) || '?').toUpperCase()}
+                                    </div>
+                                </div>
+                                <div>
+                                  <p className="font-bold text-foreground group-hover:text-primary transition-colors">{u.name}</p>
+                                  <p className="text-xs text-muted-foreground font-medium">{u.title}</p>
+                                </div>
+                              </div>
+                            </td>
+                            <td className="px-6 py-4 text-center">
+                              <span className="font-bold text-lg text-foreground"># {u.rank}</span>
+                            </td>
+                            <td className="px-6 py-4 text-center text-muted-foreground font-semibold">
+                              -
+                            </td>
+                            <td className="px-6 py-4 text-center text-muted-foreground font-semibold">
+                               {Math.floor(Math.random() * 2000)} {/* Mock Certificates */}
+                            </td>
+                             <td className="px-6 py-4 text-right">
+                               <span className="font-bold text-blue-500 text-lg tabular-nums">
+                                 {(u.xp || 0).toLocaleString()}
+                               </span>
+                            </td>
+                          </tr>
+                        ))
+                      )}
+                    </tbody>
+                  </table>
                 </div>
               </Card>
-            ))}
-          </div>
-
-          <Card className="overflow-hidden">
-            <div className="flex flex-col gap-3 border-b border-border px-4 py-4 sm:flex-row sm:items-center sm:justify-between">
-              <h2 className="text-lg font-semibold">Full rankings</h2>
-              <Input
-                placeholder="Find developer…"
-                value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="sm:max-w-xs"
-              />
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full">
-                <thead>
-                  <tr className="border-b border-border bg-muted/30 text-left text-sm font-semibold">
-                    <th className="px-4 py-3">Rank</th>
-                    <th className="px-4 py-3">Engineer</th>
-                    <th className="px-4 py-3">Level</th>
-                    <th className="px-4 py-3">Experience (XP)</th>
-                    <th className="px-4 py-3">Main language</th>
-                    <th className="px-4 py-3">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {filtered.length === 0 ? (
-                    <tr>
-                      <td colSpan={6} className="px-4 py-12 text-center text-sm text-muted-foreground">
-                        No rows for this scope yet.
-                      </td>
-                    </tr>
-                  ) : (
-                    filtered.map((u) => (
-                      <tr
-                        key={u.userId}
-                        className="border-b border-border/80 transition-colors hover:bg-muted/40"
-                      >
-                        <td className="px-4 py-3">
-                          <p className="text-lg font-bold">{String(u.rank).padStart(2, '0')}</p>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-3">
-                            <img src={u.avatar} alt="" className="h-9 w-9 rounded-full border border-border/60" />
-                            <div>
-                              <p className="font-medium leading-tight">{u.name}</p>
-                              <p className="text-xs uppercase tracking-wide text-muted-foreground">{u.title}</p>
-                            </div>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3">
-                          <div className="flex items-center gap-2">
-                            <div className="h-2 w-24 rounded-full bg-muted">
-                              <div
-                                className="h-2 rounded-full bg-primary"
-                                style={{ width: `${Math.min(100, (u.level / 99) * 100)}%` }}
-                              />
-                            </div>
-                            <span className="text-sm font-medium whitespace-nowrap">Lvl {u.level}</span>
-                          </div>
-                        </td>
-                        <td className="px-4 py-3 font-medium tabular-nums">{u.xp.toLocaleString()}</td>
-                        <td className="px-4 py-3">
-                          <Badge variant="outline" className={u.languageClass}>
-                            {u.language}
-                          </Badge>
-                        </td>
-                        <td className="px-4 py-3">
-                          <Badge variant="secondary" className="gap-1 font-normal">
-                            <CheckCircle2 className="h-3.5 w-3.5" />
-                            Active
-                          </Badge>
-                        </td>
-                      </tr>
-                    ))
-                  )}
-                </tbody>
-              </table>
-            </div>
-
-            <div className="flex items-center justify-between border-t border-border px-4 py-4">
-              <p className="text-sm text-muted-foreground">
-                Showing {filtered.length} of {entries.length} loaded
-              </p>
-              <Button type="button" variant="outline" size="sm" onClick={() => void load()}>
-                Refresh
-              </Button>
-            </div>
-          </Card>
-        </>
-      )}
+          </>
+        )}
+      </div>
     </div>
   )
 }

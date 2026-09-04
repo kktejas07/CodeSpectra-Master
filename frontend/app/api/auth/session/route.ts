@@ -171,6 +171,7 @@ export async function GET() {
             lastLoginAt: profile?.lastLoginAt || null,
             createdAt: profile?.createdAt || null,
             has_enrolled_face: !!(profile as any)?.facial_biometric_template,
+            onboardingGoal: (profile as any)?.onboardingGoal || null,
           },
         })
       }
@@ -195,6 +196,7 @@ export async function GET() {
         lastLoginAt: profile?.lastLoginAt || null,
         createdAt: profile?.createdAt || null,
         has_enrolled_face: !!(profile as any)?.facial_biometric_template,
+        onboardingGoal: (profile as any)?.onboardingGoal || null,
       },
     })
   }

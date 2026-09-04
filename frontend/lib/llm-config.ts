@@ -44,6 +44,7 @@ export const LLM_PROVIDERS: ProviderDef[] = [
       'gpt-5.6-sol',
       'grok-4.5',
       'qwen3.6-plus',
+      'stealth/ox-alpha',
     ],
     endpoint: 'https://opencode.ai/zen/v1',
     authType: 'bearer',
@@ -125,11 +126,27 @@ export const LLM_PROVIDERS: ProviderDef[] = [
 
 export type LLMProviderId = (typeof LLM_PROVIDERS)[number]['id']
 
+export interface APIKeyStatus {
+  id: string
+  key: string
+  added_at: string
+  usage_count: number
+  rate_limited_until: number | null
+}
+
+export interface TaskOverride {
+  provider: LLMProviderId
+  model: string
+  endpoint?: string
+}
+
 export interface LLMConfig {
   provider: LLMProviderId
   model: string
   endpoint: string
   api_key: string
+  keys?: Partial<Record<LLMProviderId, APIKeyStatus[]>>
+  taskOverrides?: Partial<Record<string, TaskOverride>>
 }
 
 export const LLM_CONFIG_DEFAULTS: LLMConfig = {
@@ -137,6 +154,8 @@ export const LLM_CONFIG_DEFAULTS: LLMConfig = {
   model: 'gemini-2.0-flash',
   endpoint: '',
   api_key: '',
+  keys: {},
+  taskOverrides: {},
 }
 
 export function getProviderDefaults(id: string): ProviderDef | undefined {

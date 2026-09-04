@@ -34,6 +34,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/organizations',
   '/dashboard/admin/permissions',
   '/dashboard/admin/security',
+  '/dashboard/admin/feedback',
 
   // Hackathons, Problems & Proctoring
   '/dashboard/admin/hackathons',
@@ -62,7 +63,8 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/rag',
   '/dashboard/admin/ai-inventory',
   '/dashboard/admin/question-generator',
-  '/dashboard/admin/course-generator',
+  '/dashboard/admin/courses',
+  '/dashboard/admin/courses/[id]',
   '/dashboard/admin/workflows',
   '/dashboard/admin/cron-jobs',
 
@@ -77,6 +79,8 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/speed-insights',
   '/dashboard/admin/announcements',
   '/dashboard/admin/newsletter',
+  '/dashboard/admin/content-studio',
+  '/dashboard/admin/resources',
   '/dashboard/admin/billing',
   '/dashboard/admin/help',
   '/dashboard/admin/sso',
@@ -88,7 +92,7 @@ export const ADMIN_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Billing', firstRoute: '/dashboard/admin/pricing' },
   { label: 'Hiring', firstRoute: '/dashboard/admin/jobs' },
   { label: 'AI Tools', firstRoute: '/dashboard/admin/rag' },
-  { label: 'Learning Admin', firstRoute: '/dashboard/admin/course-generator' },
+  { label: 'Learning Admin', firstRoute: '/dashboard/admin/courses' },
   { label: 'Infrastructure', firstRoute: '/dashboard/admin/settings' },
   { label: 'Organization', firstRoute: '/dashboard/admin/team' },
 ]
@@ -97,7 +101,9 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
   { label: 'Dashboard', firstRoute: '/dashboard' },
   { label: 'Practice', firstRoute: '/dashboard/arena' },
   { label: 'Events', firstRoute: '/dashboard/events' },
-  { label: 'Learning', firstRoute: '/dashboard/learning' },
+  { label: 'Courses', firstRoute: '/dashboard/courses' },
+  { label: 'Discover', firstRoute: '/dashboard/quizzes' },
+  { label: 'My Activity', firstRoute: '/dashboard/courses/my' },
   { label: 'Career', firstRoute: '/dashboard/jobs' },
   { label: 'Tools', firstRoute: '/dashboard/scanner' },
   { label: 'Stats', firstRoute: '/dashboard/leaderboard' },
@@ -149,12 +155,25 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/hackathons',
   
   // Learning & Prep
-  '/dashboard/learning',
+  '/dashboard/courses',
+  '/dashboard/courses/my',
+  '/dashboard/courses/wishlist',
   '/dashboard/interview-prep',
+
+  // Discover (Unstop-style hubs)
+  '/dashboard/quizzes',
+  '/dashboard/articles',
+  '/dashboard/resources',
+
+  // My Activity
+  '/dashboard/activity/recent',
+  '/dashboard/activity/sessions',
+  '/dashboard/activity/bookmarks',
   
   // Career & Hiring
   '/dashboard/jobs',
   '/dashboard/interviews',
+  '/dashboard/mock-tests',
   '/dashboard/resumes',
   '/dashboard/assessments',
   '/dashboard/certifications',
@@ -172,6 +191,7 @@ export const ALL_USER_ROUTES: string[] = [
   // User & Account
   '/dashboard/profile',
   '/dashboard/notifications',
+  '/dashboard/calendar',
   '/dashboard/billing',
   '/dashboard/pricing',
   '/dashboard/settings',
@@ -184,8 +204,8 @@ export const ALL_USER_ROUTES: string[] = [
   '/dashboard/agent',
 
   // Misc / Help
+  '/dashboard/feedback',
   '/dashboard/support',
-  '/dashboard/status',
 ]
 
 /**
@@ -220,6 +240,16 @@ export function getRequiredRoleForRoute(pathname: string): UserRole {
   return 'user'
 }
 
+/** Platform-operator console. DB grants must not open these for non-superadmins. */
+export function isPlatformAdminRoute(pathname: string): boolean {
+  const base = pathname.split('?')[0]
+  if (!(base === '/dashboard/admin' || base.startsWith('/dashboard/admin/'))) return false
+  for (const route of TENANT_ADMIN_ROUTES) {
+    if (base === route || base.startsWith(route + '/')) return false
+  }
+  return true
+}
+
 /**
  * Human-readable labels for all known routes.
  */
@@ -236,6 +266,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/integrations': 'Integrations',
   '/dashboard/admin/pricing': 'Pricing',
   '/dashboard/admin/security': 'Security',
+  '/dashboard/admin/feedback': 'Feedback & Reports',
   '/dashboard/admin/security/email-monitoring': 'Email Monitoring',
   '/dashboard/admin/settings': 'Platform Settings',
   '/dashboard/admin/settings/cloudflare': 'Cloudflare',
@@ -250,12 +281,15 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/workflows': 'Workflows',
   '/dashboard/admin/cron-jobs': 'Cron Jobs',
   '/dashboard/admin/question-generator': 'Question Generator',
-  '/dashboard/admin/course-generator': 'Course Generator',
+  '/dashboard/admin/courses': 'Course Management',
+  '/dashboard/admin/courses/[id]': 'Edit Course',
   '/dashboard/admin/hackathons/create': 'Create Hackathon',
   '/dashboard/admin/hackathons/edit': 'Edit Hackathon',
   '/dashboard/admin/hackathons': 'Hackathons',
   '/dashboard/admin/announcements': 'Announcements',
   '/dashboard/admin/newsletter': 'Newsletter',
+  '/dashboard/admin/content-studio': 'Content Studio',
+  '/dashboard/admin/resources': 'Resources / Ebooks',
   '/dashboard/admin/rag': 'RAG',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
   '/dashboard/admin/permissions': 'Permissions',
@@ -269,7 +303,15 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/tracks': 'Tracks',
   '/dashboard/scanner': 'Scanner',
   '/dashboard/agent': 'Agent',
-  '/dashboard/learning': 'Learning',
+  '/dashboard/courses': 'Courses',
+  '/dashboard/courses/my': 'My Courses',
+  '/dashboard/courses/wishlist': 'Watchlist',
+  '/dashboard/quizzes': 'Quizzes',
+  '/dashboard/articles': 'Articles',
+  '/dashboard/resources': 'Resources',
+  '/dashboard/activity/recent': 'Recently Viewed',
+  '/dashboard/activity/sessions': 'My Sessions',
+  '/dashboard/activity/bookmarks': 'Bookmarked Questions',
   '/dashboard/skill-analytics': 'Skill Analytics',
   '/dashboard/identity-verify': 'Identity Verify',
   '/dashboard/leaderboard': 'Leaderboard',
@@ -278,6 +320,7 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/pricing': 'Pricing',
   '/dashboard/challenges': 'Challenges',
   '/dashboard/interviews': 'Interviews',
+  '/dashboard/mock-tests': 'Mock Tests',
   '/dashboard/interview-prep': 'Interview Prep',
   '/dashboard/interviews/feedback': 'Interview Feedback',
   '/dashboard/interviews/results': 'Interview Results',
@@ -287,10 +330,11 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/settings/ai': 'AI Settings',
   '/dashboard/billing': 'Billing',
   '/dashboard/notifications': 'Notifications',
+  '/dashboard/calendar': 'Calendar',
   '/dashboard/notifications/preferences': 'Notification Preferences',
   '/dashboard/support': 'Support',
+  '/dashboard/feedback': 'Platform Feedback',
   '/dashboard/referrals': 'Referrals',
-  '/dashboard/status': 'System Status',
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/events': 'Events',

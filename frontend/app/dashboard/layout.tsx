@@ -23,6 +23,7 @@ import {
   ROUTE_LABELS,
   ADMIN_SECTIONS,
   USER_SECTIONS,
+  isPlatformAdminRoute,
 } from '@/lib/page-permissions'
 import { cn } from '@/lib/utils'
 import {
@@ -65,6 +66,8 @@ import {
   Briefcase,
   Flame,
   Mail,
+  Newspaper,
+  Radio,
   ScanSearch,
   UserPlus,
   AlertCircle,
@@ -94,12 +97,21 @@ import {
   BrainCircuit,
   ShieldAlert,
   ShieldCheck,
+  Zap,
+  Gavel,
   Workflow,
   Wand2,
   FileBarChart,
   BadgeCheck,
   TrendingUp,
   Activity,
+  Heart,
+  HelpCircle,
+  Library,
+  History,
+  Bookmark,
+  UserRound,
+  MessageSquareWarning,
   type LucideIcon,
 } from 'lucide-react'
 import { isPageAllowed, type PlanDefinition } from '@/lib/plans-client'
@@ -373,12 +385,26 @@ export default function DashboardLayout({
 
       // Events
       '/dashboard/events': CalendarDays,
+      '/dashboard/judge': Gavel,
       '/dashboard/codeathons': Terminal,
       '/dashboard/hackathons': Trophy,
 
       // Learning
       '/dashboard/learning': GraduationCap,
+      '/dashboard/courses': BookOpen,
+      '/dashboard/courses/my': UserRound,
+      '/dashboard/courses/wishlist': Heart,
       '/dashboard/interview-prep': Video,
+
+      // Discover
+      '/dashboard/quizzes': HelpCircle,
+      '/dashboard/articles': Newspaper,
+      '/dashboard/resources': Library,
+
+      // My Activity
+      '/dashboard/activity/recent': History,
+      '/dashboard/activity/sessions': Video,
+      '/dashboard/activity/bookmarks': Bookmark,
 
       // Career
       '/dashboard/jobs': Briefcase,
@@ -400,6 +426,7 @@ export default function DashboardLayout({
       // Account
       '/dashboard/profile': User,
       '/dashboard/notifications': Bell,
+      '/dashboard/calendar': CalendarDays,
       '/dashboard/billing': Receipt,
       '/dashboard/pricing': CreditCard,
       '/dashboard/settings': Settings,
@@ -409,7 +436,6 @@ export default function DashboardLayout({
       // Support & Misc
       '/dashboard/support': LifeBuoy,
       '/dashboard/status': Activity,
-      '/dashboard/judge': ShieldCheck,
 
       // Admin & Platform
       [p.system]: Server,
@@ -423,9 +449,12 @@ export default function DashboardLayout({
       [p.plans]: FileText,
       [p.pricing]: CreditCard,
       '/dashboard/admin/organizations': Building2,
+      '/dashboard/admin/feedback': MessageSquareWarning,
       '/dashboard/admin/coupons': Ticket,
       '/dashboard/admin/announcements': Megaphone,
       '/dashboard/admin/newsletter': Mail,
+      '/dashboard/admin/content-studio': Zap,
+      '/dashboard/admin/resources': Library,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/rag': BrainCircuit,
       '/dashboard/admin/ai-inventory': Sparkles,
@@ -441,7 +470,7 @@ export default function DashboardLayout({
       [p.workflows]: Workflow,
       '/dashboard/admin/cron-jobs': Timer,
       [p.questionGenerator]: Bot,
-      '/dashboard/admin/course-generator': Wand2,
+      '/dashboard/admin/courses': BookOpen,
       [DASHBOARD_ROUTES.organization.team]: Users2,
       '/dashboard/admin/requisitions': Briefcase,
       '/dashboard/admin/question-bank': Database,
@@ -543,6 +572,10 @@ export default function DashboardLayout({
       )
     }
 
+    if (!isSuperAdmin(role)) {
+      leaves = leaves.filter(leaf => !isPlatformAdminRoute(leaf.route))
+    }
+
     return addSectionHeaders(leaves)
   }, [userProfile?.role, userPlan, allowedRoutes, deniedRoutes, permsLoaded, effectiveLockedPages])
 
@@ -575,6 +608,7 @@ export default function DashboardLayout({
   const isScannerShell = pathname.startsWith('/dashboard/scanner')
   const isLearningShell = pathname.startsWith('/dashboard/learning')
   const isPlatformSettingsShell = pathname.startsWith('/dashboard/admin/settings')
+  const isLessonPlayer = pathname.includes('/lesson/')
 
   const isActive = (href: string | undefined) => {
     if (!href) return false
@@ -697,7 +731,7 @@ export default function DashboardLayout({
               : 'font-medium text-muted-foreground hover:bg-muted/60 hover:text-foreground'
           )}
         >
-          <IconComponent className="h-[18px] w-[18px] shrink-0 opacity-90" />
+          <IconComponent className="h-4.5 w-4.5 shrink-0 opacity-90" />
           <span
             className={cn(
               'min-w-0 flex-1 truncate text-[14px]',
@@ -726,7 +760,7 @@ export default function DashboardLayout({
   }
 
   return (
-    <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/4 dark:from-background dark:via-background dark:to-primary/10">
+    <div className="min-h-screen bg-linear-to-br from-background via-background to-primary/5">
       <ActivityHeartbeat />
       <WebVitalsReporter />
       <AnalyticsTracker />
@@ -739,6 +773,7 @@ export default function DashboardLayout({
       )}
 
       {/* Sidebar */}
+      {!isLessonPlayer && (
       <aside
         className={cn(
           'fixed left-0 top-0 z-40 h-screen w-64 border-r border-border/40 bg-card/95 backdrop-blur-md overflow-hidden transition-[width,transform] duration-200',
@@ -1016,7 +1051,7 @@ export default function DashboardLayout({
               >
                 <Bell className="h-4 w-4 shrink-0" />
                 {unreadNotifications > 0 ? (
-                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-[16px] items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground leading-none"
+                  <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-full bg-primary px-1 text-[9px] font-bold text-primary-foreground leading-none"
                     aria-label={`${unreadNotifications} unread notifications`}>
                     {unreadNotifications > 9 ? '9+' : unreadNotifications}
                   </span>
@@ -1039,12 +1074,13 @@ export default function DashboardLayout({
           </div>
         </div>
       </aside>
+      )}
 
       {/* Main Content */}
       <div
         className={cn(
           'transition-[margin] duration-200',
-          sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64'
+          !isLessonPlayer && (sidebarCollapsed ? 'lg:ml-16' : 'lg:ml-64')
         )}
       >
         {/* Impersonation notice — superadmin acting as another user */}
@@ -1053,7 +1089,7 @@ export default function DashboardLayout({
         {/* Face biometric enrollment warning */}
         {userRole === 'user' && fbUser?.has_enrolled_face === false && (
           <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 flex items-center justify-between text-sm">
-            <div className="flex items-center gap-2 text-amber-700 dark:text-amber-400">
+            <div className="flex items-center gap-2 text-amber-600">
               <AlertCircle className="h-5 w-5 shrink-0" />
               <p><strong>Action Required:</strong> Please complete your face biometric enrollment to take proctored assessments.</p>
             </div>
@@ -1067,6 +1103,7 @@ export default function DashboardLayout({
         )}
 
         {/* Breadcrumbs + mobile menu (no top profile — account lives in sidebar footer) */}
+        {!isLessonPlayer && (
         <div className="sticky top-0 z-20 flex h-12 items-center justify-between gap-3 border-b border-border/20 bg-background/80 px-4 backdrop-blur-xl lg:px-6">
           <Breadcrumbs homeHref={homeHref} className="min-w-0" />
           <button
@@ -1078,9 +1115,10 @@ export default function DashboardLayout({
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </button>
         </div>
+        )}
 
         {/* Page Content — full width with proper padding */}
-        <main className="px-4 py-5 lg:px-6 lg:py-8">
+        <main className={cn("w-full", isLessonPlayer ? "p-0" : "px-4 py-5 lg:px-6 lg:py-8")}>
           <div className="w-full">
             {currentPageLocked ? (
               <PageLocked routeName={lockedPageLabel || undefined} />

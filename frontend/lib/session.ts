@@ -1,30 +1,79 @@
 import { SignJWT, jwtVerify } from 'jose'
 import { cookies } from 'next/headers'
 import { getMongoDb } from '@/lib/mongodb'
+import {
+  generateRuntimeSecret,
+  pickRuntimeSecret,
+} from '@/lib/runtime-secrets'
 
 const SESSION_COOKIE = 'codespectra_session'
 
 let _secret: Uint8Array | null = null
+let _secretPromise: Promise<Uint8Array> | null = null
 
-function getSecret(): Uint8Array {
-  if (_secret) return _secret
-  const raw = process.env.SESSION_SECRET
-  // Hard fail: a publicly-known fallback key would let anyone forge a session
-  // cookie for any uid (full account impersonation). No silent dev secret.
-  if (!raw || raw.length < 32) {
-    if (process.env.NODE_ENV === 'production') {
-      throw new Error(
-        '[session] SESSION_SECRET must be set to a 32+ char random string in production. ' +
-        'Refusing to start with a weak signing key.',
-      )
-    }
-    console.warn(
-      '[session] SESSION_SECRET not set or too short — using development fallback. ' +
-      'Set SESSION_SECRET (32+ chars) in your environment.',
-    )
+async function persistSessionSecret(value: string): Promise<void> {
+  const db = await getMongoDb()
+  await db.collection('platform_settings').updateOne(
+    { key: 'secrets' },
+    { $set: { 'value.session_secret': value } },
+    { upsert: true },
+  )
+}
+
+/**
+ * Canonical store is Mongo `platform_settings.secrets.session_secret`.
+ * Env is bootstrap only — Dokploy rolls wipe ad-hoc `--env-add` values.
+ * If both are empty, generate once and persist so the next rebuild still works.
+ */
+async function resolveSecret(): Promise<Uint8Array> {
+  let stored = ''
+  try {
+    const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
+    const secrets = await readServerSecrets()
+    stored = typeof secrets.session_secret === 'string' ? secrets.session_secret.trim() : ''
+    if (isMaskedSecret(stored)) stored = ''
+  } catch {
+    // Mongo unavailable — try env / generate below
   }
-  _secret = new TextEncoder().encode(raw || 'dev-secret-do-not-use-in-production-32chars')
+  const picked = pickRuntimeSecret(process.env.SESSION_SECRET, stored)
+  let raw = picked.value
+  if (!raw) {
+    raw = generateRuntimeSecret()
+    try {
+      await persistSessionSecret(raw)
+      console.warn('[session] generated session_secret and stored it in Mongo')
+    } catch {
+      if (process.env.NODE_ENV === 'production') {
+        throw new Error(
+          '[session] SESSION_SECRET missing and Mongo persist failed. ' +
+          'Set MONGODB_URI so the container can read/write platform_settings.secrets.',
+        )
+      }
+      console.warn(
+        '[session] SESSION_SECRET not set or too short — using development fallback. ' +
+        'Set SESSION_SECRET (32+ chars) in your environment.',
+      )
+      raw = 'dev-secret-do-not-use-in-production-32chars'
+    }
+  } else if (picked.source === 'env') {
+    try {
+      await persistSessionSecret(raw)
+    } catch {
+      // ponytail: login still works this process; next roll re-reads env or generates
+    }
+  }
+  process.env.SESSION_SECRET = raw
+  _secret = new TextEncoder().encode(raw)
   return _secret
+}
+
+async function getSecret(): Promise<Uint8Array> {
+  if (_secret) return _secret
+  _secretPromise ??= resolveSecret().catch((err) => {
+    _secretPromise = null
+    throw err
+  })
+  return _secretPromise
 }
 
 export interface SessionPayload {
@@ -52,12 +101,12 @@ export async function signSessionToken(payload: SessionPayload): Promise<string>
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
     .setExpirationTime('7d')
-    .sign(getSecret())
+    .sign(await getSecret())
 }
 
 export async function verifySessionToken(token: string): Promise<SessionPayload | null> {
   try {
-    const { payload } = await jwtVerify(token, getSecret())
+    const { payload } = await jwtVerify(token, await getSecret())
     const data = payload as unknown as SessionPayload
     if (!data.uid) return null
     // Check session version (revocation)

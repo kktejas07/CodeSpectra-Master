@@ -1,13 +1,8 @@
 /**
- * Simple logger that strips sensitive data in production.
- * Use this instead of console.log/error for structured logging.
+ * Structured logger. Emails stay intact so superadmin logs can be traced.
  */
 
 function maskEmail(email: string): string {
-  if (process.env.NODE_ENV === 'production') {
-    const [local, domain] = email.split('@')
-    return `${local?.slice(0, 2)}***@${domain || '***'}`
-  }
   return email
 }
 
@@ -36,15 +31,11 @@ export const logger = {
   
   // Sanitized logging for sensitive data
   auth: (message: string, data?: { email?: string; userId?: string }) => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(message, data?.email ? { email: maskEmail(data.email) } : data)
-    }
+    console.log(message, data?.email ? { email: maskEmail(data.email), userId: data.userId } : data)
   },
   
   email: (message: string, data?: { to?: string; subject?: string }) => {
-    if (process.env.NODE_ENV !== 'production') {
-      console.log(message, data?.to ? { to: maskEmail(data.to), subject: data.subject } : data)
-    }
+    console.log(message, data?.to ? { to: maskEmail(data.to), subject: data.subject } : data)
   },
   
   webhook: (message: string, data?: Record<string, unknown>) => {

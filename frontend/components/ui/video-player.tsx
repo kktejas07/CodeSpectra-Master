@@ -3,12 +3,13 @@
 import '@vidstack/react/player/styles/default/theme.css'
 import '@vidstack/react/player/styles/default/layouts/video.css'
 
-import { useEffect, useState } from 'react'
-import { MediaPlayer, MediaProvider } from '@vidstack/react'
+import { useEffect, useRef, useState } from 'react'
+import { MediaPlayer, MediaProvider, Track } from '@vidstack/react'
 import { defaultLayoutIcons, DefaultVideoLayout } from '@vidstack/react/player/layouts/default'
+import { RemotionProviderLoader } from '@vidstack/react/player/remotion'
 
 interface VideoPlayerProps {
-  src: string
+  src: any
   title?: string
   poster?: string
   autoplay?: boolean
@@ -17,6 +18,10 @@ interface VideoPlayerProps {
   logoUrl?: string
   logoLinkUrl?: string
   className?: string
+  startAt?: number
+  captionsSrc?: string
+  onProgress?: (currentTime: number, duration: number) => void
+  onEnded?: () => void
 }
 
 type PlayerSettings = {
@@ -25,6 +30,7 @@ type PlayerSettings = {
   video_player_muted?: boolean
   video_player_logo_url?: string
   video_player_logo_link_url?: string
+  video_player_captions_default?: boolean
 }
 
 export function VideoPlayer({
@@ -37,8 +43,18 @@ export function VideoPlayer({
   logoUrl,
   logoLinkUrl,
   className = '',
+  startAt = 0,
+  captionsSrc,
+  onProgress,
+  onEnded,
 }: VideoPlayerProps) {
   const [settings, setSettings] = useState<PlayerSettings>({})
+  const player = useRef<any>(null)
+  const appliedStart = useRef(false)
+  const onProgressRef = useRef(onProgress)
+  const onEndedRef = useRef(onEnded)
+  onProgressRef.current = onProgress
+  onEndedRef.current = onEnded
 
   useEffect(() => {
     let cancelled = false
@@ -53,11 +69,22 @@ export function VideoPlayer({
     return () => { cancelled = true }
   }, [])
 
-  const finalAutoplay = autoplay ?? settings.video_player_autoplay ?? false
-  const finalMuted = muted ?? settings.video_player_muted ?? false
+  useEffect(() => {
+    appliedStart.current = false
+  }, [src, startAt])
+
+  const emitProgress = () => {
+    const el = player.current
+    if (!el) return
+    onProgressRef.current?.(Number(el.currentTime) || 0, Number(el.duration) || 0)
+  }
+
+  const finalAutoplay = autoplay ?? settings.video_player_autoplay === true
+  const finalMuted = muted ?? settings.video_player_muted === true
   const finalColor = primaryColor ?? settings.video_player_primary_color ?? '#34d399'
   const finalLogoUrl = logoUrl ?? settings.video_player_logo_url ?? ''
   const finalLogoLinkUrl = logoLinkUrl ?? settings.video_player_logo_link_url ?? ''
+  const finalCaptionsDefault = settings.video_player_captions_default === true
 
   const logo = finalLogoUrl ? (
     <a
@@ -70,7 +97,7 @@ export function VideoPlayer({
       <img
         src={finalLogoUrl}
         alt=""
-        className="h-7 w-auto max-w-[120px] object-contain"
+        className="h-7 w-auto max-w-30 object-contain"
         loading="lazy"
       />
     </a>
@@ -79,13 +106,33 @@ export function VideoPlayer({
   return (
     <div className={`overflow-hidden rounded-md border ${className}`}>
       <MediaPlayer
+        ref={player}
         src={src}
         title={title}
-        autoplay={finalAutoplay}
+        // Vidstack React prop is camelCase `autoPlay` — lowercase `autoplay` is ignored / treated as a DOM flag
+        autoPlay={finalAutoplay}
         muted={finalMuted}
+        playsInline
+        className="h-full w-full"
         style={{ '--video-brand': finalColor } as any}
+        onCanPlay={() => {
+          if (!appliedStart.current && startAt > 0 && player.current) {
+            player.current.currentTime = startAt
+            appliedStart.current = true
+          }
+        }}
+        onTimeUpdate={emitProgress}
+        onPause={emitProgress}
+        onEnded={() => {
+          emitProgress()
+          onEndedRef.current?.()
+        }}
       >
-        <MediaProvider />
+        <MediaProvider loaders={[RemotionProviderLoader]}>
+          {captionsSrc ? (
+            <Track src={captionsSrc} kind="subtitles" label="English" language="en" default={finalCaptionsDefault} />
+          ) : null}
+        </MediaProvider>
         <DefaultVideoLayout
           thumbnails={poster}
           icons={defaultLayoutIcons}

@@ -4,8 +4,10 @@
   "private": true,
   "scripts": {
     "dev": "next dev --webpack",
+    "prebuild": "node scripts/sync-docs.cjs && node scripts/ensure-anon-aadhaar-types.cjs",
     "build": "NODE_ENV=production next build --webpack",
     "start": "next dev --webpack -p 3000 -H 0.0.0.0",
+    "course-worker": "tsx scripts/course-video-worker.ts",
     "postinstall": "patch-package",
     "lint": "eslint .",
     "seed:question-bank": "npx tsx scripts/seed-question-bank.ts",
@@ -13,7 +15,11 @@
     "stripe:listen": "node scripts/run-stripe-listen.mjs"
   },
   "dependencies": {
+    "@ai-sdk/anthropic": "^4.0.41",
+    "@ai-sdk/google": "^4.0.50",
     "@ai-sdk/openai": "^4.0.42",
+    "@anon-aadhaar/core": "^2.4.3",
+    "@anon-aadhaar/react": "^2.4.3",
     "@didit-protocol/sdk-web": "^0.2.1",
     "@hookform/resolvers": "^5.9.0",
     "@monaco-editor/react": "^4.7.0",
@@ -47,6 +53,10 @@
     "@radix-ui/react-use-effect-event": "^0.0.5",
     "@react-three/drei": "^10.7.8",
     "@react-three/fiber": "^9.7.0",
+    "@remotion/bundler": "4.0.513",
+    "@remotion/player": "^4.0.513",
+    "@remotion/renderer": "4.0.513",
+    "@tailwindcss/typography": "^0.5.20",
     "@types/qrcode": "^1.5.6",
     "@vidstack/react": "^1.15.6",
     "@vladmandic/face-api": "^1.7.15",
@@ -63,6 +73,7 @@
     "embla-carousel-react": "8.6.0",
     "firebase": "^12.17.1",
     "firebase-admin": "^14.2.0",
+    "google-tts-api": "^2.0.2",
     "gray-matter": "^4.0.3",
     "input-otp": "1.4.2",
     "ioredis": "^6.0.0",
@@ -71,6 +82,7 @@
     "jspdf": "^4.2.1",
     "konva": "^10.3.1",
     "libphonenumber-js": "^1.13.11",
+    "lottie-react": "^3.1.0",
     "lucide-react": "^1.31.0",
     "media-icons": "^0.10.0",
     "mongodb": "^7.5.0",
@@ -96,16 +108,20 @@
     "rehype-highlight": "^7.0.2",
     "rehype-slug": "^6.0.0",
     "remark-gfm": "^4.0.1",
+    "remotion": "^4.0.513",
     "sonner": "^2.0.8",
     "stripe": "^22.5.0",
     "swr": "^2.5.1",
     "tailwind-merge": "^3.3.1",
     "tesseract.js": "^7.0.0",
     "three": "^0.185.1",
+    "tsx": "^4.20.6",
     "ua-parser-js": "^2.0.10",
     "vaul": "^1.1.2",
     "vidstack": "^1.15.6",
     "xlsx": "^0.18.5",
+    "html2canvas": "^1.4.1",
+    "jspdf": "^3.0.1",
     "zod": "^4.4.3",
     "zustand": "^5.0.15"
   },
@@ -120,7 +136,9 @@
     "@types/nodemailer": "^8.0.1",
     "@types/react": "^19.2.18",
     "@types/react-dom": "^19.2.4",
+    "@types/uuid": "9",
     "@vitejs/plugin-react": "^6.0.5",
+    "dotenv": "^17.4.2",
     "jsdom": "^30.0.1",
     "postcss": "^8.5.26",
     "tailwindcss": "^4.3.3",
@@ -130,6 +148,10 @@
   },
   "resolutions": {
     "react": "19.2.7",
-    "react-dom": "19.2.7"
+    "react-dom": "19.2.7",
+    "snarkjs": "0.7.5"
+  },
+  "overrides": {
+    "snarkjs": "0.7.5"
   }
 }

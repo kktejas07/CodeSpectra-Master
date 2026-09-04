@@ -54,7 +54,7 @@ export async function POST(request: Request) {
       : ''
     return NextResponse.json({
       ok: false,
-      message: `No API key configured for ${body.provider.toUpperCase()}. Please enter your clean unmasked API key in the field above. ${hint}`
+      message: `No API key configured for ${(body.provider || '').toUpperCase()}. Please enter your clean unmasked API key in the field above. ${hint}`
     })
   }
 

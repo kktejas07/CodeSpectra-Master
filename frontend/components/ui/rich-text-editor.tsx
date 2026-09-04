@@ -22,12 +22,19 @@ export function RichTextEditor({ value, onChange, placeholder = 'Write your cont
   const [showLinkInput, setShowLinkInput] = useState(false)
   const [linkUrl, setLinkUrl] = useState('')
 
-  // Set initial content only once on mount
+  // Set initial content on mount
   useEffect(() => {
     if (editorRef.current && !editorRef.current.innerHTML && value) {
       editorRef.current.innerHTML = value
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
+
+  // Synchronize when value changes externally (e.g. AI draft generation)
+  useEffect(() => {
+    if (!isInternalEdit.current && editorRef.current && editorRef.current.innerHTML !== value) {
+      editorRef.current.innerHTML = value
+    }
+  }, [value])
 
   const syncContent = useCallback(() => {
     if (editorRef.current) {

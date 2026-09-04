@@ -143,7 +143,7 @@ export function ResumeUpload({ onResumeUpload, onContinue, isOptional = true }: 
 
         {error && (
           <div className="flex items-center gap-2 p-3 bg-red-50 dark:bg-red-950/30 text-red-600 dark:text-red-400 rounded-lg text-sm">
-            <AlertCircle className="w-4 h-4 flex-shrink-0" />
+            <AlertCircle className="w-4 h-4 shrink-0" />
             {error}
           </div>
         )}

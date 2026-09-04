@@ -25,6 +25,69 @@ from core.config import settings
 SESSION_COOKIE_NAME = "codespectra_session"
 logger = logging.getLogger(__name__)
 
+_secret_cache = {"secret": None, "loaded_at": 0.0}
+_SECRET_CACHE_TTL = 60  # seconds — matches the frontend's 60s permission cache
+
+
+async def _platform_secrets() -> dict:
+    """Read the `platform_settings` secrets record, tolerating Mongo hiccups.
+
+    This is the single source of truth for runtime secrets; env vars take
+    precedence for the per-process values (see resolvers below). Cached for
+    _SECRET_CACHE_TTL to avoid a DB hit on every auth check.
+    """
+    import time
+
+    now = time.time()
+    if _secret_cache["secret"] is not None and now - _secret_cache["loaded_at"] < _SECRET_CACHE_TTL:
+        return _secret_cache["secret"]
+    try:
+        from core.database import get_collection
+
+        secrets_col = await get_collection("platform_settings")
+        doc = await secrets_col.find_one({"key": "secrets"})
+        value = dict(doc.get("value") or {}) if doc else {}
+    except Exception:
+        value = {}
+    _secret_cache["secret"] = value
+    _secret_cache["loaded_at"] = now
+    return value
+
+
+async def get_internal_backend_secret() -> str:
+    """Resolve the internal service secret: Mongo first, then env.
+
+    Fixes a recurring prod outage: building/rolling the backend image with Dokploy
+    re-applies Dokploy's stored env, which can drop ad-hoc `--env-add` values from
+    the service spec. Falling back to the Mongo copy means the backend keeps
+    trusting frontend-to-backend calls even when the env var is missing.
+    """
+    try:
+        secrets = await _platform_secrets()
+        stored = str(secrets.get("internal_backend_secret", "") or "").strip()
+        if len(stored) >= 32 and "•" not in stored:
+            return stored
+    except Exception:
+        pass
+    return (settings.INTERNAL_BACKEND_SECRET or "").strip()
+
+
+async def get_session_secret() -> str:
+    """Resolve the JWT signing secret: Mongo first, then env.
+
+    Mirrors the frontend (`lib/session.ts`): if a rebuild drops SESSION_SECRET from
+    the service env, we fall back to the secret persisted in `platform_settings`.
+    Keeps existing sessions valid because the value is identical across pods.
+    """
+    try:
+        secrets = await _platform_secrets()
+        stored = str(secrets.get("session_secret", "") or "").strip()
+        if len(stored) >= 32 and "•" not in stored:
+            return stored
+    except Exception:
+        pass
+    return (settings.SESSION_SECRET or "").strip()
+
 
 async def _get_session_payload_from_request(request: Request) -> dict | None:
     """Extract and verify a session payload from the request.
@@ -36,7 +99,7 @@ async def _get_session_payload_from_request(request: Request) -> dict | None:
     auth_header = request.headers.get("Authorization", "")
     if auth_header.startswith("Bearer "):
         token = auth_header[7:]
-        secret = settings.SESSION_SECRET
+        secret = await get_session_secret()
         if secret:
             try:
                 payload = jose_jwt.decode(
@@ -53,7 +116,7 @@ async def _get_session_payload_from_request(request: Request) -> dict | None:
         part = part.strip()
         if part.startswith(f"{SESSION_COOKIE_NAME}="):
             session_cookie = part[len(SESSION_COOKIE_NAME) + 1:]
-            secret = settings.SESSION_SECRET
+            secret = await get_session_secret()
             if secret:
                 try:
                     payload = jose_jwt.decode(
@@ -80,11 +143,12 @@ async def require_auth(request: Request):
     """
     # Fast path: internal shared secret (service-to-service calls from Next.js)
     secret = request.headers.get("x-internal-secret", "")
-    if secret and settings.INTERNAL_BACKEND_SECRET and secret == settings.INTERNAL_BACKEND_SECRET:
+    backend_secret = await get_internal_backend_secret()
+    if secret and backend_secret and secret == backend_secret:
         return True
 
     # Only allow bypass if INTERNAL_BACKEND_SECRET is explicitly empty AND env is dev
-    if not settings.INTERNAL_BACKEND_SECRET and settings.ENVIRONMENT == "development":
+    if not backend_secret and settings.ENVIRONMENT == "development":
         return True
 
     # Full path: validate session cookie or bearer token
@@ -111,11 +175,12 @@ async def get_current_user(
 
     # Fast path: internal secret — return a minimal user stub
     secret = request.headers.get("x-internal-secret", "")
-    if secret and settings.INTERNAL_BACKEND_SECRET and secret == settings.INTERNAL_BACKEND_SECRET:
+    backend_secret = await get_internal_backend_secret()
+    if secret and backend_secret and secret == backend_secret:
         return {"_is_internal": True, "_id": "__internal__", "role": "internal_service"}
 
     # Only allow bypass in dev
-    if not settings.INTERNAL_BACKEND_SECRET and settings.ENVIRONMENT == "development":
+    if not backend_secret and settings.ENVIRONMENT == "development":
         return {"_is_internal": True, "_id": "__dev__", "role": "superadmin"}
 
     # Extract session payload

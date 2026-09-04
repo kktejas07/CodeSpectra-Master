@@ -44,7 +44,7 @@ export function QualityRatings({ ratings }: QualityRatingsProps) {
   return (
     <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
       {/* Overall Score */}
-      <Card className="p-6 text-center bg-gradient-to-br from-primary/20 to-primary/5 border border-primary/30">
+      <Card className="p-6 text-center bg-linear-to-br from-primary/20 to-primary/5 border border-primary/30">
         <p className="text-sm text-foreground/60 mb-3">Overall Quality</p>
         <div className="text-5xl font-bold text-primary mb-2">{ratings.overallScore}</div>
         <p className="text-xs text-foreground/50">/100</p>

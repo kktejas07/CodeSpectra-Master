@@ -70,8 +70,16 @@ export default function IdentityVerificationPage() {
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState<string | null>(null)
+  const [identityProvider, setIdentityProvider] = useState<'didit' | 'digilocker' | 'off' | null>(null)
 
   useEffect(() => {
+    void fetch('/api/kyc/purposes', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((d) => {
+        const v = d.identity_kyc
+        setIdentityProvider(v === 'digilocker' || v === 'off' || v === 'didit' ? v : 'didit')
+      })
+      .catch(() => setIdentityProvider('didit'))
     void fetchStatus()
 
     // Check if we returned from Didit (query param indicates completion)
@@ -120,8 +128,8 @@ export default function IdentityVerificationPage() {
 
   if (!gate.ready) return null
 
-  // Loading state
-  if (loading) {
+  // Purpose routing (SuperAdmin → Purpose routing tab)
+  if (identityProvider === null || loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 gap-3">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -129,6 +137,35 @@ export default function IdentityVerificationPage() {
       </div>
     )
   }
+
+  if (identityProvider === 'off') {
+    return (
+      <div className="mx-auto max-w-lg space-y-4 py-16 text-center" data-testid="identity-verify-page">
+        <ShieldCheck className="mx-auto h-12 w-12 text-muted-foreground" />
+        <h1 className="text-2xl font-bold">Identity verification is off</h1>
+        <p className="text-sm text-muted-foreground">
+          SuperAdmin disabled full KYC for this platform. Exam/profile Aadhaar may still use Anon Aadhaar
+          if enabled under Purpose routing.
+        </p>
+      </div>
+    )
+  }
+
+  if (identityProvider === 'digilocker') {
+    return (
+      <div className="mx-auto max-w-lg space-y-4 py-16 text-center" data-testid="identity-verify-page">
+        <ShieldCheck className="mx-auto h-12 w-12 text-primary" />
+        <h1 className="text-2xl font-bold">DigiLocker KYC</h1>
+        <p className="text-sm text-muted-foreground">
+          DigiLocker is selected for identity verification but the OAuth flow is not wired yet.
+          Switch Purpose routing back to Didit, or check back after DigiLocker credentials are connected.
+        </p>
+        <Badge variant="outline">Coming soon</Badge>
+      </div>
+    )
+  }
+
+  // identityProvider === 'didit'
 
   // Pending or In Review status
   if (status?.kyc_status && status.kyc_status !== 'none' && !status.verified) {
@@ -525,7 +562,7 @@ export default function IdentityVerificationPage() {
       <div>
         <h1 className="text-2xl font-bold">Identity Verification</h1>
         <p className="text-sm text-muted-foreground">
-          Verify your identity to access all platform features. Powered by Didit — SOC 2, ISO 27001 certified.
+          Verify your identity to access all platform features. Full KYC via Didit (chosen in SuperAdmin → KYC → Purpose routing).
         </p>
       </div>
 

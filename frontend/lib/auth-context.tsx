@@ -27,6 +27,7 @@ export interface AuthUser {
   lastLoginAt?: string | null
   createdAt?: string | null
   has_enrolled_face?: boolean
+  onboardingGoal?: string | null
 }
 
 interface LastLoginInfo {
@@ -66,18 +67,19 @@ interface AuthContextValue {
   sessionExpired: boolean
   clearSessionExpired: () => void
   signInWithEmail: (email: string, password: string, totpToken?: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string, name: string) => Promise<void>
+  signUpWithEmail: (email: string, password: string, name: string, extendedProfileData?: Record<string, string>) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signInWithGithub: () => Promise<void>
   signOut: () => Promise<void>
   sendPasswordReset: (email: string) => Promise<void>
   confirmPasswordReset: (code: string, newPassword: string) => Promise<void>
+  refreshUser: () => Promise<void>
 }
 
 const AuthContext = createContext<AuthContextValue | undefined>(undefined)
 
-function toAuthUser(u: { uid: string; email: string | null; displayName?: string | null; photoURL?: string | null; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string | null }): AuthUser {
-  return { uid: u.uid, email: u.email, displayName: u.displayName || null, photoURL: u.photoURL || null, lastLoginMethod: u.lastLoginMethod as AuthUser['lastLoginMethod'], lastLoginAt: u.lastLoginAt || null, createdAt: u.createdAt || null }
+function toAuthUser(u: { uid: string; email: string | null; displayName?: string | null; photoURL?: string | null; lastLoginMethod?: string | null; lastLoginAt?: string | null; createdAt?: string | null; onboardingGoal?: string | null }): AuthUser {
+  return { uid: u.uid, email: u.email, displayName: u.displayName || null, photoURL: u.photoURL || null, lastLoginMethod: u.lastLoginMethod as AuthUser['lastLoginMethod'], lastLoginAt: u.lastLoginAt || null, createdAt: u.createdAt || null, onboardingGoal: u.onboardingGoal || null }
 }
 
 async function recordLoginMethod(uid: string, method: 'google' | 'github' | 'email' | 'sso') {
@@ -122,6 +124,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             lastLoginMethod: data.user.lastLoginMethod,
             lastLoginAt: data.user.lastLoginAt,
             createdAt: data.user.createdAt,
+            onboardingGoal: data.user.onboardingGoal,
           }))
         }
         setLoading(false)
@@ -158,6 +161,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   lastLoginMethod: data.user.lastLoginMethod,
                   lastLoginAt: data.user.lastLoginAt,
                   createdAt: data.user.createdAt,
+                  onboardingGoal: data.user.onboardingGoal,
                 }))
               }
             } catch { /* keep current user */ }
@@ -189,6 +193,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
                   lastLoginMethod: data.user.lastLoginMethod,
                   lastLoginAt: data.user.lastLoginAt,
                   createdAt: data.user.createdAt,
+                  onboardingGoal: data.user.onboardingGoal,
                 }))
               } else {
                 setUser(null)
@@ -254,8 +259,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reportFingerprint(json.user.id)
   }
 
-  const signUpWithEmailFn = async (email: string, password: string, name: string) => {
-    const body: Record<string, string> = { email, password, name }
+  const signUpWithEmailFn = async (email: string, password: string, name: string, extendedProfileData?: Record<string, string>) => {
+    const body: Record<string, string> = { email, password, name, ...(extendedProfileData || {}) }
     await withFingerprint(body)
     const res = await csrfFetch('/api/auth/signup', {
       method: 'POST',
@@ -317,6 +322,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!res.ok) throw new Error(json.error || 'Failed to reset password')
   }
 
+  const refreshUserFn = async () => {
+    try {
+      const res = await fetch('/api/auth/session', { credentials: 'include' })
+      const data = await res.json()
+      if (data?.user) {
+        setUser(toAuthUser({
+          uid: data.user.uid,
+          email: data.user.email,
+          displayName: data.user.fullName,
+          lastLoginMethod: data.user.lastLoginMethod,
+          lastLoginAt: data.user.lastLoginAt,
+          createdAt: data.user.createdAt,
+          onboardingGoal: data.user.onboardingGoal,
+        }))
+      }
+    } catch { /* ignore */ }
+  }
+
   return (
     <AuthContext.Provider value={{
       user, loading, sessionExpired, clearSessionExpired,
@@ -327,6 +350,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       signOut: signOutFn,
       sendPasswordReset: sendPasswordResetFn,
       confirmPasswordReset: confirmPasswordResetFn,
+      refreshUser: refreshUserFn,
     }}>
       {children}
     </AuthContext.Provider>

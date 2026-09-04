@@ -1,19 +1,12 @@
 /**
  * Cron / scheduler overview for superadmins.
  *
- * GET /api/admin/cron-jobs
- *   Reports the state of every job the platform runs:
- *   - in-process scheduler loop (startSchedulerLoop, 60s tick)
- *   - trial expiry loop (startTrialExpiryLoop, 24h)
- *   - HTTP cron entrypoints (/api/cron/tick, weekly-digest, exam-reminders)
- *   - schedule-trigger workflows from the DB
- *   - recent workflow_runs + pending github scan queue items
- *   - CRON_SECRET / Redis lock availability
- *
+ * GET  /api/admin/cron-jobs  — status of loops, HTTP crons, scheduled workflows, recent runs
  * POST /api/admin/cron-jobs
- *   body: { action: 'run-tick' }            -> run one scheduler tick now
- *   body: { action: 'toggle-workflow', workflowId } -> flip is_active
- *   body: { action: 'run-workflow', workflowId }    -> execute a workflow now
+ *   { action: 'run-tick' }
+ *   { action: 'run-endpoint', path: '/api/cron/...' }
+ *   { action: 'toggle-workflow', workflowId }
+ *   { action: 'run-workflow', workflowId }
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { requireSuperAdmin } from '@/lib/route-auth'
@@ -30,20 +23,69 @@ import { redisStatus } from '@/lib/upstash-rate-limit'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const HTTP_CRON_ENDPOINTS = [
-  { path: '/api/cron/tick', what: 'Scheduler tick — runs due schedule workflows every minute' },
-  { path: '/api/cron/weekly-digest', what: 'Weekly digest email to users' },
-  { path: '/api/cron/exam-reminders', what: 'Exam start reminders' },
-]
+/** Catalog of platform HTTP cron jobs — keep in sync with frontend/app/api/cron/* */
+const HTTP_CRON_JOBS = [
+  {
+    id: 'tick',
+    path: '/api/cron/tick',
+    name: 'Scheduler tick',
+    what: 'Runs due schedule-trigger workflows (every minute).',
+    recommend: 'Every 1 minute',
+    cronHint: '* * * * *',
+    auth: 'CRON_SECRET',
+  },
+  {
+    id: 'signals-ingest',
+    path: '/api/cron/signals-ingest',
+    name: 'Signals ingest',
+    what: 'Public RSS → research → fact pack → draft → humanize → admin approve queue.',
+    recommend: 'Every 6 hours',
+    cronHint: '0 */6 * * *',
+    auth: 'CRON_SECRET',
+  },
+  {
+    id: 'weekly-digest',
+    path: '/api/cron/weekly-digest',
+    name: 'Weekly digest',
+    what: 'Sends weekly digest email to users.',
+    recommend: 'Monday 09:00 UTC',
+    cronHint: '0 9 * * 1',
+    auth: 'CRON_SECRET',
+  },
+  {
+    id: 'exam-reminders',
+    path: '/api/cron/exam-reminders',
+    name: 'Exam reminders',
+    what: 'Sends exam start reminders (WhatsApp / notifications).',
+    recommend: 'Every hour',
+    cronHint: '0 * * * *',
+    auth: 'CRON_SECRET',
+  },
+  {
+    id: 'ebooks-daily',
+    path: '/api/cron/ebooks-daily',
+    name: 'Daily ebook draft',
+    what: 'Generates one original CodeSpectra ebook draft (no copyrighted scraping). Publish in Admin → Resources.',
+    recommend: 'Daily',
+    cronHint: '0 7 * * *',
+    auth: 'CRON_SECRET',
+  },
+] as const
 
-export async function GET(req: NextRequest) {
+const ALLOWED_RUN_PATHS = new Set(HTTP_CRON_JOBS.map((j) => j.path))
+
+export async function GET() {
   const auth = await requireSuperAdmin()
   if ('error' in auth) {
     return NextResponse.json({ error: auth.error }, { status: auth.status })
   }
 
   try {
-    const [wfCol, runsCol, queueCol] = await Promise.all([workflows(), workflowRuns(), githubWebhookScanQueue()])
+    const [wfCol, runsCol, queueCol] = await Promise.all([
+      workflows(),
+      workflowRuns(),
+      githubWebhookScanQueue(),
+    ])
 
     const [wfDocs, recentRuns, queuePending, queueTotal, redis] = await Promise.all([
       wfCol.find({ trigger: 'schedule' }).sort({ created_at: -1 }).limit(100).toArray() as Promise<WorkflowDoc[]>,
@@ -54,13 +96,15 @@ export async function GET(req: NextRequest) {
     ])
 
     const schedulerDisabled = process.env.NEXT_PUBLIC_DISABLE_SCHEDULER === '1'
+    const cronSecretSet = Boolean(process.env.CRON_SECRET?.trim())
+    const activeWorkflows = wfDocs.filter((w) => w.is_active).length
 
     return NextResponse.json({
       ok: true,
       scheduler: {
         inProcessLoop: !schedulerDisabled,
         disabledEnv: process.env.NEXT_PUBLIC_DISABLE_SCHEDULER ?? null,
-        cronSecretSet: Boolean(process.env.CRON_SECRET?.trim()),
+        cronSecretSet,
         redis: {
           configured: redis.configured,
           connected: redis.connected,
@@ -69,8 +113,28 @@ export async function GET(req: NextRequest) {
           error: redis.error ?? null,
         },
       },
-      endpoints: HTTP_CRON_ENDPOINTS.map((e) => ({ ...e })),
-      trialExpiryLoop: { enabledByDefault: true, intervalHours: 24 },
+      loops: [
+        {
+          id: 'scheduler',
+          name: 'In-process scheduler',
+          what: 'Checks due workflows every 60s while the Next.js server is up.',
+          recommend: 'Always on (or hit /api/cron/tick every minute from an external cron)',
+          status: schedulerDisabled ? 'disabled' : 'running',
+        },
+        {
+          id: 'trial-expiry',
+          name: 'Trial expiry',
+          what: 'Expires trial subscriptions once per day.',
+          recommend: 'Every 24 hours',
+          status: schedulerDisabled ? 'disabled' : 'running',
+        },
+      ],
+      httpJobs: HTTP_CRON_JOBS.map((j) => ({
+        ...j,
+        // External cron must be configured by ops; we only know if the secret exists.
+        configured: cronSecretSet,
+        status: cronSecretSet ? 'ready' : 'needs_secret',
+      })),
       scheduledWorkflows: wfDocs.map((w) => ({
         id: w.id,
         name: w.name,
@@ -88,12 +152,17 @@ export async function GET(req: NextRequest) {
         finished_at: r.finished_at,
         duration_ms: r.duration_ms,
       })),
-      queue: {
-        pending: queuePending,
-        total: queueTotal,
+      queue: { pending: queuePending, total: queueTotal },
+      summary: {
+        httpJobs: HTTP_CRON_JOBS.length,
+        activeWorkflows,
+        totalWorkflows: wfDocs.length,
+        cronSecretSet,
+        schedulerRunning: !schedulerDisabled,
       },
     })
   } catch (e) {
+    console.error('[CRON JOBS GET 500 ERROR]', e)
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }
@@ -111,8 +180,10 @@ export async function POST(req: NextRequest) {
   } catch {
     return NextResponse.json({ error: 'Invalid JSON body' }, { status: 400 })
   }
+
   const action = body.action as string | undefined
   const workflowId = typeof body.workflowId === 'string' && body.workflowId.length ? body.workflowId : ''
+  const path = typeof body.path === 'string' ? body.path : ''
 
   try {
     if (action === 'run-tick') {
@@ -120,11 +191,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true, action, report })
     }
 
+    if (action === 'run-endpoint') {
+      if (!(ALLOWED_RUN_PATHS as Set<string>).has(path)) {
+        return NextResponse.json({ error: 'Unknown cron path' }, { status: 400 })
+      }
+      const secret = process.env.CRON_SECRET?.trim() || ''
+      const origin = new URL(req.url).origin
+      const url = secret
+        ? `${origin}${path}?secret=${encodeURIComponent(secret)}`
+        : `${origin}${path}`
+      const res = await fetch(url, { method: 'POST', cache: 'no-store' })
+      const text = await res.text()
+      let data: unknown = text
+      try {
+        data = JSON.parse(text)
+      } catch {
+        /* keep text */
+      }
+      return NextResponse.json(
+        { ok: res.ok, action, path, status: res.status, data },
+        { status: res.ok ? 200 : 502 },
+      )
+    }
+
     if (action === 'toggle-workflow') {
       const wfCol = await workflows()
       const wf = await wfCol.findOne({ id: workflowId })
       if (!wf) return NextResponse.json({ error: 'Workflow not found' }, { status: 404 })
-      await wfCol.updateOne({ id: wf.id }, { $set: { is_active: !wf.is_active, updated_at: new Date().toISOString() } })
+      await wfCol.updateOne(
+        { id: wf.id },
+        { $set: { is_active: !wf.is_active, updated_at: new Date().toISOString() } },
+      )
       return NextResponse.json({ ok: true, action, is_active: !wf.is_active })
     }
 
@@ -140,10 +237,17 @@ export async function POST(req: NextRequest) {
         id: crypto.randomUUID(),
         workflow_id: wfd.id,
         user_id: 'admin-manual',
-        status: result.status,
+        status: result.status === 'success' ? 'success' : result.status === 'partial' ? 'partial' : 'failed',
         started_at: started,
         finished_at: finished,
-        steps: result.steps,
+        steps: result.steps.map((s) => ({
+          node_id: s.node_id,
+          label: s.label,
+          ok: s.ok,
+          output: s.output,
+          error: s.error,
+          duration_ms: s.duration_ms,
+        })),
         duration_ms: result.duration_ms,
       }
       await workflowRuns().then((c) => c.insertOne(runDoc as never))
@@ -152,6 +256,7 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ error: `Unknown action: ${action}` }, { status: 400 })
   } catch (e) {
+    console.error('[CRON JOBS POST 500 ERROR]', action, e)
     const msg = e instanceof Error ? e.message : String(e)
     return NextResponse.json({ error: msg }, { status: 500 })
   }

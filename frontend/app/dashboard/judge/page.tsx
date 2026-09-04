@@ -1,24 +1,129 @@
 'use client'
 
-import { useEffect } from 'react'
-import { useRouter } from 'next/navigation'
-import { Loader2 } from 'lucide-react'
+import { useCallback, useEffect, useState } from 'react'
+import Link from 'next/link'
+import { Card } from '@/components/ui/card'
+import { Button } from '@/components/ui/button'
+import { Badge } from '@/components/ui/badge'
+import { usePageGuard } from '@/lib/use-page-guard'
+import { Countdown } from '@/components/hackathons/countdown'
+import {
+  Loader2, Gavel, Trophy, Users, Clock, ArrowRight, Inbox,
+} from 'lucide-react'
 
-/**
- * @deprecated This page is deprecated. Use /dashboard/events/[id] instead.
- * Judge flow is now integrated into the event detail page.
- */
+interface Hackathon {
+  id: string; name: string; slug: string; description?: string
+  num_teams: number; max_per_team: number; timeout_minutes: number
+  starts_at: string; ends_at: string; status: string
+  judges?: string[]
+}
+
+const STATUS_LABEL: Record<string, string> = {
+  draft: 'Draft', open: 'Registration', live: 'Live', closed: 'Closed',
+}
+
 export default function JudgeDashboardPage() {
-  const router = useRouter()
+  const gate = usePageGuard('judge')
+
+  const [hackathons, setHackathons] = useState<(Hackathon & { awaiting: number })[]>([])
+  const [loading, setLoading] = useState(true)
+
+  const load = useCallback(async () => {
+    try {
+      const res = await fetch('/api/hackathons?judge=1', { cache: 'no-store' })
+      if (!res.ok) return
+      const data = await res.json() as { items: Hackathon[] }
+
+      const withCounts = await Promise.all((data.items || []).map(async (h) => {
+        try {
+          const s = await fetch(`/api/hackathons/${h.id}/judge-submissions`, { cache: 'no-store' })
+          const d = s.ok ? await s.json() as { data: Array<{ status: string }> } : { data: [] }
+          return { ...h, awaiting: (d.data || []).filter((x) => x.status === 'submitted').length }
+        } catch {
+          return { ...h, awaiting: 0 }
+        }
+      }))
+
+      setHackathons(withCounts.sort((a, b) => new Date(b.starts_at).getTime() - new Date(a.starts_at).getTime()))
+    } catch { /* ignore */ }
+    finally { setLoading(false) }
+  }, [])
 
   useEffect(() => {
-    // Redirect to events page
-    router.replace('/dashboard/events')
-  }, [router])
+    if (gate.ready) void load()
+  }, [gate.ready, load])
+
+  if (!gate.ready || loading) {
+    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
+      <Loader2 className="h-5 w-5 animate-spin" /> Loading submissions to review…
+    </div>
+  }
 
   return (
-    <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" /> Redirecting to Events…
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-2xl font-bold flex items-center gap-2">
+          <Gavel className="h-6 w-6 text-primary" /> Judge Desk
+        </h1>
+        <p className="text-sm text-muted-foreground mt-1">
+          Hackathons assigned to you for submission review
+        </p>
+      </div>
+
+      {hackathons.length === 0 ? (
+        <Card className="p-10 flex flex-col items-center justify-center text-center gap-3">
+          <Inbox className="h-10 w-10 text-muted-foreground/40" />
+          <p className="text-sm text-muted-foreground">
+            No hackathons assigned to you yet. An admin assigns judges on the event's Judges tab.
+          </p>
+        </Card>
+      ) : (
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {hackathons.map((h) => {
+            const isLive = Date.now() >= new Date(h.starts_at).getTime() && Date.now() <= new Date(h.ends_at).getTime()
+            return (
+              <Card key={h.id} className="p-4 space-y-3 hover:border-primary/40 transition-colors">
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="outline" className="text-[10px]">
+                      <Trophy className="w-2.5 h-2.5 mr-1" /> Hackathon
+                    </Badge>
+                    {isLive && <Badge className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">Live</Badge>}
+                    <Badge variant="secondary" className="text-[10px]">{STATUS_LABEL[h.status] || h.status}</Badge>
+                  </div>
+                </div>
+                <h3 className="font-semibold text-sm truncate">{h.name}</h3>
+                {(h.description || '') && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{h.description}</p>
+                )}
+                <div className="flex flex-wrap gap-2 text-[11px] text-muted-foreground">
+                  <span className="inline-flex items-center gap-1">
+                    <Clock className="w-3 h-3" /> {new Date(h.starts_at).toLocaleDateString()}
+                  </span>
+                  <span className="inline-flex items-center gap-1">
+                    <Users className="w-3 h-3" /> {h.num_teams} teams
+                  </span>
+                </div>
+                {isLive && (
+                  <div className="flex items-center gap-1.5 text-xs text-emerald-600 font-medium">
+                    Ends in <Countdown targetIso={h.ends_at} />
+                  </div>
+                )}
+                {h.awaiting > 0 && (
+                  <div className="text-xs font-medium text-amber-600">
+                    {h.awaiting} submission{h.awaiting === 1 ? '' : 's'} awaiting review
+                  </div>
+                )}
+                <Link href={`/dashboard/events/${h.id}?tab=judge`}>
+                  <Button size="sm" className="w-full gap-1.5 text-xs" variant={h.awaiting > 0 ? 'default' : 'outline'}>
+                    Review Submissions <ArrowRight className="w-3 h-3" />
+                  </Button>
+                </Link>
+              </Card>
+            )
+          })}
+        </div>
+      )}
     </div>
   )
 }

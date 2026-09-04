@@ -22,6 +22,14 @@ interface KycSettings {
   digilocker_client_secret: string
   apisetu_client_id: string
   apisetu_client_secret: string
+  /** Which provider powers /dashboard/identity-verify */
+  identity_kyc: 'didit' | 'digilocker' | 'off'
+  /** Exam / proctoring Aadhaar gate */
+  exam_aadhaar: 'anon_aadhaar' | 'ocr_face' | 'off'
+  /** Profile privacy Aadhaar badge */
+  profile_aadhaar: 'anon_aadhaar' | 'off'
+  anon_aadhaar_test_mode: boolean
+  anon_aadhaar_nullifier_seed: string
 }
 
 export default function KycSettingsPage() {
@@ -36,6 +44,11 @@ export default function KycSettingsPage() {
     digilocker_client_secret: '',
     apisetu_client_id: '',
     apisetu_client_secret: '',
+    identity_kyc: 'didit',
+    exam_aadhaar: 'ocr_face',
+    profile_aadhaar: 'anon_aadhaar',
+    anon_aadhaar_test_mode: true,
+    anon_aadhaar_nullifier_seed: '314159265358979',
   })
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
@@ -53,8 +66,9 @@ export default function KycSettingsPage() {
     try {
       const res = await csrfFetch('/api/admin/settings/kyc', { credentials: 'include' })
       if (res.ok) {
-        const data = await res.json() as KycSettings
-        setSettings(data)
+        const data = await res.json() as Partial<KycSettings>
+        // Merge so missing purpose keys keep defaults (old saved docs)
+        setSettings((prev) => ({ ...prev, ...data }))
       }
     } catch { /* ignore */ }
     setLoading(false)
@@ -112,12 +126,80 @@ export default function KycSettingsPage() {
         </div>
       </div>
 
-      <Tabs defaultValue="didit">
+      <Tabs defaultValue="routing">
         <TabsList>
+          <TabsTrigger value="routing">Purpose routing</TabsTrigger>
           <TabsTrigger value="didit">Didit (Global)</TabsTrigger>
           <TabsTrigger value="digilocker">DigiLocker (India)</TabsTrigger>
           <TabsTrigger value="apisetu">API Setu (India)</TabsTrigger>
+          <TabsTrigger value="anon">Anon Aadhaar</TabsTrigger>
         </TabsList>
+
+        <TabsContent value="routing">
+          <Card className="p-6 space-y-5">
+            <div>
+              <h2 className="text-lg font-semibold">Where each provider is used</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Switch providers without rewriting pages. Identity KYC ≠ exam Aadhaar.
+              </p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-3">
+              <div className="space-y-2">
+                <Label>Identity verification page</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={settings.identity_kyc}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      identity_kyc: e.target.value as KycSettings['identity_kyc'],
+                    })
+                  }
+                >
+                  <option value="didit">Didit (full KYC)</option>
+                  <option value="digilocker">DigiLocker (when wired)</option>
+                  <option value="off">Off</option>
+                </select>
+                <p className="text-[11px] text-muted-foreground">/dashboard/identity-verify</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Exam / proctoring Aadhaar</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={settings.exam_aadhaar}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      exam_aadhaar: e.target.value as KycSettings['exam_aadhaar'],
+                    })
+                  }
+                >
+                  <option value="ocr_face">OCR + face (current)</option>
+                  <option value="anon_aadhaar">Anon Aadhaar (ZK)</option>
+                  <option value="off">Off</option>
+                </select>
+                <p className="text-[11px] text-muted-foreground">Exam gate only</p>
+              </div>
+              <div className="space-y-2">
+                <Label>Profile Aadhaar badge</Label>
+                <select
+                  className="flex h-10 w-full rounded-md border border-input bg-background px-3 text-sm"
+                  value={settings.profile_aadhaar}
+                  onChange={(e) =>
+                    setSettings({
+                      ...settings,
+                      profile_aadhaar: e.target.value as KycSettings['profile_aadhaar'],
+                    })
+                  }
+                >
+                  <option value="anon_aadhaar">Anon Aadhaar</option>
+                  <option value="off">Off</option>
+                </select>
+                <p className="text-[11px] text-muted-foreground">Privacy-preserving proof</p>
+              </div>
+            </div>
+          </Card>
+        </TabsContent>
 
         {/* Didit Settings */}
         <TabsContent value="didit">
@@ -236,6 +318,41 @@ export default function KycSettingsPage() {
             </div>
           </Card>
         </TabsContent>
+
+        <TabsContent value="anon">
+          <Card className="p-6 space-y-4">
+            <div>
+              <h2 className="text-lg font-semibold">Anon Aadhaar (ZK)</h2>
+              <p className="text-sm text-muted-foreground mt-1">
+                Privacy-preserving Aadhaar proof for exams/profile. Free protocol; uses your nullifier seed.
+                Does not replace Didit/DigiLocker for full KYC.
+              </p>
+            </div>
+            <div className="flex items-center justify-between gap-4 rounded-lg border border-border p-3">
+              <div>
+                <Label>Test mode (UIDAI test artifacts)</Label>
+                <p className="text-[11px] text-muted-foreground">Turn off only for production QR codes</p>
+              </div>
+              <input
+                type="checkbox"
+                checked={settings.anon_aadhaar_test_mode}
+                onChange={(e) => setSettings({ ...settings, anon_aadhaar_test_mode: e.target.checked })}
+              />
+            </div>
+            <div className="space-y-2">
+              <Label>Nullifier seed (numeric)</Label>
+              <Input
+                value={settings.anon_aadhaar_nullifier_seed}
+                onChange={(e) => setSettings({ ...settings, anon_aadhaar_nullifier_seed: e.target.value.replace(/\D/g, '') })}
+                placeholder="314159265358979"
+              />
+              <p className="text-[11px] text-muted-foreground">
+                Keep stable so the same Aadhaar maps to the same nullifier. Changing it invalidates old links.
+              </p>
+            </div>
+          </Card>
+        </TabsContent>
+
       </Tabs>
 
       <div className="flex justify-end">

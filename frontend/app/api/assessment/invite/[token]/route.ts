@@ -33,7 +33,7 @@ export async function PATCH(
     }
 
     const body = await req.json().catch(() => ({}))
-    if (body.email && body.email.toLowerCase() !== invite.email.toLowerCase()) {
+    if (body.email && body.email.toLowerCase() !== (invite.email || '').toLowerCase()) {
       return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different candidate.' }, { status: 403 })
     }
 

@@ -32,6 +32,8 @@ export async function GET() {
         video_player_muted: merged.video_player_muted,
         video_player_logo_url: merged.video_player_logo_url,
         video_player_logo_link_url: merged.video_player_logo_link_url,
+        video_player_captions_default: merged.video_player_captions_default,
+        certificate_template: merged.certificate_template,
       }
     })
   } catch (e) {

@@ -1,46 +1,28 @@
 import fs from 'fs'
 import path from 'path'
 import matter from 'gray-matter'
+import type { DocMeta, DocPage, DocSection, ServeSection } from './docs-shared'
 
-const DOCS_ROOT = (() => {
+export type { DocMeta, DocPage, DocSection, ServeSection }
+export { docHref, flattenDocs, getAdjacentDocs } from './docs-shared'
+
+function resolveDocsRoot(): string {
   const cwd = process.cwd()
-  // Dev: cwd = frontend/  →  ../docs
-  // Docker: cwd = /app    →  ./docs
-  const siblings = [
+  // Dev monorepo: frontend/ → ../docs (source of truth)
+  // Docker: /app/docs (mirrored via scripts/sync-docs.cjs → frontend/docs)
+  const candidates = [
     path.join(/*turbopackIgnore: true*/ cwd, '..', 'docs'),
     path.join(/*turbopackIgnore: true*/ cwd, 'docs'),
   ]
-  for (const p of siblings) {
-    if (fs.existsSync(p)) return p
+  for (const p of candidates) {
+    if (fs.existsSync(path.join(p, 'public')) || fs.existsSync(path.join(p, 'user'))) {
+      return p
+    }
   }
-  return siblings[0]
-})()
-
-const SERVE_SECTIONS = ['public', 'user'] as const
-type ServeSection = (typeof SERVE_SECTIONS)[number]
-
-export interface DocMeta {
-  slug: string
-  title: string
-  section: ServeSection
-  sectionLabel: string
-  order: number
-  filePath: string
+  return candidates[0]
 }
 
-export interface DocSection {
-  id: ServeSection
-  label: string
-  icon: string
-  badge: string
-  docs: DocMeta[]
-}
-
-export interface DocPage {
-  meta: DocMeta
-  content: string
-  headings: { level: number; text: string; id: string }[]
-}
+const SERVE_SECTIONS = ['public', 'user'] as const satisfies readonly ServeSection[]
 
 const SECTION_LABELS: Record<ServeSection, { label: string; icon: string; badge: string }> = {
   public: { label: 'Public Documentation', icon: 'BookOpen', badge: 'Public' },
@@ -59,10 +41,11 @@ function nameToTitle(name: string): string {
 }
 
 export function getDocTree(): DocSection[] {
+  const docsRoot = resolveDocsRoot()
   const sections: DocSection[] = []
 
   for (const sectionId of SERVE_SECTIONS) {
-    const sectionDir = path.join(DOCS_ROOT, sectionId)
+    const sectionDir = path.join(docsRoot, sectionId)
     if (!fs.existsSync(sectionDir)) continue
 
     const entries = fs.readdirSync(sectionDir).filter((f) => f.endsWith('.md') && f !== 'README.md')

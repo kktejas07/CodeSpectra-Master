@@ -22,7 +22,7 @@ class Settings:
     MONGODB_URI: str = os.environ.get("MONGODB_URI", "")
     MONGODB_URI_FALLBACK: str = os.environ.get("MONGODB_URI_FALLBACK", "")
     MONGODB_DB_NAME: str = os.environ.get("MONGODB_DB_NAME", "codespectra")
-    MONGO_URL: str = MONGODB_URI or MONGODB_URI_FALLBACK or ""
+    MONGO_URL: str = MONGODB_URI or MONGODB_URI_FALLBACK or os.environ.get("MONGO_URL", "")
 
     # ─── LLM / AI Provider Keys ────────────────────────────────
     ANTHROPIC_API_KEY: str = os.environ.get("ANTHROPIC_API_KEY", "")

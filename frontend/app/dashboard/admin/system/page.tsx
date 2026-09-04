@@ -5,7 +5,8 @@ import Link from 'next/link'
 import {
   Users, BarChart3, Shield, Activity, Server, Lock, Settings,
   Cpu, HardDrive, MemoryStick, Container, RefreshCw, Trash2,
-  Terminal, Zap, Clock, Database, ArrowRight, Gauge, Timer, CircleSlash
+  Terminal, Zap, Clock, Database, ArrowRight, Gauge, Timer, CircleSlash,
+  Layout, MousePointer, CheckCircle2, TriangleAlert, Info
 } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -108,12 +109,8 @@ const RATE_KEY_RULES: Array<{
 function maskIdentity(value: string): string {
   if (!value) return '—'
   if (value === 'unknown') return 'Unknown'
-  if (/^u:/i.test(value)) return value // internal user ids are not PII
-  if (value.includes('@')) {
-    const at = value.indexOf('@')
-    const local = value.slice(0, at)
-    return `${local[0] || '•'}••••@${value.slice(at + 1)}`
-  }
+  if (/^u:/i.test(value)) return value
+  if (value.includes('@')) return value
   const v4 = value.split('.')
   if (v4.length === 4 && v4.every((n) => /^\d+$/.test(n))) {
     return `${v4[0]}.${v4[1]}.${v4[2]}.***`
@@ -163,6 +160,14 @@ export default function SystemAdminDashboard() {
   const [refreshing, setRefreshing] = useState(false)
   const [clearing, setClearing] = useState<string | null>(null)
 
+  // Web Vitals state
+  const [webVitalsRange, setWebVitalsRange] = useState('24h')
+  const [webVitals, setWebVitals] = useState<{
+    p75: Record<string, number | null>
+    countsByMetric: Record<string, number>
+    sampleSize: number
+  } | null>(null)
+
   const fetchMetrics = useCallback(async () => {
     const res = await fetch('/api/admin/metrics', { credentials: 'include' })
     const json = await res.json().catch(() => ({}))
@@ -205,6 +210,15 @@ export default function SystemAdminDashboard() {
     } catch { /* ignore */ }
   }, [])
 
+  const fetchWebVitals = useCallback(async () => {
+    try {
+      const q = new URLSearchParams({ range: webVitalsRange, route: 'all' })
+      const res = await fetch(`/api/analytics/web-vitals/summary?${q}`, { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setWebVitals(json)
+    } catch { /* ignore */ }
+  }, [webVitalsRange])
+
   const copyCmd = (cmd: string) => {
     navigator.clipboard.writeText(cmd).then(() => {
       addToast({ type: 'success', title: 'Copied', message: 'SSH command copied to clipboard' })
@@ -240,12 +254,13 @@ export default function SystemAdminDashboard() {
     if (!gate.ready) return
     let cancelled = false
     ; (async () => {
-      await Promise.all([fetchMetrics(), fetchServerStats(), fetchRedisStatus()])
+      await Promise.all([fetchMetrics(), fetchServerStats(), fetchRedisStatus(), fetchWebVitals()])
       if (!cancelled) setLoading(false)
     })()
     const interval = setInterval(() => {
       fetchServerStats()
       fetchRedisStatus()
+      fetchWebVitals()
     }, 30000)
     return () => {
       cancelled = true
@@ -396,10 +411,10 @@ export default function SystemAdminDashboard() {
                   No containers currently running.
                 </p>
               ) : (
-                <div className="max-h-[300px] overflow-y-auto space-y-2">
+                <div className="max-h-75 overflow-y-auto space-y-2">
                   {server.containers.list.slice(0, 12).map((c) => (
                     <div key={c.name} className="flex items-center justify-between rounded-md bg-muted/30 px-3 py-2 text-xs">
-                      <span className="font-mono truncate max-w-[200px]" title={c.name}>{c.name}</span>
+                      <span className="font-mono truncate max-w-50" title={c.name}>{c.name}</span>
                       <div className="flex items-center gap-3 text-muted-foreground">
                         <span>{c.cpu}</span>
                         <span>{c.memory}</span>
@@ -568,7 +583,7 @@ export default function SystemAdminDashboard() {
                   </div>
 
                   {(redis.rateLimitKeys?.length ?? 0) > 0 ? (
-                    <div className="max-h-[300px] space-y-3 overflow-y-auto rounded-md border border-border/60 p-3">
+                    <div className="max-h-75 space-y-3 overflow-y-auto rounded-md border border-border/60 p-3">
                       {RATE_CATEGORY_ORDER.map((cat) => {
                         const items = (redis.rateLimitKeys ?? []).filter((k) => decodeRateKey(k.key).category === cat.kind)
                         if (!items.length) return null
@@ -653,6 +668,77 @@ export default function SystemAdminDashboard() {
           <QL href={p.settings} icon={Settings} label="Platform settings" />
           <QL href={p.security} icon={Activity} label="Audit logs" />
         </div>
+      </div>
+
+      {/* Performance / Web Vitals */}
+      <div className="space-y-4">
+        <div className="flex items-center justify-between">
+          <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
+            <Gauge className="h-5 w-5 text-primary" /> Performance
+            <Badge variant="outline" className="ml-2 text-[10px]">
+              Core Web Vitals
+            </Badge>
+          </h2>
+          <div className="flex items-center gap-2">
+            <select
+              value={webVitalsRange}
+              onChange={(e) => setWebVitalsRange(e.target.value)}
+              className="h-8 rounded-md border border-input bg-background px-2 text-xs"
+            >
+              <option value="24h">Last 24 hours</option>
+              <option value="7d">Last 7 days</option>
+              <option value="30d">Last 30 days</option>
+            </select>
+            <Button variant="outline" size="sm" onClick={fetchWebVitals}>
+              <RefreshCw className="mr-1 h-3 w-3" /> Refresh
+            </Button>
+          </div>
+        </div>
+
+        {webVitals && webVitals.sampleSize > 0 ? (
+          <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+            {[
+              { key: 'LCP', title: 'Largest Contentful Paint', icon: Layout, desc: 'Loading — time until main content visible' },
+              { key: 'FCP', title: 'First Contentful Paint', icon: Timer, desc: 'Time until first content renders' },
+              { key: 'INP', title: 'Interaction to Next Paint', icon: MousePointer, desc: 'Responsiveness — delay after interaction' },
+              { key: 'CLS', title: 'Cumulative Layout Shift', icon: Layout, desc: 'Visual stability — layout shifts' },
+              { key: 'TTFB', title: 'Time to First Byte', icon: Timer, desc: 'Server response time' },
+              { key: 'FID', title: 'First Input Delay', icon: MousePointer, desc: 'First interaction delay (legacy)' },
+            ].map(({ key, title, icon: Icon, desc }) => {
+              const p75 = webVitals.p75?.[key] ?? null
+              const n = webVitals.countsByMetric?.[key] ?? 0
+              const isGood = key === 'CLS' ? (p75 != null ? p75 <= 0.1 : false) : (p75 != null ? p75 <= 2500 : false)
+              const isPoor = key === 'CLS' ? (p75 != null ? p75 > 0.25 : false) : (p75 != null ? p75 > 4000 : false)
+              const ratingLabel = p75 == null ? 'No data' : isGood ? 'Good' : isPoor ? 'Poor' : 'Needs work'
+              const ratingColor = p75 == null ? 'text-muted-foreground' : isGood ? 'text-green-500' : isPoor ? 'text-red-500' : 'text-amber-500'
+              return (
+                <Card key={key} className="border-border/60 p-4">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center gap-2">
+                      <Icon className="h-4 w-4 text-muted-foreground" />
+                      <h3 className="text-sm font-semibold">{title}</h3>
+                    </div>
+                    <Badge variant="outline" className="font-mono text-[10px]">{key}</Badge>
+                  </div>
+                  <p className="text-xl font-bold tabular-nums">
+                    {p75 == null ? '—' : key === 'CLS' ? p75.toFixed(3) : `${Math.round(p75)} ms`}
+                  </p>
+                  <div className="flex items-center justify-between mt-1">
+                    <span className={`text-xs font-medium ${ratingColor}`}>{ratingLabel}</span>
+                    <span className="text-xs text-muted-foreground">{n} samples</span>
+                  </div>
+                </Card>
+              )
+            })}
+          </div>
+        ) : (
+          <Card className="border-dashed border-muted-foreground/30 p-6 text-center">
+            <Gauge className="h-8 w-8 text-muted-foreground mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">
+              {webVitals ? 'No web vitals data collected yet' : 'Loading performance data...'}
+            </p>
+          </Card>
+        )}
       </div>
 
       <AnalyticsDashboard {...charts} summary={summary} />

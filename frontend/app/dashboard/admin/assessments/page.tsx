@@ -35,6 +35,9 @@ interface Exam {
   branch?: string
   screening_type?: string
   tenant_id?: string | null
+  createdAt?: string
+  invites?: number
+  released?: number
 }
 
 interface Tenant {
@@ -81,6 +84,41 @@ export default function AdminExamsPage() {
   const [branch, setBranch] = useState('')
   const [screeningType, setScreeningType] = useState('mixed')
   const [saving, setSaving] = useState(false)
+
+  const [dateFrom, setDateFrom] = useState('')
+  const [dateTo, setDateTo] = useState('')
+  const [datePreset, setDatePreset] = useState<'all' | '7d' | '30d' | '90d' | 'year'>('all')
+
+  const applyDatePreset = (preset: 'all' | '7d' | '30d' | '90d' | 'year'): { from: string; to: string } => {
+    if (preset === 'all') return { from: '', to: '' }
+    const to = new Date().toISOString().split('T')[0]
+    const days = preset === '7d' ? 7 : preset === '30d' ? 30 : preset === '90d' ? 90 : 0
+    const from = days === 0 ? `${new Date().getFullYear()}-01-01` : new Date(Date.now() - days * 86400000).toISOString().split('T')[0]
+    return { from, to }
+  }
+
+  const handleDatePreset = (preset: 'all' | '7d' | '30d' | '90d' | 'year') => {
+    const { from, to } = applyDatePreset(preset)
+    setDatePreset(preset)
+    setDateFrom(from)
+    setDateTo(to)
+  }
+
+  const clearDateFilter = () => {
+    setDateFrom('')
+    setDateTo('')
+    setDatePreset('all')
+  }
+
+  const filterByDate = (item: Exam): boolean => {
+    if (!dateFrom && !dateTo) return true
+    const created = item.createdAt ? new Date(item.createdAt).getTime() : NaN
+    if (dateFrom && !(created >= new Date(dateFrom).getTime())) return false
+    if (dateTo && !(created <= new Date(dateTo + 'T23:59:59').getTime())) return false
+    return true
+  }
+
+  const visibleExams = exams.filter(filterByDate)
 
   const fetchExams = async () => {
     setLoading(true)
@@ -273,25 +311,28 @@ export default function AdminExamsPage() {
   }
 
   const columns: DataTableColumn<Exam>[] = [
-    { key: 'title', header: 'Title', cell: (r) => <span className="font-medium">{r.title}</span> },
-    { key: 'subject', header: 'Subject', cell: (r) => r.subject },
-    { key: 'tenant', header: 'Organization', cell: (r) => {
+    { key: 'title', header: 'Title', sortable: true, cell: (r) => <span className="font-medium">{r.title}</span> },
+    { key: 'subject', header: 'Subject', sortable: true, cell: (r) => r.subject },
+    { key: 'tenant', header: 'Organization', sortable: true, cell: (r) => {
       if (!r.tenant_id) return <span className="text-muted-foreground">Platform</span>
       const tenant = tenants.find(t => t.id === r.tenant_id)
       return tenant?.name || <span className="text-muted-foreground">Unknown</span>
     }},
-    { key: 'branch', header: 'Branch', cell: (r) => r.branch ? BRANCHES.find(b => b.id === r.branch)?.short || r.branch : 'General' },
-    { key: 'screening', header: 'Screening', cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
-    { key: 'level', header: 'Level', cell: (r) => r.level },
-    { key: 'duration', header: 'Duration', cell: (r) => `${r.duration} min` },
-    { key: 'questions', header: 'Questions', cell: (r) => r.questions },
+    { key: 'screening', header: 'Screening', sortable: true, cell: (r) => SCREENING_TYPES.find(s => s.id === r.screening_type)?.short || '—' },
+    { key: 'level', header: 'Level', sortable: true, cell: (r) => r.level },
+    { key: 'duration', header: 'Duration', sortable: true, cell: (r) => `${r.duration} min` },
+    { key: 'questions', header: 'Questions', sortable: true, cell: (r) => r.questions },
     { key: 'status', header: 'Status', cell: (r) => (
       <Badge className={r.published ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}>
         {r.published ? 'Published' : 'Draft'}
       </Badge>
     )},
     { key: 'stats', header: 'Stats', cell: (r) => (
-      <span className="text-xs text-muted-foreground">{r.attempts} attempts · {r.avgScore}% avg</span>
+      <div className="flex flex-col gap-0.5 text-xs text-muted-foreground whitespace-nowrap">
+        <span>{r.invites || 0} invites sent</span>
+        <span>{r.attempts || 0} submitted</span>
+        <span>{r.released || 0} released</span>
+      </div>
     )},
     { key: 'actions', header: '', cell: (r) => (
       <div className="flex justify-end" onClick={(e) => e.stopPropagation()}>
@@ -302,10 +343,10 @@ export default function AdminExamsPage() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-44">
-            <DropdownMenuItem onClick={() => openInviteModal(r)} disabled={!r.published} className="gap-2">
+            <DropdownMenuItem onSelect={() => setTimeout(() => openInviteModal(r), 0)} disabled={!r.published} className="gap-2">
               <Send className="h-4 w-4" /> Invite Candidate
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }} disabled={!r.published} className="gap-2">
+            <DropdownMenuItem onSelect={() => setTimeout(() => { setBulkInviteExam(r); setBulkCsvText(''); setBulkPreview(null); setBulkResults(null); setIsBulkInviteOpen(true) }, 0)} disabled={!r.published} className="gap-2">
               <Users className="h-4 w-4" /> Bulk Invite
             </DropdownMenuItem>
             {r.published && (
@@ -323,7 +364,7 @@ export default function AdminExamsPage() {
             <DropdownMenuItem onClick={() => router.push(`/dashboard/admin/assessments/${r.id}/edit`)} className="gap-2">
               <Edit className="h-4 w-4" /> Edit Assessment
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive focus:text-destructive">
+            <DropdownMenuItem onClick={() => handleDelete([r.id])} className="gap-2 text-destructive">
               <Trash2 className="h-4 w-4" /> Delete
             </DropdownMenuItem>
           </DropdownMenuContent>
@@ -347,12 +388,31 @@ export default function AdminExamsPage() {
           </div>
           <div>
             <h1 className="text-3xl font-bold text-foreground">Assessment Management</h1>
-            <p className="text-muted-foreground text-sm">{exams.length} assessments</p>
+            <p className="text-muted-foreground text-sm">{visibleExams.length} assessments</p>
           </div>
         </div>
         <Button className="gap-2" onClick={openAddModal}>
           <Plus className="w-4 h-4" />Add Assessment
         </Button>
+      </div>
+
+      <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3">
+        <span className="text-sm font-medium text-muted-foreground">Created:</span>
+        <Input type="date" value={dateFrom} onChange={(e) => { setDateFrom(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
+        <span className="text-muted-foreground">to</span>
+        <Input type="date" value={dateTo} onChange={(e) => { setDateTo(e.target.value); setDatePreset('all') }} className="h-9 w-auto text-sm" />
+        <div className="flex items-center gap-1">
+          {([['7d', '7D'], ['30d', '30D'], ['90d', '90D'], ['year', 'Year']] as const).map(([val, label]) => (
+            <Button key={val} size="sm" variant={datePreset === val ? 'default' : 'outline'} className="h-8 text-xs" onClick={() => handleDatePreset(val)}>
+              {label}
+            </Button>
+          ))}
+        </div>
+        {(dateFrom || dateTo) && (
+          <Button size="sm" variant="ghost" className="h-8 text-xs text-muted-foreground" onClick={clearDateFilter}>
+            Clear
+          </Button>
+        )}
       </div>
 
       {loading ? (
@@ -362,7 +422,7 @@ export default function AdminExamsPage() {
       ) : (
         <DataTable
           columns={columns}
-          data={exams}
+          data={visibleExams}
           searchPlaceholder="Search assessments..."
           searchKeys={['title', 'subject', 'level', 'tenant_id']}
           bulkActions={bulkActions}
@@ -372,7 +432,7 @@ export default function AdminExamsPage() {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-[640px]">
+        <DialogContent className="sm:max-w-160">
           <DialogHeader>
             <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
           </DialogHeader>
@@ -500,7 +560,7 @@ export default function AdminExamsPage() {
       </Dialog>
 
       <Sheet open={isInviteModalOpen} onOpenChange={setIsInviteModalOpen}>
-        <SheetContent side="right" className="w-full sm:w-[480px] sm:max-w-md overflow-y-auto">
+        <SheetContent side="right" className="w-full sm:w-120 sm:max-w-md overflow-y-auto">
           <SheetHeader>
             <SheetTitle>Invite Candidate</SheetTitle>
             <SheetDescription>
@@ -533,11 +593,11 @@ export default function AdminExamsPage() {
           ) : (
             <div className="space-y-4 px-4 pb-4">
               <div className="rounded-lg border border-green-500/20 bg-green-500/10 p-4">
-                <div className="flex items-center gap-2 text-green-700 dark:text-green-400 mb-2">
+                <div className="flex items-center gap-2 text-green-600 mb-2">
                   <CheckCircle2 className="h-5 w-5" />
                   <p className="font-medium">Invitation sent!</p>
                 </div>
-                <p className="text-sm text-green-700/80 dark:text-green-400/80">
+                <p className="text-sm text-green-600/80">
                   Link emailed to <strong>{candEmail}</strong>
                 </p>
               </div>
@@ -562,7 +622,7 @@ export default function AdminExamsPage() {
       </Sheet>
 
       <Dialog open={isBulkInviteOpen} onOpenChange={setIsBulkInviteOpen}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] overflow-y-auto">
+        <DialogContent className="sm:max-w-150 max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Bulk Invite Candidates — {bulkInviteExam?.title}</DialogTitle>
           </DialogHeader>
@@ -592,13 +652,13 @@ export default function AdminExamsPage() {
                     <strong>CSV:</strong> One candidate per line — <code>email,name</code> or <code>jane@example.com,Jane</code>
                     <br />Names are optional. Header row is detected automatically.
                   </p>
-                  <div className="max-h-[250px] overflow-y-auto border rounded-md">
+                  <div className="max-h-62.5 overflow-y-auto border rounded-md">
                     <Textarea
                       value={bulkCsvText}
                       onChange={(e) => { setBulkCsvText(e.target.value); setBulkPreview(null) }}
                       rows={8}
                       placeholder={'email,name\njohn@example.com,John\njane@example.com,Jane'}
-                      className="font-mono text-sm min-h-[150px] border-0 focus-visible:ring-0 rounded-none"
+                      className="font-mono text-sm min-h-37.5 border-0 focus-visible:ring-0 rounded-none"
                     />
                   </div>
                 </div>

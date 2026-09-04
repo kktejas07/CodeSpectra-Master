@@ -132,6 +132,8 @@ export default function CandidateAssessmentPage() {
   const answerEventsRef = useRef<AnswerEvent[]>([])
   const questionViewTimeRef = useRef<number>(Date.now())
   const questionViewIdRef = useRef<string>('')
+  const startedAtRef = useRef<number>(0)
+  const questionTimingsRef = useRef<Record<string, number>>({})
 
 interface RunResult {
   passed: boolean
@@ -156,6 +158,9 @@ interface RunResult {
         action: 'skip',
         timeSpent,
       })
+      // Track cumulative time per question
+      questionTimingsRef.current[questionViewIdRef.current] = 
+        (questionTimingsRef.current[questionViewIdRef.current] || 0) + timeSpent
     }
     questionViewIdRef.current = qId
     questionViewTimeRef.current = Date.now()
@@ -170,6 +175,9 @@ interface RunResult {
       timeSpent,
       answerLength: (answers[qId] || '').length,
     })
+    // Track cumulative time per question
+    questionTimingsRef.current[qId] = (questionTimingsRef.current[qId] || 0) + timeSpent
+    questionViewTimeRef.current = Date.now()
   }, [answers])
 
   // Shuffle options once when exam loads or starts
@@ -185,6 +193,13 @@ interface RunResult {
     }
     setShuffledOpts(map)
   }, [exam])
+
+  // Track question views when currentQIndex changes
+  useEffect(() => {
+    if (hasStarted && exam?.questionList?.[currentQIndex]) {
+      trackQuestionView(exam.questionList[currentQIndex].id)
+    }
+  }, [currentQIndex, hasStarted, exam, trackQuestionView])
 
   useEffect(() => {
     const fetchExam = async () => {
@@ -217,7 +232,7 @@ interface RunResult {
 
         // Share link: skip invite-only check. Track public link view.
         if (isShareLink) {
-          fetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
+          csrfFetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
         } else if (accType === 'invite_only') {
           if (!inviteToken) {
             setAccessError('This assessment is invite-only. A valid invitation link is required.')
@@ -328,6 +343,7 @@ interface RunResult {
   const handleStart = () => {
     if (!exam) return
     setHasStarted(true)
+    startedAtRef.current = Date.now()
     // Convert duration (minutes) to seconds
     setTimeLeft(exam.duration * 60)
   }
@@ -373,7 +389,7 @@ interface RunResult {
       const testCases = (currentQ as any).test_cases || []
       const sampleCases = testCases.filter((tc: TestCase) => tc.isSample !== false)
 
-      const res = await fetch('/api/execute-code', {
+      const res = await csrfFetch('/api/execute-code', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         credentials: 'include',
@@ -408,7 +424,7 @@ interface RunResult {
       for (const [k, v] of Object.entries(answers)) {
         serialized[k] = Array.isArray(v) ? v.join(', ') : v
       }
-      const res = await fetch(`/api/exams/${exam.id}/submit`, {
+      const res = await csrfFetch(`/api/exams/${exam.id}/submit`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -416,7 +432,11 @@ interface RunResult {
           auto_submitted: autoSubmitted,
           idPhoto,
           facePhoto,
-          inviteToken: searchParams.get('inviteToken')
+          inviteToken: searchParams.get('inviteToken'),
+          // Timing data
+          question_timings: questionTimingsRef.current,
+          total_time_ms: startedAtRef.current ? Date.now() - startedAtRef.current : 0,
+          started_at: startedAtRef.current ? new Date(startedAtRef.current).toISOString() : null,
         }),
         credentials: 'include',
       })
@@ -573,24 +593,15 @@ interface RunResult {
             </span>
           </label>
 
-          {user?.has_enrolled_face === false ? (
-            <div className="bg-destructive/10 border border-destructive/20 text-destructive p-4 rounded-lg flex flex-col items-center gap-3 text-sm">
-              <AlertTriangle className="h-5 w-5 shrink-0" />
-              <p className="text-center">
-                <strong>Biometric Enrollment Required</strong><br />
-                You must enroll your face biometrics before taking this assessment.
-              </p>
-              <Button asChild variant="destructive" className="mt-2">
-                <Link href={`/auth/enroll-face?redirect=/assessment/${params.id}`}>
-                  Enroll Face Biometrics Now
-                </Link>
-              </Button>
+          {user?.has_enrolled_face === false && (
+            <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-lg text-xs flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 shrink-0" />
+              <span>First time here? Your face biometrics will be enrolled during the identity verification step.</span>
             </div>
-          ) : (
-            <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
-              Start Assessment Now
-            </Button>
           )}
+          <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
+            Start Assessment Now
+          </Button>
         </Card>
 
         {showVerification && (
@@ -751,6 +762,7 @@ interface RunResult {
                             } else {
                               setAnswers(prev => ({ ...prev, [currentQ.id]: opt }))
                             }
+                            trackAnswer(currentQ.id, 'answer')
                           }}
                           className="h-4 w-4 text-primary focus:ring-primary border-gray-300"
                         />
@@ -782,6 +794,7 @@ interface RunResult {
                                 const arr = [...fillAnswers]
                                 arr[idx] = e.target.value
                                 setAnswers(prev => ({ ...prev, [currentQ.id]: arr.map(s => s.trim()).join(', ') }))
+                                trackAnswer(currentQ.id, 'answer')
                               }}
                               placeholder={`Answer for blank ${idx + 1}...`}
                               className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
@@ -801,7 +814,10 @@ interface RunResult {
                       <input
                         type="text"
                         value={typeof answers[currentQ.id] === 'string' ? answers[currentQ.id] as string : ''}
-                        onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
+                        onChange={(e) => {
+                          setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))
+                          trackAnswer(currentQ.id, 'answer')
+                        }}
                         placeholder="Type your answer..."
                         className="w-full px-4 py-3 rounded-lg border border-border bg-card focus:outline-none focus:ring-2 focus:ring-primary/50 text-sm"
                         autoComplete="off"
@@ -831,6 +847,7 @@ interface RunResult {
                       } catch {}
                     }
                     setAnswers(prev => ({ ...prev, [currentQ.id]: JSON.stringify({ language: lang, code }) }))
+                    trackAnswer(currentQ.id, 'answer')
                   }}
                   language={(() => {
                     if (answers[currentQ.id]) {
@@ -853,7 +870,10 @@ interface RunResult {
                   </div>
                   <textarea 
                     value={(answers[currentQ.id] as string) || ''}
-                    onChange={(e) => setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))}
+                    onChange={(e) => {
+                      setAnswers(prev => ({ ...prev, [currentQ.id]: e.target.value }))
+                      trackAnswer(currentQ.id, 'answer')
+                    }}
                     placeholder="Write your response here..."
                     className="w-full h-96 p-4 text-sm bg-card text-foreground rounded-lg border border-border focus:outline-none focus:ring-2 focus:ring-primary/50 resize-none"
                     spellCheck={false}

@@ -10,7 +10,7 @@ const badgeVariants = cva(
     variants: {
       variant: {
         default:
-          'border-transparent bg-gradient-to-r from-[#00c573] to-[#3ecf8e] text-slate-950 font-bold shadow-xs',
+          'border-transparent bg-linear-to-r from-mint-pulse to-[#3ecf8e] text-slate-950 font-bold shadow-xs',
         secondary:
           'border-emerald-800/40 bg-emerald-950/50 text-emerald-300 [a&]:hover:bg-emerald-900/60',
         destructive:

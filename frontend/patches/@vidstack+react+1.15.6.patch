@@ -1,0 +1,198 @@
+diff --git a/node_modules/@vidstack/react/dev/chunks/vidstack-CQI3iMVh.js b/node_modules/@vidstack/react/dev/chunks/vidstack-CQI3iMVh.js
+index 3920930..0692bae 100644
+--- a/node_modules/@vidstack/react/dev/chunks/vidstack-CQI3iMVh.js
++++ b/node_modules/@vidstack/react/dev/chunks/vidstack-CQI3iMVh.js
+@@ -387,7 +387,7 @@ var RemotionProvider = class {
+ 				this.#loadStart = false;
+ 			};
+ 		}, [$src]);
+-		const Component = Internals.useLazyComponent({ component: $src.src });
++		const Component = Internals.useLazyComponent({ compProps: { component: $src.src } });
+ 		const { $state } = this.#ctx, $volume = useSignal($state.volume), $isMuted = useSignal($state.muted);
+ 		const mediaVolume = React.useMemo(() => {
+ 			const { muted, volume } = this.#ctx.$state;
+@@ -402,7 +402,7 @@ var RemotionProvider = class {
+ 			timeline: this.#timeline,
+ 			mediaVolume,
+ 			setMediaVolume: this.#setMediaVolume
+-		}, /* @__PURE__ */ React.createElement(Internals.Timeline.SetTimelineContext.Provider, { value: this.#setTimeline }, React.createElement(this.renderVideo, { src: $src })));
++		}, /* @__PURE__ */ React.createElement(Internals.SetTimelineContext.Provider, { value: this.#setTimeline }, React.createElement(this.renderVideo, { src: $src })));
+ 	};
+ 	renderVideo = ({ src }) => {
+ 		const video = Internals.useVideo(), Video = video ? video.component : null, audioContext = React.useContext(Internals.SharedAudioContext);
+@@ -420,7 +420,7 @@ var RemotionProvider = class {
+ 		const Content = Video ? /* @__PURE__ */ React.createElement(ErrorBoundary, {
+ 			fallback: src.errorFallback,
+ 			onError: src.onError
+-		}, /* @__PURE__ */ React.createElement(Internals.ClipComposition, null, /* @__PURE__ */ React.createElement(Video, {
++		}, /* @__PURE__ */ React.createElement((Internals.ClipComposition || React.Fragment), null, /* @__PURE__ */ React.createElement(Video, {
+ 			...video?.props,
+ 			...src.inputProps
+ 		}))) : null;
+diff --git a/node_modules/@vidstack/react/dev/chunks/vidstack-DHe91ccy.js b/node_modules/@vidstack/react/dev/chunks/vidstack-DHe91ccy.js
+index 4c8b08a..926c850 100644
+--- a/node_modules/@vidstack/react/dev/chunks/vidstack-DHe91ccy.js
++++ b/node_modules/@vidstack/react/dev/chunks/vidstack-DHe91ccy.js
+@@ -28,7 +28,7 @@ const RemotionThumbnail = React.forwardRef(({ frame, renderLoading, errorFallbac
+ 		layoutEngine.setSrc(isRemotionSrc($src) ? $src : null);
+ 		return () => void layoutEngine.setSrc(null);
+ 	}, [$src]);
+-	const Component = Internals.useLazyComponent({ component: $src.src });
++	const Component = Internals.useLazyComponent({ compProps: { component: $src.src } });
+ 	const thumbnailId = React.useMemo(() => String(random(null)), []), baseTimeline = React.useMemo(() => ({
+ 		rootId: thumbnailId,
+ 		frame: { [REMOTION_PROVIDER_ID]: frame },
+@@ -80,7 +80,7 @@ function RemotionThumbnailUI({ inputProps, renderLoading, errorFallback, onError
+ 	return /* @__PURE__ */ React.createElement(React.Suspense, { fallback: LoadingContent }, Video ? /* @__PURE__ */ React.createElement(ErrorBoundary, {
+ 		fallback: errorFallback,
+ 		onError
+-	}, /* @__PURE__ */ React.createElement(Internals.ClipComposition, null, /* @__PURE__ */ React.createElement(Video, {
++	}, /* @__PURE__ */ React.createElement((Internals.ClipComposition || React.Fragment), null, /* @__PURE__ */ React.createElement(Video, {
+ 		...video?.props,
+ 		...inputProps
+ 	}))) : null);
+diff --git a/node_modules/@vidstack/react/dev/chunks/vidstack-U6AkoJJZ.js b/node_modules/@vidstack/react/dev/chunks/vidstack-U6AkoJJZ.js
+index 17c83e0..77a9ecd 100644
+--- a/node_modules/@vidstack/react/dev/chunks/vidstack-U6AkoJJZ.js
++++ b/node_modules/@vidstack/react/dev/chunks/vidstack-U6AkoJJZ.js
+@@ -140,7 +140,7 @@ function RemotionContextProvider({ src: { compositionWidth: width, compositionHe
+ 			}
+ 		};
+ 	}, []);
+-	return /* @__PURE__ */ React.createElement(Internals.IsPlayerContextProvider, null, /* @__PURE__ */ React.createElement(Internals.CanUseRemotionHooksProvider, null, /* @__PURE__ */ React.createElement(Internals.Timeline.TimelineContext.Provider, { value: timeline }, /* @__PURE__ */ React.createElement(Internals.CompositionManager.Provider, { value: compositionManager }, /* @__PURE__ */ React.createElement(Internals.SequenceManager.Provider, { value: sequenceManager }, /* @__PURE__ */ React.createElement(Internals.ResolveCompositionConfig, null, /* @__PURE__ */ React.createElement(Internals.PrefetchProvider, null, /* @__PURE__ */ React.createElement(Internals.DurationsContextProvider, null, /* @__PURE__ */ React.createElement(Internals.MediaVolumeContext.Provider, { value: mediaVolume }, /* @__PURE__ */ React.createElement(Internals.NativeLayersProvider, null, /* @__PURE__ */ React.createElement(Internals.SetMediaVolumeContext.Provider, { value: setMediaVolume }, /* @__PURE__ */ React.createElement(Internals.SharedAudioContextProvider, {
++	return /* @__PURE__ */ React.createElement(Internals.IsPlayerContextProvider, null, /* @__PURE__ */ React.createElement(Internals.CanUseRemotionHooksProvider, null, /* @__PURE__ */ React.createElement(Internals.TimelineContext.Provider, { value: timeline }, /* @__PURE__ */ React.createElement(Internals.CompositionManager.Provider, { value: compositionManager }, /* @__PURE__ */ React.createElement(Internals.SequenceManager.Provider, { value: sequenceManager }, /* @__PURE__ */ React.createElement((Internals.ResolveCompositionConfig || React.Fragment), null, /* @__PURE__ */ React.createElement(Internals.PrefetchProvider, null, /* @__PURE__ */ React.createElement(Internals.DurationsContextProvider, null, /* @__PURE__ */ React.createElement(Internals.MediaVolumeContext.Provider, { value: mediaVolume }, /* @__PURE__ */ React.createElement((Internals.NativeLayersProvider || React.Fragment), null, /* @__PURE__ */ React.createElement(Internals.SetMediaVolumeContext.Provider, { value: setMediaVolume }, /* @__PURE__ */ React.createElement(Internals.SharedAudioContextProvider, {
+ 		numberOfAudioTags: providedNumberOfAudioTags ?? numberOfSharedAudioTags,
+ 		component
+ 	}, children))))))))))));
+diff --git a/node_modules/@vidstack/react/prod/chunks/vidstack-BVGh1teC.js b/node_modules/@vidstack/react/prod/chunks/vidstack-BVGh1teC.js
+index b095613..2cb00d3 100644
+--- a/node_modules/@vidstack/react/prod/chunks/vidstack-BVGh1teC.js
++++ b/node_modules/@vidstack/react/prod/chunks/vidstack-BVGh1teC.js
+@@ -28,7 +28,7 @@ const RemotionThumbnail = React.forwardRef(({ frame, renderLoading, errorFallbac
+ 		layoutEngine.setSrc(isRemotionSrc($src) ? $src : null);
+ 		return () => void layoutEngine.setSrc(null);
+ 	}, [$src]);
+-	const Component = Internals.useLazyComponent({ component: $src.src });
++	const Component = Internals.useLazyComponent({ compProps: { component: $src.src } });
+ 	const thumbnailId = React.useMemo(() => String(random(null)), []), baseTimeline = React.useMemo(() => ({
+ 		rootId: thumbnailId,
+ 		frame: { [REMOTION_PROVIDER_ID]: frame },
+@@ -80,7 +80,7 @@ function RemotionThumbnailUI({ inputProps, renderLoading, errorFallback, onError
+ 	return /* @__PURE__ */ React.createElement(React.Suspense, { fallback: LoadingContent }, Video ? /* @__PURE__ */ React.createElement(ErrorBoundary, {
+ 		fallback: errorFallback,
+ 		onError
+-	}, /* @__PURE__ */ React.createElement(Internals.ClipComposition, null, /* @__PURE__ */ React.createElement(Video, {
++	}, /* @__PURE__ */ React.createElement((Internals.ClipComposition || React.Fragment), null, /* @__PURE__ */ React.createElement(Video, {
+ 		...video?.props,
+ 		...inputProps
+ 	}))) : null);
+diff --git a/node_modules/@vidstack/react/prod/chunks/vidstack-CzuiMGR_.js b/node_modules/@vidstack/react/prod/chunks/vidstack-CzuiMGR_.js
+index 0597fa4..f41dbd2 100644
+--- a/node_modules/@vidstack/react/prod/chunks/vidstack-CzuiMGR_.js
++++ b/node_modules/@vidstack/react/prod/chunks/vidstack-CzuiMGR_.js
+@@ -334,7 +334,7 @@ var RemotionProvider = class {
+ 				this.#loadStart = false;
+ 			};
+ 		}, [$src]);
+-		const Component = Internals.useLazyComponent({ component: $src.src });
++		const Component = Internals.useLazyComponent({ compProps: { component: $src.src } });
+ 		const { $state } = this.#ctx, $volume = useSignal($state.volume), $isMuted = useSignal($state.muted);
+ 		const mediaVolume = React.useMemo(() => {
+ 			const { muted, volume } = this.#ctx.$state;
+@@ -349,7 +349,7 @@ var RemotionProvider = class {
+ 			timeline: this.#timeline,
+ 			mediaVolume,
+ 			setMediaVolume: this.#setMediaVolume
+-		}, /* @__PURE__ */ React.createElement(Internals.Timeline.SetTimelineContext.Provider, { value: this.#setTimeline }, React.createElement(this.renderVideo, { src: $src })));
++		}, /* @__PURE__ */ React.createElement(Internals.SetTimelineContext.Provider, { value: this.#setTimeline }, React.createElement(this.renderVideo, { src: $src })));
+ 	};
+ 	renderVideo = ({ src }) => {
+ 		const video = Internals.useVideo(), Video = video ? video.component : null, audioContext = React.useContext(Internals.SharedAudioContext);
+@@ -367,7 +367,7 @@ var RemotionProvider = class {
+ 		const Content = Video ? /* @__PURE__ */ React.createElement(ErrorBoundary, {
+ 			fallback: src.errorFallback,
+ 			onError: src.onError
+-		}, /* @__PURE__ */ React.createElement(Internals.ClipComposition, null, /* @__PURE__ */ React.createElement(Video, {
++		}, /* @__PURE__ */ React.createElement((Internals.ClipComposition || React.Fragment), null, /* @__PURE__ */ React.createElement(Video, {
+ 			...video?.props,
+ 			...src.inputProps
+ 		}))) : null;
+diff --git a/node_modules/@vidstack/react/prod/chunks/vidstack-DQWW90ju.js b/node_modules/@vidstack/react/prod/chunks/vidstack-DQWW90ju.js
+index b1f1c9a..7f62df6 100644
+--- a/node_modules/@vidstack/react/prod/chunks/vidstack-DQWW90ju.js
++++ b/node_modules/@vidstack/react/prod/chunks/vidstack-DQWW90ju.js
+@@ -140,7 +140,7 @@ function RemotionContextProvider({ src: { compositionWidth: width, compositionHe
+ 			}
+ 		};
+ 	}, []);
+-	return /* @__PURE__ */ React.createElement(Internals.IsPlayerContextProvider, null, /* @__PURE__ */ React.createElement(Internals.CanUseRemotionHooksProvider, null, /* @__PURE__ */ React.createElement(Internals.Timeline.TimelineContext.Provider, { value: timeline }, /* @__PURE__ */ React.createElement(Internals.CompositionManager.Provider, { value: compositionManager }, /* @__PURE__ */ React.createElement(Internals.SequenceManager.Provider, { value: sequenceManager }, /* @__PURE__ */ React.createElement(Internals.ResolveCompositionConfig, null, /* @__PURE__ */ React.createElement(Internals.PrefetchProvider, null, /* @__PURE__ */ React.createElement(Internals.DurationsContextProvider, null, /* @__PURE__ */ React.createElement(Internals.MediaVolumeContext.Provider, { value: mediaVolume }, /* @__PURE__ */ React.createElement(Internals.NativeLayersProvider, null, /* @__PURE__ */ React.createElement(Internals.SetMediaVolumeContext.Provider, { value: setMediaVolume }, /* @__PURE__ */ React.createElement(Internals.SharedAudioContextProvider, {
++	return /* @__PURE__ */ React.createElement(Internals.IsPlayerContextProvider, null, /* @__PURE__ */ React.createElement(Internals.CanUseRemotionHooksProvider, null, /* @__PURE__ */ React.createElement(Internals.TimelineContext.Provider, { value: timeline }, /* @__PURE__ */ React.createElement(Internals.CompositionManager.Provider, { value: compositionManager }, /* @__PURE__ */ React.createElement(Internals.SequenceManager.Provider, { value: sequenceManager }, /* @__PURE__ */ React.createElement((Internals.ResolveCompositionConfig || React.Fragment), null, /* @__PURE__ */ React.createElement(Internals.PrefetchProvider, null, /* @__PURE__ */ React.createElement(Internals.DurationsContextProvider, null, /* @__PURE__ */ React.createElement(Internals.MediaVolumeContext.Provider, { value: mediaVolume }, /* @__PURE__ */ React.createElement((Internals.NativeLayersProvider || React.Fragment), null, /* @__PURE__ */ React.createElement(Internals.SetMediaVolumeContext.Provider, { value: setMediaVolume }, /* @__PURE__ */ React.createElement(Internals.SharedAudioContextProvider, {
+ 		numberOfAudioTags: providedNumberOfAudioTags ?? numberOfSharedAudioTags,
+ 		component
+ 	}, children))))))))))));
+diff --git a/node_modules/@vidstack/react/server/chunks/vidstack-Bh2tk8TO.js b/node_modules/@vidstack/react/server/chunks/vidstack-Bh2tk8TO.js
+index f203da6..e3d0e12 100644
+--- a/node_modules/@vidstack/react/server/chunks/vidstack-Bh2tk8TO.js
++++ b/node_modules/@vidstack/react/server/chunks/vidstack-Bh2tk8TO.js
+@@ -28,7 +28,7 @@ const RemotionThumbnail = React.forwardRef(({ frame, renderLoading, errorFallbac
+ 		layoutEngine.setSrc(isRemotionSrc($src) ? $src : null);
+ 		return () => void layoutEngine.setSrc(null);
+ 	}, [$src]);
+-	const Component = Internals.useLazyComponent({ component: $src.src });
++	const Component = Internals.useLazyComponent({ compProps: { component: $src.src } });
+ 	const thumbnailId = React.useMemo(() => String(random(null)), []), baseTimeline = React.useMemo(() => ({
+ 		rootId: thumbnailId,
+ 		frame: { [REMOTION_PROVIDER_ID]: frame },
+@@ -80,7 +80,7 @@ function RemotionThumbnailUI({ inputProps, renderLoading, errorFallback, onError
+ 	return /* @__PURE__ */ React.createElement(React.Suspense, { fallback: LoadingContent }, Video ? /* @__PURE__ */ React.createElement(ErrorBoundary, {
+ 		fallback: errorFallback,
+ 		onError
+-	}, /* @__PURE__ */ React.createElement(Internals.ClipComposition, null, /* @__PURE__ */ React.createElement(Video, {
++	}, /* @__PURE__ */ React.createElement((Internals.ClipComposition || React.Fragment), null, /* @__PURE__ */ React.createElement(Video, {
+ 		...video?.props,
+ 		...inputProps
+ 	}))) : null);
+diff --git a/node_modules/@vidstack/react/server/chunks/vidstack-CV1SDeC4.js b/node_modules/@vidstack/react/server/chunks/vidstack-CV1SDeC4.js
+index 822dcb5..e9352a9 100644
+--- a/node_modules/@vidstack/react/server/chunks/vidstack-CV1SDeC4.js
++++ b/node_modules/@vidstack/react/server/chunks/vidstack-CV1SDeC4.js
+@@ -140,7 +140,7 @@ function RemotionContextProvider({ src: { compositionWidth: width, compositionHe
+ 			}
+ 		};
+ 	}, []);
+-	return /* @__PURE__ */ React.createElement(Internals.IsPlayerContextProvider, null, /* @__PURE__ */ React.createElement(Internals.CanUseRemotionHooksProvider, null, /* @__PURE__ */ React.createElement(Internals.Timeline.TimelineContext.Provider, { value: timeline }, /* @__PURE__ */ React.createElement(Internals.CompositionManager.Provider, { value: compositionManager }, /* @__PURE__ */ React.createElement(Internals.SequenceManager.Provider, { value: sequenceManager }, /* @__PURE__ */ React.createElement(Internals.ResolveCompositionConfig, null, /* @__PURE__ */ React.createElement(Internals.PrefetchProvider, null, /* @__PURE__ */ React.createElement(Internals.DurationsContextProvider, null, /* @__PURE__ */ React.createElement(Internals.MediaVolumeContext.Provider, { value: mediaVolume }, /* @__PURE__ */ React.createElement(Internals.NativeLayersProvider, null, /* @__PURE__ */ React.createElement(Internals.SetMediaVolumeContext.Provider, { value: setMediaVolume }, /* @__PURE__ */ React.createElement(Internals.SharedAudioContextProvider, {
++	return /* @__PURE__ */ React.createElement(Internals.IsPlayerContextProvider, null, /* @__PURE__ */ React.createElement(Internals.CanUseRemotionHooksProvider, null, /* @__PURE__ */ React.createElement(Internals.TimelineContext.Provider, { value: timeline }, /* @__PURE__ */ React.createElement(Internals.CompositionManager.Provider, { value: compositionManager }, /* @__PURE__ */ React.createElement(Internals.SequenceManager.Provider, { value: sequenceManager }, /* @__PURE__ */ React.createElement((Internals.ResolveCompositionConfig || React.Fragment), null, /* @__PURE__ */ React.createElement(Internals.PrefetchProvider, null, /* @__PURE__ */ React.createElement(Internals.DurationsContextProvider, null, /* @__PURE__ */ React.createElement(Internals.MediaVolumeContext.Provider, { value: mediaVolume }, /* @__PURE__ */ React.createElement((Internals.NativeLayersProvider || React.Fragment), null, /* @__PURE__ */ React.createElement(Internals.SetMediaVolumeContext.Provider, { value: setMediaVolume }, /* @__PURE__ */ React.createElement(Internals.SharedAudioContextProvider, {
+ 		numberOfAudioTags: providedNumberOfAudioTags ?? numberOfSharedAudioTags,
+ 		component
+ 	}, children))))))))))));
+diff --git a/node_modules/@vidstack/react/server/chunks/vidstack-DNAsCsuY.js b/node_modules/@vidstack/react/server/chunks/vidstack-DNAsCsuY.js
+index 40da411..6f4f2a0 100644
+--- a/node_modules/@vidstack/react/server/chunks/vidstack-DNAsCsuY.js
++++ b/node_modules/@vidstack/react/server/chunks/vidstack-DNAsCsuY.js
+@@ -334,7 +334,7 @@ var RemotionProvider = class {
+ 				this.#loadStart = false;
+ 			};
+ 		}, [$src]);
+-		const Component = Internals.useLazyComponent({ component: $src.src });
++		const Component = Internals.useLazyComponent({ compProps: { component: $src.src } });
+ 		const { $state } = this.#ctx, $volume = useSignal($state.volume), $isMuted = useSignal($state.muted);
+ 		const mediaVolume = React.useMemo(() => {
+ 			const { muted, volume } = this.#ctx.$state;
+@@ -349,7 +349,7 @@ var RemotionProvider = class {
+ 			timeline: this.#timeline,
+ 			mediaVolume,
+ 			setMediaVolume: this.#setMediaVolume
+-		}, /* @__PURE__ */ React.createElement(Internals.Timeline.SetTimelineContext.Provider, { value: this.#setTimeline }, React.createElement(this.renderVideo, { src: $src })));
++		}, /* @__PURE__ */ React.createElement(Internals.SetTimelineContext.Provider, { value: this.#setTimeline }, React.createElement(this.renderVideo, { src: $src })));
+ 	};
+ 	renderVideo = ({ src }) => {
+ 		const video = Internals.useVideo(), Video = video ? video.component : null, audioContext = React.useContext(Internals.SharedAudioContext);
+@@ -367,7 +367,7 @@ var RemotionProvider = class {
+ 		const Content = Video ? /* @__PURE__ */ React.createElement(ErrorBoundary, {
+ 			fallback: src.errorFallback,
+ 			onError: src.onError
+-		}, /* @__PURE__ */ React.createElement(Internals.ClipComposition, null, /* @__PURE__ */ React.createElement(Video, {
++		}, /* @__PURE__ */ React.createElement((Internals.ClipComposition || React.Fragment), null, /* @__PURE__ */ React.createElement(Video, {
+ 			...video?.props,
+ 			...src.inputProps
+ 		}))) : null;

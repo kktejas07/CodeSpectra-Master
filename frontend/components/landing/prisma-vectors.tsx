@@ -7,7 +7,7 @@ import { ArrowRight, Check } from 'lucide-react'
 export function IsometricModelGraphic() {
   return (
     <div className="relative w-full h-48 overflow-hidden rounded-xl bg-[#050810] border border-slate-800/80 p-4 font-mono text-[11px] select-none group-hover:border-teal-500/40 transition-colors">
-      <div className="absolute inset-0 bg-gradient-to-br from-teal-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-br from-teal-500/5 via-transparent to-cyan-500/5 pointer-events-none" />
       {/* 3D Isometric Skewed Container */}
       <div className="transform -rotate-6 scale-95 origin-top-left space-y-1.5 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-100">
         <div className="text-slate-500 text-[10px]">// datasource & generator</div>
@@ -25,7 +25,7 @@ export function IsometricModelGraphic() {
         <div className="text-pink-400">&#125;</div>
       </div>
       {/* Glowing Gradient Line Overlay */}
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-teal-500 via-emerald-400 to-cyan-500 opacity-70" />
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-linear-to-r from-teal-500 via-emerald-400 to-cyan-500 opacity-70" />
     </div>
   )
 }
@@ -34,10 +34,10 @@ export function IsometricModelGraphic() {
 export function IsometricClusterGraphic() {
   return (
     <div className="relative w-full h-48 overflow-hidden rounded-xl bg-[#050810] border border-slate-800/80 p-4 select-none flex items-center justify-center group-hover:border-emerald-500/40 transition-colors">
-      <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/5 via-transparent to-teal-500/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-br from-emerald-500/5 via-transparent to-teal-500/5 pointer-events-none" />
       
       {/* SVG Cluster Topology */}
-      <svg className="w-full h-full max-w-[280px]" viewBox="0 0 280 160" fill="none">
+      <svg className="w-full h-full max-w-70" viewBox="0 0 280 160" fill="none">
         {/* Connection Lines */}
         <line x1="60" y1="40" x2="140" y2="80" stroke="#00c573" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.6" />
         <line x1="220" y1="40" x2="140" y2="80" stroke="#00c573" strokeWidth="1.5" strokeDasharray="3 3" opacity="0.6" />
@@ -97,7 +97,7 @@ export function IsometricClusterGraphic() {
 export function IsometricComputeGraphic() {
   return (
     <div className="relative w-full h-48 overflow-hidden rounded-xl bg-[#050810] border border-slate-800/80 p-4 font-mono text-[11px] select-none group-hover:border-cyan-500/40 transition-colors">
-      <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 via-transparent to-teal-500/5 pointer-events-none" />
+      <div className="absolute inset-0 bg-linear-to-br from-cyan-500/5 via-transparent to-teal-500/5 pointer-events-none" />
       
       {/* 3D Skewed CLI Output */}
       <div className="transform rotate-3 scale-95 origin-top-right space-y-1.5 transition-transform duration-500 group-hover:rotate-0 group-hover:scale-100">
@@ -113,7 +113,7 @@ export function IsometricComputeGraphic() {
           <div className="text-slate-400"><span className="text-slate-500">RAM</span>  512 MB · no timeout</div>
         </div>
       </div>
-      <div className="absolute bottom-0 left-0 right-0 h-1 bg-gradient-to-r from-cyan-500 via-teal-400 to-emerald-400 opacity-70" />
+      <div className="absolute bottom-0 left-0 right-0 h-1 bg-linear-to-r from-cyan-500 via-teal-400 to-emerald-400 opacity-70" />
     </div>
   )
 }
@@ -174,7 +174,7 @@ export function PostgresStackIllustration() {
 
       {/* Button */}
       <div className="relative z-10 pt-4">
-        <button className="inline-flex items-center gap-1.5 rounded-full bg-[#00c573] hover:bg-[#3ecf8e] text-slate-950 font-bold px-5 py-2 text-xs transition-all shadow-lg shadow-[#00c573]/20">
+        <button className="inline-flex items-center gap-1.5 rounded-full bg-mint-pulse hover:bg-[#3ecf8e] text-slate-950 font-bold px-5 py-2 text-xs transition-all shadow-lg shadow-mint-pulse/20">
           Explore Prisma Postgres <ArrowRight className="w-3.5 h-3.5" />
         </button>
       </div>

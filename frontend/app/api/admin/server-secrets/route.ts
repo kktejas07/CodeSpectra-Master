@@ -25,12 +25,15 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'openwa_api_key',
   'nvidia_api_key',
   'cloudflare_api_token',
+  'r2_secret_access_key',
+  's3_secret_access_key',
   'phonepe_salt_key',
   'phonepe_webhook_secret',
   'stripe_secret_key',
   'stripe_webhook_secret',
   'upstash_redis_rest_token',
   'internal_backend_secret',
+  'session_secret',
 ]
 
 const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
@@ -46,6 +49,14 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'stripe_price_enterprise_monthly',
   'stripe_price_enterprise_yearly',
   'cloudflare_zone_id',
+  'r2_account_id',
+  'r2_access_key_id',
+  'r2_bucket',
+  's3_provider',
+  's3_endpoint',
+  's3_region',
+  's3_bucket',
+  's3_access_key_id',
   'firebase_api_key',
   'firebase_auth_domain',
   'firebase_project_id',
@@ -102,7 +113,11 @@ export async function PATCH(request: Request) {
     if (v === null) {
       patch[k] = undefined as never
     } else if (typeof v === 'string') {
-      if (isMaskedSecret(v)) continue
+      if (isMaskedSecret(v)) {
+        // Don't skip cloudflare_api_token if it's masked — user didn't change it
+        if (k === 'cloudflare_api_token') continue
+        continue
+      }
       patch[k] = v as never
     }
   }
@@ -122,6 +137,18 @@ export async function PATCH(request: Request) {
         cloudflare_zone_id: updated.cloudflare_zone_id || null,
         cloudflare_api_token_masked: maskSecret(updated.cloudflare_api_token),
         has_cloudflare_api_token: Boolean(updated.cloudflare_api_token?.trim()),
+        r2_account_id: updated.r2_account_id || null,
+        r2_access_key_id: updated.r2_access_key_id || null,
+        r2_bucket: updated.r2_bucket || null,
+        r2_secret_access_key_masked: maskSecret(updated.r2_secret_access_key),
+        has_r2_secret_access_key: Boolean(updated.r2_secret_access_key?.trim()),
+        s3_provider: updated.s3_provider || null,
+        s3_endpoint: updated.s3_endpoint || null,
+        s3_region: updated.s3_region || null,
+        s3_bucket: updated.s3_bucket || null,
+        s3_access_key_id: updated.s3_access_key_id || null,
+        s3_secret_access_key_masked: maskSecret(updated.s3_secret_access_key),
+        has_s3_secret_access_key: Boolean((updated.s3_secret_access_key || updated.r2_secret_access_key)?.trim()),
       },
     })
   } catch (e) {

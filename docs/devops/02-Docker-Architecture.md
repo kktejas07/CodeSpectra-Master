@@ -2,7 +2,7 @@
 
 > **Auto-Generated**: Internal Engineering documentation.
 
-> **Last Updated:** 2026-07-08  
+> **Last Updated:** 2026-08-21  
 > **File:** `docker-compose.yml`  
 
 ---
@@ -20,7 +20,10 @@ graph TB
 
         subgraph "Frontend Container"
             F_APP["Next.js 16<br/>Port 80"]
-            F_NGINX["(internal server)"]
+        end
+
+        subgraph "Course Worker"
+            CW["Same frontend image<br/>COURSE_WORKER=1<br/>polls generation_jobs"]
         end
 
         subgraph "Backend Container"
@@ -47,6 +50,8 @@ graph TB
     F_APP -->|"http://piston:2000"| P_PISTON
     F_APP -->|"http://backend:8000<br/>(internal/ai/*)"| B_FASTAPI
     F_APP -->|MongoDB driver| MDB
+    CW -->|Mongo generation_jobs| MDB
+    CW -->|"http://backend:8000<br/>(LLM complete)"| B_FASTAPI
     F_APP -->|Firebase SDK| FIRE
     F_APP -->|"redis://codespectra-redis:6379<br/>(rate limits, locks)"| REDIS
     B_FASTAPI -->|"redis://codespectra-redis:6379<br/>(rate limits)"| REDIS
@@ -64,6 +69,7 @@ graph TB
 | Container | Internal Port | Host Port | Purpose |
 |-----------|---------------|-----------|---------|
 | **frontend** | 80 | 3000 | Next.js HTTP server |
+| **course-worker** | none | none | Same image, `COURSE_WORKER=1`. Polls `generation_jobs`, one job at a time. No HTTP. |
 | **backend** | 8000 | 8001 | FastAPI proxy + AI router |
 | **piston** | 2000 | 2000 | Code execution sandbox API |
 | **codespectra-redis** | 6379 | 6379 (internal only) | Self-hosted Redis 8 (rate limits, distributed locks) |
@@ -141,10 +147,14 @@ WORKDIR /app
 COPY package.json .
 RUN yarn install --frozen-lockfile 2>/dev/null || yarn install
 COPY . .
+RUN chmod +x scripts/docker-entrypoint.sh
 RUN yarn build
 EXPOSE 80
+ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
 CMD ["npx", "next", "start", "-p", "80"]
 ```
+
+Set `COURSE_WORKER=1` to run `scripts/course-video-worker.ts` instead of Next.js (used by the `course-worker` Compose/Swarm service). Production: clone the frontend service in Dokploy, same image, 1 replica, no ports, env `COURSE_WORKER=1` plus the same `MONGODB_URI` / `INTERNAL_BACKEND_URL` / `INTERNAL_BACKEND_SECRET` as frontend. Jobs stay `pending` until that replica is up.
 
 ### Backend Dockerfile (`backend/Dockerfile`)
 

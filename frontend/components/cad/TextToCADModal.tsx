@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState } from 'react';
+import { csrfFetch } from '@/lib/csrf-fetch';
 import {
   Sparkles,
   Wand2,
@@ -82,7 +83,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
     setSavedSuccess(false);
 
     try {
-      const res = await fetch('/internal/ai/cad/generate-text-to-cad', {
+      const res = await csrfFetch('/api/cad/generate-text-to-cad', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -113,7 +114,7 @@ export function TextToCADModal({ isOpen, onClose, onApplyPayload }: TextToCADMod
   const handleSaveToItemBank = async () => {
     if (!generatedPayload) return;
     try {
-      const res = await fetch('/api/item-bank/cad-step/generate', {
+      const res = await csrfFetch('/api/item-bank/cad-step/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({

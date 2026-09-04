@@ -1102,7 +1102,7 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
       key: 'user_id',
       header: 'User',
       cell: (row) => (
-        <span className="text-xs font-mono text-muted-foreground truncate max-w-[120px] block" title={row.user_id || row.anonymous_id || ''}>
+        <span className="text-xs font-mono text-muted-foreground truncate max-w-30 block" title={row.user_id || row.anonymous_id || ''}>
           {row.user_id?.slice(0, 10) || row.anonymous_id?.slice(0, 10) || '—'}
         </span>
       ),
@@ -1178,7 +1178,7 @@ function EventsTab({ data, loading, search, onSearchChange, filter, onFilterChan
               />
             </div>
             <Select value={filter} onValueChange={onFilterChange}>
-              <SelectTrigger className="w-[140px] h-8 text-xs">
+              <SelectTrigger className="w-35 h-8 text-xs">
                 <SelectValue placeholder="All events" />
               </SelectTrigger>
               <SelectContent>

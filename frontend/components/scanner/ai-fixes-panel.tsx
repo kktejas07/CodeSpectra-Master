@@ -1,4 +1,5 @@
 'use client'
+import { csrfFetch } from '@/lib/csrf-fetch'
 import { useConfirm } from '@/lib/confirm-context'
 
 import { useCallback, useEffect, useState } from 'react'
@@ -101,7 +102,7 @@ export function AIFixesPanel({ sourceCode, analysis, languageFallback }: AIFixes
     if (!await confirmDialog({ title: 'Confirmation', description: 'Overwrite this file on GitHub with the original code from this fix?' })) return
     setAiFixError(null)
     try {
-      const res = await fetch('/api/github/restore-file', {
+      const res = await csrfFetch('/api/github/restore-file', {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },

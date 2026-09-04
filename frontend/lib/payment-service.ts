@@ -15,7 +15,7 @@
  *   3. Add detection logic in selectGateway()
  */
 
-import { isRazorpayConfigured, getRazorpay } from '@/lib/razorpay-server'
+import { isRazorpayConfigured, getRazorpay, getPublishableKeyId } from '@/lib/razorpay-server'
 import { isPhonePeConfiguredAsync, createPhonePeOrder, getPhonePeMerchantId } from '@/lib/phonepe-server'
 import { BILLING_PLANS, billingOrders, billingSubscriptions, newId, nowIso } from '@/lib/db/billing'
 
@@ -56,7 +56,8 @@ export interface PaymentGatewayAdapter {
   getSubscription(userId: string): Promise<SubscriptionResult | null>
   cancelSubscription(userId: string): Promise<void>
   listPaymentMethods(userId: string, email: string): Promise<PaymentMethod[]>
-  detachPaymentMethod(methodId: string): Promise<void>
+  /** Ownership-bound: implementations must verify the method belongs to this user before detaching. */
+  detachPaymentMethod(userId: string, email: string, methodId: string): Promise<void>
 }
 
 // ─── Country → Gateway mapping ──────────────────────────────────────────────
@@ -244,9 +245,9 @@ export class PaymentService {
     return adapter.listPaymentMethods(userId, email)
   }
 
-  async detachPaymentMethod(methodId: string): Promise<void> {
+  async detachPaymentMethod(userId: string, email: string, methodId: string): Promise<void> {
     const adapter = await this.getAdapter()
-    return adapter.detachPaymentMethod(methodId)
+    return adapter.detachPaymentMethod(userId, email, methodId)
   }
 }
 
@@ -274,7 +275,15 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
       redirectUrl,
     })
 
-    if (!orderResponse.success || !orderResponse.data?.instrumentResponse?.intentUrl) {
+    if (!orderResponse.success || !orderResponse.data?.instrumentResponse) {
+      throw new Error(orderResponse.message || 'PhonePe order creation failed')
+    }
+
+    // Desktop/web browsers can't open a phonepe:// intent — prefer the
+    // hosted redirect URL when PhonePe returns one.
+    const instrument = orderResponse.data.instrumentResponse
+    const payUrl = instrument.redirectUrl || instrument.intentUrl
+    if (!payUrl) {
       throw new Error(orderResponse.message || 'PhonePe order creation failed')
     }
 
@@ -296,7 +305,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
     return {
       provider: 'phonepe',
       gateway_id: merchantTransactionId,
-      redirect_url: orderResponse.data.instrumentResponse.intentUrl,
+      redirect_url: payUrl,
       amount_paise: plan.amount_paise,
       currency: plan.currency,
       plan,
@@ -319,7 +328,7 @@ class PhonePeAdapter implements PaymentGatewayAdapter {
     return [{ id: 'phonepe', type: 'gateway', is_default: true }]
   }
 
-  async detachPaymentMethod(_methodId: string): Promise<void> {
+  async detachPaymentMethod(_userId: string, _email: string, _methodId: string): Promise<void> {
     // PhonePe doesn't have saved payment methods in the same way
   }
 }
@@ -357,7 +366,8 @@ class RazorpayAdapter implements PaymentGatewayAdapter {
     return {
       provider: 'razorpay',
       gateway_id: order.id,
-      key_id: process.env.RAZORPAY_KEY_ID || '',
+      // Keys may live in Mongo platform_settings (admin UI), not just env.
+      key_id: (await getPublishableKeyId()) || '',
       amount_paise: plan.amount_paise,
       currency: plan.currency,
       plan,
@@ -380,7 +390,7 @@ class RazorpayAdapter implements PaymentGatewayAdapter {
     return [{ id: 'razorpay', type: 'gateway', is_default: true }]
   }
 
-  async detachPaymentMethod(_methodId: string): Promise<void> {
+  async detachPaymentMethod(_userId: string, _email: string, _methodId: string): Promise<void> {
     // Razorpay uses cards endpoint; best-effort
   }
 }

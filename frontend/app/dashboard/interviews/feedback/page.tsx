@@ -79,7 +79,7 @@ export default function InterviewFeedbackPage() {
       </div>
 
       {/* Overall Recommendation */}
-      <Card className="p-6 bg-gradient-to-r from-orange-500/10 to-orange-600/5 border-orange-200/50">
+      <Card className="p-6 bg-linear-to-r from-orange-500/10 to-orange-600/5 border-orange-200/50">
         <div className="space-y-4">
           <div className="flex items-center justify-between">
             <div>
@@ -169,7 +169,7 @@ export default function InterviewFeedbackPage() {
               {chatTranscript.map((item) => (
                 <div key={item.id} className="space-y-2">
                   <div className="flex gap-3">
-                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center flex-shrink-0">
+                    <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center shrink-0">
                       <span className="text-xs font-semibold text-foreground/60">
                         {item.speaker === 'User' ? 'U' : 'I'}
                       </span>

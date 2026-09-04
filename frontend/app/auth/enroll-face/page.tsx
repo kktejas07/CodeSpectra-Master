@@ -5,9 +5,10 @@ import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { FaceCamera } from "@/components/auth/face-camera";
 import { Button } from "@/components/ui/button";
-import { Code2, ArrowRight, Shield, AlertCircle } from "lucide-react";
+import { Shield, AlertCircle, Loader2 } from "lucide-react";
 import { Suspense, useEffect } from "react";
 import { useAuth } from "@/lib/auth-context";
+import { csrfFetch } from "@/lib/csrf-fetch";
 
 function EnrollFaceInner() {
   const router = useRouter();
@@ -16,6 +17,7 @@ function EnrollFaceInner() {
   
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [cameraKey, setCameraKey] = useState(0);
   const { user } = useAuth();
 
   const isMandatory = user?.createdAt 
@@ -26,7 +28,7 @@ function EnrollFaceInner() {
     setLoading(true);
     setError(null);
     try {
-      const res = await fetch("/api/auth/face-enroll", {
+      const res = await csrfFetch("/api/auth/face-enroll", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
@@ -35,8 +37,8 @@ function EnrollFaceInner() {
       });
 
       if (!res.ok) {
-        const data = await res.json();
-        throw new Error(data.error || "Failed to save biometric template.");
+        const data = await res.json().catch(() => ({} as { error?: string }))
+        throw new Error(data.error || `Failed to save biometric template (${res.status}).`)
       }
 
       router.push(redirectTo);
@@ -44,6 +46,7 @@ function EnrollFaceInner() {
     } catch (err: any) {
       setError(err.message);
       setLoading(false);
+      setCameraKey((k) => k + 1);
     }
   }, [router, redirectTo]);
 
@@ -57,7 +60,7 @@ function EnrollFaceInner() {
     <div className="min-h-screen w-full flex items-center justify-center p-6 bg-background relative overflow-hidden">
       {/* Background decoration */}
       <div aria-hidden className="absolute inset-0 opacity-[0.03] pointer-events-none" style={{ backgroundImage: "linear-gradient(hsl(var(--foreground)) 1px, transparent 1px), linear-gradient(90deg, hsl(var(--foreground)) 1px, transparent 1px)", backgroundSize: "44px 44px" }} />
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[800px] h-[800px] bg-primary/5 rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-200 h-200 bg-primary/5 rounded-full blur-3xl pointer-events-none" />
 
       <main className="w-full max-w-md relative z-10 bg-card border border-border shadow-2xl rounded-2xl p-8 space-y-8">
         <div className="flex flex-col items-center text-center space-y-4">
@@ -86,8 +89,9 @@ function EnrollFaceInner() {
         )}
 
         <div className="py-4">
-          <FaceCamera 
-            mode="enroll" 
+          <FaceCamera
+            key={cameraKey}
+            mode="enroll"
             onCapture={handleCapture}
             onError={handleError}
           />
@@ -117,7 +121,11 @@ function EnrollFaceInner() {
 
 export default function EnrollFacePage() {
   return (
-    <Suspense fallback={null}>
+    <Suspense fallback={
+      <div className="min-h-screen w-full flex items-center justify-center bg-background">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    }>
       <EnrollFaceInner />
     </Suspense>
   );
