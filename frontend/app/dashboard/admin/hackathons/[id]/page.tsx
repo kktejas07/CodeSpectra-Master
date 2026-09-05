@@ -564,7 +564,6 @@ export default function HackathonDetailPage({
                       ))}
                     </div>
                   )}
-                </div>
 
                 {/* Footer Actions */}
                 <div className="border-t border-border/40 bg-accent/20 p-6 space-y-4">
