@@ -228,59 +228,7 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
             </Badge>
           </div>
         </div>
-      </header>
-
-      <main className="mx-auto max-w-5xl space-y-6 px-6 py-10">
-        {/* Event Header */}
-        <section>
-          <h1 className="flex items-center gap-2 text-3xl font-bold">
-            <Trophy className="h-7 w-7 text-primary" /> {hackathon.name}
-          </h1>
-          {hackathon.description && <p className="mt-2 text-sm text-muted-foreground">{hackathon.description}</p>}
-          <div className="mt-4 flex flex-wrap gap-3 text-xs">
-            <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1">
-              <CalendarDays className="h-3 w-3" /> {starts.toLocaleString()}
-            </span>
-            {!isClosed && !isLive && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-yellow-500">
-                <Timer className="h-3 w-3" /> Starts in <Countdown targetIso={hackathon.starts_at} />
-              </span>
-            )}
-            {isLive && !isClosed && (
-              <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1 text-green-500">
-                <Timer className="h-3 w-3" /> Ends in <Countdown targetIso={hackathon.ends_at} />
-              </span>
-            )}
-            <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1">
-              <Clock className="h-3 w-3" /> {hackathon.timeout_minutes} min · {hackathon.tasks?.length || 0} problems
-            </span>
-            <span className="inline-flex items-center gap-1 rounded-md border border-border/60 bg-muted/40 px-2 py-1">
-              <Users className="h-3 w-3" /> {teams.length} / {hackathon.num_teams} teams
-            </span>
-          </div>
-        </section>
-
-        {/* Registration / My Team Panel */}
-        {!isClosed && (
-          <Card className="space-y-4 p-5">
-            {myTeam ? (
-              <div>
-                <div className="flex items-center gap-2 mb-3">
-                  <CheckCircle className="h-5 w-5 text-green-500" />
-                  <h2 className="text-sm font-semibold">Your Team: {myTeam.name}</h2>
-                  {isCaptainOfMyTeam && (
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      className="h-6 w-6 p-0 text-muted-foreground hover:text-foreground"
-                      onClick={() => { setEditTeamName(myTeam.name); setRenameDialogOpen(true) }}
-                      title="Rename team"
-                    >
-                      <Pencil className="h-3.5 w-3.5" />
-                    </Button>
-                  )}
-                  <Badge variant="outline">{myTeam.members.length}/{hackathon.max_per_team} members</Badge>
-                </div>
+      </div>
 
       <main className="mx-auto max-w-6xl px-4 lg:px-8 -mt-16 relative z-10">
         <div className="grid gap-8 lg:grid-cols-[1fr_350px]">
