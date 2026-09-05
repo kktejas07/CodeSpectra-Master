@@ -267,15 +267,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const exportResults = useCallback(() => {
     if (!groupedSubmissions || groupedSubmissions.length === 0) return
     const csvContent = [
-      ['Team', 'Problem', 'Status', 'Score', 'Submitted At', 'Repo URL', 'Live URL'].join(','),
+      ['Team', 'Problem', 'Status', 'Score', 'Submitted At', 'Repo URL', 'Live URL', 'Video URL', 'Comment', 'Feedback'].join(','),
       ...groupedSubmissions.map(sub => [
-        `"${sub.team_name || ''}"`,
-        `"${sub.problem_slug || ''}"`,
-        `"${sub.status || ''}"`,
+        `"${(sub.team_name || '').replace(/"/g, '""')}"`,
+        `"${(sub.problem_slug || '').replace(/"/g, '""')}"`,
+        `"${(sub.status || '').replace(/"/g, '""')}"`,
         `"${sub.score ?? ''}"`,
         `"${new Date(sub.submitted_at).toLocaleString()}"`,
-        `"${sub.repo_url || ''}"`,
-        `"${sub.live_url || ''}"`
+        `"${(sub.repo_url || '').replace(/"/g, '""')}"`,
+        `"${(sub.live_url || '').replace(/"/g, '""')}"`,
+        `"${(sub.video_url || '').replace(/"/g, '""')}"`,
+        `"${(sub.comment || '').replace(/"/g, '""')}"`,
+        `"${(sub.feedback || '').replace(/"/g, '""')}"`
       ].join(','))
     ].join('\n')
     const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' })
