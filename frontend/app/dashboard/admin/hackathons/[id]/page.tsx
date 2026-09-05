@@ -29,6 +29,10 @@ import {
   Pencil,
   UserPlus,
   X,
+  Gavel,
+  FileBarChart,
+  ExternalLink,
+  Save,
 } from 'lucide-react'
 import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
