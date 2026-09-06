@@ -472,7 +472,6 @@ export default function DashboardLayout({
       [p.questionGenerator]: Bot,
       '/dashboard/admin/courses': BookOpen,
       [DASHBOARD_ROUTES.organization.team]: Users2,
-      '/dashboard/admin/requisitions': Briefcase,
       '/dashboard/admin/question-bank': Database,
       '/dashboard/admin/predictive-validity': LineChart,
       '/dashboard/admin/sme-review': UserCheck,
@@ -603,6 +602,51 @@ export default function DashboardLayout({
     await signOut()
     router.push('/auth/login')
     router.refresh()
+  }
+
+  const handleGuideClick = () => {
+    // Get current pathname to determine which tour to restart
+    const currentPath = pathname
+
+    // Map paths to tour IDs
+    const tourIdMap: Record<string, string> = {
+      '/dashboard': 'welcome',
+      '/dashboard/scanner': 'scanner',
+      '/dashboard/problems': 'problems',
+      '/dashboard/arena': 'arena',
+      '/dashboard/courses': 'courses',
+      '/dashboard/events': 'events',
+      '/dashboard/interviews': 'interviews',
+      '/dashboard/leaderboard': 'leaderboard',
+      '/dashboard/achievements': 'achievements',
+      '/dashboard/assessments': 'assessments',
+      '/dashboard/tracks': 'tracks',
+      '/dashboard/hackathons': 'hackathons',
+      '/dashboard/articles': 'articles',
+      '/dashboard/codeathons': 'codeathons',
+      '/dashboard/settings': 'settings',
+      '/dashboard/admin/system': 'admin-system'
+    }
+
+    // Find matching tour ID
+    let tourId = tourIdMap[currentPath]
+
+    // If no exact match, try to match by prefix for dynamic routes
+    if (!tourId) {
+      for (const [path, id] of Object.entries(tourIdMap)) {
+        if (currentPath.startsWith(path)) {
+          tourId = id
+          break
+        }
+      }
+    }
+
+    if (tourId) {
+      // Clear the seen flag
+      window.localStorage.removeItem(`has_seen_${tourId}_tour`)
+      // Refresh the page to restart the tour
+      router.refresh()
+    }
   }
 
   const isScannerShell = pathname.startsWith('/dashboard/scanner')
@@ -1102,18 +1146,30 @@ export default function DashboardLayout({
           </div>
         )}
 
-        {/* Breadcrumbs + mobile menu (no top profile — account lives in sidebar footer) */}
+        {/* Breadcrumbs + mobile menu + tour guide (no top profile — account lives in sidebar footer) */}
         {!isLessonPlayer && (
         <div className="sticky top-0 z-20 flex h-12 items-center justify-between gap-3 border-b border-border/20 bg-background/80 px-4 backdrop-blur-xl lg:px-6">
           <Breadcrumbs homeHref={homeHref} className="min-w-0" />
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="rounded-lg p-2 hover:bg-muted lg:hidden"
-            aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
-          >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="rounded-lg p-2 hover:bg-muted lg:hidden"
+              aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+            >
+              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+            {/* Tour guide button */}
+            <button
+              type="button"
+              onClick={handleGuideClick}
+              className="rounded-lg p-2 hover:bg-muted"
+              aria-label="Guide"
+              title="Show guide"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         )}
 

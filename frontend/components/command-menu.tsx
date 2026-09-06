@@ -80,7 +80,6 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
   '/dashboard/admin/predictive-validity': BarChart3,
   '/dashboard/admin/sme-review': Users,
   '/dashboard/admin/hiring-manager-report': FileText,
-  '/dashboard/admin/requisitions': Briefcase,
   '/dashboard/arena': Trophy,
   '/dashboard/hackathons': Trophy,
   '/dashboard/problems': CodeIcon,

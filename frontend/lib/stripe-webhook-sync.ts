@@ -6,21 +6,33 @@
  * integration, so both payment providers share a common data model.
  */
 import type Stripe from 'stripe'
-import { billingOrders, billingPayments, billingSubscriptions, recordCouponRedemption, newId, nowIso } from '@/lib/db/billing'
+import { billingOrders, billingPayments, billingSubscriptions, recordCouponRedemption, newId, nowIso, BILLING_PLANS } from '@/lib/db/billing'
+import { logger } from '@/lib/logger'
 
 /** Sync a checkout.session.completed event from Stripe */
 export async function syncCheckoutSessionCompleted(session: Stripe.Checkout.Session): Promise<void> {
   const userId = String(session.metadata?.user_id || '')
   const planId = String(session.metadata?.plan_id || 'pro_monthly')
-  if (!userId) return
+  if (!userId) {
+    logger.webhook('[stripe-webhook] missing user_id in session.metadata', { sessionId: session.id })
+    return
+  }
 
   const orders = await billingOrders()
+  const orderKey = `stripe_${session.id}`
+  const existingOrder = await orders.findOne({ razorpay_order_id: orderKey })
+  if (existingOrder) {
+    logger.webhook('[stripe-webhook] duplicate checkout session, skipping', { sessionId: session.id })
+    return
+  }
+
   const orderId = newId()
+  const amountPaise = Math.round((session.amount_total || 0) / 100)
   await orders.insertOne({
     id: orderId,
     user_id: userId,
-    razorpay_order_id: `stripe_${session.id}`,
-    amount_paise: Math.round((session.amount_total || 0) / 100),
+    razorpay_order_id: orderKey,
+    amount_paise: amountPaise,
     currency: (session.currency || 'usd').toUpperCase(),
     plan_id: planId,
     receipt: `stripe_${session.id}`,
@@ -38,7 +50,7 @@ export async function syncCheckoutSessionCompleted(session: Stripe.Checkout.Sess
       order_id: orderId,
       razorpay_payment_id: `stripe_${session.payment_intent || session.id}`,
       status: 'captured',
-      amount_paise: Math.round((session.amount_total || 0) / 100),
+      amount_paise: amountPaise,
       method: 'card',
       created_at: nowIso(),
     })
@@ -47,10 +59,19 @@ export async function syncCheckoutSessionCompleted(session: Stripe.Checkout.Sess
     const subs = await billingSubscriptions()
     const existing = await subs.findOne({ user_id: userId, status: 'active' })
     const now = new Date()
-    const endsAt = new Date(now.getTime() + 30 * 86400000).toISOString()
+    const plan = BILLING_PLANS[planId]
+    const durationDays = plan?.duration_days || 30
+    let endsAt: string
     if (existing) {
-      await subs.updateOne({ id: existing.id }, { $set: { ends_at: endsAt, plan_id: planId } })
+      const currentEnd = new Date(existing.ends_at)
+      const base = currentEnd > now ? currentEnd : now
+      endsAt = new Date(base.getTime() + durationDays * 86400000).toISOString()
+      await subs.updateOne(
+        { id: existing.id },
+        { $set: { ends_at: endsAt, plan_id: planId, updated_at: nowIso() } }
+      )
     } else {
+      endsAt = new Date(now.getTime() + durationDays * 86400000).toISOString()
       await subs.insertOne({
         id: newId(),
         user_id: userId,
@@ -61,11 +82,15 @@ export async function syncCheckoutSessionCompleted(session: Stripe.Checkout.Sess
         created_at: nowIso(),
       })
     }
+
+    logger.webhook('[stripe-webhook] subscription activated', { userId, planId, endsAt })
   }
 
   const couponId = String(session.metadata?.coupon_id || '')
   if (couponId) {
-    await recordCouponRedemption(couponId, userId, orderId, planId).catch(() => {})
+    await recordCouponRedemption(couponId, userId, orderId, planId).catch((e) => {
+      logger.webhook('[stripe-webhook] coupon redemption failed', { couponId, userId, error: String(e) })
+    })
   }
 }
 

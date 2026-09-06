@@ -54,6 +54,18 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
       const orders = await billingOrders()
       const order = await orders.findOne({ razorpay_order_id: order_id })
       if (order) {
+        const paymentsCol = await billingPayments()
+        // Idempotency: Razorpay retries webhooks — never double-insert or double-activate.
+        const existingPayment = payment_id
+          ? await paymentsCol.findOne({ razorpay_payment_id: payment_id })
+          : null
+        if (existingPayment) {
+          return NextResponse.json({ ok: true, duplicate: true })
+        }
+        if (status === 'captured' && order.status === 'paid') {
+          // Order already paid (e.g. verify route raced the webhook) — still record payment if new.
+        }
+
         await orders.updateOne(
           { id: order.id },
           {
@@ -63,7 +75,6 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
             },
           },
         )
-        const paymentsCol = await billingPayments()
         await paymentsCol.insertOne({
           id: newId(),
           user_id: order.user_id,
@@ -86,29 +97,34 @@ export async function POST(req: NextRequest): Promise<NextResponse> {
           icon: status === 'captured' ? 'credit-card' : 'alert-circle',
           link: '/dashboard/billing',
         }).catch(() => {})
-        // Issue subscription on captured event.
+        // Issue / extend / reactivate subscription on captured event.
         if (status === 'captured') {
           const plan = BILLING_PLANS[order.plan_id]
           if (plan?.kind === 'subscription' && plan.duration_days) {
             const subs = await billingSubscriptions()
             const existing = await subs.findOne({
               user_id: order.user_id,
-              status: 'active',
+              status: { $in: ['active', 'expired', 'cancelled'] },
             })
             const now = new Date()
-            const base =
-              existing && new Date(existing.ends_at) > now
-                ? new Date(existing.ends_at)
-                : now
-            const ends_at = new Date(
-              base.getTime() + plan.duration_days * 86400000,
-            ).toISOString()
+            const durationMs = plan.duration_days * 86400000
             if (existing) {
+              const currentEnd = new Date(existing.ends_at)
+              const base = currentEnd > now ? currentEnd : now
+              const ends_at = new Date(base.getTime() + durationMs).toISOString()
               await subs.updateOne(
                 { id: existing.id },
-                { $set: { ends_at, plan_id: plan.id } },
+                {
+                  $set: {
+                    status: 'active',
+                    ends_at,
+                    plan_id: plan.id,
+                    updated_at: nowIso(),
+                  },
+                },
               )
             } else {
+              const ends_at = new Date(now.getTime() + durationMs).toISOString()
               await subs.insertOne({
                 id: newId(),
                 user_id: order.user_id,

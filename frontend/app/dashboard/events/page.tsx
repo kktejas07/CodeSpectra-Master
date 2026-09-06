@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { isAdmin, type UserRole } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -164,6 +165,7 @@ export default function EventsPage() {
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
+  const { startTour, setTourSeen } = useTour()
 
   const [events, setEvents] = useState<EventItem[]>([])
   const [loading, setLoading] = useState(true)
@@ -234,6 +236,34 @@ export default function EventsPage() {
     finally { setLoading(false) }
   }, [hasSession])
 
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_events_tour')) {
+      const eventsTour: TourStep[] = [
+        {
+          target: '[data-tour="events-header"]',
+          title: 'Events',
+          description: 'Browse hackathons, codeathons, and coding competitions. Join events to compete and win prizes.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="events-tabs"]',
+          title: 'Filter Events',
+          description: 'Use tabs to filter events by status: All, My Events, Live, Upcoming, or Past.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="events-grid"]',
+          title: 'Event Cards',
+          description: 'Click any event card to view details, join a team, or enter the workspace.',
+          position: 'bottom',
+        },
+      ]
+      startTour(eventsTour, 'events')
+      setTourSeen('events')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   useEffect(() => {
     if (gate.ready) void load()
   }, [gate.ready, load])
@@ -262,7 +292,7 @@ export default function EventsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="events-header">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Zap className="h-6 w-6 text-primary" /> Events
@@ -273,7 +303,7 @@ export default function EventsPage() {
         </div>
       </div>
 
-      <Tabs value={tab} onValueChange={setTab}>
+      <Tabs value={tab} onValueChange={setTab} data-tour="events-tabs">
         <TabsList>
           <TabsTrigger value="all">All ({events.length})</TabsTrigger>
           <TabsTrigger value="my">My Events ({myEvents.length})</TabsTrigger>
@@ -291,7 +321,7 @@ export default function EventsPage() {
               onAction={tab === 'my' ? () => setTab('all') : undefined}
             />
           ) : (
-            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3" data-tour="events-grid">
               {filtered.map((event) => (
                 <EventCard key={`${event.type}-${event.id}`} event={event} />
               ))}

@@ -39,6 +39,7 @@ import { PatternDetector } from '@/components/scanner/pattern-detector'
 import { PRImpactAnalysis } from '@/components/scanner/pr-impact-analysis'
 import { detectLanguage } from '@/lib/local-code-analyzer'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface AnalysisResult {
   id: string
@@ -90,6 +91,42 @@ function CodeScannerPageInner() {
       window.history.replaceState({}, '', url.toString())
     }
   }, [searchParams])
+
+  const { startTour, setTourSeen } = useTour()
+
+  // Initialize tour if this is the first visit to scanner
+  useEffect(() => {
+    if (mode === 'manual' && !localStorage.getItem('has_seen_scanner_tour')) {
+      const scannerTour: TourStep[] = [
+        {
+          target: '[data-tour="scanner-code-input"]',
+          title: 'Code Input',
+          description: 'Paste your code here to analyze it for bugs, vulnerabilities, and quality issues.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="scanner-scan-button"]',
+          title: 'Scan Code',
+          description: 'Click this button to run the analysis and get detailed insights about your code.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="scanner-results"]',
+          title: 'Analysis Results',
+          description: 'View detailed metrics, suggested fixes, and AI-powered recommendations for your code.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="scanner-history"]',
+          title: 'Scan History',
+          description: 'Review your previous scans, reload them, or delete them.',
+          position: 'bottom',
+        },
+      ]
+      startTour(scannerTour, 'scanner')
+      setTourSeen('scanner')
+    }
+  }, [mode, startTour, setTourSeen])
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
   const [detectedLang, setDetectedLang] = useState<string | null>(null)
@@ -401,7 +438,7 @@ function CodeScannerPageInner() {
                 </div>
               </div>
 
-              <div className="space-y-2">
+              <div className="space-y-2" data-tour="scanner-code-input">
                 <div className="flex flex-wrap items-center justify-between gap-2">
                   <label className="text-sm font-medium text-foreground">Paste Your Code</label>
                   <Button
@@ -461,6 +498,7 @@ function CodeScannerPageInner() {
                   onClick={handleAnalyze}
                   disabled={loading || !code.trim()}
                   className="flex-1"
+                  data-tour="scanner-scan-button"
                 >
                   {loading ? (
                     <>
@@ -489,61 +527,63 @@ function CodeScannerPageInner() {
             </Card>
 
             {/* Scan History */}
-            {scanHistory.length > 0 && (
-              <ScanHistory
-                scans={scanHistory.map((scan) => ({
-                  id: scan.id,
-                  source: 'manual',
-                  target: scan.language ?? language,
-                  language: scan.language ?? language,
-                  quality: scan.quality,
-                  bugs: scan.bugs,
-                  vulnerabilities: scan.vulnerabilities,
-                  codeSmells: scan.codeSmells,
-                  timestamp: scan.timestamp,
-                  duration: scan.timeMs,
-                  codeSnippet: scan.codeSnippet,
-                }))}
-                page={scanPage}
-                totalPages={Math.max(1, Math.ceil(scansTotalCount / SCANS_PER_PAGE))}
-                onPageChange={(p) => { setScanPage(p); fetchScanHistory(p) }}
-                onSelectScan={(scan) => {
-                  const historyItem = scanHistory.find((h) => h.id === scan.id)
-                  if (historyItem) {
-                    setAnalysis(historyItem)
-                    if (historyItem.codeSnippet) {
-                      setCode(historyItem.codeSnippet)
-                      if (historyItem.language) setLanguage(historyItem.language)
+            <div data-tour="scanner-history">
+              {scanHistory.length > 0 && (
+                <ScanHistory
+                  scans={scanHistory.map((scan) => ({
+                    id: scan.id,
+                    source: 'manual',
+                    target: scan.language ?? language,
+                    language: scan.language ?? language,
+                    quality: scan.quality,
+                    bugs: scan.bugs,
+                    vulnerabilities: scan.vulnerabilities,
+                    codeSmells: scan.codeSmells,
+                    timestamp: scan.timestamp,
+                    duration: scan.timeMs,
+                    codeSnippet: scan.codeSnippet,
+                  }))}
+                  page={scanPage}
+                  totalPages={Math.max(1, Math.ceil(scansTotalCount / SCANS_PER_PAGE))}
+                  onPageChange={(p) => { setScanPage(p); fetchScanHistory(p) }}
+                  onSelectScan={(scan) => {
+                    const historyItem = scanHistory.find((h) => h.id === scan.id)
+                    if (historyItem) {
+                      setAnalysis(historyItem)
+                      if (historyItem.codeSnippet) {
+                        setCode(historyItem.codeSnippet)
+                        if (historyItem.language) setLanguage(historyItem.language)
+                      }
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
                     }
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }
-                }}
-                onEdit={(scan) => {
-                  const historyItem = scanHistory.find((h) => h.id === scan.id)
-                  if (historyItem) {
-                    if (historyItem.codeSnippet) {
-                      setCode(historyItem.codeSnippet)
+                  }}
+                  onEdit={(scan) => {
+                    const historyItem = scanHistory.find((h) => h.id === scan.id)
+                    if (historyItem) {
+                      if (historyItem.codeSnippet) {
+                        setCode(historyItem.codeSnippet)
+                      }
+                      if (historyItem.language) {
+                        setLanguage(historyItem.language)
+                      }
+                      setAnalysis(historyItem)
+                      window.scrollTo({ top: 0, behavior: 'smooth' })
                     }
-                    if (historyItem.language) {
-                      setLanguage(historyItem.language)
+                  }}
+                  onDelete={async (scanId) => {
+                    try {
+                      await csrfFetch(`/api/analysis-history?id=${scanId}`, { method: 'DELETE', credentials: 'include' })
+                    } catch {
+                      /* offline or unauthenticated */
                     }
-                    setAnalysis(historyItem)
-                    window.scrollTo({ top: 0, behavior: 'smooth' })
-                  }
-                }}
-                onDelete={async (scanId) => {
-                  try {
-                    await csrfFetch(`/api/analysis-history?id=${scanId}`, { method: 'DELETE', credentials: 'include' })
-                  } catch {
-                    /* offline or unauthenticated */
-                  }
-                  fetchScanHistory(scanPage)
-                  if (analysis?.id === scanId) {
-                    setAnalysis(null)
-                  }
-                }}
-              />
-            )}
+                    fetchScanHistory(scanPage)
+                    if (analysis?.id === scanId) {
+                      setAnalysis(null)
+                    }
+                  }}
+                />
+              )}
+            </div>
           </div>
 
           {/* Results Section */}
@@ -597,7 +637,43 @@ function CodeScannerPageInner() {
               </Card>
             )}
 
-            {!analysis ? (
+            {loading ? (
+              <div className="space-y-4 animate-pulse">
+                <div className="rounded-xl border border-border/60 bg-card/50 p-5 space-y-4">
+                  <div className="flex items-center justify-between">
+                    <div className="h-6 w-32 bg-muted/60 rounded" />
+                    <div className="h-6 w-16 bg-muted/60 rounded" />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4">
+                    {Array.from({ length: 6 }).map((_, i) => (
+                      <div key={i} className="space-y-2">
+                        <div className="h-3 w-16 bg-muted/50 rounded" />
+                        <div className="h-5 w-12 bg-muted/60 rounded" />
+                      </div>
+                    ))}
+                  </div>
+                  <div className="border-t border-border/40 pt-4">
+                    <div className="h-4 w-48 bg-muted/60 rounded mb-2" />
+                    <div className="space-y-2">
+                      {Array.from({ length: 3 }).map((_, i) => (
+                        <div key={i} className="flex items-start gap-2">
+                          <div className="h-4 w-4 bg-muted/50 rounded mt-0.5" />
+                          <div className="h-3 w-full bg-muted/50 rounded" />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </div>
+                <div className="rounded-xl border border-border/60 bg-card/50 p-4 space-y-3">
+                  <div className="h-4 w-40 bg-muted/60 rounded" />
+                  <div className="flex items-center gap-2">
+                    <div className="h-2 flex-1 bg-muted/50 rounded" />
+                    <div className="h-4 w-12 bg-muted/60 rounded" />
+                  </div>
+                  <div className="h-16 w-full bg-muted/50 rounded" />
+                </div>
+              </div>
+            ) : !analysis ? (
               <Card className="h-full flex items-center justify-center bg-card/30 border border-border">
                 <div className="text-center p-6">
                   <Code2 className="w-12 h-12 text-foreground/40 mx-auto mb-3" />
@@ -640,7 +716,7 @@ function CodeScannerPageInner() {
                 </div>
               </Card>
             ) : (
-              <div className="space-y-4">
+              <div className="space-y-4" data-tour="scanner-results">
                 {/* Advanced Metrics */}
                 <AdvancedMetrics
                   quality={analysis.quality}

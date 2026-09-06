@@ -11,6 +11,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 
@@ -31,6 +32,7 @@ export default function UserHackathonsPage() {
   const gate = usePageGuard('user')
   const { user: authUser } = useAuth()
   const hasSession = authUser?.uid
+  const { startTour, setTourSeen } = useTour()
 
   const [hackathons, setHackathons] = useState<Hackathon[]>([])
   const [myTeams, setMyTeams] = useState<Record<string, Team>>({})
@@ -63,10 +65,66 @@ export default function UserHackathonsPage() {
     if (gate.ready) void load()
   }, [gate.ready, load])
 
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_hackathons_tour')) {
+      const hackathonsTour: TourStep[] = [
+        {
+          target: '[data-tour="hackathons-header"]',
+          title: 'Hackathons',
+          description: 'Join live coding events, compete in teams, and win prizes.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="hackathons-live"]',
+          title: 'Live Events',
+          description: 'Hackathons currently in progress. Jump in and start competing!',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="hackathons-upcoming"]',
+          title: 'Upcoming Events',
+          description: 'Register early for upcoming hackathons and secure your spot.',
+          position: 'bottom',
+        },
+      ]
+      startTour(hackathonsTour, 'hackathons')
+      setTourSeen('hackathons')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready || loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" /> Loading hackathons…
-    </div>
+    return (
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="h-7 w-7 bg-muted/60 rounded animate-pulse" />
+          <div>
+            <div className="h-8 w-48 bg-muted/60 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-muted/50 rounded animate-pulse mt-1" />
+          </div>
+        </div>
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="rounded-xl border border-border/60 p-5 space-y-3 animate-pulse">
+              <div className="flex items-start justify-between">
+                <div className="h-6 w-32 bg-muted/60 rounded" />
+                <div className="h-5 w-16 bg-muted/60 rounded" />
+              </div>
+              <div className="h-4 w-full bg-muted/50 rounded" />
+              <div className="flex flex-wrap gap-2">
+                <div className="h-4 w-20 bg-muted/50 rounded" />
+                <div className="h-4 w-16 bg-muted/50 rounded" />
+                <div className="h-4 w-20 bg-muted/50 rounded" />
+              </div>
+              <div className="flex gap-2 pt-1">
+                <div className="h-8 w-24 bg-muted/60 rounded" />
+                <div className="h-8 w-32 bg-muted/60 rounded" />
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    )
   }
 
   const now = Date.now()
@@ -90,7 +148,7 @@ export default function UserHackathonsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" data-tour="hackathons-header">
         <Trophy className="h-7 w-7 text-primary" />
         <div>
           <h1 className="text-3xl font-bold">Hackathons</h1>
@@ -114,7 +172,7 @@ export default function UserHackathonsPage() {
       )}
 
       {liveHackathons.length > 0 && (
-        <section>
+        <section data-tour="hackathons-live">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
             <span className="flex h-2 w-2 rounded-full bg-green-500 animate-pulse" /> Live Now
           </h2>
@@ -127,7 +185,7 @@ export default function UserHackathonsPage() {
       )}
 
       {upcomingHackathons.length > 0 && (
-        <section>
+        <section data-tour="hackathons-upcoming">
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-muted-foreground">
             Upcoming
           </h2>

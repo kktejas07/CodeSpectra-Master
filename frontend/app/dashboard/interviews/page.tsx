@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Video, Calendar, Clock, ArrowRight, Bot } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -17,6 +18,7 @@ interface Interview {
 
 export default function InterviewsPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,6 +35,34 @@ export default function InterviewsPage() {
 
   useEffect(() => { void load() }, [load])
 
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_interviews_tour')) {
+      const interviewsTour: TourStep[] = [
+        {
+          target: '[data-tour="interviews-header"]',
+          title: 'Your Interviews',
+          description: 'View all your scheduled and past interviews. Schedule new ones to practice.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interviews-schedule-btn"]',
+          title: 'Schedule Interview',
+          description: 'Click here to schedule a new AI-powered mock interview.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interviews-list"]',
+          title: 'Interview List',
+          description: 'Browse your interviews. Click any card to view details and start the interview.',
+          position: 'bottom',
+        },
+      ]
+      startTour(interviewsTour, 'interviews')
+      setTourSeen('interviews')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   const statusColor: Record<string, string> = {
@@ -44,11 +74,11 @@ export default function InterviewsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="interviews-header">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Video className="h-7 w-7 text-primary" /> Interviews
         </h1>
-        <Link href="/dashboard/interviews/schedule">
+        <Link href="/dashboard/interviews/schedule" data-tour="interviews-schedule-btn">
           <Button><Video className="mr-1 h-4 w-4" /> Schedule Interview</Button>
         </Link>
       </div>
@@ -63,7 +93,7 @@ export default function InterviewsPage() {
           No interviews yet. Schedule your first AI-powered interview.
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2" data-tour="interviews-list">
           {interviews.map((iv) => (
             <Link key={iv.id} href={`/dashboard/interviews/${iv.id}`}>
               <Card className="p-5 hover:border-primary/40 transition-colors space-y-3">

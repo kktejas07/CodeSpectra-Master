@@ -122,7 +122,6 @@ export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/recruiter-analytics',
   '/dashboard/admin/hiring-manager-report',
   '/dashboard/admin/sme-review',
-  '/dashboard/admin/requisitions',
 ]
 
 /**
@@ -348,7 +347,6 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/help': 'Help Center',
   '/dashboard/admin/sso': 'SSO Config',
   '/dashboard/admin/question-bank': 'Question Bank',
-  '/dashboard/admin/requisitions': 'Requisitions',
   '/dashboard/admin/hiring-manager-report': 'Hiring Report',
   '/dashboard/admin/predictive-validity': 'Predictive Validity',
   '/dashboard/admin/sme-review': 'SME Review',

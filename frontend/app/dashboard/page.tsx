@@ -15,6 +15,7 @@ import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } from '@/lib/rbac'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { OrganizationDashboard } from '@/components/dashboard/organization-dashboard'
+import { useAutoTour, DASHBOARD_TOURS } from '@/components/tour/tour-hooks'
 import {
   DeveloperRankBanner,
   IsometricScanChip,
@@ -32,6 +33,9 @@ interface ActivityItem {
 
 export default function DashboardPage() {
   const gate = usePageGuard('user')
+
+  // Auto-start welcome tour on first visit
+  useAutoTour(DASHBOARD_TOURS.welcome, true, 'welcome')
   const router = useRouter()
   const { user: fbUser, loading: isPending } = useAuth()
   const addToast = useToast()
@@ -115,7 +119,7 @@ export default function DashboardPage() {
         stats={stats}
       />
 
-      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4" data-tour="dashboard-overview">
         <Card className="border-border/60 p-4 hover:border-emerald-500/40 transition-all duration-300 group hover:shadow-lg hover:shadow-emerald-950/20">
           <div className="flex items-center gap-4">
             <IsometricScanChip />
@@ -205,14 +209,14 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          <Card className="border-border/60 p-5">
+          <Card className="border-border/60 p-5" data-tour="quick-actions">
             <div className="mb-3 flex items-center justify-between">
               <h2 className="text-sm font-semibold text-foreground flex items-center gap-2">
                 <BookOpen className="h-4 w-4 text-primary" /> Quick actions
               </h2>
             </div>
             <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
-              <Link href="/dashboard/assessments" className="group">
+              <Link href="/dashboard/arena" className="group" data-tour="practice-arena">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-emerald-500/50 group-hover:shadow-md group-hover:shadow-emerald-950/40 group-hover:-translate-y-0.5">
                   <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-emerald-500/10 border border-emerald-500/20 group-hover:bg-emerald-500/20 transition-colors">
                     <FileText className="h-4.5 w-4.5 text-emerald-400" />
@@ -232,7 +236,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/arena" className="group">
+              <Link href="/dashboard/assessments" className="group" data-tour="assessments">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-red-500/50 group-hover:shadow-md group-hover:shadow-red-950/40 group-hover:-translate-y-0.5">
                   <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-red-500/10 border border-red-500/20 group-hover:bg-red-500/20 transition-colors">
                     <Target className="h-4.5 w-4.5 text-red-400" />
@@ -242,7 +246,7 @@ export default function DashboardPage() {
                 </div>
               </Link>
 
-              <Link href="/dashboard/scanner?mode=manual" className="group">
+              <Link href="/dashboard/scanner?mode=manual" className="group" data-tour="scanner-tool">
                 <div className="rounded-xl border border-slate-800/80 bg-linear-to-b from-[#0c1420] to-[#060a12] p-3.5 text-center transition-all duration-300 group-hover:border-cyan-500/50 group-hover:shadow-md group-hover:shadow-cyan-950/40 group-hover:-translate-y-0.5">
                   <div className="mx-auto flex h-9 w-9 items-center justify-center rounded-lg bg-cyan-500/10 border border-cyan-500/20 group-hover:bg-cyan-500/20 transition-colors">
                     <Activity className="h-4.5 w-4.5 text-cyan-400" />
