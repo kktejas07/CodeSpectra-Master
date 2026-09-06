@@ -9,6 +9,7 @@
 ## Changelog
 
 | Date | Version | Description | Author |
+| 2026-09-06 | — | Guided-tour system: `TourProvider` + `TourTooltip` + `useAutoTour`/prebuilt tours, per-page `data-tour` anchors on 16 dashboard pages, header Guide button (replays current page tour). Fixed 15 pages of tour `tsc` errors (hook-in-effect, `TourStep[]` typing, leaderboard redeclare, courses gate). New `GET /api/auth/sso/callback` (OIDC code exchange → provision → session). Billing webhook idempotency (Razorpay/PhonePe/Stripe duplicate guards + sub extend/reactivate). DocSidebar multi-term search + clear. Removed `admin/requisitions` page + RBAC refs. `tsc` clean. | opencode |
 | 2026-08-22 | — | Fix AI Video Generator: Synchronize `worker/route.ts` with the new 2-step pipeline so textContent, audioUrl, and video duration generate correctly. | antigravity |
 | 2026-08-22 | — | Remove Course Management “AI Video Generator” PoC (`/courses/poc-video`); production generation stays on `/dashboard/admin/course-generator`. | cursor |
 | 2026-08-22 | — | Unstop-style Resources ebooks (seed + generate + flipbook UI + daily cron drafts) and module-quiz question bookmarks (API + QuizComponent + activity bookmarks tab). | cursor |
