@@ -1,4 +1,5 @@
 import { getMongoDb } from '@/lib/mongodb'
+import { isMaskedSecret } from '@/lib/server-secrets-cache'
 import { type LLMConfig, type LLMProviderId } from '@/lib/llm-config'
 
 export async function getRoundRobinKey(provider: LLMProviderId): Promise<string | null> {
@@ -21,14 +22,22 @@ export async function getRoundRobinKey(provider: LLMProviderId): Promise<string 
     // Pick the one with the lowest usage_count
     activeKeys.sort((a, b) => (a.usage_count || 0) - (b.usage_count || 0))
     const selected = activeKeys[0]
+
+    // ponytail: platform_settings.llm is a legacy shadow store — entries here
+    // WIN over freshly saved secrets, so a stale/masked placeholder ("ab••…
+    // …1234") would 401 every call while the real key sits unused. Refuse to
+    // return anything that isn't a plausible raw key; callers fall through
+    // to server secrets / env.
+    const raw = typeof selected.key === 'string' ? selected.key.trim() : ''
+    if (!raw || raw.length < 10 || isMaskedSecret(raw)) return null
     
     // Fire and forget: increment usage count
     db.collection('platform_settings').updateOne(
       { key: 'llm', [`value.keys.${provider}.id`]: selected.id },
       { $inc: { [`value.keys.${provider}.$.usage_count`]: 1 } }
     ).catch(() => {})
-    
-    return selected.key
+
+    return raw
   } catch {
     return null
   }

@@ -57,6 +57,45 @@ export type ServerSecretsRecord = {
   opencode_api_key?: string     // OpenCode API key
   groq_api_key?: string           // Groq API key (fast inference)
   nvidia_api_key?: string        // NVIDIA NIM API key
+  // --- Extended AI providers (offered in Settings → LLM; saved via server-secrets PATCH) --
+  deepseek_api_key?: string
+  cerebras_api_key?: string
+  mistral_api_key?: string
+  cohere_api_key?: string
+  fireworks_api_key?: string
+  xai_api_key?: string
+  replicate_api_key?: string
+  huggingface_api_key?: string
+  elevenlabs_api_key?: string
+  assemblyai_api_key?: string
+  deepgram_api_key?: string
+  pinecone_api_key?: string
+  qdrant_api_key?: string
+  tavily_api_key?: string
+  firecrawl_api_key?: string
+  serper_api_key?: string
+  jina_api_key?: string
+  exa_api_key?: string
+  langchain_api_key?: string
+  langfuse_api_key?: string
+  notion_api_key?: string
+  slack_api_key?: string
+  stability_api_key?: string
+  fal_api_key?: string
+  deepinfra_api_key?: string
+  novita_api_key?: string
+  ai21_api_key?: string
+  kimi_api_key?: string
+  lemonfox_api_key?: string
+  cloudflare_workers_api_key?: string
+  sambanova_api_key?: string
+  nscale_api_key?: string
+  chutes_api_key?: string
+  modelscope_api_key?: string
+  google_knowledge_graph_api_key?: string
+  browserbase_api_key?: string
+  brightdata_api_key?: string
+  scrapingbee_api_key?: string
   // --- Upstash Redis (rate limiting) -------------------------------------
   upstash_redis_rest_url?: string
   upstash_redis_rest_token?: string

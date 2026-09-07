@@ -107,8 +107,12 @@ function groupByCategory(providers: ProviderKey[]): Record<string, ProviderKey[]
 export function LlmSettingsTabs() {
   const addToast = useToast()
   const [activeTab, setActiveTab] = useState('keys')
-  const [secretsMeta, setSecretsMeta] = useState<Record<string, unknown>>({})
   const [secretsDraft, setSecretsDraft] = useState<Record<string, string>>({})
+  // ponytail: GET /api/admin/server-secrets NEVER returns raw secret values
+  // (only `<key>_masked` + `has_<key>`), so the draft can only ever hold NEW
+  // keys. savedInfo tracks what's actually in the database, otherwise every
+  // card permanently shows "Not set" and saves silently overwrite stored keys.
+  const [savedInfo, setSavedInfo] = useState<Record<string, { has: boolean; masked: string | null }>>({})
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({})
   const [revealedValues, setRevealedValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -117,22 +121,29 @@ export function LlmSettingsTabs() {
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<{ provider: string; index: number; value: string } | null>(null)
 
+  // Apply GET meta to per-provider saved-state (the raw secretsMeta is not
+  // needed — GET never returns raw secret values, only has_/masked flags).
+  const applySecretsMeta = useCallback((sec: Record<string, unknown>) => {
+    const info: Record<string, { has: boolean; masked: string | null }> = {}
+    for (const p of PROVIDERS) {
+      info[p.key] = {
+        has: Boolean(sec[`has_${p.key}`]),
+        masked: typeof sec[`${p.key}_masked`] === 'string' ? (sec[`${p.key}_masked`] as string) : null,
+      }
+    }
+    setSavedInfo(info)
+  }, [])
+
   // Load secrets
   useEffect(() => {
     fetch('/api/admin/server-secrets', { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
-        const sec = d.secrets || d
-        setSecretsMeta(sec)
-        const draft: Record<string, string> = {}
-        for (const p of PROVIDERS) {
-          draft[p.key] = sec[p.key] || ''
-        }
-        setSecretsDraft(draft)
+        applySecretsMeta((d.secrets || d) as Record<string, unknown>)
       })
       .catch(() => {})
       .finally(() => setLoading(false))
-  }, [])
+  }, [applySecretsMeta])
 
   // Load usage stats
   const loadUsage = useCallback(() => {
@@ -161,13 +172,21 @@ export function LlmSettingsTabs() {
   }, [visibleFields])
 
   const handleImport = useCallback(async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0]
-    if (!file) return
+    // ponytail: accept MULTIPLE files at once (select several Excel/CSV exports
+    // in the picker) — keys from every file are appended to the draft.
+    const files = Array.from(e.target.files || [])
+    if (files.length === 0) return
+    let imported = 0
+    const skipped: string[] = []
+    const importedKeys: string[] = []
     try {
       const XLSX = await import('xlsx')
-      const data = await file.arrayBuffer()
-      const workbook = XLSX.read(data, { type: 'array' })
-      const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(workbook.Sheets[workbook.SheetNames[0]], { header: 1 })
+      for (const file of files) {
+        const data = await file.arrayBuffer()
+        const workbook = XLSX.read(data, { type: 'array' })
+        const firstSheet = workbook.Sheets[workbook.SheetNames[0]]
+        if (!firstSheet) continue
+        const rows = XLSX.utils.sheet_to_json<Record<string, unknown>>(firstSheet, { header: 1 })
       const providerMap: Record<string, string> = {
         'openai': 'openai_api_key', 'anthropic': 'anthropic_api_key', 'google gemini': 'gemini_api_key', 'gemini': 'gemini_api_key',
         'groq': 'groq_api_key', 'openrouter': 'openrouter_api_key', 'nvidia': 'nvidia_api_key', 'deepseek': 'deepseek_api_key',
@@ -186,7 +205,6 @@ export function LlmSettingsTabs() {
         'workers.ai': 'cloudflare_workers_api_key', 'platform.kimi.ai': 'kimi_api_key',
         'cloud.sambanova.com': 'sambanova_api_key', 'ollama.com': 'openrouter_api_key',
       }
-      let imported = 0; const skipped: string[] = []
       for (const row of rows) {
         if (!Array.isArray(row)) continue
         const firstCell = String(row[0] || '').trim()
@@ -201,9 +219,10 @@ export function LlmSettingsTabs() {
         if (secretKey) {
           setSecretsDraft((d) => { const existing = d[secretKey] || ''; const keys = existing ? existing.split(',').map((k: string) => k.trim()).filter(Boolean) : []; if (!keys.includes(apiKey)) keys.push(apiKey); return { ...d, [secretKey]: keys.join(', ') } })
           imported++
-        } else skipped.push(providerName)
+        } else skipped.push(`${providerName} (${file.name})`)
+        }
       }
-      if (imported > 0) addToast({ type: 'success', title: `Imported ${imported} key${imported > 1 ? 's' : ''}`, message: 'Click "Save Keys" to persist.' })
+      if (imported > 0) addToast({ type: 'success', title: `Imported ${imported} key${imported > 1 ? 's' : ''} from ${files.length} file${files.length > 1 ? 's' : ''}`, message: 'Click "Save Keys" to persist.' })
       else addToast({ type: 'error', title: 'No matching providers found' })
     } catch (err) { addToast({ type: 'error', title: 'Failed to parse file' }) }
     e.target.value = ''
@@ -213,18 +232,56 @@ export function LlmSettingsTabs() {
     setSaving(true)
     try {
       const body: Record<string, string> = {}
-      for (const [k, v] of Object.entries(secretsDraft)) { const t = String(v).trim(); if (t) body[k] = t }
+      for (const [k, v] of Object.entries(secretsDraft)) {
+        const newKeys = String(v).split(',').map((s) => s.trim()).filter(Boolean)
+        if (newKeys.length === 0) continue
+        if (savedInfo[k]?.has) {
+          // ponytail: merge with stored keys via reveal — PATCH overwrites the
+          // whole field, so sending only the new keys would silently wipe the
+          // previously saved ones for this provider.
+          try {
+            const r = await fetch(`/api/admin/server-secrets/reveal?key=${encodeURIComponent(k)}`, { credentials: 'include' })
+            const j = await r.json().catch(() => ({}))
+            const stored = typeof j.value === 'string' ? j.value.split(',').map((s: string) => s.trim()).filter(Boolean) : []
+            for (const nk of newKeys) if (!stored.includes(nk)) stored.push(nk)
+            body[k] = stored.join(', ')
+          } catch {
+            body[k] = newKeys.join(', ')
+          }
+        } else {
+          body[k] = newKeys.join(', ')
+        }
+      }
       if (Object.keys(body).length === 0) { addToast({ type: 'error', title: 'Nothing to save' }); setSaving(false); return }
       const res = await csrfFetch('/api/admin/server-secrets', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) })
       const json = await res.json().catch(() => ({}))
       if (!res.ok) throw new Error(json.error || 'Save failed')
       const secRes = await fetch('/api/admin/server-secrets', { credentials: 'include' })
-      const secJson = await secRes.json()
-      if (secRes.ok) setSecretsMeta(secJson.secrets || secJson)
+      const secJson = await secRes.json().catch(() => ({}))
+      if (secRes.ok) applySecretsMeta((secJson.secrets || secJson) as Record<string, unknown>)
+      // Everything in the draft is now persisted — clear it so the saved
+      // section (masked) becomes the single source of truth on screen.
+      setSecretsDraft({})
       addToast({ type: 'success', title: 'Keys saved successfully' })
     } catch (e) { addToast({ type: 'error', title: 'Save failed', message: e instanceof Error ? e.message : 'Unknown error' }) }
     finally { setSaving(false) }
-  }, [secretsDraft, addToast])
+  }, [secretsDraft, savedInfo, applySecretsMeta, addToast])
+
+  // Delete ALL saved keys for a provider (draft-only deleteKey can't reach
+  // stored values since raw secrets are never sent to the browser).
+  const clearSavedKeys = useCallback(async (providerKey: string, label: string) => {
+    if (!window.confirm(`Remove all saved keys for ${label}? Running AI features that need this provider will stop working until you add a key again.`)) return
+    try {
+      const res = await csrfFetch('/api/admin/server-secrets', { method: 'PATCH', credentials: 'include', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ [providerKey]: null }) })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Delete failed')
+      setSecretsDraft((d) => { const n = { ...d }; delete n[providerKey]; return n })
+      const secRes = await fetch('/api/admin/server-secrets', { credentials: 'include' })
+      const secJson = await secRes.json().catch(() => ({}))
+      if (secRes.ok) applySecretsMeta((secJson.secrets || secJson) as Record<string, unknown>)
+      addToast({ type: 'success', title: `Saved keys cleared for ${label}` })
+    } catch (e) { addToast({ type: 'error', title: 'Delete failed', message: e instanceof Error ? e.message : 'Unknown error' }) }
+  }, [applySecretsMeta, addToast])
 
   const deleteKey = useCallback((providerKey: string, index: number) => {
     setSecretsDraft((d) => {
@@ -266,7 +323,7 @@ export function LlmSettingsTabs() {
         <Card className="p-4 flex flex-wrap items-center gap-3">
           <label className="inline-flex items-center gap-2 px-4 py-2 rounded-lg border border-border/60 bg-background hover:bg-muted/50 cursor-pointer transition-colors text-sm font-medium">
             <Upload className="h-4 w-4" /> Import from Excel/CSV
-            <input type="file" accept=".xlsx,.xls,.csv" className="hidden" onChange={handleImport} />
+            <input type="file" accept=".xlsx,.xls,.csv" multiple className="hidden" onChange={handleImport} />
           </label>
           <div className="flex-1" />
           <Button onClick={saveKeys} disabled={saving}>
@@ -277,7 +334,7 @@ export function LlmSettingsTabs() {
 
         {/* Provider category cards */}
         {Object.entries(groupedProviders).map(([catLabel, providers]) => {
-          const activeCount = providers.filter(p => getKeyCount(p.key) > 0).length
+          const activeCount = providers.filter(p => getKeyCount(p.key) > 0 || savedInfo[p.key]?.has).length
           return (
             <div key={catLabel} className="space-y-3">
               <div className="flex items-center gap-2 px-1">
@@ -286,8 +343,9 @@ export function LlmSettingsTabs() {
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                 {providers.map(p => {
-                  const keyCount = getKeyCount(p.key)
-                  const hasKey = keyCount > 0
+                  const draftCount = getKeyCount(p.key)
+                  const saved = savedInfo[p.key]
+                  const hasKey = draftCount > 0 || !!saved?.has
                   const isExpanded = expandedProvider === p.id
                   const Icon = p.icon
                   return (
@@ -299,11 +357,21 @@ export function LlmSettingsTabs() {
                         <div className="flex-1 min-w-0">
                           <div className="flex items-center gap-2">
                             <p className="text-sm font-semibold truncate">{p.label}</p>
-                            {hasKey ? (
-                              <Badge variant="outline" className="text-[9px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20">
-                                {keyCount} key{keyCount > 1 ? 's' : ''}
+                            {draftCount > 0 && (
+                              <Badge variant="outline" className="text-[9px] bg-amber-500/10 text-amber-600 border-amber-500/20">
+                                {draftCount} new — unsaved
                               </Badge>
-                            ) : (
+                            )}
+                            {saved?.has && (
+                              <Badge
+                                variant="outline"
+                                className="text-[9px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
+                                title={saved.masked ? `Stored in database: ${saved.masked}` : 'Stored in database'}
+                              >
+                                Saved{saved.masked ? ` · ${saved.masked}` : ''}
+                              </Badge>
+                            )}
+                            {!saved?.has && draftCount === 0 && (
                               <Badge variant="outline" className="text-[9px] text-muted-foreground">Not set</Badge>
                             )}
                           </div>
@@ -315,6 +383,17 @@ export function LlmSettingsTabs() {
                       {/* Expanded panel - keys list */}
                       {isExpanded && (
                         <div className="mt-4 pt-4 border-t border-border/50 space-y-3" onClick={(e) => e.stopPropagation()}>
+                          {saved?.has && (
+                            <div className="flex items-center gap-2 p-2 rounded-md bg-emerald-500/5 border border-emerald-500/20">
+                              <div className="flex-1 min-w-0">
+                                <p className="text-xs font-mono truncate">{saved.masked || '••••••••'}</p>
+                                <p className="text-[10px] text-muted-foreground">Saved in database — used by AI features</p>
+                              </div>
+                              <button onClick={() => clearSavedKeys(p.key, p.label)} className="text-destructive hover:text-destructive/80 p-1" title="Remove all saved keys for this provider">
+                                <Trash2 className="h-3 w-3" />
+                              </button>
+                            </div>
+                          )}
                           {getKeys(p.key).length > 0 ? (
                             <div className="space-y-2">
                               {getKeys(p.key).map((k, idx) => (
@@ -345,7 +424,7 @@ export function LlmSettingsTabs() {
                               ))}
                             </div>
                           ) : (
-                            <p className="text-xs text-muted-foreground text-center py-2">No keys configured</p>
+                            <p className="text-xs text-muted-foreground text-center py-2">{saved?.has ? 'No new keys — add one below, then Save Keys' : 'No keys configured'}</p>
                           )}
                           <div className="flex gap-2">
                             <Input
