@@ -48,19 +48,19 @@ interface Stats {
 }
 
 const STATUS_COLORS: Record<EmailStatus, string> = {
-  sending: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  delivered: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400',
-  bounced: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400',
-  failed: 'bg-red-100 text-red-700 dark:bg-red-900/30 dark:text-red-400',
-  spam: 'bg-orange-100 text-orange-700 dark:bg-orange-900/30 dark:text-orange-400',
-  deferred: 'bg-purple-100 text-purple-700 dark:bg-purple-900/30 dark:text-purple-400',
+  sending: 'info',
+  delivered: 'success',
+  bounced: 'warning',
+  failed: 'danger',
+  spam: 'danger',
+  deferred: 'warning',
 }
 
 const CATEGORY_COLORS: Record<EmailCategory, string> = {
-  transactional: 'bg-slate-100 text-slate-700 dark:bg-slate-800 dark:text-slate-300',
-  newsletter: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400',
-  invite: 'bg-violet-100 text-violet-700 dark:bg-violet-900/30 dark:text-violet-400',
-  notification: 'bg-teal-100 text-teal-700 dark:bg-teal-900/30 dark:text-teal-400',
+  transactional: 'secondary',
+  newsletter: 'info',
+  invite: 'info',
+  notification: 'info',
 }
 
 const PIE_COLORS = ['#22c55e', '#ef4444', '#f59e0b', '#f97316', '#3b82f6', '#8b5cf6']
@@ -438,10 +438,10 @@ function EmailRow({ log }: { log: EmailLog }) {
         <td className="py-3 px-4 text-sm font-mono">{log.to_email}</td>
         <td className="py-3 px-4 text-sm max-w-62.5 truncate" title={log.subject}>{log.subject}</td>
         <td className="py-3 px-4">
-          <Badge variant="outline" className={`text-[10px] ${CATEGORY_COLORS[log.category] || ''}`}>{log.category}</Badge>
+          <Badge variant="outline" className={`text-[10px] ${(CATEGORY_COLORS[log.category] || '') as any}`}>{log.category}</Badge>
         </td>
         <td className="py-3 px-4">
-          <Badge className={`text-[10px] ${STATUS_COLORS[log.delivery_status] || 'bg-muted'}`}>{log.delivery_status}</Badge>
+          <Badge variant={(STATUS_COLORS[log.delivery_status] || 'secondary') as any} className="text-[10px]">{log.delivery_status}</Badge>
         </td>
         <td className="py-3 px-4 text-xs text-muted-foreground">
           {log.geo ? `${log.geo.city || ''} ${log.geo.country || ''}`.trim() || log.geo.country || '—' : '—'}

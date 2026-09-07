@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { Loader2, ArrowLeft, Video, Bot, Clock, Calendar, CheckCircle, Send, SkipForward, BarChart3, Code2, Phone } from 'lucide-react'
+import { SkeletonCard, SkeletonStats, SkeletonText, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { CollabEditor } from '@/components/interviews/collab-editor'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
@@ -135,7 +136,24 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
   if (!gate.ready) return null
 
-  if (loading) return <div className="flex h-64 items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading interview…</div>
+  if (loading) return (
+    <div className="max-w-4xl space-y-6">
+      <div className="h-4 w-32 bg-muted/60 rounded animate-pulse" />
+      <div className="flex items-start justify-between">
+        <div className="space-y-2">
+          <div className="h-8 w-64 bg-muted/60 rounded animate-pulse" />
+          <div className="h-4 w-40 bg-muted/50 rounded animate-pulse" />
+        </div>
+        <div className="flex gap-2">
+          <SkeletonButton />
+          <SkeletonButton />
+        </div>
+      </div>
+      <SkeletonStats />
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  )
   if (!interview) return <div className="p-10 text-center text-destructive">{error || 'Not found'}</div>
 
   const unanswered = interview.questions.filter((q) => !q.answer && !q.skipped)

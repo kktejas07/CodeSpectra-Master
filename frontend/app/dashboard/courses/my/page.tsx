@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Heart, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
@@ -63,8 +64,9 @@ export default function MyCoursesPage() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading your courses…
+      <div className="space-y-6 py-10">
+        <SkeletonText lines={2} />
+        <SkeletonList count={4} />
       </div>
     )
   }

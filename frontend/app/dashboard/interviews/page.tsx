@@ -5,7 +5,8 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Video, Calendar, Clock, ArrowRight, Bot, Brain } from 'lucide-react'
+import { Video, Calendar, Clock, ArrowRight, Bot, Brain } from 'lucide-react'
+import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
@@ -98,9 +99,9 @@ export default function InterviewsPage() {
       </Link>
 
       {loading ? (
-        <Card className="flex h-32 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading interviews…
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2">
+          <SkeletonList count={4} />
+        </div>
       ) : interviews.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">
           <Bot className="h-10 w-10 mx-auto mb-3 text-muted-foreground/50" />

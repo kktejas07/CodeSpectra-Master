@@ -21,6 +21,7 @@ import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
   XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
+import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 interface SecuritySetting {
   _id?: string
@@ -453,7 +454,11 @@ export default function Security() {
       </div>
 
       {loading && !data ? (
-        <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <div className="space-y-6">
+          <SkeletonStats />
+          <SkeletonCard />
+          <SkeletonTable />
+        </div>
       ) : (
         <Tabs defaultValue="overview" className="w-full">
           <TabsList className="mb-4">

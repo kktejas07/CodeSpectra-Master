@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -65,8 +66,9 @@ export default function MySessionsPage() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading sessions…
+      <div className="w-full space-y-6">
+        <SkeletonText lines={2} />
+        <SkeletonList count={5} />
       </div>
     )
   }

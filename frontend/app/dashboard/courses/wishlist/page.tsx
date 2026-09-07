@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -96,8 +97,9 @@ export default function CourseWishlistPage() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="min-h-[50vh] flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="space-y-6 py-10">
+        <SkeletonText lines={2} />
+        <SkeletonList count={4} />
       </div>
     )
   }

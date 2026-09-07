@@ -12,6 +12,7 @@
 import { createContext, useContext, useMemo, type ReactNode } from 'react'
 import {
   startPageTour,
+  autoPlayPageTour,
   endPageTour,
   nextTourStep,
   prevTourStep,
@@ -52,7 +53,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
       currentStepIndex: 0,
       tourId: getActiveTourId(),
       startTour: (steps, id) => {
-        if (id) startPageTour(id, steps)
+        if (id) autoPlayPageTour(id, steps)
       },
       endTour: () => endPageTour(),
       nextStep: () => nextTourStep(),

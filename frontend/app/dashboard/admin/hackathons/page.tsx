@@ -16,6 +16,7 @@ import {
   Shield, GripVertical, Pencil, Wand2, BookOpen, Search,
   Sparkles, ChevronDown, ChevronUp, X, Eye,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -964,8 +965,10 @@ export default function HackathonsAdminPage() {
       )}
 
       {loading ? (
-        <Card className="flex h-32 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading events…
+        <Card className="p-0">
+          <div className="space-y-4 p-6">
+            <SkeletonList count={4} />
+          </div>
         </Card>
       ) : items.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">

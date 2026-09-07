@@ -13,6 +13,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { SkeletonCard, SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 function getCompletedLocal(): Set<number> {
   if (typeof window === 'undefined') return new Set()
@@ -76,7 +77,7 @@ export default function HundredDaysPage() {
   }, [completed, gate.ready, loadingProgress, saveProgress])
 
   useEffect(() => {
-    fetch('/api/user/heatmap?weeks=12')
+    fetch('/api/user/heatmap?weeks=12', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         if (data && !data.error && data.cells) {
@@ -85,7 +86,7 @@ export default function HundredDaysPage() {
       })
       .catch(() => {})
 
-    fetch('/api/leaderboard')
+    fetch('/api/leaderboard', { credentials: 'include' })
       .then(r => r.json())
       .then(data => {
         if (data && !data.error) {
@@ -113,10 +114,10 @@ export default function HundredDaysPage() {
     const easyTotal = 338; const mediumTotal = 572; const hardTotal = 271;
     const totalQ = easyTotal + mediumTotal + hardTotal
     
-    // Calculate actual solved based on completed days
-    const easySolved = Math.min(easyTotal, Math.floor(done * 3.38))
-    const mediumSolved = Math.min(mediumTotal, Math.floor(done * 5.72))
-    const hardSolved = Math.min(hardTotal, Math.floor(done * 2.71))
+    // Calculate actual solved from completed days (each day has 3 problems with weighted difficulty)
+    const easySolved = Math.min(easyTotal, done * 1)
+    const mediumSolved = Math.min(mediumTotal, done * 2)
+    const hardSolved = Math.min(hardTotal, Math.floor(done * 0.5))
     const totalSolved = easySolved + mediumSolved + hardSolved
 
     return { 
@@ -252,11 +253,9 @@ export default function HundredDaysPage() {
                         totalContributions={0}
                         totalActiveDays={0}
                      />
-                  ) : (
-                     <div className="flex items-center justify-center h-full">
-                       <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
-                     </div>
-                  )}
+                   ) : (
+                      <SkeletonCard />
+                   )}
                </div>
 
                <div className="flex items-center justify-between text-xs text-muted-foreground font-medium pt-2 border-t border-border/40 mt-auto">
@@ -281,9 +280,16 @@ export default function HundredDaysPage() {
                    <p className="text-sm text-muted-foreground max-w-sm">
                      Embark on a 100-day coding journey to achieve mastery in programming!
                    </p>
-                   <Button className="mt-4 gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full">
-                     Resume Journey <ArrowRight className="h-4 w-4" />
-                   </Button>
+                    <Button className="mt-4 gap-2 bg-blue-600 hover:bg-blue-700 text-white rounded-full"
+                      onClick={() => {
+                        const firstIncomplete = HUNDRED_DAYS.find(d => !completed.has(d.day))?.day
+                        if (firstIncomplete) {
+                          document.getElementById(`day-${firstIncomplete}`)?.scrollIntoView({ behavior: 'smooth', block: 'center' })
+                          setExpandedDays(prev => new Set([...prev, firstIncomplete]))
+                        }
+                      }}>
+                      Resume Journey <ArrowRight className="h-4 w-4" />
+                    </Button>
                 </div>
                 {/* Visual Jar Illustration */}
                 <div className="w-32 h-40 relative">
@@ -314,7 +320,7 @@ export default function HundredDaysPage() {
               if (filter === 'available' && (!isAvailable || isCompleted)) return null;
 
               return (
-                <Card key={d.day} className={`overflow-hidden border-border/60 transition-all ${!isAvailable ? 'opacity-60 grayscale' : ''}`}>
+                <Card key={d.day} id={`day-${d.day}`} className={`overflow-hidden border-border/60 transition-all ${!isAvailable ? 'opacity-60 grayscale' : ''}`}>
                   <div 
                     className="p-4 flex items-center justify-between cursor-pointer hover:bg-muted/20"
                     onClick={() => { if(isAvailable) toggleDay(d.day) }}
@@ -350,7 +356,7 @@ export default function HundredDaysPage() {
                             <div key={pi} className="grid grid-cols-12 items-center p-3 text-sm hover:bg-muted/30 transition-colors group">
                                <div className="col-span-6 flex items-center gap-3">
                                   <Bookmark className="h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
-                                  <span className="font-medium text-foreground">{prob.title}</span>
+                                   <span className="font-medium text-foreground truncate" title={prob.title}>{prob.title}</span>
                                </div>
                                <div className="col-span-2 text-center">
                                   <span className="text-green-500 font-medium text-xs">Easy</span>
@@ -359,15 +365,16 @@ export default function HundredDaysPage() {
                                   {probDone ? '100/100' : '0/100'}
                                </div>
                                <div className="col-span-2 text-right">
-                                  {probDone ? (
-                                     <span className="inline-flex items-center gap-1.5 text-green-500 text-xs font-semibold">
-                                       <CheckCircle2 className="h-3.5 w-3.5" /> Solved
-                                     </span>
-                                  ) : (
-                                     <Button size="sm" variant="outline" className="h-7 text-xs rounded-full">
-                                       Solve
-                                     </Button>
-                                  )}
+                                   {probDone ? (
+                                      <span className="inline-flex items-center gap-1.5 text-green-500 text-xs font-semibold">
+                                        <CheckCircle2 className="h-3.5 w-3.5" /> Solved
+                                      </span>
+                                    ) : (
+                                      <Button size="sm" variant="outline" className="h-7 text-xs rounded-full"
+                                        asChild>
+                                        <Link href={`/dashboard/problems/${prob.id}`}>Solve</Link>
+                                      </Button>
+                                    )}
                                </div>
                             </div>
                           )
@@ -448,9 +455,9 @@ export default function HundredDaysPage() {
                 </div>
              </div>
 
-             <Button variant="outline" className="w-full rounded-full text-xs font-semibold">
-                View Leaderboard
-             </Button>
+              <Button variant="outline" className="w-full rounded-full text-xs font-semibold" asChild>
+                <Link href="/dashboard/leaderboard">View Leaderboard</Link>
+              </Button>
            </Card>
 
            {/* Badges Card */}
@@ -486,8 +493,8 @@ export default function HundredDaysPage() {
                 <p className="text-xs text-amber-700/80 dark:text-amber-200/80 mb-4 max-w-[160px]">
                   Master Top Tech Interview Qs and get hired!
                 </p>
-                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-full">
-                  Start now <ArrowRight className="h-3 w-3 ml-2" />
+                <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white rounded-full w-full" asChild>
+                  <Link href="/dashboard/courses">Start now <ArrowRight className="h-3 w-3 ml-2" /></Link>
                 </Button>
               </div>
               <div className="absolute right-[-20px] top-1/2 -translate-y-1/2 opacity-80 pointer-events-none">

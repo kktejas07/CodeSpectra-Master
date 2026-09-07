@@ -10,7 +10,8 @@ import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
-import { Loader2, Trophy, BarChart3, CheckCircle, XCircle, FileText, BrainCircuit } from 'lucide-react'
+import { Trophy, BarChart3, CheckCircle, XCircle, FileText, BrainCircuit } from 'lucide-react'
+import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface Attempt {
   id: string
@@ -103,8 +104,17 @@ export default function MyAssessmentsPage() {
 
   if (loading) {
     return (
-      <div className="flex justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        <div className="flex items-center gap-3">
+          <div className="h-10 w-10 rounded-lg bg-muted/60 animate-pulse" />
+          <div className="space-y-2">
+            <div className="h-8 w-48 bg-muted/60 rounded animate-pulse" />
+            <div className="h-4 w-64 bg-muted/40 rounded animate-pulse" />
+          </div>
+        </div>
+        <SkeletonStats />
+        <SkeletonCard />
+        <SkeletonTable rows={5} />
       </div>
     )
   }

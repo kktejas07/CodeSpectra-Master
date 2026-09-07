@@ -10,6 +10,7 @@ import { Badge } from '@/components/ui/badge'
 import { Loader2, Plus, Shield, Trash2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 interface SSOProvider {
   id: string; name: string; provider_type: string; issuer: string
@@ -132,9 +133,9 @@ export default function AdminSSOPage() {
 
       {/* Provider list */}
       {loading ? (
-        <Card className="flex h-32 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading providers…
-        </Card>
+        <div className="grid gap-4 md:grid-cols-2">
+          {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       ) : providers.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">
           No SSO providers configured. Add one above.

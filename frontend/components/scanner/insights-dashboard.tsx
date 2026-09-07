@@ -166,7 +166,7 @@ export function InsightsDashboard({ stats }: InsightsDashboardProps) {
               <p className="text-sm text-foreground/60">most frequent in your codebase</p>
             </div>
             {displayData.issueBreakdown[0] && (
-              <Badge className="bg-primary/20 text-primary border-primary/30">
+              <Badge variant="default">
                 {displayData.issueBreakdown[0].count} occurrences
               </Badge>
             )}

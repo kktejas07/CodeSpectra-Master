@@ -14,6 +14,9 @@ export type FeedbackData = z.infer<typeof feedbackSchema>
 
 export interface FeedbackDoc extends FeedbackData {
   _id: ObjectId
+  admin_reply?: string
+  replied_at?: string
+  replied_by?: string
 }
 
 export async function getFeedbackCollection(): Promise<Collection<FeedbackDoc>> {

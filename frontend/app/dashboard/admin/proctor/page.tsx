@@ -7,6 +7,7 @@ import { Input } from '@/components/ui/input'
 import { Button } from '@/components/ui/button'
 import { Loader2, Shield, AlertTriangle, Eye, EyeOff, Search, LogOut, RotateCcw, Copy, ClipboardPaste, Bell, Monitor, Usb, Mic, Video, Globe, Keyboard, Mouse, Maximize, Move } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 
 interface ProctorEvent {
   id: string; user_id: string; session_kind: string; session_id: string
@@ -242,9 +243,10 @@ export default function AdminProctorPage() {
       </div>
 
       {loading ? (
-        <Card className="flex h-32 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading events…
-        </Card>
+        <div className="space-y-6">
+          <SkeletonStats />
+          <SkeletonList count={5} />
+        </div>
       ) : filtered.length === 0 ? (
         <Card className="p-8 text-center text-sm text-muted-foreground">No proctor events found.</Card>
       ) : (

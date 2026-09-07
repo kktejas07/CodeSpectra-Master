@@ -9,6 +9,7 @@ import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { ContributionGraph } from '@/components/gamification/contribution-graph'
 import { SkillBadges } from '@/components/gamification/skill-badges'
 
@@ -94,7 +95,12 @@ export default function AchievementsPage() {
   const earnedCount = achievements.filter(a => a.earned).length
   const userBadges = achievements.filter(a => a.earned).map(a => (a.name || '').toLowerCase().replace(/\s+/g, '-'))
 
-  if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+  if (loading) return (
+    <div className="space-y-6">
+      <SkeletonStats />
+      <SkeletonList count={6} />
+    </div>
+  )
 
   if (!gate.ready) return null
 

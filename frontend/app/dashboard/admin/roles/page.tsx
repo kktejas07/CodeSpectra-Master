@@ -15,6 +15,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { normalizeUserRole } from '@/lib/rbac'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useConfirm } from '@/lib/confirm-context'
+import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface UserData {
   id: string; email: string; full_name?: string; name?: string
@@ -173,7 +174,12 @@ export default function RolesPage() {
   }
 
   if (!gate.ready) return null
-  if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading users…</div>
+  if (loading) return (
+    <div className="space-y-6">
+      <SkeletonStats />
+      <SkeletonTable rows={8} />
+    </div>
+  )
 
   return (
     <div className="space-y-8">

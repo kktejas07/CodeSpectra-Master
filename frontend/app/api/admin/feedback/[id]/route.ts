@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server'
-import { updateFeedbackStatus, deleteFeedback } from '@/lib/db/feedback'
+import { getMongoDb } from '@/lib/mongodb'
+import { ObjectId } from 'mongodb'
+import { deleteFeedback } from '@/lib/db/feedback'
 import { requireSuperAdmin } from '@/lib/route-auth'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
@@ -9,13 +11,25 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
       return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
-    const { status } = await req.json()
-    if (status !== 'open' && status !== 'resolved') {
-      return NextResponse.json({ error: 'Invalid status' }, { status: 400 })
+    const { id } = await params
+    const body = await req.json()
+    const $set: Record<string, unknown> = { updated_at: new Date().toISOString() }
+
+    if (body.status !== undefined && (body.status === 'open' || body.status === 'resolved')) {
+      $set.status = body.status
+    }
+    if (body.admin_reply && typeof body.admin_reply === 'string' && body.admin_reply.trim()) {
+      $set.admin_reply = body.admin_reply.trim()
+      $set.replied_at = new Date().toISOString()
+      $set.replied_by = gate.user.id
     }
 
-    const { id } = await params
-    await updateFeedbackStatus(id, status)
+    const db = await getMongoDb()
+    await db.collection('platform_feedback').updateOne(
+      { _id: new ObjectId(id) },
+      { $set }
+    )
+
     return NextResponse.json({ success: true })
   } catch (error: any) {
     console.error('Failed to update feedback:', error)

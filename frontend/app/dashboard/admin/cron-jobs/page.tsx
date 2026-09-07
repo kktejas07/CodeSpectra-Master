@@ -19,6 +19,7 @@ import {
   KeyRound,
   ExternalLink,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonStats } from '@/components/ui/skeleton-boneyard'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
@@ -96,11 +97,11 @@ function StatusPill({
   badLabel: string
 }) {
   return ok ? (
-    <Badge className="shrink-0 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+    <Badge variant="success" className="shrink-0">
       {okLabel}
     </Badge>
   ) : (
-    <Badge className="max-w-full shrink-0 whitespace-normal wrap-break-word bg-amber-500/15 text-left text-amber-800 dark:text-amber-300">
+    <Badge variant="warning" className="max-w-full shrink-0 whitespace-normal wrap-break-word text-left">
       {badLabel}
     </Badge>
   )
@@ -172,8 +173,10 @@ export default function CronJobsPage() {
 
   if (!gate.ready) {
     return (
-      <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="w-full min-w-0 space-y-6 p-4 sm:p-6">
+        <SkeletonStats />
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     )
   }
@@ -261,8 +264,10 @@ export default function CronJobsPage() {
       )}
 
       {loading && !data ? (
-        <div className="flex justify-center py-16">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="space-y-4">
+          <SkeletonStats />
+          <SkeletonCard />
+          <SkeletonCard />
         </div>
       ) : null}
 
@@ -484,7 +489,7 @@ export default function CronJobsPage() {
                     </div>
                     <div className="flex shrink-0 flex-wrap items-center gap-2">
                       {w.is_active ? (
-                        <Badge className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+                        <Badge variant="success" className="bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
                           Active
                         </Badge>
                       ) : (
@@ -544,15 +549,15 @@ export default function CronJobsPage() {
                       </p>
                     </div>
                     {r.status === 'success' ? (
-                      <Badge className="shrink-0 bg-emerald-500/15 text-emerald-700 dark:text-emerald-300">
+<Badge variant="success" className="shrink-0">
                         Success
                       </Badge>
                     ) : r.status === 'partial' ? (
-                      <Badge className="shrink-0 bg-amber-500/15 text-amber-800 dark:text-amber-300">
+                      <Badge variant="warning" className="shrink-0">
                         Partial
                       </Badge>
                     ) : (
-                      <Badge className="shrink-0 bg-red-500/15 text-red-700 dark:text-red-300">
+                      <Badge variant="danger" className="shrink-0">
                         Failed
                       </Badge>
                     )}

@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Loader2, ArrowLeft, RefreshCw, Trash2, CheckCircle, Code, List, Plus, Edit3, X, Save, CheckSquare, HelpCircle, FileText, Type, Upload, Download, Pencil, Database, Link2, Copy } from 'lucide-react'
+import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -458,8 +459,15 @@ export default function ExamReviewPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading questions...
+      <div className="space-y-6 pb-12">
+        <div className="space-y-2">
+          <SkeletonText lines={1} />
+          <SkeletonText lines={2} />
+        </div>
+        <div className="bg-card border rounded-lg p-6 space-y-4">
+          <SkeletonText lines={1} />
+          <SkeletonList count={3} />
+        </div>
       </div>
     )
   }

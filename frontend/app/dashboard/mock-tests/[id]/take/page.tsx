@@ -3,9 +3,10 @@
 import { useState, useEffect, useCallback } from 'react'
 import { useParams, useRouter, useSearchParams } from 'next/navigation'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { ArrowLeft, Loader2, Clock, CheckCircle2, AlertCircle, Sparkles, AlertTriangle } from 'lucide-react'
+import { ArrowLeft, Clock, CheckCircle2, AlertCircle, Sparkles, AlertTriangle } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/components/ui/card'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { Progress } from '@/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
@@ -110,15 +111,12 @@ export default function TakeMockTestPage() {
   if (!gate.ready || loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-6">
-        <div className="relative">
-          <div className="absolute inset-0 bg-primary/20 blur-xl rounded-full" />
-          <Loader2 className="h-16 w-16 animate-spin text-primary relative" />
-        </div>
-        <div className="space-y-2">
-          <h2 className="text-2xl font-bold tracking-tight">Generating Your Assessment</h2>
-          <p className="text-muted-foreground max-w-sm">
-            Our AI is carefully curating {difficulty}-level questions tailored for the {role.replace(/-/g, ' ')} role at {company.toUpperCase()}.
-          </p>
+        <div className="w-full max-w-md space-y-4">
+          <div className="space-y-2">
+            <div className="h-8 w-64 bg-muted/60 rounded mx-auto animate-pulse" />
+            <div className="h-4 w-80 bg-muted/40 rounded mx-auto animate-pulse" />
+          </div>
+          <SkeletonCard />
         </div>
       </div>
     )

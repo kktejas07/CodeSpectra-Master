@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { CheckCircle2, Loader2, Crown, Star, Zap, ArrowRight } from 'lucide-react'
+import { Loader2, CheckCircle2, Crown, Star, Zap, ArrowRight } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
@@ -164,7 +165,17 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
 
   if (!gate.ready) return null
 
-  if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading plans…</div>
+  if (loading) return (
+    <div className="space-y-12">
+      <div className="text-center space-y-3">
+        <div className="h-10 w-64 bg-muted/60 rounded mx-auto animate-pulse" />
+        <div className="h-5 w-80 bg-muted/40 rounded mx-auto animate-pulse" />
+      </div>
+      <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+        {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+    </div>
+  )
 
   return (
     <div className="space-y-12">

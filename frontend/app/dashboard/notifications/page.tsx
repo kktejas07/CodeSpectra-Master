@@ -8,11 +8,12 @@ import { Badge } from '@/components/ui/badge'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription,
 } from '@/components/ui/dialog'
-import { Bell, Loader2, CheckCheck, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star, Mail } from 'lucide-react'
+import { Loader2, Bell, CheckCheck, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star, Mail } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import DOMPurify from 'isomorphic-dompurify'
 
 function sanitizeHtml(html: string): string {
@@ -251,9 +252,9 @@ export default function NotificationsPage() {
 
       <div data-tour="notifications-list">
       {loading ? (
-        <Card className="flex h-32 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading notifications…
-        </Card>
+        <div className="space-y-3">
+          {Array.from({ length: 5 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       ) : filtered.length === 0 ? (
         <EmptyState
           variant="notifications"

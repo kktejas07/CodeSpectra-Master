@@ -122,11 +122,13 @@ export async function GET() {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
   const raw = await readServerSecrets()
-  const masked: Record<string, string | null | boolean> = {}
+  const masked: Record<string, string | number | null | boolean> = {}
   for (const k of SECRET_FIELDS) {
     const v = raw[k]
-    masked[`${k}_masked`] = maskSecret(typeof v === 'string' ? v : undefined)
-    masked[`has_${k}`] = Boolean(String(v ?? '').trim())
+    const rawStr = typeof v === 'string' ? v.trim() : ''
+    masked[`${k}_masked`] = maskSecret(rawStr || undefined)
+    masked[`has_${k}`] = Boolean(rawStr)
+    masked[`${k}_count`] = rawStr ? rawStr.split(',').map((s: string) => s.trim()).filter(Boolean).length : 0
   }
   for (const k of PLAIN_FIELDS) {
     masked[k] = String(raw[k] ?? '').trim() || null

@@ -8,9 +8,10 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import {
-  ArrowLeft, Download, Loader2, AlertCircle, Lock, Play, Pause,
+  ArrowLeft, Download, AlertCircle, Lock, Play, Pause,
   Volume2, CheckCircle, Clock, MessageSquare, BarChart3,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard, useLockedFeatures } from '@/lib/use-page-guard'
 import { useFeedbackReport } from '@/lib/use-feedback-report'
 import type { InterviewSessionDoc } from '@/lib/db/interviews'
@@ -87,8 +88,15 @@ export default function InterviewFeedbackPage() {
   // ── Loading ──
   if (loading) {
     return (
-      <div className="flex items-center justify-center h-64">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-8">
+        <div className="space-y-4">
+          <div className="h-4 w-32 bg-muted/60 rounded animate-pulse" />
+          <div className="h-8 w-64 bg-muted/60 rounded animate-pulse" />
+          <div className="h-4 w-48 bg-muted/50 rounded animate-pulse" />
+        </div>
+        <SkeletonStats />
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     )
   }

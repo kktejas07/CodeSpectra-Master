@@ -191,7 +191,7 @@ export default function DayPage() {
         <Button asChild variant="ghost" size="sm" className="gap-1"><Link href="/dashboard/100-days"><ArrowLeft className="h-4 w-4" /> All days</Link></Button>
         <Badge variant="outline" className="font-mono">Day {day}</Badge>
         <h1 className="text-2xl font-bold text-foreground">{dayData.theme}</h1>
-        {allDone && <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 gap-1"><Trophy className="h-3 w-3" /> Day complete!</Badge>}
+        {allDone && <Badge variant="success" className="gap-1"><Trophy className="h-3 w-3" /> Day complete!</Badge>}
       </div>
 
       {/* Problem tabs */}
@@ -222,7 +222,7 @@ export default function DayPage() {
             <div className="flex items-center gap-2">
               <h2 className="font-semibold text-foreground">{problem.title}</h2>
               <Badge variant={problem.difficulty === 'easy' ? 'success' : problem.difficulty === 'medium' ? 'warning' : 'danger'}>{problem.difficulty}</Badge>
-              {completedProblems.has(problem.id) && <Badge className="bg-green-500/10 text-green-600 dark:text-green-400 border-green-500/30 gap-1"><CheckCircle className="h-3 w-3" /> Solved</Badge>}
+              {completedProblems.has(problem.id) && <Badge variant="success" className="gap-1"><CheckCircle className="h-3 w-3" /> Solved</Badge>}
             </div>
             <div>
               <h3 className="font-semibold text-foreground text-sm mb-1">Description</h3>

@@ -226,6 +226,14 @@ export async function writeServerSecrets(
 export function maskSecret(value: string | undefined | null): string | null {
   const v = (value || '').trim()
   if (!v) return null
+  // Comma-separated multi-key support: mask each key individually
+  const parts = v.split(',').map(s => s.trim()).filter(Boolean)
+  if (parts.length > 1) {
+    return parts.map(p => {
+      if (p.length <= 8) return '••••••••'
+      return `${p.slice(0, 4)}••••${p.slice(-4)}`
+    }).join(', ')
+  }
   if (v.length <= 8) return '••••••••'
   return `${v.slice(0, 4)}••••${v.slice(-4)}`
 }

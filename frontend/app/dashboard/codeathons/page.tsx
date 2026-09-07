@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Trophy, Users, Clock, HelpCircle, Calendar, Target, BookOpen, ChevronRight } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 
@@ -141,9 +142,18 @@ export default function CodeathonsPage() {
   }
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center py-20 gap-3">
-      <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-sm text-muted-foreground">Loading codeathons...</p>
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="h-8 w-32 bg-muted/60 rounded animate-pulse" />
+        <div className="h-4 w-64 bg-muted/40 rounded animate-pulse" />
+      </div>
+      <div className="flex gap-2">
+        <div className="h-9 w-32 bg-muted/50 rounded animate-pulse" />
+        <div className="h-9 w-32 bg-muted/50 rounded animate-pulse" />
+      </div>
+      <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+      </div>
     </div>
   )
 

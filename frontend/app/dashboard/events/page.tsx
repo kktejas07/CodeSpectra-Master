@@ -12,6 +12,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { isAdmin, type UserRole } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
@@ -269,9 +270,13 @@ export default function EventsPage() {
   }, [gate.ready, load])
 
   if (!gate.ready || loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" /> Loading events…
-    </div>
+    return (
+      <div className="space-y-6 py-10">
+        <SkeletonText lines={2} />
+        <SkeletonText lines={1} />
+        <SkeletonList count={6} />
+      </div>
+    )
   }
 
   const now = Date.now()

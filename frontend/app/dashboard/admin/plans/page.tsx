@@ -11,6 +11,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { Loader2, Crown, CheckCircle2, XCircle, Save, RefreshCw, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 interface PlanDef {
   _id?: string; plan: string; name: string; description: string
@@ -107,7 +108,12 @@ export default function PlansPage() {
   }
 
   if (!gate.ready) return null
-  if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading plans…</div>
+  if (loading) return (
+    <div className="space-y-6">
+      <SkeletonCard />
+      <SkeletonCard />
+    </div>
+  )
 
   return (
     <div className="space-y-8">

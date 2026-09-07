@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import Link from 'next/link'
-import { ArrowRight, Code2, Database, FileCode2, GitBranch, Layers, Loader2, ServerCog, Sparkles, Terminal, TrendingUp, HelpCircle } from 'lucide-react'
+import { ArrowRight, Code2, Database, FileCode2, GitBranch, Layers, ServerCog, Sparkles, Terminal, TrendingUp, HelpCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 const TRACK_ICONS: Record<string, React.ComponentType<{ className?: string }>> = {
   python: FileCode2,
@@ -111,8 +112,8 @@ export default function TracksPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground text-sm py-20 justify-center">
-          <Loader2 className="h-4 w-4 animate-spin" /> Loading catalog…
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : tracks.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">

@@ -3,10 +3,11 @@
 import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { FileText, Upload, Loader2, Trash2, Plus, Search } from 'lucide-react'
+import { FileText, Upload, Trash2, Plus, Search } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from '@/components/ui/dialog'
@@ -258,8 +259,8 @@ export default function MyResumesPage() {
         <h2 className="text-xl font-bold text-foreground mb-6 tracking-tight">My Resumes</h2>
         
         {loading ? (
-          <div className="flex-1 flex items-center justify-center text-muted-foreground">
-            <Loader2 className="h-6 w-6 animate-spin mr-2 text-blue-500" />Loading resumes...
+          <div className="flex-1 space-y-3">
+            {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
           </div>
         ) : resumes.length === 0 ? (
           <div className="flex-1 flex flex-col items-center justify-center py-12">

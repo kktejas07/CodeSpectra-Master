@@ -15,6 +15,7 @@ import {
   Code2, CheckCircle2, XCircle, Search, MessageSquare, Star, ArrowRight, Eye,
   Check, AlertCircle, Clock, FileCode, CheckSquare
 } from 'lucide-react'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
@@ -1169,10 +1170,7 @@ export default function AdminCodeathonsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-6 w-6 animate-spin mr-2 text-emerald-400" />
-          Loading codeathons...
-        </div>
+        <SkeletonTable rows={5} />
       ) : (
         <DataTable
           columns={columns}
@@ -1550,7 +1548,7 @@ export default function AdminCodeathonsPage() {
                           </td>
                           <td className="p-3">
                             {s.is_reviewed ? (
-                              <Badge className="bg-sky-500/20 text-sky-400 border-sky-500/30 text-[10px] gap-1">
+                              <Badge variant="info" className="text-[10px] gap-1">
                                 <Check className="h-2.5 w-2.5" /> Reviewed
                               </Badge>
                             ) : (

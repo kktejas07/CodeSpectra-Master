@@ -11,6 +11,7 @@ import Link from 'next/link'
 import { Globe2, Shield, Zap, RefreshCw, Trash2, Wifi, Power, AlertTriangle, 
   MapPin, CheckCircle2, Activity, Loader2, Settings, Info, Users, Clock, TrendingUp,
 } from 'lucide-react'
+import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { WorldMap } from '@/components/gamification/world-map'
 import { AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid } from 'recharts'
 
@@ -156,7 +157,7 @@ export default function CdnAdminPage() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-          <Badge className="bg-emerald-500/10 text-emerald-500 border border-emerald-500/20 px-3 py-1 flex items-center gap-1">
+          <Badge variant="success" className="px-3 py-1 flex items-center gap-1">
             <span className="relative flex h-2 w-2">
               <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
               <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>

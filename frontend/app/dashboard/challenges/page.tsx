@@ -8,6 +8,7 @@ import { Lock, Star, Code, Zap, CheckCircle, ArrowRight, Loader, Trophy, HelpCir
 import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Challenge {
@@ -92,8 +93,10 @@ export default function ChallengesPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="space-y-6">
+          <SkeletonText lines={1} />
+          <SkeletonStats />
+          <SkeletonList count={6} />
         </div>
       ) : challenges.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">

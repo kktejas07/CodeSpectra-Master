@@ -155,9 +155,9 @@ export function AudioCameraSettings({ onContinue, onBack }: AudioCameraSettingsP
 
   const getStatusBadge = (status: string) => {
     if (status === 'granted') {
-      return <Badge className="bg-green-100 text-green-800 dark:bg-green-950 dark:text-green-300">Access Granted</Badge>
+      return <Badge variant="success">Access Granted</Badge>
     }
-    return <Badge className="bg-red-100 text-red-800 dark:bg-red-950 dark:text-red-300">Access Required</Badge>
+    return <Badge variant="danger">Access Required</Badge>
   }
 
   return (

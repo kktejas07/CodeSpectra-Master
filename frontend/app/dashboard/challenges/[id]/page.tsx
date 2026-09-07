@@ -6,6 +6,7 @@ import { Loader2 } from 'lucide-react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface ProblemData {
   id: string
@@ -64,7 +65,10 @@ export default function ChallengePage({ params }: { params: Promise<{ id: string
   if (loading) {
     return (
       <div className="flex min-h-[50vh] items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="space-y-4 w-full max-w-md">
+          <SkeletonText lines={2} />
+          <SkeletonCard />
+        </div>
       </div>
     )
   }

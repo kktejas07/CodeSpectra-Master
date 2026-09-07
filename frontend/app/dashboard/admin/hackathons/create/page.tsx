@@ -19,6 +19,7 @@ import {
   Sparkles, ChevronDown, ChevronUp, X, ArrowLeft,
   Settings, FileText, Sliders, Eye,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'

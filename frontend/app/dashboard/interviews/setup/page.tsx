@@ -8,6 +8,7 @@ import { InterviewRoleSelector } from '@/components/interviews/interview-role-se
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Loader2 } from 'lucide-react'
+import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 
 type InterviewStage = 'role-selection' | 'resume' | 'settings' | 'dynamic' | 'feedback'
 
@@ -79,7 +80,18 @@ export default function InterviewSetupPage() {
     }
   }, [gate.ready, startTour, setTourSeen])
 
-  if (!gate.ready) return null
+  if (!gate.ready) return (
+    <div className="min-h-screen bg-background py-12">
+      <div className="max-w-4xl mx-auto space-y-6 px-4">
+        <SkeletonCard />
+        <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+          <SkeletonButton />
+          <SkeletonButton />
+          <SkeletonButton />
+        </div>
+      </div>
+    </div>
+  )
 
   return (
     <div className="min-h-screen bg-background" data-tour="interview-setup-header">

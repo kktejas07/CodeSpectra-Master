@@ -8,8 +8,9 @@ import { Switch } from '@/components/ui/switch'
 import { Label } from '@/components/ui/label'
 import { Input } from '@/components/ui/input'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
-import { Bell, Mail, ChevronRight, Loader2, SlidersHorizontal } from 'lucide-react'
+import { Bell, Mail, ChevronRight, SlidersHorizontal } from 'lucide-react'
 import { Slack } from '@/components/ui/brand-icons'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -176,10 +177,9 @@ export default function NotificationPreferencesPage() {
 
       <div data-tour="notification-preferences-channels">
       {loading ? (
-        <Card className="flex min-h-[220px] items-center justify-center gap-2 rounded-xl border-border/60 text-muted-foreground shadow-sm">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading preferences…
-        </Card>
+        <div className="space-y-6">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       ) : (
         <div className="space-y-6">
           {preferences.map((pref) => (

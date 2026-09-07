@@ -29,6 +29,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import CronPicker from '@/components/workflows/cron-picker'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonList, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 const WorkflowBuilder = dynamic(
   () => import('@/components/workflows/workflow-builder'),
@@ -266,8 +267,8 @@ export default function WorkflowsPage() {
             Workflows ({items.length})
           </div>
           {loading && (
-            <div className="flex items-center justify-center py-10 text-muted-foreground">
-              <Loader2 className="mr-1 h-4 w-4 animate-spin" /> Loading
+            <div className="py-4">
+              <SkeletonList count={4} />
             </div>
           )}
           {!loading && items.length === 0 && (

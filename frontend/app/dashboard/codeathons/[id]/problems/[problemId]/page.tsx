@@ -8,7 +8,8 @@ import { Badge } from '@/components/ui/badge'
 import { Card } from '@/components/ui/card'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
-import { ArrowLeft, Play, Send, Clock, CheckCircle2, XCircle, Loader2, Code2, FileText, Trophy, MessageSquare } from 'lucide-react'
+import { ArrowLeft, Loader2, Play, Send, Clock, CheckCircle2, XCircle, Code2, FileText, Trophy, MessageSquare } from 'lucide-react'
+import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -163,7 +164,27 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
     setCode(LANGUAGE_TEMPLATES[lang] || '')
   }
 
-  if (!gate.ready || loading) return null
+  if (!gate.ready || loading) return (
+    <div className="space-y-4">
+      <div className="flex items-center gap-3">
+        <SkeletonButton />
+        <div className="flex-1 space-y-2">
+          <div className="h-6 w-48 bg-muted/60 rounded animate-pulse" />
+          <div className="h-4 w-32 bg-muted/40 rounded animate-pulse" />
+        </div>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+        <SkeletonCard />
+        <div className="space-y-3">
+          <div className="flex gap-2">
+            <SkeletonButton />
+            <SkeletonButton />
+          </div>
+          <div className="h-[50vh] rounded-lg bg-muted/30 animate-pulse" />
+        </div>
+      </div>
+    </div>
+  )
 
   if (!problem) {
     return (

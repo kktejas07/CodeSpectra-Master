@@ -8,6 +8,7 @@ import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Plus, Loader2, Trash2, Pencil, BookOpen, Search } from 'lucide-react'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
@@ -176,10 +177,7 @@ export default function AdminCoursesPage() {
 
         <TabsContent value="manage" className="space-y-6">
           {loading ? (
-            <div className="flex items-center justify-center py-20 text-muted-foreground">
-              <Loader2 className="h-6 w-6 animate-spin mr-2 text-indigo-500" />
-              Loading courses...
-            </div>
+            <SkeletonTable rows={5} />
           ) : (
         <DataTable
           columns={columns}

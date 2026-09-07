@@ -8,6 +8,7 @@ import { Textarea } from '@/components/ui/textarea'
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
 import { Tabs, TabsList, TabsTrigger, TabsContent } from '@/components/ui/tabs'
 import { Plus, Loader2, Trash2, BookOpen, Save, Video, ArrowLeft, Wand2, HelpCircle, GripVertical } from 'lucide-react'
+import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -304,9 +305,16 @@ export default function AdminCourseBuilderPage({ params }: { params: Promise<{ i
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2 text-indigo-500" />
-        Loading course...
+      <div className="space-y-6 pb-20 w-full px-4 sm:px-6 lg:px-8">
+        <div className="flex items-center justify-between sticky top-0 bg-background/80 backdrop-blur-md py-4 z-10 border-b border-border/50">
+          <div className="flex items-center gap-4">
+            <SkeletonText lines={1} />
+          </div>
+        </div>
+        <div className="space-y-6">
+          <SkeletonText lines={2} />
+          <SkeletonList count={2} />
+        </div>
       </div>
     )
   }

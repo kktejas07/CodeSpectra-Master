@@ -6,9 +6,10 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import {
-  BrainCircuit, Loader2, Clock, Flag, AlertTriangle,
+  BrainCircuit, Clock, Flag, AlertTriangle, Loader2,
   CheckCircle2, XCircle, AlertCircle, Send, BarChart3,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { CATEGORY_LABELS, type FluencyQuestion, type FluencyEvaluation, type CategoryBreakdown } from '@/lib/assessments/ai-fluency-types'
 
@@ -327,8 +328,20 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="mx-auto max-w-2xl space-y-6">
+        <div className="flex items-center justify-between">
+          <div className="h-8 w-64 bg-muted/60 rounded animate-pulse" />
+          <SkeletonButton />
+        </div>
+        <div className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-3 animate-pulse">
+          <div className="h-16 w-24 bg-muted/60 rounded mx-auto" />
+          <div className="h-4 w-20 bg-muted/40 rounded mx-auto" />
+        </div>
+        <SkeletonCard />
+        <div className="grid grid-cols-2 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     )
   }
