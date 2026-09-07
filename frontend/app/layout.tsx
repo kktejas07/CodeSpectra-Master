@@ -3,6 +3,8 @@ import localFont from 'next/font/local'
 import { Providers } from '@/components/providers'
 import { LoadingWrapper } from '@/components/loading-wrapper'
 import './globals.css'
+import 'goey-toast/styles.css'
+import 'driver.js/dist/driver.css'
 
 export const dynamic = 'force-dynamic'
 

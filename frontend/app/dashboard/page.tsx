@@ -15,7 +15,8 @@ import { ActivityTimeline } from '@/components/dashboard/activity-timeline'
 import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } from '@/lib/rbac'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { OrganizationDashboard } from '@/components/dashboard/organization-dashboard'
-import { useAutoTour, DASHBOARD_TOURS } from '@/components/tour/tour-hooks'
+import { useTour } from '@/components/tour/tour-context'
+import { WELCOME_TOUR_STEPS } from '@/lib/tour-driver'
 import {
   DeveloperRankBanner,
   IsometricScanChip,
@@ -33,9 +34,15 @@ interface ActivityItem {
 
 export default function DashboardPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   // Auto-start welcome tour on first visit
-  useAutoTour(DASHBOARD_TOURS.welcome, true, 'welcome')
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !window.localStorage.getItem('has_seen_welcome_tour')) {
+      startTour(WELCOME_TOUR_STEPS, 'welcome')
+      setTourSeen('welcome')
+    }
+  }, [startTour, setTourSeen])
   const router = useRouter()
   const { user: fbUser, loading: isPending } = useAuth()
   const addToast = useToast()
