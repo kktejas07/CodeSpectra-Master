@@ -16,6 +16,9 @@ import {
   Trash2,
   Video,
   X,
+  Clock,
+  CalendarDays,
+  TrendingUp,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
@@ -36,16 +39,22 @@ type RecentItem = {
   viewedAt: string
 }
 
-const TYPE_META: Record<string, { label: string; icon: typeof BookOpen }> = {
-  course: { label: 'Course', icon: BookOpen },
-  lesson: { label: 'Lesson', icon: Video },
-  problem: { label: 'Problem', icon: Code2 },
-  article: { label: 'Article', icon: Newspaper },
-  quiz: { label: 'Quiz', icon: ListChecks },
+const TYPE_META: Record<string, { label: string; icon: typeof BookOpen; color: string }> = {
+  course: { label: 'Course', icon: BookOpen, color: 'text-blue-500 bg-blue-500/10' },
+  lesson: { label: 'Lesson', icon: Video, color: 'text-violet-500 bg-violet-500/10' },
+  problem: { label: 'Problem', icon: Code2, color: 'text-emerald-500 bg-emerald-500/10' },
+  article: { label: 'Article', icon: Newspaper, color: 'text-amber-500 bg-amber-500/10' },
+  quiz: { label: 'Quiz', icon: ListChecks, color: 'text-cyan-500 bg-cyan-500/10' },
 }
 
 function typeMeta(type: string) {
-  return TYPE_META[type] || { label: type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Item', icon: FileText }
+  return (
+    TYPE_META[type] || {
+      label: type ? type.charAt(0).toUpperCase() + type.slice(1) : 'Item',
+      icon: FileText,
+      color: 'text-muted-foreground bg-muted',
+    }
+  )
 }
 
 function timeAgo(iso: string): string {
@@ -106,29 +115,31 @@ export default function RecentlyViewedPage() {
   useEffect(() => {
     if (!gate.ready) return
     void load()
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [gate.ready])
 
-  // First-visit guided tour (same pattern as the other dashboard pages).
+  // First-visit guided tour
   useEffect(() => {
     if (gate.ready && !localStorage.getItem('has_seen_recent_tour')) {
       const recentTour: TourStep[] = [
         {
           target: '[data-tour="recent-header"]',
           title: 'Recently Viewed',
-          description: 'Everything you open — courses, lessons, problems — lands here so you can pick up where you left off.',
+          description:
+            'Everything you open — courses, lessons, problems — lands here so you can pick up where you left off.',
           position: 'bottom',
         },
         {
-          target: '[data-tour="recent-filters"]',
-          title: 'Search & filter',
-          description: 'Search by title or filter by content type to find something fast.',
+          target: '[data-tour="recent-stats"]',
+          title: 'Quick Stats',
+          description:
+            'See your total views, recent activity, and most-viewed content type at a glance.',
           position: 'bottom',
         },
         {
           target: '[data-tour="recent-list"]',
           title: 'Jump back in',
-          description: 'Click any entry to continue. Hover to remove a single item, or clear the whole history.',
+          description:
+            'Click any entry to continue. Hover to remove a single item, or clear the whole history.',
           position: 'top',
         },
       ]
@@ -136,6 +147,33 @@ export default function RecentlyViewedPage() {
       setTourSeen('recent')
     }
   }, [gate.ready, startTour, setTourSeen])
+
+  // ── Derived stats ──────────────────────────────────────────────────────────
+  const stats = useMemo(() => {
+    const dayMs = 86400000
+    const startOfToday = new Date().setHours(0, 0, 0, 0)
+    const startOfWeek = startOfToday - new Date().getDay() * dayMs
+
+    let today = 0
+    let thisWeek = 0
+    const typeCounts = new Map<string, number>()
+    for (const it of items) {
+      const t = new Date(it.viewedAt).getTime()
+      if (Number.isNaN(t)) continue
+      if (t >= startOfToday) today++
+      if (t >= startOfWeek) thisWeek++
+      typeCounts.set(it.type, (typeCounts.get(it.type) || 0) + 1)
+    }
+    let topType = ''
+    let topCount = 0
+    for (const [type, count] of typeCounts) {
+      if (count > topCount) {
+        topType = type
+        topCount = count
+      }
+    }
+    return { total: items.length, today, thisWeek, topType, topCount }
+  }, [items])
 
   const availableTypes = useMemo(() => {
     const set = new Map<string, number>()
@@ -159,7 +197,10 @@ export default function RecentlyViewedPage() {
       if (!map.has(g)) map.set(g, [])
       map.get(g)!.push(it)
     }
-    return GROUP_ORDER.filter((g) => map.has(g)).map((g) => ({ name: g, items: map.get(g)! }))
+    return GROUP_ORDER.filter((g) => map.has(g)).map((g) => ({
+      name: g,
+      items: map.get(g)!,
+    }))
   }, [filtered])
 
   async function removeItem(it: RecentItem) {
@@ -170,7 +211,7 @@ export default function RecentlyViewedPage() {
         { method: 'DELETE' },
       )
     } catch {
-      /* already removed locally — history is best-effort */
+      /* already removed locally */
     }
   }
 
@@ -191,10 +232,17 @@ export default function RecentlyViewedPage() {
     return (
       <div className="w-full space-y-6">
         <SkeletonText lines={2} />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-4">
+          {[1, 2, 3, 4].map((i) => (
+            <Card key={i} className="h-28 animate-pulse bg-muted/30" />
+          ))}
+        </div>
         <SkeletonList count={6} />
       </div>
     )
   }
+
+  const topMeta = stats.topType ? typeMeta(stats.topType) : null
 
   return (
     <div className="w-full space-y-6">
@@ -240,8 +288,75 @@ export default function RecentlyViewedPage() {
         />
       ) : (
         <>
-          {/* Search + type filter */}
-          <div className="flex flex-col gap-3 sm:flex-row sm:items-center" data-tour="recent-filters">
+          {/* ── 4 Stat Cards ──────────────────────────────────────────── */}
+          <div
+            className="grid grid-cols-2 gap-4 sm:grid-cols-4"
+            data-tour="recent-stats"
+          >
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+                  <History className="h-5 w-5 text-primary" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold tabular-nums">{stats.total}</p>
+                  <p className="text-xs text-muted-foreground">Total items</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-emerald-500/10">
+                  <Clock className="h-5 w-5 text-emerald-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold tabular-nums">{stats.today}</p>
+                  <p className="text-xs text-muted-foreground">Viewed today</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-blue-500/10">
+                  <CalendarDays className="h-5 w-5 text-blue-500" />
+                </div>
+                <div>
+                  <p className="text-2xl font-bold tabular-nums">{stats.thisWeek}</p>
+                  <p className="text-xs text-muted-foreground">This week</p>
+                </div>
+              </div>
+            </Card>
+            <Card className="p-4">
+              <div className="flex items-center gap-3">
+                <div
+                  className={cn(
+                    'flex h-10 w-10 shrink-0 items-center justify-center rounded-lg',
+                    topMeta?.color || 'bg-muted',
+                  )}
+                >
+                  {topMeta ? (
+                    <topMeta.icon className="h-5 w-5" />
+                  ) : (
+                    <TrendingUp className="h-5 w-5 text-muted-foreground" />
+                  )}
+                </div>
+                <div>
+                  <p className="text-sm font-bold capitalize">
+                    {topMeta?.label || '—'}
+                  </p>
+                  <p className="text-xs text-muted-foreground">
+                    {topMeta ? `${stats.topCount} views` : 'Most viewed'}
+                  </p>
+                </div>
+              </div>
+            </Card>
+          </div>
+
+          {/* ── Search + type filter ────────────────────────────────────── */}
+          <div
+            className="flex flex-col gap-3 sm:flex-row sm:items-center"
+            data-tour="recent-filters"
+          >
             <div className="relative flex-1">
               <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
               <Input
@@ -288,6 +403,7 @@ export default function RecentlyViewedPage() {
             </div>
           </div>
 
+          {/* ── List ─────────────────────────────────────────────────── */}
           {filtered.length === 0 ? (
             <Card className="p-10 text-center">
               <p className="text-sm font-medium">No matches</p>
@@ -320,15 +436,24 @@ export default function RecentlyViewedPage() {
                       return (
                         <li key={`${it.type}-${it.id}`}>
                           <Card className="group flex items-center gap-3 p-3 transition-colors hover:bg-muted/40">
-                            <span className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary/10 text-primary">
-                              <Icon className="h-4.5 w-4.5" />
+                            <span
+                              className={cn(
+                                'flex h-9 w-9 shrink-0 items-center justify-center rounded-lg',
+                                meta.color,
+                              )}
+                            >
+                              <Icon className="h-4 w-4" />
                             </span>
                             <Link href={it.href} className="min-w-0 flex-1">
-                              <p className="truncate font-medium leading-tight">{it.title || 'Untitled'}</p>
+                              <p className="truncate font-medium leading-tight">
+                                {it.title || 'Untitled'}
+                              </p>
                               <p className="mt-0.5 flex items-center gap-1.5 text-xs text-muted-foreground">
                                 <span className="capitalize">{meta.label}</span>
                                 <span aria-hidden>·</span>
-                                <span className="tabular-nums">{timeAgo(it.viewedAt)}</span>
+                                <span className="tabular-nums">
+                                  {timeAgo(it.viewedAt)}
+                                </span>
                               </p>
                             </Link>
                             <Link
@@ -360,10 +485,16 @@ export default function RecentlyViewedPage() {
 
       {/* Cross-links */}
       <div className="flex flex-wrap gap-4 border-t border-border/60 pt-4 text-sm">
-        <Link href="/dashboard/activity/sessions" className="inline-flex items-center gap-1.5 text-primary hover:underline">
+        <Link
+          href="/dashboard/activity/sessions"
+          className="inline-flex items-center gap-1.5 text-primary hover:underline"
+        >
           <Video className="h-3.5 w-3.5" /> My Sessions
         </Link>
-        <Link href="/dashboard/activity/bookmarks" className="inline-flex items-center gap-1.5 text-primary hover:underline">
+        <Link
+          href="/dashboard/activity/bookmarks"
+          className="inline-flex items-center gap-1.5 text-primary hover:underline"
+        >
           <Bookmark className="h-3.5 w-3.5" /> Bookmarked Questions
         </Link>
       </div>

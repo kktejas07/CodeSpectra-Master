@@ -1,5 +1,6 @@
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import { readServerSecrets, isMaskedSecret } from '@/lib/server-secrets-cache'
+import { LLM_PROVIDERS } from '@/lib/llm-config'
 
 /** Map a free-form provider name to a backend enum the AI router understands. */
 function normalizeProvider(provider: string): string {
@@ -45,6 +46,18 @@ export async function platformModelOverrides(): Promise<{
     if (!cfg) return {}
     const provider = normalizeProvider(cfg.provider || '')
     if (!provider) return {}
+
+    // ponytail: validate the model actually exists in the known provider
+    // list.  Dead/renamed models (groq:llama-3.1-8b-instant, old gemini
+    // names) would get prepended to every chain and burn one failed attempt
+    // per lesson — 72 lessons × 1 wasted call = 72 pointless 404s before
+    // the fallback chain even starts.  Return no override so the standard
+    // chain (which has verified-live models) takes over.
+    const providerDef = LLM_PROVIDERS.find(p => p.id === provider)
+    if (!providerDef || !providerDef.models.includes(cfg.model || '')) {
+      console.log(`[platform-model-overrides] skipping dead model ${provider}:${cfg.model} — not in known list`)
+      return {}
+    }
 
     let apiKey = cfg.api_key && typeof cfg.api_key === 'string' && !isMaskedSecret(cfg.api_key)
       ? cfg.api_key.trim()
