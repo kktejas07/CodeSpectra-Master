@@ -98,7 +98,7 @@ export default function TracksPage() {
     <div className="space-y-6">
       <div className="flex items-center gap-2" data-tour="tracks-header">
         <h1 className="text-3xl font-bold">Tech-stack tracks</h1>
-        <TooltipProvider>
+        <TooltipProvider data-tour="tracks-tooltip">
           <Tooltip>
             <TooltipTrigger asChild>
               <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
@@ -120,7 +120,7 @@ export default function TracksPage() {
           <p className="mt-3 text-muted-foreground">No tracks available yet.</p>
         </Card>
       ) : (
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="tracks-grid">
           {tracks.map((t) => {
             const count = trackProblemCount(t)
             const Icon = TRACK_ICONS[t.id] || Code2

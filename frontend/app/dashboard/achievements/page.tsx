@@ -124,7 +124,7 @@ export default function AchievementsPage() {
         </Card>
       ) : (
         <>
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" data-tour="achievements-stats">
             <Card className="border-border/60 p-6 text-center">
               <p className="text-3xl font-bold text-foreground">Lvl {level}</p>
               <p className="text-xs text-muted-foreground">Your level</p>
@@ -143,9 +143,9 @@ export default function AchievementsPage() {
             </Card>
           </div>
 
-          <ContributionGraph />
-          <SkillBadges />
-          <Tabs defaultValue="achievements">
+          <div data-tour="achievements-graph"><ContributionGraph /></div>
+          <div data-tour="achievements-badges"><SkillBadges /></div>
+          <div data-tour="achievements-tabs"><Tabs defaultValue="achievements">
             <TabsList>
               <TabsTrigger value="achievements">Achievements</TabsTrigger>
               {!badgesLocked && <TabsTrigger value="badges">Badges</TabsTrigger>}
@@ -182,6 +182,7 @@ export default function AchievementsPage() {
               )}
             </TabsContent>}
           </Tabs>
+          </div>
         </>
       )}
     </div>

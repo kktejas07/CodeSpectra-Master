@@ -204,7 +204,7 @@ export default function CodeathonsPage() {
           <p className="text-muted-foreground">No codeathons match your filters.</p>
         </Card>
       ) : (
-        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3" data-tour="codeathons-grid">
           {filtered.map(h => (
             <Card key={h.id} className="border-border/60 p-5 hover:border-primary/30 transition-colors flex flex-col">
               {/* Header */}

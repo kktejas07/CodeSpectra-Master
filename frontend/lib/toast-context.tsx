@@ -1,6 +1,6 @@
 'use client'
 
-import type { ReactNode } from 'react'
+import { useCallback, type ReactNode } from 'react'
 import { GooeyToaster, gooeyToast } from 'goey-toast'
 
 /**
@@ -34,7 +34,11 @@ export function ToastProvider({ children }: { children: ReactNode }) {
 }
 
 export function useToast() {
-  const addToast = (toast: Omit<Toast, 'id'>) => {
+  // ponytail: MUST stay referentially stable — 16+ pages list addToast in
+  // useEffect deps; a fresh closure per render re-fires their fetch effects
+  // forever (settings page hit 1200+ requests → 429 storm). gooeyToast fns
+  // are module-singleton refs, so [] deps are safe.
+  const addToast = useCallback((toast: Omit<Toast, 'id'>) => {
     const fn =
       toast.type === 'success'
         ? gooeyToast.success
@@ -55,6 +59,6 @@ export function useToast() {
           ? { displayDuration: toast.duration === 0 ? 86_400_000 : toast.duration }
           : undefined,
     })
-  }
+  }, [])
   return addToast
 }

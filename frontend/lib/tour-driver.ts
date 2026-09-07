@@ -183,10 +183,11 @@ export function clearTourSeen(tid: string) {
 function toDriveSteps(steps: TourStep[]): DriveStep[] {
   return steps.map((s) => ({
     element: s.target,
-    // ponytail: driver.js natively waits for late-rendering targets and skips
-    // ones that never appear — the two failure modes the old custom tooltip
-    // had to hand-roll retry/skip logic for.
-    skipMissingElement: true,
+    // ponytail: NO global skipMissingElement — with it, driver.js computes
+    // "last step" from the next FINDABLE step, so one missing later anchor
+    // turns step 1's Next button into Finish (the screenshot bug). Missing
+    // targets instead wait 3s then show the centered fallback with honest
+    // Next/Finish labels. Every anchor is also verified to exist in JSX.
     popover: {
       title: s.title,
       description: s.description,
@@ -212,7 +213,6 @@ function getDriver(): Driver | null {
       allowKeyboardControl: true,
       allowClose: true,
       overlayClickBehavior: 'close',
-      skipMissingElement: true,
       waitForElement: 3000,
       nextBtnText: 'Next',
       prevBtnText: 'Back',

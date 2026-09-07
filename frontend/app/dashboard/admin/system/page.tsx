@@ -723,7 +723,7 @@ export default function SystemAdminDashboard() {
       </div>
 
       {/* Performance / Web Vitals */}
-      <div className="space-y-4">
+      <div className="space-y-4" data-tour="admin-system-web-vitals">
         <div className="flex items-center justify-between">
           <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
             <Gauge className="h-5 w-5 text-primary" /> Performance
@@ -793,7 +793,7 @@ export default function SystemAdminDashboard() {
         )}
       </div>
 
-      <AnalyticsDashboard {...charts} summary={summary} />
+      <div data-tour="admin-system-analytics"><AnalyticsDashboard {...charts} summary={summary} /></div>
       <AuditLogsViewer />
     </div>
   )
