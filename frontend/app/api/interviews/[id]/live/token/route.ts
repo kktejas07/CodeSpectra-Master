@@ -6,9 +6,10 @@ import { AccessToken } from 'livekit-server-sdk'
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
-const API_KEY = process.env.LIVEKIT_API_KEY || 'devkey'
-const API_SECRET = process.env.LIVEKIT_API_SECRET || 'dev-secret-match-compose'
-const LIVEKIT_URL = process.env.LIVEKIT_URL || 'ws://localhost:7880'
+const isProd = process.env.NODE_ENV === 'production'
+const API_KEY = process.env.LIVEKIT_API_KEY || (isProd ? '' : 'devkey')
+const API_SECRET = process.env.LIVEKIT_API_SECRET || (isProd ? '' : 'dev-secret-match-compose')
+const LIVEKIT_URL = process.env.LIVEKIT_URL || (isProd ? '' : 'ws://localhost:7880')
 
 export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string }> }) {
   const gate = await requireAuth()
@@ -30,6 +31,13 @@ export async function POST(req: NextRequest, ctx: { params: Promise<{ id: string
   const isParticipant = session.interviewer_id === userId || session.candidate_id === userId
   if (!isParticipant && role !== 'superadmin' && role !== 'tenant_admin') {
     return NextResponse.json({ error: 'Not authorized to join this interview' }, { status: 403 })
+  }
+
+  if (!API_KEY || !API_SECRET || !LIVEKIT_URL) {
+    return NextResponse.json(
+      { error: 'LiveKit is not configured. Set LIVEKIT_URL, LIVEKIT_API_KEY, and LIVEKIT_API_SECRET in the environment.' },
+      { status: 503 }
+    )
   }
 
   const roomName = `interview-${id}`
