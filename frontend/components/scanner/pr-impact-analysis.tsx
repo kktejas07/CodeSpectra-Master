@@ -177,7 +177,7 @@ export function PRImpactAnalysis({ components, dependencies, githubToken }: PRIm
                 </div>
               </div>
             </div>
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="text-center">
                 <p className="text-2xl font-bold text-primary">{prDetails.files.length}</p>
                 <p className="text-xs text-muted-foreground">Files changed</p>

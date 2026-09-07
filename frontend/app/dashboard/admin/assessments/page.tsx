@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {   BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users, Link2 } from 'lucide-react'
+import {   BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users, Link2, LayoutDashboard } from 'lucide-react'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
@@ -391,9 +391,17 @@ export default function AdminExamsPage() {
             <p className="text-muted-foreground text-sm">{visibleExams.length} assessments</p>
           </div>
         </div>
-        <Button className="gap-2" onClick={openAddModal}>
-          <Plus className="w-4 h-4" />Add Assessment
-        </Button>
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/bulk')}>
+            <Upload className="w-4 h-4" />Bulk Schedule
+          </Button>
+          <Button variant="outline" size="sm" className="gap-2" onClick={() => router.push('/dashboard/admin/assessments/pipeline')}>
+            <LayoutDashboard className="w-4 h-4" />Pipeline
+          </Button>
+          <Button className="gap-2" onClick={openAddModal}>
+            <Plus className="w-4 h-4" />Add Assessment
+          </Button>
+        </div>
       </div>
 
       <div className="flex flex-wrap items-center gap-3 rounded-lg border bg-card p-3">

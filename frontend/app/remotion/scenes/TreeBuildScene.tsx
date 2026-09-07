@@ -3,21 +3,89 @@ import { useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion'
 
 interface TreeNode {
   id: string
-  value: number
+  value: number | string
   x: number
   y: number
   parent?: string
 }
 
 interface TreeBuildSceneProps {
-  nodes: TreeNode[]
+  nodes?: TreeNode[]
+  /** Slide-owned values: the scene builds a BST layout itself (preferred). */
+  values?: Array<number | string>
   title: string
   highlightPath?: string[]
+  /** Search target; defaults to the last value so the trace always resolves. */
+  target?: number | string
 }
 
-export const TreeBuildScene: React.FC<TreeBuildSceneProps> = ({ nodes, title, highlightPath = [] }) => {
+type Link = { id: string; value: number | string; left: Link | null; right: Link | null; depth: number }
+
+function compareValues(a: number | string, b: number | string): number {
+  if (typeof a === 'number' && typeof b === 'number' && Number.isFinite(a) && Number.isFinite(b)) return a - b
+  return String(a).localeCompare(String(b))
+}
+
+/** BST layout from slide-owned values. x = inorder rank, y scaled to fit, so
+ * degenerate (sorted) input draws as a truthful diagonal, never offscreen. */
+function layoutFromValues(values: Array<number | string>, target: number | string | undefined): { nodes: TreeNode[]; path: string[] } {
+  const vals = (Array.isArray(values) ? values : []).slice(0, 9)
+  if (!vals.length) return { nodes: [], path: [] }
+  let root: Link | null = null
+  const order: Link[] = []
+  // NOTE: plain for..of (not forEach) so TS tracks the root assignment below.
+  for (const [i, value] of vals.entries()) {
+    const node: Link = { id: `n${i}`, value, left: null, right: null, depth: 0 }
+    order.push(node)
+    if (!root) { root = node; continue }
+    let cur: Link = root
+    for (;;) {
+      if (compareValues(value, cur.value) < 0) {
+        if (!cur.left) { cur.left = node; node.depth = cur.depth + 1; break }
+        cur = cur.left
+      } else {
+        if (!cur.right) { cur.right = node; node.depth = cur.depth + 1; break }
+        cur = cur.right
+      }
+    }
+  }
+  const rank = new Map<Link, number>()
+  let xi = 0
+  const inorder = (n: Link | null): void => { if (!n) return; inorder(n.left); rank.set(n, xi++); inorder(n.right) }
+  inorder(root)
+  const count = order.length
+  const maxDepth = order.reduce((m, n) => Math.max(m, n.depth), 0)
+  const nodes: TreeNode[] = order.map(n => {
+    const parent = order.find(c => c.left === n || c.right === n)
+    return {
+      id: n.id,
+      value: n.value,
+      x: count > 1 ? 160 + ((rank.get(n) || 0) / (count - 1)) * 1600 : 960,
+      y: 120 + (maxDepth > 0 ? (n.depth / maxDepth) * 380 : 0),
+      parent: parent ? parent.id : undefined,
+    }
+  })
+  // Search path for the target through the built tree (always connected).
+  const goal = target !== undefined ? target : vals[vals.length - 1]
+  const path: string[] = []
+  let cur: Link | null = root
+  while (cur) {
+    path.push(cur.id)
+    const c = compareValues(goal as number | string, cur.value)
+    if (c === 0) break
+    cur = c < 0 ? cur.left : cur.right
+  }
+  return { nodes, path }
+}
+
+export const TreeBuildScene: React.FC<TreeBuildSceneProps> = ({ nodes, values, title, highlightPath, target }) => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
+
+  // Prefer slide-owned values; explicit nodes remain supported (backward-compat).
+  const fromValues = (values || []).length ? layoutFromValues(values || [], target) : null
+  const active = fromValues ? fromValues.nodes : (nodes || [])
+  const path = highlightPath || (fromValues ? fromValues.path : [])
 
   // Title animation
   const titleOpacity = interpolate(frame, [0, 15], [0, 1], { extrapolateRight: 'clamp' })
@@ -36,7 +104,7 @@ export const TreeBuildScene: React.FC<TreeBuildSceneProps> = ({ nodes, title, hi
 
   // Path highlight animation
   const pathHighlight = (nodeId: string) => {
-    const pathIndex = highlightPath.indexOf(nodeId)
+    const pathIndex = path.indexOf(nodeId)
     if (pathIndex === -1) return { active: false, glow: 0 }
     const delay = 80 + pathIndex * 20
     const active = frame >= delay
@@ -45,10 +113,10 @@ export const TreeBuildScene: React.FC<TreeBuildSceneProps> = ({ nodes, title, hi
   }
 
   // Build edges from parent references
-  const edges = nodes
+  const edges = active
     .filter(n => n.parent)
     .map(n => {
-      const parent = nodes.find(p => p.id === n.parent)
+      const parent = active.find(p => p.id === n.parent)
       if (!parent) return null
       return { from: parent, to: n }
     })
@@ -56,23 +124,24 @@ export const TreeBuildScene: React.FC<TreeBuildSceneProps> = ({ nodes, title, hi
 
   // Current node in path being highlighted
   const currentPathIndex = Math.floor((frame - 80) / 20)
-  const currentNodeId = currentPathIndex >= 0 && currentPathIndex < highlightPath.length
-    ? highlightPath[currentPathIndex]
+  const currentNodeId = currentPathIndex >= 0 && currentPathIndex < path.length
+    ? path[currentPathIndex]
     : null
 
   // Explanation text
   const explanation = currentNodeId
     ? (() => {
-        const node = nodes.find(n => n.id === currentNodeId)
+        const node = active.find(n => n.id === currentNodeId)
         if (!node) return ''
         if (currentPathIndex === 0) return `Starting at root: ${node.value}`
-        if (node.value < (nodes.find(n => n.id === highlightPath[currentPathIndex - 1])?.value || 0)) {
-          return `${node.value} < parent — go left`
-        }
-        return `${node.value} > parent — go right`
+        const parentVal = active.find(n => n.id === path[currentPathIndex - 1])?.value
+        if (parentVal === undefined) return `${node.value}`
+        return compareValues(node.value, parentVal) < 0
+          ? `${node.value} < parent — go left`
+          : `${node.value} > parent — go right`
       })()
-    : frame >= 80 && highlightPath.length > 0
-      ? `Tracing path: ${highlightPath.map(id => nodes.find(n => n.id === id)?.value).join(' → ')}`
+    : frame >= 80 && path.length > 0
+      ? `Tracing path: ${path.map(id => active.find(n => n.id === id)?.value).join(' → ')}`
       : ''
 
   const explanationOpacity = interpolate(frame, [80, 95], [0, 1], { extrapolateRight: 'clamp' })
@@ -117,15 +186,15 @@ export const TreeBuildScene: React.FC<TreeBuildSceneProps> = ({ nodes, title, hi
               y1={edge.from.y + 30}
               x2={edge.from.x + dx * progress}
               y2={edge.from.y + 30 + dy * progress}
-              stroke={highlightPath.includes(edge.to.id) ? '#3b82f6' : '#475569'}
-              strokeWidth={highlightPath.includes(edge.to.id) ? 4 : 3}
-              strokeDasharray={highlightPath.includes(edge.to.id) ? '0' : '8 4'}
+              stroke={path.includes(edge.to.id) ? '#3b82f6' : '#475569'}
+              strokeWidth={path.includes(edge.to.id) ? 4 : 3}
+              strokeDasharray={path.includes(edge.to.id) ? '0' : '8 4'}
             />
           )
         })}
 
         {/* Nodes */}
-        {nodes.map((node, index) => {
+        {active.map((node, index) => {
           const appear = nodeAppear(index)
           const path = pathHighlight(node.id)
           const isCurrent = node.id === currentNodeId

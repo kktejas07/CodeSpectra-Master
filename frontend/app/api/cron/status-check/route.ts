@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
+import { requireSuperAdmin } from '@/lib/route-auth'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -12,12 +13,19 @@ type ComponentStatus = {
 }
 
 export async function GET(req: Request) {
-  // A basic authorization check to prevent abuse.
-  // In a real app, Vercel cron uses a Bearer token in the Authorization header.
-  const authHeader = req.headers.get('authorization')
-  if (process.env.CRON_SECRET && authHeader !== `Bearer ${process.env.CRON_SECRET}`) {
-    // Only enforce if CRON_SECRET is configured to not break local testing easily
-    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  // Closed by default: allow the configured cron scheduler (Bearer header or
+  // ?secret=, mirroring cron/tick) or an authenticated superadmin session.
+  // Previously the check was skipped entirely when CRON_SECRET was unset,
+  // leaving the endpoint — and its status_logs writes — open to anyone.
+  const expected = process.env.CRON_SECRET?.trim()
+  const url = new URL(req.url)
+  const fromQuery = url.searchParams.get('secret') || ''
+  const fromHeader = (req.headers.get('authorization') || '').replace(/^Bearer\s+/i, '')
+  if (!expected || (fromQuery !== expected && fromHeader !== expected)) {
+    const gate = await requireSuperAdmin()
+    if ('error' in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status })
+    }
   }
 
   const components: ComponentStatus[] = []
@@ -73,6 +81,9 @@ export async function GET(req: Request) {
 
   const logEntry = {
     timestamp: new Date().toISOString(),
+    // ponytail: TTL indexes only fire on BSON Date fields, and `timestamp` is
+    // kept as an ISO string for the /api/status reader — so expiry uses this.
+    createdAt: new Date(),
     status: overallStatus,
     components,
   }

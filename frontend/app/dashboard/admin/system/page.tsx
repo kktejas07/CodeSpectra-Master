@@ -18,6 +18,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 const emptyCharts: AnalyticsDashboardProps = {
   userGrowth: [],
@@ -321,8 +322,10 @@ export default function SystemAdminDashboard() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-        Loading…
+      <div className="space-y-8">
+        <SkeletonText lines={2} />
+        <SkeletonStats />
+        <SkeletonList count={2} />
       </div>
     )
   }

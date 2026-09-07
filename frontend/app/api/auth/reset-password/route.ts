@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server'
 import crypto from 'node:crypto'
 import bcrypt from 'bcryptjs'
 import { getMongoDb } from '@/lib/mongodb'
+import { revokeAllUserSessions } from '@/lib/session'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
       $unset: { reset_token_hash: '', reset_token_expires: '' },
     },
   )
+  await revokeAllUserSessions(String((user as any).id ?? user._id))
 
   return NextResponse.json({ success: true })
 }

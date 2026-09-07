@@ -1,7 +1,7 @@
 import { getMongoDb } from '@/lib/mongodb'
 import { fallbackModuleQuiz } from '@/lib/courses/module-quiz'
 import { generateModuleQuiz } from '@/lib/courses/module-quiz-generate'
-import { generateLessonVideo } from '@/lib/courses/lesson-video'
+import { generateLessonVideo, normalizeTargetMinutes, buildLessonContext } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio, deleteCourseAudio, loadLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath, deleteCourseVideos } from '@/lib/courses/lesson-mp4'
 import { deleteCourseCaptions, lessonCaptionsPath, saveLessonCaptions, vttFromSlides } from '@/lib/courses/lesson-captions'
@@ -128,11 +128,13 @@ export async function processVideoJob(jobId: string): Promise<void> {
     }
 
     const sections = course.sections || []
+    const targetMinutes = normalizeTargetMinutes((job as any)?.targetMinutes ?? 10)
+    const completedTexts: { title: string; textContent: string }[] = []
     let completedItems = 0
     let failedItems = 0
     const totalItems = sections.reduce((sum: number, s: any) => sum + (s.lessons?.length || 0), 0)
 
-    await addLog(`Starting detailed MP4 generation for ${totalItems} lessons (script + voiceover + render, ~10–15 min each)`)
+    await addLog(`Starting detailed MP4 generation for ${totalItems} lessons (~${targetMinutes} min each: script + voiceover + render)`)
 
     for (let sIdx = 0; sIdx < sections.length; sIdx++) {
       const section = sections[sIdx]
@@ -140,6 +142,9 @@ export async function processVideoJob(jobId: string): Promise<void> {
         const lesson = section.lessons[lIdx]
 
         if (lesson.videoUrl) {
+          if (String(lesson.textContent || '')) {
+            completedTexts.push({ title: String(lesson.title || ''), textContent: String(lesson.textContent || '') })
+          }
           if (!lesson.captionsUrl && Array.isArray(lesson.script) && lesson.script.length) {
             try {
               const vtt = vttFromSlides(lesson.script)
@@ -168,25 +173,37 @@ export async function processVideoJob(jobId: string): Promise<void> {
 
         try {
           const topic = lesson.content || lesson.title
-          const techStack = course.tags?.[0] || 'programming'
+          const techStack = String(course.tags?.[0] || (course as any)?.techStack || 'programming')
+          const lessonTitle = String(lesson.title || '')
           let script = Array.isArray(lesson.script) ? lesson.script : null
           let textContent = lesson.textContent || ''
           let durationSeconds = Number(lesson.duration) || 0
+          let takeaways: string[] = Array.isArray(lesson.takeaways) ? lesson.takeaways : []
+          let quickCheck = lesson.quickCheck || { recall: '', apply: '', stretch: '' }
+          let nextTeaser = String(lesson.nextTeaser || '')
+          let chapters = Array.isArray(lesson.chapters) ? lesson.chapters : []
           let audio = script?.length && lesson.audioUrl
             ? (await loadLessonAudio(job.courseId, lesson.id))?.data ?? null
             : null
 
           if (script?.length && audio) {
+            if (String(textContent || '')) completedTexts.push({ title: lessonTitle, textContent: String(textContent || '') })
             await addLog(`Rendering MP4: ${section.title} > ${lesson.title}`)
           } else {
             await addLog(`Generating: ${section.title} > ${lesson.title} (script + voiceover + MP4)`)
             console.log('[course-worker] lesson', lesson.title)
-            const generated = await generateLessonVideo({ topic, techStack })
+            const ctx = buildLessonContext(sections, sIdx, lIdx, course, completedTexts)
+            const generated = await generateLessonVideo({ topic, techStack, targetMinutes, context: ctx })
             await saveLessonAudio(job.courseId, lesson.id, generated.audioBuffer)
             script = stripQuizSlides(generated.script || [])
             audio = generated.audioBuffer
             textContent = stripEmbeddedQuizzes(generated.textContent || "")
             durationSeconds = generated.durationSeconds
+            takeaways = generated.takeaways || []
+            quickCheck = generated.quickCheck || { recall: '', apply: '', stretch: '' }
+            nextTeaser = generated.nextTeaser || ''
+            chapters = generated.chapters || []
+            completedTexts.push({ title: lessonTitle, textContent: String(textContent || '') })
           }
 
           if (!script?.length || !audio) throw new Error('Missing script or audio for MP4 render')
@@ -216,6 +233,10 @@ export async function processVideoJob(jobId: string): Promise<void> {
               videoType: 'ai',
               type: 'video',
               duration: durationSeconds || Math.round(script.reduce((n: number, s: any) => n + (s.durationInFrames || 0), 0) / 30),
+              takeaways,
+              quickCheck,
+              nextTeaser,
+              chapters,
             }),
           }
 

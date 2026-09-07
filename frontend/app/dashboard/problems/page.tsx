@@ -3,9 +3,10 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { 
+import {
   Search, ChevronDown, ChevronUp, CheckCircle2, Bookmark, Flame, Target, Trophy, ArrowRight, Loader2, Play
 } from 'lucide-react'
+import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
@@ -193,7 +194,7 @@ export default function ProblemsListPage() {
   return (
     <div className="max-w-[1400px] mx-auto pb-12 space-y-6">
       
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search Opportunities" className="pl-9 h-10 rounded-full bg-muted/50 border-none" />
@@ -222,11 +223,12 @@ export default function ProblemsListPage() {
              items={[{id: 'arrays', label: 'Arrays'}, {id: 'strings', label: 'Strings'}, {id: 'dp', label: 'Dynamic Programming'}]}
              selected={selectedTopics} onToggle={(id) => setSelectedTopics(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
            />
-           <FilterAccordion 
-             title="Difficulty" 
-             items={[{id: 'easy', label: 'Easy'}, {id: 'medium', label: 'Medium'}, {id: 'hard', label: 'Hard'}]}
-             selected={[]} onToggle={() => {}}
-           />
+           <FilterAccordion
+              title="Difficulty"
+              items={DIFFICULTY_LEVELS.map(l => ({ id: l, label: DIFFICULTY_LABELS[l] }))}
+              selected={difficulty !== 'all' ? [difficulty] : []}
+              onToggle={(id) => setDifficulty(prev => prev === id ? 'all' : id)}
+            />
            <FilterAccordion title="Status" items={[{id: 'solved', label: 'Solved'}, {id: 'unsolved', label: 'Unsolved'}]} selected={[]} onToggle={() => {}} />
            <FilterAccordion title="Domain" items={[{id: 'core', label: 'Core CS'}, {id: 'web', label: 'Web Dev'}]} selected={[]} onToggle={() => {}} />
         </div>
@@ -326,7 +328,7 @@ export default function ProblemsListPage() {
                 </div>
                 <h2 className="text-xl font-black uppercase tracking-tight">CONTAINER MERGE LINE</h2>
               </div>
-              <div className="flex items-center gap-8 px-6 pb-5 sm:py-6 sm:bg-white/10 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-8 px-6 pb-5 sm:py-6 sm:bg-white/10 w-full sm:w-auto">
                  <div className="text-center">
                     <div className="text-[10px] text-blue-200 uppercase font-bold tracking-wider mb-1">Difficulty</div>
                     <div className="font-bold">Medium</div>
@@ -360,7 +362,9 @@ export default function ProblemsListPage() {
               </div>
 
               <div className="rounded-xl border border-border/60 bg-card overflow-hidden" data-tour="problems-table">
-                 <div className="grid grid-cols-12 gap-4 p-4 text-[11px] uppercase tracking-wider font-semibold text-muted-foreground border-b border-border/40 bg-muted/20">
+               <div className="overflow-x-auto">
+                <div className="min-w-[600px] md:min-w-0">
+                  <div className="grid grid-cols-12 gap-4 p-4 text-[11px] uppercase tracking-wider font-semibold text-muted-foreground border-b border-border/40 bg-muted/20">
                     <div className="col-span-6 pl-2">Problem Title</div>
                     <div className="col-span-2 text-center">Difficulty</div>
                     <div className="col-span-2 text-center">Accuracy</div>
@@ -390,7 +394,10 @@ export default function ProblemsListPage() {
                                </div>
                             </div>
                             <div className="col-span-2 text-center">
-                               <span className={`text-xs font-semibold capitalize ${p.difficulty === 'easy' ? 'text-green-500' : p.difficulty === 'medium' ? 'text-orange-500' : 'text-red-500'}`}>
+                               <span className={`text-xs font-semibold capitalize ${(() => {
+                                 const dl = toDifficultyLevel(p.difficulty === 'easy' ? 'beginner' : p.difficulty === 'hard' ? 'advanced' : 'intermediate')
+                                 return dl ? DIFFICULTY_COLORS[dl] : 'text-muted-foreground'
+                               })()}`}>
                                  {p.difficulty}
                                </span>
                             </div>
@@ -419,6 +426,8 @@ export default function ProblemsListPage() {
                        ))}
                     </div>
                  )}
+                </div>
+               </div>
               </div>
            </div>
         </div>

@@ -188,7 +188,7 @@ export function DeviceAuditModal({ sessionKind, sessionId, onComplete }: DeviceA
         ) : (
           <div className="space-y-4">
             {/* Summary cards */}
-            <div className="grid grid-cols-3 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 p-3 text-center">
                 <div className="text-2xl font-bold text-emerald-600 dark:text-emerald-400">{safe.length}</div>
                 <div className="text-[11px] font-medium text-emerald-700 dark:text-emerald-300">Safe</div>

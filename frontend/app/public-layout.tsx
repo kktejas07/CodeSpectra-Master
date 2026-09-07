@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button'
 import { Code2, CodeXml, ArrowRight, Menu, X } from 'lucide-react'
 import { useState, useEffect } from 'react'
 import { cn } from '@/lib/utils'
+import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import { useHasUserSession } from '@/hooks/use-has-user-session'
 import { NavThemeSwitch } from '@/components/nav-theme-switch'
 import { FooterAnimatedBackdrop } from '@/components/landing/footer-animated-backdrop'
@@ -18,6 +20,7 @@ export function PublicPageWrapper({
   children: React.ReactNode
 }) {
   const hasSession = useHasUserSession()
+  const addToast = useToast()
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   const [isScrolled, setIsScrolled] = useState(false)
 
@@ -308,20 +311,28 @@ export function PublicPageWrapper({
                   e.preventDefault()
                   const form = e.currentTarget
                   const formData = new FormData(form)
-                  const email = formData.get('email') as string
+                  const email = ((formData.get('email') as string) || '').trim()
                   if (!email) return
                   const btn = form.querySelector('button')
                   if (btn) btn.disabled = true
                   try {
-                    await fetch('/api/newsletter/subscribe', {
+                    const res = await csrfFetch('/api/newsletter/subscribe', {
                       method: 'POST',
                       headers: { 'Content-Type': 'application/json' },
-                      body: JSON.stringify({ email })
+                      body: JSON.stringify({ email, source: 'footer' })
                     })
-                    alert('Subscribed successfully!')
+                    let errMsg = `Subscribe failed (${res.status})`
+                    let already = false
+                    try {
+                      const data = (await res.json()) as { ok?: boolean; already_subscribed?: boolean; error?: string }
+                      if (data?.already_subscribed) already = true
+                      if (data?.error) errMsg = data.error
+                    } catch { /* non-JSON body — keep status message */ }
+                    if (!res.ok) throw new Error(errMsg)
+                    addToast({ type: 'success', title: already ? 'Already subscribed!' : 'Subscribed successfully!' })
                     form.reset()
                   } catch (err) {
-                    alert('Failed to subscribe.')
+                    addToast({ type: 'error', title: 'Failed to subscribe.', message: err instanceof Error ? err.message : undefined })
                   } finally {
                     if (btn) btn.disabled = false
                   }

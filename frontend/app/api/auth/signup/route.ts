@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
+import crypto from 'node:crypto'
 import { randomUUID } from 'node:crypto'
 import { getMongoDb } from '@/lib/mongodb'
 import { setSessionCookie } from '@/lib/session'
@@ -69,6 +70,11 @@ export async function POST(request: Request) {
     const uid = randomUUID()
     const now = new Date()
 
+    // Email-verification token (mirrors forgot-password: raw token emailed, sha256 hash stored)
+    const verifyToken = crypto.randomBytes(32).toString('hex')
+    const verifyTokenHash = crypto.createHash('sha256').update(verifyToken).digest('hex')
+    const verifyTokenExpires = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString()
+
     await db.collection('user').insertOne({
       _id: uid,
       id: uid,
@@ -85,6 +91,9 @@ export async function POST(request: Request) {
       passwordHash,
       role: 'user',
       emailVerified: false,
+      session_version: 1,
+      verification_token_hash: verifyTokenHash,
+      verification_token_expires: verifyTokenExpires,
       createdAt: now,
       updatedAt: now,
     } as any)
@@ -118,6 +127,12 @@ export async function POST(request: Request) {
     const displayName = name || normalizedEmail.split('@')[0]
     const template = emailTemplates.welcomeEmail(displayName)
     await sendEmail(normalizedEmail, template).catch((e) => console.error('[Signup] Welcome email failed:', e))
+
+    // Send verification email — the link hits GET /api/auth/verify-email?token=
+    // (sha256-hashed there and matched against verification_token_hash).
+    const origin = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
+    const verifyLink = `${origin}/api/auth/verify-email?token=${verifyToken}`
+    await sendEmail(normalizedEmail, emailTemplates.emailVerification(verifyLink)).catch((e) => console.error('[Signup] Verification email failed:', e))
 
     return NextResponse.json({ user: { id: uid, email: normalizedEmail, role, name: name || null } })
   } catch (error) {

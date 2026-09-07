@@ -12,6 +12,16 @@ import { saveLessonMp4 } from '@/lib/courses/lesson-mp4'
 
 let bundleUrl: string | null = null
 
+/** Render timeout scales with lesson length: base 20min + ~1min per video
+ * minute, capped at 90min (long-form 60-min lessons need far more than the
+ * old fixed 20min). Accepts a minute count or a script to derive it from. */
+export function renderTimeoutMs(scriptOrMinutes: ScriptItem[] | number): number {
+  const minutes = typeof scriptOrMinutes === 'number'
+    ? scriptOrMinutes
+    : Math.max(1, Math.round(scriptOrMinutes.reduce((n, s) => n + (s.durationInFrames || 0), 0) / 30 / 60))
+  return Math.min(90, 20 + minutes) * 60 * 1000
+}
+
 function chromePath(): string | undefined {
   const env = process.env.REMOTION_BROWSER_EXECUTABLE?.trim()
   if (env) return env
@@ -40,6 +50,7 @@ export async function renderAndStoreLessonMp4(opts: {
   lessonId: string
   script: ScriptItem[]
   audio: Buffer
+  videoMinutes?: number
 }): Promise<{ bytes: number; stored: 'object' | 'mongo' }> {
   const dir = await mkdtemp(path.join(tmpdir(), 'cs-mp4-'))
   const audioPath = path.join(dir, 'voice.mp3')
@@ -75,7 +86,7 @@ export async function renderAndStoreLessonMp4(opts: {
       crf: 28,
       jpegQuality: 70,
       concurrency: 1,
-      timeoutInMilliseconds: 20 * 60 * 1000,
+      timeoutInMilliseconds: renderTimeoutMs(opts.videoMinutes ?? opts.script),
       chromiumOptions,
       ...(browserExecutable ? { browserExecutable } : {}),
     })

@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, ArrowLeft, Video, Bot, Clock, Calendar, CheckCircle, Send, SkipForward, BarChart3, Code2 } from 'lucide-react'
+import { Loader2, ArrowLeft, Video, Bot, Clock, Calendar, CheckCircle, Send, SkipForward, BarChart3, Code2, Phone } from 'lucide-react'
 import { CollabEditor } from '@/components/interviews/collab-editor'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
@@ -38,6 +38,14 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   const [error, setError] = useState<string | null>(null)
   const [currentAnswer, setCurrentAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.json())
+      .then(j => setUserId(j?.user?.id || j?.uid || null))
+      .catch(() => {})
+  }, [])
 
   // Initialize tour if this is the first visit to interview detail
   useEffect(() => {
@@ -161,6 +169,15 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       </div>
+
+      {userId && (interview.interviewer_id === userId || interview.candidate_id === userId) && (
+        <Link
+          href={`/dashboard/interviews/${id}/live`}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 w-fit"
+        >
+          <Phone className="h-4 w-4" /> Join Live Room
+        </Link>
+      )}
 
       <div className="flex gap-2 text-xs text-muted-foreground">
         <Calendar className="h-3 w-3" /> {new Date(interview.scheduled_at).toLocaleString()}

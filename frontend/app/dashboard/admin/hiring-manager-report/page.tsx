@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { FileText, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import type { APIUser } from '@/lib/route-auth'
 
 interface Candidate {
@@ -53,9 +54,7 @@ export default function HiringManagerReportPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading...
-        </div>
+        <SkeletonTable rows={6} />
       ) : (
         <DataTable columns={columns} data={candidates} searchKeys={['name', 'role']} loading={loading} emptyMessage="No candidates. Data is populated from assessment results." />
       )}

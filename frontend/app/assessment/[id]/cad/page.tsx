@@ -1,6 +1,7 @@
 'use client'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useParams } from 'next/navigation'
 
 import { useState } from 'react'
 import dynamic from 'next/dynamic'
@@ -34,6 +35,8 @@ const CADEditor = dynamic(() => import('@/components/cad/CADEditor').then((m) =>
 export default function CandidateCADAssessmentPage() {
   const addToast = useToast()
   const gate = usePageGuard('user')
+  const params = useParams()
+  const assessmentId = (params?.id as string) || 'unknown'
   const [activeTab, setActiveTab] = useState<'editor' | 'file_upload' | 'task_selection'>('editor')
 
   if (!gate.ready) return null
@@ -86,6 +89,43 @@ export default function CandidateCADAssessmentPage() {
     }, 1500)
   }
 
+  const handleSaveDraft = () => {
+    try {
+      const key = `codespectra-cad-draft-${assessmentId}-${selectedTaskCode}`
+      localStorage.setItem(key, JSON.stringify({ vivaRationale: vivaRationale || '', selectedTaskCode, savedAt: new Date().toISOString() }))
+      addToast({ type: 'success', title: 'Draft saved locally' })
+    } catch {
+      addToast({ type: 'error', title: 'Could not save draft', message: 'Browser storage is unavailable.' })
+    }
+  }
+
+  // No starter-file API exists — generate a minimal valid STEP stub client-side.
+  const handleDownloadStarter = () => {
+    const stub = [
+      'ISO-10303-21;',
+      'HEADER;',
+      "FILE_DESCRIPTION(('CodeSpectra CAD starter template - minimal valid STEP stub, not a full bracket model'),'1');",
+      `FILE_NAME('Base_Bracket_Starter.step','${new Date().toISOString()}',('CodeSpectra'),('CodeSpectra'),' ',' ',' ');`,
+      "FILE_SCHEMA(('AUTOMOTIVE_DESIGN'));",
+      'ENDSEC;',
+      'DATA;',
+      '/* Starter template only - build the full bracket model per the design brief. */',
+      'ENDSEC;',
+      'END-ISO-10303-21;',
+      '',
+    ].join('\n')
+    const blob = new Blob([stub], { type: 'application/step' })
+    const url = URL.createObjectURL(blob)
+    const a = document.createElement('a')
+    a.href = url
+    a.download = 'Base_Bracket_Starter.step'
+    document.body.appendChild(a)
+    a.click()
+    a.remove()
+    URL.revokeObjectURL(url)
+    addToast({ type: 'success', title: 'Starter template downloaded', message: 'Minimal STEP stub - replace with your full bracket model.' })
+  }
+
   return (
     <ProctoringWrapper proctoringLevel="ai_flagged" candidateName="Marcus Vance">
       <div className="flex h-[calc(100vh-2.5rem)] flex-col bg-background">
@@ -132,7 +172,7 @@ export default function CandidateCADAssessmentPage() {
             </div>
 
             <button
-              onClick={() => addToast({ type: 'info', title: 'Notification', message: 'Progress Saved' })}
+              onClick={handleSaveDraft}
               className="flex items-center gap-1 rounded-lg border border-border bg-card px-3 py-1.5 text-xs font-semibold text-foreground hover:bg-accent"
             >
               <Save className="h-3.5 w-3.5" /> Save Draft
@@ -202,7 +242,7 @@ export default function CandidateCADAssessmentPage() {
               <h3 className="font-bold text-foreground">Reference File Starter</h3>
               <p className="text-muted-foreground">Download base starter geometry before modifying:</p>
               <button
-                onClick={() => addToast({ type: 'info', title: 'Notification', message: 'Downloading starter CAD model' })}
+                onClick={handleDownloadStarter}
                 className="flex w-full items-center justify-center gap-1.5 rounded bg-secondary py-1.5 text-xs font-semibold text-secondary-foreground hover:bg-secondary/80"
               >
                 <Download className="h-3.5 w-3.5" /> Download Base_Bracket.step

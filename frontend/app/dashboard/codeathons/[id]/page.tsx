@@ -17,6 +17,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface Problem {
   id: string
@@ -299,9 +300,9 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
   }
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center py-20 gap-3">
-      <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-      <p className="text-sm text-muted-foreground">Loading...</p>
+    <div className="space-y-6">
+      <SkeletonText lines={2} />
+      <SkeletonCard />
     </div>
   )
 

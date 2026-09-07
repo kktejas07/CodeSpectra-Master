@@ -10,6 +10,24 @@ import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 import { emailTemplates } from '@/lib/email-templates'
 
+export async function GET(
+  _request: Request,
+  { params }: { params: Promise<{ userId: string }> }
+) {
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+  const { userId } = await params
+  const user = await getUserById(userId)
+  if (!user) {
+    return NextResponse.json({ error: 'User not found' }, { status: 404 })
+  }
+  const safe: Record<string, unknown> = { ...(user as unknown as Record<string, unknown>) }
+  delete safe.passwordHash
+  return NextResponse.json(safe)
+}
+
 export async function PATCH(
   request: Request,
   { params }: { params: Promise<{ userId: string }> }

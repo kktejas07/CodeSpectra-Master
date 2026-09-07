@@ -21,13 +21,16 @@ import {
   Loader2, ArrowLeft, Trophy, Users, Clock, CalendarDays, Timer,
   CheckCircle, Download, ListChecks, Shield, Settings, Eye, Send, Copy,
   Code, Target, Star, Medal, Award, ChevronRight, ExternalLink,
-  CheckCircle2, XCircle,
+  CheckCircle2, XCircle, Sparkles,
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { JUDGING_CRITERION_KEYS, JUDGING_CRITERION_LABELS, sanitizeJudgingConfig } from '@/lib/hackathons/judge-config'
+import { average, blendFinal, collectHumanScores, judgeStats } from '@/lib/hackathons/calibration'
+import { buildProjectReport } from '@/lib/hackathons/reporting'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -40,6 +43,12 @@ interface Hackathon {
   results_released: boolean; released_at?: string
   judges?: string[]
   banner_url?: string
+  // J3/J4 judging config (published rubric; sanitized at read time)
+  judging_config?: {
+    criteria?: { key: string; label: string; weight: number }[]
+    aiWeight?: number; advanceTopN?: number; displayCount?: number
+    blindMode?: boolean; dropHighLow?: boolean
+  }
   features: {
     team_formation: boolean; claims_system: boolean
     demo_video: 'required' | 'optional' | 'disabled'
@@ -104,6 +113,22 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [isJudgeSheetOpen, setIsJudgeSheetOpen] = useState(false)
   const [scoring, setScoring] = useState(false)
   const [scoreForm, setScoreForm] = useState<{ score: number; feedback: string; rubric_scores?: { criteria: { name: string; score: number }[]; total_score: number; feedback: string } }>({ score: 0, feedback: '' })
+
+  // J1 repo-audit evidence (cached packs keyed by submission id)
+  const [audits, setAudits] = useState<Record<string, any>>({})
+  const [auditingId, setAuditingId] = useState<string | null>(null)
+
+  // J2 AI screening scores (board = ranked leaderboard rows)
+  const [screenBoard, setScreenBoard] = useState<any[]>([])
+  const [screeningId, setScreeningId] = useState<string | null>(null)
+  const [screeningAll, setScreeningAll] = useState(false)
+
+  // J3/J4 finale: head-to-head compare tool
+  const [cmpA, setCmpA] = useState('')
+  const [cmpB, setCmpB] = useState('')
+  const [cmpCrit, setCmpCrit] = useState('implementation')
+  const [cmpResult, setCmpResult] = useState<{ winner: string; reason: string } | null>(null)
+  const [comparing, setComparing] = useState(false)
   
   // Rejection state
   const [rejectingSub, setRejectingSub] = useState<any>(null)
@@ -170,6 +195,125 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     } catch { /* ignore */ }
     finally { setJudgeLoading(false) }
   }, [event?.id, isAdmin, isJudge])
+
+  const loadAudits = useCallback(async (subs: any[]) => {
+    if (!event || (!isAdmin && !isJudge) || subs.length === 0) return
+    try {
+      const entries = await Promise.all(subs.map(async (s: any) => {
+        try {
+          const res = await fetch(`/api/hackathons/${event.id}/submissions/${s.id}/audit`, { credentials: 'include' })
+          if (!res.ok) return null
+          const data = await res.json()
+          return [s.id, data] as const
+        } catch { return null }
+      }))
+      setAudits((prev) => {
+        const next = { ...prev }
+        for (const e of entries) { if (e) next[e[0]] = e[1] }
+        return next
+      })
+    } catch { /* ignore */ }
+  }, [event?.id, isAdmin, isJudge])
+
+  const runAudit = useCallback(async (submissionId: string) => {
+    if (!event) return
+    setAuditingId(submissionId)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${event.id}/submissions/${submissionId}/audit`, { method: 'POST' })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.error || 'Audit failed')
+      setAudits((prev) => ({ ...prev, [submissionId]: data }))
+      addToast({ type: 'success', title: 'Repo audit complete' })
+    } catch (e: any) {
+      addToast({ type: 'error', title: e.message || 'Audit failed' })
+    } finally { setAuditingId(null) }
+  }, [event?.id, addToast])
+
+  // J2 AI screening (scores over the J1 evidence packs)
+  const loadScreening = useCallback(async () => {
+    if (!event || (!isAdmin && !isJudge)) return
+    try {
+      const res = await fetch(`/api/hackathons/${event.id}/screening`, { credentials: 'include' })
+      if (!res.ok) return
+      const data = await res.json()
+      setScreenBoard(data.items || [])
+    } catch { /* ignore */ }
+  }, [event?.id, isAdmin, isJudge])
+
+  const runScreening = useCallback(async (submissionId: string) => {
+    if (!event) return
+    setScreeningId(submissionId)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${event.id}/screening`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ submissionId }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.error || 'Screening failed')
+      if (data.screening) {
+        setAudits((prev) => ({ ...prev, [submissionId]: { ...(prev[submissionId] || {}), screening: data.screening } }))
+      }
+      void loadScreening()
+      addToast({ type: 'success', title: `AI screening: ${data.screening?.total ?? '?'} / ${data.screening?.maxTotal ?? '?'}` })
+    } catch (e: any) {
+      addToast({ type: 'error', title: e.message || 'Screening failed' })
+    } finally { setScreeningId(null) }
+  }, [event?.id, loadScreening, addToast])
+
+  const runScreeningAll = useCallback(async () => {
+    if (!event) return
+    setScreeningAll(true)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${event.id}/screening`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ all: true }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.error || 'Bulk screening failed')
+      const results = Array.isArray(data.results) ? data.results : []
+      setAudits((prev) => {
+        const next = { ...prev }
+        for (const r of results) {
+          if (r && r.ok && r.submissionId && r.screening) {
+            next[r.submissionId] = { ...(next[r.submissionId] || {}), screening: r.screening }
+          }
+        }
+        return next
+      })
+      const okCount = results.filter((r: any) => r && r.ok).length
+      const failCount = results.length - okCount
+      addToast({ type: 'success', title: `Screened ${okCount}${failCount > 0 ? `, ${failCount} failed` : ''}` })
+      void loadScreening()
+    } catch (e: any) {
+      addToast({ type: 'error', title: e.message || 'Bulk screening failed' })
+    } finally { setScreeningAll(false) }
+  }, [event?.id, loadScreening, addToast])
+
+  // J3/J4: judging config (published rubric; defaults when unset) + calibration inputs
+  const judgingCfg = useMemo(() => sanitizeJudgingConfig(event ? event.judging_config : null), [event])
+  const humanScores = useMemo(() => collectHumanScores(judgeSubmissions), [judgeSubmissions])
+  const calibStats = useMemo(() => judgeStats(humanScores), [humanScores])
+
+  // J3: head-to-head tie-break via the compare API (one LLM call server-side)
+  const runCompare = useCallback(async () => {
+    if (!event || !cmpA || !cmpB || cmpA === cmpB) return
+    setComparing(true)
+    setCmpResult(null)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${event.id}/judge/compare`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ aSubmissionId: cmpA, bSubmissionId: cmpB, criterion: cmpCrit }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.error || 'Compare failed')
+      setCmpResult({ winner: String(data.winner || 'tie'), reason: String(data.reason || 'no reason given') })
+    } catch (e: any) {
+      addToast({ type: 'error', title: e.message || 'Compare failed' })
+    } finally { setComparing(false) }
+  }, [event?.id, cmpA, cmpB, cmpCrit, addToast])
 
   const submitScore = useCallback(async () => {
     if (!event || !selectedSub) return
@@ -264,6 +408,35 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     return Array.from(map.values())
   }, [judgeSubmissions])
 
+  // J4: final ranked board — AI screening blended with human averages via
+  // config aiWeight (+ drop-high-low when enabled). Missing side falls back
+  // to whichever score exists; null when neither does.
+  const rankedBoard = useMemo((): Array<{
+    sub: any; aiTotal: number | null; aiMax: number | null
+    humanAvg: number | null; humanCount: number; final: number | null
+  }> => {
+    const list = Array.isArray(groupedSubmissions) ? groupedSubmissions : []
+    const rows = list.map((s: any) => {
+      const fromBoard = (Array.isArray(screenBoard) ? screenBoard : []).find((r: any) => r && r.submissionId === s.id)
+      const cached = (audits || {})[s.id]?.screening
+      const aiTotal = typeof fromBoard?.total === 'number' ? fromBoard.total
+        : (typeof cached?.total === 'number' ? cached.total : null)
+      const aiMax = typeof fromBoard?.maxTotal === 'number' ? fromBoard.maxTotal
+        : (typeof cached?.maxTotal === 'number' ? cached.maxTotal : null)
+      const totals = (Array.isArray(humanScores) ? humanScores : [])
+        .filter((h) => h && h.submissionId === s.id)
+        .map((h) => h.total)
+      const humanAvg = average(totals, { dropHighLow: judgingCfg.dropHighLow })
+      return {
+        sub: s, aiTotal, aiMax,
+        humanAvg, humanCount: totals.length,
+        final: blendFinal(aiTotal, humanAvg, judgingCfg.aiWeight),
+      }
+    })
+    rows.sort((a, b) => (b.final ?? -1) - (a.final ?? -1))
+    return rows
+  }, [groupedSubmissions, screenBoard, audits, humanScores, judgingCfg])
+
   const exportResults = useCallback(() => {
     if (!groupedSubmissions || groupedSubmissions.length === 0) return
     const csvContent = [
@@ -325,6 +498,95 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       cell: (row: any) => <span className="text-xs text-muted-foreground">{new Date(row.submitted_at).toLocaleString()}</span>
     },
     {
+      key: 'evidence',
+      header: 'Evidence',
+      cell: (row: any) => {
+        const a = audits[row.id]
+        const secretsTotal = a && a.secrets
+          ? (Number(a.secrets.critical) || 0) + (Number(a.secrets.high) || 0) + (Number(a.secrets.medium) || 0)
+          : null
+        const pct = a && a.freshness && typeof a.freshness.pctDuringEvent === 'number' ? a.freshness.pctDuringEvent : null
+        return (
+          <div className="flex flex-col gap-1.5 max-w-[240px]">
+            <Button
+              size="sm"
+              variant="outline"
+              className="h-7 text-xs"
+              disabled={auditingId === row.id || !row.repo_url}
+              title={row.repo_url ? 'Run automated repo audit' : 'No repo URL on this submission'}
+              onClick={() => { void runAudit(row.id) }}
+            >
+              {auditingId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+              {a ? 'Re-audit' : 'Audit repo'}
+            </Button>
+            {a && (
+              <div className="flex flex-wrap gap-1">
+                {pct !== null && (
+                  <Badge variant="outline" className="text-[10px]" title={a.freshness?.reason || ''}>{pct}% in-event</Badge>
+                )}
+                {a.freshness?.likelyPreexisting === true && (
+                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">pre-existing?</Badge>
+                )}
+                {secretsTotal !== null && (
+                  <Badge variant="outline" className={`text-[10px] ${secretsTotal > 0 ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' : ''}`}>
+                    {secretsTotal} secrets
+                  </Badge>
+                )}
+                {a.docs && (
+                  <>
+                    <Badge variant="outline" className="text-[10px]">{a.docs.tests ? 'tests ✓' : 'tests ✗'}</Badge>
+                    <Badge variant="outline" className="text-[10px]">{a.docs.readme ? 'docs ✓' : 'docs ✗'}</Badge>
+                  </>
+                )}
+                {a.vulns && typeof a.vulns.count === 'number' && (
+                  <Badge variant="outline" className="text-[10px]">{a.vulns.count} vulns</Badge>
+                )}
+              </div>
+            )}
+            {a && (
+              <details className="text-xs">
+                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Full evidence</summary>
+                <dl className="mt-1 space-y-1 rounded-md border bg-muted/20 p-2">
+                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Repo</dt><dd className="font-mono text-right">{a.repo ? `${(a.repo.stars ?? 0)}★ ${(a.repo.forks ?? 0)}⑂ ${a.repo.language || ''}` : 'n/a'}</dd></div>
+                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Commits</dt><dd className="font-mono text-right">{a.commits ? `${a.commits.eventCommits ?? 0}/${a.commits.total ?? 0} in-event` : 'n/a'}</dd></div>
+                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Contributors</dt><dd className="font-mono text-right">{a.effort?.contributors ?? 'n/a'}</dd></div>
+                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Files</dt><dd className="font-mono text-right">{a.files?.count ?? 'n/a'}</dd></div>
+                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">CI</dt><dd className="font-mono text-right">{a.docs ? (a.docs.ci ? `yes (${(a.docs.ciFiles || []).length})` : 'no') : 'n/a'}</dd></div>
+                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">License</dt><dd className="font-mono text-right">{a.docs ? (a.docs.license ? 'yes' : 'no') : 'n/a'}</dd></div>
+                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Freshness</dt><dd className="text-right">{a.freshness?.reason || 'n/a'}</dd></div>
+                  {(a.limitations || []).length > 0 && (
+                    <div><dt className="text-muted-foreground">Gaps</dt>{(a.limitations || []).map((l: string, i: number) => <dd key={i} className="text-muted-foreground">• {l}</dd>)}</div>
+                  )}
+                </dl>
+              </details>
+            )}
+            <div className="flex flex-wrap items-center gap-1">
+              {a?.screening && typeof a.screening.total === 'number' && (
+                <Badge
+                  variant="outline"
+                  className="text-[10px] bg-violet-500/10 text-violet-600 border-violet-500/30"
+                  title={a.screening.notes || 'AI screening total'}
+                >
+                  AI {a.screening.total}/{a.screening.maxTotal ?? '?'}
+                </Badge>
+              )}
+              <Button
+                size="sm"
+                variant="ghost"
+                className="h-7 text-xs px-2"
+                disabled={screeningId === row.id || !a}
+                title={a ? 'Run AI screening on the evidence pack' : 'Audit the repo first'}
+                onClick={() => { void runScreening(row.id) }}
+              >
+                {screeningId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                {a?.screening ? 'Re-screen' : 'Run screening'}
+              </Button>
+            </div>
+          </div>
+        )
+      }
+    },
+    {
       key: 'actions',
       header: 'Action',
       cell: (row: any) => (
@@ -340,7 +602,7 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
         }}>Evaluate</Button>
       )
     }
-  ], [])
+  ], [audits, auditingId, runAudit, screeningId, runScreening])
 
   useEffect(() => {
     if (tab === 'submissions') {
@@ -350,8 +612,15 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       return () => clearInterval(interval)
     }
     if (tab === 'leaderboard') void loadLeaderboard()
-    if (tab === 'judge') void loadJudgeSubmissions()
-  }, [tab, loadSubmissions, loadLeaderboard, loadJudgeSubmissions])
+    if (tab === 'judge') {
+      void loadJudgeSubmissions()
+      void loadScreening()
+    }
+  }, [tab, loadSubmissions, loadLeaderboard, loadJudgeSubmissions, loadScreening])
+
+  useEffect(() => {
+    if (tab === 'judge' && judgeSubmissions.length > 0) void loadAudits(judgeSubmissions)
+  }, [tab, judgeSubmissions, loadAudits])
 
   if (!gate.ready || loading) {
     return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
@@ -639,6 +908,261 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </Card>
           ) : (
             <div className="space-y-4">
+              {screenBoard.length > 0 && (
+                <Card className="p-5 space-y-3 border-violet-500/20 bg-violet-500/5">
+                  <div className="flex items-center justify-between gap-3">
+                    <div>
+                      <h3 className="font-semibold text-sm text-violet-600 flex items-center gap-1.5">
+                        <Sparkles className="w-4 h-4" /> Screening leaderboard
+                      </h3>
+                      <p className="text-xs text-muted-foreground">AI scores over repo evidence — advisory only, human judges decide.</p>
+                    </div>
+                    <Button size="sm" variant="outline" onClick={() => { void runScreeningAll() }} disabled={screeningAll} className="h-9 shrink-0">
+                      {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                      Screen all
+                    </Button>
+                  </div>
+                  <div className="space-y-2">
+                    {screenBoard.map((r: any, i: number) => {
+                      const name = (judgeSubmissions.find((s: any) => s && s.id === r.submissionId)?.team_name || r.teamId || r.submissionId || 'Unknown')
+                      const crits = Array.isArray(r.scores) ? r.scores : []
+                      return (
+                        <div key={r.submissionId || i} className="rounded-lg border bg-background/60 p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 text-center font-mono text-xs text-muted-foreground">#{i + 1}</span>
+                            <span className="flex-1 min-w-0 truncate text-sm font-medium">{name}</span>
+                            <Badge variant="outline" className="text-xs bg-violet-500/10 text-violet-600 border-violet-500/30">
+                              AI {r.total ?? '?'}/{r.maxTotal ?? '?'}
+                            </Badge>
+                          </div>
+                          {crits.length > 0 && (
+                            <details className="mt-2 text-xs">
+                              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                                Per-criterion citations
+                              </summary>
+                              <ul className="mt-1 space-y-1">
+                                {crits.map((c: any, j: number) => (
+                                  <li key={c?.key || j} className="rounded border bg-muted/20 px-2 py-1">
+                                    <span className="font-medium">{c?.key || '?'}</span>
+                                    <span className="font-mono"> {c?.score ?? '?'}/5</span>
+                                    <span className="text-muted-foreground"> — {c?.citation || 'no citation'}</span>
+                                    {c?.missing && <span className="text-amber-600"> (missing: {c.missing})</span>}
+                                  </li>
+                                ))}
+                              </ul>
+                            </details>
+                          )}
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Card>
+              )}
+              {/* J3/J4 (a): judging config summary — published rubric, read-only */}
+              <Card className="p-4 border-primary/20">
+                <div className="flex flex-wrap items-center gap-2 text-xs">
+                  <span className="font-semibold text-sm mr-1">Judging rubric</span>
+                  <Badge variant="secondary">{judgingCfg.criteria.length} criteria</Badge>
+                  <Badge variant="outline">
+                    AI {Math.round(judgingCfg.aiWeight * 100)}% / human {Math.round((1 - judgingCfg.aiWeight) * 100)}%
+                  </Badge>
+                  <Badge variant="outline">Top {judgingCfg.advanceTopN} advance</Badge>
+                  <Badge variant="outline">Top {judgingCfg.displayCount} published</Badge>
+                  {judgingCfg.blindMode && <Badge variant="outline" className="bg-slate-500/10">Blind mode</Badge>}
+                  {judgingCfg.dropHighLow && <Badge variant="outline" className="bg-slate-500/10">Drop high/low</Badge>}
+                  <details className="text-xs">
+                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">weights</summary>
+                    <span className="text-muted-foreground">
+                      {(judgingCfg.criteria || []).map((c) => `${c.label} ×${c.weight}`).join(' · ')}
+                    </span>
+                  </details>
+                </div>
+              </Card>
+              {/* J3/J4 (b): calibration — per-judge means, |z|>1.5 flagged */}
+              {calibStats.length > 0 && (
+                <Card className="p-5 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-sm">Calibration</h3>
+                    <p className="text-xs text-muted-foreground">Per-judge scoring means. Judges whose mean is more than 1.5σ from the panel are flagged.</p>
+                  </div>
+                  <div className="flex flex-wrap gap-2">
+                    {calibStats.map((st) => (
+                      <Badge
+                        key={st.judgeId}
+                        variant="outline"
+                        title={`z = ${st.z}`}
+                        className={`text-[11px] font-mono ${st.outlier ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' : ''}`}
+                      >
+                        {(st.judgeId || '').slice(0, 8)} μ={st.mean} σ={st.std} n={st.count}{st.outlier ? ' · outlier' : ''}
+                      </Badge>
+                    ))}
+                  </div>
+                </Card>
+              )}
+              {/* J3/J4 (e): final ranked board — AI + human blended via config */}
+              {rankedBoard.length > 0 && (
+                <Card className="p-5 space-y-3 border-emerald-500/20">
+                  <div>
+                    <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                      <Trophy className="w-4 h-4" /> Final board
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      AI {Math.round(judgingCfg.aiWeight * 100)}% + human blended
+                      {judgingCfg.dropHighLow ? ', high/low dropped' : ''} — advisory until results are released.
+                    </p>
+                  </div>
+                  <div className="space-y-2">
+                    {rankedBoard.map((r, i) => {
+                      const name = judgingCfg.blindMode
+                        ? `Entry ${i + 1}`
+                        : String(r.sub.team_name || r.sub.team_id || r.sub.id || 'Unknown')
+                      return (
+                        <div key={String(r.sub.id || i)} className="rounded-lg border bg-background/60 p-3">
+                          <div className="flex items-center gap-2">
+                            <span className="w-6 text-center font-mono text-xs text-muted-foreground">#{i + 1}</span>
+                            <span className="flex-1 min-w-0 truncate text-sm font-medium">{name}</span>
+                            {i < judgingCfg.advanceTopN && (
+                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">advances</Badge>
+                            )}
+                            {i < judgingCfg.displayCount && (
+                              <Badge variant="outline" className="text-[10px]">published</Badge>
+                            )}
+                            <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                              {r.final !== null && r.final !== undefined ? r.final : '?'}
+                            </Badge>
+                          </div>
+                          <p className="mt-1 text-[11px] text-muted-foreground font-mono">
+                            AI {r.aiTotal ?? '?'}{r.aiMax !== null && r.aiMax !== undefined ? `/${r.aiMax}` : ''} · human {r.humanAvg ?? '?'} ({r.humanCount} judge{r.humanCount === 1 ? '' : 's'})
+                          </p>
+                        </div>
+                      )
+                    })}
+                  </div>
+                </Card>
+              )}
+              {/* J3/J4 (c): head-to-head tie-break */}
+              <Card className="p-5 space-y-3">
+                <div>
+                  <h3 className="font-semibold text-sm">Head-to-head tie-break</h3>
+                  <p className="text-xs text-muted-foreground">One AI comparison on a single criterion, citing evidence. Ties allowed.</p>
+                </div>
+                <div className="grid gap-2 sm:grid-cols-2">
+                  <select
+                    value={cmpA}
+                    onChange={(e) => setCmpA(e.target.value)}
+                    className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                  >
+                    <option value="">Submission A…</option>
+                    {groupedSubmissions.map((s: any, i: number) => (
+                      <option key={String(s.id || i)} value={String(s.id || '')}>
+                        {judgingCfg.blindMode ? `Entry ${i + 1}` : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
+                      </option>
+                    ))}
+                  </select>
+                  <select
+                    value={cmpB}
+                    onChange={(e) => setCmpB(e.target.value)}
+                    className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                  >
+                    <option value="">Submission B…</option>
+                    {groupedSubmissions.map((s: any, i: number) => (
+                      <option key={String(s.id || i)} value={String(s.id || '')}>
+                        {judgingCfg.blindMode ? `Entry ${i + 1}` : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={cmpCrit}
+                    onChange={(e) => setCmpCrit(e.target.value)}
+                    className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                  >
+                    {JUDGING_CRITERION_KEYS.map((k) => (
+                      <option key={k} value={k}>{JUDGING_CRITERION_LABELS[k] || k}</option>
+                    ))}
+                  </select>
+                  <Button size="sm" onClick={() => { void runCompare() }} disabled={comparing || !cmpA || !cmpB || cmpA === cmpB} className="h-9">
+                    {comparing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                    Compare
+                  </Button>
+                </div>
+                {cmpResult && (
+                  <div className="rounded-lg border p-3 text-sm">
+                    <span className="font-semibold">
+                      {cmpResult.winner === 'tie'
+                        ? 'Tie'
+                        : `Winner: ${groupedSubmissions.find((s: any) => s && String(s.id) === (cmpResult.winner === 'A' ? cmpA : cmpB))?.team_name || (cmpResult.winner === 'A' ? cmpA : cmpB)} (${cmpResult.winner})`}
+                    </span>
+                    <p className="text-xs text-muted-foreground mt-1">{cmpResult.reason}</p>
+                  </div>
+                )}
+              </Card>
+              {/* J3/J4 (d): per-project reports — deterministic, auditable */}
+              {rankedBoard.length > 0 && (
+                <Card className="p-5 space-y-3">
+                  <div>
+                    <h3 className="font-semibold text-sm">Project reports</h3>
+                    <p className="text-xs text-muted-foreground">Built from stored scores + evidence — no new AI calls.</p>
+                  </div>
+                  <div className="space-y-2">
+                    {rankedBoard.map((r, i) => {
+                      const myScreen = (Array.isArray(screenBoard) ? screenBoard : []).find((x: any) => x && x.submissionId === r.sub.id)
+                        || (audits || {})[r.sub.id]?.screening
+                        || null
+                      const winnerRow = rankedBoard[0]
+                      const wScreen = winnerRow
+                        ? ((Array.isArray(screenBoard) ? screenBoard : []).find((x: any) => x && x.submissionId === winnerRow.sub.id)
+                          || (audits || {})[winnerRow.sub.id]?.screening
+                          || null)
+                        : null
+                      const report = buildProjectReport({
+                        submissionId: String(r.sub.id || ''),
+                        teamName: judgingCfg.blindMode ? `Entry ${i + 1}` : String(r.sub.team_name || 'Unknown'),
+                        problemSlug: String(r.sub.problem_slug || ''),
+                        repoUrl: String(r.sub.repo_url || ''),
+                        liveUrl: String(r.sub.live_url || ''),
+                        videoUrl: String(r.sub.video_url || ''),
+                        screening: myScreen && typeof myScreen === 'object'
+                          ? { scores: myScreen.scores, total: myScreen.total, maxTotal: myScreen.maxTotal, notes: myScreen.notes }
+                          : null,
+                        humanAvg: r.humanAvg,
+                        humanCount: r.humanCount,
+                        finalScore: r.final,
+                        evidence: ((audits || {})[r.sub.id] && typeof (audits || {})[r.sub.id] === 'object' ? (audits || {})[r.sub.id] : null),
+                        winnerId: winnerRow ? String(winnerRow.sub.id || '') : '',
+                        winnerTeamName: winnerRow ? String(winnerRow.sub.team_name || 'the winner') : 'the winner',
+                        winnerScores: wScreen && Array.isArray(wScreen.scores) ? wScreen.scores : null,
+                        rank: i + 1,
+                        totalTeams: rankedBoard.length,
+                      })
+                      return (
+                        <details key={String(r.sub.id || i)} className="rounded-lg border bg-background/60 p-3 text-xs">
+                          <summary className="cursor-pointer text-sm font-medium">
+                            Report — {judgingCfg.blindMode ? `Entry ${i + 1}` : String(r.sub.team_name || r.sub.id || 'Unknown')} (#{i + 1})
+                            <span className="ml-2 text-muted-foreground font-normal">strongest: {report.strongestDimension}</span>
+                          </summary>
+                          <div className="mt-2 space-y-2">
+                            {report.sections.map((sec, j) => (
+                              <div key={j}>
+                                <p className="font-semibold text-muted-foreground">{sec.title}</p>
+                                <p className="whitespace-pre-line mt-0.5">{sec.body}</p>
+                              </div>
+                            ))}
+                            {(r.sub.repo_url || r.sub.live_url || r.sub.video_url) && (
+                              <div className="flex flex-wrap gap-2 pt-1">
+                                {r.sub.repo_url && <a href={String(r.sub.repo_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Repo</a>}
+                                {r.sub.live_url && <a href={String(r.sub.live_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Live</a>}
+                                {r.sub.video_url && <a href={String(r.sub.video_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Video</a>}
+                              </div>
+                            )}
+                          </div>
+                        </details>
+                      )
+                    })}
+                  </div>
+                </Card>
+              )}
               <Card className="p-5 flex items-center justify-between border-blue-500/20 bg-blue-500/5">
                 <div>
                   <h3 className="font-semibold text-sm text-blue-500">Judging Dashboard</h3>
@@ -657,6 +1181,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
                   )}
                   <Button size="sm" variant="outline" onClick={exportResults} className="h-9">
                     <Download className="w-4 h-4 mr-2" /> Export CSV
+                  </Button>
+                  <Button size="sm" variant="outline" onClick={() => { void runScreeningAll() }} disabled={screeningAll} className="h-9">
+                    {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                    Screen all
                   </Button>
                 </div>
               </Card>

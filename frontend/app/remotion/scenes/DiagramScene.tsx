@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect, useSyncExternalStore } from 'react'
 import { AbsoluteFill, interpolate, useCurrentFrame, useVideoConfig } from 'remotion'
 
 export type DiagramKind = 'flow' | 'icons' | 'compare'
@@ -7,14 +7,76 @@ type Props = {
   title: string
   content: string[]
   kind?: DiagramKind
+  mermaid?: string
 }
 
-/** Unstop-style center diagram: boxes + arrows / icon cards — no external images. */
-export const DiagramScene: React.FC<Props> = ({ title, content, kind = 'flow' }) => {
+// ── mermaid SVG cache ────────────────────────────────────────────────
+const svgCache = new Map<string, string>()
+let mermaidReady = false
+let mermaidPromise: Promise<void> | null = null
+const cacheListeners = new Set<() => void>()
+
+function ensureMermaid() {
+  if (mermaidReady || mermaidPromise) return mermaidPromise!
+  mermaidPromise = import('mermaid').then(m => {
+    m.default.initialize({ startOnLoad: false, theme: 'dark', securityLevel: 'strict' })
+    mermaidReady = true
+  })
+  return mermaidPromise
+}
+
+function subscribeCache(cb: () => void) {
+  cacheListeners.add(cb)
+  return () => { cacheListeners.delete(cb) }
+}
+
+function emitCacheChange() {
+  cacheListeners.forEach(l => l())
+}
+
+/** Render mermaid code to SVG. Returns cached result on subsequent frames. */
+function renderMermaid(code: string): string | null {
+  const cached = svgCache.get(code)
+  if (cached !== undefined) return cached || null
+
+  // Kick off async render; component will re-render when cache populates
+  ensureMermaid().then(async () => {
+    if (svgCache.has(code)) return
+    try {
+      const id = `mermaid-${svgCache.size}-${Date.now()}`
+      const { svg } = await import('mermaid').then(m => m.default.render(id, code))
+      svgCache.set(code, svg)
+    } catch {
+      svgCache.set(code, '') // mark as failed so we don't retry
+    }
+    emitCacheChange()
+  })
+
+  return null
+}
+
+/** Unstop-style center diagram: boxes + arrows / icon cards — no external images.
+ *  When `mermaid` prop is provided and parses to valid SVG, renders real
+ *  Mermaid diagrams (flowcharts, sequences). Falls back to bullet boxes on
+ *  failure or while the async SVG render is in progress. */
+export const DiagramScene: React.FC<Props> = ({ title, content, kind = 'flow', mermaid }) => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
   const fade = interpolate(frame, [0, 12], [0, 1], { extrapolateRight: 'clamp' })
-  const labels = content.length ? content.slice(0, 4) : ['Client', 'API', 'Service', 'Data']
+  const items = (Array.isArray(content) ? content : []).map(c => String(c || '').trim()).filter(Boolean)
+  const labels = items.length ? items.slice(0, 4) : [String(title || '').trim() || 'Overview']
+
+  // useSyncExternalStore re-renders component when svgCache changes
+  const svg = useSyncExternalStore(
+    subscribeCache,
+    () => (mermaid ? svgCache.get(mermaid) ?? null : null),
+  )
+
+  // Kick off async mermaid→SVG render (once per unique code; cached)
+  useEffect(() => {
+    if (mermaid) renderMermaid(mermaid)
+  }, [mermaid])
+  const svgReady = svg != null && svg.length > 0
 
   return (
     <AbsoluteFill
@@ -40,7 +102,9 @@ export const DiagramScene: React.FC<Props> = ({ title, content, kind = 'flow' })
           marginTop: 24,
         }}
       >
-        {kind === 'compare' ? (
+        {mermaid && svgReady ? (
+          <MermaidSvg svg={svg!} frame={frame} />
+        ) : kind === 'compare' ? (
           <Compare labels={labels} frame={frame} fps={fps} />
         ) : kind === 'icons' ? (
           <IconGrid labels={labels} frame={frame} fps={fps} />
@@ -53,6 +117,22 @@ export const DiagramScene: React.FC<Props> = ({ title, content, kind = 'flow' })
         CodeSpectra
       </div>
     </AbsoluteFill>
+  )
+}
+
+function MermaidSvg({ svg, frame }: { svg: string; frame: number }) {
+  const opacity = interpolate(frame, [0, 8], [0, 1], { extrapolateRight: 'clamp' })
+  return (
+    <div
+      style={{
+        opacity,
+        width: '100%',
+        maxWidth: 1100,
+        display: 'flex',
+        justifyContent: 'center',
+      }}
+      dangerouslySetInnerHTML={{ __html: svg }}
+    />
   )
 }
 

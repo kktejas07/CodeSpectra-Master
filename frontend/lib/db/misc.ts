@@ -14,16 +14,11 @@
  *   - feature_flags
  *   - quality_ratings           (per-project rating rules)
  */
-import { randomUUID } from 'node:crypto'
+import { newId, nowIso } from './ids'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
-export function newId(): string {
-  return randomUUID()
-}
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+export { newId, nowIso }
 
 async function db() {
   return getMongoDb()

@@ -5,16 +5,10 @@
  * All documents use string `id` (UUID v4) so existing API/UI shapes are
  * unchanged.
  */
-import { randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
-export function newId(): string {
-  return randomUUID()
-}
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+export { newId, nowIso } from './ids'
 
 export interface CodeathonDoc {
   id: string

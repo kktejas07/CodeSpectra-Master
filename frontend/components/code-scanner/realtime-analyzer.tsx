@@ -104,7 +104,7 @@ export function RealtimeAnalyzer({
               </div>
             </div>
 
-            <div className="grid grid-cols-3 gap-4 text-center">
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 text-center">
               <div>
                 <div className="text-2xl font-bold text-red-500">
                   {analysisMetadata.bugs || 0}

@@ -28,11 +28,9 @@ export async function GET() {
       problemMap[p.id] = p
     }
 
-    // 3. Fetch skill_analytics documents (or demo user docs if exists)
-    let saDocs = await db.collection('skill_analytics').find({ user_id: userId }).toArray()
-    if (saDocs.length === 0 && (userId === 'demo-user' || subs.length === 0)) {
-      saDocs = await db.collection('skill_analytics').find({ user_id: 'demo-user' }).toArray()
-    }
+    // 3. Fetch this user's skill_analytics documents (never another user's data)
+    const saDocs = await db.collection('skill_analytics').find({ user_id: userId }).toArray()
+    const hasData = subs.length > 0 || saDocs.length > 0
 
     // Calculate totals
     const submissionsCount = subs.length
@@ -42,13 +40,13 @@ export async function GET() {
     const avgScore = submissionsCount > 0 ? Math.round(subs.reduce((acc, s) => acc + (s.score || 0), 0) / submissionsCount) : (saDocs.length > 0 ? 82 : 0)
     const avgTimeMs = submissionsCount > 0 ? Math.round(subs.reduce((acc, s) => acc + (s.total_time_ms || 0), 0) / submissionsCount) : (saDocs.length > 0 ? 115 : 0)
 
-    // Determine top skill and top score
-    let topSkill = 'Arrays & Hashing'
-    let topScore = avgScore || 85
+    // Determine top skill and top score (null/0 when there is no real signal)
+    let topSkill: string | null = null
+    let topScore = 0
     if (saDocs.length > 0) {
       const sortedSa = [...saDocs].sort((a, b) => (b.percentage ?? b.solved ?? 0) - (a.percentage ?? a.solved ?? 0))
-      topSkill = sortedSa[0].skill || topSkill
-      topScore = sortedSa[0].percentage ?? sortedSa[0].solved ?? topScore
+      topSkill = sortedSa[0].skill || null
+      topScore = sortedSa[0].percentage ?? sortedSa[0].solved ?? 0
     } else if (problemDocs.length > 0) {
       // Find most frequent topic among accepted submissions
       const topicCounts: Record<string, number> = {}
@@ -67,20 +65,16 @@ export async function GET() {
       }
     }
 
-    // Calculate by_language
+    // Calculate by_language (empty when the user has no submissions)
     const byLanguage: Record<string, number> = {}
     if (subs.length > 0) {
       for (const s of subs) {
         const lang = s.language || 'javascript'
         byLanguage[lang] = (byLanguage[lang] || 0) + 1
       }
-    } else {
-      byLanguage['javascript'] = 8
-      byLanguage['python'] = 5
-      byLanguage['typescript'] = 3
     }
 
-    // Calculate by_difficulty
+    // Calculate by_difficulty (empty when the user has no submissions)
     const byDifficulty: Record<string, number> = {}
     if (subs.length > 0) {
       for (const s of subs) {
@@ -88,10 +82,6 @@ export async function GET() {
         const diff = (p?.difficulty || 'medium').toLowerCase()
         byDifficulty[diff] = (byDifficulty[diff] || 0) + 1
       }
-    } else {
-      byDifficulty['easy'] = 6
-      byDifficulty['medium'] = 8
-      byDifficulty['hard'] = 2
     }
 
     // Calculate recent submissions (up to 15)
@@ -125,28 +115,17 @@ export async function GET() {
         if (accuracyPct < 70) weakTopics.push('Edge-case test coverage and precision')
       }
 
-      if (strengths.length === 0) strengths.push('Fundamental programming & algorithm execution')
-      if (weakTopics.length === 0) weakTopics.push('Advanced dynamic programming & optimization')
-
       aiInsights = {
         strengths,
         weak_topics: weakTopics,
-        recommended_problems: [
-          'Binary Tree Level Order Traversal',
-          'Course Schedule (Graph DFS/BFS)',
-          'Longest Increasing Subsequence (DP)'
-        ],
+        recommended_problems: [] as string[],
         speed_assessment: avgTimeMs > 0 && avgTimeMs < 150 
           ? `Your solutions execute fast (avg ${avgTimeMs}ms), ranking above typical average runtime.`
           : `Your average run time is ${avgTimeMs || 120}ms. Focus on algorithm Big-O optimization.`,
         accuracy_assessment: accuracyPct >= 75 
           ? `Excellent test accuracy (${accuracyPct}%). You rarely fail boundary test cases.`
           : `Current accuracy is ${accuracyPct}%. Double check corner cases (empty inputs, integer overflow) before running.`,
-        growth_plan: [
-          'Master Graph traversal techniques (BFS/DFS and topological sorting)',
-          'Practice space-time tradeoff analyses on Medium/Hard challenges',
-          'Review failing test cases and edge constraints before submitting'
-        ]
+        growth_plan: [] as string[]
       }
     }
 
@@ -155,6 +134,7 @@ export async function GET() {
         email: userEmail,
         id: userId,
       },
+      hasData,
       totals: {
         submissions: submissionsCount || saDocs.reduce((acc, sa) => acc + (sa.solved || 0), 0),
         accepted: acceptedCount || saDocs.reduce((acc, sa) => acc + (sa.solved || 0), 0),

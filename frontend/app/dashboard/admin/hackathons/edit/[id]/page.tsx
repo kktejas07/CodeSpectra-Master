@@ -25,6 +25,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { EventStepIndicator } from '@/components/hackathons/event-step-indicator'
 import { ProblemViewDialog } from '@/components/problems/problem-view-dialog'
+import { SkeletonButton, SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface ProblemOption { slug: string; title: string; difficulty: string; topics?: string[] }
 
@@ -381,7 +382,13 @@ export default function HackathonEditPage({ params }: { params: Promise<{ id: st
     finally { setBusy(false) }
   }
 
-  if (!gate.ready || loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">Loading…</div>
+  if (!gate.ready || loading) return (
+    <div className="space-y-6">
+      <SkeletonText lines={2} />
+      <SkeletonCard />
+      <SkeletonButton />
+    </div>
+  )
 
   return (
     <div className="space-y-6">

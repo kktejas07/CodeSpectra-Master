@@ -22,8 +22,11 @@ export async function GET(req: NextRequest) {
   let weeks = 52
   try {
     const db = await getMongoDb()
-    const userId = gate.user.id
     const { searchParams } = new URL(req.url)
+    // Optional ?userId for other users' public heatmaps (same aggregation shape,
+    // counts only — no PII beyond what the public profile page already shows).
+    const requestedUserId = (searchParams.get('userId') || '').trim()
+    const userId = requestedUserId || gate.user.id
     weeks = Math.min(parseInt(searchParams.get('weeks') || '52'), 52)
     const now = new Date()
 

@@ -7,6 +7,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 export default function RecentlyViewedPage() {
   const gate = usePageGuard('user')
@@ -26,8 +27,9 @@ export default function RecentlyViewedPage() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading…
+      <div className="w-full space-y-6">
+        <SkeletonText lines={2} />
+        <SkeletonList count={5} />
       </div>
     )
   }

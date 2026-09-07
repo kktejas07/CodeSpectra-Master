@@ -140,7 +140,12 @@ export async function PATCH(
     subUpdate.score = score
     subUpdate.feedback = feedback
     subUpdate.reviewed_at = nowIso()
-    subUpdate.rubric_scores = [{
+    // ponytail: merge, don't overwrite — one entry per judge so multi-judge
+    // averaging, calibration, and drop-high-low actually have N entries.
+    const prevRubric: any[] = Array.isArray((sub as any)?.rubric_scores)
+      ? (sub as any).rubric_scores.filter((r: any) => r?.judge_id !== user.id)
+      : []
+    subUpdate.rubric_scores = [...prevRubric, {
       judge_id: user.id,
       criteria: rubric.criteria || [],
       total_score: score,

@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { updateFeedbackStatus, deleteFeedback } from '@/lib/db/feedback'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin } from '@/lib/route-auth'
 
 export async function PATCH(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await getAPIUser()
-    if (!user || user.role === 'user') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const gate = await requireSuperAdmin()
+    if ('error' in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
     const { status } = await req.json()
@@ -25,9 +25,9 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
 export async function DELETE(req: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
-    const user = await getAPIUser()
-    if (!user || user.role === 'user') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const gate = await requireSuperAdmin()
+    if ('error' in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
     const { id } = await params

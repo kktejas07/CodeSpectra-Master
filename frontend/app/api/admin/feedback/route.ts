@@ -1,12 +1,12 @@
 import { NextResponse } from 'next/server'
 import { listFeedback } from '@/lib/db/feedback'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin } from '@/lib/route-auth'
 
 export async function GET(req: Request) {
   try {
-    const user = await getAPIUser()
-    if (!user || user.role === 'user') {
-      return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    const gate = await requireSuperAdmin()
+    if ('error' in gate) {
+      return NextResponse.json({ error: gate.error }, { status: gate.status })
     }
 
     const { searchParams } = new URL(req.url)

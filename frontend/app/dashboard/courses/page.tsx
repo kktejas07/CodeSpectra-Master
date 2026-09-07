@@ -18,6 +18,7 @@ import {
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/difficulty-levels'
 
 const PAGE_SIZE = 10
 
@@ -98,6 +99,7 @@ function LearningPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const category = searchParams.get('category') || 'all'
+  const levelFilter = searchParams.get('level') || 'all'
   const searchQuery = searchParams.get('q') || ''
   const pageParam = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
   const { startTour, setTourSeen } = useTour()
@@ -216,6 +218,16 @@ function LearningPageInner() {
     })
   }
 
+  const setLevel = (id: string) => {
+    replaceParams(params => {
+      if (id === 'all') params.delete('level')
+      else params.set('level', id)
+      if (search) params.set('q', search)
+      else params.delete('q')
+      params.delete('page')
+    })
+  }
+
   const handleSearch = (val: string) => {
     setSearch(val)
     replaceParams(params => {
@@ -243,6 +255,9 @@ function LearningPageInner() {
         )
       })
     }
+    if (levelFilter !== 'all') {
+      list = list.filter(c => (c.level || '').toLowerCase() === levelFilter)
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(c =>
@@ -252,7 +267,7 @@ function LearningPageInner() {
       )
     }
     return list
-  }, [courses, category, search])
+  }, [courses, category, levelFilter, search])
 
   const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE))
   const safePage = Math.min(pageParam, totalPages)
@@ -299,6 +314,32 @@ function LearningPageInner() {
           >
             <span className={category === cat.id ? 'text-white' : 'text-muted-foreground'}>{cat.icon}</span>
             {cat.label}
+          </button>
+        ))}
+      </div>
+
+      <div className="flex flex-wrap gap-2 mb-2">
+        <button
+          onClick={() => setLevel('all')}
+          className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 ${
+            levelFilter === 'all'
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
+          }`}
+        >
+          All Levels
+        </button>
+        {DIFFICULTY_LEVELS.map((lv) => (
+          <button
+            key={lv}
+            onClick={() => setLevel(lv)}
+            className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 ${
+              levelFilter === lv
+                ? `border-current ${DIFFICULTY_COLORS[lv]}`
+                : 'border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
+            }`}
+          >
+            {DIFFICULTY_LABELS[lv]}
           </button>
         ))}
       </div>

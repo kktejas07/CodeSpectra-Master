@@ -186,18 +186,27 @@ export async function measureAudioDurationSeconds(buf: Buffer): Promise<number> 
  * Google Translate TTS (no API key). Throws if every chunk fails — callers must not
  * silently mark a lesson "generated" without audio.
  *
- * ponytail: retry each chunk up to 3 times with exponential backoff.
- * Google Translate TTS rate-limits aggressively under bulk load.
+ * ponytail: retry each chunk up to 5 times with exponential backoff + jitter.
+ * Google Translate TTS rate-limits aggressively under bulk load; inter-chunk
+ * delay doubles adaptively after each 429 (capped) to drain the burst.
  */
-export async function synthesizeTts(text: string): Promise<Buffer> {
+export async function synthesizeTts(text: string, ctx?: { lessonId?: string; courseId?: string }): Promise<Buffer> {
   const spoken = (text || '').trim()
   if (!spoken) throw new Error('No spoken text to synthesize')
+  const lessonCtx = `lesson=${(ctx?.lessonId || '?').slice(0, 60)} course=${(ctx?.courseId || '?').slice(0, 60)}`
 
   const chunks = splitTextForTts(spoken)
   const buffers: Buffer[] = []
-  const MAX_CHUNK_RETRIES = 3
+  const MAX_CHUNK_RETRIES = 5
+  const isRateLimit = (e: unknown) => {
+    const msg = ((e as Error)?.message || '').toLowerCase()
+    return msg.includes('429') || msg.includes('too many requests') || msg.includes('rate')
+  }
+  let chunkDelayMs = 300
+  const CHUNK_DELAY_CAP = 8000
 
-  for (const chunk of chunks) {
+  for (let ci = 0; ci < chunks.length; ci++) {
+    const chunk = chunks[ci]
     let lastChunkError: unknown = null
     for (let attempt = 0; attempt < MAX_CHUNK_RETRIES; attempt++) {
       try {
@@ -214,20 +223,23 @@ export async function synthesizeTts(text: string): Promise<Buffer> {
         break
       } catch (e) {
         lastChunkError = e
+        if (isRateLimit(e)) chunkDelayMs = Math.min(chunkDelayMs * 2, CHUNK_DELAY_CAP)
         if (attempt < MAX_CHUNK_RETRIES - 1) {
-          const delayMs = Math.min(2000 * Math.pow(2, attempt), 16_000)
-          console.warn(`[tts] chunk retry ${attempt + 1}/${MAX_CHUNK_RETRIES} after ${delayMs}ms:`, (e as Error).message?.slice(0, 120))
+          const backoff = Math.min(2000 * Math.pow(2, attempt), 16_000)
+          const jitter = Math.floor(Math.random() * 1000)
+          const delayMs = backoff + jitter
+          console.warn(`[tts] ${lessonCtx} chunk ${ci + 1}/${chunks.length} retry ${attempt + 1}/${MAX_CHUNK_RETRIES} after ${delayMs}ms:`, (e as Error).message?.slice(0, 120))
           await new Promise(r => setTimeout(r, delayMs))
         }
       }
     }
     if (lastChunkError) {
-      console.error(`[tts] chunk failed after ${MAX_CHUNK_RETRIES} attempts:`, (lastChunkError as Error).message?.slice(0, 120))
+      console.error(`[tts] ${lessonCtx} chunk ${ci + 1}/${chunks.length} failed after ${MAX_CHUNK_RETRIES} attempts:`, (lastChunkError as Error).message?.slice(0, 200))
       throw lastChunkError
     }
-    // Small delay between chunks to avoid rate-limit burst
-    if (chunks.length > 1) {
-      await new Promise(r => setTimeout(r, 300))
+    // Adaptive delay between chunks to avoid rate-limit bursts (grows after 429s)
+    if (ci < chunks.length - 1) {
+      await new Promise(r => setTimeout(r, chunkDelayMs))
     }
   }
   if (buffers.length === 0) throw new Error('TTS returned no audio')

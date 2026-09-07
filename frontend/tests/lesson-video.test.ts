@@ -60,6 +60,40 @@ describe('slidesFromAiJson', () => {
     expect(slides[4].visual).toBe('sort')
   })
 
+  it('parses mermaid field on diagram slides', () => {
+    const mermaidCode = 'graph TD\n  A[Client] --> B[Server]\n  B --> C[Database]'
+    const slides = slidesFromAiJson({
+      slides: [
+        ...fiveSlides.slides.slice(0, 4),
+        { id: 's5', type: 'diagram', visual: 'flow', title: 'Architecture', content: ['Client', 'Server', 'Database'], mermaid: mermaidCode, spokenText: fiveSlides.slides[4].spokenText },
+      ],
+    })
+    expect(slides[4].type).toBe('diagram')
+    expect(slides[4].mermaid).toBe(mermaidCode)
+  })
+
+  it('strips mermaid field exceeding 800 chars', () => {
+    const longMermaid = 'graph TD\n' + '  A --> B\n'.repeat(200)
+    const slides = slidesFromAiJson({
+      slides: [
+        ...fiveSlides.slides.slice(0, 4),
+        { id: 's5', type: 'diagram', visual: 'flow', title: 'Big diagram', content: ['X'], mermaid: longMermaid, spokenText: fiveSlides.slides[4].spokenText },
+      ],
+    })
+    expect(slides[4].mermaid).toBeUndefined()
+  })
+
+  it('includes mermaid in diagram slide rule output', () => {
+    const slides = slidesFromAiJson({
+      slides: [
+        ...fiveSlides.slides.slice(0, 4),
+        { id: 's5', type: 'diagram', visual: 'flow', title: 'Flow', content: ['A', 'B'], mermaid: 'graph TD\n  A --> B', spokenText: fiveSlides.slides[4].spokenText },
+      ],
+    })
+    expect(slides[4].mermaid).toBe('graph TD\n  A --> B')
+    expect(slides[4].content).toEqual(['A', 'B'])
+  })
+
   it('rejects the 2-scene mock that produced 13s silent videos', () => {
     expect(() => slidesFromAiJson({
       scenes: [

@@ -257,7 +257,8 @@ export default function RolesPage() {
 
       {/* User table */}
       <Card className="overflow-hidden border-border/60">
-        <table className="w-full text-sm">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[720px] md:min-w-0 text-sm">
           <thead className="bg-muted/50 border-b border-border">
             <tr>
               <th className="w-10 py-3 px-4">
@@ -321,6 +322,7 @@ export default function RolesPage() {
             )}
           </tbody>
         </table>
+        </div>
       </Card>
 
       {totalPages > 1 && (

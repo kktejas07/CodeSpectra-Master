@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import bcrypt from 'bcryptjs'
 import { requireAuth } from '@/lib/route-auth'
+import { revokeAllUserSessions } from '@/lib/session'
 import { getMongoDb } from '@/lib/mongodb'
 import { rateLimitRedis } from '@/lib/upstash-rate-limit'
 
@@ -45,6 +46,7 @@ export async function POST(request: NextRequest) {
       { id: gate.user.id },
       { $set: { passwordHash, updatedAt: new Date() } },
     )
+    await revokeAllUserSessions(gate.user.id)
 
     return NextResponse.json({ success: true })
   } catch (error) {

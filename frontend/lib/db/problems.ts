@@ -6,16 +6,10 @@
  *   - submissions      : per-user solution attempts (status, score, results)
  *   - problem_languages: optional per-problem boilerplate per language
  */
-import { randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
-export function newId(): string {
-  return randomUUID()
-}
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+export { newId, nowIso } from './ids'
 
 export type Difficulty = 'easy' | 'medium' | 'hard'
 export type ProblemVisibility = 'public' | 'hackathon_only'

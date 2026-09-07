@@ -23,7 +23,7 @@ export async function newsletterSubscribers(): Promise<Collection<NewsletterSubs
 }
 
 export const newNewsletterId = (): string => randomUUID()
-export const nowIso = (): string => new Date().toISOString()
+export { nowIso } from './ids'
 
 /** Validate an email address (basic, matches the auth signup regex style). */
 export function isEmail(v: unknown): v is string {

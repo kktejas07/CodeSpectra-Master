@@ -5,9 +5,9 @@ import { pricingTiers, newId, nowIso } from '@/lib/db/misc'
 export const dynamic = 'force-dynamic'
 
 const FALLBACK_TIERS = [
-  { id: '1', name: 'Free', price_monthly: 0, description: 'Get started', sort_order: 1 },
-  { id: '2', name: 'Pro', price_monthly: 2999, description: 'For professionals', sort_order: 2 },
-  { id: '3', name: 'Enterprise', price_monthly: 9999, description: 'For teams', sort_order: 3 },
+  { id: '1', name: 'Free', price_monthly: 0, description: 'Get started', sort_order: 1, _source: 'fallback' as const },
+  { id: '2', name: 'Pro', price_monthly: 2999, description: 'For professionals', sort_order: 2, _source: 'fallback' as const },
+  { id: '3', name: 'Enterprise', price_monthly: 9999, description: 'For teams', sort_order: 3, _source: 'fallback' as const },
 ]
 
 export async function GET(_req: NextRequest) {

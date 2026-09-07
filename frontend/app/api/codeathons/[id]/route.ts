@@ -48,3 +48,32 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
     return NextResponse.json({ error: 'Failed to update codeathon' }, { status: 400 })
   }
 }
+
+export async function DELETE(_request: Request, { params }: IdRouteContext) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+  if (gate.user.role !== 'superadmin' && gate.user.role !== 'tenant_admin') {
+    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  }
+  const { id } = await params
+  try {
+    const col = await codeathons()
+    if (gate.user.role === 'tenant_admin' && gate.user.tenantId) {
+      const existing = await col.findOne({ id })
+      if (!existing) return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
+      if (existing.tenant_id !== gate.user.tenantId) {
+        return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+      }
+    }
+    const res = await col.deleteOne({ id })
+    if (res.deletedCount === 0) {
+      return NextResponse.json({ error: 'Codeathon not found' }, { status: 404 })
+    }
+    return NextResponse.json({ success: true, deletedId: id })
+  } catch (error) {
+    console.error('[CodeSpectra] codeathons DELETE[id]:', error)
+    return NextResponse.json({ error: 'Failed to delete codeathon' }, { status: 400 })
+  }
+}

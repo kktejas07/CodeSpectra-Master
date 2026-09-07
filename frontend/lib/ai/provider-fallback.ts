@@ -24,17 +24,18 @@ const PROVIDER_FALLBACK_CHAIN: {
   secretKey: string
   free: boolean
 }[] = [
-  // Free tiers first
+  // Free tiers first (models verified live 2026-09-06; free providers rotate
+  // models often — re-check GET /models if the chain starts failing)
+  { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
+  { provider: 'groq', model: 'openai/gpt-oss-20b', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
   { provider: 'gemini', model: 'gemini-2.0-flash', secretKey: 'gemini_api_key', free: true },
-  { provider: 'groq', model: 'llama-3.3-70b-versatile', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
   { provider: 'opencode', model: 'deepseek-v4-flash-free', secretKey: 'opencode_api_key', free: true },
   { provider: 'openrouter', model: 'google/gemini-2.0-flash-lite-001:free', secretKey: 'openrouter_api_key', free: true },
   // Paid tiers
   { provider: 'openai', model: 'gpt-4o-mini', secretKey: 'openai_api_key', free: false },
   { provider: 'anthropic', model: 'claude-3-5-haiku-20241022', secretKey: 'anthropic_api_key', free: false },
-  { provider: 'nvidia', model: 'meta/llama-3.1-70b-instruct', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: false },
+  { provider: 'nvidia', model: 'nvidia/llama-3.1-nemotron-70b-instruct', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: false },
   { provider: 'deepseek', model: 'deepseek-chat', secretKey: 'deepseek_api_key', free: false },
-  { provider: 'groq', model: 'llama-3.1-8b-instant', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
   { provider: 'gemini', model: 'gemini-2.0-flash-lite', secretKey: 'gemini_api_key', free: true },
 ]
 

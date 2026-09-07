@@ -14,6 +14,7 @@ import {
   type HackathonFeatures,
   DEFAULT_FEATURES,
 } from '@/lib/db/qr-events'
+import { sanitizeJudgingConfig } from '@/lib/hackathons/judge-config'
 
 export const runtime = 'nodejs'
 
@@ -115,6 +116,12 @@ export async function PATCH(
   }
   if (Array.isArray(body.judges)) {
     $set.judges = body.judges
+  }
+  // J3/J4 judging config (validated; published to all viewers via GET).
+  if ('judging_config' in body) {
+    $set.judging_config = sanitizeJudgingConfig(
+      (body as unknown as { judging_config?: unknown }).judging_config,
+    )
   }
   
   if (Array.isArray(body.tasks)) {

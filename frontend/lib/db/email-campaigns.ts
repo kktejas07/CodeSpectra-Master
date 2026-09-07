@@ -4,7 +4,7 @@
  * Collection: `email_campaigns` — one doc per newsletter campaign.
  * Tracks delivery stats across channels (email, push, in-app).
  */
-import { randomUUID, randomBytes } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
@@ -49,10 +49,4 @@ export function newCampaignId(): string {
   return randomBytes(8).toString('hex')
 }
 
-export function newId(): string {
-  return randomUUID()
-}
-
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+export { newId, nowIso } from './ids'

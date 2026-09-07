@@ -117,7 +117,9 @@ export async function verifySessionToken(token: string): Promise<SessionPayload 
         { projection: { session_version: 1 } },
       )
       const currentVer = (user?.session_version as number) ?? 1
-      if (data.ver !== undefined && data.ver < currentVer) return null
+      // Tokens minted before versioning carry no ver — treat them as version 1,
+      // so a password-change bump (currentVer > 1) revokes them too.
+      if ((data.ver ?? 1) !== currentVer) return null
     } catch {
       // If DB check fails, allow token (defense-in-depth, not blocking)
     }
@@ -153,7 +155,7 @@ export async function clearSessionCookie(): Promise<void> {
 export async function revokeAllUserSessions(userId: string): Promise<void> {
   const db = await getMongoDb()
   await db.collection('user').updateOne(
-    { id: userId },
+    { $or: [{ id: userId }, { _id: userId as any }] },
     { $inc: { session_version: 1 } },
   )
 }

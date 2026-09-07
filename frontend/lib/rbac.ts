@@ -111,6 +111,7 @@ export const USER_PAGES: string[] = [
 export const JUDGE_PAGES: string[] = [
   DASHBOARD_ROUTES.userHome,
   ...JUDGE_ROUTES,
+  ...ALL_USER_ROUTES,
 ]
 
 export const ACCESSIBLE_PAGES: Record<UserRole, string[]> = {
@@ -140,6 +141,7 @@ export function isJudge(role: UserRole): boolean { return role === 'judge' }
 export function hasRole(userRole: UserRole, requiredRole: UserRole): boolean {
   if (requiredRole === 'superadmin') return userRole === 'superadmin'
   if (requiredRole === 'tenant_admin') return userRole === 'tenant_admin' || userRole === 'superadmin'
+  if (requiredRole === 'judge') return userRole === 'judge' || userRole === 'tenant_admin' || userRole === 'superadmin'
   return true
 }
 

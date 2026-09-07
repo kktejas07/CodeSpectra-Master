@@ -214,7 +214,8 @@ export default function SkillAnalyticsPage() {
         <div className="border-b border-border/60 px-4 py-3 text-sm font-semibold">
           Recent submissions
         </div>
-        <table className="w-full text-xs">
+        <div className="overflow-x-auto">
+        <table className="w-full min-w-[560px] md:min-w-0 text-xs">
           <thead className="text-left text-muted-foreground bg-card/20">
             <tr>
               <th className="px-3 py-2">Problem</th>
@@ -247,6 +248,7 @@ export default function SkillAnalyticsPage() {
             )}
           </tbody>
         </table>
+        </div>
       </div>
     </div>
   )

@@ -10,12 +10,12 @@
  * Timestamps are ISO-8601 strings stored as strings (not BSON Date) so the
  * API layer can ship them straight to JSON without conversion.
  */
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
+import { newId, nowIso } from './ids'
 
-export const newId = (): string => randomUUID()
-export const nowIso = (): string => new Date().toISOString()
+export { newId, nowIso }
 
 /** url-safe random token used inside signed QR URLs. */
 export function newToken(): string {

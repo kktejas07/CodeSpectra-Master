@@ -1,15 +1,12 @@
 import { NextResponse } from 'next/server'
-import { getAPIUser } from '@/lib/route-auth'
+import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 
 export const runtime = 'nodejs'
 
 export async function GET(): Promise<NextResponse> {
-  const user = await getAPIUser()
-  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
-  if (user.role !== 'superadmin' && user.role !== 'tenant_admin') {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
-  }
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   try {
     const db = await getMongoDb()
@@ -93,9 +90,9 @@ export async function GET(): Promise<NextResponse> {
 }
 
 export async function DELETE(req: Request) {
-  const user = await getAPIUser()
-  if (!user || (user.role !== 'superadmin' && user.role !== 'tenant_admin')) {
-    return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+  const gate = await requireSuperAdmin()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
 
   try {

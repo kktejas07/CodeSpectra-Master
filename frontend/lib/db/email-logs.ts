@@ -59,13 +59,13 @@ export async function emailLogs(): Promise<Collection<EmailLogDoc>> {
   return (await getMongoDb()).collection<EmailLogDoc>('email_logs')
 }
 
+import { nowIso } from './ids'
+
 export function newEmailLogId(): string {
   return randomUUID()
 }
 
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+export { nowIso }
 
 // ── CRUD ────────────────────────────────────────────────────────────────────
 

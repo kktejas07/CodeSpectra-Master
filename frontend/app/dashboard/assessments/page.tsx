@@ -9,7 +9,8 @@ import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
-import { Loader2, Trophy, BarChart3, CheckCircle, XCircle, FileText } from 'lucide-react'
+import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
+import { Loader2, Trophy, BarChart3, CheckCircle, XCircle, FileText, BrainCircuit } from 'lucide-react'
 
 interface Attempt {
   id: string
@@ -129,12 +130,10 @@ export default function MyAssessmentsPage() {
       key: 'level',
       header: 'Level',
       cell: (row) => {
-        const l = (row.level || '').toLowerCase()
-        const color = l === 'beginner' ? 'bg-green-500/20 text-green-700'
-          : l === 'intermediate' ? 'bg-yellow-500/20 text-yellow-700'
-          : l === 'advanced' ? 'bg-red-500/20 text-red-700'
-          : 'bg-muted text-muted-foreground'
-        return <Badge variant="outline" className={`text-xs ${color}`}>{row.level || '—'}</Badge>
+        const dl = toDifficultyLevel(row.level)
+        const label = dl ? DIFFICULTY_LABELS[dl] : (row.level || '—')
+        const color = dl ? DIFFICULTY_COLORS[dl] : 'bg-muted text-muted-foreground'
+        return <Badge variant="outline" className={`text-xs ${color}`}>{label}</Badge>
       },
     },
     {
@@ -239,6 +238,28 @@ export default function MyAssessmentsPage() {
           </div>
         </Card>
       </div>
+
+      {/* AI Fluency Assessment Card */}
+      <Card className="border-border/60 p-5">
+        <div className="flex flex-wrap items-center justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+              <BrainCircuit className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <p className="font-semibold text-foreground">AI Fluency Assessment</p>
+              <p className="text-xs text-muted-foreground">
+                Test your prompt engineering, AI output review, debugging, decision-making & chaining skills
+              </p>
+            </div>
+          </div>
+          <Link href="/dashboard/assessments/ai-fluency/setup">
+            <Button size="sm" className="gap-1">
+              Start <BarChart3 className="h-3.5 w-3.5" />
+            </Button>
+          </Link>
+        </div>
+      </Card>
 
       {/* Assigned / Ready-to-take */}
       {available.length > 0 && (

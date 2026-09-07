@@ -1,8 +1,8 @@
-import { randomUUID } from 'node:crypto'
+import { newId } from './ids'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
-export const newId = (): string => randomUUID()
+export { newId }
 
 export interface SSOProviderDoc {
   id: string

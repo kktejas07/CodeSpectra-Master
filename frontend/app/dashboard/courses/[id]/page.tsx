@@ -96,27 +96,6 @@ function formatDuration(seconds: number): string {
   return h > 0 ? `${h}h ${m}m` : `${m}m`
 }
 
-function VideoPlayer({ url, title }: { url: string; title: string }) {
-  // Convert normal YouTube URL to embed if needed
-  const embedUrl = url.includes('youtube.com/embed') ? url
-    : url.includes('youtu.be/') ? `https://www.youtube.com/embed/${url.split('youtu.be/')[1]?.split('?')[0]}`
-    : url.includes('youtube.com/watch') ? `https://www.youtube.com/embed/${new URLSearchParams(url.split('?')[1]).get('v')}`
-    : url
-
-  return (
-    <div className="relative w-full" style={{ paddingTop: '56.25%' }}>
-      <iframe
-        src={embedUrl}
-        title={title}
-        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
-        allowFullScreen
-        className="absolute inset-0 w-full h-full rounded-xl"
-        loading="lazy"
-      />
-    </div>
-  )
-}
-
 export default function CoursePage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
   const addToast = useToast()
@@ -132,7 +111,6 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [completedLessons, setCompletedLessons] = useState<Set<string>>(new Set())
   const [progress, setProgress] = useState<Progress | null>(null)
   const [showQuiz, setShowQuiz] = useState<number | null>(null)
-  const [showIntroVideo, setShowIntroVideo] = useState(false)
   const router = useRouter()
 
   useEffect(() => {

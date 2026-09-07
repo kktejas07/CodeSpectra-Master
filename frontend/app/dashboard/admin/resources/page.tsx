@@ -14,6 +14,7 @@ import { Badge } from '@/components/ui/badge'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
 import { EbookOutlineReview } from '@/components/resources/ebook-outline-review'
+import { SkeletonCard, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 type AdminEbook = EbookCardData & { id: string; status: string }
 
@@ -179,8 +180,10 @@ export default function AdminResourcesPage() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading…
+      <div className="w-full space-y-8">
+        <SkeletonText lines={2} />
+        <SkeletonCard />
+        <SkeletonList count={3} />
       </div>
     )
   }

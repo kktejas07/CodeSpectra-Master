@@ -20,6 +20,7 @@ export interface VideoSlide {
   content: string[]
   code?: string
   codeLanguage?: string
+  mermaid?: string
   spokenText: string
   durationInFrames: number
 }
@@ -29,6 +30,269 @@ export interface GeneratedLessonVideo {
   script: VideoSlide[]
   audioBuffer: Buffer
   durationSeconds: number
+  takeaways: string[]
+  quickCheck: LessonQuickCheck
+  nextTeaser: string
+  chapters: LessonChapter[]
+}
+
+export interface LessonChapter {
+  title: string
+  startSec: number
+}
+
+export interface LessonQuickCheck {
+  recall: string
+  apply: string
+  stretch: string
+}
+
+export interface LessonExtras {
+  takeaways: string[]
+  quickCheck: LessonQuickCheck
+  nextTeaser: string
+  chapters: LessonChapter[]
+}
+
+/** Where lesson N sits inside its course — lets each lesson reference its
+ * neighbours instead of teaching in isolation. Every field is optional. */
+export interface LessonContext {
+  level?: string
+  lessonIndex?: number
+  lessonTotal?: number
+  moduleTitle?: string
+  prevTitle?: string
+  prevExcerpt?: string
+  nextTitle?: string
+}
+
+export const LESSON_DURATION_TIERS = [10, 15, 30, 60]
+
+/** Snap any input to the nearest supported tier (default 10). */
+export function normalizeTargetMinutes(raw: unknown): number {
+  const n = Number(raw)
+  if (!Number.isFinite(n)) return 10
+  let best = LESSON_DURATION_TIERS[0]
+  for (const t of LESSON_DURATION_TIERS) {
+    if (Math.abs(t - n) < Math.abs(best - n)) best = t
+  }
+  return best
+}
+
+const SLIDE_TARGETS: Record<number, number> = { 10: 15, 15: 22, 30: 40, 60: 60 }
+
+/** Slide budget ≈ minutes×1.5 (10→15, 15→22, 30→40, 60→60 capped). */
+export function slidesForMinutes(minutes: number): number {
+  const m = normalizeTargetMinutes(minutes)
+  return SLIDE_TARGETS[m] ?? Math.min(60, Math.round(m * 1.5))
+}
+
+/** Narration word budget ≈ minutes×150wpm. */
+export function wordsForMinutes(minutes: number): number {
+  return normalizeTargetMinutes(minutes) * 150
+}
+
+/** Minimum acceptable slides ≈ minutes×1.2 (floor 5), never above the slide target. */
+export function minSlidesForMinutes(minutes: number): number {
+  const m = normalizeTargetMinutes(minutes)
+  return Math.min(slidesForMinutes(m), Math.max(5, Math.round(m * 1.2)))
+}
+
+/** Per-act minimum for long-form generation (each act carries a share of the budget). */
+export function actMinSlides(budget: number): number {
+  return Math.max(3, Math.round((budget || 0) * 0.6))
+}
+
+/** Long-form split: single call ≤15min, 3 acts for 30min, 5 for 60min. */
+export function actsForMinutes(minutes: number): number {
+  const m = normalizeTargetMinutes(minutes)
+  if (m <= 15) return 1
+  return Math.min(5, Math.max(2, Math.ceil(m / 12)))
+}
+
+/** Best-effort JSON salvage: strip fences, cut to the outer braces, drop
+ * trailing commas — so one malformed LLM reply doesn't cost a full retry. */
+export function repairJson(raw: string): unknown {
+  let s = String(raw || '').replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
+  const start = s.search(/\{|\[/)
+  const end = Math.max(s.lastIndexOf('}'), s.lastIndexOf(']'))
+  if (start >= 0 && end > start) s = s.slice(start, end + 1)
+  s = s.replace(/,(\s*[}\]])/g, '$1')
+  return JSON.parse(s)
+}
+
+/** Split lesson text into acts at H2 boundaries (preamble joins act 1).
+ * Falls back to even paragraph chunks when there are no H2 sections. */
+export function splitIntoActs(text: string, actCount: number): { title: string; text: string }[] {
+  const t = String(text || '')
+  const lines = t.split('\n')
+  const preamble: string[] = []
+  const sections: { title: string; lines: string[] }[] = []
+  let cur: { title: string; lines: string[] } | null = null
+  for (const line of lines) {
+    const h = line.match(/^##\s+(.+?)\s*$/)
+    if (h) {
+      if (cur) sections.push(cur)
+      cur = { title: (h[1] || '').trim(), lines: [] }
+    } else if (cur) {
+      cur.lines.push(line)
+    } else {
+      preamble.push(line)
+    }
+  }
+  if (cur) sections.push(cur)
+  if (!sections.length) {
+    const paras = t.split(/\n\s*\n/).map(p => p.trim()).filter(Boolean)
+    if (!paras.length) return [{ title: 'Part 1', text: t }]
+    const n = Math.max(1, Math.min(actCount, paras.length))
+    const per = Math.ceil(paras.length / n)
+    const acts: { title: string; text: string }[] = []
+    for (let i = 0; i < n; i++) {
+      const chunk = paras.slice(i * per, (i + 1) * per)
+      if (!chunk.length) break
+      acts.push({ title: `Part ${i + 1}`, text: chunk.join('\n\n') })
+    }
+    return acts.length ? acts : [{ title: 'Part 1', text: t }]
+  }
+  const n = Math.max(1, Math.min(actCount, sections.length))
+  const per = Math.ceil(sections.length / n)
+  const acts: { title: string; text: string }[] = []
+  for (let i = 0; i < n; i++) {
+    const chunk = sections.slice(i * per, (i + 1) * per)
+    if (!chunk.length) break
+    const body = chunk.map(s => `## ${s.title}\n${s.lines.join('\n')}`.trim()).join('\n\n')
+    const full = i === 0 ? `${preamble.join('\n').trim()}\n\n${body}`.trim() : body
+    acts.push({ title: chunk[0].title || `Part ${i + 1}`, text: full })
+  }
+  return acts.length ? acts : [{ title: 'Part 1', text: t }]
+}
+
+/** Chapter marks from spoken-word timing (~150wpm). With act boundaries the
+ * chapters start at each act; otherwise 3-4 chapters from slide groups. */
+export function chaptersFromScript(
+  slides: Array<{ title?: unknown; spokenText?: unknown }>,
+  bounds?: { title: string; startIndex: number }[],
+): LessonChapter[] {
+  try {
+    const list = Array.isArray(slides) ? slides : []
+    const secs = list.map(s => {
+      const words = String((s as { spokenText?: unknown })?.spokenText || '').split(/\s+/).filter(Boolean).length
+      return Math.max(1, Math.round((words / 150) * 60))
+    })
+    if (!secs.length) return []
+    const startAt = (idx: number) => secs.slice(0, Math.max(0, Math.min(idx, secs.length))).reduce((a, b) => a + b, 0)
+    const titleAt = (idx: number, fb: string) => String((list[idx] as { title?: unknown })?.title || fb).trim() || fb
+    if (bounds && bounds.length) {
+      return bounds.map((b, i) => ({
+        title: String(b?.title || '').trim() || titleAt(b?.startIndex || 0, `Part ${i + 1}`),
+        startSec: startAt(Number(b?.startIndex) || 0),
+      }))
+    }
+    const groups = Math.min(4, Math.max(3, Math.round(secs.length / 5)))
+    const per = Math.ceil(secs.length / groups)
+    const out: LessonChapter[] = []
+    for (let g = 0; g < groups && g * per < secs.length; g++) {
+      const idx = g * per
+      out.push({ title: titleAt(idx, `Part ${g + 1}`), startSec: startAt(idx) })
+    }
+    return out
+  } catch {
+    return []
+  }
+}
+
+const EMPTY_EXTRAS: LessonExtras = {
+  takeaways: [],
+  quickCheck: { recall: '', apply: '', stretch: '' },
+  nextTeaser: '',
+  chapters: [],
+}
+
+/** Parse the recap/checks/teaser slides the prompt requires. Never throws —
+ * returns empty strings/arrays when the script doesn't contain them. */
+export function extractLessonExtras(slides: unknown): Omit<LessonExtras, 'chapters'> {
+  try {
+    const list = Array.isArray(slides) ? (slides as Array<Record<string, unknown>>) : []
+    if (!list.length) return { takeaways: [], quickCheck: { ...EMPTY_EXTRAS.quickCheck }, nextTeaser: '' }
+    const titleOf = (s: Record<string, unknown>) => String(s?.title || '')
+    const find = (re: RegExp) => list.find(s => re.test(titleOf(s)))
+    const spokenOf = (s: Record<string, unknown> | undefined): string =>
+      (String(s?.spokenText || '').trim() || normalizeBullets(s?.content).join(' ')).slice(0, 500)
+    const takeSlide = find(/takeaway/i) || find(/key points/i) || find(/recap/i)
+    const takeaways = takeSlide ? normalizeBullets(takeSlide.content).slice(0, 3) : []
+    return {
+      takeaways,
+      quickCheck: {
+        recall: spokenOf(find(/recall|remember|quick.check|check.your|warm.up/i)),
+        apply: spokenOf(find(/apply|exercise|practice|try.it|hands.on|your.turn/i)),
+        stretch: spokenOf(find(/stretch|challenge|bonus|go.further|extension/i)),
+      },
+      nextTeaser: spokenOf(find(/what.s.next|coming.up|next.lesson|teaser|up.next/i)),
+    }
+  } catch {
+    return { takeaways: [], quickCheck: { recall: '', apply: '', stretch: '' }, nextTeaser: '' }
+  }
+}
+
+/** Derive neighbour context for lesson (sIdx, lIdx): course level, position,
+ * module title, previous lesson (title + ~500-char excerpt, from the snapshot
+ * or from `completed` in-run generations), and the next lesson's title. */
+export function buildLessonContext(
+  sections: any,
+  sIdx: number,
+  lIdx: number,
+  course?: any,
+  completed?: { title?: unknown; textContent?: unknown }[],
+): LessonContext {
+  try {
+    const secs = Array.isArray(sections) ? sections : []
+    const flat: { si: number; li: number; title: string; textContent: string; module: string }[] = []
+    secs.forEach((s: any, si: number) => {
+      const lessons = Array.isArray(s?.lessons) ? s.lessons : []
+      lessons.forEach((l: any, li: number) => {
+        flat.push({
+          si, li,
+          title: String(l?.title || ''),
+          textContent: String(l?.textContent || ''),
+          module: String(s?.title || ''),
+        })
+      })
+    })
+    if (!flat.length) return {}
+    let idx = flat.findIndex(f => f.si === sIdx && f.li === lIdx)
+    if (idx < 0) idx = 0
+    const done = (Array.isArray(completed) ? completed : []).filter(c => String(c?.textContent || ''))
+    let prevTitle = ''
+    let prevText = ''
+    const lastDone = done.length ? done[done.length - 1] : null
+    if (lastDone && String(lastDone?.title || '')) {
+      prevTitle = String(lastDone.title)
+      prevText = String(lastDone.textContent || '')
+    } else {
+      for (let i = idx - 1; i >= 0; i--) {
+        if (flat[i].textContent) {
+          prevTitle = flat[i].title
+          prevText = flat[i].textContent
+          break
+        }
+      }
+    }
+    const next = flat[idx + 1]
+    const ctx: LessonContext = {}
+    const level = String((course as any)?.level || (course as any)?.difficulty || '')
+    if (level) ctx.level = level
+    ctx.lessonIndex = idx + 1
+    ctx.lessonTotal = flat.length
+    if (flat[idx].module) ctx.moduleTitle = flat[idx].module
+    if (prevTitle) {
+      ctx.prevTitle = prevTitle
+      if (prevText) ctx.prevExcerpt = prevText.slice(0, 500)
+    }
+    if (next && next.title) ctx.nextTitle = next.title
+    return ctx
+  } catch {
+    return {}
+  }
 }
 
 export function normalizeBullets(content: unknown): string[] {
@@ -46,22 +310,40 @@ function asSlideType(raw: unknown): SlideType {
   return 'concept'
 }
 
-function asVisual(raw: unknown, title: string): VideoSlide['visual'] | undefined {
+type VisualHint = { title?: unknown; content?: unknown; spokenText?: unknown; narration?: unknown }
+
+function asVisual(
+  raw: unknown,
+  titleOrSlide: string | VisualHint,
+  extraHaystack?: unknown,
+): VideoSlide['visual'] | undefined {
   const v = String(raw || '').toLowerCase()
   if (v === 'array' || v === 'sort' || v === 'tree' || v === 'flow' || v === 'icons' || v === 'compare') return v
-  const t = title.toLowerCase()
-  if (/tree|bst|heap/.test(t)) return 'tree'
-  if (/sort|bubble|merge|quick/.test(t)) return 'sort'
-  if (/array|binary search|linked list/.test(t)) return 'array'
+  // Guess ONLY from the slide's own text — never the course topic. Accepts the
+  // legacy (raw, title) call shape or (raw, slideLike, extra) for full context.
+  const slide = (typeof titleOrSlide === 'object' && titleOrSlide !== null) ? titleOrSlide as VisualHint : null
+  const title = slide ? String(slide.title || '') : String(titleOrSlide || '')
+  const extra = slide
+    ? [slide.content, slide.spokenText, slide.narration].map(c => Array.isArray(c) ? c.join('\n') : String(c || '')).join('\n')
+    : String(extraHaystack || '')
+  const t = `${title}\n${extra}`.toLowerCase()
+  if (/\btree\b|\btrees\b|\bbst\b|\bheap\b|nodes?|binary tree|travers|\bdfs\b|\bbfs\b/.test(t)) return 'tree'
+  if (/\bsort(?:s|ed|ing)?\b|bubble|merge ?sort|quick ?sort|selection sort|insertion sort/.test(t)) return 'sort'
+  if (/array|lists?|linked list|binary search|linear search|\bindex\b|indices|travers/.test(t)) return 'array'
   return undefined
 }
 
-/** Accepts `{ slides }` or the older `{ scenes }` shape. */
-export function slidesFromAiJson(raw: unknown): Omit<VideoSlide, 'durationInFrames'>[] {
+/** Accepts `{ slides }` or the older `{ scenes }` shape. `minSlides` scales with
+ * lesson duration (see minSlidesForMinutes); default 5 keeps legacy callers. */
+export function slidesFromAiJson(raw: unknown, minSlides = 5): Omit<VideoSlide, 'durationInFrames'>[] {
   let obj = raw
   if (typeof obj === 'string') {
     const cleaned = obj.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim()
-    obj = JSON.parse(cleaned)
+    try {
+      obj = JSON.parse(cleaned)
+    } catch {
+      obj = repairJson(cleaned) // trailing-comma/brace salvage before spending another LLM retry
+    }
   }
   if (Array.isArray(obj)) obj = { slides: obj }
   const record = (obj && typeof obj === 'object') ? obj as Record<string, unknown> : {}
@@ -78,6 +360,7 @@ export function slidesFromAiJson(raw: unknown): Omit<VideoSlide, 'durationInFram
     const title = String(item?.title || `Slide ${i + 1}`).trim()
     const content = normalizeBullets(item?.content)
     const type = asSlideType(item?.type || (i === 0 ? 'title' : item?.code ? 'code' : 'concept'))
+    const mermaidRaw = item?.mermaid ? String(item.mermaid).trim() : ''
     return {
       id: String(item?.id || `slide-${i + 1}`),
       type,
@@ -86,12 +369,13 @@ export function slidesFromAiJson(raw: unknown): Omit<VideoSlide, 'durationInFram
       content: content.length ? content : [title],
       code: item?.code ? String(item.code) : undefined,
       codeLanguage: item?.codeLanguage || item?.language || undefined,
+      mermaid: mermaidRaw && mermaidRaw.length <= 800 ? mermaidRaw : undefined,
       spokenText,
     }
   }).filter(s => s.spokenText)
 
-  if (slides.length < 5) {
-    throw new Error(`Need at least 5 slides with spokenText, got ${slides.length}`)
+  if (slides.length < minSlides) {
+    throw new Error(`Need at least ${minSlides} slides with spokenText, got ${slides.length}`)
   }
   return slides
 }
@@ -102,39 +386,90 @@ export function withDurations(slides: Omit<VideoSlide, 'durationInFrames'>[]): V
 
 const TEXT_SYSTEM = `You are an expert course instructor writing Unstop-style textbook lessons. Return clean Markdown only — no preamble.`
 
-const TEXT_PROMPT = (topic: string, techStack: string) => {
+function contextBlock(ctx: LessonContext, techStack: string): string {
+  const lines: string[] = []
+  if (ctx.lessonIndex && ctx.lessonTotal) {
+    lines.push(`This is lesson ${ctx.lessonIndex} of ${ctx.lessonTotal}${ctx.moduleTitle ? ` in module "${ctx.moduleTitle}"` : ''}${ctx.level ? ` (level: ${ctx.level})` : ''} of a ${techStack} course.`)
+  }
+  if (ctx.prevTitle) {
+    lines.push(`Previously covered in "${ctx.prevTitle}": ${(ctx.prevExcerpt || '').slice(0, 500)} — REFERENCE it by name to bridge; do NOT re-teach it.`)
+  }
+  if (ctx.nextTitle) {
+    lines.push(`Next lesson: "${ctx.nextTitle}" — close with a 1-2 sentence teaser naming it (no content spoilers).`)
+  }
+  if (!lines.length) return ''
+  return `COURSE CONTEXT:\n${lines.join('\n')}\n`
+}
+
+const TEXT_PROMPT = (topic: string, techStack: string, minutes = 10, ctx: LessonContext = {}) => {
+  const m = normalizeTargetMinutes(minutes)
+  const words = wordsForMinutes(m)
   const software = SOFTWARE_FAMILIES.has(familyFor(techStack))
   const exampleRule = software
     ? '- At least one real-world example\n- A fenced code block if the topic involves code (working code, not pseudocode)'
-    : '- At least one realistic workplace example from this field\n- Prefer checklists, workflows, or short case tables over code blocks unless the topic is truly technical tooling'
-  return `Write a comprehensive, detailed lesson on: "${topic}" (${techStack}).
+    : '- At least one realistic workplace example from this field\n- Prefer checklists, workflows, or short case tables over code blocks unless the topic is truly technical tooling\n- Do NOT invent programming code for non-software topics'
+  const bridgeLine = ctx.prevTitle
+    ? `H2 "Where we are" — one short paragraph recalling "${ctx.prevTitle}" BY NAME and how this lesson builds on it. REFERENCE it; do NOT re-teach it.`
+    : `H2 "Where we are" — one short paragraph bridging from what a ${ctx.level || 'beginner'}-level student already knows into this lesson.`
+  return `Write a ~${words}-word textbook lesson (~${m} minutes of reading at ~150 words/min) on: "${topic}" (${techStack}).
 
-Match this structure (use these heading styles):
-- H1: lesson title
-- Intro paragraph (what the student will learn by the end)
-- H2 sections covering WHY → WHAT → HOW → WHERE
-- Bullet lists for features/responsibilities
+${contextBlock(ctx, techStack)}Follow this exact 8-part anatomy (use these H2 headings):
+1. Open with a hook paragraph: a concrete real-world payoff, readable in 45 seconds or less — no greetings, no "welcome to this lesson".
+2. H2 "What you will learn" — 2-4 outcome bullets starting "By the end you will…".
+3. ${bridgeLine}
+4. Core, one H2 per stage — "Why it matters" → "What it is" → "How it works" → "Where it is used" — with edge cases. Teach every subtopic. Do not skip details. Do not assume prior knowledge of this lesson.
+5. H2 "Worked examples" — graduated trivial → realistic → tricky, plus one counter-example: show the common wrong way first, then the fix.
+6. H2 "Common misconceptions" — at least one "Most people think X — actually Y".
+7. H2 "Key takeaways" — exactly 3 bullets.
+8. H2 "Check yourself" — exactly three unanswered practice prompts: one recall question, one apply exercise, one stretch challenge (prompts ONLY — never answers or solutions; graded quizzes are a separate step). Then H2 "What's next" — a 1-2 sentence teaser for the next lesson by name.
 ${exampleRule}
-- Final Thoughts + Conclusion
-- Do NOT embed quiz questions or answers in the text (quizzes are a separate interactive step after the module videos)
-
-The lesson should take a student 12–18 minutes to read. Teach every subtopic. Do not skip edge cases. Do not assume prior knowledge of this lesson.`
+- Do NOT embed quiz questions with answers, answer keys, or "Quiz N" blocks — quizzes are a separate interactive step after the module videos.`
 }
 
 const VIDEO_SYSTEM = `You are an expert video-lesson scriptwriter. Return ONLY valid JSON, no markdown.`
 
-const VIDEO_PROMPT = (topic: string, techStack: string, textLesson: string) => {
+interface ActInfo {
+  index: number
+  total: number
+  slides: number
+  isLast: boolean
+  actTitle: string
+}
+
+const VIDEO_PROMPT = (topic: string, techStack: string, textLesson: string, minutes = 10, ctx: LessonContext = {}, act?: ActInfo) => {
+  const m = normalizeTargetMinutes(minutes)
   const software = SOFTWARE_FAMILIES.has(familyFor(techStack))
   const slideRules = software
-    ? `- 12 to 16 slides total. Types: "title" | "concept" | "code" | "visual".
-- Include at least two "code" slides with a "code" field (working ${techStack} snippet) and "codeLanguage".
+    ? `- Include at least two "code" slides with a "code" field (working ${techStack} snippet) and "codeLanguage".
 - Include one "visual" slide with "visual": "array" | "sort" | "tree" when the topic is data/algorithms.
-- Include one "diagram" slide with "visual": "flow" | "icons" | "compare" and 2–4 short "content" labels for on-screen boxes (e.g. Client → Server → Database).`
-    : `- 12 to 16 slides total. Types: "title" | "concept" | "visual".
-- Do NOT invent programming code for non-software topics.
+- Include one "diagram" slide with "visual": "flow" | "icons" | "compare", 2–4 short "content" labels for on-screen boxes (e.g. Client → Server → Database), and a "mermaid" field containing valid Mermaid code (graph TD or sequenceDiagram only, max 800 chars, simple: 4-8 nodes, max 6 edges). Always pair with 'content' labels as fallback.`
+    : `- Do NOT invent programming code for non-software topics.
 - Prefer concept slides with workplace workflows, checklists, and scenarios.
-- Include one "diagram" slide with "visual": "flow" | "icons" | "compare" and 2–4 short "content" labels for on-screen boxes.`
-  return `Turn this text lesson into an 8–12 minute instructor video script. Cover the topic in full. Do not skip or summarize-away details.
+- Include one "diagram" slide with "visual": "flow" | "icons" | "compare", 2–4 short "content" labels for on-screen boxes, and a "mermaid" field containing valid Mermaid code (graph TD or sequenceDiagram only, max 800 chars, simple: 4-8 nodes, max 6 edges). Always pair with 'content' labels as fallback.`
+  const position = ctx.lessonIndex && ctx.lessonTotal
+    ? `This is lesson ${ctx.lessonIndex} of ${ctx.lessonTotal}${ctx.moduleTitle ? ` in module "${ctx.moduleTitle}"` : ''}.`
+    : ''
+  const prevRule = ctx.prevTitle
+    ? `The bridge slide must name the previous lesson ("${ctx.prevTitle}") in one line and build on it — NEVER re-teach it.`
+    : `The bridge slide connects from course-level prerequisites (this is lesson 1 or no previous lesson is known).`
+  const opener = !act
+    ? `Turn this text lesson into a ~${m}-minute instructor video script. Cover the topic in full. Do not skip or summarize-away details.`
+    : `You are writing ACT ${act.index} of ${act.total} ("${act.actTitle}") of a ~${m}-minute lesson on "${topic}". Teach ONLY the act text below — fully, no skimming — but keep continuity.`
+  const countRule = !act
+    ? `Write ${slidesForMinutes(m)} slides total (at least ${minSlidesForMinutes(m)}).`
+    : `Write ${act.slides} slides total (at least ${actMinSlides(act.slides)}).`
+  const openRules = !act || act.index === 1
+    ? `- First slide type MUST be "title": hook headline + payoff subtitle — no greetings, no "welcome".
+- Second slide: on-screen outcomes ("By the end you will…" bullets, same points the narrator speaks).
+- Third slide: bridge — ${prevRule}`
+    : `- First slide: one spoken line recapping where the lesson stands so far, then into this act's content.`
+  const closeRules = !act || act.isLast
+    ? `- The takeaways slide MUST be titled exactly "Key takeaways" with exactly 3 short content bullets.
+- Then exactly three check slides, prompts ONLY, never answers or solutions: titled "Quick check — recall" (one recall question), "Apply it" (one hands-on exercise), "Stretch challenge" (one hard extension).
+- Final slide titled "What's next": spoken teaser naming the next lesson${ctx.nextTitle ? ` ("${ctx.nextTitle}")` : ''} in 1-2 sentences, no spoilers.`
+    : `- Close the act with one mini-recap slide titled "Act recap" (2-3 bullets). Do NOT write takeaways, check, or whats-next slides — those belong to the final act.`
+  return `${opener}
+${position}
 
 Output JSON ONLY:
 {
@@ -150,17 +485,20 @@ Output JSON ONLY:
 }
 
 Rules:
-- First slide type MUST be "title" (welcome + what we'll cover).
+${countRule}
+${openRules}
+- Core slides: WHY → WHAT → HOW → WHERE, then edge cases and graduated examples (trivial → realistic → tricky) plus one wrong-way/counter-example slide (show the mistake, then the fix).
+- One "Myth vs reality" misconceptions slide ("Most people think X — actually Y").
+${closeRules}
 ${slideRules}
-- Each spokenText MUST be 140-180 words (this is what makes the video ~8–12 minutes).
+- Each spokenText MUST be 140-180 words (this is what makes the video hit its target length).
 - On-screen "content" is 3-5 short bullets that summarize THE SAME points the narrator is speaking — never put unrelated bullets while spokenText teaches something else.
 - spokenText must teach the slide title + those bullets (same topic); do not digress to a different concept mid-slide.
-- Cover WHY → WHAT → HOW → WHERE, then edge cases and a full worked example.
 - Do not say "we will skip" or "as you already know".
-- Do NOT include quiz questions, answer keys, "Quiz 1", or knowledge-check slides — quizzes are a separate interactive step after the module.
+- Do NOT include quiz questions with answers, answer keys, "Quiz 1", or knowledge-check-with-answers slides — quizzes are a separate interactive step after the module.
 - No markdown fences around the JSON.
 
-TEXT LESSON:
+TEXT LESSON${act ? ` (ACT ${act.index} TEXT)` : ''}:
 """
 ${textLesson.slice(0, 16000)}
 """
@@ -197,11 +535,15 @@ const PROVIDER_SECRET: Record<string, string> = {
 
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1'
 
-/** Own keys from SuperAdmin. NVIDIA first (user request), then the rest. */
+/** Own keys from SuperAdmin. NVIDIA first (user request), then the rest.
+ *  ponytail: models verified live 2026-09-06 (llama-3.1-8b-instant 404s,
+ *  llama-3.1-70b/8b-instruct EOL'd on NIM) — re-verify via GET /models if
+ *  the chain starts failing; free providers rotate models often. */
 const PROVIDER_MODELS: { provider: string; model: string; endpoint?: string }[] = [
-  { provider: 'nvidia', model: 'meta/llama-3.1-70b-instruct', endpoint: NVIDIA_ENDPOINT },
-  { provider: 'nvidia', model: 'meta/llama-3.1-8b-instruct', endpoint: NVIDIA_ENDPOINT },
-  { provider: 'groq', model: 'llama-3.1-8b-instant', endpoint: 'https://api.groq.com/openai/v1' },
+  { provider: 'nvidia', model: 'nvidia/llama-3.1-nemotron-70b-instruct', endpoint: NVIDIA_ENDPOINT },
+  { provider: 'nvidia', model: 'deepseek-ai/deepseek-v4-flash-0731', endpoint: NVIDIA_ENDPOINT },
+  { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1' },
+  { provider: 'groq', model: 'openai/gpt-oss-20b', endpoint: 'https://api.groq.com/openai/v1' },
   { provider: 'gemini', model: 'gemini-2.0-flash' },
   { provider: 'openai', model: 'gpt-4o-mini' },
   { provider: 'opencode', model: 'deepseek-v4-flash-free' },
@@ -277,14 +619,19 @@ async function completeWithFallback(args: Parameters<typeof backendComplete>[0])
 export async function generateLessonVideo(opts: {
   topic: string
   techStack?: string
+  targetMinutes?: number
+  context?: LessonContext
 }): Promise<GeneratedLessonVideo> {
   const topic = (opts.topic || '').trim()
   if (!topic) throw new Error('Topic is required')
+  const minutes = normalizeTargetMinutes(opts.targetMinutes ?? 10)
+  const ctx = opts.context ?? {}
   const techStack = opts.techStack || 'programming'
+  const minTotal = minSlidesForMinutes(minutes)
 
   const textRes = await completeWithFallback({
     systemMessage: TEXT_SYSTEM,
-    userMessage: TEXT_PROMPT(topic, techStack),
+    userMessage: TEXT_PROMPT(topic, techStack, minutes, ctx),
     responseFormat: 'text',
     modelRole: 'fast',
     feature: 'course-video-text',
@@ -292,24 +639,63 @@ export async function generateLessonVideo(opts: {
   const textContent = extractText(textRes)
   if (textContent.length < 400) throw new Error('AI text lesson was too short — refusing to build a stub video')
 
-  const runScript = async () => completeWithFallback({
+  const parseSlides = (payload: unknown, min: number): VideoSlide[] =>
+    withDurations(slidesFromAiJson(payload, min))
+
+  const runScriptCall = (userMessage: string) => completeWithFallback({
     systemMessage: VIDEO_SYSTEM,
-    userMessage: VIDEO_PROMPT(topic, techStack, textContent),
+    userMessage,
     responseFormat: 'json',
     modelRole: 'fast',
     feature: 'course-video-script',
   })
 
-  let videoRes = await runScript()
-
   let slides: VideoSlide[]
-  try {
-    slides = withDurations(slidesFromAiJson(videoRes.json ?? videoRes.raw ?? videoRes.text))
-  } catch {
-    videoRes = await runScript()
-    slides = withDurations(slidesFromAiJson(videoRes.json ?? videoRes.raw ?? videoRes.text))
+  let chapters: LessonChapter[]
+  if (minutes <= 15) {
+    const runScript = async () => runScriptCall(VIDEO_PROMPT(topic, techStack, textContent, minutes, ctx))
+    let videoRes = await runScript()
+
+    try {
+      slides = parseSlides(videoRes.json ?? videoRes.raw ?? videoRes.text, minTotal)
+    } catch {
+      videoRes = await runScript()
+      slides = parseSlides(videoRes.json ?? videoRes.raw ?? videoRes.text, minTotal)
+    }
+    chapters = chaptersFromScript(slides)
+  } else {
+    // Long-form: one VIDEO_PROMPT call per act (each a mini-arc), then concatenate.
+    const acts = splitIntoActs(textContent, actsForMinutes(minutes))
+    const target = slidesForMinutes(minutes)
+    const per = Math.floor(target / acts.length)
+    let rem = target - per * acts.length
+    slides = []
+    const bounds: { title: string; startIndex: number }[] = []
+    for (let i = 0; i < acts.length; i++) {
+      const budget = per + (rem > 0 ? 1 : 0)
+      if (rem > 0) rem--
+      const info: ActInfo = { index: i + 1, total: acts.length, slides: budget, isLast: i === acts.length - 1, actTitle: acts[i].title }
+      const floor = actMinSlides(budget)
+      const runAct = async () => runScriptCall(VIDEO_PROMPT(topic, techStack, acts[i].text, minutes, ctx, info))
+      let actRes = await runAct()
+      let actSlides: VideoSlide[]
+      try {
+        actSlides = parseSlides(actRes.json ?? actRes.raw ?? actRes.text, floor)
+      } catch {
+        actRes = await runAct()
+        actSlides = parseSlides(actRes.json ?? actRes.raw ?? actRes.text, floor)
+      }
+      bounds.push({ title: acts[i].title, startIndex: slides.length })
+      slides.push(...actSlides)
+    }
+    if (slides.length < minTotal) {
+      throw new Error(`Need at least ${minTotal} slides for a ${minutes}-min lesson, got ${slides.length}`)
+    }
+    slides = slides.map((s, i) => ({ ...s, id: `slide-${i + 1}` }))
+    chapters = chaptersFromScript(slides, bounds)
   }
 
+  const extras = extractLessonExtras(slides)
   const fullSpoken = slides.map(s => s.spokenText).join(' ')
   const audioBuffer = await synthesizeTts(fullSpoken)
   // Word-count frame estimates drift from real Google TTS length — align visuals to the MP3.
@@ -323,5 +709,9 @@ export async function generateLessonVideo(opts: {
     script: slides,
     audioBuffer,
     durationSeconds: Math.max(60, Math.round(durationSeconds || audioSeconds)),
+    takeaways: extras.takeaways,
+    quickCheck: extras.quickCheck,
+    nextTeaser: extras.nextTeaser,
+    chapters,
   }
 }

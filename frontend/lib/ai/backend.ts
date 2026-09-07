@@ -136,6 +136,65 @@ export async function backendChatStream(args: ChatStreamArgs): Promise<Response>
   return res
 }
 
+/**
+ * Best-effort extraction of token counts from a completion result.
+ * Backend responses often lack usage entirely — all fields optional.
+ * Handles both OpenAI-style (prompt_tokens/completion_tokens) and
+ * normalized (input_tokens/output_tokens) shapes, top-level or nested.
+ */
+function extractUsageTokens(res: unknown): { promptTokens?: number; completionTokens?: number } {
+  try {
+    const root = res as Record<string, unknown> | null | undefined
+    const usage = (root?.usage ?? (root?.json as Record<string, unknown> | undefined)?.usage) as
+      | Record<string, unknown>
+      | null
+      | undefined
+    if (!usage || typeof usage !== 'object') return {}
+    const pick = (v: unknown): number | undefined =>
+      typeof v === 'number' && Number.isFinite(v) && v >= 0 ? Math.floor(v) : undefined
+    const promptTokens =
+      pick(usage.prompt_tokens) ?? pick(usage.input_tokens) ?? pick(usage.promptTokens) ?? pick(usage.inputTokens)
+    const completionTokens =
+      pick(usage.completion_tokens) ?? pick(usage.output_tokens) ?? pick(usage.completionTokens) ?? pick(usage.outputTokens)
+    return { ...(promptTokens !== undefined ? { promptTokens } : {}), ...(completionTokens !== undefined ? { completionTokens } : {}) }
+  } catch {
+    return {}
+  }
+}
+
+/**
+ * Phase-3 usage telemetry: fire-and-forget, never awaited, never throws.
+ * Injection flags are LOG-ONLY — the request always proceeds.
+ */
+function fireAndForgetUsage(
+  args: { feature?: string; userId?: string; providerOverride?: string; modelOverride?: string },
+  res: { provider?: string; model?: string } | undefined,
+  latencyMs: number,
+  ok: boolean,
+  injectionFlags: string[],
+): void {
+  try {
+    const tokens = extractUsageTokens(res)
+    const entry = {
+      userId: args.userId,
+      feature: args.feature || 'unknown',
+      provider: res?.provider || args.providerOverride || 'unknown',
+      model: res?.model || args.modelOverride || 'unknown',
+      ...(tokens.promptTokens !== undefined ? { promptTokens: tokens.promptTokens } : {}),
+      ...(tokens.completionTokens !== undefined ? { completionTokens: tokens.completionTokens } : {}),
+      latencyMs,
+      ok,
+      injectionFlags,
+    }
+    void import('@/lib/ai/cost-tracking').then(
+      ({ logAiUsage }) => logAiUsage(entry),
+      () => undefined,
+    )
+  } catch {
+    // Telemetry must never fail the request.
+  }
+}
+
 export async function backendComplete(args: {
   sessionId?: string
   systemMessage: string
@@ -148,10 +207,62 @@ export async function backendComplete(args: {
   apiKeyOverride?: string
   feature?: string
   userId?: string
+  /** Set false to bypass the semantic response cache (default true). */
+  cache?: boolean
 }): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string; usage?: { input_tokens: number, output_tokens: number } }> {
+  // Phase-3 prompt guard: scan BEFORE the fetch, log-only mode — a flagged
+  // prompt still proceeds; flags ride along on the usage log below.
+  let injectionFlags: string[] = []
+  try {
+    const { scanPrompt } = await import('@/lib/ai/prompt-guard')
+    injectionFlags = scanPrompt(args.userMessage).reasons
+  } catch {
+    injectionFlags = []
+  }
+  const start = Date.now()
+  // Semantic cache: exact-normalized prompt hits skip the LLM entirely.
+  // Tainted (flagged) prompts never read from or write to the cache.
+  const cacheable = args.cache !== false && injectionFlags.length === 0
+  let cacheKey = ''
+  if (cacheable) {
+    try {
+      const { cacheKey: buildKey, getCachedCompletion } = await import('@/lib/ai/semantic-cache')
+      cacheKey = buildKey({
+        feature: args.feature,
+        modelRole: args.modelRole,
+        providerOverride: args.providerOverride,
+        modelOverride: args.modelOverride,
+        responseFormat: args.responseFormat,
+        systemMessage: args.systemMessage,
+        userMessage: args.userMessage,
+      })
+      const hit = await getCachedCompletion(cacheKey)
+      if (hit && (hit.text !== undefined || hit.json !== undefined)) {
+        fireAndForgetUsage({ ...args, feature: (args.feature || 'unknown') + ':cache-hit' }, undefined, Date.now() - start, true, injectionFlags)
+        return { ok: true, ...(hit.text !== undefined ? { text: hit.text } : {}), ...(hit.json !== undefined ? { json: hit.json } : {}) }
+      }
+    } catch {
+      cacheKey = ''
+    }
+  }
   // Use OmniRouter-style provider fallback for automatic failover
   const { backendCompleteWithFallback } = await import('@/lib/ai/provider-fallback')
-  return backendCompleteWithFallback(args)
+  try {
+    const res = await backendCompleteWithFallback(args)
+    fireAndForgetUsage(args, res, Date.now() - start, true, injectionFlags)
+    if (cacheable && cacheKey && res.ok && (res.text !== undefined || res.json !== undefined)) {
+      try {
+        const { setCachedCompletion } = await import('@/lib/ai/semantic-cache')
+        setCachedCompletion(cacheKey, { ...(res.text !== undefined ? { text: res.text } : {}), ...(res.json !== undefined ? { json: res.json } : {}) }, args.feature)
+      } catch {
+        // Cache write must never fail the request.
+      }
+    }
+    return res
+  } catch (e) {
+    fireAndForgetUsage(args, undefined, Date.now() - start, false, injectionFlags)
+    throw e
+  }
 }
 
 export async function backendGet<T = unknown>(
@@ -194,64 +305,4 @@ export async function backendPost<T = unknown>(
     throw new Error(`backend ${path} returned ${res.status}: ${await res.text()}`)
   }
   return (await res.json()) as T
-}
-
-/**
- * Wraps backendPost with AI usage tracking (latency, tokens, cost).
- * Call this from AI route handlers to automatically log usage.
- */
-export async function trackedBackendPost<T = unknown>(
-  path: string,
-  body: unknown,
-  opts: { feature: string; userId?: string; providerOverride?: string; modelOverride?: string; modelRole?: 'reasoning' | 'fast'; endpointOverride?: string; apiKeyOverride?: string },
-): Promise<T> {
-  const start = Date.now()
-  let success = true
-  let error: string | undefined
-  let result: T
-
-  try {
-    result = await backendPost<T>(path, body, opts)
-  } catch (e) {
-    success = false
-    error = e instanceof Error ? e.message : 'Unknown error'
-    throw e
-  } finally {
-    const latencyMs = Date.now() - start
-
-    // Fire-and-forget: log usage to analytics (don't block the response)
-    import('@/lib/db/analytics').then(async ({ analyticsAiUsage, estimateAiCost, newId, nowIso }) => {
-      try {
-        // Try to extract token info from response
-        const res = result as any
-        const inputTokens = res?.usage?.input_tokens || res?.prompt_tokens || 0
-        const outputTokens = res?.usage?.output_tokens || res?.completion_tokens || 0
-        const model = opts.modelOverride || 'unknown'
-        const provider = opts.providerOverride || 'unknown'
-        const totalTokens = inputTokens + outputTokens
-        const cost = estimateAiCost(model, inputTokens, outputTokens)
-
-        const col = await analyticsAiUsage()
-        await col.insertOne({
-          id: newId(),
-          user_id: opts.userId,
-          feature: opts.feature,
-          provider,
-          model,
-          input_tokens: inputTokens,
-          output_tokens: outputTokens,
-          total_tokens: totalTokens,
-          estimated_cost: cost,
-          latency_ms: latencyMs,
-          success,
-          error,
-          timestamp: nowIso(),
-        } as any)
-      } catch {
-        // Silent — analytics should never break AI
-      }
-    }).catch(() => null)
-  }
-
-  return result!
 }

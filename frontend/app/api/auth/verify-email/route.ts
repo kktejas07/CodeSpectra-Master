@@ -25,11 +25,18 @@ export async function GET(req: NextRequest) {
     return redirectWithMessage('Email already verified')
   }
 
+  if (
+    user.verification_token_expires &&
+    new Date(user.verification_token_expires).getTime() < Date.now()
+  ) {
+    return redirectWithMessage('Invalid or expired verification link')
+  }
+
   await db.collection('user').updateOne(
     { email: user.email },
     {
       $set: { emailVerified: true, email_verified_at: new Date().toISOString() },
-      $unset: { verification_token_hash: '' },
+      $unset: { verification_token_hash: '', verification_token_expires: '' },
     },
   )
 

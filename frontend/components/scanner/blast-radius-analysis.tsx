@@ -137,7 +137,7 @@ export function BlastRadiusAnalysis({
           <AlertTriangle className="w-4 h-4 text-primary" />
           <h3 className="font-semibold text-foreground">Blast Radius — {components.find(c => c.id === selectedId)?.name}</h3>
         </div>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
           <div className="text-center">
             <p className="text-2xl font-bold text-primary">{result.affected.length}</p>
             <p className="text-xs text-muted-foreground mt-0.5">Affected components</p>

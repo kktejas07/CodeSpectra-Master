@@ -14,12 +14,11 @@
  *
  * Collection: certification_attempts — per-user attempts with score + verify token.
  */
-import { randomBytes, randomUUID } from 'node:crypto'
+import { randomBytes } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
+import { newId, nowIso } from './ids'
 
-const newId = (): string => randomUUID()
-const nowIso = (): string => new Date().toISOString()
 const newToken = (): string =>
   randomBytes(24).toString('base64').replace(/\+/g, '-').replace(/\//g, '_').replace(/=+$/, '')
 

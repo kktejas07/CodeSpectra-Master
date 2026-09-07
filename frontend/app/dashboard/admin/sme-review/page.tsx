@@ -64,7 +64,7 @@ export default function SMEReviewPage() {
           <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading review tasks...
         </div>
       ) : (
-        <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyMessage="No review tasks. Data is populated from SME assignments." />
+        <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyMessage="No review tasks. Submissions needing manual review will appear here." />
       )}
     </div>
   )

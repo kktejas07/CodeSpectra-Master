@@ -149,6 +149,22 @@ export interface ExecuteOptions {
   version?: string
 }
 
+function isLocalExecAllowed(): boolean {
+  // ponytail: the local executor runs arbitrary code in-process, often as root.
+  // Fine for local dev, dangerous in prod — gate it off unless explicitly enabled.
+  return process.env.NODE_ENV !== 'production' || process.env.ALLOW_LOCAL_EXEC === '1'
+}
+
+function localExecuteGuarded(opts: ExecuteOptions): Promise<PistonExecuteResult> {
+  if (!isLocalExecAllowed()) {
+    throw new Error(
+      `Execution backend unavailable for language "${opts.language}" (Piston unreachable and ` +
+        `local execution is disabled in production). Configure piston_url or set ALLOW_LOCAL_EXEC=1 to opt in.`,
+    )
+  }
+  return localExecuteOnce(opts)
+}
+
 export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteResult> {
   const baseUrl = await resolvePistonUrl()
 
@@ -160,7 +176,7 @@ export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteRe
           `Configure piston_url in superadmin settings or use one of: python, javascript, typescript, bash.`,
       )
     }
-    return localExecuteOnce(opts)
+    return localExecuteGuarded(opts)
   }
 
   let version = opts.version
@@ -173,7 +189,7 @@ export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteRe
   }
   if (!version) {
     // Piston is reachable but language is unknown — fall back to local if possible.
-    if (isLocallySupported(opts.language)) return localExecuteOnce(opts)
+    if (isLocallySupported(opts.language)) return localExecuteGuarded(opts)
     throw new Error(`Unsupported language: ${opts.language}`)
   }
 
@@ -200,7 +216,7 @@ export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteRe
   } catch (e) {
     releaseSlot()
     // Network failure → degrade gracefully to local executor.
-    if (isLocallySupported(opts.language)) return localExecuteOnce(opts)
+    if (isLocallySupported(opts.language)) return localExecuteGuarded(opts)
     throw e
   }
 
@@ -210,7 +226,7 @@ export async function executeOnce(opts: ExecuteOptions): Promise<PistonExecuteRe
     // back to local execution rather than hard-failing the user.
     if ((res.status === 401 || res.status === 403 || res.status === 429) &&
         isLocallySupported(opts.language)) {
-      return localExecuteOnce(opts)
+      return localExecuteGuarded(opts)
     }
     const txt = await res.text()
     throw new Error(`Piston execute failed: ${res.status} ${txt.slice(0, 200)}`)

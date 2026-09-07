@@ -17,6 +17,26 @@ export function normalizeAdminNewUserEmailDelivery(v: unknown): AdminNewUserEmai
   return 'postal_recovery'
 }
 
+/** Transcript panel modes for the course video player. Follows the ADMIN_NEW_USER_EMAIL_DELIVERIES pattern. */
+export const VIDEO_PLAYER_TRANSCRIPT_MODES = ['open', 'closed', 'off'] as const
+
+export type VideoPlayerTranscriptMode = (typeof VIDEO_PLAYER_TRANSCRIPT_MODES)[number]
+
+export function normalizeVideoPlayerTranscriptMode(v: unknown): VideoPlayerTranscriptMode {
+  const s = typeof v === 'string' ? v.trim().toLowerCase() : ''
+  if ((VIDEO_PLAYER_TRANSCRIPT_MODES as readonly string[]).includes(s)) {
+    return s as VideoPlayerTranscriptMode
+  }
+  return 'closed'
+}
+
+/** Clamp a playback speed to Vidstack's usable range, falling back on garbage. */
+export function coercePlaybackSpeed(v: unknown, fallback: number): number {
+  const n = typeof v === 'string' ? Number(v.trim()) : Number(v)
+  if (Number.isFinite(n) && n >= 0.25 && n <= 4) return n
+  return fallback
+}
+
 export type GeneralPlatformSettings = {
   platform_name: string
   platform_tagline: string
@@ -69,6 +89,16 @@ export type GeneralPlatformSettings = {
   video_player_logo_link_url: string
   /** When true, captions/subtitles start on by default in the course player */
   video_player_captions_default: boolean
+  /** Default playback speed for the course player (user's saved choice in localStorage wins) */
+  video_player_default_speed: number
+  /** Transcript panel under the course player: open | closed | off */
+  video_player_transcript: VideoPlayerTranscriptMode
+  /** When true, a chapters track is generated client-side and shown in the player menu */
+  video_player_chapters: boolean
+  /** When true, ending a lesson shows a 3s "Up next" overlay that auto-navigates */
+  video_player_autoplay_next: boolean
+  /** When false, the picture-in-picture button is hidden from the player */
+  video_player_pip: boolean
 }
 
 export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
@@ -104,6 +134,11 @@ export const GENERAL_PLATFORM_DEFAULTS: GeneralPlatformSettings = {
   video_player_logo_url: '',
   video_player_logo_link_url: '',
   video_player_captions_default: true,
+  video_player_default_speed: 1,
+  video_player_transcript: 'closed',
+  video_player_chapters: true,
+  video_player_autoplay_next: false,
+  video_player_pip: true,
 }
 
 export function coercePlatformBool(v: unknown, fallback: boolean): boolean {
@@ -144,6 +179,23 @@ export function mergeGeneralPlatformSettings(
   merged.video_player_captions_default = coercePlatformBool(
     merged.video_player_captions_default,
     GENERAL_PLATFORM_DEFAULTS.video_player_captions_default,
+  )
+  merged.video_player_default_speed = coercePlaybackSpeed(
+    merged.video_player_default_speed,
+    GENERAL_PLATFORM_DEFAULTS.video_player_default_speed,
+  )
+  merged.video_player_transcript = normalizeVideoPlayerTranscriptMode(merged.video_player_transcript)
+  merged.video_player_chapters = coercePlatformBool(
+    merged.video_player_chapters,
+    GENERAL_PLATFORM_DEFAULTS.video_player_chapters,
+  )
+  merged.video_player_autoplay_next = coercePlatformBool(
+    merged.video_player_autoplay_next,
+    GENERAL_PLATFORM_DEFAULTS.video_player_autoplay_next,
+  )
+  merged.video_player_pip = coercePlatformBool(
+    merged.video_player_pip,
+    GENERAL_PLATFORM_DEFAULTS.video_player_pip,
   )
   return merged as GeneralPlatformSettings
 }

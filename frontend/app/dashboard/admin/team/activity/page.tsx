@@ -20,6 +20,7 @@ import {
 } from 'lucide-react'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface DayData {
   date: string
@@ -86,14 +87,18 @@ export default function TeamActivityPage() {
   }, [gate.ready])
 
   if (!gate.ready) return (
-    <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-      <Loader className="mr-2 h-5 w-5 animate-spin" />Loading…
+    <div className="space-y-8">
+      <SkeletonText lines={2} />
+      <SkeletonStats />
+      <SkeletonList count={3} />
     </div>
   )
 
   if (loading) return (
-    <div className="flex justify-center py-20">
-      <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
+    <div className="space-y-8">
+      <SkeletonText lines={2} />
+      <SkeletonStats />
+      <SkeletonList count={3} />
     </div>
   )
 

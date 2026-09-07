@@ -16,6 +16,7 @@ import { cn } from '@/lib/utils'
 import { useAssessmentViewModel } from './use-assessment-viewmodel'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
+import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 export default function AssessmentPage() {
   const gate = usePageGuard('user')
@@ -24,11 +25,9 @@ export default function AssessmentPage() {
 
   if (!gate.ready) {
     return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
-          Loading…
-        </div>
+      <div className="min-h-screen space-y-8 p-6">
+        <SkeletonText lines={2} />
+        <SkeletonList count={3} />
       </div>
     )
   }
