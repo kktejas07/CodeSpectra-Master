@@ -1,6 +1,6 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { 
   Building2, 
@@ -21,6 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 const MOCK_TESTS = [
   { id: 'tcs-software-engineer', company: 'TCS', role: 'Software Engineer', color: 'bg-blue-600', type: 'Tech', level: 'Entry-level' },
@@ -40,6 +41,34 @@ export default function MockTestsPage() {
   const [isModalOpen, setIsModalOpen] = useState(false)
   const [customData, setCustomData] = useState({ company: '', role: '', type: 'Tech', experience: 'Entry-level' })
   const [isGenerating, setIsGenerating] = useState(false)
+  const { startTour, setTourSeen } = useTour()
+
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_mock-tests_tour')) {
+      const mockTestsTour: TourStep[] = [
+        {
+          target: '[data-tour="mock-tests-header"]',
+          title: 'AI-powered mock tests',
+          description: 'Practice role-based assessments generated dynamically by AI for top companies.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="mock-tests-create"]',
+          title: 'Create custom test',
+          description: 'Generate a tailored test for any company and role for one AI credit.',
+          position: 'left',
+        },
+        {
+          target: '[data-tour="mock-tests-list"]',
+          title: 'Browse sample tests',
+          description: 'Pick a company card and start a test instantly.',
+          position: 'top',
+        },
+      ]
+      startTour(mockTestsTour, 'mock-tests')
+      setTourSeen('mock-tests')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const filteredTests = MOCK_TESTS.filter(t => 
     t.company.toLowerCase().includes(search.toLowerCase()) || 
@@ -66,7 +95,7 @@ export default function MockTestsPage() {
 
   return (
     <div className="flex-1 space-y-4 p-4 md:p-8 pt-6">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4" data-tour="mock-tests-header">
         <div>
           <h2 className="text-3xl font-bold tracking-tight bg-linear-to-r from-primary to-primary/60 bg-clip-text text-transparent inline-flex items-center gap-2">
             <Sparkles className="h-8 w-8 text-primary" />
@@ -78,7 +107,7 @@ export default function MockTestsPage() {
         </div>
         <div className="w-full sm:w-64 shrink-0 flex flex-col gap-3">
           <AiCreditsWidget />
-          <Button onClick={() => setIsModalOpen(true)} className="w-full gap-2">
+          <Button data-tour="mock-tests-create" onClick={() => setIsModalOpen(true)} className="w-full gap-2">
             <Plus className="w-4 h-4" /> Create Custom Test
           </Button>
         </div>
@@ -97,7 +126,7 @@ export default function MockTestsPage() {
       </div>
 
       {filteredTests.length > 0 ? (
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4" data-tour="mock-tests-list">
           {filteredTests.map((test) => (
             <Card key={test.id} className="group hover:border-primary/50 transition-colors cursor-pointer flex flex-col">
               <CardHeader className="flex flex-row items-start justify-between pb-2">

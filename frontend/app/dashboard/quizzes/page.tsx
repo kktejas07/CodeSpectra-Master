@@ -1,9 +1,10 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { HelpCircle, Search } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -23,6 +24,7 @@ const QUIZZES = [
 
 export default function QuizzesPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const [q, setQ] = useState('')
   const [filters, setFilters] = useState<FilterState>({})
   const [open, setOpen] = useState(false)
@@ -37,6 +39,34 @@ export default function QuizzesPage() {
     })
   }, [q, filters])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_quizzes_tour')) {
+      const quizzesTour: TourStep[] = [
+        {
+          target: '[data-tour="quizzes-header"]',
+          title: 'Practice role-based quizzes',
+          description: 'Company mock tests for SDE, data, and analyst roles live here.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="quizzes-search"]',
+          title: 'Search and filter',
+          description: 'Search by company or role, or open All Filters by category and level.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="quizzes-grid"]',
+          title: 'Start a quiz',
+          description: 'Pick any card to jump into the company mock test.',
+          position: 'top',
+        },
+      ]
+      startTour(quizzesTour, 'quizzes')
+      setTourSeen('quizzes')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) {
     return (
       <div className="w-full space-y-6">
@@ -48,7 +78,7 @@ export default function QuizzesPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div>
+      <div data-tour="quizzes-header">
         <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
           <HelpCircle className="h-8 w-8 text-primary" /> Quizzes
         </h1>
@@ -57,7 +87,7 @@ export default function QuizzesPage() {
         </p>
       </div>
 
-      <div className="flex flex-col gap-3 sm:flex-row">
+      <div className="flex flex-col gap-3 sm:flex-row" data-tour="quizzes-search">
         <div className="relative flex-1">
           <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input className="pl-8" placeholder="Search quizzes…" value={q} onChange={(e) => setQ(e.target.value)} />
@@ -72,6 +102,7 @@ export default function QuizzesPage() {
         </Button>
       </div>
 
+      <div data-tour="quizzes-grid">
       {filtered.length === 0 ? (
         <EmptyState
           variant="search"
@@ -96,6 +127,7 @@ export default function QuizzesPage() {
           ))}
         </div>
       )}
+      </div>
 
       <AllFiltersDialog
         open={open}

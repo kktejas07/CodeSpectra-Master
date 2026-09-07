@@ -10,6 +10,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 // Helper to render warnings (handles both strings and Didit warning objects)
 function renderWarning(w: unknown): string {
@@ -66,6 +67,7 @@ interface SessionResponse {
 
 export default function IdentityVerificationPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const [status, setStatus] = useState<KycStatus | null>(null)
   const [loading, setLoading] = useState(true)
   const [starting, setStarting] = useState(false)
@@ -125,6 +127,34 @@ export default function IdentityVerificationPage() {
       setStarting(false)
     }
   }
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_identity-verify_tour')) {
+      const identityVerifyTour: TourStep[] = [
+        {
+          target: '[data-tour="identity-verify-header"]',
+          title: 'Verify your identity',
+          description: 'One-time verification unlocks exams, assessments, and all gated features.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="identity-verify-start"]',
+          title: 'Start verification',
+          description: 'Click here to open the secure verification flow; results usually arrive in under a minute.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="identity-verify-features"]',
+          title: "What's checked",
+          description: 'ID document, liveness, face match, and fraud signals are all covered in one pass.',
+          position: 'top',
+        },
+      ]
+      startTour(identityVerifyTour, 'identity-verify')
+      setTourSeen('identity-verify')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null
 
@@ -559,7 +589,7 @@ export default function IdentityVerificationPage() {
   // Main verification page
   return (
     <div className="space-y-6" data-testid="identity-verify-page">
-      <div>
+      <div data-tour="identity-verify-header">
         <h1 className="text-2xl font-bold">Identity Verification</h1>
         <p className="text-sm text-muted-foreground">
           Verify your identity to access all platform features. Full KYC via Didit (chosen in SuperAdmin → KYC → Purpose routing).
@@ -575,7 +605,7 @@ export default function IdentityVerificationPage() {
       )}
 
       {/* Features */}
-      <Card className="p-6">
+      <Card className="p-6" data-tour="identity-verify-features">
         <h2 className="text-lg font-semibold mb-4">What's included</h2>
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div className="flex items-start gap-3">
@@ -644,6 +674,7 @@ export default function IdentityVerificationPage() {
         size="lg"
         className="w-full sm:w-auto"
         data-testid="start-verification"
+        data-tour="identity-verify-start"
       >
         {starting ? (
           <Loader2 className="h-4 w-4 mr-2 animate-spin" />

@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 
@@ -38,6 +39,34 @@ export default function CalendarPage() {
   const [title, setTitle] = useState('')
   const [when, setWhen] = useState('')
   const [busy, setBusy] = useState(false)
+  const { startTour, setTourSeen } = useTour()
+
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_calendar_tour')) {
+      const calendarTour: TourStep[] = [
+        {
+          target: '[data-tour="calendar-header"]',
+          title: 'Your calendar',
+          description: 'Deadlines, study sessions, and course events live here.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="calendar-grid"]',
+          title: 'Month view',
+          description: 'Browse events by day and jump between months.',
+          position: 'right',
+        },
+        {
+          target: '[data-tour="calendar-add"]',
+          title: 'Add an event',
+          description: 'Save a study session or deadline to your CodeSpectra calendar.',
+          position: 'left',
+        },
+      ]
+      startTour(calendarTour, 'calendar')
+      setTourSeen('calendar')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const load = useCallback(async () => {
     try {
@@ -119,7 +148,7 @@ export default function CalendarPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex flex-wrap items-center justify-between gap-3">
+      <div className="flex flex-wrap items-center justify-between gap-3" data-tour="calendar-header">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <CalendarDays className="h-7 w-7 text-primary" /> Calendar
         </h1>
@@ -129,7 +158,7 @@ export default function CalendarPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-[1fr_320px]">
-        <Card className="p-4 space-y-4">
+        <Card className="p-4 space-y-4" data-tour="calendar-grid">
           <div className="flex items-center justify-between">
             <Button
               variant="ghost"
@@ -190,7 +219,7 @@ export default function CalendarPage() {
         </Card>
 
         <div className="space-y-4">
-          <Card className="space-y-3 p-4">
+          <Card className="space-y-3 p-4" data-tour="calendar-add">
             <h2 className="flex items-center gap-2 font-semibold">
               <Plus className="h-4 w-4" /> Add event
             </h2>

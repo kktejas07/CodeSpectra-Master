@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -21,6 +22,7 @@ type Session = {
 
 export default function MySessionsPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const [sessions, setSessions] = useState<Session[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -33,6 +35,34 @@ export default function MySessionsPage() {
       .finally(() => setLoading(false))
   }, [gate.ready])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_sessions_tour')) {
+      const sessionsTour: TourStep[] = [
+        {
+          target: '[data-tour="sessions-header"]',
+          title: 'Your sessions',
+          description: 'Interview and mock sessions linked to your account live here.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="sessions-action"]',
+          title: 'Find sessions',
+          description: 'Browse or schedule interview sessions to get started.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="sessions-list"]',
+          title: 'Session history',
+          description: 'Upcoming and past sessions appear here with their status.',
+          position: 'top',
+        },
+      ]
+      startTour(sessionsTour, 'sessions')
+      setTourSeen('sessions')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready || loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
@@ -43,17 +73,18 @@ export default function MySessionsPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3" data-tour="sessions-header">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Sessions</h1>
           <p className="mt-1 text-sm text-muted-foreground">
             Interview and mock sessions linked to your account.
           </p>
         </div>
-        <Button asChild size="sm">
+        <Button asChild size="sm" data-tour="sessions-action">
           <Link href="/dashboard/interviews">Schedule / browse</Link>
         </Button>
       </div>
+      <div data-tour="sessions-list">
       {sessions.length === 0 ? (
         <EmptyState
           variant="sessions"
@@ -84,6 +115,7 @@ export default function MySessionsPage() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   )
 }

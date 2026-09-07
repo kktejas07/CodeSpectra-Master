@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Loader2, Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -17,6 +18,7 @@ type Ticket = { id: string; subject: string; message: string; category: string; 
 
 export default function SupportPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const addToast = useToast()
 
   const [tickets, setTickets] = useState<Ticket[]>([])
@@ -42,6 +44,34 @@ export default function SupportPage() {
   }, [])
 
   useEffect(() => { fetchTickets() }, [fetchTickets])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_support_tour')) {
+      const supportTour: TourStep[] = [
+        {
+          target: '[data-tour="support-header"]',
+          title: 'Support tickets',
+          description: 'Track every help request you raise — replies from the team land here.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="support-new"]',
+          title: 'Raise a ticket',
+          description: 'Click New Ticket, pick a category, and describe your issue.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="support-list"]',
+          title: 'Follow conversations',
+          description: 'Click any ticket to read replies and respond until it is resolved.',
+          position: 'top',
+        },
+      ]
+      startTour(supportTour, 'support')
+      setTourSeen('support')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const openTicket = async (t: Ticket) => {
     setSelectedTicket(t)
@@ -148,12 +178,12 @@ export default function SupportPage() {
 
   return (
     <div className="max-w-4xl mx-auto space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="support-header">
         <div>
           <h1 className="text-3xl font-bold text-foreground flex items-center gap-2"><MessageSquare className="h-8 w-8 text-primary" />Support Tickets</h1>
           <p className="text-muted-foreground text-sm mt-1">{tickets.length} ticket{tickets.length !== 1 ? 's' : ''}</p>
         </div>
-        <Button onClick={() => setShowForm(true)}><Plus className="h-4 w-4 mr-2" />New Ticket</Button>
+        <Button onClick={() => setShowForm(true)} data-tour="support-new"><Plus className="h-4 w-4 mr-2" />New Ticket</Button>
       </div>
 
       {showForm && (
@@ -188,6 +218,7 @@ export default function SupportPage() {
         </Card>
       )}
 
+      <div data-tour="support-list">
       {loading ? <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
         : tickets.length === 0 ? <Card className="p-8 text-center text-muted-foreground">No tickets yet.</Card>
         : <div className="space-y-3">
@@ -208,6 +239,7 @@ export default function SupportPage() {
           ))}
         </div>
       }
+      </div>
     </div>
   )
 }

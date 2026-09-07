@@ -9,6 +9,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { useCurrency } from '@/lib/use-currency'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -27,6 +28,7 @@ const PLAN_COLORS: Record<string, string> = {
 
 export default function PricingPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const addToast = useToast()
   const { symbol } = useCurrency()
@@ -132,18 +134,46 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
     return map[key] || ''
   }
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_pricing_tour')) {
+      const pricingTour: TourStep[] = [
+        {
+          target: '[data-tour="pricing-header"]',
+          title: 'Plans that scale',
+          description: 'Start free and upgrade only when you need more power.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="pricing-plans"]',
+          title: 'Compare plans',
+          description: 'Each tier lists its limits and features side by side for easy comparison.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="pricing-cta"]',
+          title: 'Upgrade in one click',
+          description: 'Choose a plan to open checkout, where coupons and payment are handled.',
+          position: 'top',
+        },
+      ]
+      startTour(pricingTour, 'pricing')
+      setTourSeen('pricing')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading plans…</div>
 
   return (
     <div className="space-y-12">
-      <div className="text-center">
+      <div className="text-center" data-tour="pricing-header">
         <h1 className="text-4xl font-bold text-foreground">Choose Your Plan</h1>
         <p className="text-muted-foreground mt-3 text-lg">Start free, upgrade when you need more power.</p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto">
+      <div className="grid gap-6 md:grid-cols-3 max-w-5xl mx-auto" data-tour="pricing-plans">
         {plans.map(plan => {
           const isPro = plan.plan === 'pro'
           return (
@@ -169,6 +199,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
 
               <Button
                 className="w-full"
+                data-tour="pricing-cta"
                 variant={isPro || (plan.price && plan.price !== '$0' && plan.price !== 'Free') ? 'default' : 'outline'}
                 onClick={() => (!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free') ? null : setCheckoutPlan(plan)}
                 asChild={!plan.price || plan.price === '$0' || plan.price === 'Free' || plan.plan === 'free'}

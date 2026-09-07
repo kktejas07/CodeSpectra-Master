@@ -13,6 +13,7 @@ import { getArenaChallenge, getNextArenaChallengeId, type ArenaChallenge } from 
 import { PROGRAMMING_LANGUAGES } from '@/lib/languages'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -229,7 +230,7 @@ function ArenaChallengeInner() {
 
   return (
     <div className="space-y-6">
-      <div className="space-y-2">
+      <div className="space-y-2" data-tour="arena-detail-header">
         <div className="flex flex-wrap items-center gap-2">
           <Code2 className="h-6 w-6 text-primary" />
           <h1 className="text-3xl font-bold text-foreground">{challenge.title}</h1>
@@ -280,7 +281,7 @@ function ArenaChallengeInner() {
         {/* Right: editor + results */}
         <div className="flex flex-col space-y-4">
           {/* Language + buttons */}
-          <div className="flex items-center gap-2 flex-wrap">
+          <div className="flex items-center gap-2 flex-wrap" data-tour="arena-detail-actions">
             <select
               value={language}
               onChange={(e) => { setLanguage(e.target.value); setResult(null); setShowResults(false) }}
@@ -303,7 +304,7 @@ function ArenaChallengeInner() {
           </div>
 
           {/* Monaco editor */}
-          <div className="h-[400px] rounded-lg border border-border overflow-hidden">
+          <div className="h-[400px] rounded-lg border border-border overflow-hidden" data-tour="arena-detail-editor">
             <Editor
               height="100%"
               language={MONACO_LANG_MAP[language] || 'plaintext'}
@@ -426,6 +427,36 @@ function ArenaChallengeInner() {
 
 export default function ArenaChallengePage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_arena-detail_tour')) {
+      const arenaDetailTour: TourStep[] = [
+        {
+          target: '[data-tour="arena-detail-header"]',
+          title: 'Solve this challenge',
+          description: 'Check the title, difficulty, and points before you start coding.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="arena-detail-actions"]',
+          title: 'Run and submit',
+          description: 'Test your solution with Run, then Submit to advance to the next challenge.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="arena-detail-editor"]',
+          title: 'Write code here',
+          description: 'Pick a language and type your solution; results appear below the editor.',
+          position: 'top',
+        },
+      ]
+      startTour(arenaDetailTour, 'arena-detail')
+      setTourSeen('arena-detail')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   return (

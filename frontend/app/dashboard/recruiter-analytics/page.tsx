@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -53,6 +54,7 @@ const COLORS = ['#22c55e', '#3b82f6', '#eab308', '#ef4444', '#8b5cf6']
 
 export default function RecruiterAnalyticsPage() {
   const gate = usePageGuard('tenant_admin')
+  const { startTour, setTourSeen } = useTour()
   const [data, setData] = useState<AnalyticsData | null>(null)
   const [loading, setLoading] = useState(true)
 
@@ -63,6 +65,34 @@ export default function RecruiterAnalyticsPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_recruiter-analytics_tour')) {
+      const recruiterAnalyticsTour: TourStep[] = [
+        {
+          target: '[data-tour="recruiter-analytics-header"]',
+          title: 'Hiring insights hub',
+          description: 'Track candidate performance and interview activity across every role in one place.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="recruiter-analytics-kpis"]',
+          title: 'Key hiring metrics',
+          description: 'Totals, average scores, candidate counts, and flagged sessions update with each interview.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="recruiter-analytics-ranking"]',
+          title: 'Rank every candidate',
+          description: 'Compare average scores and roles side by side, then export the shortlist to CSV.',
+          position: 'top',
+        },
+      ]
+      startTour(recruiterAnalyticsTour, 'recruiter-analytics')
+      setTourSeen('recruiter-analytics')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const exportCsv = () => {
     if (!data) return
@@ -117,7 +147,7 @@ export default function RecruiterAnalyticsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="recruiter-analytics-header">
         <div>
           <h1 className="text-3xl font-bold">Recruiter Analytics</h1>
           <p className="text-muted-foreground mt-1">Candidate performance and interview insights for hiring managers</p>
@@ -134,7 +164,7 @@ export default function RecruiterAnalyticsPage() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4" data-tour="recruiter-analytics-kpis">
         <Card className="p-4 border-border/40">
           <div className="flex items-center gap-2 mb-2">
             <Users className="w-4 h-4 text-primary" />
@@ -281,7 +311,7 @@ export default function RecruiterAnalyticsPage() {
       </div>
 
       {/* Candidate Comparison Table with Ranking */}
-      <Card className="p-6 border-border/40">
+      <Card className="p-6 border-border/40" data-tour="recruiter-analytics-ranking">
         <h2 className="text-lg font-semibold mb-4 flex items-center gap-2">
           <ArrowUpDown className="w-5 h-5" />
           Candidate Ranking

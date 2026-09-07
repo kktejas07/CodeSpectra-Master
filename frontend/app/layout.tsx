@@ -5,6 +5,8 @@ import { LoadingWrapper } from '@/components/loading-wrapper'
 import './globals.css'
 import 'goey-toast/styles.css'
 import 'driver.js/dist/driver.css'
+import 'driver.js/dist/hints.css'
+import './driver-tour.css'
 
 export const dynamic = 'force-dynamic'
 

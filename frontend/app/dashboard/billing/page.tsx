@@ -32,6 +32,7 @@ import { cn } from '@/lib/utils'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { findPlan } from '@/lib/billing-catalog'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
 
 type InvoiceRow = {
@@ -370,6 +371,7 @@ function BillingContent() {
 
   return (
     <div className="space-y-8">
+      <div data-tour="billing-header">
       <DashboardPageHeader
         icon={CreditCard}
         title="Billing & subscriptions"
@@ -387,6 +389,7 @@ function BillingContent() {
           </Button>
         }
       />
+      </div>
 
       <Card className="rounded-xl border-primary/25 p-6 shadow-sm sm:p-8">
         <div className="flex flex-wrap items-start justify-between gap-4">
@@ -432,7 +435,7 @@ function BillingContent() {
           </div>
         </div>
 
-        <div className="mt-8 flex flex-wrap gap-2">
+        <div className="mt-8 flex flex-wrap gap-2" data-tour="billing-actions">
           <Button onClick={() => setUpgradeOpen(true)} disabled={Boolean(busy) || isCanceled}>
             Upgrade / change plan
           </Button>
@@ -445,7 +448,7 @@ function BillingContent() {
         </div>
       </Card>
 
-      <div>
+      <div data-tour="billing-invoices">
         <h3 className="mb-3 text-lg font-semibold tracking-tight text-foreground">Invoice history</h3>
         <Card className="overflow-hidden rounded-xl border-border/60 shadow-sm">
           <div className="overflow-x-auto">
@@ -722,6 +725,36 @@ function BillingContent() {
 
 export default function BillingPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_billing_tour')) {
+      const billingTour: TourStep[] = [
+        {
+          target: '[data-tour="billing-header"]',
+          title: 'Billing overview',
+          description: 'Manage your plan, billing cycle, payment method, and receipts from one place.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="billing-actions"]',
+          title: 'Change your plan',
+          description: 'Upgrade, switch billing cycle, or cancel — changes take effect immediately.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="billing-invoices"]',
+          title: 'Invoice history',
+          description: 'View or download receipts for every payment here.',
+          position: 'top',
+        },
+      ]
+      startTour(billingTour, 'billing')
+      setTourSeen('billing')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   return (

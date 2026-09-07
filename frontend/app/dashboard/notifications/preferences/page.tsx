@@ -13,6 +13,7 @@ import { Slack } from '@/components/ui/brand-icons'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface NotificationPreference {
   id: string
@@ -36,6 +37,7 @@ function ChannelIcon({ type }: { type: string }) {
 
 export default function NotificationPreferencesPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const toast = useToast()
   const [preferences, setPreferences] = useState<NotificationPreference[]>([])
@@ -72,6 +74,34 @@ export default function NotificationPreferencesPage() {
     const interval = setInterval(() => { void fetchPreferences() }, 30_000)
     return () => clearInterval(interval)
   }, [fetchPreferences])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_notification-preferences_tour')) {
+      const notificationPreferencesTour: TourStep[] = [
+        {
+          target: '[data-tour="notification-preferences-header"]',
+          title: 'Control the noise',
+          description: 'Fine-tune which channels and categories can reach you.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="notification-preferences-inbox"]',
+          title: 'Back to inbox',
+          description: 'Jump back to your notification inbox any time from here.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="notification-preferences-channels"]',
+          title: 'Channels and quiet hours',
+          description: 'Toggle email, in-app, and Slack channels, plus digests and quiet hours.',
+          position: 'top',
+        },
+      ]
+      startTour(notificationPreferencesTour, 'notification-preferences')
+      setTourSeen('notification-preferences')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const handleToggle = async (prefId: string, field: string, value: boolean) => {
     try {
@@ -128,20 +158,23 @@ export default function NotificationPreferencesPage() {
 
   return (
     <div className="w-full space-y-8">
+      <div data-tour="notification-preferences-header">
       <DashboardPageHeader
         icon={SlidersHorizontal}
         title="Notification preferences"
         description="Fine-tune channels and categories. Quick toggles also live on Settings."
         actions={
           <Button variant="outline" size="sm" className="gap-1 rounded-lg" asChild>
-            <Link href="/dashboard/notifications">
+            <Link href="/dashboard/notifications" data-tour="notification-preferences-inbox">
               Inbox
               <ChevronRight className="h-4 w-4" />
             </Link>
           </Button>
         }
       />
+      </div>
 
+      <div data-tour="notification-preferences-channels">
       {loading ? (
         <Card className="flex min-h-[220px] items-center justify-center gap-2 rounded-xl border-border/60 text-muted-foreground shadow-sm">
           <Loader2 className="h-5 w-5 animate-spin" />
@@ -272,6 +305,7 @@ export default function NotificationPreferencesPage() {
           </Card>
         </div>
       )}
+      </div>
     </div>
   )
 }

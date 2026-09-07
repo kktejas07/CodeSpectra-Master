@@ -49,7 +49,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
   // Initialize tour if this is the first visit to interview detail
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_interview_tour')) {
+    if (gate.ready && !localStorage.getItem('has_seen_interview-detail_tour')) {
       const interviewTour: TourStep[] = [
         {
           target: '[data-tour="back-to-interviews"]',
@@ -94,8 +94,8 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
           position: 'bottom',
         }
       ]
-      startTour(interviewTour, 'interview')
-      setTourSeen('interview')
+      startTour(interviewTour, 'interview-detail')
+      setTourSeen('interview-detail')
     }
   }, [gate.ready, startTour, setTourSeen])
 

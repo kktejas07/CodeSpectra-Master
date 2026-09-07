@@ -1,6 +1,6 @@
 'use client'
 
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
@@ -13,6 +13,7 @@ import { useLockedFeatures } from '@/lib/use-page-guard'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { INTERVIEW_PREP_QUESTIONS, type InterviewPrepQuestion } from '@/lib/interview-prep-data'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 type Tab = 'browse' | 'quiz'
 
@@ -39,6 +40,7 @@ interface QuizQuestion {
 
 export default function InterviewPrepPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const addToast = useToast()
   const { lockedFeatures } = useLockedFeatures()
@@ -147,18 +149,48 @@ export default function InterviewPrepPage() {
     return { correct, total: quizQuestions.length, pct: Math.round((correct / quizQuestions.length) * 100) }
   }, [quizSubmitted, quizAnswers, quizQuestions])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_interview-prep_tour')) {
+      const interviewPrepTour: TourStep[] = [
+        {
+          target: '[data-tour="interview-prep-header"]',
+          title: 'Prep headquarters',
+          description: 'Browse 300+ frontend questions and generate AI quizzes from one place.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interview-prep-actions"]',
+          title: 'Browse or quiz',
+          description: 'Switch between browsing questions and generating a custom AI quiz.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interview-prep-list"]',
+          title: 'Pick a question',
+          description: 'Click any question to reveal its AI-generated answer and key points.',
+          position: 'top',
+        },
+      ]
+      startTour(interviewPrepTour, 'interview-prep')
+      setTourSeen('interview-prep')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   return (
     <div className="space-y-6">
-      <DashboardPageHeader
-        title="Interview Prep"
-        description="Master frontend interviews with 300+ questions and AI-powered quizzes"
-        icon={Brain}
-      />
+      <div data-tour="interview-prep-header">
+        <DashboardPageHeader
+          title="Interview Prep"
+          description="Master frontend interviews with 300+ questions and AI-powered quizzes"
+          icon={Brain}
+        />
+      </div>
 
       {/* Tab switcher */}
-      <div className="flex gap-2">
+      <div className="flex gap-2" data-tour="interview-prep-actions">
         <Button
           variant={tab === 'browse' ? 'default' : 'outline'}
           size="sm"
@@ -233,7 +265,7 @@ export default function InterviewPrepPage() {
           </Card>
 
           {/* Question list */}
-          <div className="space-y-2">
+          <div className="space-y-2" data-tour="interview-prep-list">
             {filtered.slice(0, 50).map((q) => {
               const isOpen = expandedId === q.id
               const answer = answers[q.id]

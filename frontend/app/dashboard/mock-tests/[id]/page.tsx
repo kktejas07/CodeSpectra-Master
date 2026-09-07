@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import { ArrowLeft, Sparkles, Target, Zap, Lightbulb, BrainCircuit } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 const DIFFICULTIES = [
   { id: 'beginner', title: 'Beginner', description: 'Basic concepts and foundational knowledge', icon: Lightbulb, color: 'text-green-500', bg: 'bg-green-500/10' },
@@ -22,6 +23,34 @@ export default function MockTestSetupPage() {
   const params = useParams<{ id: string }>()
   const [selected, setSelected] = useState<string | null>(null)
   const [isSubmitting, setIsSubmitting] = useState(false)
+  const { startTour, setTourSeen } = useTour()
+
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_mock-test-detail_tour')) {
+      const mockTestDetailTour: TourStep[] = [
+        {
+          target: '[data-tour="mock-test-detail-header"]',
+          title: 'Configure your test',
+          description: 'Tell us your comfort level so AI generates questions at the right difficulty.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="mock-test-detail-levels"]',
+          title: 'Pick a difficulty',
+          description: 'Choose from Beginner to Expert based on your interview readiness.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="mock-test-detail-continue"]',
+          title: 'Start the test',
+          description: 'Continue to begin your AI-generated mock test.',
+          position: 'top',
+        },
+      ]
+      startTour(mockTestDetailTour, 'mock-test-detail')
+      setTourSeen('mock-test-detail')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const handleStart = () => {
     if (!selected) return
@@ -34,7 +63,7 @@ export default function MockTestSetupPage() {
 
   return (
     <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-4xl mx-auto">
-      <div className="flex items-center gap-4">
+      <div className="flex items-center gap-4" data-tour="mock-test-detail-header">
         <Button variant="ghost" size="icon" onClick={() => router.back()}>
           <ArrowLeft className="h-4 w-4" />
         </Button>
@@ -46,7 +75,7 @@ export default function MockTestSetupPage() {
         </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 pt-4" data-tour="mock-test-detail-levels">
         {DIFFICULTIES.map((diff) => (
           <Card 
             key={diff.id} 
@@ -67,7 +96,7 @@ export default function MockTestSetupPage() {
         ))}
       </div>
 
-      <div className="flex justify-end pt-4">
+      <div className="flex justify-end pt-4" data-tour="mock-test-detail-continue">
         <Button 
           size="lg" 
           disabled={!selected || isSubmitting}

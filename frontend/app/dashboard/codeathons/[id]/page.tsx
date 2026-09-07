@@ -18,6 +18,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Problem {
   id: string
@@ -122,6 +123,35 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
   useEffect(() => {
     void fetchData()
   }, [id])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  const { startTour, setTourSeen } = useTour()
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_codeathon-detail_tour')) {
+      const codeathonDetailTour: TourStep[] = [
+        {
+          target: '[data-tour="codeathon-detail-header"]',
+          title: 'Codeathon overview',
+          description: 'See the event title, status, and key details at a glance.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="codeathon-detail-register"]',
+          title: 'Join the event',
+          description: 'Register for this codeathon with one click when entries are open.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="codeathon-detail-overview"]',
+          title: 'Explore event tabs',
+          description: 'Browse stats, teams, and problems from the overview section.',
+          position: 'top',
+        },
+      ]
+      startTour(codeathonDetailTour, 'codeathon-detail')
+      setTourSeen('codeathon-detail')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   async function fetchData() {
     try {
@@ -311,7 +341,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
   return (
     <div className="space-y-6">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4" data-tour="codeathon-detail-header">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/codeathons')}>
             <ChevronRight className="h-4 w-4 rotate-180" />
@@ -374,7 +404,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
 
         <TabsContent value="overview" className="space-y-4">
           {/* Stats */}
-          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4" data-tour="codeathon-detail-overview">
             <Card className="p-4">
               <p className="text-xs text-muted-foreground">Participants</p>
               <p className="text-2xl font-bold">{codeathon.participants || 0}</p>
@@ -522,7 +552,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
       </Tabs>
 
       {/* Register button */}
-      <div className="flex gap-2">
+      <div className="flex gap-2" data-tour="codeathon-detail-register">
         {!codeathon.registered ? (
           <Button onClick={handleRegister} disabled={registering} size="lg">
             {registering ? 'Registering...' : 'Register for Codeathon'}

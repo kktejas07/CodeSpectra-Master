@@ -1,15 +1,46 @@
 'use client'
 
+import { useEffect } from 'react'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Award, BookOpen, CheckCircle2, ExternalLink, FileBadge2, GraduationCap } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
 
 export default function CertificationsPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_certifications_tour')) {
+      const certificationsTour: TourStep[] = [
+        {
+          target: '[data-tour="certifications-header"]',
+          title: 'Real certifications',
+          description: 'The honest guide to recognized certs, paid exams, and free credentials.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="certifications-prep"]',
+          title: 'Prepare for exams',
+          description: 'Follow free study paths, take official practice exams, then book the real thing.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="certifications-free"]',
+          title: 'Free credentials',
+          description: 'Complete free provider courses to earn shareable, verifiable certificates.',
+          position: 'top',
+        },
+      ]
+      startTour(certificationsTour, 'certifications')
+      setTourSeen('certifications')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null
 
@@ -19,7 +50,7 @@ export default function CertificationsPage() {
   return (
     <div className="space-y-8" data-testid="certifications-page">
       {/* Header */}
-      <div>
+      <div data-tour="certifications-header">
         <h1 className="text-3xl font-bold mb-2">Certifications</h1>
         <p className="text-muted-foreground max-w-3xl">
           Real, recognized certifications — the honest guide. The official AWS, Azure, and
@@ -48,7 +79,7 @@ export default function CertificationsPage() {
 
       {/* Vendor prep tracks */}
       {prep.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-4" data-tour="certifications-prep">
           <div className="flex items-center gap-2">
             <GraduationCap className="h-5 w-5 text-primary" />
             <h2 className="text-xl font-bold">Prepare for a real certification</h2>
@@ -66,7 +97,7 @@ export default function CertificationsPage() {
 
       {/* Free credentials */}
       {free.length > 0 && (
-        <section className="space-y-4">
+        <section className="space-y-4" data-tour="certifications-free">
           <div className="flex items-center gap-2">
             <Award className="h-5 w-5 text-green-500" />
             <h2 className="text-xl font-bold">Free credentials you can earn today</h2>

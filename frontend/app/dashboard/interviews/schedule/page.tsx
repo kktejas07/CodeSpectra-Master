@@ -11,6 +11,7 @@ import { Loader2, ArrowLeft } from 'lucide-react'
 import Link from 'next/link'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 export default function ScheduleInterviewPage() {
   const gate = usePageGuard('user')
@@ -35,6 +36,35 @@ export default function ScheduleInterviewPage() {
       .then((d) => setUsers(d.users || d.items || []))
       .catch(() => {})
   }, [])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  const { startTour, setTourSeen } = useTour()
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_interview-schedule_tour')) {
+      const interviewScheduleTour: TourStep[] = [
+        {
+          target: '[data-tour="interview-schedule-header"]',
+          title: 'Schedule an interview',
+          description: 'Set up a new interview by filling in the details below.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interview-schedule-submit"]',
+          title: 'Send the invite',
+          description: 'Click here to schedule the interview and notify the candidate.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="interview-schedule-form"]',
+          title: 'Interview details',
+          description: 'Add the title, role, candidate email, and time slot for the session.',
+          position: 'top',
+        },
+      ]
+      startTour(interviewScheduleTour, 'interview-schedule')
+      setTourSeen('interview-schedule')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   async function schedule() {
     if (!form.title || !form.role || !form.candidate_email) return
@@ -70,9 +100,9 @@ export default function ScheduleInterviewPage() {
         <ArrowLeft className="h-3 w-3" /> Back to interviews
       </Link>
 
-      <h1 className="text-3xl font-bold">Schedule Interview</h1>
+      <h1 className="text-3xl font-bold" data-tour="interview-schedule-header">Schedule Interview</h1>
 
-      <Card className="p-6 space-y-4">
+      <Card className="p-6 space-y-4" data-tour="interview-schedule-form">
         <div>
           <Label>Interview Title</Label>
           <Input value={form.title} onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))} placeholder="Senior Frontend Screening" />
@@ -113,7 +143,7 @@ export default function ScheduleInterviewPage() {
           <Textarea rows={4} value={form.resume_info} onChange={(e) => setForm((f) => ({ ...f, resume_info: e.target.value }))} placeholder="Paste resume text or notes about the candidate..." />
         </div>
         {error && <p className="text-sm text-destructive">{error}</p>}
-        <Button onClick={schedule} disabled={busy}>
+        <Button onClick={schedule} disabled={busy} data-tour="interview-schedule-submit">
           {busy ? <Loader2 className="mr-1 h-3 w-3 animate-spin" /> : null}
           Schedule Interview
         </Button>

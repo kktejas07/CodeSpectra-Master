@@ -10,6 +10,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 const DiffEditor = dynamic(() => import('@monaco-editor/react').then(m => m.DiffEditor), { ssr: false })
@@ -58,6 +59,7 @@ const SUGGESTED_PROMPTS = [
  */
 export default function AgentPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const [language, setLanguage] = useState<string>('python')
   const [code, setCode] = useState<string>(STARTER_CODE)
@@ -119,6 +121,34 @@ export default function AgentPage() {
     if (logRef.current) logRef.current.scrollTop = logRef.current.scrollHeight
   }, [turns])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_agent_tour')) {
+      const agentTour: TourStep[] = [
+        {
+          target: '[data-tour="agent-header"]',
+          title: 'Agent workspace',
+          description: 'Configure language, reasoning steps, and model for the autonomous coding loop.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="agent-composer"]',
+          title: 'Describe your goal',
+          description: 'Type a refactoring or testing goal here and run the agent.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="agent-workspace"]',
+          title: 'Review live code',
+          description: 'Watch the editor update, toggle diffs, and run the result in the sandbox.',
+          position: 'left',
+        },
+      ]
+      startTour(agentTour, 'agent')
+      setTourSeen('agent')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   async function runAgent(customPrompt?: string) {
@@ -160,7 +190,7 @@ export default function AgentPage() {
   return (
     <div className="h-[calc(100vh-5rem)] flex flex-col overflow-hidden rounded-xl border border-border bg-card/40 backdrop-blur-md shadow-xl">
       {/* Header */}
-      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card/60 backdrop-blur">
+      <header className="flex flex-wrap items-center justify-between gap-3 px-4 py-3 border-b border-border bg-card/60 backdrop-blur" data-tour="agent-header">
         <div className="flex items-center gap-3">
           <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-linear-to-br from-primary via-emerald-500 to-teal-600 shadow-md text-primary-foreground">
             <Bot className="h-5 w-5" />
@@ -242,6 +272,7 @@ export default function AgentPage() {
 
           {/* Composer */}
           <form
+            data-tour="agent-composer"
             onSubmit={(e) => {
               e.preventDefault()
               void runAgent()
@@ -284,7 +315,7 @@ export default function AgentPage() {
         </section>
 
         {/* RIGHT — workspace */}
-        <section className="flex-1 flex flex-col min-w-0">
+        <section className="flex-1 flex flex-col min-w-0" data-tour="agent-workspace">
           <div className="flex items-center gap-1 border-b border-border bg-card/30 px-3">
             <TabButton
               active={activeTab === 'code'}

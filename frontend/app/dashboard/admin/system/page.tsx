@@ -152,7 +152,7 @@ const RATE_CATEGORY_ORDER: Array<{ kind: RateCategory; label: string }> = [
 export default function SystemAdminDashboard() {
   const gate = usePageGuard('/dashboard/admin/system')
   const addToast = useToast()
-  const { startTour } = useTour()
+  const { startTour, setTourSeen } = useTour()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, superadmins: 0, admins: 0 })
   const [charts, setCharts] = useState<AnalyticsDashboardProps>(emptyCharts)
@@ -276,7 +276,7 @@ export default function SystemAdminDashboard() {
   // Initialize tour on first visit — placed before the early return below
   // (hooks must not be called conditionally).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_admin_system_tour')) {
+    if (gate.ready && !localStorage.getItem('has_seen_admin-system_tour')) {
       const adminSystemTour: TourStep[] = [
         {
           target: '[data-tour="admin-system-header"]',
@@ -315,8 +315,8 @@ export default function SystemAdminDashboard() {
           position: 'bottom',
         },
       ];
-      startTour(adminSystemTour);
-      localStorage.setItem('has_seen_admin_system_tour', 'true');
+      startTour(adminSystemTour, 'admin-system');
+      setTourSeen('admin-system');
     }
   }, [gate.ready, startTour]);
 
