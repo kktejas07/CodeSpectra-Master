@@ -6,6 +6,7 @@
 
 ## Current Claims
 
+| opencode (this session, FEEDBACK-REPORTER) | DONE — tsc clean, committed (no push). Root cause: write path stored only type/content/user_id; UI showed raw id at best. Fix: schema += user_name/user_email/source (additive), POST captures session name/email + client source (session wins over client values), problems page sends source, admin table gains Reporter (name→email→short-id→Anonymous) + Source badge columns, expanded panel reporter block, search box actually wired via searchKeys (was a dead input). | frontend/lib/db/feedback.ts, frontend/app/api/feedback/route.ts, frontend/app/dashboard/problems/[slug]/page.tsx (1 line), frontend/app/dashboard/admin/feedback/page.tsx | DONE — COMMITTED | 2026-09-07 |
 | opencode (this session, ORPHAN-SWEEP) | DONE — tsc clean, committed + pushed. Verified each: tour autoPlay composes safely (pages already guard !seen; replay path untouched), cost-tracking byModel type-complete, Badge success/danger variants exist in badge.tsx, mock-tests error message improved. | frontend/components/tour/*, frontend/lib/tour-driver.ts, frontend/lib/ai/cost-tracking.ts + 5 refactor files (see commit) | DONE — PUSHED | 2026-09-07 |
 | opencode (this session, FEEDBACK-ADMIN-FIX) | DONE — admin feedback page: removed double Card wrapper, added "View" button + expanded detail + reply form, handle 500/missing collection. Also fixed feedback PATCH route. | feedback/page.tsx, feedback/[id]/route.ts, lib/db/feedback.ts | DONE — UNCOMMITTED | 2026-09-06 |
 

@@ -217,6 +217,7 @@ export default function ProblemDetailPage() {
         body: JSON.stringify({
           type: feedbackType === 'feature' ? 'suggestion' : feedbackType,
           content: `[Problem: ${problem?.title || slug}] ${feedbackContent}`,
+          source: 'problems',
         }),
       })
       if (!res.ok) {

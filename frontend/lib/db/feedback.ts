@@ -6,6 +6,11 @@ export const feedbackSchema = z.object({
   type: z.enum(['bug', 'complaint', 'suggestion', 'other']),
   content: z.string().min(1, "Feedback content cannot be empty"),
   user_id: z.string().optional(), // Can be anonymous
+  // ponytail: denormalized at write time so the admin list never needs a
+  // user-collection join; all optional so old docs keep reading fine.
+  user_name: z.string().optional(),
+  user_email: z.string().optional(),
+  source: z.string().optional(), // e.g. 'problems' — where it was submitted
   status: z.enum(['open', 'resolved']).default('open'),
   created_at: z.string(), // ISO String
 })
