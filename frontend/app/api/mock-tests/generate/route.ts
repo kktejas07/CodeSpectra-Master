@@ -106,7 +106,7 @@ DO NOT wrap the response in markdown code blocks, just raw JSON.`
     }
 
     if (!generatedObject) {
-      throw new Error(`All AI providers failed. Last error: ${lastError}`)
+      throw new Error(`AI generation failed: ${lastError || 'No AI providers available. Ensure at least one LLM API key is configured in Superadmin → Settings → AI & LLM Keys.'}`)
     }
 
     // Deduct credit

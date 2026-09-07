@@ -230,15 +230,18 @@ function getDriver(): Driver | null {
   return instance
 }
 
+/** Register tour steps in the registry (always runs, even if tour was seen). */
+export function registerPageTour(tourId: string, steps: TourStep[]) {
+  if (!steps || steps.length === 0) return
+  registry[tourId] = steps
+}
+
 /** Start (or restart) a page tour. No-op on empty steps or server-side. */
 export function startPageTour(tourId: string, steps: TourStep[]) {
   if (!steps || steps.length === 0) return
   registry[tourId] = steps
   const d = getDriver()
   if (!d) return
-  // If the driver is active (stale overlay), destroy it first — but do NOT
-  // markTourSeen yet, because onDestroyed fires synchronously and would
-  // undo the clearTourSeen that replayPageTour just did.
   if (d.isActive()) d.destroy()
   activeTourId = tourId
   d.setSteps(toDriveSteps(steps))
@@ -246,9 +249,22 @@ export function startPageTour(tourId: string, steps: TourStep[]) {
 }
 
 /**
- * Replay the last-started tour for an id (header Guide button).
- * Returns false when this page's tour hasn't run yet this session —
- * callers fall back to clearing the seen flag + reloading.
+ * Auto-play a page tour (first-visit only). Registers steps ALWAYS (so the
+ * Guide button can replay them later), then plays only when the tour hasn't
+ * been seen yet. This replaces the old pattern where pages called
+ * `if (!seen) startTour(...)` — that pattern left the registry empty when
+ * the tour had been seen, making Guide always fall back to a page reload.
+ */
+export function autoPlayPageTour(tourId: string, steps: TourStep[]) {
+  registerPageTour(tourId, steps)
+  if (!isTourSeen(tourId)) {
+    startPageTour(tourId, steps)
+  }
+}
+
+/**
+ * Replay a page tour (Guide button). Steps MUST be registered first
+ * via registerPageTour or autoPlayPageTour. Returns false if no steps found.
  */
 export function replayPageTour(tourId: string): boolean {
   const steps = registry[tourId]

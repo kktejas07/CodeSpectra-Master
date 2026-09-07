@@ -6,6 +6,7 @@
 
 ## Current Claims
 
+| opencode (this session, ORPHAN-SWEEP) | DONE — tsc clean, committed + pushed. Verified each: tour autoPlay composes safely (pages already guard !seen; replay path untouched), cost-tracking byModel type-complete, Badge success/danger variants exist in badge.tsx, mock-tests error message improved. | frontend/components/tour/*, frontend/lib/tour-driver.ts, frontend/lib/ai/cost-tracking.ts + 5 refactor files (see commit) | DONE — PUSHED | 2026-09-07 |
 | opencode (this session, FEEDBACK-ADMIN-FIX) | DONE — admin feedback page: removed double Card wrapper, added "View" button + expanded detail + reply form, handle 500/missing collection. Also fixed feedback PATCH route. | feedback/page.tsx, feedback/[id]/route.ts, lib/db/feedback.ts | DONE — UNCOMMITTED | 2026-09-06 |
 
 | opencode (this session, BADGES+100DAYS+EMAIL-MON) | DONE — 20 badge visibility fixes (className→variant across 10 files, invisible-on-dark fixed). 100-days: Resume Journey scroll-to-incomplete, Solve→Link, credentials on heatmap/leaderboard fetch, real stats, View Leaderboard link. Email-monitoring badges fixed. Guide button replay bug fixed (replaying flag). Speed-insights real page (was redirect stub). KYC didit 404 = expected (expired session on external API). tsc clean. NO push. | user-management-table.tsx, 100-days/page.tsx, email-monitoring/page.tsx, tour-driver.ts, speed-insights/page.tsx | DONE — UNCOMMITTED | 2026-09-06 |

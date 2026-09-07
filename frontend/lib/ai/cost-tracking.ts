@@ -83,6 +83,8 @@ export interface AiUsageSummary {
   byFeature: { feature: string; requests: number; totalTokens: number; avgLatencyMs: number }[]
   /** Top 20 by tokens desc. userId '<anonymous>' when absent. */
   byUser: { userId: string; requests: number; totalTokens: number }[]
+  /** Per-model/provider breakdown sorted by requests desc. */
+  byModel: { model: string; provider: string; requests: number; tokens: number; cost: number; avgLatency: number; successRate: number }[]
 }
 
 /** Raw $facet result shape from the ai_usage aggregation. */
@@ -241,6 +243,7 @@ export async function getAiUsageSummary(opts?: { days?: number }): Promise<AiUsa
         : EMPTY_SUMMARY(days).totals,
       byFeature: res.byFeature ?? [],
       byUser: res.byUser ?? [],
+      byModel: res.byModel ?? [],
     }
   } catch {
     return EMPTY_SUMMARY(days)
