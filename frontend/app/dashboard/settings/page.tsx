@@ -283,7 +283,7 @@ export default function SettingsPage() {
 
       <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
         <div className="space-y-6 lg:col-span-2">
-          <Card className="rounded-xl border-border/60 shadow-sm">
+          <Card className="rounded-xl border-border/60 shadow-sm" data-tour="settings-appearance">
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Palette className="h-5 w-5 text-primary" />
@@ -346,7 +346,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm">
+          <Card className="rounded-xl border-border/60 shadow-sm" data-tour="settings-notifications">
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Bell className="h-5 w-5 text-primary" />
@@ -386,7 +386,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border-border/60 shadow-sm">
+          <Card className="rounded-xl border-border/60 shadow-sm" data-tour="settings-security">
             <div className="border-b border-border/60 px-6 py-4">
               <div className="flex items-center gap-2 text-foreground">
                 <Shield className="h-5 w-5 text-primary" />
@@ -466,7 +466,7 @@ export default function SettingsPage() {
             </div>
           </Card>
 
-          <Card className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 shadow-sm">
+          <Card className="rounded-xl border border-destructive/30 bg-destructive/5 p-6 shadow-sm" data-tour="settings-danger">
             <h2 className="text-lg font-semibold text-destructive">Danger zone</h2>
             <p className="mt-1 text-sm text-muted-foreground">
               Irreversible or sensitive actions. Confirm in a flow before executing in production.

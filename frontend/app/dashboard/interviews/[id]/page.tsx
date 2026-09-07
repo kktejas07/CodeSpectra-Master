@@ -201,7 +201,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Current question */}
       {currentQ && interview.status === 'in_progress' && (
-        <Card className="p-6 space-y-4 border-primary/30">
+        <Card className="p-6 space-y-4 border-primary/30" data-tour="current-question">
           <div className="flex items-center gap-2 text-xs text-muted-foreground">
             <Bot className="h-4 w-4 text-primary" />
             <Badge variant="outline">{currentQ.category}</Badge>
@@ -234,7 +234,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Answered questions */}
       {answered.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-tour="answered-questions">
           <h2 className="text-sm font-semibold">Answered Questions ({answered.length})</h2>
           {answered.map((q) => (
             <Card key={q.id} className="p-4 space-y-2">
@@ -251,7 +251,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Feedback */}
       {interview.feedback && interview.feedback.length > 0 && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-tour="ai-feedback">
           <h2 className="text-sm font-semibold">AI Feedback</h2>
           {interview.feedback.map((f, i) => (
             <Card key={i} className="p-4 space-y-2">
@@ -281,7 +281,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
       {/* Collaborative Editor */}
       {(interview.status === 'in_progress' || interview.status === 'scheduled') && (
-        <div className="space-y-3">
+        <div className="space-y-3" data-tour="collaborative-editor">
           <h2 className="flex items-center gap-2 text-sm font-semibold">
             <Code2 className="h-4 w-4 text-primary" /> Collaborative Editor
           </h2>

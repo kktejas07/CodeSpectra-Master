@@ -289,6 +289,7 @@ export default function MyAssessmentsPage() {
       )}
 
       {/* Attempts Table */}
+      <div data-tour="assessments-table">
       {attempts.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
           <FileText className="mx-auto h-10 w-10 text-muted-foreground/40" />
@@ -307,6 +308,7 @@ export default function MyAssessmentsPage() {
           emptyMessage="No attempts found"
         />
       )}
+      </div>
     </div>
   )
 }

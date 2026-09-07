@@ -183,7 +183,7 @@ export default function LeaderboardPage() {
                 <div className="flex-1 pb-3 text-sm font-semibold transition-all border-b-2 bg-muted/50 rounded" />
               </div>
 
-              <div className="flex flex-col gap-1 p-2 bg-muted/30 rounded-xl">
+        <div className="flex flex-col gap-1 p-2 bg-muted/30 rounded-xl" data-tour="leaderboard-categories">
                 {Array.from({ length: 6 }).map((_, i) => (
                   <div key={i} className="h-8 w-32 bg-muted/60 rounded animate-pulse" />
                 ))}
@@ -200,7 +200,7 @@ export default function LeaderboardPage() {
               </div>
 
               {/* Podium Skeleton */}
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:items-end pt-8">
+            <div className="grid grid-cols-1 gap-6 md:grid-cols-3 md:items-end pt-8" data-tour="leaderboard-podium">
                 {Array.from({ length: 3 }).map((_, i) => (
                   <Card
                     key={i}
@@ -348,7 +348,7 @@ export default function LeaderboardPage() {
             </div>
 
             {/* My Rank Card */}
-            <Card className="relative overflow-hidden rounded-2xl bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <Card className="relative overflow-hidden rounded-2xl bg-blue-50 dark:bg-blue-950/20 border-blue-200 dark:border-blue-900/50 p-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4" data-tour="leaderboard-my-rank">
                {/* Decorative background */}
               <div className="absolute inset-0 opacity-10 bg-[url('https://www.transparenttextures.com/patterns/cubes.png')] mix-blend-overlay pointer-events-none" />
               
@@ -381,8 +381,7 @@ export default function LeaderboardPage() {
               </div>
             </Card>
 
-            {/* Rankings Table */}
-            <div className="space-y-4 pt-4">
+            <div className="space-y-4 pt-4" data-tour="leaderboard-table">
               <h2 className="text-2xl font-bold">Rankings</h2>
               <Card className="overflow-hidden rounded-2xl">
                 <div className="flex flex-col gap-3 border-b border-border px-6 py-4 sm:flex-row sm:items-center sm:justify-between bg-muted/20">
