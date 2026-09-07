@@ -1,12 +1,81 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+import { createContext, useContext, useState, useCallback, useRef, ReactNode } from 'react'
 
 export interface TourStep {
   target: string
   title: string
   description: string
   position?: 'top' | 'bottom' | 'left' | 'right'
+}
+
+function seenKey(tid: string) {
+  return `has_seen_${tid}_tour`
+}
+
+function readSeen(tid: string): boolean {
+  if (typeof window === 'undefined') return false
+  try {
+    return window.localStorage.getItem(seenKey(tid)) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function writeSeen(tid: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.setItem(seenKey(tid), 'true')
+  } catch {
+    /* storage unavailable — tour just won't be remembered */
+  }
+}
+
+function clearSeen(tid: string) {
+  if (typeof window === 'undefined') return
+  try {
+    window.localStorage.removeItem(seenKey(tid))
+  } catch {
+    /* noop */
+  }
+}
+
+/**
+ * Single source of truth mapping a dashboard pathname → tour id.
+ * The header Guide button and the per-page tour effects must agree,
+ * otherwise Guide replays the wrong tour (or nothing at all).
+ */
+export const TOUR_ID_FOR_PATHS: Record<string, string> = {
+  '/dashboard': 'welcome',
+  '/dashboard/scanner': 'scanner',
+  '/dashboard/problems': 'problems',
+  '/dashboard/arena': 'arena',
+  '/dashboard/courses': 'courses',
+  '/dashboard/events': 'events',
+  '/dashboard/interviews': 'interviews',
+  '/dashboard/leaderboard': 'leaderboard',
+  '/dashboard/achievements': 'achievements',
+  '/dashboard/assessments': 'assessments',
+  '/dashboard/tracks': 'tracks',
+  '/dashboard/hackathons': 'hackathons',
+  '/dashboard/articles': 'articles',
+  '/dashboard/codeathons': 'codeathons',
+  '/dashboard/settings': 'settings',
+  '/dashboard/activity/recent': 'recent',
+  '/dashboard/admin/system': 'admin-system',
+}
+
+/** Longest-prefix match so `/dashboard` doesn't shadow every page. */
+export function resolveTourId(pathname: string): string | null {
+  const base = pathname.split('?')[0]
+  if (TOUR_ID_FOR_PATHS[base]) return TOUR_ID_FOR_PATHS[base]
+  let best: string | null = null
+  for (const path of Object.keys(TOUR_ID_FOR_PATHS)) {
+    if ((base === path || base.startsWith(path + '/')) && (!best || path.length > best.length)) {
+      best = path
+    }
+  }
+  return best ? TOUR_ID_FOR_PATHS[best] : null
 }
 
 interface TourContextValue {
@@ -21,6 +90,8 @@ interface TourContextValue {
   goToStep: (index: number) => void
   setTourSeen: (tourId?: string) => void
   isTourSeen: (tourId: string) => boolean
+  /** Replays the last-started tour for an id (used by the header Guide button). */
+  replayTour: (tourId: string) => boolean
 }
 
 const TourContext = createContext<TourContextValue | undefined>(undefined)
@@ -30,8 +101,13 @@ export function TourProvider({ children }: { children: ReactNode }) {
   const [currentTour, setCurrentTour] = useState<TourStep[] | null>(null)
   const [currentStepIndex, setCurrentStepIndex] = useState(0)
   const [tourId, setTourId] = useState<string | null>(null)
+  // ponytail: registry of last-started steps per tour id. startTour captures
+  // automatically, so replayTour works with zero edits to the 15+ tour pages.
+  const registryRef = useRef<Record<string, TourStep[]>>({})
 
   const startTour = useCallback((steps: TourStep[], id?: string) => {
+    if (!steps || steps.length === 0) return
+    if (id) registryRef.current[id] = steps
     setCurrentTour(steps)
     setCurrentStepIndex(0)
     setIsTourActive(true)
@@ -59,28 +135,33 @@ export function TourProvider({ children }: { children: ReactNode }) {
     }
   }, [currentStepIndex])
 
-  const goToStep = useCallback((index: number) => {
-    if (currentTour && index >= 0 && index < currentTour.length) {
-      setCurrentStepIndex(index)
-    }
-  }, [currentTour])
+  const goToStep = useCallback(
+    (index: number) => {
+      if (currentTour && index >= 0 && index < currentTour.length) {
+        setCurrentStepIndex(index)
+      }
+    },
+    [currentTour],
+  )
 
   const setTourSeen = useCallback((id?: string) => {
     const tid = id ?? tourId
-    if (tid) {
-      window.localStorage.setItem(`has_seen_${tid}_tour`, 'true')
-    }
+    if (tid) writeSeen(tid)
   }, [tourId])
 
-  const isTourSeen = useCallback((id: string) => {
-    return window.localStorage.getItem(`has_seen_${id}_tour`) === 'true'
-  }, [])
+  const isTourSeen = useCallback((id: string) => readSeen(id), [])
 
-  const restartTour = useCallback((id: string) => {
-    // Clear the seen flag and restart the tour
-    window.localStorage.removeItem(`has_seen_${id}_tour`)
-    // Note: Actual tour restarting would be handled by the calling component
-    // This function just clears the flag
+  const replayTour = useCallback((id: string) => {
+    const steps = registryRef.current[id]
+    if (steps && steps.length > 0) {
+      clearSeen(id)
+      setCurrentTour(steps)
+      setCurrentStepIndex(0)
+      setIsTourActive(true)
+      setTourId(id)
+      return true
+    }
+    return false
   }, [])
 
   return (
@@ -97,6 +178,7 @@ export function TourProvider({ children }: { children: ReactNode }) {
         goToStep,
         setTourSeen,
         isTourSeen,
+        replayTour,
       }}
     >
       {children}
