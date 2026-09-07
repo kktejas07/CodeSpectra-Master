@@ -10,7 +10,7 @@
 
 ### How do I create an account?
 
-Sign up at app.codespectra.ai/signup using email and password, Google, or GitHub. No credit card required for the Free tier.
+Sign up at codespectra.ai/signup using email and password, Google, or GitHub. No credit card required for the Free tier.
 
 ### Can I delete my account?
 

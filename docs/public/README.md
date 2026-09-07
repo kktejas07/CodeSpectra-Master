@@ -10,9 +10,15 @@
 
 | File | Description |
 |------|-------------|
-| [02-product-vision.md](./02-product-vision.md) | Product vision statement — market positioning, target users, core differentiators, and long-term strategic goals for CodeSpectra. |
-| [03-problem-statement.md](./03-problem-statement.md) | Problem statement and market analysis — identifies the developer productivity gap CodeSpectra solves, competitive landscape, and total addressable market. |
+| [01-getting-started.md](./01-getting-started.md) | Getting started guide — account setup, first scan, first challenge, AI help. |
+| [02-features.md](./02-features.md) | Product feature overview. |
+| [03-pricing.md](./03-pricing.md) | Plans, live pricing, add-ons, and billing FAQ. |
+| [04-product-overview.md](./04-product-overview.md) | Product overview and Security & Privacy section. |
+| [05-supported-languages.md](./05-supported-languages.md) | Execution language catalog. |
+| [06-faq.md](./06-faq.md) | Frequently asked questions. |
+| [07-api-overview.md](./07-api-overview.md) | Truthful public API surface (session auth, limits, real routes). |
+| [08-release-notes.md](./08-release-notes.md) | Release history. |
 
 ## Document Count
 
-**2 documents** in this section.
+**8 documents** in this section (tutorials merged into getting-started; blog lives at [/blog](/blog)).

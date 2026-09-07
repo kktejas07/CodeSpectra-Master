@@ -30,7 +30,7 @@ Master index of all documentation sections in the CodeSpectra project.
 
 ## Quick Links
 
-- [Product Vision](./public/02-product-vision.md)
+- [Product Overview](./public/04-product-overview.md)
 - [Executive Summary](./developer/01-executive-summary.md)
 - [High-Level Architecture](./architecture/01-High-Level-Architecture.md)
 - [API Overview](./api/01-Overview.md)

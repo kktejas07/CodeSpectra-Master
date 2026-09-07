@@ -1,173 +1,122 @@
 > **Public Documentation**
-> **Last Updated**: 2026-07-08
+> **Last Updated**: 2026-09-06
 > **Audience**: Everyone (no login required)
 
 # API Overview
 
 CodeSpectra provides a REST API for programmatic access to platform features. This document covers authentication, base URL, rate limits, and a quick example.
 
-For the complete API reference, including all endpoints, request schemas, and response types, visit the full API documentation at [docs.codespectra.ai/api](https://docs.codespectra.ai/api).
-
 ---
 
 ## Base URL
 
+All API endpoints live on the same origin — there is no separate API host or version prefix:
+
 ```
-https://api.codespectra.ai/v1
+https://codespectra.ai/api
 ```
+
+Example endpoint: `GET https://codespectra.ai/api/problems`
 
 ---
 
 ## Authentication
 
-The API uses Bearer token authentication. Include your API token in the `Authorization` header:
+The API uses **session authentication**. Your browser session cookie is sent automatically with API requests.
 
-```
-Authorization: Bearer cs_api_live_xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
-```
+### Requirements
+- You must be logged in to CodeSpectra
+- API requests must include `credentials: 'include'` (for `fetch`) or equivalent
+- Session cookies are automatically managed by your browser
 
-### Getting an API Token
-
-1. Log in to your CodeSpectra account
-2. Navigate to **Settings > API Tokens**
-3. Click **Generate New Token**
-4. Copy your token and store it securely — it will only be shown once
-
-> **Security note**: Treat your API token like a password. Do not share it, commit it to source control, or expose it in client-side code.
+### Note on API Tokens
+Dedicated API key authentication is not yet available. All programmatic access currently requires an active browser session. Token-based access for scripts and integrations is on the roadmap.
 
 ---
 
 ## Rate Limiting
 
-| Plan | Rate Limit |
-|------|-----------|
-| Free | 10 requests per minute |
-| Pro | 60 requests per minute |
-| Enterprise | 300 requests per minute |
+Rate limiting protects shared resources. There are two layers:
 
-Rate limit headers are included in every response:
+- **Global edge limit**: 240 requests per minute per client across `/api/*`
+- **Stricter per-route limits** on sensitive endpoints (login, signup, AI generation, billing) — these return `429 Too Many Requests` with a `Retry-After` header telling you when to retry
 
-```
-X-RateLimit-Limit: 60
-X-RateLimit-Remaining: 57
-X-RateLimit-Reset: 1625738400
+```http
+HTTP/1.1 429 Too Many Requests
+Retry-After: 42
 ```
 
-On rate limit exceeded, the API returns `429 Too Many Requests`.
+If you exceed a limit, back off and retry after the indicated delay.
 
 ---
 
 ## Response Format
 
-All responses are JSON. Successful responses follow this structure:
+All responses are JSON. Shapes vary by endpoint — there is no single envelope, so check each endpoint's fields:
 
-```json
-{
-  "data": { ... },
-  "meta": {
-    "page": 1,
-    "pageSize": 20,
-    "total": 100
-  }
-}
-```
-
-Error responses:
-
-```json
-{
-  "error": {
-    "code": "not_found",
-    "message": "The requested resource was not found",
-    "details": null
-  }
-}
-```
-
----
-
-## Example: List Problems
-
-Here's a simple example using cURL to list available coding problems:
-
-**Request**
+**Example: List Problems** (`GET /api/problems?difficulty=easy&limit=2`)
 
 ```bash
-curl -H "Authorization: Bearer cs_api_live_YOUR_TOKEN" \
-     -H "Accept: application/json" \
-     "https://api.codespectra.ai/v1/problems?difficulty=easy&limit=5"
+curl "https://codespectra.ai/api/problems?difficulty=easy&limit=2" \
+  -H "Accept: application/json" \
+  --cookie "YOUR_SESSION_COOKIE"
 ```
-
-**Response**
 
 ```json
 {
   "data": [
     {
       "id": "two-sum",
+      "slug": "two-sum",
       "title": "Two Sum",
       "difficulty": "easy",
-      "topics": ["arrays", "hash-table"],
-      "acceptanceRate": 78.5
-    },
-    {
-      "id": "palindrome-number",
-      "title": "Palindrome Number",
-      "difficulty": "easy",
-      "topics": ["math"],
-      "acceptanceRate": 82.1
+      "topics": ["arrays"]
     }
   ],
-  "meta": {
-    "page": 1,
-    "pageSize": 5,
-    "total": 42
-  }
+  "count": 1
 }
 ```
+
+Errors look like this:
+
+```json
+{
+  "error": "Unauthorized"
+}
+```
+
+Common status codes: `200` success · `400` bad request · `401` not logged in · `403` insufficient role · `404` not found · `429` rate limited.
 
 ---
 
 ## API Endpoints Overview
 
+All paths below are relative to `https://codespectra.ai/api`. Most require login.
+
 | Resource | Endpoint | Description |
 |----------|----------|-------------|
-| Problems | `GET /problems` | List coding problems |
-| Problems | `GET /problems/:id` | Get problem details |
+| Problems | `GET /problems` | List coding problems (`difficulty`, `topics`, `search`, `limit` filters) |
+| Problems | `GET /problems/[slug]` | Get problem details |
 | Submissions | `POST /submissions` | Submit a solution |
-| Submissions | `GET /submissions/:id` | Get submission result |
-| Scans | `POST /scans` | Trigger a code scan |
-| Scans | `GET /scans/:id` | Get scan results |
+| Submissions | `GET /submissions?problem_slug=` | List your submissions |
+| Scanner | `POST /analyze-code` | Trigger a code scan |
+| Scanner | `GET /scanner/issues` | List scan findings |
 | Quality Gates | `GET /quality-gates` | List quality gates |
-| Quality Gates | `POST /quality-gates/:id/evaluate` | Evaluate against a gate |
-| User | `GET /user/profile` | Get current user profile |
+| User | `GET /auth/me` | Get current user profile |
 | User | `GET /user/stats` | Get user statistics |
-| Leaderboard | `GET /leaderboard` | Get top users |
-| Runs | `POST /runs` | Execute arbitrary code |
+| Leaderboard | `GET /leaderboard?scope=global` | Get top users |
+| Code execution | `POST /execute-code` | Execute code in the sandbox |
+| Health | `GET /health` | Service status (no login required) |
+
+> **Note**: This table is a starting point, not an exhaustive reference. Endpoint availability can change as the platform evolves.
 
 ---
 
-## SDKs & Client Libraries
+## Webhooks (Inbound Integrations)
 
-Official client libraries are available for popular languages:
+CodeSpectra receives webhooks from integrated services (GitHub, Razorpay/Stripe billing, Postal email, Didit identity). These are configured in **Admin → Platform Settings → Integrations** — see the [Integrations Guide](/docs/user/integrations-guide).
 
-| Language | Package |
-|----------|---------|
-| JavaScript/TypeScript | `npm install @codespectra/sdk` |
-| Python | `pip install codespectra-sdk` |
-
----
-
-## Webhooks
-
-CodeSpectra can send webhook events to your endpoints for:
-
-- `scan.completed` — A code scan has finished
-- `review.completed` — An AI code review is ready
-- `quality_gate.evaluated` — A quality gate check has completed
-- `submission.graded` — A coding submission has been graded
-
-Configure webhooks in your dashboard under **Settings > Webhooks**.
+Outbound webhooks (CodeSpectra calling your URL on events) are not yet available.
 
 ---
 
@@ -176,13 +125,9 @@ Configure webhooks in your dashboard under **Settings > Webhooks**.
 CodeSpectra exposes a Model Context Protocol (MCP) server at `/api/mcp` for AI tool integration. Available tools:
 
 | Tool | Description |
-|------|-------------|
+|---|---|
 | `list_problems` | List problems with filters |
 | `get_problem` | Get problem by slug |
 | `run_code` | Execute code in sandbox |
 | `get_user_xp` | Get user XP and level |
 | `get_leaderboard` | Get top earners |
-
----
-
-> **Full API Reference**: Visit [docs.codespectra.ai/api](https://docs.codespectra.ai/api) for complete endpoint documentation, request/response schemas, and interactive examples.

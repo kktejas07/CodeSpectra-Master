@@ -12,7 +12,7 @@ Get up and running with CodeSpectra in under five minutes. This guide walks you 
 
 ### Step 1: Create Your Account
 
-1. Navigate to [app.codespectra.ai/signup](https://app.codespectra.ai/signup)
+1. Navigate to [codespectra.ai/signup](https://codespectra.ai/signup)
 2. Choose one of three signup methods:
    - **Email & Password** — enter your email address and create a secure password
    - **Google** — click the Google OAuth button to authenticate with your Google account
@@ -71,7 +71,38 @@ Get up and running with CodeSpectra in under five minutes. This guide walks you 
    - **Level 3**: Pseudo-code ("Try this logic...")
    - **Level 4**: Full solution (only if you ask)
 
-> **What you'll see**: A streaming response from the AI, powered by Claude Sonnet 4.5. The AI has context of the problem statement and your current code.
+> **What you'll see**: A streaming response from the AI, powered by the platform's configured AI model. The AI has context of the problem statement and your current code.
+
+---
+
+### Guided Tutorials
+
+Once you've finished the quickstart, these tutorials go deeper. Each lists difficulty, time, and prerequisites.
+
+#### Set Up a Quality Gate
+
+**Difficulty**: Intermediate | **Time**: 10 minutes | **Prerequisites**: CodeSpectra account, at least one code scan completed
+
+Quality gates are automated checkpoints that enforce code quality standards across your projects. Create a gate from scratch, configure pass/fail conditions, and test it against a scanned repository. Explore pre-built templates for OWASP, NIST, and standard PR review standards.
+
+You'll learn how to:
+- Create a new quality gate configuration
+- Set threshold conditions (issues, coverage, duplications, ratings)
+- Apply OWASP and NIST compliance templates
+- Test a gate against scan results
+- Monitor gate history and trends
+
+#### Connect a GitHub Repository
+
+**Difficulty**: Intermediate | **Time**: 15 minutes | **Prerequisites**: CodeSpectra account, GitHub account
+
+Connect repositories to scan code, automate PR reviews, and track quality over time: authorize CodeSpectra via OAuth, select repositories, trigger a full scan, view per-branch analytics, and enable automatic AI review comments on pull requests.
+
+#### Run an AI Code Review
+
+**Difficulty**: Beginner | **Time**: 5 minutes | **Prerequisites**: CodeSpectra account, code to review
+
+Submit code for review and get automated, line-level feedback: severity ratings, bug and security findings, one-click fix suggestions, and comparison across code versions — usable from the scanner or inside your GitHub PR workflow.
 
 ---
 

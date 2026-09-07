@@ -22,7 +22,7 @@ const LINK_RESOURCES = [
   {
     title: 'User handbook',
     description: 'Day-to-day workflows inside the dashboard.',
-    href: '/docs/user-handbook',
+    href: '/docs/user/dashboard-guide',
     tag: 'Guide',
     icon: GraduationCap,
     minutes: 12,

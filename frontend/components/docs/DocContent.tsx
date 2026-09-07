@@ -1,12 +1,13 @@
 'use client'
 
-import { useEffect, useMemo, useState } from 'react'
+import { useEffect, useMemo, useRef, useState } from 'react'
 import Link from 'next/link'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
 import rehypeSlug from 'rehype-slug'
-import { ChevronLeft, ChevronRight, List } from 'lucide-react'
+import { Check, ChevronLeft, ChevronRight, Copy, List } from 'lucide-react'
+import { LivePricingTables } from './LivePricingTables'
 import {
   docHref,
   getAdjacentDocs,
@@ -18,6 +19,132 @@ import { cn } from '@/lib/utils'
 interface DocContentProps {
   page: DocPage
   sections: DocSection[]
+}
+
+/** Markdown renderer shared by doc body parts. Split out so live embeds
+ *  (e.g. `{{live-pricing}}`) can be interleaved between rendered chunks. */
+function DocMarkdown({ content }: { content: string }) {
+  return (
+    <ReactMarkdown
+      remarkPlugins={[remarkGfm]}
+      rehypePlugins={[rehypeHighlight, rehypeSlug]}
+      components={{
+        a: ({ href, children, ...props }) => {
+          if (href?.startsWith('/') || href?.startsWith('#')) {
+            return (
+              <Link href={href} {...props}>
+                {children}
+              </Link>
+            )
+          }
+          return (
+            <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
+              {children}
+            </a>
+          )
+        },
+        img: ({ src, alt, ...props }) => (
+          <figure className="not-prose my-8">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src={src}
+              alt={alt || ''}
+              className="w-full rounded-xl border border-border/50"
+              {...props}
+            />
+            {alt ? (
+              <figcaption className="mt-2 text-center text-xs text-muted-foreground">
+                {alt}
+              </figcaption>
+            ) : null}
+          </figure>
+        ),
+        table: ({ children }) => (
+          <div className="my-6 overflow-x-auto rounded-xl border border-border/50">
+            <table className="min-w-full divide-y divide-border/40 text-sm">{children}</table>
+          </div>
+        ),
+        th: ({ children }) => (
+          <th className="bg-muted/40 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
+            {children}
+          </th>
+        ),
+        td: ({ children }) => (
+          <td className="border-t border-border/30 px-4 py-2.5 text-sm">{children}</td>
+        ),
+        blockquote: ({ children }) => (
+          <blockquote className="my-6 rounded-r-xl border-l-4 border-teal-500/40 bg-teal-500/5 px-4 py-3 not-italic">
+            {children}
+          </blockquote>
+        ),
+        code: ({ children, className, ...props }) => {
+          const inline = !className
+          return inline ? (
+            <code
+              className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[13px] text-foreground"
+              {...props}
+            >
+              {children}
+            </code>
+          ) : (
+            <code className={className} {...props}>
+              {children}
+            </code>
+          )
+        },
+        pre: ({ children, node, ...props }) => <CodeBlockWithCopy {...props}>{children}</CodeBlockWithCopy>,
+      }}
+    >
+      {content}
+    </ReactMarkdown>
+  )
+}
+
+/** Renders markdown with `{{live-pricing}}` tokens replaced by live price tables. */
+function DocBody({ content }: { content: string }) {
+  const parts = content.split('{{live-pricing}}')
+  if (parts.length === 1) return <DocMarkdown content={content} />
+  return (
+    <>
+      {parts.map((part, i) => (
+        <span key={i} className="contents">
+          {part ? <DocMarkdown content={part} /> : null}
+          {i < parts.length - 1 ? <LivePricingTables /> : null}
+        </span>
+      ))}
+    </>
+  )
+}
+
+/** Industry-standard copy button for fenced code blocks (Stripe/Mintlify pattern). */function CodeBlockWithCopy({ children, ...props }: { children?: React.ReactNode }) {
+  const ref = useRef<HTMLPreElement>(null)
+  const [copied, setCopied] = useState(false)
+  const onCopy = async () => {
+    try {
+      const text = ref.current?.innerText || ''
+      if (!text) return
+      await navigator.clipboard.writeText(text)
+      setCopied(true)
+      setTimeout(() => setCopied(false), 1600)
+    } catch {
+      // Clipboard unavailable (permissions) — stay silent, content is selectable.
+    }
+  }
+  return (
+    <div className="not-prose group relative my-6">
+      <pre ref={ref} {...props} className="overflow-x-auto rounded-xl border border-border/50 bg-zinc-950 p-4 pr-12 text-sm shadow-sm">
+        {children}
+      </pre>
+      <button
+        type="button"
+        onClick={onCopy}
+        aria-label={copied ? 'Copied' : 'Copy code'}
+        className="absolute right-2 top-2 flex h-8 w-8 items-center justify-center rounded-lg border border-white/10 bg-white/5 text-zinc-400 opacity-0 backdrop-blur transition-all hover:bg-white/10 hover:text-white focus-visible:opacity-100 group-hover:opacity-100 max-sm:opacity-100"
+      >
+        {copied ? <Check className="h-4 w-4 text-emerald-400" /> : <Copy className="h-4 w-4" />}
+      </button>
+    </div>
+  )
 }
 
 export function DocContent({ page, sections }: DocContentProps) {
@@ -90,77 +217,7 @@ export function DocContent({ page, sections }: DocContentProps) {
             'prose-hr:border-border/60',
           )}
         >
-          <ReactMarkdown
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[rehypeHighlight, rehypeSlug]}
-            components={{
-              a: ({ href, children, ...props }) => {
-                if (href?.startsWith('/') || href?.startsWith('#')) {
-                  return (
-                    <Link href={href} {...props}>
-                      {children}
-                    </Link>
-                  )
-                }
-                return (
-                  <a href={href} target="_blank" rel="noopener noreferrer" {...props}>
-                    {children}
-                  </a>
-                )
-              },
-              img: ({ src, alt, ...props }) => (
-                <figure className="not-prose my-8">
-                  {/* eslint-disable-next-line @next/next/no-img-element */}
-                  <img
-                    src={src}
-                    alt={alt || ''}
-                    className="w-full rounded-xl border border-border/50"
-                    {...props}
-                  />
-                  {alt ? (
-                    <figcaption className="mt-2 text-center text-xs text-muted-foreground">
-                      {alt}
-                    </figcaption>
-                  ) : null}
-                </figure>
-              ),
-              table: ({ children }) => (
-                <div className="my-6 overflow-x-auto rounded-xl border border-border/50">
-                  <table className="min-w-full divide-y divide-border/40 text-sm">{children}</table>
-                </div>
-              ),
-              th: ({ children }) => (
-                <th className="bg-muted/40 px-4 py-2.5 text-left text-xs font-semibold uppercase tracking-wide text-muted-foreground">
-                  {children}
-                </th>
-              ),
-              td: ({ children }) => (
-                <td className="border-t border-border/30 px-4 py-2.5 text-sm">{children}</td>
-              ),
-              blockquote: ({ children }) => (
-                <blockquote className="my-6 rounded-r-xl border-l-4 border-teal-500/40 bg-teal-500/5 px-4 py-3 not-italic">
-                  {children}
-                </blockquote>
-              ),
-              code: ({ children, className, ...props }) => {
-                const inline = !className
-                return inline ? (
-                  <code
-                    className="rounded-md bg-muted px-1.5 py-0.5 font-mono text-[13px] text-foreground"
-                    {...props}
-                  >
-                    {children}
-                  </code>
-                ) : (
-                  <code className={className} {...props}>
-                    {children}
-                  </code>
-                )
-              },
-            }}
-          >
-            {page.content}
-          </ReactMarkdown>
+          <DocBody content={page.content} />
         </div>
 
         <div className="mt-14 grid gap-3 border-t border-border/60 pt-8 sm:grid-cols-2">

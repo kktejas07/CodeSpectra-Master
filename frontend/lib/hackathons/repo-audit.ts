@@ -105,6 +105,7 @@ export interface EvidencePack {
   }
   repoAccessible: boolean
   privateUnreachable: boolean
+  rateLimited: boolean
   limitations: string[]
   auditedAt: string
 }
@@ -136,7 +137,7 @@ export function parseRepoUrl(url: string): { owner: string; repo: string } | { e
 
 // ── GitHub fetch helper ─────────────────────────────────────────────────────
 
-async function gh<T>(url: string, token?: string): Promise<{ ok: boolean; status: number; data: T | null }> {
+async function gh<T>(url: string, token?: string, rl?: { hit: boolean }): Promise<{ ok: boolean; status: number; data: T | null }> {
   try {
     const headers: Record<string, string> = {
       Accept: 'application/vnd.github.v3+json',
@@ -144,7 +145,12 @@ async function gh<T>(url: string, token?: string): Promise<{ ok: boolean; status
     }
     if (token) headers.Authorization = `Bearer ${token}`
     const res = await fetch(url, { headers, signal: AbortSignal.timeout(15000) })
-    if (!res.ok) return { ok: false, status: res.status, data: null }
+    if (!res.ok) {
+      // ponytail: with a personal token GitHub answers 403 on rate-limit;
+      // 404 = private/missing. No reset-header parsing — 403 alone is the signal.
+      if (rl && res.status === 403 && (url || '').includes('api.github.com')) rl.hit = true
+      return { ok: false, status: res.status, data: null }
+    }
     return { ok: true, status: res.status, data: (await res.json()) as T }
   } catch {
     return { ok: false, status: 0, data: null }
@@ -221,6 +227,7 @@ export async function auditSubmissionRepo(opts: AuditOpts): Promise<EvidencePack
   const windowValid = Number.isFinite(startMs) && Number.isFinite(endMs)
   if (!windowValid) limitations.push('event window missing or invalid — timeline percentages unavailable')
   const token = (opts.githubToken || '').trim() || undefined
+  const rl = { hit: false }
 
   const pack: EvidencePack = {
     repo: null,
@@ -246,6 +253,7 @@ export async function auditSubmissionRepo(opts: AuditOpts): Promise<EvidencePack
     },
     repoAccessible: false,
     privateUnreachable: false,
+    rateLimited: false,
     limitations,
     auditedAt: new Date().toISOString(),
   }
@@ -262,12 +270,16 @@ export async function auditSubmissionRepo(opts: AuditOpts): Promise<EvidencePack
   // 2. Repo metadata
   let defaultBranch = 'main'
   try {
-    const meta = await gh<GhRepo>(apiBase, token)
+    const meta = await gh<GhRepo>(apiBase, token, rl)
     if (!meta.ok || !meta.data) {
       if (!token && (meta.status === 404 || meta.status === 0)) {
         limitations.push('repo metadata unavailable — repo may be private (no token) or nonexistent')
       } else {
         limitations.push(`repo metadata unavailable (GitHub status ${meta.status})`)
+      }
+      pack.rateLimited = rl.hit
+      if (rl.hit) {
+        limitations.push('GitHub API rate limit hit — connect GitHub OAuth for 5000/hr or retry after the reset window')
       }
       return pack
     }
@@ -306,7 +318,7 @@ export async function auditSubmissionRepo(opts: AuditOpts): Promise<EvidencePack
   let allCommits: GhCommit[] = []
   try {
     for (let page = 1; page <= 3; page++) {
-      const r = await gh<GhCommit[]>(`${apiBase}/commits?per_page=100&page=${page}`, token)
+      const r = await gh<GhCommit[]>(`${apiBase}/commits?per_page=100&page=${page}`, token, rl)
       if (!r.ok || !Array.isArray(r.data) || r.data.length === 0) {
         if (!r.ok && page === 1) {
           if (pack.repo && pack.repo.isPrivate && !token) {
@@ -396,7 +408,7 @@ export async function auditSubmissionRepo(opts: AuditOpts): Promise<EvidencePack
   let treeEntries: TreeEntry[] = []
   let treeTruncated = false
   try {
-    const t = await gh<GhTree>(`${apiBase}/git/trees/${encodeURIComponent(defaultBranch)}?recursive=1`, token)
+    const t = await gh<GhTree>(`${apiBase}/git/trees/${encodeURIComponent(defaultBranch)}?recursive=1`, token, rl)
     if (!t.ok || !t.data || !Array.isArray(t.data.tree)) {
       limitations.push(`file tree unavailable (GitHub status ${t.status})`)
     } else {
@@ -468,7 +480,7 @@ export async function auditSubmissionRepo(opts: AuditOpts): Promise<EvidencePack
         if ((c.size || 0) > MAX_FILE_BYTES) { truncatedFiles++; continue }
         if (SKIP_DIR_RE.test(c.path) || BINARY_EXT_RE.test(c.path)) continue
         const url = `${apiBase}/contents/${c.path.split('/').map(encodeURIComponent).join('/')}?ref=${encodeURIComponent(defaultBranch)}`
-        const r = await gh<GhContent>(url, token)
+        const r = await gh<GhContent>(url, token, rl)
         if (!r.ok || !r.data || r.data.type !== 'file' || !r.data.content) continue
         let text = ''
         try {
@@ -569,6 +581,11 @@ export async function auditSubmissionRepo(opts: AuditOpts): Promise<EvidencePack
     }
   } catch {
     limitations.push('dependency scan failed')
+  }
+
+  pack.rateLimited = rl.hit
+  if (rl.hit) {
+    limitations.push('GitHub API rate limit hit — connect GitHub OAuth for 5000/hr or retry after the reset window')
   }
 
   return pack
