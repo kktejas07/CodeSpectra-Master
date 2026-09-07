@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { findPlan } from '@/lib/billing-catalog'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
 
@@ -732,7 +732,7 @@ export default function BillingPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_billing_tour')) {
+    if (gate.ready) {
       const billingTour: TourStep[] = [
         {
           target: '[data-tour="billing-header"]',
@@ -753,9 +753,7 @@ export default function BillingPage() {
           position: 'top',
         },
       ]
-      startTour(billingTour, 'billing')
-      setTourSeen('billing')
-    }
+      autoPlayPageTour('billing', billingTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

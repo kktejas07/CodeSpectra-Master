@@ -10,7 +10,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useCurrency } from '@/lib/use-currency'
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle } from '@/components/ui/dialog'
 import { Input } from '@/components/ui/input'
@@ -137,7 +137,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_pricing_tour')) {
+    if (gate.ready) {
       const pricingTour: TourStep[] = [
         {
           target: '[data-tour="pricing-header"]',
@@ -158,9 +158,7 @@ const currSymbol = currency === 'INR' ? '₹' : currency === 'EUR' ? '€' : cur
           position: 'top',
         },
       ]
-      startTour(pricingTour, 'pricing')
-      setTourSeen('pricing')
-    }
+      autoPlayPageTour('pricing', pricingTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

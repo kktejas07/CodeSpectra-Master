@@ -8,7 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { ContributionGraph } from '@/components/gamification/contribution-graph'
 import { SkillBadges } from '@/components/gamification/skill-badges'
@@ -54,7 +54,7 @@ export default function AchievementsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_achievements_tour')) {
+    if (gate.ready) {
       const achievementsTour: TourStep[] = [
         {
           target: '[data-tour="achievements-header"]',
@@ -87,9 +87,7 @@ export default function AchievementsPage() {
           position: 'bottom',
         },
       ]
-      startTour(achievementsTour, 'achievements')
-      setTourSeen('achievements')
-    }
+      autoPlayPageTour('achievements', achievementsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const earnedCount = achievements.filter(a => a.earned).length

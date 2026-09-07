@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 const MOCK_TESTS = [
   { id: 'tcs-software-engineer', company: 'TCS', role: 'Software Engineer', color: 'bg-blue-600', type: 'Tech', level: 'Entry-level' },
@@ -44,7 +44,7 @@ export default function MockTestsPage() {
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_mock-tests_tour')) {
+    if (gate.ready) {
       const mockTestsTour: TourStep[] = [
         {
           target: '[data-tour="mock-tests-header"]',
@@ -65,9 +65,7 @@ export default function MockTestsPage() {
           position: 'top',
         },
       ]
-      startTour(mockTestsTour, 'mock-tests')
-      setTourSeen('mock-tests')
-    }
+      autoPlayPageTour('mock-tests', mockTestsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const filteredTests = MOCK_TESTS.filter(t => 

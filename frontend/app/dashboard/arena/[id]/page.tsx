@@ -13,7 +13,7 @@ import { getArenaChallenge, getNextArenaChallengeId, type ArenaChallenge } from 
 import { PROGRAMMING_LANGUAGES } from '@/lib/languages'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -431,7 +431,7 @@ export default function ArenaChallengePage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_arena-detail_tour')) {
+    if (gate.ready) {
       const arenaDetailTour: TourStep[] = [
         {
           target: '[data-tour="arena-detail-header"]',
@@ -452,9 +452,7 @@ export default function ArenaChallengePage() {
           position: 'top',
         },
       ]
-      startTour(arenaDetailTour, 'arena-detail')
-      setTourSeen('arena-detail')
-    }
+      autoPlayPageTour('arena-detail', arenaDetailTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

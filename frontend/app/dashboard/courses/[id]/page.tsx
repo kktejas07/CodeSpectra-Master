@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { SkeletonStats, SkeletonText, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { pickResumeLessonId } from '@/lib/courses/watch-progress'
@@ -119,7 +119,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   // First-visit guided tour (same pattern as the other dashboard pages).
   // Gated on course load so the anchored landmarks exist on first paint.
   useEffect(() => {
-    if (gate.ready && !loading && course && !localStorage.getItem('has_seen_course-detail_tour')) {
+    if (gate.ready && !loading && course) {
       const courseDetailTour: TourStep[] = [
         {
           target: '[data-tour="course-detail-header"]',
@@ -140,9 +140,7 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
           position: 'top',
         },
       ]
-      startTour(courseDetailTour, 'course-detail')
-      setTourSeen('course-detail')
-    }
+      autoPlayPageTour('course-detail', courseDetailTour)}
   }, [gate.ready, loading, course, startTour, setTourSeen])
 
   useEffect(() => {

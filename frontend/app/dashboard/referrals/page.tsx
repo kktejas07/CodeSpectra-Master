@@ -6,7 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, Users, Link2, Copy, Check, Star, Coins } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
@@ -41,7 +41,7 @@ export default function ReferralsPage() {
   // Only 2 steps: the stats grid and referred-users list render only after a
   // code exists, so there is no third stable first-paint landmark.
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_referrals_tour')) {
+    if (gate.ready) {
       const referralsTour: TourStep[] = [
         {
           target: '[data-tour="referrals-header"]',
@@ -56,9 +56,7 @@ export default function ReferralsPage() {
           position: 'top',
         },
       ]
-      startTour(referralsTour, 'referrals')
-      setTourSeen('referrals')
-    }
+      autoPlayPageTour('referrals', referralsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   async function handleGenerate() {

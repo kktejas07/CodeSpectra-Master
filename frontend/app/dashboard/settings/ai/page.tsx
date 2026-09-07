@@ -5,7 +5,7 @@ import { Card } from '@/components/ui/card'
 import { ModelSelector } from '@/components/ai/model-selector'
 import { Sparkles, Bot, FileText, GraduationCap, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 export default function AISettingsPage() {
   const gate = usePageGuard('user')
@@ -13,7 +13,7 @@ export default function AISettingsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_ai-settings_tour')) {
+    if (gate.ready) {
       const aiSettingsTour: TourStep[] = [
         {
           target: '[data-tour="ai-settings-header"]',
@@ -34,9 +34,7 @@ export default function AISettingsPage() {
           position: 'top',
         },
       ]
-      startTour(aiSettingsTour, 'ai-settings')
-      setTourSeen('ai-settings')
-    }
+      autoPlayPageTour('ai-settings', aiSettingsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Upload, Trash2, Plus, Search } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useToast } from '@/lib/toast-context'
@@ -49,7 +49,7 @@ export default function MyResumesPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_resumes_tour')) {
+    if (gate.ready) {
       const resumesTour: TourStep[] = [
         {
           target: '[data-tour="resumes-templates"]',
@@ -70,9 +70,7 @@ export default function MyResumesPage() {
           position: 'top',
         },
       ]
-      startTour(resumesTour, 'resumes')
-      setTourSeen('resumes')
-    }
+      autoPlayPageTour('resumes', resumesTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const handleDelete = async (ids: string[]) => {

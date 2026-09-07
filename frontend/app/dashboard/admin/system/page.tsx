@@ -16,7 +16,7 @@ import { AnalyticsDashboard, type AnalyticsDashboardProps } from '@/components/a
 import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
@@ -276,7 +276,7 @@ export default function SystemAdminDashboard() {
   // Initialize tour on first visit — placed before the early return below
   // (hooks must not be called conditionally).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_admin-system_tour')) {
+    if (gate.ready) {
       const adminSystemTour: TourStep[] = [
         {
           target: '[data-tour="admin-system-header"]',
@@ -315,8 +315,7 @@ export default function SystemAdminDashboard() {
           position: 'bottom',
         },
       ];
-      startTour(adminSystemTour, 'admin-system');
-      setTourSeen('admin-system');
+      autoPlayPageTour('admin-system', adminSystemTour)
     }
   }, [gate.ready, startTour]);
 

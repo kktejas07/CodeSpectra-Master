@@ -14,7 +14,7 @@ import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { AnalysisPanel } from '@/components/ai/analysis-panel'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -346,7 +346,7 @@ export default function ProblemDetailPage() {
   // First-visit guided tour (same pattern as the other dashboard pages).
   // Gated on problem load so the anchored landmarks exist on first paint.
   useEffect(() => {
-    if (gate.ready && problem && !loadError && !localStorage.getItem('has_seen_problem-detail_tour')) {
+    if (gate.ready && problem && !loadError) {
       const problemDetailTour: TourStep[] = [
         {
           target: '[data-tour="problem-detail-header"]',
@@ -367,9 +367,7 @@ export default function ProblemDetailPage() {
           position: 'right',
         },
       ]
-      startTour(problemDetailTour, 'problem-detail')
-      setTourSeen('problem-detail')
-    }
+      autoPlayPageTour('problem-detail', problemDetailTour)}
   }, [gate.ready, problem, loadError, startTour, setTourSeen])
 
   function onChangeLanguage(next: string) {

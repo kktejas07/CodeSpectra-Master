@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -48,7 +48,7 @@ export default function SupportPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_support_tour')) {
+    if (gate.ready) {
       const supportTour: TourStep[] = [
         {
           target: '[data-tour="support-header"]',
@@ -69,9 +69,7 @@ export default function SupportPage() {
           position: 'top',
         },
       ]
-      startTour(supportTour, 'support')
-      setTourSeen('support')
-    }
+      autoPlayPageTour('support', supportTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const openTicket = async (t: Ticket) => {

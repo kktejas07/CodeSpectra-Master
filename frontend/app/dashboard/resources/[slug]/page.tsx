@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Loader2, HelpCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { FlipbookViewer } from '@/components/resources/flipbook-viewer'
 import { EbookQuiz } from '@/components/resources/ebook-quiz'
@@ -166,7 +166,7 @@ export default function EbookReaderPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_resource-reader_tour')) {
+    if (gate.ready) {
       const resourceReaderTour: TourStep[] = [
         {
           target: '[data-tour="resource-reader-header"]',
@@ -187,9 +187,7 @@ export default function EbookReaderPage() {
           position: 'top',
         },
       ]
-      startTour(resourceReaderTour, 'resource-reader')
-      setTourSeen('resource-reader')
-    }
+      autoPlayPageTour('resource-reader', resourceReaderTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

@@ -16,7 +16,7 @@ import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } f
 import { usePageGuard } from '@/lib/use-page-guard'
 import { OrganizationDashboard } from '@/components/dashboard/organization-dashboard'
 import { useTour } from '@/components/tour/tour-context'
-import { WELCOME_TOUR_STEPS, startPageHints, type TourHint } from '@/lib/tour-driver'
+import { WELCOME_TOUR_STEPS, autoPlayPageTour, startPageHints, type TourHint } from '@/lib/tour-driver'
 import {
   DeveloperRankBanner,
   IsometricScanChip,
@@ -36,12 +36,10 @@ export default function DashboardPage() {
   const gate = usePageGuard('user')
   const { startTour, setTourSeen, isTourSeen } = useTour()
 
-  // Auto-start welcome tour on first visit
+  // Auto-play welcome tour on first visit. autoPlayPageTour registers steps
+  // on every mount (so Guide can replay) but only plays when unseen.
   useEffect(() => {
-    if (typeof window !== 'undefined' && !window.localStorage.getItem('has_seen_welcome_tour')) {
-      startTour(WELCOME_TOUR_STEPS, 'welcome')
-      setTourSeen('welcome')
-    }
+    autoPlayPageTour('welcome', WELCOME_TOUR_STEPS)
   }, [startTour, setTourSeen])
 
   // Feature hints (pulsing beacons) for returning users — the welcome tour

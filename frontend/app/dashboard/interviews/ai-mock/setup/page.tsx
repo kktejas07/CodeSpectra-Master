@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Brain, ArrowLeft, Loader2, FileText, Sparkles } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { ROLE_OPTIONS, DIFFICULTY_LEVELS } from '@/lib/interviews/ai-mock-types'
 
 const DIFFICULTY_LABELS: Record<string, string> = {
@@ -34,7 +34,7 @@ export default function AiMockSetupPage() {
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_ai-mock-setup_tour')) {
+    if (gate.ready) {
       const aiMockSetupTour: TourStep[] = [
         {
           target: '[data-tour="ai-mock-setup-header"]',
@@ -55,9 +55,7 @@ export default function AiMockSetupPage() {
           position: 'top',
         },
       ]
-      startTour(aiMockSetupTour, 'ai-mock-setup')
-      setTourSeen('ai-mock-setup')
-    }
+      autoPlayPageTour('ai-mock-setup', aiMockSetupTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

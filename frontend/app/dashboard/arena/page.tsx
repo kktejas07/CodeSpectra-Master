@@ -7,7 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Trophy, Code, Loader, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 interface ArenaChallenge {
   id: string
@@ -85,7 +85,7 @@ export default function ArenaPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_arena_tour')) {
+    if (gate.ready) {
       const arenaTour: TourStep[] = [
         {
           target: '[data-tour="arena-overview"]',
@@ -112,9 +112,7 @@ export default function ArenaPage() {
           position: 'bottom',
         },
       ]
-      startTour(arenaTour, 'arena')
-      setTourSeen('arena')
-    }
+      autoPlayPageTour('arena', arenaTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const filtered = challenges.filter((c) => {

@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 const DIFFICULTIES = [
   { id: 'beginner', title: 'Beginner', description: 'Basic concepts and foundational knowledge', icon: Lightbulb, color: 'text-green-500', bg: 'bg-green-500/10' },
@@ -26,7 +26,7 @@ export default function MockTestSetupPage() {
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_mock-test-detail_tour')) {
+    if (gate.ready) {
       const mockTestDetailTour: TourStep[] = [
         {
           target: '[data-tour="mock-test-detail-header"]',
@@ -47,9 +47,7 @@ export default function MockTestSetupPage() {
           position: 'top',
         },
       ]
-      startTour(mockTestDetailTour, 'mock-test-detail')
-      setTourSeen('mock-test-detail')
-    }
+      autoPlayPageTour('mock-test-detail', mockTestDetailTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const handleStart = () => {

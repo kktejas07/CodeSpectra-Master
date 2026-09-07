@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from 'react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import {
@@ -68,7 +68,7 @@ export default function RecruiterAnalyticsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_recruiter-analytics_tour')) {
+    if (gate.ready) {
       const recruiterAnalyticsTour: TourStep[] = [
         {
           target: '[data-tour="recruiter-analytics-header"]',
@@ -89,9 +89,7 @@ export default function RecruiterAnalyticsPage() {
           position: 'top',
         },
       ]
-      startTour(recruiterAnalyticsTour, 'recruiter-analytics')
-      setTourSeen('recruiter-analytics')
-    }
+      autoPlayPageTour('recruiter-analytics', recruiterAnalyticsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const exportCsv = () => {

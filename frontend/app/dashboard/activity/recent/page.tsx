@@ -21,7 +21,7 @@ import {
   TrendingUp,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
@@ -119,7 +119,7 @@ export default function RecentlyViewedPage() {
 
   // First-visit guided tour
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_recent_tour')) {
+    if (gate.ready) {
       const recentTour: TourStep[] = [
         {
           target: '[data-tour="recent-header"]',
@@ -143,9 +143,7 @@ export default function RecentlyViewedPage() {
           position: 'top',
         },
       ]
-      startTour(recentTour, 'recent')
-      setTourSeen('recent')
-    }
+      autoPlayPageTour('recent', recentTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   // ── Derived stats ──────────────────────────────────────────────────────────

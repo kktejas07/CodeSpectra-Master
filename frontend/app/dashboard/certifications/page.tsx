@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Award, BookOpen, CheckCircle2, ExternalLink, FileBadge2, GraduationCap } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
 
 export default function CertificationsPage() {
@@ -16,7 +16,7 @@ export default function CertificationsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_certifications_tour')) {
+    if (gate.ready) {
       const certificationsTour: TourStep[] = [
         {
           target: '[data-tour="certifications-header"]',
@@ -37,9 +37,7 @@ export default function CertificationsPage() {
           position: 'top',
         },
       ]
-      startTour(certificationsTour, 'certifications')
-      setTourSeen('certifications')
-    }
+      autoPlayPageTour('certifications', certificationsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

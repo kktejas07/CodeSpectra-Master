@@ -18,7 +18,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Problem {
   id: string
@@ -127,7 +127,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_codeathon-detail_tour')) {
+    if (gate.ready) {
       const codeathonDetailTour: TourStep[] = [
         {
           target: '[data-tour="codeathon-detail-header"]',
@@ -148,9 +148,7 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
           position: 'top',
         },
       ]
-      startTour(codeathonDetailTour, 'codeathon-detail')
-      setTourSeen('codeathon-detail')
-    }
+      autoPlayPageTour('codeathon-detail', codeathonDetailTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   async function fetchData() {

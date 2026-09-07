@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 
@@ -43,7 +43,7 @@ export default function CalendarPage() {
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_calendar_tour')) {
+    if (gate.ready) {
       const calendarTour: TourStep[] = [
         {
           target: '[data-tour="calendar-header"]',
@@ -64,9 +64,7 @@ export default function CalendarPage() {
           position: 'left',
         },
       ]
-      startTour(calendarTour, 'calendar')
-      setTourSeen('calendar')
-    }
+      autoPlayPageTour('calendar', calendarTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const load = useCallback(async () => {

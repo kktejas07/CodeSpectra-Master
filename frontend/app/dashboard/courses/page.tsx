@@ -16,7 +16,7 @@ import {
   FlaskConical, Cloud, Network, Lightbulb, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/difficulty-levels'
 
@@ -134,9 +134,10 @@ function LearningPageInner() {
       .finally(() => setLoading(false))
   }, [])
 
-  // Initialize tour on first visit (outer LearningPage already gates on auth)
+  // Initialize tour on first visit (outer LearningPage already gates on auth).
+  // autoPlayPageTour registers steps on every mount (so Guide can replay)
+  // but only plays when unseen.
   useEffect(() => {
-    if (!localStorage.getItem('has_seen_courses_tour')) {
       const coursesTour: TourStep[] = [
         {
           target: '[data-tour="courses-header"]',
@@ -163,9 +164,7 @@ function LearningPageInner() {
           position: 'bottom',
         },
       ]
-      startTour(coursesTour, 'courses')
-      setTourSeen('courses')
-    }
+      autoPlayPageTour('courses', coursesTour)
   }, [startTour, setTourSeen])
 
   const toggleSave = async (e: React.MouseEvent, id: string) => {

@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -63,7 +63,7 @@ function BookmarksInner() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_bookmarks_tour')) {
+    if (gate.ready) {
       const bookmarksTour: TourStep[] = [
         {
           target: '[data-tour="bookmarks-header"]',
@@ -84,9 +84,7 @@ function BookmarksInner() {
           position: 'top',
         },
       ]
-      startTour(bookmarksTour, 'bookmarks')
-      setTourSeen('bookmarks')
-    }
+      autoPlayPageTour('bookmarks', bookmarksTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   async function removeProblem(problemId: string, slug: string, title: string) {

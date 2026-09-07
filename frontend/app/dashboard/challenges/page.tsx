@@ -9,7 +9,7 @@ import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Challenge {
   id: string
@@ -34,7 +34,7 @@ export default function ChallengesPage() {
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_challenges_tour')) {
+    if (gate.ready) {
       const challengesTour: TourStep[] = [
         {
           target: '[data-tour="challenges-header"]',
@@ -49,9 +49,7 @@ export default function ChallengesPage() {
           position: 'bottom',
         },
       ]
-      startTour(challengesTour, 'challenges')
-      setTourSeen('challenges')
-    }
+      autoPlayPageTour('challenges', challengesTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {

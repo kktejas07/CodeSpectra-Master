@@ -13,7 +13,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { isAdmin, type UserRole } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -239,7 +239,7 @@ export default function EventsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_events_tour')) {
+    if (gate.ready) {
       const eventsTour: TourStep[] = [
         {
           target: '[data-tour="events-header"]',
@@ -260,9 +260,7 @@ export default function EventsPage() {
           position: 'bottom',
         },
       ]
-      startTour(eventsTour, 'events')
-      setTourSeen('events')
-    }
+      autoPlayPageTour('events', eventsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {

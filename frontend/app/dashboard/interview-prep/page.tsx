@@ -13,7 +13,7 @@ import { useLockedFeatures } from '@/lib/use-page-guard'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { INTERVIEW_PREP_QUESTIONS, type InterviewPrepQuestion } from '@/lib/interview-prep-data'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 type Tab = 'browse' | 'quiz'
 
@@ -151,7 +151,7 @@ export default function InterviewPrepPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_interview-prep_tour')) {
+    if (gate.ready) {
       const interviewPrepTour: TourStep[] = [
         {
           target: '[data-tour="interview-prep-header"]',
@@ -172,9 +172,7 @@ export default function InterviewPrepPage() {
           position: 'top',
         },
       ]
-      startTour(interviewPrepTour, 'interview-prep')
-      setTourSeen('interview-prep')
-    }
+      autoPlayPageTour('interview-prep', interviewPrepTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

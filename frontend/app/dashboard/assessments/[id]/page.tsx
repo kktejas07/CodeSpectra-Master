@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
@@ -65,7 +65,7 @@ export default function ExamPage() {
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_assessment-detail_tour')) {
+    if (gate.ready) {
       const assessmentDetailTour: TourStep[] = [
         {
           target: '[data-tour="assessment-detail-header"]',
@@ -86,9 +86,7 @@ export default function ExamPage() {
           position: 'top',
         },
       ]
-      startTour(assessmentDetailTour, 'assessment-detail')
-      setTourSeen('assessment-detail')
-    }
+      autoPlayPageTour('assessment-detail', assessmentDetailTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const [exam, setExam] = useState<ExamDoc | null>(null)

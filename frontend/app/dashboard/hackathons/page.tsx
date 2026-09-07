@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 
@@ -68,7 +68,7 @@ export default function UserHackathonsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_hackathons_tour')) {
+    if (gate.ready) {
       const hackathonsTour: TourStep[] = [
         {
           target: '[data-tour="hackathons-header"]',
@@ -89,9 +89,7 @@ export default function UserHackathonsPage() {
           position: 'bottom',
         },
       ]
-      startTour(hackathonsTour, 'hackathons')
-      setTourSeen('hackathons')
-    }
+      autoPlayPageTour('hackathons', hackathonsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

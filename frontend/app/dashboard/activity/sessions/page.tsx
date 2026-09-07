@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -38,7 +38,7 @@ export default function MySessionsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_sessions_tour')) {
+    if (gate.ready) {
       const sessionsTour: TourStep[] = [
         {
           target: '[data-tour="sessions-header"]',
@@ -59,9 +59,7 @@ export default function MySessionsPage() {
           position: 'top',
         },
       ]
-      startTour(sessionsTour, 'sessions')
-      setTourSeen('sessions')
-    }
+      autoPlayPageTour('sessions', sessionsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

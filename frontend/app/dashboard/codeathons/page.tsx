@@ -9,7 +9,7 @@ import { Trophy, Users, Clock, HelpCircle, Calendar, Target, BookOpen, ChevronRi
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Problem {
   id: string
@@ -86,7 +86,7 @@ export default function CodeathonsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_codeathons_tour')) {
+    if (gate.ready) {
       const codeathonsTour: TourStep[] = [
         {
           target: '[data-tour="codeathons-header"]',
@@ -107,9 +107,7 @@ export default function CodeathonsPage() {
           position: 'bottom',
         },
       ]
-      startTour(codeathonsTour, 'codeathons')
-      setTourSeen('codeathons')
-    }
+      autoPlayPageTour('codeathons', codeathonsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const filtered = codeathons.filter(c =>

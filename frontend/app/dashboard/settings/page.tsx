@@ -1,7 +1,7 @@
 'use client'
 import { useConfirm } from '@/lib/confirm-context'
 import { useAuth } from '@/lib/auth-context'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -112,7 +112,7 @@ export default function SettingsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_settings_tour')) {
+    if (gate.ready) {
       const settingsTour: TourStep[] = [
         {
           target: '[data-tour="settings-header"]',
@@ -145,9 +145,7 @@ export default function SettingsPage() {
           position: 'bottom',
         },
       ]
-      startTour(settingsTour, 'settings')
-      setTourSeen('settings')
-    }
+      autoPlayPageTour('settings', settingsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {

@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -55,7 +55,7 @@ export default function CourseWishlistPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !loading && !localStorage.getItem('has_seen_wishlist_tour')) {
+    if (gate.ready && !loading) {
       const wishlistTour: TourStep[] = [
         {
           target: '[data-tour="wishlist-header"]',
@@ -76,9 +76,7 @@ export default function CourseWishlistPage() {
           position: 'top',
         },
       ]
-      startTour(wishlistTour, 'wishlist')
-      setTourSeen('wishlist')
-    }
+      autoPlayPageTour('wishlist', wishlistTour)}
   }, [gate.ready, loading, startTour, setTourSeen])
 
   const remove = async (courseId: string) => {

@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 // Helper to render warnings (handles both strings and Didit warning objects)
 function renderWarning(w: unknown): string {
@@ -131,7 +131,7 @@ export default function IdentityVerificationPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_identity-verify_tour')) {
+    if (gate.ready) {
       const identityVerifyTour: TourStep[] = [
         {
           target: '[data-tour="identity-verify-header"]',
@@ -152,9 +152,7 @@ export default function IdentityVerificationPage() {
           position: 'top',
         },
       ]
-      startTour(identityVerifyTour, 'identity-verify')
-      setTourSeen('identity-verify')
-    }
+      autoPlayPageTour('identity-verify', identityVerifyTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

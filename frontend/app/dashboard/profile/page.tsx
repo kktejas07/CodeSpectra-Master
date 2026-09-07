@@ -16,7 +16,7 @@ import { AiCreditsWidget } from '@/components/ui/ai-credits-widget'
 import { Edit2, Trophy, Shield, Clock, FolderGit2, Activity, Loader, CheckCircle2, XCircle, Smartphone, User, Loader2, Sparkles, TrendingUp, ArrowLeft, Eye, Lightbulb, FileText, Briefcase, Award, Info, FileStack, Trash2, Plus, Image as ImageIcon, Share2 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText } from '@/components/ui/skeleton-boneyard'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -279,7 +279,7 @@ export default function ProfilePage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_profile_tour')) {
+    if (gate.ready) {
       const profileTour: TourStep[] = [
         {
           target: '[data-tour="profile-header"]',
@@ -300,9 +300,7 @@ export default function ProfilePage() {
           position: 'top',
         },
       ]
-      startTour(profileTour, 'profile')
-      setTourSeen('profile')
-    }
+      autoPlayPageTour('profile', profileTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'User'

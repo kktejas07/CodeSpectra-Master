@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Heart, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -36,7 +36,7 @@ export default function MyCoursesPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !loading && !localStorage.getItem('has_seen_my-courses_tour')) {
+    if (gate.ready && !loading) {
       const myCoursesTour: TourStep[] = [
         {
           target: '[data-tour="my-courses-header"]',
@@ -57,9 +57,7 @@ export default function MyCoursesPage() {
           position: 'top',
         },
       ]
-      startTour(myCoursesTour, 'my-courses')
-      setTourSeen('my-courses')
-    }
+      autoPlayPageTour('my-courses', myCoursesTour)}
   }, [gate.ready, loading, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

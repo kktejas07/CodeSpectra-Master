@@ -12,7 +12,7 @@ import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import Link from 'next/link'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 export default function ScheduleInterviewPage() {
   const gate = usePageGuard('user')
@@ -41,7 +41,7 @@ export default function ScheduleInterviewPage() {
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_interview-schedule_tour')) {
+    if (gate.ready) {
       const interviewScheduleTour: TourStep[] = [
         {
           target: '[data-tour="interview-schedule-header"]',
@@ -62,9 +62,7 @@ export default function ScheduleInterviewPage() {
           position: 'top',
         },
       ]
-      startTour(interviewScheduleTour, 'interview-schedule')
-      setTourSeen('interview-schedule')
-    }
+      autoPlayPageTour('interview-schedule', interviewScheduleTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   async function schedule() {

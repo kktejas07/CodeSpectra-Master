@@ -13,7 +13,7 @@ import { Card } from '@/components/ui/card'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useProblemsViewModel, type ProblemSummary } from './use-problems-viewmodel'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 function FilterAccordion({ title, items, selected, onToggle }: { title: string, items: {id: string, label: string}[], selected: string[], onToggle: (id: string) => void }) {
   const [open, setOpen] = useState(true)
@@ -54,7 +54,7 @@ export default function ProblemsListPage() {
 
   // Initialize tour if this is the first visit to problems page
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_problems_tour')) {
+    if (gate.ready) {
       const problemsTour: TourStep[] = [
         {
           target: '[data-tour="problems-search"]',
@@ -75,9 +75,7 @@ export default function ProblemsListPage() {
           position: 'bottom',
         },
       ]
-      startTour(problemsTour, 'problems')
-      setTourSeen('problems')
-    }
+      autoPlayPageTour('problems', problemsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   // Compute real stats from problems data

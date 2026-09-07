@@ -39,7 +39,7 @@ import { PatternDetector } from '@/components/scanner/pattern-detector'
 import { PRImpactAnalysis } from '@/components/scanner/pr-impact-analysis'
 import { detectLanguage } from '@/lib/local-code-analyzer'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 interface AnalysisResult {
   id: string
@@ -96,7 +96,7 @@ function CodeScannerPageInner() {
 
   // Initialize tour if this is the first visit to scanner
   useEffect(() => {
-    if (mode === 'manual' && !localStorage.getItem('has_seen_scanner_tour')) {
+    if (mode === 'manual') {
       const scannerTour: TourStep[] = [
         {
           target: '[data-tour="scanner-code-input"]',
@@ -123,9 +123,7 @@ function CodeScannerPageInner() {
           position: 'bottom',
         },
       ]
-      startTour(scannerTour, 'scanner')
-      setTourSeen('scanner')
-    }
+      autoPlayPageTour('scanner', scannerTour)}
   }, [mode, startTour, setTourSeen])
   const [code, setCode] = useState('')
   const [language, setLanguage] = useState('javascript')
