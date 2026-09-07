@@ -15,6 +15,8 @@ RUN mkdir -p /app/backend && \
     chown -R appuser:appuser /app/backend
 USER appuser
 EXPOSE 8000
+# ponytail: stdlib urllib is the probe (slim image has no curl/wget).
+HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=30s CMD python -c "import urllib.request; urllib.request.urlopen('http://localhost:8000/__proxy_health', timeout=5)" || exit 1
 # Hydrate SESSION_SECRET + INTERNAL_BACKEND_SECRET from Mongo, then exec uvicorn
 # so Settings() sees them even when Dokploy wiped ad-hoc --env-add values.
 ENTRYPOINT ["python", "scripts/hydrate_runtime_secrets.py"]

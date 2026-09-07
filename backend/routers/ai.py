@@ -49,8 +49,6 @@ from models.ai import (
     GradeReq,
     HintsReq,
     IdentityVerifyReq,
-    RagEmbedReq,
-    SkillInsightsReq,
     TextToCadReq,
 )
 from services.ai import (
@@ -64,8 +62,6 @@ from services.ai import (
     handle_grade,
     handle_hints,
     handle_identity_verify,
-    handle_rag_embed,
-    handle_skill_insights,
     handle_text_to_cad,
 )
 
@@ -85,13 +81,6 @@ def safe_ai_endpoint(fn):
                 status_code=500,
             )
     return wrapper
-
-
-@router.post("/rag/embed")
-@safe_ai_endpoint
-async def rag_embed(req: RagEmbedReq, request: Request) -> dict:
-    """Generate an embedding vector for the given text using Gemini."""
-    return await handle_rag_embed(req, request)
 
 
 @router.post("/chat")
@@ -140,13 +129,6 @@ async def grade(request: Request, req: GradeReq) -> dict[str, Any]:
 async def generate_problem(request: Request, req: GenerateProblemReq) -> dict[str, Any]:
     """Generate a coding interview problem."""
     return await handle_generate_problem(request, req)
-
-
-@router.post("/skill-insights")
-@safe_ai_endpoint
-async def skill_insights(request: Request, req: SkillInsightsReq) -> dict[str, Any]:
-    """Analyze developer submissions and return skill insights."""
-    return await handle_skill_insights(request, req)
 
 
 @router.post("/identity-verify")

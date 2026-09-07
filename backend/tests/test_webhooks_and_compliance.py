@@ -21,32 +21,6 @@ def _sign(body: bytes) -> str:
     return f"sha256={digest}"
 
 
-def test_eeoc_adverse_impact_api(client):
-    # Pass rates: Majority 40%, Protected 35% -> Ratio = 0.35 / 0.40 = 0.875 (Passes 80% rule)
-    res = client.post(
-        "/api/assessment-platform/adverse-impact",
-        json={"majority_group_pass_rate": 0.40, "protected_group_pass_rate": 0.35},
-        headers=AUTH,
-    )
-    assert res.status_code == 200
-    data = res.json()
-    assert data["impact_ratio"] == 0.875
-    assert data["adverse_impact_detected"] is False
-    assert data["status"] == "PASS"
-
-    # Pass rates: Majority 50%, Protected 30% -> Ratio = 0.30 / 0.50 = 0.60 (Triggers remediation flag)
-    res_flagged = client.post(
-        "/api/assessment-platform/adverse-impact",
-        json={"majority_group_pass_rate": 0.50, "protected_group_pass_rate": 0.30},
-        headers=AUTH,
-    )
-    assert res_flagged.status_code == 200
-    data_flagged = res_flagged.json()
-    assert data_flagged["impact_ratio"] == 0.60
-    assert data_flagged["adverse_impact_detected"] is True
-    assert data_flagged["status"] == "FLAGGED_FOR_REMEDIATION"
-
-
 def test_ats_webhook_dispatch_requires_auth(client):
     payload = {
         "event_type": "attempt.graded",
@@ -119,28 +93,3 @@ def test_ats_webhook_dispatch_rejects_unallowed_target(client):
         headers=AUTH,
     )
     assert res.status_code == 403
-
-
-def test_assessment_analytics_and_csv_export(client):
-    # Test Analytics
-    res_analytics = client.get(
-        "/api/assessment-platform/assessments/asm-123/analytics", headers=AUTH
-    )
-    assert res_analytics.status_code == 200
-    data_analytics = res_analytics.json()
-    assert data_analytics["ok"] is True
-    assert "completion_rate_pct" in data_analytics
-
-    # Test CSV Export
-    res_csv = client.get("/api/assessment-platform/exports/asm-123.csv", headers=AUTH)
-    assert res_csv.status_code == 200
-    assert "text/csv" in res_csv.headers["content-type"]
-    assert "attempt_id,candidate_id" in res_csv.text
-
-
-def test_unauth_export_rejected(client):
-    res = client.get("/api/assessment-platform/exports/asm-123.csv")
-    assert res.status_code == 401
-
-    res_bi = client.get("/api/assessment-platform/export/bi")
-    assert res_bi.status_code == 401

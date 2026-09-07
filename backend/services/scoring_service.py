@@ -1,8 +1,13 @@
 """Engineering & CAD Automated Scoring Engine with Regional Localisation (ISO vs ASME GD&T).
 
-Performs automated checks on candidate CAD submissions (mass properties,
-dimensions, tolerances, feature tree, drawing completeness) with multi-unit
-conversions (mm/kg vs inch/lb) and regional standard compliance (ISO vs ASME).
+HONESTY NOTE (ponytail: known ceiling): Layer 1 compares caller-supplied
+constraints against built-in simulated readings, NOT measurements parsed from
+the candidate's CAD file; Layers 2-4 use fixed heuristic scores. This is a
+draft estimator, not a metrology result — do not present its output as
+measured CAD verification. Upgrade path: parse submitted CAD (STEP/IGES) for
+real mass properties / dimensions before scoring.
+Per-constraint pass/fail math and the EEOC adverse-impact ratio below ARE real
+deterministic computations on their inputs.
 """
 from __future__ import annotations
 
@@ -21,7 +26,12 @@ class ScoringService:
         region_standard: str = "ISO",  # "ISO" or "ASME_Y14_5"
         preferred_unit_system: str = "metric",  # "metric" (mm/kg) or "imperial" (inch/lb)
     ) -> Dict[str, Any]:
-        """Perform automated check of mass properties, dimensions, tolerances, and regional standards."""
+        """Perform automated check of mass properties, dimensions, tolerances, and regional standards.
+
+        ponytail: `actual` readings below are SIMULATED placeholders, not values
+        measured from the submission file — pass/fail math on them is real, but
+        the inputs are not. See module docstring for the upgrade path.
+        """
         passed_checks = 0
         total_checks = len(constraints)
         check_details = []
@@ -78,7 +88,9 @@ class ScoringService:
             "check_details": check_details,
             "regional_standard": region_standard,
             "unit_system": preferred_unit_system,
-            "metadata_authorship_valid": True,
+            # ponytail: authorship is NOT actually checked anywhere — None
+            # means unknown. Never surface this field as "verified".
+            "metadata_authorship_valid": None,
         }
 
     def evaluate_4_layer_cad_submission(
@@ -96,6 +108,10 @@ class ScoringService:
         Layer 2: Modelling Quality (Feature tree, sketch constraint status %, dangling refs)
         Layer 3: Drawing & GD&T Conformance (View completeness, datums, feature control frames)
         Layer 4: Engineering Judgement (SME & AI-assisted review, viva rationale score)
+
+        ponytail: Layers 2-4 below are FIXED heuristic scores (95/92/90, viva
+        length check), not measured modelling quality. Only Layer 1 runs the
+        (simulated-input) constraint math above.
         """
         constraints_list = constraints or [
             {"name": "Outer Diameter", "target_value": 50.0, "tolerance": 0.05, "unit": "mm"},

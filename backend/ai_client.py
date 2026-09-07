@@ -56,7 +56,8 @@ class DirectAiClient:
             self.fallback_index += 1
             self.provider = fallback[0]
             self.model = fallback[1]
-            self.keys = [fallback[2]]
+            fb_keys = fallback[2]
+            self.keys = list(fb_keys) if isinstance(fb_keys, list) else [fb_keys]
             self.current_key_index = 0
             self.base_url = fallback[3]
             return True

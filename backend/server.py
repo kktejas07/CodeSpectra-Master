@@ -77,42 +77,14 @@ async def shutdown_event():
 # Each router is self-contained in its own module.
 # Former monolithic `ai_router.py` has been replaced by `routers/ai.py`.
 from routers.ai import router as ai_rtr
-from routers.challenges import router as challenges_rtr
-from routers.interviews import router as interviews_rtr
-from routers.analytics import router as analytics_rtr
-from routers.hackathons import router as hackathons_rtr
-from routers.dashboard import router as dashboard_rtr
-from routers.certifications import router as certifications_rtr
-from routers.features import (
-    achievement_router,
-    integration_router,
-    scanner_router,
-)
-from routers.assessment_platform import router as assessment_platform_rtr
-from routers.identity_verify import router as identity_verify_rtr
 from routers.item_bank_router import router as item_bank_rtr
 from routers.webhooks_router import router as webhooks_rtr
-from routers.integrity_router import router as integrity_rtr
 from routers.learning import router as learning_rtr
-from routers.learning_certificates import router as learning_cert_rtr
 
 app.include_router(ai_rtr)
-app.include_router(challenges_rtr)
-app.include_router(interviews_rtr)
-app.include_router(analytics_rtr)
-app.include_router(hackathons_rtr)
-app.include_router(dashboard_rtr)
-app.include_router(certifications_rtr)
-app.include_router(achievement_router)
-app.include_router(scanner_router)
-app.include_router(integration_router)
-app.include_router(assessment_platform_rtr)
-app.include_router(identity_verify_rtr)
 app.include_router(item_bank_rtr)
 app.include_router(webhooks_rtr)
-app.include_router(integrity_rtr)
 app.include_router(learning_rtr)
-app.include_router(learning_cert_rtr)
 
 # ── Proxy to Next.js (for all /api/* requests NOT handled above) ──
 

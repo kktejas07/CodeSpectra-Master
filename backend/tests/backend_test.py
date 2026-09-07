@@ -13,6 +13,8 @@ import uuid
 import pytest
 import requests
 
+from live_frontend import make_live_session
+
 INTERNAL_NEXT = "http://localhost:3000"
 INTERNAL_FASTAPI = "http://localhost:8001"
 
@@ -26,31 +28,28 @@ TEST_PASSWORD = "QApass123!"
 
 @pytest.fixture(scope="session")
 def session() -> requests.Session:
-    s = requests.Session()
-    s.headers.update({"Content-Type": "application/json"})
-    return s
+    return make_live_session(BASE_URL)
 
 
 @pytest.fixture(scope="session")
 def auth_session(session: requests.Session) -> requests.Session:
     """Sign in (or sign up + sign in) the seeded QA user and return a cookied session."""
-    s = requests.Session()
-    s.headers.update({"Content-Type": "application/json"})
+    s = make_live_session(BASE_URL)
     # try sign-in
     r = s.post(
-        f"{BASE_URL}/api/auth/sign-in/email",
+        f"{BASE_URL}/api/auth/login",
         json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
         timeout=20,
     )
     if r.status_code != 200:
         # try to sign up first
         s.post(
-            f"{BASE_URL}/api/auth/sign-up/email",
+            f"{BASE_URL}/api/auth/signup",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD, "name": "QA Tester"},
             timeout=20,
         )
         r = s.post(
-            f"{BASE_URL}/api/auth/sign-in/email",
+            f"{BASE_URL}/api/auth/login",
             json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
             timeout=20,
         )
@@ -400,18 +399,17 @@ class TestAIRoutesAuthed:
         fixture because that user is promoted to `superadmin` (see
         /app/memory/test_credentials.md), which would (correctly) allow the
         endpoint and turn this assertion into a flaky LLM timeout."""
-        s = requests.Session()
-        s.headers.update({"Content-Type": "application/json", "Origin": "http://localhost:3000"})
+        s = make_live_session(BASE_URL)
         unique = f"qa-regular-{int(time.time() * 1000)}@example.com"
         signup = s.post(
-            f"{BASE_URL}/api/auth/sign-up/email",
+            f"{BASE_URL}/api/auth/signup",
             json={"email": unique, "password": "RegPass123!", "name": "QA Regular"},
             timeout=20,
         )
         assert signup.status_code in (200, 201), f"signup failed: {signup.status_code} {signup.text[:200]}"
-        # Better Auth auto-signs-in on sign-up. Confirm by also explicitly signing in.
+        # The signup route auto-signs-in. Confirm by also explicitly signing in.
         r_in = s.post(
-            f"{BASE_URL}/api/auth/sign-in/email",
+            f"{BASE_URL}/api/auth/login",
             json={"email": unique, "password": "RegPass123!"},
             timeout=20,
         )

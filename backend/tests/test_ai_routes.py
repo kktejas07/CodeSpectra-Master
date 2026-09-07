@@ -5,19 +5,6 @@ import pytest
 
 
 @pytest.mark.asyncio
-async def test_rag_embed_missing_key(client):
-    """POST /internal/ai/rag/embed with missing API key returns 503."""
-    resp = await client.post(
-        "/internal/ai/rag/embed",
-        json={"text": "hello world"},
-    )
-    # Without a real API key, depends on env var — in test we set GEMINI_API_KEY
-    # The key is "test-key" which Gemini will reject, but the endpoint
-    # should attempt the request.
-    assert resp.status_code in (502, 503)
-
-
-@pytest.mark.asyncio
 async def test_ai_routes_require_body(client):
     """POST to AI routes without a body returns 422."""
     # Most endpoints require body — test a few that definitely need it
@@ -58,11 +45,4 @@ async def test_identity_verify_no_images(client):
 async def test_agent_no_body(client):
     """Agent endpoint returns 422 without body."""
     resp = await client.post("/internal/ai/agent", json={})
-    assert resp.status_code == 422
-
-
-@pytest.mark.asyncio
-async def test_skill_insights_no_body(client):
-    """Skill insights returns 422 without body."""
-    resp = await client.post("/internal/ai/skill-insights", json={})
     assert resp.status_code == 422
