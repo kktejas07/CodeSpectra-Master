@@ -12,6 +12,7 @@ import { HUNDRED_DAYS, type HundredDay } from '@/lib/100-days-data'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 function getCompletedLocal(): Set<number> {
   if (typeof window === 'undefined') return new Set()
@@ -23,6 +24,7 @@ function getCompletedLocal(): Set<number> {
 
 export default function HundredDaysPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const [completed, setCompleted] = useState<Set<number>>(getCompletedLocal)
   const [filter, setFilter] = useState<'all' | 'available' | 'completed' | 'locked'>('all')
@@ -134,11 +136,39 @@ export default function HundredDaysPage() {
     })
   }
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_100-days_tour')) {
+      const hundredDaysTour: TourStep[] = [
+        {
+          target: '[data-tour="100-days-header"]',
+          title: 'Sprint overview',
+          description: 'Your 100-day coding journey lives here, from Day 1 to Day 100.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="100-days-progress"]',
+          title: 'Resume your journey',
+          description: 'Check your progress jar and jump back in where you left off.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="100-days-list"]',
+          title: 'Work the days',
+          description: 'Expand any unlocked day to solve its problems and grow your streak.',
+          position: 'top',
+        },
+      ]
+      startTour(hundredDaysTour, '100-days')
+      setTourSeen('100-days')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   return (
     <div className="space-y-6 w-full pb-12">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="100-days-header">
          <h1 className="text-3xl font-bold text-foreground flex items-center gap-3">
            100-Day Coding Sprint
          </h1>
@@ -243,7 +273,7 @@ export default function HundredDaysPage() {
           </div>
 
           {/* Current Progress Jar */}
-          <Card className="p-6 border-border/60 shadow-sm bg-linear-to-r from-blue-50/50 to-transparent dark:from-blue-950/20">
+          <Card className="p-6 border-border/60 shadow-sm bg-linear-to-r from-blue-50/50 to-transparent dark:from-blue-950/20" data-tour="100-days-progress">
              <div className="flex flex-col sm:flex-row items-center gap-6">
                 <div className="flex-1">
                    <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider mb-1">Current progress</p>
@@ -273,7 +303,7 @@ export default function HundredDaysPage() {
           </Card>
 
           {/* Days Accordion List */}
-          <div className="space-y-3">
+          <div className="space-y-3" data-tour="100-days-list">
             {HUNDRED_DAYS.map((d, index) => {
               const isCompleted = completed.has(d.day)
               const isExpanded = expandedDays.has(d.day)

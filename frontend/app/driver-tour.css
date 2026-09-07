@@ -1,0 +1,93 @@
+/* CodeSpectra theme for driver.js — product tours + feature hints.
+ *
+ * driver.js ships a light popover (white bg, Helvetica stack) that looks
+ * broken on our dark UI. This scopes our design tokens onto the popover via
+ * the `cs-tour-popover` popoverClass (set in lib/tour-driver.ts), so tours
+ * and hint popovers match the app in both themes. Imported once from
+ * app/layout.tsx, right after driver.js/dist/driver.css.
+ */
+
+.cs-tour-popover.driver-popover {
+  background-color: hsl(var(--card));
+  color: hsl(var(--card-foreground));
+  border: 1px solid hsl(var(--border));
+  border-radius: 12px;
+  font-family: inherit;
+  min-width: 260px;
+  max-width: 340px;
+  padding: 18px;
+  box-shadow: 0 12px 40px rgb(0 0 0 / 0.55);
+}
+
+.cs-tour-popover .driver-popover-title {
+  color: hsl(var(--foreground));
+  font-size: 15px;
+  font-weight: 600;
+  line-height: 1.4;
+}
+
+.cs-tour-popover .driver-popover-description {
+  color: hsl(var(--muted-foreground));
+  font-size: 13px;
+  line-height: 1.55;
+}
+
+.cs-tour-popover .driver-popover-progress-text {
+  color: hsl(var(--muted-foreground));
+  font-size: 12px;
+}
+
+.cs-tour-popover .driver-popover-close-btn {
+  color: hsl(var(--muted-foreground));
+}
+
+.cs-tour-popover .driver-popover-close-btn:hover,
+.cs-tour-popover .driver-popover-close-btn:focus {
+  color: hsl(var(--foreground));
+}
+
+.cs-tour-popover .driver-popover-footer-btn {
+  background-color: transparent;
+  border: 1px solid hsl(var(--border));
+  color: hsl(var(--foreground));
+  border-radius: 8px;
+  padding: 6px 12px;
+  font-size: 12px;
+  font-weight: 500;
+}
+
+.cs-tour-popover .driver-popover-footer-btn:hover,
+.cs-tour-popover .driver-popover-footer-btn:focus {
+  background-color: hsl(var(--accent));
+}
+
+.cs-tour-popover .driver-popover-next-btn {
+  background-color: hsl(var(--primary));
+  border-color: transparent;
+  color: hsl(var(--primary-foreground));
+}
+
+.cs-tour-popover .driver-popover-next-btn:hover,
+.cs-tour-popover .driver-popover-next-btn:focus {
+  background-color: hsl(var(--primary) / 0.9);
+}
+
+/* Arrow: driver.js colors one border side per position — mirror that with
+ * the card color (a shorthand border override here would fill all sides). */
+.cs-tour-popover .driver-popover-arrow-side-left {
+  border-left-color: hsl(var(--card));
+}
+.cs-tour-popover .driver-popover-arrow-side-right {
+  border-right-color: hsl(var(--card));
+}
+.cs-tour-popover .driver-popover-arrow-side-top {
+  border-top-color: hsl(var(--card));
+}
+.cs-tour-popover .driver-popover-arrow-side-bottom {
+  border-bottom-color: hsl(var(--card));
+}
+
+/* Hint beacons use the brand color instead of driver.js red. */
+.driver-hint {
+  --driver-hint-color: hsl(var(--primary));
+}

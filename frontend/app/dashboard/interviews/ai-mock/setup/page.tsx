@@ -1,12 +1,13 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Brain, ArrowLeft, Loader2, FileText, Sparkles } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { ROLE_OPTIONS, DIFFICULTY_LEVELS } from '@/lib/interviews/ai-mock-types'
 
 const DIFFICULTY_LABELS: Record<string, string> = {
@@ -29,6 +30,35 @@ export default function AiMockSetupPage() {
   const [duration, setDuration] = useState(20)
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  const { startTour, setTourSeen } = useTour()
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_ai-mock-setup_tour')) {
+      const aiMockSetupTour: TourStep[] = [
+        {
+          target: '[data-tour="ai-mock-setup-header"]',
+          title: 'AI mock interview',
+          description: 'Configure an AI-led practice session tailored to your goals.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="ai-mock-setup-start"]',
+          title: 'Start the session',
+          description: 'Click here to begin your AI mock interview when ready.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="ai-mock-setup-options"]',
+          title: 'Tune your practice',
+          description: 'Pick a role, difficulty, duration, and optionally add your resume.',
+          position: 'top',
+        },
+      ]
+      startTour(aiMockSetupTour, 'ai-mock-setup')
+      setTourSeen('ai-mock-setup')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null
 
@@ -79,7 +109,7 @@ export default function AiMockSetupPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-3" data-tour="ai-mock-setup-header">
         <Link href="/dashboard/interviews" className="rounded-lg p-2 hover:bg-muted">
           <ArrowLeft className="h-4 w-4" />
         </Link>
@@ -88,7 +118,7 @@ export default function AiMockSetupPage() {
         </h1>
       </div>
 
-      <Card className="p-6 space-y-5">
+      <Card className="p-6 space-y-5" data-tour="ai-mock-setup-options">
         {/* Role */}
         <div className="space-y-2">
           <label className="text-sm font-medium">Target Role</label>
@@ -175,6 +205,7 @@ export default function AiMockSetupPage() {
           disabled={starting || (role === 'Custom' && !customRole.trim())}
           className="w-full"
           size="lg"
+          data-tour="ai-mock-setup-start"
         >
           {starting ? (
             <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Preparing...</>

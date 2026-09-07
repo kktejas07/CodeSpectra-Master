@@ -6,6 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import {
   Loader2, Gavel, Trophy, Users, Clock, ArrowRight, Inbox,
@@ -24,6 +25,7 @@ const STATUS_LABEL: Record<string, string> = {
 
 export default function JudgeDashboardPage() {
   const gate = usePageGuard('judge')
+  const { startTour, setTourSeen } = useTour()
 
   const [hackathons, setHackathons] = useState<(Hackathon & { awaiting: number })[]>([])
   const [loading, setLoading] = useState(true)
@@ -53,6 +55,30 @@ export default function JudgeDashboardPage() {
     if (gate.ready) void load()
   }, [gate.ready, load])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  // Only 2 steps: the page has no stable primary-action button — per-card
+  // "Review Submissions" buttons render only when events are assigned.
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_judge-desk_tour')) {
+      const judgeDeskTour: TourStep[] = [
+        {
+          target: '[data-tour="judge-header"]',
+          title: 'Judge Desk',
+          description: 'All hackathons assigned to you for submission review appear here.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="judge-list"]',
+          title: 'Review submissions',
+          description: 'Open an event to score the submissions awaiting your review.',
+          position: 'top',
+        },
+      ]
+      startTour(judgeDeskTour, 'judge-desk')
+      setTourSeen('judge-desk')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready || loading) {
     return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
       <Loader2 className="h-5 w-5 animate-spin" /> Loading submissions to review…
@@ -61,7 +87,7 @@ export default function JudgeDashboardPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div data-tour="judge-header">
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Gavel className="h-6 w-6 text-primary" /> Judge Desk
         </h1>
@@ -70,6 +96,7 @@ export default function JudgeDashboardPage() {
         </p>
       </div>
 
+      <div data-tour="judge-list">
       {hackathons.length === 0 ? (
         <Card className="p-10 flex flex-col items-center justify-center text-center gap-3">
           <Inbox className="h-10 w-10 text-muted-foreground/40" />
@@ -124,6 +151,7 @@ export default function JudgeDashboardPage() {
           })}
         </div>
       )}
+      </div>
     </div>
   )
 }

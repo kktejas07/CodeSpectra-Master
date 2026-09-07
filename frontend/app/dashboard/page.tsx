@@ -16,7 +16,7 @@ import { getDefaultDashboard, normalizeUserRole, isSuperAdmin, isTenantAdmin } f
 import { usePageGuard } from '@/lib/use-page-guard'
 import { OrganizationDashboard } from '@/components/dashboard/organization-dashboard'
 import { useTour } from '@/components/tour/tour-context'
-import { WELCOME_TOUR_STEPS } from '@/lib/tour-driver'
+import { WELCOME_TOUR_STEPS, startPageHints, type TourHint } from '@/lib/tour-driver'
 import {
   DeveloperRankBanner,
   IsometricScanChip,
@@ -34,7 +34,7 @@ interface ActivityItem {
 
 export default function DashboardPage() {
   const gate = usePageGuard('user')
-  const { startTour, setTourSeen } = useTour()
+  const { startTour, setTourSeen, isTourSeen } = useTour()
 
   // Auto-start welcome tour on first visit
   useEffect(() => {
@@ -43,6 +43,30 @@ export default function DashboardPage() {
       setTourSeen('welcome')
     }
   }, [startTour, setTourSeen])
+
+  // Feature hints (pulsing beacons) for returning users — the welcome tour
+  // covers first-timers, so hints only appear once the tour has been seen.
+  // Dismissals persist per hint; driver.js skips missing elements.
+  useEffect(() => {
+    if (!gate.ready || !isTourSeen('welcome')) return
+    const homeHints: TourHint[] = [
+      {
+        id: 'daily-challenge',
+        target: '[data-hint="daily-challenge"]',
+        title: 'Daily Challenge',
+        description: 'A fresh challenge every day. Solve it to keep your streak alive and earn bonus XP.',
+        position: 'bottom',
+      },
+      {
+        id: 'contributions',
+        target: '[data-hint="contribution-graph"]',
+        title: 'Your Activity Graph',
+        description: 'Every scan, solution, and fix fills this in. Consistency beats intensity.',
+        position: 'top',
+      },
+    ]
+    startPageHints('home', homeHints)
+  }, [gate.ready, isTourSeen])
   const router = useRouter()
   const { user: fbUser, loading: isPending } = useAuth()
   const addToast = useToast()
@@ -157,9 +181,12 @@ export default function DashboardPage() {
           </div>
         </Card>
 
-        <DailyChallengeWidget />
+        <div data-hint="daily-challenge" className="min-w-0">
+          <DailyChallengeWidget />
+        </div>
       </div>
 
+      <div data-hint="contribution-graph">
       <ContributionGraph
         cells={heatmap?.cells ?? null}
         dayLabels={heatmap?.dayLabels}
@@ -168,6 +195,7 @@ export default function DashboardPage() {
         totalContributions={heatmap?.totalContributions ?? 0}
         totalActiveDays={heatmap?.totalActiveDays ?? 0}
       />
+      </div>
 
       {myTeams.length > 0 && (
         <Card className="border-border/60 p-6">

@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { useToast } from '@/lib/toast-context'
 import {
   Briefcase, ExternalLink, Clock, Loader2,
@@ -34,6 +35,7 @@ const STATUS_CONFIG: Record<AppliedJob['status'], { label: string; color: string
 export default function DashboardJobsPage() {
   const { user } = useAuth()
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const addToast = useToast()
   const [applications, setApplications] = useState<AppliedJob[]>([])
   const [loading, setLoading] = useState(true)
@@ -47,6 +49,34 @@ export default function DashboardJobsPage() {
       .finally(() => setLoading(false))
   }, [gate.ready, user])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_jobs_tour')) {
+      const jobsTour: TourStep[] = [
+        {
+          target: '[data-tour="jobs-header"]',
+          title: 'Track applications',
+          description: 'Every job you apply to shows up here with its current status.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="jobs-browse"]',
+          title: 'Find new roles',
+          description: 'Browse open positions and apply to the ones that interest you.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="jobs-list"]',
+          title: 'Follow each status',
+          description: 'Watch applications move from submitted to review, accepted, or rejected.',
+          position: 'top',
+        },
+      ]
+      startTour(jobsTour, 'jobs')
+      setTourSeen('jobs')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return (
     <div className="flex justify-center py-20">
       <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -55,16 +85,17 @@ export default function DashboardJobsPage() {
 
   return (
     <div className="space-y-8">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="jobs-header">
         <div>
           <h1 className="text-3xl font-bold">My Applications</h1>
           <p className="text-muted-foreground mt-1">Track your job applications and their status</p>
         </div>
-        <Button variant="outline" asChild className="gap-1.5">
+        <Button variant="outline" asChild className="gap-1.5" data-tour="jobs-browse">
           <Link href="/jobs">Browse Jobs <ArrowRight className="h-4 w-4" /></Link>
         </Button>
       </div>
 
+      <div data-tour="jobs-list">
       {loading ? (
         <div className="flex justify-center py-20">
           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
@@ -115,6 +146,7 @@ export default function DashboardJobsPage() {
           })}
         </div>
       )}
+      </div>
 
       <div className="border-t pt-6">
         <p className="text-sm text-muted-foreground mb-2">Looking for more opportunities?</p>

@@ -16,6 +16,7 @@ import { AiCreditsWidget } from '@/components/ui/ai-credits-widget'
 import { Edit2, Trophy, Shield, Clock, FolderGit2, Activity, Loader, CheckCircle2, XCircle, Smartphone, User, Loader2, Sparkles, TrendingUp, ArrowLeft, Eye, Lightbulb, FileText, Briefcase, Award, Info, FileStack, Trash2, Plus, Image as ImageIcon, Share2 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText } from '@/components/ui/skeleton-boneyard'
 import Link from 'next/link'
 import Image from 'next/image'
@@ -269,10 +270,40 @@ export default function ProfilePage() {
 
   useEffect(() => { void load() }, [load])
 
+  const { startTour, setTourSeen } = useTour()
+
   useEffect(() => {
     const interval = setInterval(() => { void load() }, 30_000)
     return () => clearInterval(interval)
   }, [load])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_profile_tour')) {
+      const profileTour: TourStep[] = [
+        {
+          target: '[data-tour="profile-header"]',
+          title: 'Your public identity',
+          description: 'Your avatar, level, and XP introduce you to recruiters and teammates.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="profile-edit"]',
+          title: 'Keep it fresh',
+          description: 'Edit your bio, links, and experience to raise your profile completeness.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="profile-about"]',
+          title: 'Tell your story',
+          description: 'Your About section, activity streaks, and history live in this column.',
+          position: 'top',
+        },
+      ]
+      startTour(profileTour, 'profile')
+      setTourSeen('profile')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'User'
   const avatarSrc = avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`
@@ -335,7 +366,7 @@ export default function ProfilePage() {
         {/* Left Column (Sidebar) */}
         <aside className="space-y-6 -mt-24 relative z-10">
           {/* Premium Profile Card */}
-          <Card className="border-border/60 p-6 text-center shadow-2xl bg-card/70 backdrop-blur-xl relative overflow-hidden group">
+          <Card data-tour="profile-header" className="border-border/60 p-6 text-center shadow-2xl bg-card/70 backdrop-blur-xl relative overflow-hidden group">
             {/* Glassmorphism gradient accents */}
             <div className="absolute top-0 right-0 w-32 h-32 bg-mint-pulse/20 rounded-full blur-3xl -mr-10 -mt-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
             <div className="absolute bottom-0 left-0 w-32 h-32 bg-emerald-500/20 rounded-full blur-3xl -ml-10 -mb-10 pointer-events-none transition-opacity group-hover:opacity-100 opacity-70" />
@@ -404,7 +435,7 @@ export default function ProfilePage() {
               </div>
             </div>
             
-            <Link href="/dashboard/profile/edit" className="w-full mt-6 block">
+            <Link href="/dashboard/profile/edit" className="w-full mt-6 block" data-tour="profile-edit">
               <Button size="sm" className="w-full gap-2 rounded-xl h-10 font-bold bg-primary/10 text-primary hover:bg-primary hover:text-primary-foreground transition-all">
                 <Edit2 className="h-4 w-4" /> Edit Profile
               </Button>
@@ -484,7 +515,7 @@ export default function ProfilePage() {
 
         {/* Right Column (Main Content) */}
         <div className="space-y-6 min-w-0">
-          <Card className="border-border/60 p-6 shadow-sm">
+          <Card data-tour="profile-about" className="border-border/60 p-6 shadow-sm">
             <div className="flex items-center justify-between mb-2">
               <h2 className="text-lg font-bold text-foreground tracking-tight">About</h2>
               <Link href="/dashboard/profile/edit" className="text-xs font-medium text-primary hover:underline">Edit</Link>

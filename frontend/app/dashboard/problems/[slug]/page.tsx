@@ -13,6 +13,7 @@ import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { AnalysisPanel } from '@/components/ai/analysis-panel'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -98,6 +99,7 @@ export default function ProblemDetailPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
   const addToast = useToast()
+  const { startTour, setTourSeen } = useTour()
 
   const params = useParams<{ slug: string }>()
   const slug = params?.slug ?? ''
@@ -339,6 +341,35 @@ export default function ProblemDetailPage() {
       .finally(() => setDiscussionsLoading(false))
   }, [slug])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  // Gated on problem load so the anchored landmarks exist on first paint.
+  useEffect(() => {
+    if (gate.ready && problem && !loadError && !localStorage.getItem('has_seen_problem-detail_tour')) {
+      const problemDetailTour: TourStep[] = [
+        {
+          target: '[data-tour="problem-detail-header"]',
+          title: 'Problem at a glance',
+          description: 'Title, difficulty, and quick actions live in this header.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="problem-detail-actions"]',
+          title: 'Run then submit',
+          description: 'Compile against sample tests first, then submit for full judging.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="problem-detail-statement"]',
+          title: 'Read and solve',
+          description: 'Study the statement and samples here while you code on the right.',
+          position: 'right',
+        },
+      ]
+      startTour(problemDetailTour, 'problem-detail')
+      setTourSeen('problem-detail')
+    }
+  }, [gate.ready, problem, loadError, startTour, setTourSeen])
+
   function onChangeLanguage(next: string) {
     setLanguage(next)
     const newCode = problem?.starter_code?.[next]
@@ -484,7 +515,7 @@ export default function ProblemDetailPage() {
       <ProctorMonitor sessionKind="problem" sessionId={problem.slug} captureInterval={30000} blockKeyboardShortcuts lockdownBrowser detectFace />
 
       {/* Top Header */}
-      <header className="flex items-center justify-between px-4 h-14 border-b border-border bg-card shrink-0">
+      <header className="flex items-center justify-between px-4 h-14 border-b border-border bg-card shrink-0" data-tour="problem-detail-header">
         <div className="flex items-center gap-3">
           <button onClick={() => router.push('/dashboard/problems')} className="p-1.5 hover:bg-muted rounded-md transition-colors text-muted-foreground hover:text-foreground">
              <ArrowLeft className="h-4 w-4" />
@@ -543,7 +574,7 @@ export default function ProblemDetailPage() {
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
         
         {/* LEFT PANE */}
-        <section className="lg:w-[45%] flex flex-col border-b lg:border-b-0 lg:border-r border-border min-h-0">
+        <section className="lg:w-[45%] flex flex-col border-b lg:border-b-0 lg:border-r border-border min-h-0" data-tour="problem-detail-statement">
            {/* Tabs */}
            <div className="flex items-center px-4 pt-2 border-b border-border bg-muted/10 shrink-0 gap-6">
               <button onClick={() => setLeftTab('problem')} className={`pb-2 text-sm font-bold border-b-2 transition-colors ${leftTab === 'problem' ? 'border-primary text-primary' : 'border-transparent text-muted-foreground hover:text-foreground'}`}>Problem</button>
@@ -774,7 +805,7 @@ export default function ProblemDetailPage() {
                  )}
               </div>
 
-              <div className="flex items-center justify-end gap-3 p-3 border-t border-border/50 bg-background/50 backdrop-blur">
+              <div className="flex items-center justify-end gap-3 p-3 border-t border-border/50 bg-background/50 backdrop-blur" data-tour="problem-detail-actions">
                  <Button 
                    variant="outline" 
                    onClick={() => execute('run')}

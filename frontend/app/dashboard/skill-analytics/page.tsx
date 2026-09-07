@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import { Activity, CheckCircle2, Clock, Loader2, Sparkles, Target, TrendingUp, Users, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface SkillData {
   user?: { email?: string; id?: string } | null
@@ -39,6 +40,7 @@ interface SkillData {
 
 export default function SkillAnalyticsPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const [data, setData] = useState<SkillData | null>(null)
   const [err, setErr] = useState<string | null>(null)
@@ -55,6 +57,34 @@ export default function SkillAnalyticsPage() {
       .catch((e) => setErr(e instanceof Error ? e.message : String(e)))
       .finally(() => setLoading(false))
   }, [])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_skill-analytics_tour')) {
+      const skillAnalyticsTour: TourStep[] = [
+        {
+          target: '[data-tour="skill-analytics-header"]',
+          title: 'Skill fingerprint',
+          description: 'Your problem-solving fingerprint, built from every submission.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="skill-analytics-kpis"]',
+          title: 'Headline metrics',
+          description: 'Submissions, accuracy, scores, and run time at a glance.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="skill-analytics-recent"]',
+          title: 'Recent submissions',
+          description: 'Per-problem tests, scores, and timing for your latest work.',
+          position: 'top',
+        },
+      ]
+      startTour(skillAnalyticsTour, 'skill-analytics')
+      setTourSeen('skill-analytics')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null
 
@@ -123,7 +153,7 @@ export default function SkillAnalyticsPage() {
 
   return (
     <div className="space-y-6" data-testid="skill-analytics-page">
-      <div>
+      <div data-tour="skill-analytics-header">
         <h1 className="text-2xl font-bold">Skill Analytics</h1>
         <p className="text-sm text-muted-foreground">
           {userEmail} — your problem-solving fingerprint.
@@ -131,7 +161,7 @@ export default function SkillAnalyticsPage() {
       </div>
 
       {/* KPIs */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3" data-tour="skill-analytics-kpis">
         {cards.map((c) => (
           <div
             key={c.testid}
@@ -210,7 +240,7 @@ export default function SkillAnalyticsPage() {
       </div>
 
       {/* Recent submissions */}
-      <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden">
+      <div className="rounded-xl border border-border/60 bg-card/40 overflow-hidden" data-tour="skill-analytics-recent">
         <div className="border-b border-border/60 px-4 py-3 text-sm font-semibold">
           Recent submissions
         </div>

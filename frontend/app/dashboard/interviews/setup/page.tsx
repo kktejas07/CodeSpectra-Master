@@ -1,11 +1,12 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { ResumeUpload } from '@/components/interviews/resume-upload'
 import { AudioCameraSettings } from '@/components/interviews/audio-camera-settings'
 import { InterviewRoleSelector } from '@/components/interviews/interview-role-selector'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Loader2 } from 'lucide-react'
 
 type InterviewStage = 'role-selection' | 'resume' | 'settings' | 'dynamic' | 'feedback'
@@ -53,12 +54,37 @@ export default function InterviewSetupPage() {
     setStage('role-selection')
   }
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  // Only 2 stable first-paint landmarks: the page stages render conditionally,
+  // so the tour anchors the always-rendered wrapper and the initial role step.
+  const { startTour, setTourSeen } = useTour()
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_interview-setup_tour')) {
+      const interviewSetupTour: TourStep[] = [
+        {
+          target: '[data-tour="interview-setup-header"]',
+          title: 'Set up interview',
+          description: 'Follow these steps to configure and launch your practice interview.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interview-setup-roles"]',
+          title: 'Pick your role',
+          description: 'Choose a role to tailor the interview questions to that position.',
+          position: 'bottom',
+        },
+      ]
+      startTour(interviewSetupTour, 'interview-setup')
+      setTourSeen('interview-setup')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   return (
-    <div className="min-h-screen bg-background">
+    <div className="min-h-screen bg-background" data-tour="interview-setup-header">
       {stage === 'role-selection' && (
-        <div className="py-12">
+        <div className="py-12" data-tour="interview-setup-roles">
           <InterviewRoleSelector
             onSelectRole={handleRoleSelect}
             completedRoles={completedRoles}

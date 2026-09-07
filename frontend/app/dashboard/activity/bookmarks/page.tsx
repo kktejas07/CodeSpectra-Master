@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -29,6 +30,7 @@ type Tab = 'problems' | 'quizzes'
 
 function BookmarksInner() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const search = useSearchParams()
   const router = useRouter()
   const tab: Tab = search.get('tab') === 'quizzes' ? 'quizzes' : 'problems'
@@ -58,6 +60,34 @@ function BookmarksInner() {
     if (!gate.ready) return
     void load()
   }, [gate.ready])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_bookmarks_tour')) {
+      const bookmarksTour: TourStep[] = [
+        {
+          target: '[data-tour="bookmarks-header"]',
+          title: 'Saved for later',
+          description: 'Problems and quiz questions you bookmark live here.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="bookmarks-tabs"]',
+          title: 'Switch collections',
+          description: 'Toggle between bookmarked problems and module-quiz questions.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="bookmarks-list"]',
+          title: 'Revisit and remove',
+          description: 'Click any entry to jump back in, or remove it when done.',
+          position: 'top',
+        },
+      ]
+      startTour(bookmarksTour, 'bookmarks')
+      setTourSeen('bookmarks')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   async function removeProblem(problemId: string, slug: string, title: string) {
     await csrfFetch('/api/user/problem-bookmarks', {
@@ -101,14 +131,14 @@ function BookmarksInner() {
 
   return (
     <div className="w-full space-y-6">
-      <div>
+      <div data-tour="bookmarks-header">
         <h1 className="text-3xl font-bold tracking-tight">Bookmarked Questions</h1>
         <p className="mt-1 text-sm text-muted-foreground">
           Problems and module-quiz questions you saved for later.
         </p>
       </div>
 
-      <div className="flex w-fit gap-1 rounded-lg border border-border/60 bg-muted/30 p-1">
+      <div className="flex w-fit gap-1 rounded-lg border border-border/60 bg-muted/30 p-1" data-tour="bookmarks-tabs">
         <button
           type="button"
           onClick={() => setTab('problems')}
@@ -131,6 +161,7 @@ function BookmarksInner() {
         </button>
       </div>
 
+      <div data-tour="bookmarks-list">
       {tab === 'problems' ? (
         emptyProblems ? (
           <EmptyState
@@ -191,6 +222,7 @@ function BookmarksInner() {
           ))}
         </ul>
       )}
+      </div>
     </div>
   )
 }

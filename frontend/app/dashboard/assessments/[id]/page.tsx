@@ -7,6 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
@@ -59,6 +60,35 @@ export default function ExamPage() {
       router.replace('/dashboard/admin/assessments')
     }
   }, [gate.ready, gate.user, router])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  const { startTour, setTourSeen } = useTour()
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_assessment-detail_tour')) {
+      const assessmentDetailTour: TourStep[] = [
+        {
+          target: '[data-tour="assessment-detail-header"]',
+          title: 'Assessment header',
+          description: 'Track your progress and the remaining time from this bar.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="assessment-detail-nav"]',
+          title: 'Navigate questions',
+          description: 'Move between questions or submit your assessment when finished.',
+          position: 'top',
+        },
+        {
+          target: '[data-tour="assessment-detail-question"]',
+          title: 'Answer here',
+          description: 'Read each question and select or type your answer in this card.',
+          position: 'top',
+        },
+      ]
+      startTour(assessmentDetailTour, 'assessment-detail')
+      setTourSeen('assessment-detail')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const [exam, setExam] = useState<ExamDoc | null>(null)
   const [loading, setLoading] = useState(true)
@@ -370,7 +400,7 @@ export default function ExamPage() {
       />
 
       {/* Header */}
-      <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0">
+      <header className="flex items-center justify-between px-4 py-3 border-b border-border bg-card/40 backdrop-blur shrink-0" data-tour="assessment-detail-header">
         <div className="flex items-center gap-3">
           <Button variant="ghost" size="sm" onClick={() => router.push('/dashboard/assessments')}>
             <ArrowLeft className="h-4 w-4" />
@@ -391,7 +421,7 @@ export default function ExamPage() {
       <div className="flex-1 overflow-auto p-6">
         {question && (
           <div className="max-w-4xl mx-auto space-y-6">
-            <Card className="p-6 space-y-4">
+            <Card className="p-6 space-y-4" data-tour="assessment-detail-question">
               <div className="flex items-center gap-2">
                 <Badge>{question.type}</Badge>
                 <Badge variant="outline">{question.points} pts</Badge>
@@ -475,7 +505,7 @@ export default function ExamPage() {
             </Card>
 
             {/* Navigation */}
-            <div className="flex flex-col gap-4 items-center">
+            <div className="flex flex-col gap-4 items-center" data-tour="assessment-detail-nav">
               <div className="flex items-center justify-between w-full">
                 <Button
                   variant="outline"

@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Users, Link2, Copy, Check, Loader2, Star, Coins } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
 interface ReferralStats {
@@ -21,6 +22,7 @@ interface ReferralStats {
 
 export default function ReferralsPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const [stats, setStats] = useState<ReferralStats | null>(null)
   const [loading, setLoading] = useState(true)
   const [generating, setGenerating] = useState(false)
@@ -33,6 +35,30 @@ export default function ReferralsPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  // Only 2 steps: the stats grid and referred-users list render only after a
+  // code exists, so there is no third stable first-paint landmark.
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_referrals_tour')) {
+      const referralsTour: TourStep[] = [
+        {
+          target: '[data-tour="referrals-header"]',
+          title: 'Invite and earn',
+          description: 'Invite friends and earn XP plus commission rewards.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="referrals-action"]',
+          title: 'Your referral code',
+          description: 'Generate your code, share the link, and track rewards here.',
+          position: 'top',
+        },
+      ]
+      startTour(referralsTour, 'referrals')
+      setTourSeen('referrals')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   async function handleGenerate() {
     setGenerating(true)
@@ -62,7 +88,7 @@ export default function ReferralsPage() {
 
   return (
     <div className="space-y-6">
-      <div>
+      <div data-tour="referrals-header">
         <div className="flex items-center gap-2">
           <Users className="w-6 h-6 text-primary" />
           <h1 className="text-3xl font-bold text-foreground">Referrals</h1>
@@ -70,6 +96,7 @@ export default function ReferralsPage() {
         <p className="text-muted-foreground mt-1">Invite friends and earn XP and commission rewards.</p>
       </div>
 
+      <div data-tour="referrals-action">
       {!stats?.code ? (
         <Card className="border-border/60 p-10 text-center">
           <Users className="mx-auto h-10 w-10 text-muted-foreground/40" />
@@ -172,6 +199,7 @@ export default function ReferralsPage() {
           )}
         </>
       )}
+      </div>
     </div>
   )
 }

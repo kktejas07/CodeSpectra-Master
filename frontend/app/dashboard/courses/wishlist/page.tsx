@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { EmptyState } from '@/components/ui/empty-state'
 
@@ -23,6 +24,7 @@ type CourseCard = {
 
 export default function CourseWishlistPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const [loading, setLoading] = useState(true)
   const [courses, setCourses] = useState<CourseCard[]>([])
   const [ids, setIds] = useState<string[]>([])
@@ -50,6 +52,34 @@ export default function CourseWishlistPage() {
     if (gate.ready) void load()
   }, [gate.ready])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !loading && !localStorage.getItem('has_seen_wishlist_tour')) {
+      const wishlistTour: TourStep[] = [
+        {
+          target: '[data-tour="wishlist-header"]',
+          title: 'Your saved courses',
+          description: 'Courses you tap the heart on are saved here for later.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="wishlist-browse"]',
+          title: 'Find more courses',
+          description: 'Browse the catalog to discover courses worth saving.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="wishlist-list"]',
+          title: 'Open or remove',
+          description: 'Open a saved course to start learning, or remove it anytime.',
+          position: 'top',
+        },
+      ]
+      startTour(wishlistTour, 'wishlist')
+      setTourSeen('wishlist')
+    }
+  }, [gate.ready, loading, startTour, setTourSeen])
+
   const remove = async (courseId: string) => {
     setCourses(prev => prev.filter(c => c.id !== courseId))
     setIds(prev => prev.filter(id => id !== courseId))
@@ -74,7 +104,7 @@ export default function CourseWishlistPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex items-center justify-between gap-4">
+      <div className="flex items-center justify-between gap-4" data-tour="wishlist-header">
         <div>
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Heart className="h-6 w-6 text-red-500 fill-red-500" /> Watchlist
@@ -83,11 +113,12 @@ export default function CourseWishlistPage() {
             Courses you saved for later · {ids.length} saved
           </p>
         </div>
-        <Button variant="outline" asChild>
+        <Button variant="outline" asChild data-tour="wishlist-browse">
           <Link href="/dashboard/courses">Browse courses</Link>
         </Button>
       </div>
 
+      <div data-tour="wishlist-list">
       {courses.length === 0 ? (
         <EmptyState
           variant="courses"
@@ -128,6 +159,7 @@ export default function CourseWishlistPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

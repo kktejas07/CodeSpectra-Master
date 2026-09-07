@@ -5,6 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Upload, Loader2, Trash2, Plus, Search } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -25,6 +26,7 @@ interface Resume {
 
 export default function MyResumesPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const addToast = useToast()
   const [resumes, setResumes] = useState<Resume[]>([])
   const [loading, setLoading] = useState(true)
@@ -43,6 +45,34 @@ export default function MyResumesPage() {
   }
 
   useEffect(() => { fetchData() }, [])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_resumes_tour')) {
+      const resumesTour: TourStep[] = [
+        {
+          target: '[data-tour="resumes-templates"]',
+          title: 'Choose a template',
+          description: 'Browse polished templates and click any card to start building your resume.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="resumes-create"]',
+          title: 'Create new resume',
+          description: 'Click the dashed card to build a resume from your profile or from scratch.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="resumes-list"]',
+          title: 'Manage your resumes',
+          description: 'All saved resumes appear here — search, preview, or delete them in bulk.',
+          position: 'top',
+        },
+      ]
+      startTour(resumesTour, 'resumes')
+      setTourSeen('resumes')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const handleDelete = async (ids: string[]) => {
     for (const id of ids) {
@@ -88,12 +118,12 @@ export default function MyResumesPage() {
     <div className="space-y-6 w-full pb-10">
       
       {/* Top Section: Templates */}
-      <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-6 overflow-hidden">
+      <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-6 overflow-hidden" data-tour="resumes-templates">
         <h2 className="text-xl font-bold text-foreground mb-6 tracking-tight">Choose from a wide variety of templates</h2>
         
         <div className="flex gap-4 overflow-x-auto pb-4 custom-scrollbar -mx-2 px-2">
           {/* Create New Card */}
-          <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-blue-500/50 transition-all group">
+          <div onClick={handleTemplateClick} data-tour="resumes-create" className="shrink-0 w-[240px] h-[320px] rounded-xl border-2 border-dashed border-border flex flex-col items-center justify-center cursor-pointer hover:bg-muted/30 hover:border-blue-500/50 transition-all group">
             <div className="h-14 w-14 rounded-full bg-blue-600 flex items-center justify-center mb-4 group-hover:scale-110 transition-transform shadow-md">
               <Plus className="h-7 w-7 text-white" />
             </div>
@@ -224,7 +254,7 @@ export default function MyResumesPage() {
       </div>
 
       {/* Bottom Section: My Resumes */}
-      <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-6 min-h-[400px] flex flex-col">
+      <div className="bg-card rounded-2xl border border-border/60 shadow-sm p-6 min-h-[400px] flex flex-col" data-tour="resumes-list">
         <h2 className="text-xl font-bold text-foreground mb-6 tracking-tight">My Resumes</h2>
         
         {loading ? (

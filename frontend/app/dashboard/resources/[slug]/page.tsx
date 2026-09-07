@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Loader2, HelpCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { FlipbookViewer } from '@/components/resources/flipbook-viewer'
 import { EbookQuiz } from '@/components/resources/ebook-quiz'
@@ -25,6 +26,7 @@ type EbookDetail = {
 
 export default function EbookReaderPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const params = useParams()
   const slug = String(params?.slug || '')
   const [ebook, setEbook] = useState<EbookDetail | null>(null)
@@ -162,6 +164,34 @@ export default function EbookReaderPage() {
     pdf.save(`${filename}.pdf`)
   }, [ebook])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_resource-reader_tour')) {
+      const resourceReaderTour: TourStep[] = [
+        {
+          target: '[data-tour="resource-reader-header"]',
+          title: 'Ebook overview',
+          description: 'This header shows the guide title, topic, and estimated reading time.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="resource-reader-actions"]',
+          title: 'Back to library',
+          description: 'Use this link anytime to return to the full resources library.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="resource-reader-viewer"]',
+          title: 'Read and flip',
+          description: 'Flip through pages here and export the whole guide as a PDF.',
+          position: 'top',
+        },
+      ]
+      startTour(resourceReaderTour, 'resource-reader')
+      setTourSeen('resource-reader')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready || loading) {
     return (
       <div className="w-full space-y-6">
@@ -186,8 +216,8 @@ export default function EbookReaderPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div>
-        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2">
+      <div data-tour="resource-reader-header">
+        <Button asChild variant="ghost" size="sm" className="-ml-2 mb-2" data-tour="resource-reader-actions">
           <Link href="/dashboard/resources">
             <ArrowLeft className="mr-1 h-4 w-4" /> Resources
           </Link>
@@ -231,7 +261,9 @@ export default function EbookReaderPage() {
         )}
       </div>
 
-      <FlipbookViewer pages={ebook.pages || []} title={ebook.title} onExportPdf={handleExportPdf} />
+      <div data-tour="resource-reader-viewer">
+        <FlipbookViewer pages={ebook.pages || []} title={ebook.title} onExportPdf={handleExportPdf} />
+      </div>
 
       {/* Quiz Section */}
       {quizQuestions.length > 0 && !showQuiz && (

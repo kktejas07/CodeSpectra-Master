@@ -17,6 +17,7 @@ import {
   ChevronUp, Share2, Heart, Download, HelpCircle, Check, Copy, Link2
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { pickResumeLessonId } from '@/lib/courses/watch-progress'
@@ -112,6 +113,36 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   const [progress, setProgress] = useState<Progress | null>(null)
   const [showQuiz, setShowQuiz] = useState<number | null>(null)
   const router = useRouter()
+  const { startTour, setTourSeen } = useTour()
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  // Gated on course load so the anchored landmarks exist on first paint.
+  useEffect(() => {
+    if (gate.ready && !loading && course && !localStorage.getItem('has_seen_course-detail_tour')) {
+      const courseDetailTour: TourStep[] = [
+        {
+          target: '[data-tour="course-detail-header"]',
+          title: 'Course overview',
+          description: 'Title, rating, and what this course covers at a glance.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="course-detail-enroll"]',
+          title: 'Enroll or continue',
+          description: 'Enroll for free, or jump straight back into your lessons.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="course-detail-curriculum"]',
+          title: 'Learn step by step',
+          description: 'Work through the curriculum, track progress, and earn your certificate.',
+          position: 'top',
+        },
+      ]
+      startTour(courseDetailTour, 'course-detail')
+      setTourSeen('course-detail')
+    }
+  }, [gate.ready, loading, course, startTour, setTourSeen])
 
   useEffect(() => {
     setLoading(true)
@@ -359,7 +390,7 @@ const handleEnroll = async () => {
         <div className="absolute top-0 right-0 w-80 h-80 bg-purple-600/20 rounded-full blur-[100px] pointer-events-none" />
         <div className="absolute bottom-0 left-1/2 w-64 h-64 bg-cyan-500/10 rounded-full blur-[80px] pointer-events-none" />
 
-        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-16 relative z-10">
+        <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10 pb-16 relative z-10" data-tour="course-detail-header">
           {/* Breadcrumb */}
           <div className="flex items-center gap-2 text-sm text-white/50 mb-8">
             <Link href="/dashboard/courses" className="hover:text-white flex items-center gap-1 transition-colors">
@@ -410,7 +441,7 @@ const handleEnroll = async () => {
               </div>
 
               {/* CTA */}
-              <div className="flex flex-wrap items-center gap-3 pt-2">
+              <div className="flex flex-wrap items-center gap-3 pt-2" data-tour="course-detail-enroll">
                 {enrolled ? (
                   <Button
                     className="bg-emerald-500 hover:bg-emerald-600 text-white h-12 px-8 text-base font-semibold shadow-lg shadow-emerald-500/20 rounded-xl"
@@ -540,7 +571,7 @@ const handleEnroll = async () => {
       </div>
 
       {/* ── Main Content ── */}
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-10" data-tour="course-detail-curriculum">
         <div className="grid lg:grid-cols-3 gap-10">
 
           {/* Left col — main content */}

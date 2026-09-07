@@ -11,6 +11,7 @@
  */
 
 import { driver, type Driver, type DriveStep } from 'driver.js'
+import { hints, type DriverHint, type Hints } from 'driver.js/hints'
 
 export interface TourStep {
   target: string
@@ -18,6 +19,18 @@ export interface TourStep {
   description: string
   position?: 'top' | 'bottom' | 'left' | 'right'
 }
+
+export interface TourHint {
+  /** Stable id — used to persist dismissal in localStorage. */
+  id: string
+  target: string
+  title: string
+  description: string
+  position?: 'top' | 'bottom' | 'left' | 'right'
+}
+
+/** CSS class that themes driver.js popovers to match the app (see app/driver-tour.css). */
+export const TOUR_POPOVER_CLASS = 'cs-tour-popover'
 
 /**
  * Single source of truth mapping a dashboard pathname → tour id.
@@ -42,15 +55,69 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/settings': 'settings',
   '/dashboard/activity/recent': 'recent',
   '/dashboard/admin/system': 'admin-system',
+  // ponytail: bracket segments are dynamic ids — resolveTourId matches them
+  // against any single path segment (see below).
+  '/dashboard/interviews/[id]': 'interview-detail',
+  // User pages with first-visit tours (one entry per page — the registry is
+  // keyed by tour id, so ids must be unique across pages).
+  '/dashboard/profile': 'profile',
+  '/dashboard/notifications': 'notifications',
+  '/dashboard/notifications/preferences': 'notification-preferences',
+  '/dashboard/jobs': 'jobs',
+  '/dashboard/quizzes': 'quizzes',
+  '/dashboard/mock-tests': 'mock-tests',
+  '/dashboard/mock-tests/[id]': 'mock-test-detail',
+  '/dashboard/challenges': 'challenges',
+  '/dashboard/challenges/[id]': 'challenge-detail',
+  '/dashboard/courses/[id]': 'course-detail',
+  '/dashboard/courses/my': 'my-courses',
+  '/dashboard/courses/wishlist': 'wishlist',
+  '/dashboard/courses/generate': 'course-generate',
+  '/dashboard/problems/[slug]': 'problem-detail',
+  '/dashboard/codeathons/[id]': 'codeathon-detail',
+  '/dashboard/interviews/schedule': 'interview-schedule',
+  '/dashboard/interviews/setup': 'interview-setup',
+  '/dashboard/interviews/ai-mock/setup': 'ai-mock-setup',
+  '/dashboard/assessments/[id]': 'assessment-detail',
+  '/dashboard/assessments/ai-fluency': 'ai-fluency',
+  '/dashboard/resumes': 'resumes',
+  '/dashboard/calendar': 'calendar',
+  '/dashboard/billing': 'billing',
+  '/dashboard/support': 'support',
+  '/dashboard/judge': 'judge-desk',
+  '/dashboard/activity/sessions': 'sessions',
+  '/dashboard/activity/bookmarks': 'bookmarks',
+  '/dashboard/referrals': 'referrals',
+  '/dashboard/certifications': 'certifications',
+  '/dashboard/skill-analytics': 'skill-analytics',
+  '/dashboard/resources': 'resources',
+  '/dashboard/resources/[slug]': 'resource-reader',
+  '/dashboard/interview-prep': 'interview-prep',
+  '/dashboard/agent': 'agent',
+  '/dashboard/100-days': '100-days',
+  '/dashboard/identity-verify': 'identity-verify',
+  '/dashboard/arena/[id]': 'arena-detail',
+  '/dashboard/settings/ai': 'ai-settings',
+  '/dashboard/recruiter-analytics': 'recruiter-analytics',
+  '/dashboard/pricing': 'pricing',
+  '/dashboard/cad': 'cad',
 }
 
-/** Longest-prefix match so `/dashboard` doesn't shadow every page. */
+/**
+ * Longest-prefix match so `/dashboard` doesn't shadow every page.
+ * `[param]` segments (e.g. `/dashboard/interviews/[id]`) match any single
+ * path segment, so dynamic pages resolve to their own tour instead of the
+ * parent list page's tour.
+ */
 export function resolveTourId(pathname: string): string | null {
   const base = pathname.split('?')[0]
   if (TOUR_ID_FOR_PATHS[base]) return TOUR_ID_FOR_PATHS[base]
   let best: string | null = null
   for (const path of Object.keys(TOUR_ID_FOR_PATHS)) {
-    if ((base === path || base.startsWith(path + '/')) && (!best || path.length > best.length)) {
+    const pattern = new RegExp(
+      '^' + path.split('/').map((seg) => (/^\[.+\]$/.test(seg) ? '[^/]+' : seg.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'))).join('/') + '(/|$)',
+    )
+    if (pattern.test(base) && (!best || path.length > best.length)) {
       best = path
     }
   }
@@ -140,6 +207,7 @@ function getDriver(): Driver | null {
     instance = driver({
       showProgress: true,
       progressText: '{{current}} of {{total}}',
+      popoverClass: TOUR_POPOVER_CLASS,
       smoothScroll: true,
       allowKeyboardControl: true,
       allowClose: true,
@@ -150,6 +218,10 @@ function getDriver(): Driver | null {
       prevBtnText: 'Back',
       doneBtnText: 'Finish',
       onDestroyed: () => {
+        // ponytail: mark seen on EVERY destroy (finish, X, overlay click) —
+        // otherwise a replayed/closed tour has its flag cleared and auto-starts
+        // again on the next visit, feeling completely broken.
+        if (activeTourId) markTourSeen(activeTourId)
         activeTourId = null
       },
     })
@@ -201,4 +273,92 @@ export function goTourStep(index: number) {
 
 export function getActiveTourId(): string | null {
   return activeTourId
+}
+
+// ── Feature hints (driver.js/hints) ─────────────────────────────────────────
+// Pulsing beacons pinned to elements; click opens a popover, "Got it"
+// dismisses. Dismissals persist in localStorage so a dismissed hint never
+// comes back. Separate singleton from the tour driver (per docs, each
+// driver()/hints() instance is independent).
+
+let hintsInstance: Hints | null = null
+
+function hintSeenKey(id: string) {
+  return `has_seen_hint_${id}`
+}
+
+function isHintDismissed(id: string): boolean {
+  if (typeof window === 'undefined') return true
+  try {
+    return window.localStorage.getItem(hintSeenKey(id)) === 'true'
+  } catch {
+    return false
+  }
+}
+
+function getHints(): Hints | null {
+  if (typeof window === 'undefined' || typeof document === 'undefined') return null
+  if (!hintsInstance) {
+    hintsInstance = hints({
+      popoverClass: TOUR_POPOVER_CLASS,
+      buttonText: 'Got it',
+      onDismiss: (_el, hint) => {
+        const id = typeof hint.id === 'string' ? hint.id : null
+        if (id) {
+          try {
+            window.localStorage.setItem(hintSeenKey(id), 'true')
+          } catch {
+            /* storage unavailable — hint just won't be remembered */
+          }
+        }
+      },
+    })
+  }
+  return hintsInstance
+}
+
+function toDriverHints(hintSetId: string, items: TourHint[]): DriverHint[] {
+  return items
+    .filter((h) => !isHintDismissed(`${hintSetId}:${h.id}`))
+    .map((h) => ({
+      element: h.target,
+      id: `${hintSetId}:${h.id}`,
+      popover: {
+        title: h.title,
+        description: h.description,
+        side: h.position ?? 'bottom',
+        popoverClass: TOUR_POPOVER_CLASS,
+      },
+    }))
+}
+
+/**
+ * Show a set of feature-hint beacons. Already-dismissed hints are skipped;
+ * missing elements are skipped by driver.js and picked up on a later show().
+ * No-op when everything was dismissed or on the server.
+ */
+export function startPageHints(hintSetId: string, items: TourHint[]) {
+  if (!items || items.length === 0) return
+  const h = getHints()
+  if (!h) return
+  const pending = toDriverHints(hintSetId, items)
+  if (pending.length === 0) return
+  h.setHints(pending)
+  h.show()
+}
+
+/** Dismiss one hint programmatically (marks it seen so it never returns). */
+export function dismissPageHint(hintSetId: string, id: string) {
+  const fullId = `${hintSetId}:${id}`
+  try {
+    window.localStorage.setItem(hintSeenKey(fullId), 'true')
+  } catch {
+    /* noop */
+  }
+  hintsInstance?.dismiss(fullId)
+}
+
+/** Hide all currently visible beacons without dismissing them. */
+export function hidePageHints() {
+  hintsInstance?.hide()
 }

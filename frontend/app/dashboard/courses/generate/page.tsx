@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Sparkles, ArrowRight, ArrowLeft, Loader2, Play, CheckCircle2, Video, Database, BookOpen, Layers, Zap, Clock, ShieldAlert } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { COURSE_LEVELS, INDUSTRIES, subjectsForIndustry, estimateCourse } from '@/lib/courses/syllabus'
@@ -38,7 +39,8 @@ export default function GenerateCoursePage() {
   const [showUpsell, setShowUpsell] = useState(false)
   
   const [userCredits, setUserCredits] = useState<number | null>(null)
-  
+  const { startTour, setTourSeen } = useTour()
+
   useEffect(() => {
     fetch('/api/user/ai-credits')
       .then(res => res.json())
@@ -49,6 +51,34 @@ export default function GenerateCoursePage() {
       })
       .catch(console.error)
   }, [])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_course-generate_tour')) {
+      const courseGenerateTour: TourStep[] = [
+        {
+          target: '[data-tour="course-generate-header"]',
+          title: 'Generate custom courses',
+          description: 'Describe any topic and AI builds a full video course for you.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="course-generate-credits"]',
+          title: 'Watch your credits',
+          description: 'Each generation costs 10 credits — top up anytime.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="course-generate-wizard"]',
+          title: 'Pick topic and level',
+          description: 'Choose a subject, set your level, and generate in one click.',
+          position: 'top',
+        },
+      ]
+      startTour(courseGenerateTour, 'course-generate')
+      setTourSeen('course-generate')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null
 
@@ -117,7 +147,7 @@ export default function GenerateCoursePage() {
     <div className="space-y-8">
       
       {/* Header */}
-      <div className="flex items-center gap-4 mb-8">
+      <div className="flex items-center gap-4 mb-8" data-tour="course-generate-header">
         <Link href="/dashboard/courses">
           <Button variant="ghost" size="icon" className="rounded-full">
             <ArrowLeft className="h-5 w-5" />
@@ -132,7 +162,7 @@ export default function GenerateCoursePage() {
       </div>
 
       {/* Credit Widget */}
-      <div className="flex justify-end mb-6">
+      <div className="flex justify-end mb-6" data-tour="course-generate-credits">
         <div className="flex items-center gap-3 bg-secondary/30 border border-secondary px-4 py-2 rounded-full">
           <Zap className="h-4 w-4 text-amber-500" />
           <span className="text-sm font-medium">Credits: {userCredits !== null ? userCredits : '...'}</span>
@@ -144,7 +174,7 @@ export default function GenerateCoursePage() {
           
           {/* Main Wizard Area */}
           <div className="md:col-span-2">
-            <Card className="p-8 border-indigo-500/20 shadow-xl shadow-indigo-500/5 overflow-hidden relative">
+            <Card className="p-8 border-indigo-500/20 shadow-xl shadow-indigo-500/5 overflow-hidden relative" data-tour="course-generate-wizard">
               {/* Animated decorative shapes */}
               <div className="absolute top-0 right-0 -mr-16 -mt-16 w-64 h-64 bg-indigo-500/10 rounded-full blur-3xl animate-pulse" />
               <div className="absolute bottom-0 left-0 -ml-16 -mb-16 w-64 h-64 bg-purple-500/10 rounded-full blur-3xl animate-pulse" style={{ animationDelay: '2s' }} />

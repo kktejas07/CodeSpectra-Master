@@ -4,6 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Heart, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -19,6 +20,7 @@ type Course = {
 
 export default function MyCoursesPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
   const [courses, setCourses] = useState<Course[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -31,6 +33,34 @@ export default function MyCoursesPage() {
       .finally(() => setLoading(false))
   }, [gate.ready])
 
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !loading && !localStorage.getItem('has_seen_my-courses_tour')) {
+      const myCoursesTour: TourStep[] = [
+        {
+          target: '[data-tour="my-courses-header"]',
+          title: 'Your enrolled courses',
+          description: 'Every course you enroll in shows up here for quick access.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="my-courses-actions"]',
+          title: 'Browse or revisit',
+          description: 'Explore the catalog or revisit courses on your watchlist.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="my-courses-list"]',
+          title: 'Continue learning',
+          description: 'Click any course card to pick up exactly where you left off.',
+          position: 'top',
+        },
+      ]
+      startTour(myCoursesTour, 'my-courses')
+      setTourSeen('my-courses')
+    }
+  }, [gate.ready, loading, startTour, setTourSeen])
+
   if (!gate.ready || loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
@@ -41,12 +71,12 @@ export default function MyCoursesPage() {
 
   return (
     <div className="w-full space-y-6">
-      <div className="flex flex-wrap items-end justify-between gap-3">
+      <div className="flex flex-wrap items-end justify-between gap-3" data-tour="my-courses-header">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">My Courses</h1>
           <p className="mt-1 text-sm text-muted-foreground">Courses you are enrolled in.</p>
         </div>
-        <div className="flex gap-2">
+        <div className="flex gap-2" data-tour="my-courses-actions">
           <Button asChild variant="outline" size="sm">
             <Link href="/dashboard/courses/wishlist">
               <Heart className="mr-1.5 h-4 w-4" /> Watchlist
@@ -58,6 +88,7 @@ export default function MyCoursesPage() {
         </div>
       </div>
 
+      <div data-tour="my-courses-list">
       {courses.length === 0 ? (
         <EmptyState
           variant="courses"
@@ -85,6 +116,7 @@ export default function MyCoursesPage() {
           ))}
         </div>
       )}
+      </div>
     </div>
   )
 }

@@ -8,6 +8,7 @@ import { Lock, Star, Code, Zap, CheckCircle, ArrowRight, Loader, Trophy, HelpCir
 import Link from 'next/link'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Challenge {
   id: string
@@ -29,6 +30,28 @@ export default function ChallengesPage() {
   const [loading, setLoading] = useState(true)
   const [selectedType, setSelectedType] = useState<string | null>(null)
   const [selectedDifficulty, setSelectedDifficulty] = useState<string | null>(null)
+  const { startTour, setTourSeen } = useTour()
+
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_challenges_tour')) {
+      const challengesTour: TourStep[] = [
+        {
+          target: '[data-tour="challenges-header"]',
+          title: 'Coding challenges',
+          description: 'Practice coding, system design, and behavioral interviews in one place.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="challenges-content"]',
+          title: 'Track your progress',
+          description: 'Completed, available, and locked counts update as you finish challenges.',
+          position: 'bottom',
+        },
+      ]
+      startTour(challengesTour, 'challenges')
+      setTourSeen('challenges')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {
     fetch('/api/challenges')
@@ -51,8 +74,8 @@ export default function ChallengesPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="space-y-8">
-      <div>
+    <div className="space-y-8" data-tour="challenges-content">
+      <div data-tour="challenges-header">
         <div className="flex items-center gap-2">
           <h1 className="text-3xl font-bold text-foreground">Challenges</h1>
           <TooltipProvider>

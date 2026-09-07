@@ -11,6 +11,7 @@ import {
 import { Bell, Loader2, CheckCheck, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star, Mail } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { EmptyState } from '@/components/ui/empty-state'
 import DOMPurify from 'isomorphic-dompurify'
 
@@ -120,6 +121,7 @@ function resolveNotificationLink(n: Notification): string {
 export default function NotificationsPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
+  const { startTour, setTourSeen } = useTour()
 
   const [items, setItems] = useState<Notification[]>([])
   const [loading, setLoading] = useState(true)
@@ -148,6 +150,34 @@ export default function NotificationsPage() {
     const interval = setInterval(() => { void load() }, 30_000)
     return () => clearInterval(interval)
   }, [load])
+
+  // First-visit guided tour (same pattern as the other dashboard pages).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_notifications_tour')) {
+      const notificationsTour: TourStep[] = [
+        {
+          target: '[data-tour="notifications-header"]',
+          title: 'Stay in the loop',
+          description: 'Course updates, assessment results, and account activity land here.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="notifications-filters"]',
+          title: 'Filter by topic',
+          description: 'Narrow the inbox by category to find billing, security, or learning updates fast.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="notifications-list"]',
+          title: 'Tap to act',
+          description: 'Click any notification to jump to the related course, event, or setting.',
+          position: 'top',
+        },
+      ]
+      startTour(notificationsTour, 'notifications')
+      setTourSeen('notifications')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const openNewsletter = async (n: Notification) => {
     setNewsletterOpen(true)
@@ -192,7 +222,7 @@ export default function NotificationsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="notifications-header">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Bell className="h-7 w-7 text-primary" /> Notifications
           {unreadCount > 0 && (
@@ -206,7 +236,7 @@ export default function NotificationsPage() {
         )}
       </div>
 
-      <div className="flex gap-2 overflow-x-auto pb-2">
+      <div className="flex gap-2 overflow-x-auto pb-2" data-tour="notifications-filters">
         {CATEGORIES.map((c) => (
           <button key={c.id} onClick={() => setCategory(c.id)}
             className={`shrink-0 rounded-full px-3 py-1.5 text-xs font-medium transition-colors ${
@@ -219,6 +249,7 @@ export default function NotificationsPage() {
         ))}
       </div>
 
+      <div data-tour="notifications-list">
       {loading ? (
         <Card className="flex h-32 items-center justify-center text-muted-foreground">
           <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading notifications…
@@ -280,6 +311,7 @@ export default function NotificationsPage() {
           })}
         </div>
       )}
+      </div>
 
       <Dialog open={newsletterOpen} onOpenChange={setNewsletterOpen}>
         <DialogContent className="max-h-[85vh] overflow-y-auto sm:max-w-2xl">
