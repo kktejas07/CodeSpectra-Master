@@ -7,7 +7,6 @@ import { AuthProvider } from '@/lib/auth-context'
 import { ToastProvider } from '@/lib/toast-context'
 import { ConfirmProvider } from '@/lib/confirm-context'
 import { TourProvider } from '@/components/tour/tour-context'
-import { TourTooltip } from '@/components/tour/tour-tooltip'
 
 export function Providers({ children }: { children: React.ReactNode }) {
   const [mounted, setMounted] = React.useState(false)
@@ -20,10 +19,7 @@ export function Providers({ children }: { children: React.ReactNode }) {
           <ToastProvider>
             <ConfirmProvider>
               {mounted ? (
-                <>
-                  {children}
-                  <TourTooltip />
-                </>
+                <>{children}</>
               ) : (
                 <div className="min-h-screen" />
               )}

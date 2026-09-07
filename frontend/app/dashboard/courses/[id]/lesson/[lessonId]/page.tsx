@@ -229,6 +229,26 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
     if (sectionIdx !== -1) setOpenSections(prev => prev.has(String(sectionIdx)) ? prev : new Set([...prev, String(sectionIdx)]))
   }, [lessonId, course])
 
+  // Recently viewed — record lesson views so /dashboard/activity/recent
+  // actually fills up (previously only course + problem pages recorded).
+  useEffect(() => {
+    if (!course) return
+    const lesson = (course.sections || [])
+      .flatMap((s: Section) => s.lessons)
+      .find((l: Lesson) => l.id === lessonId)
+    if (!lesson) return
+    void csrfFetch('/api/user/recently-viewed', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        type: 'lesson',
+        id: lessonId,
+        title: lesson.title ? `${lesson.title} · ${course.title}` : course.title,
+        href: `/dashboard/courses/${courseId}/lesson/${lessonId}`,
+      }),
+    }).catch(() => {})
+  }, [course, courseId, lessonId])
+
   useEffect(() => {
     return () => {
       const t = lastPos.current

@@ -9,7 +9,7 @@ from __future__ import annotations
 import json
 from typing import Any
 
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import JSONResponse, StreamingResponse
 
 from core.dependencies import check_rate_limit
@@ -74,6 +74,12 @@ def safe_ai_endpoint(fn):
     async def wrapper(*args, **kwargs):
         try:
             return await fn(*args, **kwargs)
+        except HTTPException:
+            # ponytail: status-coded errors (429 rate-limit, 402 credits, 401
+            # auth) must propagate untouched. Swallowing them into a generic
+            # 500 made a throttled 72-lesson video job look like a total LLM
+            # outage ("AI service temporarily unavailable" on every provider).
+            raise
         except Exception:
             traceback.print_exc()
             return JSONResponse(

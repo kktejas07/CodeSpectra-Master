@@ -1,15 +1,32 @@
 'use client'
 
-import { createContext, useContext, useState, useCallback, ReactNode } from 'react'
+/**
+ * Thin React glue over the single tour engine (`@/lib/tour-driver`, driver.js).
+ *
+ * Kept (rather than deleted) so the 15+ tour pages don't churn: they keep
+ * calling `useTour()` → `startTour(steps, tourId)` / `setTourSeen(tourId)`,
+ * which now drive the shared driver.js singleton. There is no custom
+ * tooltip/renderer anymore — driver.js owns all tour UI.
+ */
 
-export interface TourStep {
-  target: string
-  title: string
-  description: string
-  position?: 'top' | 'bottom' | 'left' | 'right'
-}
+import { createContext, useContext, useMemo, type ReactNode } from 'react'
+import {
+  startPageTour,
+  endPageTour,
+  nextTourStep,
+  prevTourStep,
+  goTourStep,
+  replayPageTour,
+  markTourSeen,
+  isTourSeen as isSeen,
+  getActiveTourId,
+  type TourStep,
+} from '@/lib/tour-driver'
+
+export { TOUR_ID_FOR_PATHS, resolveTourId, type TourStep } from '@/lib/tour-driver'
 
 interface TourContextValue {
+  /** Static snapshots — driver.js owns live tour state; pages don't read these. */
   isTourActive: boolean
   currentTour: TourStep[] | null
   currentStepIndex: number
@@ -21,87 +38,36 @@ interface TourContextValue {
   goToStep: (index: number) => void
   setTourSeen: (tourId?: string) => void
   isTourSeen: (tourId: string) => boolean
+  /** Replays the last-started tour for an id (used by the header Guide button). */
+  replayTour: (tourId: string) => boolean
 }
 
 const TourContext = createContext<TourContextValue | undefined>(undefined)
 
 export function TourProvider({ children }: { children: ReactNode }) {
-  const [isTourActive, setIsTourActive] = useState(false)
-  const [currentTour, setCurrentTour] = useState<TourStep[] | null>(null)
-  const [currentStepIndex, setCurrentStepIndex] = useState(0)
-  const [tourId, setTourId] = useState<string | null>(null)
-
-  const startTour = useCallback((steps: TourStep[], id?: string) => {
-    setCurrentTour(steps)
-    setCurrentStepIndex(0)
-    setIsTourActive(true)
-    if (id) setTourId(id)
-  }, [])
-
-  const endTour = useCallback(() => {
-    setIsTourActive(false)
-    setCurrentTour(null)
-    setCurrentStepIndex(0)
-    setTourId(null)
-  }, [])
-
-  const nextStep = useCallback(() => {
-    if (currentTour && currentStepIndex < currentTour.length - 1) {
-      setCurrentStepIndex(currentStepIndex + 1)
-    } else {
-      endTour()
-    }
-  }, [currentTour, currentStepIndex, endTour])
-
-  const prevStep = useCallback(() => {
-    if (currentStepIndex > 0) {
-      setCurrentStepIndex(currentStepIndex - 1)
-    }
-  }, [currentStepIndex])
-
-  const goToStep = useCallback((index: number) => {
-    if (currentTour && index >= 0 && index < currentTour.length) {
-      setCurrentStepIndex(index)
-    }
-  }, [currentTour])
-
-  const setTourSeen = useCallback((id?: string) => {
-    const tid = id ?? tourId
-    if (tid) {
-      window.localStorage.setItem(`has_seen_${tid}_tour`, 'true')
-    }
-  }, [tourId])
-
-  const isTourSeen = useCallback((id: string) => {
-    return window.localStorage.getItem(`has_seen_${id}_tour`) === 'true'
-  }, [])
-
-  const restartTour = useCallback((id: string) => {
-    // Clear the seen flag and restart the tour
-    window.localStorage.removeItem(`has_seen_${id}_tour`)
-    // Note: Actual tour restarting would be handled by the calling component
-    // This function just clears the flag
-  }, [])
-
-  return (
-    <TourContext.Provider
-      value={{
-        isTourActive,
-        currentTour,
-        currentStepIndex,
-        tourId,
-        startTour,
-        endTour,
-        nextStep,
-        prevStep,
-        goToStep,
-        setTourSeen,
-        isTourSeen,
-      }}
-    >
-      {children}
-    </TourContext.Provider>
+  const value = useMemo<TourContextValue>(
+    () => ({
+      isTourActive: false,
+      currentTour: null,
+      currentStepIndex: 0,
+      tourId: getActiveTourId(),
+      startTour: (steps, id) => {
+        if (id) startPageTour(id, steps)
+      },
+      endTour: () => endPageTour(),
+      nextStep: () => nextTourStep(),
+      prevStep: () => prevTourStep(),
+      goToStep: (index) => goTourStep(index),
+      setTourSeen: (id) => {
+        const tid = id ?? getActiveTourId()
+        if (tid) markTourSeen(tid)
+      },
+      isTourSeen: (id) => isSeen(id),
+      replayTour: (id) => replayPageTour(id),
+    }),
+    [],
   )
+  return <TourContext.Provider value={value}>{children}</TourContext.Provider>
 }
 
 export function useTour() {

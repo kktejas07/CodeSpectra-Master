@@ -130,6 +130,7 @@ import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-sett
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
 import { PageLocked } from '@/components/page-locked'
 import { fetchLockedPages } from '@/lib/use-page-guard'
+import { useTour, resolveTourId } from '@/components/tour/tour-context'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -175,6 +176,7 @@ export default function DashboardLayout({
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
 
   const { user: fbUser, signOut } = useAuth()
+  const { replayTour } = useTour()
 
   useEffect(() => {
     if (!fbUser) { setUserRole(null); return }
@@ -616,47 +618,20 @@ export default function DashboardLayout({
   }
 
   const handleGuideClick = () => {
-    // Get current pathname to determine which tour to restart
-    const currentPath = pathname
-
-    // Map paths to tour IDs
-    const tourIdMap: Record<string, string> = {
-      '/dashboard': 'welcome',
-      '/dashboard/scanner': 'scanner',
-      '/dashboard/problems': 'problems',
-      '/dashboard/arena': 'arena',
-      '/dashboard/courses': 'courses',
-      '/dashboard/events': 'events',
-      '/dashboard/interviews': 'interviews',
-      '/dashboard/leaderboard': 'leaderboard',
-      '/dashboard/achievements': 'achievements',
-      '/dashboard/assessments': 'assessments',
-      '/dashboard/tracks': 'tracks',
-      '/dashboard/hackathons': 'hackathons',
-      '/dashboard/articles': 'articles',
-      '/dashboard/codeathons': 'codeathons',
-      '/dashboard/settings': 'settings',
-      '/dashboard/admin/system': 'admin-system'
-    }
-
-    // Find matching tour ID
-    let tourId = tourIdMap[currentPath]
-
-    // If no exact match, try to match by prefix for dynamic routes
-    if (!tourId) {
-      for (const [path, id] of Object.entries(tourIdMap)) {
-        if (currentPath.startsWith(path)) {
-          tourId = id
-          break
-        }
-      }
-    }
-
+    // ponytail: replay the last-started tour straight from the tour registry.
+    // The old code cleared the flag + router.refresh(), but App Router refresh
+    // doesn't remount client components, so tour effects never re-fired and
+    // Guide looked completely dead. Direct replay always works; full reload is
+    // only the fallback when this page's tour hasn't run yet this session.
+    const tourId = resolveTourId(pathname)
+    if (tourId && replayTour(tourId)) return
     if (tourId) {
-      // Clear the seen flag
-      window.localStorage.removeItem(`has_seen_${tourId}_tour`)
-      // Refresh the page to restart the tour
-      router.refresh()
+      try {
+        window.localStorage.removeItem(`has_seen_${tourId}_tour`)
+      } catch {
+        /* ignore */
+      }
+      window.location.reload()
     }
   }
 

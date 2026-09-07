@@ -62,3 +62,19 @@ export async function POST(req: NextRequest) {
   if (extras.length) await col.deleteMany({ _id: { $in: extras.map((e) => e._id) } })
   return NextResponse.json({ ok: true })
 }
+
+/** DELETE — clear history (?type=&id= removes one entry, no params clears all). */
+export async function DELETE(req: NextRequest) {
+  const user = await getAPIUser()
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  const type = req.nextUrl.searchParams.get('type')?.trim()
+  const id = req.nextUrl.searchParams.get('id')?.trim()
+  const db = await getMongoDb()
+  const col = db.collection(COL)
+  if (type && id) {
+    await col.deleteOne({ userId: user.id, type, itemId: id })
+  } else {
+    await col.deleteMany({ userId: user.id })
+  }
+  return NextResponse.json({ ok: true })
+}
