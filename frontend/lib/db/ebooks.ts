@@ -74,9 +74,7 @@ export function newEbookId(): string {
   return randomUUID()
 }
 
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+export { nowIso } from './ids'
 
 export function slugifyEbook(title: string): string {
   return title

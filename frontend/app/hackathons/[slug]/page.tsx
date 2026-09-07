@@ -25,6 +25,7 @@ import {
 } from '@/components/ui/dialog'
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { cn } from '@/lib/utils'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -167,7 +168,12 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
 
   const isCaptainOfMyTeam = myTeam?.members.some(m => m.user_id === hasSession && m.role === 'captain') || (gate.user?.role ? isSuperAdmin(gate.user.role) : false)
 
-  if (!gate.ready) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…</div>
+  if (!gate.ready) return (
+    <div className="min-h-screen space-y-6 p-6">
+      <SkeletonText lines={2} />
+      <SkeletonCard />
+    </div>
+  )
   if (!gate.allowed) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-background">
@@ -192,7 +198,12 @@ export default function HackathonPage({ params }: { params: Promise<{ slug: stri
     )
   }
 
-  if (loading && !hackathon) return <div className="flex min-h-screen items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading event…</div>
+  if (loading && !hackathon) return (
+    <div className="min-h-screen space-y-6 p-6">
+      <SkeletonText lines={2} />
+      <SkeletonCard />
+    </div>
+  )
   if (!hackathon) return <div className="p-10 text-center"><p className="text-sm text-destructive">{error || 'Event not found'}</p><Link href="/" className="mt-3 inline-block text-sm text-primary hover:underline">← Home</Link></div>
 
   const ends = new Date(hackathon.ends_at)

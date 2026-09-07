@@ -113,30 +113,46 @@ export async function POST(req: NextRequest) {
         ? { durationDays: plan.duration_days }
         : { durationDays: 30 }
       const now = new Date()
-      const endsAt = new Date(now.getTime() + planInfo.durationDays * 24 * 60 * 60 * 1000).toISOString()
+      const durationMs = planInfo.durationDays * 24 * 60 * 60 * 1000
 
-      const existingSub = await subs.findOne({ user_id: order.user_id, status: 'active' })
+      // Look for any existing subscription (active, expired, or cancelled) to reactivate/extend
+      const existingSub = await subs.findOne({
+        user_id: order.user_id,
+        status: { $in: ['active', 'expired', 'cancelled'] }
+      })
 
       if (existingSub) {
-        // Extend existing subscription
+        // Extend or reactivate existing subscription
         const currentEnd = new Date(existingSub.ends_at)
-        const newEnd = new Date(currentEnd.getTime() + planInfo.durationDays * 24 * 60 * 60 * 1000)
+        const base = currentEnd > now ? currentEnd : now
+        const newEnd = new Date(base.getTime() + durationMs)
         await subs.updateOne(
           { id: existingSub.id },
-          { $set: { ends_at: newEnd.toISOString(), last_payment_id: transactionId } }
+          {
+            $set: {
+              status: 'active',
+              ends_at: newEnd.toISOString(),
+              plan_id: order.plan_id,
+              last_payment_id: transactionId,
+              updated_at: nowIso()
+            }
+          }
         )
+        logger.webhook(`[PhonePe] Subscription reactivated/extended for user ${order.user_id}, ends ${newEnd.toISOString()}`)
       } else {
         // Create new subscription
+        const endsAt = new Date(now.getTime() + durationMs).toISOString()
         await subs.insertOne({
           id: newId(),
           user_id: order.user_id,
           plan_id: order.plan_id,
           status: 'active',
-          started_at: now.toISOString(),
+          started_at: nowIso(),
           ends_at: endsAt,
           last_payment_id: transactionId,
-          created_at: now.toISOString(),
+          created_at: nowIso(),
         })
+        logger.webhook(`[PhonePe] New subscription created for user ${order.user_id}, ends ${endsAt}`)
       }
 
       logger.webhook(`[PhonePe] Payment completed for order: ${merchantTransactionId}`)

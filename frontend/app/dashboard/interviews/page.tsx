@@ -5,8 +5,10 @@ import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Loader2, Video, Calendar, Clock, ArrowRight, Bot } from 'lucide-react'
+import { Loader2, Video, Calendar, Clock, ArrowRight, Bot, Brain } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -17,6 +19,7 @@ interface Interview {
 
 export default function InterviewsPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const [interviews, setInterviews] = useState<Interview[]>([])
   const [loading, setLoading] = useState(true)
@@ -33,6 +36,34 @@ export default function InterviewsPage() {
 
   useEffect(() => { void load() }, [load])
 
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_interviews_tour')) {
+      const interviewsTour: TourStep[] = [
+        {
+          target: '[data-tour="interviews-header"]',
+          title: 'Your Interviews',
+          description: 'View all your scheduled and past interviews. Schedule new ones to practice.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interviews-schedule-btn"]',
+          title: 'Schedule Interview',
+          description: 'Click here to schedule a new AI-powered mock interview.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interviews-list"]',
+          title: 'Interview List',
+          description: 'Browse your interviews. Click any card to view details and start the interview.',
+          position: 'bottom',
+        },
+      ]
+      startTour(interviewsTour, 'interviews')
+      setTourSeen('interviews')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready) return null
 
   const statusColor: Record<string, string> = {
@@ -44,14 +75,27 @@ export default function InterviewsPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between" data-tour="interviews-header">
         <h1 className="text-3xl font-bold flex items-center gap-2">
           <Video className="h-7 w-7 text-primary" /> Interviews
         </h1>
-        <Link href="/dashboard/interviews/schedule">
+        <Link href="/dashboard/interviews/schedule" data-tour="interviews-schedule-btn">
           <Button><Video className="mr-1 h-4 w-4" /> Schedule Interview</Button>
         </Link>
       </div>
+
+      <Link href="/dashboard/interviews/ai-mock/setup">
+        <Card className="p-5 hover:border-primary/40 transition-colors flex items-center gap-4 cursor-pointer">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
+            <Brain className="h-5 w-5 text-primary" />
+          </div>
+          <div className="flex-1">
+            <h3 className="font-semibold">Start AI Mock Interview</h3>
+            <p className="text-xs text-muted-foreground">Practice with AI-generated questions personalized to your resume</p>
+          </div>
+          <ArrowRight className="h-4 w-4 text-muted-foreground" />
+        </Card>
+      </Link>
 
       {loading ? (
         <Card className="flex h-32 items-center justify-center text-muted-foreground">
@@ -63,7 +107,7 @@ export default function InterviewsPage() {
           No interviews yet. Schedule your first AI-powered interview.
         </Card>
       ) : (
-        <div className="grid gap-4 md:grid-cols-2">
+        <div className="grid gap-4 md:grid-cols-2" data-tour="interviews-list">
           {interviews.map((iv) => (
             <Link key={iv.id} href={`/dashboard/interviews/${iv.id}`}>
               <Card className="p-5 hover:border-primary/40 transition-colors space-y-3">
@@ -72,7 +116,17 @@ export default function InterviewsPage() {
                     <h3 className="font-semibold">{iv.title}</h3>
                     <p className="text-xs text-muted-foreground">{iv.role} · {iv.type}</p>
                   </div>
-                  <Badge variant="outline" className={statusColor[iv.status] || ''}>{iv.status}</Badge>
+                  <div className="flex items-center gap-2">
+                    {iv.type && (() => {
+                      const dl = toDifficultyLevel(iv.type)
+                      return dl ? (
+                        <Badge variant="outline" className={`text-[10px] ${DIFFICULTY_COLORS[dl]}`}>
+                          {DIFFICULTY_LABELS[dl]}
+                        </Badge>
+                      ) : null
+                    })()}
+                    <Badge variant="outline" className={statusColor[iv.status] || ''}>{iv.status}</Badge>
+                  </div>
                 </div>
                 <div className="flex items-center gap-3 text-xs text-muted-foreground">
                   <Calendar className="h-3 w-3" /> {new Date(iv.scheduled_at).toLocaleString()}

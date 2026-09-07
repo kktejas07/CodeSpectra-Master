@@ -127,8 +127,15 @@ export async function POST(request: Request) {
 
   const email = (body.email || '').trim().toLowerCase()
   const full_name = (body.full_name || '').trim() || email.split('@')[0] || 'User'
-  const role = normalizeUserRole(body.role)
-  const tenantId = body.tenantId && body.tenantId !== '' ? body.tenantId : null
+  // Privilege guard: only superadmins may provision elevated roles or assign an
+  // arbitrary tenant. Non-superadmin callers are scoped to plain users in their
+  // own tenant (caller-supplied role/tenantId are ignored, not honored).
+  let role = normalizeUserRole(body.role)
+  let tenantId = body.tenantId && body.tenantId !== '' ? body.tenantId : null
+  if (gate.user.role !== 'superadmin') {
+    role = 'user'
+    tenantId = gate.user.tenantId ?? null
+  }
   const targetUrl = (body.target_url || '/assessment').trim()
   const assignedAssessments: import('@/lib/db/admin').AssessmentStep[] =
     Array.isArray(body.assigned_assessments) && body.assigned_assessments.length > 0

@@ -4,7 +4,7 @@ Verifies the end-to-end flow:
   1. Superadmin signs in
   2. PATCH /api/admin/server-secrets {trusted_origins_extra: "..."} → ok
   3. GET /api/admin/server-secrets returns the saved value
-  4. POST /api/auth/sign-in/email from the NEWLY ADDED origin → 200 (no restart)
+  4. POST /api/auth/login from the NEWLY ADDED origin → 200 (no restart)
   5. Trailing slashes are tolerated
   6. Untrusted origin → 403
   7. Clearing the field via PATCH "" → previously-allowed origin → 403
@@ -14,6 +14,8 @@ import os
 import time
 import requests
 import pytest
+
+from live_frontend import login_live, make_live_session
 
 BASE_URL = "http://localhost:3000"
 ORIGIN_LOCAL = "http://localhost:3000"
@@ -30,16 +32,10 @@ INVALID_2 = "ftp://x.com"
 
 @pytest.fixture(scope="module")
 def admin_session():
-    s = requests.Session()
-    s.headers.update({"Content-Type": "application/json", "Origin": ORIGIN_LOCAL})
-    r = s.post(
-        f"{BASE_URL}/api/auth/sign-in/email",
-        json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
-        timeout=20,
-    )
-    if r.status_code != 200:
-        pytest.skip(f"superadmin sign-in failed: {r.status_code} {r.text[:200]}")
-    return s
+    try:
+        return login_live(TEST_EMAIL, TEST_PASSWORD, BASE_URL)
+    except AssertionError as e:
+        pytest.skip(f"superadmin sign-in failed: {e}")
 
 
 @pytest.fixture(scope="module", autouse=True)
@@ -57,13 +53,23 @@ def cleanup_after(admin_session):
 
 
 def _signin_with_origin(origin: str) -> int:
-    """Fresh session, attempt sign-in only to probe origin acceptance."""
-    return requests.post(
-        f"{BASE_URL}/api/auth/sign-in/email",
-        json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
-        headers={"Content-Type": "application/json", "Origin": origin},
-        timeout=15,
-    ).status_code
+    """Fresh CSRF-primed session, attempt sign-in only to probe origin acceptance."""
+    s = make_live_session(BASE_URL)
+    # Login is IP rate-limited; the probes run back-to-back, so tolerate 429
+    # briefly (transport patience — 429 is never a valid probe answer).
+    for _ in range(4):
+        r = s.post(
+            f"{BASE_URL}/api/auth/login",
+            json={"email": TEST_EMAIL, "password": TEST_PASSWORD},
+            headers={"Content-Type": "application/json", "Origin": origin},
+            timeout=15,
+        )
+        if r.status_code != 429:
+            return r.status_code
+        import time as _time
+
+        _time.sleep(5)
+    return r.status_code
 
 
 class TestTrustedOriginsAdminFlow:

@@ -35,6 +35,7 @@ import {
   Sparkles,
 } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
+import { SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
@@ -397,8 +398,8 @@ export default function AiInventoryPage() {
                 Categories
               </p>
               {!summary ? (
-                <div className="p-4 text-xs text-muted-foreground">
-                  <Loader2 className="mr-1 inline h-3 w-3 animate-spin" /> Loading…
+                <div className="p-4">
+                  <SkeletonText lines={6} />
                 </div>
               ) : (
                 <ul className="divide-y divide-border/60">

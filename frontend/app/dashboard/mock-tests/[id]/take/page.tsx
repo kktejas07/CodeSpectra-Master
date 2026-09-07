@@ -9,6 +9,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardFooter } from '@/componen
 import { Progress } from '@/components/ui/progress'
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group'
 import { Label } from '@/components/ui/label'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Question {
   id: string
@@ -19,6 +20,7 @@ interface Question {
 }
 
 export default function TakeMockTestPage() {
+  const gate = usePageGuard('user')
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const searchParams = useSearchParams()
@@ -105,7 +107,7 @@ export default function TakeMockTestPage() {
     return score
   }
 
-  if (loading) {
+  if (!gate.ready || loading) {
     return (
       <div className="flex-1 flex flex-col items-center justify-center min-h-[60vh] p-4 text-center space-y-6">
         <div className="relative">

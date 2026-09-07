@@ -6,11 +6,12 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
-import { Loader2, ArrowLeft, Video, Bot, Clock, Calendar, CheckCircle, Send, SkipForward, BarChart3, Code2 } from 'lucide-react'
+import { Loader2, ArrowLeft, Video, Bot, Clock, Calendar, CheckCircle, Send, SkipForward, BarChart3, Code2, Phone } from 'lucide-react'
 import { CollabEditor } from '@/components/interviews/collab-editor'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -28,6 +29,7 @@ interface Interview {
 
 export default function InterviewDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const { id } = use(params)
   const router = useRouter()
@@ -36,6 +38,66 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
   const [error, setError] = useState<string | null>(null)
   const [currentAnswer, setCurrentAnswer] = useState('')
   const [submitting, setSubmitting] = useState(false)
+  const [userId, setUserId] = useState<string | null>(null)
+
+  useEffect(() => {
+    fetch('/api/auth/session', { credentials: 'include' })
+      .then(r => r.json())
+      .then(j => setUserId(j?.user?.id || j?.uid || null))
+      .catch(() => {})
+  }, [])
+
+  // Initialize tour if this is the first visit to interview detail
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_interview_tour')) {
+      const interviewTour: TourStep[] = [
+        {
+          target: '[data-tour="back-to-interviews"]',
+          title: 'Interview Dashboard',
+          description: 'Return to your list of scheduled interviews.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="interview-details"]',
+          title: 'Interview Details',
+          description: 'View the scheduled interview information including title, role, and type.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="status-controls"]',
+          title: 'Interview Controls',
+          description: 'Start or end interviews using these control buttons.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="current-question"]',
+          title: 'Current Question',
+          description: 'The active question you need to answer during the interview.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="answered-questions"]',
+          title: 'Answered Questions',
+          description: 'Review all your previous answers and feedback.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="ai-feedback"]',
+          title: 'AI Feedback',
+          description: 'View performance feedback and suggestions from the AI interviewer.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="collaborative-editor"]',
+          title: 'Collaborative Editor',
+          description: 'Real-time collaborative code editor for writing solutions during the interview.',
+          position: 'bottom',
+        }
+      ]
+      startTour(interviewTour, 'interview')
+      setTourSeen('interview')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const load = useCallback(async () => {
     try {
@@ -82,18 +144,18 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
   return (
     <div className="max-w-4xl space-y-6">
-      <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground">
+      <Link href="/dashboard/interviews" className="inline-flex items-center gap-1 text-sm text-muted-foreground hover:text-foreground" data-tour="back-to-interviews">
         <ArrowLeft className="h-3 w-3" /> All interviews
       </Link>
 
       <div className="flex items-start justify-between">
-        <div>
+        <div data-tour="interview-details">
           <h1 className="text-2xl font-bold flex items-center gap-2">
             <Video className="h-6 w-6 text-primary" /> {interview.title}
           </h1>
           <p className="text-sm text-muted-foreground">{interview.role} · {interview.type}</p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="status-controls">
           <Badge variant={interview.status === 'in_progress' ? 'default' : 'secondary'}>{interview.status}</Badge>
           {interview.status === 'scheduled' && (
             <Button size="sm" onClick={() => updateStatus('in_progress')}>
@@ -107,6 +169,15 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
           )}
         </div>
       </div>
+
+      {userId && (interview.interviewer_id === userId || interview.candidate_id === userId) && (
+        <Link
+          href={`/dashboard/interviews/${id}/live`}
+          className="inline-flex items-center gap-2 rounded-md bg-primary px-4 py-2 text-sm font-medium text-primary-foreground hover:bg-primary/90 w-fit"
+        >
+          <Phone className="h-4 w-4" /> Join Live Room
+        </Link>
+      )}
 
       <div className="flex gap-2 text-xs text-muted-foreground">
         <Calendar className="h-3 w-3" /> {new Date(interview.scheduled_at).toLocaleString()}

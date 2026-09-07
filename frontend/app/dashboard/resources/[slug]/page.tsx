@@ -8,6 +8,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { Button } from '@/components/ui/button'
 import { FlipbookViewer } from '@/components/resources/flipbook-viewer'
 import { EbookQuiz } from '@/components/resources/ebook-quiz'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import type { EbookPage } from '@/lib/db/ebooks'
 
 type EbookDetail = {
@@ -163,8 +164,9 @@ export default function EbookReaderPage() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading…
+      <div className="w-full space-y-6">
+        <SkeletonText lines={3} />
+        <SkeletonCard />
       </div>
     )
   }

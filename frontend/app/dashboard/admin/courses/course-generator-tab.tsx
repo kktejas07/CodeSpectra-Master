@@ -33,6 +33,7 @@ interface GenerationJob {
   totalItems: number
   completedItems: number
   failedItems: number
+  targetMinutes?: number
   logs: JobLog[]
   startedAt: string
   completedAt?: string
@@ -59,6 +60,7 @@ export default function CourseGeneratorTab() {
   const [level, setLevel] = useState('')
   const [customTech, setCustomTech] = useState('')
   const [industry, setIndustry] = useState<(typeof INDUSTRIES)[number]['id']>('software')
+  const [targetMinutes, setTargetMinutes] = useState(10)
 
   // Job state
   const [jobs, setJobs] = useState<GenerationJob[]>([])
@@ -229,6 +231,7 @@ export default function CourseGeneratorTab() {
           courseTitle: currData.course?.title || selectedTech,
           type: 'video',
           totalItems: totalLessons,
+          targetMinutes,
         }),
       })
       const jobData = await jobRes.json()
@@ -261,6 +264,7 @@ export default function CourseGeneratorTab() {
           type: 'video',
           totalItems: totalLessons,
           force: true,
+          targetMinutes,
         }),
       })
       const jobData = await jobRes.json()
@@ -394,11 +398,21 @@ export default function CourseGeneratorTab() {
               </select>
             </div>
 
+            <div>
+              <label className="text-xs uppercase tracking-wide text-muted-foreground mb-1.5 block">Lesson length</label>
+              <select value={targetMinutes} onChange={e => setTargetMinutes(Number(e.target.value) || 10)} className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm">
+                <option value={10}>~10 min / lesson (15 slides)</option>
+                <option value={15}>~15 min / lesson (22 slides)</option>
+                <option value={30}>~30 min / lesson (40 slides)</option>
+                <option value={60}>~60 min / lesson (60 slides)</option>
+              </select>
+            </div>
+
             <Button onClick={handleGenerate} disabled={generating || !selectedTech || !level} className="w-full gap-2">
               {generating ? <><Loader2 className="h-4 w-4 animate-spin" /> Generating...</> : <><Zap className="h-4 w-4" /> Generate Course</>}
             </Button>
             <p className="text-[11px] text-muted-foreground leading-relaxed">
-              Full syllabus + curriculum for this subject/level, then MP4, audio, and captions (~8–12 min/lesson, one job at a time).
+              Full syllabus + curriculum for this subject/level, then MP4, audio, and captions (~{targetMinutes} min/lesson, one job at a time).
             </p>
             {preview && (
               <div className="rounded-md border border-border/60 p-3 space-y-2">

@@ -16,7 +16,9 @@ import { AnalyticsDashboard, type AnalyticsDashboardProps } from '@/components/a
 import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 const emptyCharts: AnalyticsDashboardProps = {
   userGrowth: [],
@@ -150,6 +152,7 @@ const RATE_CATEGORY_ORDER: Array<{ kind: RateCategory; label: string }> = [
 export default function SystemAdminDashboard() {
   const gate = usePageGuard('/dashboard/admin/system')
   const addToast = useToast()
+  const { startTour } = useTour()
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState({ totalUsers: 0, activeUsers: 0, superadmins: 0, admins: 0 })
   const [charts, setCharts] = useState<AnalyticsDashboardProps>(emptyCharts)
@@ -270,17 +273,66 @@ export default function SystemAdminDashboard() {
 
   const p = DASHBOARD_ROUTES.platform
 
+  // Initialize tour on first visit — placed before the early return below
+  // (hooks must not be called conditionally).
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_admin_system_tour')) {
+      const adminSystemTour: TourStep[] = [
+        {
+          target: '[data-tour="admin-system-header"]',
+          title: 'Operations Overview',
+          description: 'View live server health, platform metrics, and audit access.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="admin-system-server-health"]',
+          title: 'Server Health',
+          description: 'Monitor CPU, RAM, disk usage, container status, and Redis health.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="admin-system-redis"]',
+          title: 'Redis & Rate Limiting',
+          description: 'Check Redis status, latency, memory, and live rate-limit counters.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="admin-system-quick-links"]',
+          title: 'Quick Links',
+          description: 'Navigate to key admin sections: Users & Roles, Insights, Platform Settings, and Audit Logs.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="admin-system-web-vitals"]',
+          title: 'Performance & Web Vitals',
+          description: 'Monitor Core Web Vitals and other performance metrics.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="admin-system-analytics"]',
+          title: 'Analytics & Audit Logs',
+          description: 'View detailed platform analytics and audit logs for security and compliance.',
+          position: 'bottom',
+        },
+      ];
+      startTour(adminSystemTour);
+      localStorage.setItem('has_seen_admin_system_tour', 'true');
+    }
+  }, [gate.ready, startTour]);
+
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-        Loading…
+      <div className="space-y-8">
+        <SkeletonText lines={2} />
+        <SkeletonStats />
+        <SkeletonList count={2} />
       </div>
     )
   }
 
   return (
     <div className="space-y-8" data-testid="admin-system-page">
-      <div className="space-y-2">
+      <div className="space-y-2" data-tour="admin-system-header">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
             <Server className="h-6 w-6 text-primary" />
@@ -296,7 +348,7 @@ export default function SystemAdminDashboard() {
 
       {/* Server Health */}
       {server && (
-        <div className="space-y-4">
+        <div className="space-y-4" data-tour="admin-system-server-health">
           <div className="flex items-center justify-between">
             <h2 className="flex items-center gap-2 text-lg font-semibold text-foreground">
               <Cpu className="h-5 w-5 text-primary" /> Server health
@@ -510,7 +562,7 @@ export default function SystemAdminDashboard() {
             </Card>
 
             {/* Redis health + live rate-limit counters */}
-            <Card className="p-5 lg:col-span-2">
+            <Card className="p-5 lg:col-span-2" data-tour="admin-system-redis">
               <div className="flex items-center justify-between mb-3">
                 <h3 className="flex items-center gap-2 text-sm font-semibold text-foreground">
                   <Database className="h-4 w-4 text-muted-foreground" /> Redis & rate limiting
@@ -658,7 +710,7 @@ export default function SystemAdminDashboard() {
         <Kpi label="Org admins" value={stats.admins} icon={BarChart3} />
       </div>
 
-      <div className="rounded-lg border border-border/40 bg-card p-8 space-y-6">
+      <div className="rounded-lg border border-border/40 bg-card p-8 space-y-6" data-tour="admin-system-quick-links">
         <h2 className="flex items-center gap-3 text-xl font-bold text-foreground">
           <Lock className="h-5 w-5 text-primary" /> Quick links
         </h2>

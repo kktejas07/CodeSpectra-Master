@@ -24,6 +24,25 @@ function loadEnv() {
 
 loadEnv()
 
+// Hard guard: this script upserts privileged accounts into whatever
+// MONGODB_URI points at — never run it against production with defaults.
+if (process.env.NODE_ENV === 'production' && process.env.ALLOW_SEED_PROD !== '1') {
+  console.error('Refusing to seed: NODE_ENV=production without ALLOW_SEED_PROD=1')
+  process.exit(1)
+}
+const unsetSeedPass = [
+  'SEED_SUPERADMIN_PASS',
+  'SEED_ADMIN_PASS',
+  'SEED_DEMO_PASS',
+  'SEED_QA_PASS',
+].filter((k) => !process.env[k])
+if (unsetSeedPass.length > 0) {
+  console.error(
+    `Refusing to seed with default passwords — set explicitly: ${unsetSeedPass.join(', ')}`,
+  )
+  process.exit(1)
+}
+
 const DEV_ACCOUNTS = [
   { email: 'superadmin@codespectra.com', password: process.env.SEED_SUPERADMIN_PASS || 'ChangeMe123!', role: 'superadmin', name: 'Super Admin' },
   { email: 'admin@codespectra.com', password: process.env.SEED_ADMIN_PASS || 'ChangeMe123!', role: 'tenant_admin', name: 'Tenant Admin' },

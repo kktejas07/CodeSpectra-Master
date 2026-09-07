@@ -8,6 +8,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs'
 import { Card } from '@/components/ui/card'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { ContributionGraph } from '@/components/gamification/contribution-graph'
 import { SkillBadges } from '@/components/gamification/skill-badges'
 
@@ -27,6 +28,7 @@ const ICON_MAP: Record<string, React.ComponentType<any>> = {
 
 export default function AchievementsPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const [achievements, setAchievements] = useState<Achievement[]>([])
   const [xp, setXp] = useState(0)
@@ -49,6 +51,46 @@ export default function AchievementsPage() {
       .finally(() => setLoading(false))
   }, [])
 
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_achievements_tour')) {
+      const achievementsTour: TourStep[] = [
+        {
+          target: '[data-tour="achievements-header"]',
+          title: 'Achievements & Badges',
+          description: 'Showcase your platform achievements and earned skill badges.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="achievements-stats"]',
+          title: 'Your Progress',
+          description: 'Track your level, XP, achievements earned, and problems solved.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="achievements-graph"]',
+          title: 'Contribution Graph',
+          description: 'Visualize your activity and streaks over time.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="achievements-badges"]',
+          title: 'Skill Badges',
+          description: 'Earn badges for mastering specific technologies and skills.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="achievements-tabs"]',
+          title: 'Achievements List',
+          description: 'Browse all available achievements and track your progress toward each one.',
+          position: 'bottom',
+        },
+      ]
+      startTour(achievementsTour, 'achievements')
+      setTourSeen('achievements')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   const earnedCount = achievements.filter(a => a.earned).length
   const userBadges = achievements.filter(a => a.earned).map(a => (a.name || '').toLowerCase().replace(/\s+/g, '-'))
 
@@ -59,7 +101,7 @@ export default function AchievementsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="achievements-header">
           <Trophy className="w-6 h-6 text-primary" />
           <h1 className="text-3xl font-bold text-foreground">Achievements & Badges</h1>
           <TooltipProvider>

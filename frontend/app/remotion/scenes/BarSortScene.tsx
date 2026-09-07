@@ -11,9 +11,30 @@ export const BarSortScene: React.FC<BarSortSceneProps> = ({ initialArray, algori
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
+  // Slide-owned data only, clamped for layout; <2 values → neutral title card.
+  const data = (Array.isArray(initialArray) ? initialArray : []).filter(n => typeof n === 'number' && Number.isFinite(n)).slice(0, 12)
+
+  // Title animation
+  const titleOpacity = interpolate(frame, [0, 15], [0, 1], { extrapolateRight: 'clamp' })
+
+  if (data.length < 2) {
+    return (
+      <div style={{
+        width: '100%', height: '100%',
+        backgroundColor: '#0f172a',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'system-ui, sans-serif',
+      }}>
+        <div style={{ fontSize: 48, fontWeight: 'bold', color: '#f8fafc', opacity: titleOpacity, textAlign: 'center' }}>
+          {title}
+        </div>
+      </div>
+    )
+  }
+
   // Generate sorting steps (simplified merge sort visualization)
   const generateSteps = () => {
-    const arr = [...initialArray]
+    const arr = [...data]
     const steps: Array<{ array: number[], comparing: number[], swapping: number[], sorted: number[] }> = []
     
     // Bubble sort for clear visualization
@@ -50,13 +71,10 @@ export const BarSortScene: React.FC<BarSortSceneProps> = ({ initialArray, algori
   const currentStepIndex = Math.min(Math.floor(frame / stepDuration), steps.length - 1)
   const currentStep = steps[currentStepIndex]
 
-  // Title animation
-  const titleOpacity = interpolate(frame, [0, 15], [0, 1], { extrapolateRight: 'clamp' })
-
   // Bar dimensions
-  const maxVal = Math.max(...initialArray)
-  const barWidth = Math.min(80, (1600 - (initialArray.length - 1) * 12) / initialArray.length)
-  const totalWidth = initialArray.length * (barWidth + 12)
+  const maxVal = Math.max(...data)
+  const barWidth = Math.min(80, (1600 - (data.length - 1) * 12) / data.length)
+  const totalWidth = data.length * (barWidth + 12)
 
   // Progress
   const progress = currentStepIndex / (steps.length - 1)

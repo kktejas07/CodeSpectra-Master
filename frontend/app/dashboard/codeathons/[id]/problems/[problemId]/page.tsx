@@ -277,7 +277,7 @@ export default function ProblemPage({ params }: { params: Promise<{ id: string; 
             </TabsContent>
 
             <TabsContent value="leaderboard" className="mt-4">
-              <p className="text-sm text-muted-foreground text-center py-4">Leaderboard coming soon</p>
+              <LeaderboardSection codeathonId={id} />
             </TabsContent>
           </Tabs>
         </Card>
@@ -332,6 +332,60 @@ function Editor(props: React.ComponentProps<typeof import('@monaco-editor/react'
   // Dynamic import to avoid SSR issues
   const MonacoEditor = require('@monaco-editor/react').default
   return <MonacoEditor {...props} />
+}
+
+// Leaderboard Section Component — overall codeathon standings from
+// GET /api/codeathons/[id]/leaderboard ({ leaderboard, event_type }).
+// Entries are per-codeathon aggregates (no per-problem breakdown is stored).
+function LeaderboardSection({ codeathonId }: { codeathonId: string }) {
+  interface LeaderboardEntry {
+    user_id?: string
+    team_id?: string
+    user_name?: string
+    team_name?: string
+    total_score?: number
+    problems_solved?: number
+    last_submission_at?: string
+  }
+  const [entries, setEntries] = useState<LeaderboardEntry[]>([])
+  const [eventType, setEventType] = useState('')
+  const [loading, setLoading] = useState(true)
+  const [error, setError] = useState('')
+
+  useEffect(() => { void fetchBoard() }, [codeathonId])
+
+  async function fetchBoard() {
+    try {
+      const res = await csrfFetch(`/api/codeathons/${codeathonId}/leaderboard`, { credentials: 'include' })
+      if (!res.ok) throw new Error('Failed to load leaderboard')
+      const data = await res.json() as { leaderboard?: LeaderboardEntry[]; event_type?: string }
+      setEntries(data.leaderboard || [])
+      setEventType(data.event_type || '')
+    } catch (e) {
+      setError(e instanceof Error ? e.message : 'Failed to load leaderboard')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-4 w-4 animate-spin text-muted-foreground" /></div>
+  if (error) return <p className="text-sm text-destructive text-center py-4">{error}</p>
+  if (entries.length === 0) return <p className="text-sm text-muted-foreground text-center py-4">No leaderboard entries yet — be the first to submit!</p>
+
+  return (
+    <div className="space-y-2">
+      <p className="text-xs text-muted-foreground text-center">{eventType === 'team' ? 'Overall team standings' : 'Overall standings'}</p>
+      {entries.map((e, i) => (
+        <div key={e.user_id || e.team_id || i} className="flex items-center justify-between p-2 rounded border border-border/60">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold w-6 text-muted-foreground">#{i + 1}</span>
+            <span className="text-xs font-medium">{(e.team_name || e.user_name || 'Unknown')}</span>
+          </div>
+          <span className="text-xs text-muted-foreground">{e.total_score ?? 0} pts · {e.problems_solved ?? 0} solved</span>
+        </div>
+      ))}
+    </div>
+  )
 }
 
 // Forum Section Component

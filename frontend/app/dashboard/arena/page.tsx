@@ -7,6 +7,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Trophy, Code, Loader, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface ArenaChallenge {
   id: string
@@ -26,6 +27,45 @@ const difficultyColors: Record<string, string> = {
   hard: 'text-red-600 bg-red-500/10 border-red-500/30',
 }
 
+// Skeleton components for better loading UX
+const SkeletonCard = () => (
+  <Card className="border-border/60 p-5 animate-pulse">
+    <div className="h-5 bg-muted/60 rounded w-3/4 mb-3" />
+    <div className="h-3 bg-muted/50 rounded w-full mb-2" />
+    <div className="h-3 bg-muted/50 rounded w-5/6 mb-3" />
+    <div className="flex gap-4">
+      <div className="h-3 bg-muted/50 rounded w-12" />
+      <div className="h-3 bg-muted/50 rounded w-12" />
+    </div>
+  </Card>
+)
+
+const StatsSkeleton = () => (
+  <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+    {Array.from({ length: 3 }).map((_, i) => (
+      <Card key={i} className="border-border/60 p-6 animate-pulse">
+        <div className="h-4 bg-muted/60 rounded w-24 mb-2" />
+        <div className="h-8 bg-muted/70 rounded w-16" />
+      </Card>
+    ))}
+  </div>
+)
+
+const FilterSkeleton = () => (
+  <div className="flex flex-wrap gap-4 animate-pulse">
+    <div className="h-10 w-36 bg-muted/60 rounded" />
+    <div className="h-10 w-32 bg-muted/60 rounded" />
+  </div>
+)
+
+const GridSkeleton = () => (
+  <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+    {Array.from({ length: 6 }).map((_, i) => (
+      <SkeletonCard key={i} />
+    ))}
+  </div>
+)
+
 export default function ArenaPage() {
   const gate = usePageGuard('user')
 
@@ -33,6 +73,7 @@ export default function ArenaPage() {
   const [loading, setLoading] = useState(true)
   const [difficulty, setDifficulty] = useState('all')
   const [category, setCategory] = useState('all')
+  const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
     fetch('/api/arena/challenges')
@@ -41,6 +82,40 @@ export default function ArenaPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_arena_tour')) {
+      const arenaTour: TourStep[] = [
+        {
+          target: '[data-tour="arena-overview"]',
+          title: 'Coding Arena',
+          description: 'Browse and solve coding challenges to earn points and improve your skills.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="stats-panel"]',
+          title: 'Your Stats',
+          description: 'Track your progress with total challenges, solved count, and points earned.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="arena-filters"]',
+          title: 'Filter Challenges',
+          description: 'Filter challenges by difficulty and category to find the right problem for you.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="arena-grid"]',
+          title: 'Challenge List',
+          description: 'Click any challenge to start solving and earn points.',
+          position: 'bottom',
+        },
+      ]
+      startTour(arenaTour, 'arena')
+      setTourSeen('arena')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const filtered = challenges.filter((c) => {
     if (difficulty !== 'all' && c.difficulty !== difficulty) return false
@@ -54,15 +129,17 @@ export default function ArenaPage() {
   if (!gate.ready) return null
 
   return (
-    <div className="space-y-8">
-      <div className="flex items-center gap-2">
+    <div className="space-y-8" data-tour="arena-overview">
+      <div className="flex items-center gap-2" data-tour="stats-panel">
         <Trophy className="w-6 h-6 text-primary" />
         <h1 className="text-3xl font-semibold text-foreground">Coding Arena</h1>
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-20">
-          <Loader className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="space-y-8">
+          <StatsSkeleton />
+          <FilterSkeleton />
+          <GridSkeleton />
         </div>
       ) : challenges.length === 0 ? (
         <Card className="border-border/60 p-10 text-center">
@@ -86,7 +163,7 @@ export default function ArenaPage() {
             </Card>
           </div>
 
-          <div className="flex flex-wrap gap-4">
+          <div className="flex flex-wrap gap-4" data-tour="arena-filters">
             <div>
               <label className="text-sm font-medium text-foreground mb-2 block">Difficulty</label>
               <select
@@ -109,7 +186,7 @@ export default function ArenaPage() {
             </div>
           </div>
 
-          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4" data-tour="arena-grid">
             {filtered.map((c) => (
               <Link key={c.id} href={`/dashboard/arena/${c.id}`}>
                 <Card className="border-border/60 p-5 transition-colors hover:border-primary/40">

@@ -47,6 +47,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ConfirmDialog } from '@/components/ui/confirm-dialog'
 import { BLOG_CATEGORIES, type BlogCategoryId } from '@/lib/blog-categories'
+import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 
 type Tab = 'newsroom' | 'signals'
 
@@ -519,9 +520,7 @@ function NewsroomTab() {
       )}
 
       {loading ? (
-        <Card className="flex h-28 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
-        </Card>
+        <SkeletonList count={3} />
       ) : items.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">No posts yet.</Card>
       ) : (
@@ -650,9 +649,7 @@ function SignalsTab() {
       </div>
 
       {loading ? (
-        <Card className="flex h-28 items-center justify-center text-muted-foreground">
-          <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading…
-        </Card>
+        <SkeletonList count={3} />
       ) : items.length === 0 ? (
         <Card className="p-10 text-center text-sm text-muted-foreground">
           No drafts yet. Click <strong>Run ingest</strong> to pull public feeds.

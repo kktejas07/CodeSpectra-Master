@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 type Post = {
   slug: string
@@ -22,6 +23,7 @@ export default function ArticlesNewsroomPage() {
   const gate = usePageGuard('user')
   const [posts, setPosts] = useState<Post[]>([])
   const [loading, setLoading] = useState(true)
+  const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
     if (!gate.ready) return
@@ -43,6 +45,34 @@ export default function ArticlesNewsroomPage() {
       .finally(() => setLoading(false))
   }, [gate.ready])
 
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_articles_tour')) {
+      const articlesTour: TourStep[] = [
+        {
+          target: '[data-tour="articles-header"]',
+          title: 'Articles & Newsroom',
+          description: 'Read expert insights, product updates, and career signals from CodeSpectra.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="open-public-newsroom"]',
+          title: 'Open Public Newsroom',
+          description: 'Visit the public newsroom to see all published articles.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="articles-grid"]',
+          title: 'Article List',
+          description: 'Browse through the latest articles and click to read full content.',
+          position: 'bottom',
+        },
+      ]
+      startTour(articlesTour, 'articles')
+      setTourSeen('articles')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   if (!gate.ready || loading) {
     return (
       <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
@@ -54,7 +84,7 @@ export default function ArticlesNewsroomPage() {
   return (
     <div className="w-full space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
+        <div data-tour="articles-header">
           <h1 className="flex items-center gap-2 text-3xl font-bold tracking-tight">
             <Newspaper className="h-8 w-8 text-primary" /> Articles / Newsroom
           </h1>
@@ -62,7 +92,7 @@ export default function ArticlesNewsroomPage() {
             Expert insights, product updates, and career Signals from CodeSpectra.
           </p>
         </div>
-        <Button asChild variant="outline" size="sm">
+        <Button asChild variant="outline" size="sm" data-tour="open-public-newsroom">
           <Link href="/blog" target="_blank">
             Open public newsroom
           </Link>
@@ -78,7 +108,7 @@ export default function ArticlesNewsroomPage() {
           actionHref="/blog"
         />
       ) : (
-        <div className="grid gap-3 sm:grid-cols-2">
+        <div className="grid gap-3 sm:grid-cols-2" data-tour="articles-grid">
           {posts.map((p) => (
             <Link key={p.slug} href={`/blog/${p.slug}`}>
               <Card className="h-full p-4 transition-colors hover:border-primary/40 hover:bg-muted/30">

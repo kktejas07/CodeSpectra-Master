@@ -13,11 +13,16 @@ export const CodeTypingScene: React.FC<CodeTypingSceneProps> = ({ language, code
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
+  // Null-safe: the render path only mounts this scene for non-empty code,
+  // but the guards below keep a blank slide from ever crashing the video.
+  const safeCode = String(code || '')
+  const lang = String(language || 'code')
+
   // Typing animation: reveal characters over time
   const typingSpeed = 1.5 // characters per frame
-  const totalChars = code.length
+  const totalChars = safeCode.length
   const typedChars = Math.min(Math.floor(frame * typingSpeed), totalChars)
-  const visibleCode = code.slice(0, typedChars)
+  const visibleCode = safeCode.slice(0, typedChars)
 
   // Cursor blink
   const cursorVisible = Math.floor(frame / 15) % 2 === 0 && typedChars < totalChars
@@ -91,7 +96,7 @@ export const CodeTypingScene: React.FC<CodeTypingSceneProps> = ({ language, code
           <div style={{ width: 12, height: 12, borderRadius: 6, backgroundColor: '#22c55e' }} />
         </div>
         <div style={{ fontSize: 18, color: '#64748b' }}>
-          {title || `${language.toUpperCase()} example`}
+          {title || `${lang.toUpperCase()} example`}
         </div>
       </div>
 
@@ -168,7 +173,7 @@ export const CodeTypingScene: React.FC<CodeTypingSceneProps> = ({ language, code
         fontSize: 16, color: '#94a3b8',
         opacity: titleOpacity,
       }}>
-        {language.toUpperCase()}
+        {lang.toUpperCase()}
       </div>
     </div>
     </AbsoluteFill>

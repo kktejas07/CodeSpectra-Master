@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
+import { DIFFICULTY_LEVELS, type DifficultyLevel } from '@/lib/difficulty-levels'
 
 export interface ProblemSummary {
   id: string
@@ -9,6 +10,14 @@ export interface ProblemSummary {
   title: string
   difficulty: 'easy' | 'medium' | 'hard'
   topics: string[]
+}
+
+/** Map the 4-level UI enum to the 3-level DB/API values. */
+const LEVEL_TO_DB: Record<DifficultyLevel, 'easy' | 'medium' | 'hard'> = {
+  beginner: 'easy',
+  intermediate: 'medium',
+  advanced: 'hard',
+  expert: 'hard',
 }
 
 export function useProblemsViewModel() {
@@ -29,7 +38,10 @@ export function useProblemsViewModel() {
     setError(null)
     try {
       const params = new URLSearchParams()
-      if (difficulty !== 'all') params.set('difficulty', difficulty)
+      if (difficulty !== 'all') {
+        const dbKey = LEVEL_TO_DB[difficulty as DifficultyLevel]
+        if (dbKey) params.set('difficulty', dbKey)
+      }
       if (q) params.set('q', q)
       const topics = searchParams.get('topics')
       if (topics) params.set('topics', topics)

@@ -46,9 +46,7 @@ export function newBlogId(): string {
   return randomUUID()
 }
 
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+export { nowIso } from './ids'
 
 export function slugifyTitle(title: string): string {
   return (title || '')

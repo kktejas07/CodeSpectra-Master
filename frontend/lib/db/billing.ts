@@ -8,12 +8,11 @@
  *                          status:'captured'|'failed'|'refunded', amount_paise, created_at }
  *   - billing_subscriptions : { id, user_id, plan_id, status, started_at, ends_at }
  */
-import { randomUUID } from 'node:crypto'
+import { newId, nowIso } from './ids'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
-export const newId = (): string => randomUUID()
-export const nowIso = (): string => new Date().toISOString()
+export { newId, nowIso }
 
 export interface BillingOrderDoc {
   id: string

@@ -310,8 +310,8 @@ export default function PermissionsPage() {
 
       {/* Permission grid */}
       <Card className="overflow-hidden border-border/60">
-        <div className="max-h-[60vh] overflow-y-auto">
-          <table className="w-full text-xs">
+        <div className="max-h-[60vh] overflow-y-auto overflow-x-auto">
+          <table className="w-full min-w-[560px] md:min-w-0 text-xs">
             <thead className="sticky top-0 bg-muted/60 z-10">
               <tr className="border-b border-border/60">
                 <th className="px-3 py-2 text-left font-medium text-muted-foreground w-[40%]">Resource</th>
@@ -341,7 +341,7 @@ export default function PermissionsPage() {
                       <td key={action} className="px-1 py-1.5 text-center">
                         <button
                           onClick={() => togglePerm(r.resource, action)}
-                          className={`inline-flex h-6 w-6 items-center justify-center rounded border text-[10px] font-medium transition-all ${
+                          className={`inline-flex h-9 w-9 sm:h-6 sm:w-6 items-center justify-center rounded border text-[10px] font-medium transition-all ${
                             actions.includes(action) || (action !== 'manage' && actions.includes('manage'))
                               ? 'bg-primary text-primary-foreground border-primary shadow-sm'
                               : 'border-muted-foreground/20 text-muted-foreground/30 hover:border-primary/40 hover:text-muted-foreground'

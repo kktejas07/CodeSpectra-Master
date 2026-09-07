@@ -15,7 +15,6 @@
  * ObjectId for these because the existing UI treats ids as opaque strings.
  */
 
-import { randomUUID } from 'node:crypto'
 import type { Collection, Db, Filter, Sort } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
@@ -139,15 +138,9 @@ export async function scanActivities(): Promise<Collection<ScanActivityDoc>> {
   return (await db()).collection<ScanActivityDoc>('scan_activities')
 }
 
-// ---------- Common helpers ----------
-
-export function newId(): string {
-  return randomUUID()
-}
-
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+// ---------- Common helpers (shared) ----------
+import { newId, nowIso } from './ids'
+export { newId, nowIso } from './ids'
 
 /** Build a Mongo sort object from `{ field, direction }` shape. */
 export function sortBy(field: string, direction: 'asc' | 'desc' = 'desc'): Sort {

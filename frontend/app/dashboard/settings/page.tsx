@@ -1,6 +1,7 @@
 'use client'
 import { useConfirm } from '@/lib/confirm-context'
 import { useAuth } from '@/lib/auth-context'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -60,6 +61,7 @@ export default function SettingsPage() {
   const confirmDialog = useConfirm()
   const gate = usePageGuard('user')
   const { user } = useAuth()
+  const { startTour, setTourSeen } = useTour()
 
   const addToast = useToast()
   const { theme: nextTheme, setTheme } = useTheme()
@@ -106,6 +108,46 @@ export default function SettingsPage() {
   useEffect(() => {
     setThemeReady(true)
   }, [])
+
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_settings_tour')) {
+      const settingsTour: TourStep[] = [
+        {
+          target: '[data-tour="settings-header"]',
+          title: 'Settings',
+          description: 'Manage your account preferences, theme, language, notifications, and security.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="settings-appearance"]',
+          title: 'Appearance',
+          description: 'Choose your theme (light, dark, system) and language.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="settings-notifications"]',
+          title: 'Notifications',
+          description: 'Configure email and push notification preferences.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="settings-security"]',
+          title: 'Security',
+          description: 'Manage two-factor authentication, face biometrics, and password.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="settings-danger"]',
+          title: 'Danger Zone',
+          description: 'Export your data or delete your account (irreversible actions).',
+          position: 'bottom',
+        },
+      ]
+      startTour(settingsTour, 'settings')
+      setTourSeen('settings')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {
     fetch('/api/user/2fa/status')
@@ -217,7 +259,7 @@ export default function SettingsPage() {
 
   return (
     <div className="w-full space-y-8">
-      <div className="space-y-2">
+      <div className="space-y-2" data-tour="settings-header">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-primary/10">
             <Settings className="h-6 w-6 text-primary" />

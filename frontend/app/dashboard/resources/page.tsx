@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { EmptyState } from '@/components/ui/empty-state'
 import { EbookCoverCard, type EbookCardData } from '@/components/resources/ebook-cover-card'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 const LINK_RESOURCES = [
   {
@@ -83,8 +84,14 @@ export default function ResourcesPage() {
 
   if (!gate.ready) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading…
+      <div className="w-full space-y-10">
+        <SkeletonText lines={2} />
+        <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-4">
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
       </div>
     )
   }

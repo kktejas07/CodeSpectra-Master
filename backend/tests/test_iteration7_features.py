@@ -12,6 +12,8 @@ import re
 import requests
 import pytest
 
+from live_frontend import login_live, make_live_session
+
 # Per agent-to-agent note: external preview proxy is broken for new routes; use localhost:3000 directly.
 BASE_URL = "http://localhost:3000"
 
@@ -23,29 +25,19 @@ ORIGIN_HEADER = {"Origin": BASE_URL}
 
 # ---------- fixtures ----------
 @pytest.fixture(scope="session")
+def anon():
+    """CSRF-primed anonymous session: unauth probes get true 401s, not 403s."""
+    return make_live_session(BASE_URL)
+
+
+@pytest.fixture(scope="session")
 def superadmin_session():
-    s = requests.Session()
-    r = s.post(
-        f"{BASE_URL}/api/auth/sign-in/email",
-        json=SUPERADMIN,
-        headers={**ORIGIN_HEADER, "Content-Type": "application/json"},
-        timeout=15,
-    )
-    assert r.status_code == 200, f"superadmin sign-in failed: {r.status_code} {r.text[:200]}"
-    return s
+    return login_live(SUPERADMIN["email"], SUPERADMIN["password"], BASE_URL)
 
 
 @pytest.fixture(scope="session")
 def user_session():
-    s = requests.Session()
-    r = s.post(
-        f"{BASE_URL}/api/auth/sign-in/email",
-        json=USER,
-        headers={**ORIGIN_HEADER, "Content-Type": "application/json"},
-        timeout=15,
-    )
-    assert r.status_code == 200, f"user sign-in failed: {r.status_code} {r.text[:200]}"
-    return s
+    return login_live(USER["email"], USER["password"], BASE_URL)
 
 
 # ---------- Leaderboard ----------
@@ -136,8 +128,8 @@ class TestMCP:
         names = _extract_tool_names(r.json())
         assert names == EXPECTED_TOOLS
 
-    def test_jsonrpc_tools_list(self):
-        r = requests.post(
+    def test_jsonrpc_tools_list(self, anon):
+        r = anon.post(
             f"{BASE_URL}/api/mcp",
             json={"jsonrpc": "2.0", "method": "tools/list", "id": 1},
             timeout=10,
@@ -151,8 +143,8 @@ class TestMCP:
         names = {t["name"] for t in tools}
         assert names == EXPECTED_TOOLS
 
-    def test_tools_call_list_problems(self):
-        r = requests.post(
+    def test_tools_call_list_problems(self, anon):
+        r = anon.post(
             f"{BASE_URL}/api/mcp",
             json={
                 "jsonrpc": "2.0",
@@ -189,8 +181,8 @@ class TestMCP:
             isinstance(problems, dict) and len(problems) >= 1
         )
 
-    def test_tools_call_get_user_xp(self):
-        r = requests.post(
+    def test_tools_call_get_user_xp(self, anon):
+        r = anon.post(
             f"{BASE_URL}/api/mcp",
             json={
                 "jsonrpc": "2.0",
@@ -208,8 +200,8 @@ class TestMCP:
         # user object with id/email/name
         assert "QA Atlas" in txt or "qa@codespectra.dev" in txt
 
-    def test_tools_call_get_leaderboard(self):
-        r = requests.post(
+    def test_tools_call_get_leaderboard(self, anon):
+        r = anon.post(
             f"{BASE_URL}/api/mcp",
             json={
                 "jsonrpc": "2.0",
@@ -227,8 +219,8 @@ class TestMCP:
 
 # ---------- Workflows ----------
 class TestWorkflows:
-    def test_unauth_create_workflow_401(self):
-        r = requests.post(f"{BASE_URL}/api/workflows", json={"name": "X"}, timeout=10)
+    def test_unauth_create_workflow_401(self, anon):
+        r = anon.post(f"{BASE_URL}/api/workflows", json={"name": "X"}, timeout=10)
         assert r.status_code == 401, f"unauth POST should be 401 got {r.status_code} {r.text[:200]}"
 
     def test_unauth_list_workflows_401(self):
@@ -301,8 +293,8 @@ class TestGitHub:
         assert body.get("ok") is True
         assert body.get("received") == "ping"
 
-    def test_queue_run_unauth(self):
-        r = requests.post(f"{BASE_URL}/api/github/queue/run", timeout=10)
+    def test_queue_run_unauth(self, anon):
+        r = anon.post(f"{BASE_URL}/api/github/queue/run", timeout=10)
         assert r.status_code == 401
 
     def test_queue_run_superadmin(self, superadmin_session):

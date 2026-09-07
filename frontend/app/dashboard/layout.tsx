@@ -77,7 +77,6 @@ import {
   GitFork,
   CalendarDays,
   Terminal,
-  GraduationCap,
   Video,
   UserCheck,
   FileSpreadsheet,
@@ -95,6 +94,7 @@ import {
   Ticket,
   Megaphone,
   BrainCircuit,
+  Brain,
   ShieldAlert,
   ShieldCheck,
   Zap,
@@ -103,6 +103,8 @@ import {
   Wand2,
   FileBarChart,
   BadgeCheck,
+  Upload as UploadIcon,
+  LayoutDashboard as LayoutDashboardIcon,
   TrendingUp,
   Activity,
   Heart,
@@ -124,9 +126,7 @@ import { ActivityHeartbeat } from '@/components/dashboard/activity-heartbeat'
 import { WebVitalsReporter } from '@/components/dashboard/web-vitals-reporter'
 import { AnalyticsTracker } from '@/components/dashboard/analytics-tracker'
 import { ScannerSidebarNav } from '@/components/dashboard/scanner-sidebar-nav'
-import { LearningSidebarNav } from '@/components/dashboard/learning-sidebar-nav'
 import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-settings-sidebar-nav'
-import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
 import { PageLocked } from '@/components/page-locked'
 import { fetchLockedPages } from '@/lib/use-page-guard'
@@ -150,7 +150,6 @@ const EMPTY_LOCKED_PAGES: string[] = []
 function mainNavHasNestedShell(href: string): boolean {
   const path = (href.split('?')[0] || href).replace(/\/$/, '')
   if (path.startsWith('/dashboard/scanner')) return true
-  if (path.startsWith('/dashboard/learning')) return true
   if (path.startsWith('/dashboard/admin/settings')) return true
   return false
 }
@@ -390,7 +389,6 @@ export default function DashboardLayout({
       '/dashboard/hackathons': Trophy,
 
       // Learning
-      '/dashboard/learning': GraduationCap,
       '/dashboard/courses': BookOpen,
       '/dashboard/courses/my': UserRound,
       '/dashboard/courses/wishlist': Heart,
@@ -409,8 +407,12 @@ export default function DashboardLayout({
       // Career
       '/dashboard/jobs': Briefcase,
       '/dashboard/interviews': UserCheck,
+      '/dashboard/interviews/ai-mock': Brain,
+      '/dashboard/interviews/feedback': MessageSquare,
+      '/dashboard/mock-tests': Sparkles,
       '/dashboard/resumes': FileSpreadsheet,
       '/dashboard/assessments': ClipboardCheck,
+      '/dashboard/assessments/ai-fluency': BrainCircuit,
       '/dashboard/certifications': Award,
 
       // Tools
@@ -454,6 +456,8 @@ export default function DashboardLayout({
       '/dashboard/admin/announcements': Megaphone,
       '/dashboard/admin/newsletter': Mail,
       '/dashboard/admin/content-studio': Zap,
+      '/dashboard/admin/blog': Newspaper,
+      '/dashboard/admin/signals': Radio,
       '/dashboard/admin/resources': Library,
       '/dashboard/admin/hackathons': Trophy,
       '/dashboard/admin/rag': BrainCircuit,
@@ -461,29 +465,35 @@ export default function DashboardLayout({
       [p.settings]: Settings,
       [p.settingsKyc]: BadgeCheck,
       [p.security]: ShieldCheck,
+      '/dashboard/admin/security/email-monitoring': Mail,
       '/dashboard/admin/proctor': ShieldAlert,
       '/dashboard/admin/certificates': Award,
       [p.jobs]: Briefcase,
       [p.resumes]: FileSpreadsheet,
       [p.codeathons]: Terminal,
       [p.exams]: ClipboardCheck,
+      '/dashboard/admin/assessments/bulk': UploadIcon,
+      '/dashboard/admin/assessments/pipeline': LayoutDashboardIcon,
       [p.workflows]: Workflow,
       '/dashboard/admin/cron-jobs': Timer,
       [p.questionGenerator]: Bot,
       '/dashboard/admin/courses': BookOpen,
       [DASHBOARD_ROUTES.organization.team]: Users2,
-      '/dashboard/admin/requisitions': Briefcase,
+      '/dashboard/admin/team/activity': Activity,
       '/dashboard/admin/question-bank': Database,
       '/dashboard/admin/predictive-validity': LineChart,
       '/dashboard/admin/sme-review': UserCheck,
       '/dashboard/admin/hiring-manager-report': FileBarChart,
+      '/dashboard/admin/billing': Receipt,
+      '/dashboard/admin/help': HelpCircle,
+      '/dashboard/admin/sso': KeyRound,
       '/dashboard/admin/kyc': BadgeCheck,
       '/dashboard/recruiter-analytics': BarChart3,
+      '/companies': Building2,
     }
 
     const HREF_OVERRIDES: Record<string, string> = {
       '/dashboard/scanner': '/dashboard/scanner?mode=manual',
-      '/dashboard/learning': LEARNING_HUB_DEFAULT,
     }
 
     const addSectionHeaders = (leaves: NavLeaf[]): NavEntry[] => {
@@ -605,8 +615,52 @@ export default function DashboardLayout({
     router.refresh()
   }
 
+  const handleGuideClick = () => {
+    // Get current pathname to determine which tour to restart
+    const currentPath = pathname
+
+    // Map paths to tour IDs
+    const tourIdMap: Record<string, string> = {
+      '/dashboard': 'welcome',
+      '/dashboard/scanner': 'scanner',
+      '/dashboard/problems': 'problems',
+      '/dashboard/arena': 'arena',
+      '/dashboard/courses': 'courses',
+      '/dashboard/events': 'events',
+      '/dashboard/interviews': 'interviews',
+      '/dashboard/leaderboard': 'leaderboard',
+      '/dashboard/achievements': 'achievements',
+      '/dashboard/assessments': 'assessments',
+      '/dashboard/tracks': 'tracks',
+      '/dashboard/hackathons': 'hackathons',
+      '/dashboard/articles': 'articles',
+      '/dashboard/codeathons': 'codeathons',
+      '/dashboard/settings': 'settings',
+      '/dashboard/admin/system': 'admin-system'
+    }
+
+    // Find matching tour ID
+    let tourId = tourIdMap[currentPath]
+
+    // If no exact match, try to match by prefix for dynamic routes
+    if (!tourId) {
+      for (const [path, id] of Object.entries(tourIdMap)) {
+        if (currentPath.startsWith(path)) {
+          tourId = id
+          break
+        }
+      }
+    }
+
+    if (tourId) {
+      // Clear the seen flag
+      window.localStorage.removeItem(`has_seen_${tourId}_tour`)
+      // Refresh the page to restart the tour
+      router.refresh()
+    }
+  }
+
   const isScannerShell = pathname.startsWith('/dashboard/scanner')
-  const isLearningShell = pathname.startsWith('/dashboard/learning')
   const isPlatformSettingsShell = pathname.startsWith('/dashboard/admin/settings')
   const isLessonPlayer = pathname.includes('/lesson/')
 
@@ -618,9 +672,6 @@ export default function DashboardLayout({
     if (pathname === href) return true
     if (href.startsWith('/dashboard/scanner')) {
       return pathname.startsWith('/dashboard/scanner')
-    }
-    if (href.startsWith('/dashboard/learning')) {
-      return pathname.startsWith('/dashboard/learning')
     }
     if (href === '/dashboard') {
       return pathname === '/dashboard'
@@ -856,18 +907,6 @@ export default function DashboardLayout({
                   onNavigate={() => setSidebarOpen(false)}
                 />
               </Suspense>
-            ) : isLearningShell ? (
-              <Suspense
-                fallback={
-                  <div className="mx-2 my-2 h-40 animate-pulse rounded-md bg-muted/40" />
-                }
-              >
-                <LearningSidebarNav
-                  collapsed={sidebarCollapsed}
-                  homeHref={homeHref}
-                  onNavigate={() => setSidebarOpen(false)}
-                />
-              </Suspense>
             ) : isPlatformSettingsShell ? (
               <Suspense
                 fallback={
@@ -1040,7 +1079,7 @@ export default function DashboardLayout({
                 href="/dashboard/notifications"
                 onClick={() => setSidebarOpen(false)}
                 className={cn(
-                  'relative shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground',
+                  'relative flex shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-foreground max-md:min-h-10 max-md:min-w-10',
                   sidebarCollapsed
                     ? 'flex h-9 w-9 items-center justify-center'
                     : 'p-2',
@@ -1062,7 +1101,7 @@ export default function DashboardLayout({
                 type="button"
                 onClick={() => void handleLogout()}
                 className={cn(
-                  'shrink-0 rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-destructive',
+                  'flex shrink-0 items-center justify-center rounded-lg text-muted-foreground transition-colors hover:bg-muted hover:text-destructive max-md:min-h-10 max-md:min-w-10',
                   sidebarCollapsed ? 'flex h-9 w-9 items-center justify-center' : 'p-2'
                 )}
                 title="Sign out"
@@ -1088,32 +1127,44 @@ export default function DashboardLayout({
 
         {/* Face biometric enrollment warning */}
         {userRole === 'user' && fbUser?.has_enrolled_face === false && (
-          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 flex items-center justify-between text-sm">
+          <div className="bg-amber-500/10 border-b border-amber-500/20 px-4 py-3 flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between text-sm">
             <div className="flex items-center gap-2 text-amber-600">
               <AlertCircle className="h-5 w-5 shrink-0" />
               <p><strong>Action Required:</strong> Please complete your face biometric enrollment to take proctored assessments.</p>
             </div>
             <Link 
               href="/auth/enroll-face?redirect=/dashboard" 
-              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md font-medium text-xs whitespace-nowrap transition-colors"
+              className="px-3 py-1.5 bg-amber-500 hover:bg-amber-600 text-white rounded-md font-medium text-xs text-center whitespace-nowrap transition-colors"
             >
               Enroll Now
             </Link>
           </div>
         )}
 
-        {/* Breadcrumbs + mobile menu (no top profile — account lives in sidebar footer) */}
+        {/* Breadcrumbs + mobile menu + tour guide (no top profile — account lives in sidebar footer) */}
         {!isLessonPlayer && (
         <div className="sticky top-0 z-20 flex h-12 items-center justify-between gap-3 border-b border-border/20 bg-background/80 px-4 backdrop-blur-xl lg:px-6">
           <Breadcrumbs homeHref={homeHref} className="min-w-0" />
-          <button
-            type="button"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-            className="rounded-lg p-2 hover:bg-muted lg:hidden"
-            aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
-          >
-            {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={() => setSidebarOpen(!sidebarOpen)}
+              className="flex min-h-10 min-w-10 items-center justify-center rounded-lg p-2 hover:bg-muted lg:hidden"
+              aria-label={sidebarOpen ? 'Close menu' : 'Open menu'}
+            >
+              {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
+            </button>
+            {/* Tour guide button */}
+            <button
+              type="button"
+              onClick={handleGuideClick}
+              className="flex items-center justify-center rounded-lg p-2 hover:bg-muted max-md:min-h-10 max-md:min-w-10"
+              aria-label="Guide"
+              title="Show guide"
+            >
+              <HelpCircle className="h-5 w-5" />
+            </button>
+          </div>
         </div>
         )}
 

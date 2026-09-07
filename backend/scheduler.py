@@ -1,10 +1,22 @@
 import asyncio
 import logging
-from datetime import datetime, timezone
+from models.ai import GenerateCourseReq
 from services.ai import handle_generate_course
 
 # Run every 12 hours
 GENERATION_INTERVAL_SEC = 12 * 60 * 60
+
+
+class _SchedulerRequest:
+    """Minimal stand-in for fastapi.Request.
+
+    handle_generate_course(request, req) only touches request.headers
+    (LLM key resolution tolerates a plain dict) and request.client
+    (client_ip() tolerates None and falls back to "unknown").
+    """
+
+    headers = {}
+    client = None
 
 async def _course_generation_loop():
     logging.info("Course generation scheduler started.")
@@ -16,32 +28,19 @@ async def _course_generation_loop():
             await asyncio.sleep(GENERATION_INTERVAL_SEC)
             
             logging.info("Running scheduled course generation...")
-            # For this example, we generate a random tech course, or maybe one from a predefined list.
-            # In a real scenario, we'd read this from a queue or database.
-            req = {
-                "courseType": "Crash Course",
-                "topic": "Advanced Data Structures in Python",
-                "difficulty": "Intermediate"
-            }
-            # handle_generate_course expects (request, req, user_id, auth_user, mock=False)
-            # Since this is a background task, we mock the request and user
-            class MockUser:
-                id = "system"
-            
-            class MockAuth:
-                user = MockUser()
-
-            # We can't easily mock fastapi Request, so we might need a workaround or adapt the service function.
-            # handle_generate_course does not strictly require request for anything other than headers (which we can fake).
-            class MockRequest:
-                headers = {}
-                
+            # handle_generate_course(request, req: GenerateCourseReq) — the
+            # real signature takes exactly two args. Construct the request
+            # model properly; the scheduler has no HTTP request, so pass a
+            # minimal stub exposing only .headers / .client.
+            req = GenerateCourseReq(
+                technology="Python",
+                level="Intermediate",
+                goal="Advanced Data Structures in Python",
+                duration_hours=10,
+            )
             await handle_generate_course(
-                request=MockRequest(),
+                request=_SchedulerRequest(),  # type: ignore[arg-type]
                 req=req,
-                user_id="system",
-                auth_user=MockAuth(),
-                mock=False
             )
             logging.info("Scheduled course generation completed.")
             

@@ -1,21 +1,57 @@
+'use client'
+
+import { use, useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
-import { Code2, Download, Share2, ShieldCheck, Search } from 'lucide-react'
+import { Code2, Download, Share2, ShieldCheck, Search, XCircle } from 'lucide-react'
 
-// This would typically fetch from the database based on params.id
-// Using mock data for demonstration
-const mockCertificate = {
-  id: 'fc3c6d24-7ecc-4bac-83b5-034d828c658b',
-  recipientName: 'Kavya Chaudhari',
-  courseName: 'Assessment',
-  organizer: 'Indira Gandhi Delhi Technical University for Women (IGDTUW), Delhi is the Winner of Assessment of the Finance Literacy Quiz organized by the Preneurs.',
-  issueDate: '16 Aug 2026, 09:42 AM EDT',
+interface VerifyResponse {
+  valid: boolean
+  reason?: string
+  candidate?: { name: string }
+  certification?: { title: string; level: string; source: string }
+  score?: number
+  score_label?: string
+  issued_at?: string
+  template?: string
 }
 
-export default function CertificatePreviewPage({ params }: { params: Promise<{ id: string }> | any }) {
-  // Use mock for layout
-  const cert = mockCertificate
+function formatIssueDate(iso: string): string {
+  if (!iso) return 'Unknown date'
+  const d = new Date(iso)
+  if (Number.isNaN(d.getTime())) return iso
+  return d.toLocaleDateString('en-US', { day: 'numeric', month: 'short', year: 'numeric' })
+}
+
+export default function CertificatePreviewPage({ params }: { params: Promise<{ id: string }> }) {
+  const { id } = use(params)
+  const [data, setData] = useState<VerifyResponse | null>(null)
+  const [loading, setLoading] = useState(true)
+
+  useEffect(() => {
+    let active = true
+    setLoading(true)
+    fetch(`/api/certifications/verify/${encodeURIComponent(id)}`, { cache: 'no-store' })
+      .then(async (res) => {
+        const json = (await res.json()) as VerifyResponse
+        if (active) setData(json)
+      })
+      .catch(() => {
+        if (active) setData({ valid: false, reason: 'network' })
+      })
+      .finally(() => {
+        if (active) setLoading(false)
+      })
+    return () => {
+      active = false
+    }
+  }, [id])
+
+  const recipientName = data?.candidate?.name || 'Anonymous Candidate'
+  const courseName = data?.certification?.title || 'CodeSpectra Assessment'
+  const source = data?.certification?.source || 'CodeSpectra'
+  const issueDate = formatIssueDate(data?.issued_at || '')
 
   return (
     <div className="min-h-screen bg-slate-50 dark:bg-slate-950 flex flex-col">
@@ -49,28 +85,44 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
 
       {/* Main Content */}
       <main className="flex-1 flex flex-col items-center py-12 px-4">
-        
+
+        {loading ? (
+          <div className="flex items-center gap-2 text-muted-foreground py-20">
+            <div className="h-5 w-5 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            Verifying certificate…
+          </div>
+        ) : !data?.valid ? (
+          <Card className="max-w-md w-full p-8 text-center border-destructive/40 bg-destructive/5">
+            <XCircle className="w-16 h-16 mx-auto text-destructive mb-4" />
+            <h1 className="text-xl font-bold mb-2">Certificate not found</h1>
+            <p className="text-sm text-muted-foreground">
+              This certificate id is invalid or the certificate has been revoked.
+            </p>
+            <code className="text-[11px] block mt-4 text-muted-foreground break-all">{id}</code>
+          </Card>
+        ) : (
+        <>
         {/* Certificate Header Info */}
         <div className="w-full max-w-4xl mb-8 text-center md:text-left md:flex justify-between items-end">
           <div>
             <h1 className="text-3xl md:text-4xl font-extrabold text-foreground tracking-tight flex items-center justify-center md:justify-start gap-3">
-              {cert.recipientName} earned a Certificate! 🎉
+              {recipientName} earned a Certificate! 🎉
             </h1>
             <p className="mt-2 text-muted-foreground font-medium">
               Your achievement has been recognized. Share your success with the world!
             </p>
-            
+
             <div className="mt-6 flex items-center gap-4 justify-center md:justify-start text-sm">
                <div className="h-12 w-12 rounded-full bg-red-100 flex items-center justify-center overflow-hidden shrink-0 border border-border">
                  <span className="text-[10px] font-black text-red-600 rotate-[-15deg] leading-none text-center">FINANCE<br/>QUIZ</span>
                </div>
                <div>
-                 <p className="font-bold text-foreground">{cert.courseName}</p>
-                 <p className="text-muted-foreground text-xs">Issued on: {cert.issueDate}</p>
+                 <p className="font-bold text-foreground">{courseName}</p>
+                 <p className="text-muted-foreground text-xs">Issued on: {issueDate}</p>
                </div>
             </div>
           </div>
-          
+
           <div className="mt-6 md:mt-0 flex items-center gap-3 justify-center">
             <Button variant="outline" className="gap-2 shadow-sm rounded-full bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
               <Download className="h-4 w-4" /> Download
@@ -84,9 +136,9 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
         {/* The Certificate Itself */}
         <div className="w-full max-w-4xl relative group">
           <div className="absolute -inset-1 bg-linear-to-r from-blue-500 to-purple-500 rounded-[22px] blur opacity-20 group-hover:opacity-30 transition duration-1000 group-hover:duration-200" />
-          
+
           <Card className="relative bg-white dark:bg-slate-950 overflow-hidden border-2 border-blue-500 rounded-[20px] shadow-2xl p-0 aspect-[1.414/1] max-h-[800px] flex flex-col justify-center items-center text-center">
-            
+
             {/* Geometric background elements (matching reference) */}
             <div className="absolute top-0 left-0 w-full h-full pointer-events-none opacity-20">
                {/* Simplified SVG poly shapes */}
@@ -112,22 +164,22 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
                  <span className="text-[10px] font-black text-red-600 rotate-[-15deg] leading-none text-center opacity-70">FINANCE<br/>QUIZ</span>
                </div>
             </div>
-            
+
             <div className="relative z-10 max-w-2xl px-12 mt-10">
               <h2 className="text-3xl md:text-5xl font-black text-blue-900 dark:text-blue-100 mb-12 uppercase tracking-wide">
                 Certificate of Excellence
               </h2>
-              
+
               <p className="text-xs md:text-sm text-slate-500 dark:text-slate-400 font-semibold mb-2 uppercase tracking-widest">
                 This is to certify that
               </p>
-              
+
               <h3 className="text-2xl md:text-4xl font-bold text-blue-800 dark:text-blue-200 mb-8 border-b-2 border-slate-200 dark:border-slate-800 pb-2 inline-block px-8">
-                {cert.recipientName}
+                {recipientName}
               </h3>
-              
+
               <p className="text-sm md:text-base text-slate-700 dark:text-slate-300 leading-relaxed font-medium max-w-lg mx-auto">
-                from <span className="text-blue-600 dark:text-blue-400 font-semibold">Indira Gandhi Delhi Technical University for Women (IGDTUW), Delhi</span> is the Winner of <span className="text-blue-600 dark:text-blue-400 font-semibold">Assessment</span> of the Finance Literacy Quiz organized by the Preneurs.
+                has successfully earned <span className="text-blue-600 dark:text-blue-400 font-semibold">{courseName}</span> via <span className="text-blue-600 dark:text-blue-400 font-semibold">{source}</span>.
               </p>
             </div>
 
@@ -154,11 +206,13 @@ export default function CertificatePreviewPage({ params }: { params: Promise<{ i
                 <ShieldCheck className="h-4 w-4" />
                 <span className="text-[10px] font-medium uppercase tracking-wider">Verifiable Credential</span>
               </div>
-              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">ID: {cert.id}</span>
+              <span className="text-[9px] text-slate-400 dark:text-slate-500 font-mono">ID: {id}</span>
             </div>
-            
+
           </Card>
         </div>
+        </>
+        )}
       </main>
     </div>
   )

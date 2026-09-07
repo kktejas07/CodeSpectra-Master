@@ -12,6 +12,8 @@ import os
 import pytest
 import requests
 
+from live_frontend import login_live, make_live_session
+
 BASE_URL = os.environ.get("NEXT_PUBLIC_APP_URL", "http://localhost:3000").rstrip("/")
 
 SUPER = ("qa@codespectra.dev", "QApass123!")
@@ -19,18 +21,7 @@ USER = ("user@codespectra.dev", "CodeSpectra@2026")
 
 
 def _sign_in(email: str, password: str) -> requests.Session:
-    s = requests.Session()
-    s.headers.update({
-        "Content-Type": "application/json",
-        "Origin": BASE_URL,
-    })
-    r = s.post(
-        f"{BASE_URL}/api/auth/sign-in/email",
-        json={"email": email, "password": password},
-        timeout=15,
-    )
-    assert r.status_code == 200, f"login {email}: {r.status_code} {r.text[:200]}"
-    return s
+    return login_live(email, password, BASE_URL)
 
 
 @pytest.fixture(scope="module")
@@ -45,9 +36,8 @@ def user_client():
 
 @pytest.fixture(scope="module")
 def anon_client():
-    s = requests.Session()
-    s.headers.update({"Content-Type": "application/json", "Origin": BASE_URL})
-    return s
+    # CSRF-primed: unauth probes get true 401s, not 403 CSRF failures.
+    return make_live_session(BASE_URL)
 
 
 # ============ Catalog ============

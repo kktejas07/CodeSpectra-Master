@@ -18,6 +18,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
 import { compressHtmlImages } from '@/lib/image-compress'
 import EmailPreviewFrame from '@/components/newsletter/email-preview-frame'
+import { SkeletonList, SkeletonStats } from '@/components/ui/skeleton-boneyard'
 
 interface Campaign {
   id: string
@@ -334,7 +335,12 @@ export default function NewsletterPage() {
   }
 
   if (!gate.ready) {
-    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> Loading…</div>
+    return (
+      <div className="space-y-6 p-6">
+        <SkeletonStats />
+        <SkeletonList count={2} />
+      </div>
+    )
   }
 
   return (

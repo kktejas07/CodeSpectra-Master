@@ -3,15 +3,17 @@
 import { useState, useEffect, useMemo } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
-import { 
+import {
   Search, ChevronDown, ChevronUp, CheckCircle2, Bookmark, Flame, Target, Trophy, ArrowRight, Loader2, Play
 } from 'lucide-react'
+import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useProblemsViewModel, type ProblemSummary } from './use-problems-viewmodel'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 function FilterAccordion({ title, items, selected, onToggle }: { title: string, items: {id: string, label: string}[], selected: string[], onToggle: (id: string) => void }) {
   const [open, setOpen] = useState(true)
@@ -41,6 +43,7 @@ export default function ProblemsListPage() {
   const gate = usePageGuard('user')
   const { loading, error, q, setQ, difficulty, setDifficulty, filtered } = useProblemsViewModel()
   const router = useRouter()
+  const { startTour, setTourSeen } = useTour()
 
   const [heatmapData, setHeatmapData] = useState<any>(null)
   useEffect(() => {
@@ -48,6 +51,34 @@ export default function ProblemsListPage() {
       if (data && !data.error && data.cells) setHeatmapData(data)
     }).catch(() => {})
   }, [])
+
+  // Initialize tour if this is the first visit to problems page
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_problems_tour')) {
+      const problemsTour: TourStep[] = [
+        {
+          target: '[data-tour="problems-search"]',
+          title: 'Search Problems',
+          description: 'Search for coding problems by title, topic, or difficulty.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="problems-stats"]',
+          title: 'Your Progress',
+          description: 'Track your solved problems across Easy, Medium, and Hard difficulties.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="problems-table"]',
+          title: 'Problem List',
+          description: 'Browse all available problems. Click Solve to start coding.',
+          position: 'bottom',
+        },
+      ]
+      startTour(problemsTour, 'problems')
+      setTourSeen('problems')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   // Compute real stats from problems data
   const stats = useMemo(() => {
@@ -69,6 +100,91 @@ export default function ProblemsListPage() {
     }
   }, [filtered])
 
+  // Skeleton components for loading state
+  const StatsSkeleton = () => (
+    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+      <Card className="p-5 border-border/60 shadow-sm flex flex-col md:flex-row gap-6 items-center animate-pulse">
+        <div className="flex flex-col items-center flex-1 w-full relative h-32 justify-center">
+          <div className="w-28 h-28 rounded-full bg-muted/60" />
+        </div>
+        <div className="flex-1 w-full space-y-4">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i}>
+              <div className="flex justify-between text-xs font-semibold mb-1.5">
+                <span className="h-3 w-8 bg-muted/60 rounded" />
+                <span className="h-3 w-8 bg-muted/60 rounded" />
+              </div>
+              <div className="w-full bg-muted/50 rounded-full h-1.5" />
+            </div>
+          ))}
+        </div>
+      </Card>
+      <Card className="p-5 border-border/60 shadow-sm flex flex-col animate-pulse">
+        <div className="flex items-center justify-between mb-4">
+          <div className="h-4 w-32 bg-muted/60 rounded" />
+          <div className="flex gap-1">
+            <div className="h-6 w-6 rounded-full bg-muted/60" />
+            <div className="h-6 w-6 rounded-full bg-muted/60" />
+          </div>
+        </div>
+        <div className="flex-1 overflow-x-auto min-h-25 mb-2">
+          <div className="flex items-center justify-center h-full">
+            <div className="h-5 w-5 rounded-full bg-muted/40 animate-pulse" />
+          </div>
+        </div>
+        <div className="flex items-center justify-between text-[10px] text-muted-foreground font-semibold pt-3 border-t border-border/40 mt-auto">
+          <div className="h-3 w-16 bg-muted/60 rounded" />
+          <div className="h-3 w-20 bg-muted/60 rounded" />
+        </div>
+        <div className="flex justify-between items-center mt-2 text-[10px]">
+          {Array.from({ length: 3 }).map((_, i) => (
+            <div key={i} className="h-3 w-16 bg-muted/60 rounded" />
+          ))}
+        </div>
+      </Card>
+    </div>
+  )
+
+  const TableSkeleton = () => (
+    <div className="rounded-xl border border-border/60 bg-card overflow-hidden animate-pulse">
+      <div className="grid grid-cols-12 gap-4 p-4 border-b border-border/40 bg-muted/20">
+        <div className="col-span-6 h-4 bg-muted/60 rounded" />
+        <div className="col-span-2 h-4 bg-muted/60 rounded" />
+        <div className="col-span-2 h-4 bg-muted/60 rounded" />
+        <div className="col-span-1 h-4 bg-muted/60 rounded" />
+        <div className="col-span-1 h-4 bg-muted/60 rounded" />
+      </div>
+      {Array.from({ length: 5 }).map((_, i) => (
+        <div key={i} className="grid grid-cols-12 gap-4 p-4 items-center border-b border-border/40">
+          <div className="col-span-6 flex gap-3 min-w-0">
+            <div className="h-4 w-4 bg-muted/60 rounded mt-1" />
+            <div className="min-w-0 space-y-1">
+              <div className="h-4 w-32 bg-muted/60 rounded" />
+              <div className="h-3 w-24 bg-muted/50 rounded" />
+            </div>
+          </div>
+          <div className="col-span-2 flex justify-center">
+            <div className="h-5 w-16 bg-muted/60 rounded" />
+          </div>
+          <div className="col-span-2 flex items-center justify-center gap-2">
+            <div className="h-4 w-12 bg-muted/60 rounded" />
+            <div className="flex items-end h-3 gap-px">
+              {Array.from({ length: 7 }).map((_, j) => (
+                <div key={j} className="w-[2px] h-full bg-muted/50" />
+              ))}
+            </div>
+          </div>
+          <div className="col-span-1 flex justify-center">
+            <div className="h-4 w-8 bg-muted/60 rounded" />
+          </div>
+          <div className="col-span-1 flex justify-center">
+            <div className="h-8 w-16 bg-muted/60 rounded" />
+          </div>
+        </div>
+      ))}
+    </div>
+  )
+
   // Filter state (mock functionality for now)
   const [selectedCompanies, setSelectedCompanies] = useState<string[]>([])
   const [selectedTopics, setSelectedTopics] = useState<string[]>([])
@@ -78,7 +194,7 @@ export default function ProblemsListPage() {
   return (
     <div className="max-w-[1400px] mx-auto pb-12 space-y-6">
       
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
         <div className="relative w-full max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Search Opportunities" className="pl-9 h-10 rounded-full bg-muted/50 border-none" />
@@ -107,11 +223,12 @@ export default function ProblemsListPage() {
              items={[{id: 'arrays', label: 'Arrays'}, {id: 'strings', label: 'Strings'}, {id: 'dp', label: 'Dynamic Programming'}]}
              selected={selectedTopics} onToggle={(id) => setSelectedTopics(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id])}
            />
-           <FilterAccordion 
-             title="Difficulty" 
-             items={[{id: 'easy', label: 'Easy'}, {id: 'medium', label: 'Medium'}, {id: 'hard', label: 'Hard'}]}
-             selected={[]} onToggle={() => {}}
-           />
+           <FilterAccordion
+              title="Difficulty"
+              items={DIFFICULTY_LEVELS.map(l => ({ id: l, label: DIFFICULTY_LABELS[l] }))}
+              selected={difficulty !== 'all' ? [difficulty] : []}
+              onToggle={(id) => setDifficulty(prev => prev === id ? 'all' : id)}
+            />
            <FilterAccordion title="Status" items={[{id: 'solved', label: 'Solved'}, {id: 'unsolved', label: 'Unsolved'}]} selected={[]} onToggle={() => {}} />
            <FilterAccordion title="Domain" items={[{id: 'core', label: 'Core CS'}, {id: 'web', label: 'Web Dev'}]} selected={[]} onToggle={() => {}} />
         </div>
@@ -122,7 +239,7 @@ export default function ProblemsListPage() {
            {/* Top Stats Row */}
            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
              {/* Progress Card */}
-             <Card className="p-5 border-border/60 shadow-sm flex flex-col md:flex-row gap-6 items-center">
+             <Card className="p-5 border-border/60 shadow-sm flex flex-col md:flex-row gap-6 items-center" data-tour="problems-stats">
                 <div className="flex flex-col items-center flex-1 w-full relative h-32 justify-center">
                    <svg className="w-28 h-28 transform -rotate-90" viewBox="0 0 100 100">
                       <circle cx="50" cy="50" r="40" fill="transparent" stroke="currentColor" strokeWidth="8" className="text-muted/30" />
@@ -211,7 +328,7 @@ export default function ProblemsListPage() {
                 </div>
                 <h2 className="text-xl font-black uppercase tracking-tight">CONTAINER MERGE LINE</h2>
               </div>
-              <div className="flex items-center gap-8 px-6 pb-5 sm:py-6 sm:bg-white/10 w-full sm:w-auto">
+              <div className="flex flex-wrap items-center gap-8 px-6 pb-5 sm:py-6 sm:bg-white/10 w-full sm:w-auto">
                  <div className="text-center">
                     <div className="text-[10px] text-blue-200 uppercase font-bold tracking-wider mb-1">Difficulty</div>
                     <div className="font-bold">Medium</div>
@@ -235,7 +352,7 @@ export default function ProblemsListPage() {
            {/* Search & Problems Table */}
            <div className="space-y-4">
               <div className="flex flex-col sm:flex-row gap-3">
-                <div className="relative flex-1">
+                <div className="relative flex-1" data-tour="problems-search">
                   <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                   <Input value={q} onChange={(e) => setQ(e.target.value)} placeholder="Search code questions" className="pl-9 h-10 rounded-full bg-card" />
                 </div>
@@ -244,8 +361,10 @@ export default function ProblemsListPage() {
                 </Button>
               </div>
 
-              <div className="rounded-xl border border-border/60 bg-card overflow-hidden">
-                 <div className="grid grid-cols-12 gap-4 p-4 text-[11px] uppercase tracking-wider font-semibold text-muted-foreground border-b border-border/40 bg-muted/20">
+              <div className="rounded-xl border border-border/60 bg-card overflow-hidden" data-tour="problems-table">
+               <div className="overflow-x-auto">
+                <div className="min-w-[600px] md:min-w-0">
+                  <div className="grid grid-cols-12 gap-4 p-4 text-[11px] uppercase tracking-wider font-semibold text-muted-foreground border-b border-border/40 bg-muted/20">
                     <div className="col-span-6 pl-2">Problem Title</div>
                     <div className="col-span-2 text-center">Difficulty</div>
                     <div className="col-span-2 text-center">Accuracy</div>
@@ -275,7 +394,10 @@ export default function ProblemsListPage() {
                                </div>
                             </div>
                             <div className="col-span-2 text-center">
-                               <span className={`text-xs font-semibold capitalize ${p.difficulty === 'easy' ? 'text-green-500' : p.difficulty === 'medium' ? 'text-orange-500' : 'text-red-500'}`}>
+                               <span className={`text-xs font-semibold capitalize ${(() => {
+                                 const dl = toDifficultyLevel(p.difficulty === 'easy' ? 'beginner' : p.difficulty === 'hard' ? 'advanced' : 'intermediate')
+                                 return dl ? DIFFICULTY_COLORS[dl] : 'text-muted-foreground'
+                               })()}`}>
                                  {p.difficulty}
                                </span>
                             </div>
@@ -304,6 +426,8 @@ export default function ProblemsListPage() {
                        ))}
                     </div>
                  )}
+                </div>
+               </div>
               </div>
            </div>
         </div>

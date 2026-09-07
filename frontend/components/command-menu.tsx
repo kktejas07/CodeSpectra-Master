@@ -17,7 +17,6 @@ import {
   CommandItem,
   CommandList,
 } from '@/components/ui/command'
-import { LEARNING_HUB_DEFAULT } from '@/lib/learning-query'
 import {
   ADMIN_ONLY_ROUTES,
   TENANT_ADMIN_ROUTES,
@@ -65,7 +64,9 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
   '/dashboard/admin/rag': Database,
   '/dashboard/admin/ai-inventory': Sparkles,
   '/dashboard/admin/settings': Settings,
+  '/dashboard/admin/settings/kyc': Shield,
   '/dashboard/admin/security': Shield,
+  '/dashboard/admin/security/email-monitoring': Bell,
   '/dashboard/admin/proctor': Shield,
   '/dashboard/admin/certificates': Award,
   '/dashboard/admin/teams': Users,
@@ -73,20 +74,25 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
   '/dashboard/admin/resumes': FileText,
   '/dashboard/admin/codeathons': Trophy,
   '/dashboard/admin/assessments': FileText,
+  '/dashboard/admin/blog': FileText,
+  '/dashboard/admin/signals': Bot,
+  '/dashboard/admin/billing': CreditCard,
+  '/dashboard/admin/help': MessageSquare,
+  '/dashboard/admin/sso': Lock,
   '/dashboard/admin/workflows': Settings,
   '/dashboard/admin/question-generator': Bot,
   '/dashboard/admin/team': Users,
+  '/dashboard/admin/team/activity': Users,
   '/dashboard/admin/question-bank': Database,
   '/dashboard/admin/predictive-validity': BarChart3,
   '/dashboard/admin/sme-review': Users,
   '/dashboard/admin/hiring-manager-report': FileText,
-  '/dashboard/admin/requisitions': Briefcase,
   '/dashboard/arena': Trophy,
   '/dashboard/hackathons': Trophy,
   '/dashboard/problems': CodeIcon,
   '/dashboard/tracks': Layers,
   '/dashboard/agent': Bot,
-  '/dashboard/learning': BookOpen,
+  '/dashboard/mock-tests': Sparkles,
   '/dashboard/skill-analytics': Sparkles,
   '/dashboard/identity-verify': Camera,
   '/dashboard/leaderboard': BarChart3,
@@ -94,7 +100,6 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
   '/dashboard/certifications': Award,
   '/dashboard/pricing': CreditCard,
   '/dashboard/settings/ai': Sparkles,
-  '/dashboard/feedback': MessageSquare,
   '/dashboard/support': MessageSquare,
   '/dashboard/codeathons': Trophy,
   '/dashboard/challenges': CodeIcon,
@@ -114,7 +119,6 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
 
 const SEARCH_HREF_OVERRIDES: Record<string, string> = {
   '/dashboard/scanner': '/dashboard/scanner?mode=manual',
-  '/dashboard/learning': LEARNING_HUB_DEFAULT,
 }
 
 export function CommandMenu({

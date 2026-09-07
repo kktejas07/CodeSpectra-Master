@@ -12,6 +12,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   Database, Search, RefreshCw, Loader2, Info, Play,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 export default function RagAdminPage() {
   const gate = usePageGuard('superadmin')
@@ -81,7 +82,13 @@ export default function RagAdminPage() {
   }
 
   if (!gate.ready || loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading…</div>
+    return (
+      <div className="mx-auto max-w-4xl space-y-8">
+        <SkeletonText lines={2} />
+        <SkeletonStats />
+        <SkeletonCard />
+      </div>
+    )
   }
 
   return (
@@ -159,7 +166,7 @@ export default function RagAdminPage() {
           <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
           <div className="text-sm text-muted-foreground space-y-1">
             <p>RAG retrieves context from indexed problems, hackathons, and docs before each AI chat call. Embeddings use OpenAI <code className="bg-muted px-1 rounded">text-embedding-ada-002</code>.</p>
-            <p>Configure your preferred AI model in <a href="/dashboard/admin/settings/llm" className="text-primary hover:underline">LLM Configuration</a>. The selected model is used for all AI features.</p>
+            <p>Configure your preferred AI model in <a href="/dashboard/admin/settings?section=llm" className="text-primary hover:underline">AI &amp; LLM Keys</a>. The selected model is used for all AI features.</p>
           </div>
         </div>
       </Card>

@@ -41,5 +41,15 @@ export async function sendEmailViaPostal(params: {
   }
 
   const data = await res.json()
-  return { messageId: data.id ?? null }
+  // Postal nests the numeric id under data.messages[recipient].id
+  // (top-level data.id is absent; data.message_id is a string token).
+  const messages = data?.data?.messages
+  let messageId: number | null = null
+  if (messages && typeof messages === 'object') {
+    const first = Object.values(messages)[0] as { id?: number } | undefined
+    if (first?.id != null) messageId = Number(first.id)
+  }
+  if (messageId == null && data?.data?.id != null) messageId = Number(data.data.id)
+  if (messageId == null && data?.id != null) messageId = Number(data.id)
+  return { messageId: Number.isFinite(messageId as number) ? messageId : null }
 }

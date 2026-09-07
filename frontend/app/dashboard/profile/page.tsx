@@ -16,6 +16,7 @@ import { AiCreditsWidget } from '@/components/ui/ai-credits-widget'
 import { Edit2, Trophy, Shield, Clock, FolderGit2, Activity, Loader, CheckCircle2, XCircle, Smartphone, User, Loader2, Sparkles, TrendingUp, ArrowLeft, Eye, Lightbulb, FileText, Briefcase, Award, Info, FileStack, Trash2, Plus, Image as ImageIcon, Share2 } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonText } from '@/components/ui/skeleton-boneyard'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -103,10 +104,7 @@ function TwoFactorAuth() {
         <span className="font-medium text-foreground">Two-factor auth</span>
       </div>
       {loading ? (
-        <div className="flex items-center gap-2 text-muted-foreground">
-          <Loader className="h-3 w-3 animate-spin" />
-          <span>Loading…</span>
-        </div>
+        <SkeletonText lines={2} />
       ) : status?.enabled ? (
         <div>
           <div className="flex items-center gap-2 text-green-600 dark:text-green-400">

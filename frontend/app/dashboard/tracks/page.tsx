@@ -5,6 +5,7 @@ import Link from 'next/link'
 import { ArrowRight, Code2, Database, FileCode2, GitBranch, Layers, Loader2, ServerCog, Sparkles, Terminal, TrendingUp, HelpCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 
@@ -32,6 +33,7 @@ interface TrackDef {
 
 export default function TracksPage() {
   const gate = usePageGuard('user')
+  const { startTour, setTourSeen } = useTour()
 
   const [tracks, setTracks] = useState<TrackDef[]>([])
   const [counts, setCounts] = useState<Record<string, number>>({})
@@ -54,6 +56,34 @@ export default function TracksPage() {
     }).catch(() => null).finally(() => setLoading(false))
   }, [])
 
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_tracks_tour')) {
+      const tracksTour: TourStep[] = [
+        {
+          target: '[data-tour="tracks-header"]',
+          title: 'Tech-stack Tracks',
+          description: 'Pick a stack and grind through curated problems to build real-world skills.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="tracks-tooltip"]',
+          title: 'Track Description',
+          description: 'Each track includes a curated list of problems, a badge, and a suggested learning path.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="tracks-grid"]',
+          title: 'Available Tracks',
+          description: 'Browse all available tracks and start practicing problems in your chosen stack.',
+          position: 'bottom',
+        },
+      ]
+      startTour(tracksTour, 'tracks')
+      setTourSeen('tracks')
+    }
+  }, [gate.ready, startTour, setTourSeen])
+
   function trackProblemCount(track: TrackDef): number {
     let n = 0
     for (const topic of track.topics) {
@@ -66,7 +96,7 @@ export default function TracksPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-2" data-tour="tracks-header">
         <h1 className="text-3xl font-bold">Tech-stack tracks</h1>
         <TooltipProvider>
           <Tooltip>

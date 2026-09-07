@@ -1,4 +1,4 @@
-import { randomUUID } from 'node:crypto'
+import { newId, nowIso } from './ids'
 import { getMongoDb } from '@/lib/mongodb'
 
 export interface UserSessionDoc {
@@ -21,12 +21,7 @@ export interface UserSessionDoc {
   is_active: boolean
 }
 
-export function newId(): string {
-  return randomUUID()
-}
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+export { newId, nowIso }
 
 export function parseUserAgent(ua: string): { browser: string; os: string; device: 'desktop' | 'mobile' | 'tablet' } {
   let browser = 'Unknown'

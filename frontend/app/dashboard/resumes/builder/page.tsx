@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
 import { useToast } from '@/lib/toast-context'
+import { usePageGuard } from '@/lib/use-page-guard'
 import { ArrowLeft, Save, Download, Sparkles, Plus, Trash2, Briefcase, GraduationCap, Award as AwardIcon, User as UserIcon } from 'lucide-react'
 
 // Basic Resume Data Structure
@@ -48,6 +49,7 @@ const profileData: ResumeData = {
 }
 
 export default function ResumeBuilderPage() {
+  const gate = usePageGuard('user')
   const router = useRouter()
   const searchParams = useSearchParams()
   const source = searchParams.get('source')
@@ -186,6 +188,8 @@ export default function ResumeBuilderPage() {
       setIsGeneratingAI(false)
     }
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="flex flex-col h-screen max-h-screen bg-background overflow-hidden -m-4 sm:-m-6 md:-m-8">

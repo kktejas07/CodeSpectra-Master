@@ -148,7 +148,7 @@ export default function CronPicker({ value, onChange }: Props) {
         </select>
       </div>
 
-      <div className="grid grid-cols-5 gap-2">
+      <div className="grid grid-cols-2 sm:grid-cols-5 gap-2">
         {FIELDS.map((f) => (
           <div key={f.key}>
             <label className="text-[10px] uppercase tracking-wider text-muted-foreground">

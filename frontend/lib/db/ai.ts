@@ -11,12 +11,10 @@
  *   - identity_verifications: { id, user_id, selfie_url?, id_url?, result, created_at }
  *   - skill_insights_cache  : { id, user_id, result, created_at }
  */
-import { randomUUID } from 'node:crypto'
 import type { Collection } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
-export const nowIso = (): string => new Date().toISOString()
-export const newId = (): string => randomUUID()
+export { newId, nowIso } from './ids'
 
 export interface AiChatSessionDoc {
   id: string

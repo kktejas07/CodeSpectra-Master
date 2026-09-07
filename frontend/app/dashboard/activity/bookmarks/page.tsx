@@ -10,6 +10,7 @@ import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { cn } from '@/lib/utils'
+import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 type ProblemItem = { problemId: string; slug: string; title: string; difficulty?: string | null }
 
@@ -88,8 +89,9 @@ function BookmarksInner() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading…
+      <div className="w-full space-y-6">
+        <SkeletonText lines={2} />
+        <SkeletonList count={5} />
       </div>
     )
   }
@@ -197,8 +199,9 @@ export default function BookmarkedQuestionsPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" /> Loading…
+        <div className="w-full space-y-6">
+          <SkeletonText lines={2} />
+          <SkeletonList count={5} />
         </div>
       }
     >

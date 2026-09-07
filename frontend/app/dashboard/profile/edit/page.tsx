@@ -16,6 +16,7 @@ import { generateUsernameCandidate, isGenericUsername } from '@/lib/username'
 import { ArrowLeft, ArrowRight, Save, CheckCircle2, User, Briefcase, GraduationCap, Code2, Award, Link as LinkIcon, Camera, Sparkles, Plus, Trash2, Eye, Lightbulb, ShieldCheck, X } from 'lucide-react'
 import { FileText, Calendar, MapPin, UploadCloud, FileBadge2, Trophy, UserCircle, Search, MapPinIcon } from 'lucide-react'
 import { AnonAadhaarProfileCard } from '@/components/kyc/AnonAadhaarProfileCard'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 // Wizard Steps Configuration
 const STEPS = [
@@ -30,7 +31,29 @@ const STEPS = [
   { id: 9, title: 'Social Links', icon: LinkIcon, required: false },
 ]
 
+// Parse the SSE stream returned by POST /api/ai/chat into plain text.
+async function parseAiChatStream(res: Response): Promise<string> {
+  const text = await res.text()
+  let out = ''
+  for (const rawLine of text.split('\n')) {
+    const line = rawLine.trim()
+    if (!line.startsWith('data:')) continue
+    const payload = line.slice(5).trim()
+    if (!payload || payload === '[DONE]') continue
+    let parsed: { delta?: string; error?: string } | null = null
+    try {
+      parsed = JSON.parse(payload) as { delta?: string; error?: string }
+    } catch {
+      continue
+    }
+    if (parsed?.error) throw new Error(parsed.error)
+    if (parsed?.delta) out += parsed.delta
+  }
+  return out.trim()
+}
+
 export default function EditProfileWizard() {
+  const gate = usePageGuard('user')
   const router = useRouter()
   const { user } = useAuth()
   const addToast = useToast()
@@ -38,6 +61,7 @@ export default function EditProfileWizard() {
   const [step, setStep] = useState(1)
   const [loading, setLoading] = useState(false)
   const [isGeneratingAI, setIsGeneratingAI] = useState(false)
+  const [aiDescBusy, setAiDescBusy] = useState<string | null>(null)
 
   // Form State
   const [basic, setBasic] = useState({ 
@@ -257,6 +281,37 @@ export default function EditProfileWizard() {
     }, 1500)
   }
 
+  // Real AI text generation via POST /api/ai/chat (SSE stream of {delta} chunks).
+  async function generateDescription(key: string, label: string, context: string, apply: (text: string) => void) {
+    if (aiDescBusy) return
+    setAiDescBusy(key)
+    try {
+      const res = await csrfFetch('/api/ai/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          message: `Write a concise professional resume description (2-3 sentences, plain text only, no preamble or quotes) for this ${label}: ${(((context || '').trim() || 'general professional background')).slice(0, 500)}`,
+        }),
+      })
+      if (!res.ok) {
+        let errMsg = `Request failed (${res.status})`
+        try {
+          const j = (await res.json()) as { error?: string }
+          if (j?.error) errMsg = j.error
+        } catch { /* non-JSON body — keep status message */ }
+        throw new Error(errMsg)
+      }
+      const text = await parseAiChatStream(res)
+      if (!text) throw new Error('AI returned an empty response')
+      apply(text)
+      addToast({ type: 'success', title: 'AI description generated!' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'AI generation failed', message: e instanceof Error ? e.message : 'Failed to generate' })
+    } finally {
+      setAiDescBusy(null)
+    }
+  }
+
   const handleSave = async () => {
     setLoading(true)
     try {
@@ -318,6 +373,8 @@ export default function EditProfileWizard() {
       setLoading(false)
     }
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="w-full mx-auto py-8 px-4">
@@ -934,8 +991,8 @@ export default function EditProfileWizard() {
                         <div className="space-y-2 sm:col-span-2">
                           <Label>Description</Label>
                           <Textarea rows={3} placeholder="Describe your education..." value={edu.description} onChange={e => updateEdu(edu.id, 'description', e.target.value)} />
-                          <Button variant="outline" size="sm" className="mt-2 text-primary" onClick={() => addToast({ type: 'info', title: 'AI Generation coming soon!' })}>
-                            <Sparkles className="w-4 h-4 mr-2" /> Generate with AI
+                          <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `edu-${edu.id}`} onClick={() => generateDescription(`edu-${edu.id}`, 'education entry', `${edu.course || ''} ${edu.specialization || ''} at ${edu.college || ''}${edu.skills ? `, skills: ${edu.skills}` : ''}`, (text) => updateEdu(edu.id, 'description', text))}>
+                            <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `edu-${edu.id}` ? 'Generating...' : 'Generate with AI'}
                           </Button>
                         </div>
                       </div>
@@ -990,8 +1047,8 @@ export default function EditProfileWizard() {
                       <div className="space-y-2">
                         <Label>Description</Label>
                         <Textarea rows={4} placeholder="Detail your responsibilities, the role you played, the skills you honed or acquired, and the key learnings or outcomes..." value={exp.description} onChange={e => updateExp(exp.id, 'description', e.target.value)} />
-                        <Button variant="outline" size="sm" className="mt-2 text-primary" onClick={() => addToast({ type: 'info', title: 'AI Generation coming soon!' })}>
-                          <Sparkles className="w-4 h-4 mr-2" /> Generate with AI
+                        <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `exp-${exp.id}`} onClick={() => generateDescription(`exp-${exp.id}`, 'work experience entry', `${exp.designation || ''} at ${exp.organisation || ''}${exp.skills ? `, skills: ${exp.skills}` : ''}`, (text) => updateExp(exp.id, 'description', text))}>
+                          <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `exp-${exp.id}` ? 'Generating...' : 'Generate with AI'}
                         </Button>
                       </div>
                     </div>
@@ -1036,8 +1093,8 @@ export default function EditProfileWizard() {
                             <div className="space-y-2 sm:col-span-2">
                               <Label>Description</Label>
                               <Textarea rows={3} placeholder="Detail the project you worked on..." value={proj.description} onChange={e => updateProj(proj.id, 'description', e.target.value)} />
-                              <Button variant="outline" size="sm" className="mt-2 text-primary" onClick={() => addToast({ type: 'info', title: 'AI Generation coming soon!' })}>
-                                <Sparkles className="w-4 h-4 mr-2" /> Generate with AI
+                              <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `proj-${proj.id}`} onClick={() => generateDescription(`proj-${proj.id}`, 'project entry', `${proj.name || ''} (${proj.type || 'project'})${proj.skills ? `, skills: ${proj.skills}` : ''}`, (text) => updateProj(proj.id, 'description', text))}>
+                                <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `proj-${proj.id}` ? 'Generating...' : 'Generate with AI'}
                               </Button>
                             </div>
                           </div>
@@ -1066,8 +1123,8 @@ export default function EditProfileWizard() {
                             <div className="space-y-2">
                               <Label>Description</Label>
                               <Textarea rows={3} placeholder="Describe your achievement here..." value={ach.description} onChange={e => updateAchieve(ach.id, 'description', e.target.value)} />
-                              <Button variant="outline" size="sm" className="mt-2 text-primary" onClick={() => addToast({ type: 'info', title: 'AI Generation coming soon!' })}>
-                                <Sparkles className="w-4 h-4 mr-2" /> Generate with AI
+                              <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `ach-${ach.id}`} onClick={() => generateDescription(`ach-${ach.id}`, 'achievement entry', `${ach.title || ''}${ach.skills ? `, skills: ${ach.skills}` : ''}`, (text) => updateAchieve(ach.id, 'description', text))}>
+                                <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `ach-${ach.id}` ? 'Generating...' : 'Generate with AI'}
                               </Button>
                             </div>
                           </div>
@@ -1099,8 +1156,8 @@ export default function EditProfileWizard() {
                             <div className="space-y-2 sm:col-span-2">
                               <Label>Description</Label>
                               <Textarea rows={3} placeholder="Outline the specific duties and initiatives..." value={resp.description} onChange={e => updateResp(resp.id, 'description', e.target.value)} />
-                              <Button variant="outline" size="sm" className="mt-2 text-primary" onClick={() => addToast({ type: 'info', title: 'AI Generation coming soon!' })}>
-                                <Sparkles className="w-4 h-4 mr-2" /> Generate with AI
+                              <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `resp-${resp.id}`} onClick={() => generateDescription(`resp-${resp.id}`, 'position of responsibility entry', `${resp.position || ''} at ${resp.organisation || ''}${resp.skills ? `, skills: ${resp.skills}` : ''}`, (text) => updateResp(resp.id, 'description', text))}>
+                                <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `resp-${resp.id}` ? 'Generating...' : 'Generate with AI'}
                               </Button>
                             </div>
                           </div>
@@ -1132,8 +1189,8 @@ export default function EditProfileWizard() {
                             <div className="space-y-2 sm:col-span-2">
                               <Label>Description</Label>
                               <Textarea rows={3} placeholder="Provide details about the certificate..." value={cert.description} onChange={e => updateCert(cert.id, 'description', e.target.value)} />
-                              <Button variant="outline" size="sm" className="mt-2 text-primary" onClick={() => addToast({ type: 'info', title: 'AI Generation coming soon!' })}>
-                                <Sparkles className="w-4 h-4 mr-2" /> Generate with AI
+                              <Button variant="outline" size="sm" className="mt-2 text-primary" disabled={aiDescBusy === `cert-${cert.id}`} onClick={() => generateDescription(`cert-${cert.id}`, 'certificate entry', `${cert.title || ''} issued by ${cert.organisation || ''}${cert.skills ? `, skills: ${cert.skills}` : ''}`, (text) => updateCert(cert.id, 'description', text))}>
+                                <Sparkles className="w-4 h-4 mr-2" /> {aiDescBusy === `cert-${cert.id}` ? 'Generating...' : 'Generate with AI'}
                               </Button>
                             </div>
                           </div>

@@ -120,3 +120,31 @@ export async function PATCH(
     return NextResponse.json({ error: String(error) }, { status: 400 })
   }
 }
+
+/**
+ * DELETE /api/problems/[slug]
+ * Superadmin only. Deletes the problem doc; related submissions are kept
+ * (they render as "Deleted problem" on public profiles / recent activity).
+ */
+export async function DELETE(
+  _request: Request,
+  ctx: { params: Promise<{ slug: string }> },
+) {
+  const gate = await requireAuth()
+  if ('error' in gate) {
+    return NextResponse.json({ error: gate.error }, { status: gate.status })
+  }
+  if (gate.user.role !== 'superadmin') {
+    return NextResponse.json({ error: 'Forbidden — superadmin only' }, { status: 403 })
+  }
+  const { slug } = await ctx.params
+  try {
+    const col = await problems()
+    const doc = await col.findOne({ $or: [{ slug }, { id: slug }] })
+    if (!doc) return NextResponse.json({ error: 'Problem not found' }, { status: 404 })
+    await col.deleteOne({ _id: doc._id })
+    return NextResponse.json({ success: true, deletedId: doc.slug ?? doc.id })
+  } catch (error) {
+    return NextResponse.json({ error: String(error) }, { status: 400 })
+  }
+}

@@ -142,7 +142,7 @@ const OPS_KEYS: GeneralKey[] = ['allow_registration', 'email_notifications', 'ma
 const PRODUCT_KEYS: GeneralKey[] = ['require_email_verification', 'show_public_leaderboard']
 const CERTIFICATE_KEYS: GeneralKey[] = ['certificate_template']
 const EMAIL_PROVISION_KEYS: GeneralKey[] = ['admin_new_user_email_delivery']
-const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_captions_default', 'video_player_logo_url', 'video_player_logo_link_url']
+const MEDIA_KEYS: GeneralKey[] = ['video_player_primary_color', 'video_player_autoplay', 'video_player_muted', 'video_player_captions_default', 'video_player_logo_url', 'video_player_logo_link_url', 'video_player_default_speed', 'video_player_transcript', 'video_player_chapters', 'video_player_autoplay_next', 'video_player_pip']
 
 const DELIVERY_LABELS: Record<(typeof ADMIN_NEW_USER_EMAIL_DELIVERIES)[number], string> = {
   postal_recovery: 'Postal — password reset link',
@@ -1216,6 +1216,38 @@ function SystemSettingsInner() {
                 placeholder="#34d399"
               />
             </div>
+            <div>
+              <Label htmlFor="video_player_default_speed">Default Playback Speed</Label>
+              <Input
+                id="video_player_default_speed"
+                type="number"
+                min={0.25}
+                max={4}
+                step={0.25}
+                value={form.video_player_default_speed}
+                onChange={(e) => setForm((f) => ({ ...f, video_player_default_speed: Number(e.target.value) || 1 }))}
+                className="mt-1.5 h-10 rounded-lg border-border/60 bg-background"
+              />
+              <p className="mt-1 text-xs text-muted-foreground">
+                Applies when the viewer has no saved speed (their last choice is remembered per browser).
+              </p>
+            </div>
+            <div>
+              <Label htmlFor="video_player_transcript">Transcript Panel</Label>
+              <Select
+                value={form.video_player_transcript}
+                onValueChange={(v) => setForm((f) => ({ ...f, video_player_transcript: v as typeof f.video_player_transcript }))}
+              >
+                <SelectTrigger id="video_player_transcript" className="mt-1.5 h-10 w-full rounded-lg border-border/60">
+                  <SelectValue placeholder="Select transcript mode" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="open">Open — expanded under the player</SelectItem>
+                  <SelectItem value="closed">Closed — collapsed, viewer can expand</SelectItem>
+                  <SelectItem value="off">Off — hidden entirely</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
             <div className="flex flex-col justify-center space-y-4">
               <div className="flex items-center justify-between mt-6">
                 <div className="space-y-0.5">
@@ -1245,6 +1277,36 @@ function SystemSettingsInner() {
                 <Switch
                   checked={form.video_player_captions_default}
                   onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_captions_default: c }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Chapters track</Label>
+                  <p className="text-sm text-muted-foreground">Show a chapters menu in the player (generated from lesson chapters, or slides grouped 4-at-a-time)</p>
+                </div>
+                <Switch
+                  checked={form.video_player_chapters}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_chapters: c }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Autoplay next lesson</Label>
+                  <p className="text-sm text-muted-foreground">When a lesson ends, show a 3s “Up next” overlay that auto-continues (cancellable)</p>
+                </div>
+                <Switch
+                  checked={form.video_player_autoplay_next}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_autoplay_next: c }))}
+                />
+              </div>
+              <div className="flex items-center justify-between">
+                <div className="space-y-0.5">
+                  <Label>Picture-in-picture button</Label>
+                  <p className="text-sm text-muted-foreground">Show the PiP button in the player controls</p>
+                </div>
+                <Switch
+                  checked={form.video_player_pip}
+                  onCheckedChange={(c) => setForm((f) => ({ ...f, video_player_pip: c }))}
                 />
               </div>
             </div>

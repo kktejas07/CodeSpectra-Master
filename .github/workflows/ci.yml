@@ -20,11 +20,10 @@ jobs:
           cache: 'yarn'
           cache-dependency-path: frontend/yarn.lock
       - run: yarn install --frozen-lockfile
-      - run: npx next lint --no-cache || true
+      - run: npx next lint --no-cache
         env:
           SESSION_SECRET: ci-secret
       - run: npx tsc --noEmit --pretty
-        continue-on-error: true
         env:
           SESSION_SECRET: ci-secret
 
@@ -43,9 +42,29 @@ jobs:
           cache-dependency-path: frontend/yarn.lock
       - run: yarn install --frozen-lockfile
       - run: npx vitest run --reporter=verbose
-        continue-on-error: true
         env:
           SESSION_SECRET: ci-secret
+
+  backend:
+    name: Backend Tests
+    runs-on: ubuntu-latest
+    services:
+      mongo:
+        image: mongo:7
+        ports:
+          - 27017:27017
+    env:
+      MONGO_URL: mongodb://localhost:27017
+      MONGODB_URI: mongodb://localhost:27017
+      MONGODB_DB_NAME: codespectra_test
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+      - run: pip install -r backend/requirements.txt
+      - run: python -m pytest backend/tests -q
+        timeout-minutes: 10
 
   build:
     name: Build
@@ -66,7 +85,6 @@ jobs:
           SESSION_SECRET: ci-secret
         # Known issue: _global-error prerender fails on clean builds (Next.js 16 bug)
         # If build fails, check output for _global-error before blaming code changes.
-        continue-on-error: true
 
   security:
     name: Security Audit
@@ -83,7 +101,6 @@ jobs:
           cache-dependency-path: frontend/yarn.lock
       - run: yarn install --frozen-lockfile
       - run: npx audit-ci --moderate
-        continue-on-error: true
 
   docs-sync:
     name: Documentation Drift Check

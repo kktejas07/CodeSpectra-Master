@@ -272,15 +272,3 @@ export async function s3Ping(): Promise<{ ok: true; bucket: string; provider: st
   try { await s3PutBucketCors() } catch { /* some providers lock CORS to the console */ }
   return { ok: true, bucket: cfg.bucket, provider: cfg.provider, endpoint: cfg.endpoint }
 }
-
-/** @deprecated use lessonObjectKey */
-export const lessonR2Key = lessonObjectKey
-/** @deprecated use readS3Config */
-export const readR2Config = readS3Config
-export const r2PutObject = s3PutObject
-export const r2DeleteObject = s3DeleteObject
-export const r2SignedGetUrl = s3SignedGetUrl
-export const r2Ping = s3Ping
-export function r2Host(accountId: string): string {
-  return endpointHost(r2EndpointFromAccount(accountId))
-}

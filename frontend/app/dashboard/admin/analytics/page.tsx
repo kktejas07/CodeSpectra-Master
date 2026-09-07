@@ -13,6 +13,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ScoresPanel } from '@/components/admin/analytics/scores-panel'
 import { ProctoringPanel } from '@/components/admin/analytics/proctoring-panel'
+import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import {
   BarChart3, Users, Eye, Activity, Globe, Monitor, Smartphone, Tablet,
   RefreshCw, Loader2, TrendingUp, ArrowUp, ArrowDown,
@@ -515,8 +516,10 @@ export default function AnalyticsPage() {
 
   if (!gate.ready) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading…
+      <div className="space-y-8">
+        <SkeletonText lines={2} />
+        <SkeletonStats />
+        <SkeletonList count={2} />
       </div>
     )
   }

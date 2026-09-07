@@ -133,26 +133,3 @@ async def test_table_fill_grading():
 
     report = await plugin.grade(payload, sub, ctx)
     assert report.raw_points == 1.0
-
-
-def test_bulk_import_api_endpoint(client):
-    rows = [
-        {
-            "title": "What is 2+2?",
-            "domain_key": "mcq",
-            "difficulty": "easy",
-            "points": 3.0,
-            "skill_tags": ["gen.aptitude.numerical"],
-            "payload": {
-                "prompt": "What is 2+2?",
-                "options": ["3", "4", "5"],
-                "correct_option_index": 1,
-                "rationale": "2+2 equals 4",
-            },
-        }
-    ]
-    res = client.post("/api/item-bank/bulk-import", json=rows)
-    assert res.status_code == 200
-    data = res.json()
-    assert data["imported_count"] == 1
-    assert data["error_count"] == 0

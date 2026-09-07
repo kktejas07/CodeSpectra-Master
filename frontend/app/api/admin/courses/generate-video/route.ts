@@ -1,7 +1,8 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { generateLessonVideo } from '@/lib/courses/lesson-video'
+import { generateLessonVideo, normalizeTargetMinutes } from '@/lib/courses/lesson-video'
+import type { LessonContext } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath } from '@/lib/courses/lesson-mp4'
 
@@ -16,13 +17,18 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { topic, courseId, sectionIndex, lessonIndex, techStack } = await request.json()
+    const { topic, courseId, sectionIndex, lessonIndex, techStack, targetMinutes, context } = await request.json()
 
     if (!topic) {
       return NextResponse.json({ error: 'Topic is required' }, { status: 400 })
     }
 
-    const generated = await generateLessonVideo({ topic, techStack })
+    const generated = await generateLessonVideo({
+      topic,
+      techStack,
+      targetMinutes: normalizeTargetMinutes(targetMinutes ?? 10),
+      context: (context || undefined) as LessonContext | undefined,
+    })
 
     if (courseId && sectionIndex != null && lessonIndex != null) {
       const db = await getMongoDb()
@@ -49,6 +55,10 @@ export async function POST(request: NextRequest) {
             videoType: 'ai',
             type: 'video',
             duration: generated.durationSeconds,
+            takeaways: generated.takeaways || [],
+            quickCheck: generated.quickCheck || { recall: '', apply: '', stretch: '' },
+            nextTeaser: generated.nextTeaser || '',
+            chapters: generated.chapters || [],
           }
 
           await db.collection('courses').updateOne(

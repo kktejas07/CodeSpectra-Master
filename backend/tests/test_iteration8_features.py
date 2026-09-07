@@ -11,6 +11,8 @@ import pytest
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
+from live_frontend import login_live
+
 load_dotenv("/app/backend/.env")
 
 BASE_URL = "http://localhost:3000"
@@ -35,10 +37,7 @@ def mongo():
 
 
 def _sign_in(creds):
-    s = requests.Session()
-    r = s.post(f"{BASE_URL}/api/auth/sign-in/email", json=creds, headers=JSON_HEADERS, timeout=15)
-    assert r.status_code == 200, f"sign-in failed for {creds['email']}: {r.status_code} {r.text[:200]}"
-    return s
+    return login_live(creds["email"], creds["password"], BASE_URL)
 
 
 @pytest.fixture(scope="session")

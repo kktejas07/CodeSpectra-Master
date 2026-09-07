@@ -15,6 +15,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { RichTextEditor } from '@/components/ui/rich-text-editor'
+import { SkeletonButton, SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface Announcement {
   id: string; title: string; message: string; link?: string; image?: string
@@ -96,7 +97,13 @@ export default function AnnouncementsPage() {
   ]
 
   if (!gate.ready) {
-    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground"><Loader2 className="h-5 w-5 animate-spin" /> Loading…</div>
+    return (
+      <div className="space-y-6 p-6">
+        <SkeletonText lines={2} />
+        <SkeletonCard />
+        <SkeletonButton />
+      </div>
+    )
   }
 
   return (

@@ -6,6 +6,7 @@ import { ArrowLeft, Sparkles, Target, Zap, Lightbulb, BrainCircuit } from 'lucid
 import { Button } from '@/components/ui/button'
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
+import { usePageGuard } from '@/lib/use-page-guard'
 
 const DIFFICULTIES = [
   { id: 'beginner', title: 'Beginner', description: 'Basic concepts and foundational knowledge', icon: Lightbulb, color: 'text-green-500', bg: 'bg-green-500/10' },
@@ -16,6 +17,7 @@ const DIFFICULTIES = [
 ]
 
 export default function MockTestSetupPage() {
+  const gate = usePageGuard('user')
   const router = useRouter()
   const params = useParams<{ id: string }>()
   const [selected, setSelected] = useState<string | null>(null)
@@ -27,6 +29,8 @@ export default function MockTestSetupPage() {
     // the route param id contains something like "tcs-software-engineer"
     router.push(`/dashboard/mock-tests/${params.id}/take?difficulty=${selected}`)
   }
+
+  if (!gate.ready) return null
 
   return (
     <div className="flex-1 space-y-8 p-4 md:p-8 pt-6 max-w-4xl mx-auto">

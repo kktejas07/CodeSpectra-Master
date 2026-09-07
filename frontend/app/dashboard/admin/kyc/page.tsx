@@ -9,6 +9,7 @@ import {
   FileCheck, Globe, User, CreditCard, MapPin, Smartphone, AlertCircle
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
@@ -56,6 +57,7 @@ interface KycStats {
 
 export default function AdminKycPage() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
   const [records, setRecords] = useState<KycRecord[]>([])
   const [loading, setLoading] = useState(true)
   const [stats, setStats] = useState<KycStats>({ total: 0, approved: 0, rejected: 0, pending: 0, manual_review: 0 })
@@ -111,6 +113,21 @@ export default function AdminKycPage() {
     } catch { /* ignore */ }
   }
 
+  const handleKycMail = async (r: KycRecord, type: 'reminder' | 'reverify') => {
+    try {
+      const res = await csrfFetch('/api/admin/kyc/remind', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ userId: r.user_id, type }),
+      })
+      const data = (await res.json()) as { ok?: boolean; error?: string }
+      if (!res.ok) throw new Error(data.error || 'Request failed')
+      addToast({ type: 'success', title: type === 'reminder' ? 'Reminder email sent!' : 'Re-verification requested' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Failed to send email', message: e instanceof Error ? e.message : 'Failed' })
+    }
+  }
+
   const columns: DataTableColumn<KycRecord>[] = [
     { key: 'user_name', header: 'User', cell: (r) => (
       <div>
@@ -128,10 +145,10 @@ export default function AdminKycPage() {
         <Button size="sm" variant="ghost" onClick={() => { setSelectedRecord(r); setDiditDetails(null); void fetchDiditDetails(r.id) }} title="View Details">
           <Eye className="h-4 w-4" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => alert('Reminder email sent!')} title="Send Reminder">
+        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reminder')} title="Send Reminder">
           <Mail className="h-4 w-4 text-blue-500" />
         </Button>
-        <Button size="sm" variant="ghost" onClick={() => alert('Re-verification requested')} title="Request Re-verify">
+        <Button size="sm" variant="ghost" onClick={() => void handleKycMail(r, 'reverify')} title="Request Re-verify">
           <ShieldCheck className="h-4 w-4 text-amber-500" />
         </Button>
         <Button size="sm" variant="ghost" onClick={() => handleDelete(r.id)} title="Delete Record">

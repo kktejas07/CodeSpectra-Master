@@ -44,6 +44,10 @@ interface Lesson {
   videoUrl?: string
   captionsUrl?: string
   textContent?: string
+  chapters?: { title?: string; startSec?: number }[]
+  takeaways?: string[]
+  quickCheck?: { recall?: string; apply?: string; stretch?: string }
+  nextTeaser?: string
 }
 
 interface Section {
@@ -65,6 +69,77 @@ function formatDuration(seconds: number): string {
   const s = Math.floor(seconds % 60)
   if (h > 0) return `${h}:${m.toString().padStart(2, '0')}:${s.toString().padStart(2, '0')}`
   return `${m}:${s.toString().padStart(2, '0')}`
+}
+
+// ponytail: live render status replaces the dead "MP4 not generated yet" box.
+// Queries the admin jobs endpoint scoped by ?courseId (readable by any
+// authenticated user); degrades to a generic pending note when unreadable.
+function LessonVideoStatus({ courseId, onRetryHint }: { courseId: string; onRetryHint?: string }) {
+  const [state, setState] = useState<{ loading: boolean; jobs: any[]; unreadable: boolean }>({
+    loading: true, jobs: [], unreadable: false,
+  })
+  useEffect(() => {
+    let cancelled = false
+    fetch(`/api/admin/courses/jobs?courseId=${encodeURIComponent(courseId)}`, { credentials: 'include' })
+      .then(async r => {
+        if (cancelled) return
+        if (!r.ok) { setState({ loading: false, jobs: [], unreadable: true }); return }
+        const data = await r.json().catch(() => ({}))
+        setState({ loading: false, jobs: Array.isArray(data.jobs) ? data.jobs : [], unreadable: false })
+      })
+      .catch(() => { if (!cancelled) setState({ loading: false, jobs: [], unreadable: true }) })
+    return () => { cancelled = true }
+  }, [courseId])
+
+  const box = (children: React.ReactNode) => (
+    <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-center px-6 bg-black text-muted-foreground">
+      <Play className="h-10 w-10 opacity-40" />
+      {children}
+    </div>
+  )
+  if (state.loading) {
+    return box(<p className="text-sm flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Checking video status…</p>)
+  }
+  if (state.unreadable) {
+    return box(<p className="text-sm">MP4 not generated yet — the video may still be rendering. Check back soon.</p>)
+  }
+  const job = state.jobs[0]
+  if (!job) {
+    return box(<p className="text-sm">MP4 not generated yet. Ask an admin to generate videos from Course Generator.</p>)
+  }
+  const done = Number(job.completedItems || 0)
+  const total = Number(job.totalItems || 0)
+  const status = String(job.status || '')
+  if (status === 'failed' || Number(job.failedItems || 0) > 0) {
+    return box(<>
+      <p className="text-sm text-red-400 font-medium">Video generation failed{(job.error || '') ? `: ${String(job.error).slice(0, 160)}` : total ? ` — ${done}/${total} lessons rendered` : ''}</p>
+      <p className="text-xs opacity-70">Ask an admin to retry from Course Generator{onRetryHint ? ` (${onRetryHint})` : ''}.</p>
+    </>)
+  }
+  if (status === 'completed') {
+    return box(<>
+      <p className="text-sm">Render finished but this lesson has no video — it may have failed individually.</p>
+      <p className="text-xs opacity-70">Ask an admin to retry from Course Generator.</p>
+    </>)
+  }
+  // pending | running
+  const queuedMs = Date.now() - Date.parse(String(job.startedAt || '') || String(Date.now()))
+  if (status === 'pending' && Number.isFinite(queuedMs) && queuedMs > 10 * 60 * 1000) {
+    return box(<>
+      <p className="text-sm text-amber-400 font-medium">Worker may be offline — job queued {Math.round(queuedMs / 60000)} min ago with no progress.</p>
+      <p className="text-xs opacity-70">Ask an admin to check the course worker, then retry from Course Generator.</p>
+    </>)
+  }
+  if (status === 'running' && total > 0) {
+    return box(<>
+      <p className="text-sm">Video {Math.min(done + 1, total)} of {total} rendered…</p>
+      <div className="w-48 h-1.5 rounded-full bg-white/10 overflow-hidden">
+        <div className="h-full bg-primary transition-all" style={{ width: `${Math.min(100, Math.round((done / total) * 100))}%` }} />
+      </div>
+      <p className="text-xs opacity-70">{done}/{total} lessons done — check back soon.</p>
+    </>)
+  }
+  return box(<p className="text-sm">Video queued — waiting for the course worker… check back soon.</p>)
 }
 
 function resolveMediaUrl(url?: string | null): string | undefined {
@@ -105,6 +180,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
   const [viewMode, setViewMode] = useState<'video' | 'text'>('video')
   const [quizScores, setQuizScores] = useState<Record<number, number>>({})
   const [startAt, setStartAt] = useState(() => resumeSeconds(cached?.positions?.[lessonId]))
+  const [seekNonce, setSeekNonce] = useState(0)
   const lastPos = useRef(0)
   const lastSave = useRef(0)
   const autoCompleted = useRef(cached?.completions.includes(lessonId) ?? false)
@@ -239,6 +315,10 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
 
   const lesson = activeLesson
 
+  // ponytail: next-lesson URL feeds the player's autoplay-next overlay; undefined disables it.
+  const nextLessonUrl = nextLesson ? `/dashboard/courses/${courseId}/lesson/${nextLesson.id}` : undefined
+  const seekToTime = (sec: number) => { setStartAt(sec); setSeekNonce(n => n + 1) }
+
 
   const markComplete = (id: string) => {
     setCompletedLessons(prev => new Set([...prev, id]))
@@ -313,7 +393,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
           )}
 
           {/* Toggle Sidebar on Mobile/Desktop */}
-          <Button variant="ghost" size="icon" className="h-8 w-8 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
+          <Button variant="ghost" size="icon" className="h-10 w-10 lg:hidden" onClick={() => setSidebarOpen(!sidebarOpen)}>
             {sidebarOpen ? <X className="h-5 w-5" /> : <Menu className="h-5 w-5" />}
           </Button>
         </div>
@@ -436,7 +516,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   <div className="w-full aspect-video bg-black sm:rounded-2xl overflow-hidden shadow-2xl relative border border-border/20">
                     {activeLesson?.videoUrl ? (
                       <VideoPlayer
-                        key={activeLesson?.id}
+                        key={`${activeLesson?.id}-${seekNonce}`}
                         src={resolveMediaUrl(activeLesson?.videoUrl)}
                         title={activeLesson?.title}
                         className="w-full h-full border-0 rounded-none"
@@ -444,22 +524,29 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                         captionsSrc={resolveMediaUrl(activeLesson?.captionsUrl)}
                         onProgress={savePosition}
                         onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
+                        transcriptSlides={activeLesson?.script}
+                        lessonDuration={activeLesson?.duration}
+                        onSeekTime={seekToTime}
+                        chapters={activeLesson?.chapters}
+                        nextLessonUrl={nextLessonUrl}
                       />
                     ) : activeLesson?.url ? (
                       <VideoPlayer
-                        key={activeLesson?.id}
+                        key={`${activeLesson?.id}-${seekNonce}`}
                         src={activeLesson?.url}
                         title={activeLesson?.title}
                         className="w-full h-full"
                         startAt={startAt}
                         onProgress={savePosition}
                         onEnded={() => { if (!isDone) markComplete(activeLesson.id) }}
+                        transcriptSlides={activeLesson?.script}
+                        lessonDuration={activeLesson?.duration}
+                        onSeekTime={seekToTime}
+                        chapters={activeLesson?.chapters}
+                        nextLessonUrl={nextLessonUrl}
                       />
                     ) : (
-                      <div className="w-full h-full flex flex-col items-center justify-center gap-2 text-muted-foreground bg-black">
-                        <Play className="h-10 w-10 opacity-40" />
-                        <p className="text-sm">MP4 not generated yet. Open Course Generator and regenerate this course.</p>
-                      </div>
+                      <LessonVideoStatus courseId={courseId} />
                     )}
                   </div>
                 ) : (
@@ -474,6 +561,88 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
                   </div>
                 )}
               </div>
+
+              {/* Optional AI extras — written by a later pipeline track; nothing renders when absent */}
+              {!isQuizMode && !!activeLesson && (
+                ((activeLesson.chapters?.length || 0) > 0 || (activeLesson.takeaways?.length || 0) > 0 || !!activeLesson.quickCheck || (activeLesson.nextTeaser || '')) && (
+                <div className="mt-6 grid gap-4 lg:grid-cols-2">
+                  {(activeLesson.chapters?.length || 0) > 0 && (
+                    <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
+                      <h3 className="text-sm font-semibold mb-3">Chapters</h3>
+                      <ul className="space-y-1">
+                        {(activeLesson.chapters || []).map((ch, i) => {
+                          const sec = Number(ch?.startSec)
+                          const seekable = Number.isFinite(sec) && sec >= 0 && !!(activeLesson.videoUrl || activeLesson.url)
+                          return (
+                            <li key={i}>
+                              {seekable ? (
+                                <button
+                                  className="w-full flex items-center gap-3 text-left text-sm px-2 py-1.5 rounded-md hover:bg-muted/60 transition-colors"
+                                  onClick={() => { setStartAt(sec); setSeekNonce(n => n + 1) }}
+                                >
+                                  <span className="font-mono text-xs text-primary shrink-0">{formatDuration(sec)}</span>
+                                  <span className="line-clamp-1">{(ch?.title || `Chapter ${i + 1}`).slice(0, 120)}</span>
+                                </button>
+                              ) : (
+                                <div className="flex items-center gap-3 text-sm px-2 py-1.5">
+                                  {Number.isFinite(sec) && sec >= 0 && (
+                                    <span className="font-mono text-xs text-muted-foreground shrink-0">{formatDuration(sec)}</span>
+                                  )}
+                                  <span className="line-clamp-1">{((ch?.title || `Chapter ${i + 1}`) || '').slice(0, 120)}</span>
+                                </div>
+                              )}
+                            </li>
+                          )
+                        })}
+                      </ul>
+                    </div>
+                  )}
+                  {(activeLesson.takeaways?.length || 0) > 0 && (
+                    <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm">
+                      <h3 className="text-sm font-semibold mb-3">Key takeaways</h3>
+                      <ul className="space-y-2 text-sm text-muted-foreground">
+                        {(activeLesson.takeaways || []).filter(Boolean).map((t, i) => (
+                          <li key={i} className="flex gap-2"><CheckCircle className="h-4 w-4 mt-0.5 shrink-0 text-emerald-500" /><span>{String(t).slice(0, 500)}</span></li>
+                        ))}
+                      </ul>
+                    </div>
+                  )}
+                  {!!activeLesson.quickCheck && (
+                    !!((activeLesson.quickCheck.recall || '') || (activeLesson.quickCheck.apply || '') || (activeLesson.quickCheck.stretch || ''))) && (
+                    <div className="rounded-2xl border border-border/40 bg-card p-5 shadow-sm lg:col-span-2">
+                      <h3 className="text-sm font-semibold mb-3">Quick check</h3>
+                      <div className="grid gap-3 sm:grid-cols-3 text-sm">
+                        {(activeLesson.quickCheck.recall || '') && (
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Recall</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.recall).slice(0, 500)}</p></div>
+                        )}
+                        {(activeLesson.quickCheck.apply || '') && (
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Apply</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.apply).slice(0, 500)}</p></div>
+                        )}
+                        {(activeLesson.quickCheck.stretch || '') && (
+                          <div className="rounded-xl bg-muted/40 p-3"><p className="text-xs font-medium uppercase tracking-wide text-primary mb-1">Stretch</p><p className="text-muted-foreground">{String(activeLesson.quickCheck.stretch).slice(0, 500)}</p></div>
+                        )}
+                      </div>
+                    </div>
+                  )}
+                  {(activeLesson.nextTeaser || '') && (
+                    <div className="rounded-2xl border border-primary/30 bg-primary/5 p-5 shadow-sm lg:col-span-2">
+                      <div className="flex items-start gap-3">
+                        <Play className="h-4 w-4 mt-0.5 shrink-0 text-primary" />
+                        <div className="flex-1">
+                          <h3 className="text-sm font-semibold mb-1">Up next{nextLesson?.title ? `: ${nextLesson.title}` : ''}</h3>
+                          <p className="text-sm text-muted-foreground">{String(activeLesson.nextTeaser).slice(0, 500)}</p>
+                          {nextLessonUrl && (
+                            <Link href={nextLessonUrl} className="inline-flex items-center gap-1.5 mt-2 text-sm font-medium text-primary hover:underline">
+                              Continue to next lesson <span aria-hidden="true">→</span>
+                            </Link>
+                          )}
+                        </div>
+                      </div>
+                    </div>
+                  )}
+                </div>
+                )
+              )}
 
               </>
               )}
@@ -517,7 +686,7 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
 
         {/* ── Right Sidebar (Curriculum) ── */}
         <aside className={cn(
-          "absolute lg:static top-0 right-0 h-full w-full sm:w-80 lg:w-96 bg-card border-l border-border/40 shadow-2xl lg:shadow-none transition-transform duration-300 z-10 flex flex-col",
+          "absolute lg:static top-0 right-0 h-full w-full max-w-[85vw] sm:w-80 lg:w-96 bg-card border-l border-border/40 shadow-2xl lg:shadow-none transition-transform duration-300 z-10 flex flex-col",
           sidebarOpen ? "translate-x-0" : "translate-x-full lg:translate-x-0"
         )}>
           <div className="px-5 py-4 border-b border-border/40 shrink-0 bg-muted/20 flex items-center justify-between">

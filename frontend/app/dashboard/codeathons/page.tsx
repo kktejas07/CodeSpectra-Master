@@ -8,6 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Trophy, Users, Clock, HelpCircle, Calendar, Target, BookOpen, ChevronRight } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Problem {
   id: string
@@ -69,6 +70,7 @@ function CountdownTimer({ target }: { target: string }) {
 export default function CodeathonsPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
+  const { startTour, setTourSeen } = useTour()
   const [codeathons, setCodeathons] = useState<Codeathon[]>([])
   const [loading, setLoading] = useState(true)
   const [filter, setFilter] = useState({ status: '', difficulty: '' })
@@ -80,6 +82,34 @@ export default function CodeathonsPage() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  // Initialize tour on first visit
+  useEffect(() => {
+    if (gate.ready && !localStorage.getItem('has_seen_codeathons_tour')) {
+      const codeathonsTour: TourStep[] = [
+        {
+          target: '[data-tour="codeathons-header"]',
+          title: 'Codeathons',
+          description: 'Compete in coding competitions, solve challenges, and win prizes.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="codeathons-filters"]',
+          title: 'Filter Codeathons',
+          description: 'Filter competitions by status and difficulty level.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="codeathons-grid"]',
+          title: 'Codeathon List',
+          description: 'Browse upcoming and ongoing coding competitions.',
+          position: 'bottom',
+        },
+      ]
+      startTour(codeathonsTour, 'codeathons')
+      setTourSeen('codeathons')
+    }
+  }, [gate.ready, startTour, setTourSeen])
 
   const filtered = codeathons.filter(c =>
     (!filter.status || c.status === filter.status) &&
@@ -122,7 +152,7 @@ export default function CodeathonsPage() {
   return (
     <div className="space-y-6">
       <div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2" data-tour="codeathons-header">
           <h1 className="text-3xl font-bold">Codeathons</h1>
           <TooltipProvider>
             <Tooltip>
@@ -139,7 +169,7 @@ export default function CodeathonsPage() {
       </div>
 
       {/* Filters */}
-      <div className="flex flex-wrap gap-2">
+      <div className="flex flex-wrap gap-2" data-tour="codeathons-filters">
         <select
           value={filter.status}
           onChange={e => setFilter(f => ({ ...f, status: e.target.value }))}

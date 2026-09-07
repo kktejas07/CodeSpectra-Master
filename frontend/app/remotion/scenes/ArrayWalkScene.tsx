@@ -3,17 +3,71 @@ import { useCurrentFrame, useVideoConfig, interpolate, spring } from 'remotion'
 
 interface ArrayWalkSceneProps {
   array: number[]
-  target: number
+  target?: number
   title: string
   explanation?: string
+}
+
+type SearchStep = { low: number; high: number; mid: number; phase: 'check' | 'found' | 'done' }
+
+/** Search steps derived from the ACTUAL array: binary search on sorted input,
+ * linear scan otherwise. A trailing 'done' step honestly reports a miss. */
+function stepsFor(data: number[], t: number): SearchStep[] {
+  if (!data.length) return []
+  let sorted = true
+  for (let i = 1; i < data.length; i++) {
+    if ((data[i] ?? 0) < (data[i - 1] ?? 0)) { sorted = false; break }
+  }
+  const steps: SearchStep[] = []
+  if (sorted) {
+    let low = 0
+    let high = data.length - 1
+    while (low <= high) {
+      const mid = (low + high) >> 1
+      if (data[mid] === t) { steps.push({ low, high, mid, phase: 'found' }); break }
+      steps.push({ low, high, mid, phase: 'check' })
+      if ((data[mid] ?? 0) < t) low = mid + 1
+      else high = mid - 1
+    }
+  } else {
+    for (let i = 0; i < data.length; i++) {
+      const found = data[i] === t
+      steps.push({ low: 0, high: i, mid: i, phase: found ? 'found' : 'check' })
+      if (found) break
+    }
+  }
+  const last = steps[steps.length - 1]
+  if (!last || last.phase !== 'found') {
+    steps.push({ low: 0, high: data.length - 1, mid: Math.max(0, Math.min(data.length - 1, last ? last.mid : 0)), phase: 'done' })
+  }
+  return steps
 }
 
 export const ArrayWalkScene: React.FC<ArrayWalkSceneProps> = ({ array, target, title, explanation }) => {
   const frame = useCurrentFrame()
   const { fps } = useVideoConfig()
 
+  // Slide-owned data only, clamped for layout; empty → neutral title card below.
+  const data = (Array.isArray(array) ? array : []).filter(n => typeof n === 'number' && Number.isFinite(n)).slice(0, 12)
+  const t = typeof target === 'number' && Number.isFinite(target) ? target : (data[Math.floor(data.length / 2)] ?? 0)
+
   // Phase 1: Title appears (0-30 frames)
   const titleOpacity = interpolate(frame, [0, 20], [0, 1], { extrapolateRight: 'clamp' })
+
+  if (!data.length) {
+    return (
+      <div style={{
+        width: '100%', height: '100%',
+        backgroundColor: '#0f172a',
+        display: 'flex', alignItems: 'center', justifyContent: 'center',
+        fontFamily: 'system-ui, sans-serif',
+      }}>
+        <div style={{ fontSize: 48, fontWeight: 'bold', color: '#f8fafc', opacity: titleOpacity, textAlign: 'center' }}>
+          {title}
+        </div>
+      </div>
+    )
+  }
 
   // Phase 2: Array appears cell by cell (30-90 frames)
   const cellAppear = (index: number) => {
@@ -21,13 +75,8 @@ export const ArrayWalkScene: React.FC<ArrayWalkSceneProps> = ({ array, target, t
     return spring({ frame: frame - delay, fps, config: { damping: 12 } })
   }
 
-  // Phase 3: Pointer walks through array (90-200 frames)
-  // Binary search: low=0, high=9, mid=4, then low=5, high=9, mid=7, then low=5, high=6, mid=5 (found!)
-  const searchSteps = [
-    { low: 0, high: 9, mid: 4, phase: 'check' },    // mid=16 < 23, go right
-    { low: 5, high: 9, mid: 7, phase: 'check' },    // mid=45 > 23, go left
-    { low: 5, high: 6, mid: 5, phase: 'found' },    // mid=23, found!
-  ]
+  // Phase 3: Pointer walks through the actual array (90 frames on)
+  const searchSteps = stepsFor(data, t)
 
   const stepDuration = 35
   const searchStart = 90
@@ -64,8 +113,10 @@ export const ArrayWalkScene: React.FC<ArrayWalkSceneProps> = ({ array, target, t
   // Explanation text - use prop if provided, otherwise use step-based explanation
   const explanationText = explanation || (currentStep
     ? currentStep.phase === 'found'
-      ? `Found ${target} at index ${currentStep.mid}!`
-      : `Checking index ${currentStep.mid}: arr[${currentStep.mid}] = ${array[currentStep.mid]} ${array[currentStep.mid] < target ? '<' : array[currentStep.mid] > target ? '>' : '='} ${target}`
+      ? `Found ${t} at index ${currentStep.mid}!`
+      : currentStep.phase === 'done'
+        ? `${t} is not in this list — checked every candidate.`
+        : `Checking index ${currentStep.mid}: arr[${currentStep.mid}] = ${data[currentStep.mid] ?? ''} ${(data[currentStep.mid] ?? 0) < t ? '<' : (data[currentStep.mid] ?? 0) > t ? '>' : '='} ${t}`
     : '')
 
   const explanationOpacity = currentStep ? interpolate(
@@ -98,7 +149,7 @@ export const ArrayWalkScene: React.FC<ArrayWalkSceneProps> = ({ array, target, t
         display: 'flex', gap: 8, marginBottom: 80,
         alignItems: 'flex-end',
       }}>
-        {array.map((value, index) => {
+        {data.map((value, index) => {
           const appear = cellAppear(index)
           const isHighlighted = currentStep && index >= currentStep.low && index <= currentStep.high
           const isMid = currentStep && index === currentStep.mid

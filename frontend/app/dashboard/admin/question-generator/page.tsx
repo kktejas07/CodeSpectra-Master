@@ -7,8 +7,9 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 
-type Diff = 'easy' | 'medium' | 'hard'
+type Diff = (typeof DIFFICULTY_LEVELS)[number]
 
 interface GenResult {
   problem: Record<string, unknown>
@@ -19,7 +20,7 @@ export default function QuestionGeneratorPage() {
   const gate = usePageGuard('superadmin')
 
   const [role, setRole] = useState('Backend Engineer')
-  const [difficulty, setDifficulty] = useState<Diff>('medium')
+  const [difficulty, setDifficulty] = useState<Diff>('intermediate')
   const [topics, setTopics] = useState('arrays, hash maps')
   const [language, setLanguage] = useState('python')
   const [busy, setBusy] = useState(false)
@@ -89,9 +90,9 @@ export default function QuestionGeneratorPage() {
               data-testid="qgen-difficulty"
               className="w-full rounded-md border border-border bg-background px-3 h-9 text-sm"
             >
-              <option value="easy">Easy</option>
-              <option value="medium">Medium</option>
-              <option value="hard">Hard</option>
+              {DIFFICULTY_LEVELS.map((lv) => (
+                <option key={lv} value={lv}>{DIFFICULTY_LABELS[lv]}</option>
+              ))}
             </select>
           </Field>
           <Field label="Topics (comma-separated)">
@@ -169,15 +170,14 @@ export default function QuestionGeneratorPage() {
                   <div>
                     <h3 className="text-lg font-bold">{(result.problem as { title?: string }).title}</h3>
                     <div className="flex flex-wrap gap-1.5 mt-1.5">
-                      {(result.problem as { difficulty?: string }).difficulty && (
-                        <Badge variant="outline" className={
-                          (result.problem as { difficulty?: string }).difficulty === 'easy' ? 'border-emerald-500/40 text-emerald-500' :
-                          (result.problem as { difficulty?: string }).difficulty === 'hard' ? 'border-red-500/40 text-red-500' :
-                          'border-amber-500/40 text-amber-500'
-                        }>
-                          {(result.problem as { difficulty?: string }).difficulty}
-                        </Badge>
-                      )}
+                      {(result.problem as { difficulty?: string }).difficulty && (() => {
+                        const dl = toDifficultyLevel((result.problem as { difficulty?: string }).difficulty)
+                        return (
+                          <Badge variant="outline" className={dl ? DIFFICULTY_COLORS[dl] : 'border-border text-muted-foreground'}>
+                            {dl ? DIFFICULTY_LABELS[dl] : (result.problem as { difficulty?: string }).difficulty}
+                          </Badge>
+                        )
+                      })()}
                       {Array.isArray((result.problem as { topics?: string[] }).topics) &&
                         (result.problem as { topics?: string[] }).topics!.map((t: string) => (
                           <Badge key={t} variant="secondary" className="text-[10px]">{t}</Badge>

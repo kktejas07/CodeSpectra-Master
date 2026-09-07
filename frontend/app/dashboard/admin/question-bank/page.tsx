@@ -14,6 +14,7 @@ import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { Database, Plus, Loader2, Trash2, Pencil, Sparkles, FileUp, Download, ChevronLeft, ChevronRight, X, Eye } from 'lucide-react'
 import { BRANCHES, DEGREE_TYPES, BANK_QUESTION_TYPES, INDUSTRIES, LEVELS, ASSESSMENT_CATEGORIES, type QuestionType } from '@/lib/engineering-catalog'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface BankQuestion {
   id: string
@@ -353,9 +354,7 @@ export default function QuestionBankPage() {
             </thead>
             <tbody>
               {loading ? (
-                <tr><td colSpan={9} className="py-12 text-center text-muted-foreground text-sm flex items-center justify-center gap-2">
-                  <Loader2 className="h-4 w-4 animate-spin" />Loading...
-                </td></tr>
+                <tr><td colSpan={9} className="p-4"><SkeletonTable rows={5} /></td></tr>
               ) : rows.length === 0 ? (
                 <tr><td colSpan={9} className="py-12 text-center text-muted-foreground text-sm">
                   No questions found. Add one, import a CSV/JSON, or generate with AI.

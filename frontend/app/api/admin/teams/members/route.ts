@@ -115,10 +115,25 @@ export async function POST(request: NextRequest) {
 
     const existing = await userCol.findOne({ email })
     if (existing) {
-      await userCol.updateOne(
-        { email },
-        { $set: { tenantId, role: existing.role === 'superadmin' ? existing.role : memberRole, updatedAt: new Date() } },
-      )
+      const isSuperAdminCaller = gate.user.role === 'superadmin'
+      // Cross-tenant takeover guard: a non-superadmin may not pull a user that
+      // belongs to another organization into their own (would overwrite tenantId
+      // and demote foreign admins to 'user').
+      const victimTenant =
+        ((existing.tenantId as string | null) ?? (existing.organizationId as string | null) ?? null)
+      if (!isSuperAdminCaller && victimTenant && victimTenant !== tenantId) {
+        return NextResponse.json(
+          { error: 'user belongs to another organization' },
+          { status: 403 },
+        )
+      }
+      // Never touch the tenantId (or role) of an existing superadmin.
+      const setUpdate: Record<string, unknown> = { updatedAt: new Date() }
+      if (existing.role !== 'superadmin') {
+        setUpdate.tenantId = tenantId
+        setUpdate.role = memberRole
+      }
+      await userCol.updateOne({ email }, { $set: setUpdate })
       return NextResponse.json({ user: { id: existing.id || String(existing._id), email, already_existed: true } }, { status: 200 })
     }
 

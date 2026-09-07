@@ -8,7 +8,6 @@
  * password hashing + `account` linkage consistent.
  */
 
-import { randomUUID } from 'node:crypto'
 import { type Collection, type Filter, ObjectId } from 'mongodb'
 import { getMongoDb } from '@/lib/mongodb'
 
@@ -128,14 +127,8 @@ export interface PermissionDoc {
   role: string
 }
 
-// ---------- Helpers ----------
-
-export function newId(): string {
-  return randomUUID()
-}
-export function nowIso(): string {
-  return new Date().toISOString()
-}
+// ---------- Helpers (shared) ----------
+export { newId, nowIso } from './ids'
 
 // ---------- Collections ----------
 

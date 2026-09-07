@@ -2,20 +2,10 @@
 
 import { useEffect, useRef, useState } from 'react'
 
-const LOAD_DURATION = 2200
+const LOAD_DURATION = 400
 
 const codeLines = [
-  'import { Scanner } from "codespectra"',
-  'const analyzer = new Scanner()',
-  'const issues = analyzer.scan(code)',
-  'issues.forEach(i => {',
-  '  const fix = ai.suggestFix(i)',
-  '  console.log(`Fixed: ${i.id}`)',
-  '})',
-  'if (issues.length === 0) {',
-  '  console.log("Clean build")',
-  '}',
-  'analyzer.generateReport()',
+  'Initializing CodeSpectra...',
 ]
 
 export function LoadingScreen({ onDone }: { onDone: () => void }) {

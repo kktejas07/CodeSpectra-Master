@@ -9,8 +9,8 @@ import { Button } from '@/components/ui/button'
 import { GitHubIntegrationSetup } from '@/components/integrations/github-setup-dialog'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { toast } from 'sonner'
 
 type SecretsMap = Record<string, string | null | boolean>
 
@@ -36,6 +36,7 @@ const INTEGRATIONS: IntegrationItem[] = [
 
 export default function IntegrationsPage() {
   const gate = usePageGuard('superadmin')
+  const addToast = useToast()
   const [githubDialogOpen, setGithubDialogOpen] = useState(false)
   const [secrets, setSecrets] = useState<SecretsMap | null>(null)
   const [disconnecting, setDisconnecting] = useState(false)
@@ -64,12 +65,12 @@ export default function IntegrationsPage() {
         body: JSON.stringify({ github_app_token: token }),
       })
       if (!res.ok) throw new Error('Failed to save token')
-      toast.success('GitHub connected')
+      addToast({ type: 'success', title: 'GitHub connected' })
       const r = await fetch('/api/admin/server-secrets', { credentials: 'include' })
       const json = await r.json()
       setSecrets(json.secrets || {})
     } catch {
-      toast.error('Failed to connect GitHub')
+      addToast({ type: 'error', title: 'Failed to connect GitHub' })
     }
   }
 
@@ -83,12 +84,12 @@ export default function IntegrationsPage() {
         body: JSON.stringify({ github_app_token: null }),
       })
       if (!res.ok) throw new Error('Failed to remove token')
-      toast.success('GitHub disconnected')
+      addToast({ type: 'success', title: 'GitHub disconnected' })
       const r = await fetch('/api/admin/server-secrets', { credentials: 'include' })
       const json = await r.json()
       setSecrets(json.secrets || {})
     } catch {
-      toast.error('Failed to disconnect GitHub')
+      addToast({ type: 'error', title: 'Failed to disconnect GitHub' })
     } finally {
       setDisconnecting(false)
     }

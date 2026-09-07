@@ -1,7 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
-import { generateLessonVideo } from '@/lib/courses/lesson-video'
+import { generateLessonVideo, normalizeTargetMinutes, buildLessonContext } from '@/lib/courses/lesson-video'
 import { lessonAudioPath, saveLessonAudio } from '@/lib/courses/lesson-audio'
 import { lessonVideoPath } from '@/lib/courses/lesson-mp4'
 
@@ -21,7 +21,7 @@ export async function POST(
   const { id: courseId } = await params
 
   try {
-    const { sectionIndex, lessonIndex } = await request.json()
+    const { sectionIndex, lessonIndex, targetMinutes } = await request.json()
 
     if (sectionIndex == null || lessonIndex == null) {
       return NextResponse.json({ error: 'sectionIndex and lessonIndex required' }, { status: 400 })
@@ -48,9 +48,13 @@ export async function POST(
       return NextResponse.json({ error: 'Lesson has no content/topic' }, { status: 400 })
     }
 
+    const minutes = normalizeTargetMinutes(targetMinutes ?? 10)
+    const ctx = buildLessonContext(sections, sectionIndex, lessonIndex, course, [])
     const generated = await generateLessonVideo({
       topic,
-      techStack: course.tags?.[0] || 'programming',
+      techStack: String(course.tags?.[0] || (course as any)?.techStack || 'programming'),
+      targetMinutes: minutes,
+      context: ctx,
     })
 
     await saveLessonAudio(courseId, lesson.id, generated.audioBuffer)
@@ -73,6 +77,10 @@ export async function POST(
       type: 'video',
       videoType: 'ai',
       duration: generated.durationSeconds,
+      takeaways: generated.takeaways || [],
+      quickCheck: generated.quickCheck || { recall: '', apply: '', stretch: '' },
+      nextTeaser: generated.nextTeaser || '',
+      chapters: generated.chapters || [],
     }
     sectionsUpdate[sectionIndex] = { ...sectionsUpdate[sectionIndex], lessons: lessonsUpdate }
 

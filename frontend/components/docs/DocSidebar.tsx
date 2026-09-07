@@ -12,6 +12,7 @@ import {
   Menu,
   X,
   FileText,
+  XCircle,
 } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { docHref, type DocSection, type DocMeta } from '@/lib/docs-shared'
@@ -36,16 +37,17 @@ export function DocSidebar({ sections }: DocSidebarProps) {
   const currentPath = pathname.replace(/\/$/, '') || '/docs'
 
   const filtered = useMemo(() => {
-    const q = query.trim().toLowerCase()
+    const q = query.trim()
     if (!q) return sections
+    const terms = q.toLowerCase().split(/\s+/).filter(Boolean)
     return sections
       .map((s) => ({
         ...s,
-        docs: s.docs.filter(
-          (d) =>
-            d.title.toLowerCase().includes(q) ||
-            d.slug.toLowerCase().includes(q),
-        ),
+        docs: s.docs.filter((d) => {
+          const title = d.title.toLowerCase()
+          const slug = d.slug.toLowerCase()
+          return terms.every((term) => title.includes(term) || slug.includes(term))
+        }),
       }))
       .filter((s) => s.docs.length > 0)
   }, [query, sections])
@@ -92,9 +94,19 @@ export function DocSidebar({ sections }: DocSidebarProps) {
             value={query}
             onChange={(e) => setQuery(e.target.value)}
             placeholder="Search docs…"
-            className="w-full rounded-lg border border-border/60 bg-background py-2 pl-9 pr-3 text-sm outline-none ring-teal-500/30 placeholder:text-muted-foreground/70 focus:border-teal-500/50 focus:ring-2"
+            className="w-full rounded-lg border border-border/60 bg-background py-2 pl-9 pr-9 text-sm outline-none ring-teal-500/30 placeholder:text-muted-foreground/70 focus:border-teal-500/50 focus:ring-2"
             aria-label="Search documentation"
           />
+          {query && (
+            <button
+              type="button"
+              onClick={() => setQuery('')}
+              className="absolute right-2 top-1/2 -translate-y-1/2 rounded-md p-1 text-muted-foreground hover:text-foreground"
+              aria-label="Clear search"
+            >
+              <XCircle className="h-4 w-4" />
+            </button>
+          )}
         </label>
       </div>
 

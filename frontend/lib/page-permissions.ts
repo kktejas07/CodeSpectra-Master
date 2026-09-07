@@ -34,6 +34,7 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/organizations',
   '/dashboard/admin/permissions',
   '/dashboard/admin/security',
+  '/dashboard/admin/security/email-monitoring',
   '/dashboard/admin/feedback',
 
   // Hackathons, Problems & Proctoring
@@ -42,7 +43,8 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/hackathons/edit',
   '/dashboard/admin/codeathons',
   '/dashboard/admin/question-bank',
-  '/dashboard/admin/assessments',
+  '/dashboard/admin/assessments/bulk',
+  '/dashboard/admin/assessments/pipeline',
   '/dashboard/admin/proctor',
   '/dashboard/admin/certificates',
 
@@ -68,18 +70,18 @@ export const ADMIN_ONLY_ROUTES: string[] = [
   '/dashboard/admin/workflows',
   '/dashboard/admin/cron-jobs',
 
-  // Analytics (superadmin only)
-  '/dashboard/admin/analytics',
-
   // Infrastructure, Settings & Announcements
   '/dashboard/admin/settings',
   '/dashboard/admin/settings/cloudflare',
+  '/dashboard/admin/settings/kyc',
   '/dashboard/admin/integrations',
   '/dashboard/admin/cdn',
   '/dashboard/admin/speed-insights',
   '/dashboard/admin/announcements',
   '/dashboard/admin/newsletter',
   '/dashboard/admin/content-studio',
+  '/dashboard/admin/blog',
+  '/dashboard/admin/signals',
   '/dashboard/admin/resources',
   '/dashboard/admin/billing',
   '/dashboard/admin/help',
@@ -117,12 +119,12 @@ export const USER_SECTIONS: { label: string; firstRoute: string }[] = [
  */
 export const TENANT_ADMIN_ROUTES: string[] = [
   '/dashboard/admin/team',
+  '/dashboard/admin/team/activity',
   '/dashboard/admin/assessments',
   '/dashboard/interviews/feedback',
   '/dashboard/recruiter-analytics',
   '/dashboard/admin/hiring-manager-report',
   '/dashboard/admin/sme-review',
-  '/dashboard/admin/requisitions',
 ]
 
 /**
@@ -173,9 +175,13 @@ export const ALL_USER_ROUTES: string[] = [
   // Career & Hiring
   '/dashboard/jobs',
   '/dashboard/interviews',
+  '/dashboard/interviews/ai-mock',
+  '/dashboard/interviews/ai-mock/setup',
   '/dashboard/mock-tests',
   '/dashboard/resumes',
   '/dashboard/assessments',
+  '/dashboard/assessments/ai-fluency',
+  '/dashboard/assessments/ai-fluency/setup',
   '/dashboard/certifications',
 
   // Tools
@@ -203,8 +209,10 @@ export const ALL_USER_ROUTES: string[] = [
   // Agent (LAST)
   '/dashboard/agent',
 
+  // Company Prep (public)
+  '/companies',
+
   // Misc / Help
-  '/dashboard/feedback',
   '/dashboard/support',
 ]
 
@@ -213,6 +221,14 @@ export const ALL_USER_ROUTES: string[] = [
  */
 export function getRequiredRoleForRoute(pathname: string): UserRole {
   const base = pathname.split('?')[0]
+
+  // Exact matches first — a child page registered with its own role (e.g.
+  // superadmin-only /dashboard/admin/assessments/bulk under tenant_admin
+  // /dashboard/admin/assessments) must not be shadowed by a parent prefix.
+  if (TENANT_ADMIN_ROUTES.includes(base)) return 'tenant_admin'
+  if (ADMIN_ONLY_ROUTES.includes(base)) return 'superadmin'
+  if (JUDGE_ROUTES.includes(base)) return 'judge'
+  if (ALL_USER_ROUTES.includes(base)) return 'user'
 
   // Tenant admin routes (check first so /dashboard/admin/team matches before /dashboard/admin catch-all)
   for (const route of TENANT_ADMIN_ROUTES) {
@@ -276,6 +292,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/codeathons': 'Codeathons',
   '/dashboard/admin/coupons': 'Coupons',
   '/dashboard/admin/assessments': 'Assessments',
+  '/dashboard/admin/assessments/bulk': 'Bulk Schedule',
+  '/dashboard/admin/assessments/pipeline': 'Pipeline',
   '/dashboard/admin/speed-insights': 'Speed Insights',
   '/dashboard/admin/cdn': 'CDN & Edge',
   '/dashboard/admin/workflows': 'Workflows',
@@ -289,6 +307,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/announcements': 'Announcements',
   '/dashboard/admin/newsletter': 'Newsletter',
   '/dashboard/admin/content-studio': 'Content Studio',
+  '/dashboard/admin/blog': 'Blog',
+  '/dashboard/admin/signals': 'Signals',
   '/dashboard/admin/resources': 'Resources / Ebooks',
   '/dashboard/admin/rag': 'RAG',
   '/dashboard/admin/ai-inventory': 'AI Inventory',
@@ -320,6 +340,8 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/pricing': 'Pricing',
   '/dashboard/challenges': 'Challenges',
   '/dashboard/interviews': 'Interviews',
+  '/dashboard/interviews/ai-mock': 'AI Mock Interview',
+  '/dashboard/interviews/ai-mock/setup': 'AI Mock Setup',
   '/dashboard/mock-tests': 'Mock Tests',
   '/dashboard/interview-prep': 'Interview Prep',
   '/dashboard/interviews/feedback': 'Interview Feedback',
@@ -333,13 +355,14 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/calendar': 'Calendar',
   '/dashboard/notifications/preferences': 'Notification Preferences',
   '/dashboard/support': 'Support',
-  '/dashboard/feedback': 'Platform Feedback',
   '/dashboard/referrals': 'Referrals',
   '/dashboard/hackathons': 'Hackathons',
   '/dashboard/codeathons': 'Codeathons',
   '/dashboard/events': 'Events',
   '/dashboard/jobs': 'Jobs',
   '/dashboard/assessments': 'Assessments',
+  '/dashboard/assessments/ai-fluency': 'AI Fluency',
+  '/dashboard/assessments/ai-fluency/setup': 'AI Fluency Setup',
   '/dashboard/resumes': 'Resumes',
   '/dashboard/100-days': '100 Days',
   '/dashboard/judge': 'Judge Dashboard',
@@ -348,10 +371,10 @@ export const ROUTE_LABELS: Record<string, string> = {
   '/dashboard/admin/help': 'Help Center',
   '/dashboard/admin/sso': 'SSO Config',
   '/dashboard/admin/question-bank': 'Question Bank',
-  '/dashboard/admin/requisitions': 'Requisitions',
   '/dashboard/admin/hiring-manager-report': 'Hiring Report',
   '/dashboard/admin/predictive-validity': 'Predictive Validity',
   '/dashboard/admin/sme-review': 'SME Review',
+  '/companies': 'Companies',
 }
 
 /**

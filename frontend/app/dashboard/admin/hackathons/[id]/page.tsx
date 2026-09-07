@@ -38,6 +38,7 @@ import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { DEFAULT_JUDGING_CONFIG, sanitizeJudgingConfig, type JudgingConfig } from '@/lib/hackathons/judge-config'
 
 interface Hackathon {
   id: string
@@ -53,6 +54,7 @@ interface Hackathon {
   results_released?: boolean
   released_at?: string
   judges?: string[]
+  judging_config?: JudgingConfig
 }
 
 interface Team {
@@ -99,6 +101,10 @@ export default function HackathonDetailPage({
   const [addingMemberTeamId, setAddingMemberTeamId] = useState<string | null>(null)
   const [addMemberInput, setAddMemberInput] = useState('')
 
+  // J3/J4 judging config (rubric weights, AI/human blend, publish counts, fairness flags)
+  const [judging, setJudging] = useState<JudgingConfig>({ ...DEFAULT_JUDGING_CONFIG, criteria: DEFAULT_JUDGING_CONFIG.criteria.map((c) => ({ ...c })) })
+  const [judgingSaving, setJudgingSaving] = useState(false)
+
   const load = useCallback(async () => {
     try {
       const [eRes, tRes] = await Promise.all([
@@ -109,6 +115,7 @@ export default function HackathonDetailPage({
       const evData = (await eRes.json()) as Hackathon
       setEvent(evData)
       setJudgeIds(evData.judges || [])
+      setJudging(sanitizeJudgingConfig(evData.judging_config))
       setError(null)
       if (tRes.ok) {
         const j = (await tRes.json()) as { items: Team[] }
@@ -286,6 +293,29 @@ export default function HackathonDetailPage({
     setJudgeIds((prev) => prev.filter((j) => j !== uid))
   }
 
+  // J3/J4: persist judging config via the existing settings PATCH (same pattern as saveJudges).
+  async function saveJudging() {
+    if (!judging) return
+    setJudgingSaving(true)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${id}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ judging_config: sanitizeJudgingConfig(judging) }),
+      })
+      if (!res.ok) {
+        let msg = 'failed to save judging config'
+        try { const errBody = await res.clone().json(); if (errBody.error) msg += `: ${errBody.error}` } catch {}
+        throw new Error(msg)
+      }
+      await load()
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e))
+    } finally {
+      setJudgingSaving(false)
+    }
+  }
+
   if (!gate.ready) return null
 
   if (loading && !event) {
@@ -454,6 +484,102 @@ export default function HackathonDetailPage({
               <ExternalLink className="h-3.5 w-3.5 text-muted-foreground" />
             </Button>
           </Link>
+        </div>
+      </Card>
+
+      {/* J3/J4 Judging config — rubric weights, AI/human blend, publish counts, fairness flags */}
+      <Card className="p-6 lg:p-8 border-border/40 bg-card/40 backdrop-blur-xl shadow-sm space-y-5 rounded-3xl">
+        <div className="flex items-center justify-between gap-3">
+          <div>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Judging</h2>
+            <p className="text-xs text-muted-foreground mt-1">Rubric is published to all viewers before the event. AI weight blends screening with human averages.</p>
+          </div>
+          <Button size="lg" onClick={() => void saveJudging()} disabled={judgingSaving} className="h-11 px-6 font-semibold shadow-sm rounded-xl">
+            {judgingSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
+            Save Judging
+          </Button>
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {(judging?.criteria || []).map((c) => (
+            <div key={c.key} className="flex items-center justify-between gap-3 rounded-xl border border-border/30 bg-background/50 px-3 py-2">
+              <Label className="text-xs font-medium truncate" title={c.key}>{c.label}</Label>
+              <Input
+                type="number"
+                min={0}
+                max={5}
+                step={0.5}
+                value={c.weight}
+                onChange={(e) => {
+                  const w = Number(e.target.value)
+                  setJudging((prev) => ({
+                    ...prev,
+                    criteria: prev.criteria.map((x) => (x.key === c.key ? { ...x, weight: Number.isFinite(w) ? Math.max(0, Math.min(5, w)) : 1 } : x)),
+                  }))
+                }}
+                className="h-8 w-20 text-xs text-right"
+              />
+            </div>
+          ))}
+        </div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="space-y-2 rounded-xl border border-border/30 bg-background/50 p-3">
+            <div className="flex items-center justify-between">
+              <Label className="text-xs font-medium">AI weight</Label>
+              <span className="text-xs font-mono">{Math.round((judging?.aiWeight ?? 0.4) * 100)}%</span>
+            </div>
+            <input
+              type="range"
+              min={0}
+              max={100}
+              value={Math.round((judging?.aiWeight ?? 0.4) * 100)}
+              onChange={(e) => setJudging((prev) => ({ ...prev, aiWeight: Number(e.target.value) / 100 }))}
+              className="w-full accent-primary"
+            />
+            <p className="text-[11px] text-muted-foreground">Human weight {Math.round((1 - (judging?.aiWeight ?? 0.4)) * 100)}%</p>
+          </div>
+          <div className="space-y-2 rounded-xl border border-border/30 bg-background/50 p-3">
+            <Label className="text-xs font-medium">Advance top-N</Label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={judging?.advanceTopN ?? 10}
+              onChange={(e) => setJudging((prev) => ({ ...prev, advanceTopN: Math.max(1, Math.min(100, Math.round(Number(e.target.value) || 10))) }))}
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="space-y-2 rounded-xl border border-border/30 bg-background/50 p-3">
+            <Label className="text-xs font-medium">Publish top-N</Label>
+            <Input
+              type="number"
+              min={1}
+              max={100}
+              value={judging?.displayCount ?? 3}
+              onChange={(e) => setJudging((prev) => ({ ...prev, displayCount: Math.max(1, Math.min(100, Math.round(Number(e.target.value) || 3))) }))}
+              className="h-8 text-xs"
+            />
+          </div>
+          <div className="space-y-2 rounded-xl border border-border/30 bg-background/50 p-3">
+            <Label className="text-xs font-medium">Fairness</Label>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={judging?.blindMode === true}
+                onChange={(e) => setJudging((prev) => ({ ...prev, blindMode: e.target.checked }))}
+                className="accent-primary"
+              />
+              Blind mode (hide team names)
+            </label>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={judging?.dropHighLow === true}
+                onChange={(e) => setJudging((prev) => ({ ...prev, dropHighLow: e.target.checked }))}
+                className="accent-primary"
+              />
+              Drop highest + lowest score
+            </label>
+          </div>
         </div>
       </Card>
 

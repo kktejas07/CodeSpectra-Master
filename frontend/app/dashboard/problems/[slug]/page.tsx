@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { ArrowLeft, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Loader2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { useToast } from '@/lib/toast-context'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { SmartHintsPanel } from '@/components/ai/smart-hints-panel'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
@@ -96,6 +97,7 @@ const TOP_LANGUAGES = [
 export default function ProblemDetailPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
+  const addToast = useToast()
 
   const params = useParams<{ slug: string }>()
   const slug = params?.slug ?? ''
@@ -152,6 +154,7 @@ export default function ProblemDetailPage() {
   sourceRef.current = source
 
   const [isInfoPanelOpen, setIsInfoPanelOpen] = useState(false)
+  const [headerMenuOpen, setHeaderMenuOpen] = useState(false)
   const [isDark, setIsDark] = useState(true)
   useEffect(() => {
     const check = () => setIsDark(document.documentElement.classList.contains('dark'))
@@ -204,20 +207,29 @@ export default function ProblemDetailPage() {
     if (!feedbackContent.trim()) return
     setFeedbackSubmitting(true)
     try {
+      // API accepts 'bug' | 'complaint' | 'suggestion' | 'other' — map UI-only 'feature' to 'suggestion'.
       const res = await csrfFetch('/api/feedback', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: feedbackType,
+          type: feedbackType === 'feature' ? 'suggestion' : feedbackType,
           content: `[Problem: ${problem?.title || slug}] ${feedbackContent}`,
         }),
       })
-      if (res.ok) {
-        setFeedbackOpen(false)
-        setFeedbackContent('')
-        alert('Thank you for your feedback!')
+      if (!res.ok) {
+        let errMsg = `Submit failed (${res.status})`
+        try {
+          const data = (await res.json()) as { error?: unknown }
+          if (typeof data?.error === 'string') errMsg = data.error
+        } catch { /* non-JSON body — keep status message */ }
+        throw new Error(errMsg)
       }
-    } catch {}
+      setFeedbackOpen(false)
+      setFeedbackContent('')
+      addToast({ type: 'success', title: 'Thank you for your feedback!' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Failed to submit feedback', message: e instanceof Error ? e.message : undefined })
+    }
     setFeedbackSubmitting(false)
   }
 
@@ -416,8 +428,59 @@ export default function ProblemDetailPage() {
     return <div className="flex items-center justify-center h-screen"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
   }
 
+  // Header secondary actions — inline on md+ screens, inside the collapsible menu below md.
+  const headerSecondaryActions = (
+    <>
+      <button onClick={() => { setFeedbackType('feature'); setFeedbackOpen(true) }} className="text-xs font-semibold text-muted-foreground hover:text-foreground">Request a Feature</button>
+      <div className="flex items-center gap-1">
+        <button onClick={() => { setFeedbackType('bug'); setFeedbackOpen(true) }} aria-label="Report bug" className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
+          <Bug className="h-4 w-4" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Report Bug</div>
+        </button>
+        <button onClick={() => { setFeedbackType('suggestion'); setFeedbackOpen(true) }} aria-label="Suggest idea" className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
+          <Lightbulb className="h-4 w-4" />
+          <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 group-focus-visible:opacity-100 group-focus-within:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Suggest Idea</div>
+        </button>
+      </div>
+
+      <div className="flex bg-muted rounded-full p-1 border border-border/50">
+        <button onClick={() => setIsDark(false)} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${!isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+          <Sun className="h-3.5 w-3.5" />
+        </button>
+        <button onClick={() => setIsDark(true)} className={`p-1 max-md:min-h-10 max-md:min-w-10 rounded-full flex items-center justify-center ${isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
+          <Moon className="h-3.5 w-3.5" />
+        </button>
+      </div>
+
+       <button onClick={() => setIsInfoPanelOpen(true)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
+         <HelpCircle className="h-4 w-4" />
+       </button>
+
+       {/* AI Mentor Button */}
+       <button onClick={() => setAiMentorOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md hover:from-purple-600 hover:to-blue-600 transition-colors">
+         <Sparkles className="h-3.5 w-3.5" />
+         Ask AI
+       </button>
+
+       {/* Functional Timer */}
+       <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-muted/50 px-3 py-1.5 rounded-md border border-border/50">
+         <Timer className="h-4 w-4 text-blue-500" />
+         <span className="text-foreground">{formatTimer(timerSeconds)}</span>
+         <button onClick={timerRunning ? stopTimer : startTimer} className="ml-1 p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
+           {timerRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
+         </button>
+         <button onClick={resetTimer} className="p-0.5 max-md:min-h-10 max-md:min-w-10 flex items-center justify-center hover:bg-muted rounded">
+           <RotateCcw className="h-3 w-3" />
+         </button>
+       </div>
+
+      <Button variant="outline" size="sm" className="rounded-md border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950" onClick={() => router.push('/dashboard/problems')}>
+        Exit
+      </Button>
+    </>
+  )
   return (
-    <div className="h-screen flex flex-col overflow-hidden bg-background">
+    <div className="h-dvh flex flex-col md:overflow-hidden bg-background">
       <ProctorMonitor sessionKind="problem" sessionId={problem.slug} captureInterval={30000} blockKeyboardShortcuts lockdownBrowser detectFace />
 
       {/* Top Header */}
@@ -455,55 +518,26 @@ export default function ProblemDetailPage() {
           </button>
         </div>
         
-        <div className="flex items-center gap-5">
-           <button onClick={() => { setFeedbackType('feature'); setFeedbackOpen(true) }} className="text-xs font-semibold text-muted-foreground hover:text-foreground">Request a Feature</button>
-           <div className="flex items-center gap-1">
-             <button onClick={() => { setFeedbackType('bug'); setFeedbackOpen(true) }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
-               <Bug className="h-4 w-4" />
-               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Report Bug</div>
-             </button>
-             <button onClick={() => { setFeedbackType('suggestion'); setFeedbackOpen(true) }} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors group relative">
-               <Lightbulb className="h-4 w-4" />
-               <div className="absolute top-full left-1/2 -translate-x-1/2 mt-2 px-2 py-1 bg-foreground text-background text-[10px] rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap pointer-events-none z-50">Suggest Idea</div>
-             </button>
-           </div>
-           
-           <div className="flex bg-muted rounded-full p-1 border border-border/50">
-             <button onClick={() => setIsDark(false)} className={`p-1 rounded-full flex items-center justify-center ${!isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-               <Sun className="h-3.5 w-3.5" />
-             </button>
-             <button onClick={() => setIsDark(true)} className={`p-1 rounded-full flex items-center justify-center ${isDark ? 'bg-background shadow-sm text-foreground' : 'text-muted-foreground hover:text-foreground'}`}>
-               <Moon className="h-3.5 w-3.5" />
-             </button>
-           </div>
-           
-            <button onClick={() => setIsInfoPanelOpen(true)} className="p-1.5 text-muted-foreground hover:text-foreground transition-colors">
-              <HelpCircle className="h-4 w-4" />
-            </button>
-
-            {/* AI Mentor Button */}
-            <button onClick={() => setAiMentorOpen(true)} className="flex items-center gap-1.5 px-3 py-1.5 text-xs font-semibold bg-gradient-to-r from-purple-500 to-blue-500 text-white rounded-md hover:from-purple-600 hover:to-blue-600 transition-colors">
-              <Sparkles className="h-3.5 w-3.5" />
-              Ask AI
-            </button>
-
-            {/* Functional Timer */}
-            <div className="flex items-center gap-1.5 font-mono text-sm font-semibold bg-muted/50 px-3 py-1.5 rounded-md border border-border/50">
-              <Timer className="h-4 w-4 text-blue-500" />
-              <span className="text-foreground">{formatTimer(timerSeconds)}</span>
-              <button onClick={timerRunning ? stopTimer : startTimer} className="ml-1 p-0.5 hover:bg-muted rounded">
-                {timerRunning ? <Pause className="h-3 w-3" /> : <Play className="h-3 w-3" />}
-              </button>
-              <button onClick={resetTimer} className="p-0.5 hover:bg-muted rounded">
-                <RotateCcw className="h-3 w-3" />
-              </button>
-            </div>
-
-           <Button variant="outline" size="sm" className="rounded-md border-red-200 text-red-600 hover:bg-red-50 hover:text-red-700 font-bold dark:border-red-900 dark:text-red-400 dark:hover:bg-red-950" onClick={() => router.push('/dashboard/problems')}>
-             Exit
-           </Button>
+        <div className="hidden md:flex items-center gap-5">
+          {headerSecondaryActions}
         </div>
+        <button
+          type="button"
+          onClick={() => setHeaderMenuOpen((v) => !v)}
+          aria-label="More actions"
+          aria-expanded={headerMenuOpen}
+          className="flex min-h-10 min-w-10 items-center justify-center rounded-md p-1.5 text-muted-foreground hover:bg-muted hover:text-foreground md:hidden"
+        >
+          <MoreVertical className="h-4 w-4" />
+        </button>
       </header>
+      {headerMenuOpen && (
+        <div className="border-b border-border bg-card px-4 py-3 md:hidden">
+          <div className="flex flex-wrap items-center gap-x-5 gap-y-3">
+            {headerSecondaryActions}
+          </div>
+        </div>
+      )}
 
       {/* 2-pane split */}
       <div className="flex-1 flex flex-col lg:flex-row min-h-0">
@@ -538,12 +572,12 @@ export default function ProblemDetailPage() {
                             <div className="bg-muted/40 px-4 py-2 border-b border-border flex justify-between items-center text-sm font-semibold">
                                Testcase {i+1}
                             </div>
-                            <div className="p-4 grid grid-cols-2 divide-x divide-border gap-4">
-                               <div className="pr-2">
+                            <div className="p-4 grid grid-cols-1 sm:grid-cols-2 sm:divide-x divide-border gap-4">
+                               <div className="sm:pr-2">
                                   <div className="text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Input</div>
                                   <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-md border border-border/50">{t.stdin}</pre>
                                </div>
-                               <div className="pl-4">
+                               <div className="sm:pl-4">
                                   <div className="text-xs text-muted-foreground mb-1.5 uppercase font-bold tracking-wider">Output</div>
                                   <pre className="text-sm font-mono whitespace-pre-wrap text-foreground bg-muted/20 p-2 rounded-md border border-border/50">{t.expected_stdout}</pre>
                                </div>
@@ -720,7 +754,7 @@ export default function ProblemDetailPage() {
                             </button>
                          ))}
                        </div>
-                       <div className="grid grid-cols-2 gap-6 bg-muted/10 p-4 rounded-xl border border-border/50">
+                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 bg-muted/10 p-4 rounded-xl border border-border/50">
                           <div>
                             <h4 className="text-xs uppercase font-bold text-muted-foreground mb-2">Input</h4>
                             <pre className="text-sm font-mono text-foreground">{problem.test_cases[0]?.stdin}</pre>
@@ -765,7 +799,10 @@ export default function ProblemDetailPage() {
 
         {/* INFORMATION SIDE PANEL */}
         {isInfoPanelOpen && (
-           <div className="w-[320px] lg:w-100 border-l border-border bg-card flex flex-col shrink-0 animate-in slide-in-from-right">
+          <div className="fixed inset-0 z-30 bg-black/50 lg:hidden" onClick={() => setIsInfoPanelOpen(false)} aria-hidden="true" />
+        )}
+        {isInfoPanelOpen && (
+           <div className="relative z-40 lg:z-auto w-full sm:w-[320px] lg:w-100 border-l border-border bg-card flex flex-col shrink-0 animate-in slide-in-from-right">
               <div className="flex items-center justify-between px-4 py-4 border-b border-border/50">
                  <h2 className="font-bold text-foreground">Information</h2>
                  <button onClick={() => setIsInfoPanelOpen(false)} className="text-muted-foreground hover:text-foreground"><XCircle className="h-4 w-4" /></button>
@@ -911,7 +948,7 @@ function ResultsPanel({ result, running }: { result: RunResponse | null, running
                    <div className="text-xs font-mono text-muted-foreground">{r.time_ms ?? '—'}ms</div>
                 </div>
                 {!r.passed && (
-                   <div className="p-4 grid grid-cols-2 gap-4">
+                   <div className="p-4 grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div>
                          <div className="text-xs uppercase font-bold text-muted-foreground mb-1">Your Output</div>
                          <pre className="text-sm font-mono bg-red-500/10 text-red-700 dark:text-red-400 p-2 rounded border border-red-500/20 whitespace-pre-wrap">{r.stdout || r.stderr || r.error || '—'}</pre>

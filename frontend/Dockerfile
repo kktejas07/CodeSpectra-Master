@@ -20,7 +20,7 @@ ENV DIDIT_API_KEY=${DIDIT_API_KEY}
 ENV DIDIT_WEBHOOK_SECRET=${DIDIT_WEBHOOK_SECRET}
 ENV DIDIT_WORKFLOW_ID=${DIDIT_WORKFLOW_ID}
 ENV PISTON_URL=http://piston:2000/api/v2
-RUN apk add --no-cache docker-cli chromium nss freetype harfbuzz ca-certificates ttf-freefont font-noto gcompat mesa-egl mesa-gbm \
+RUN apk add --no-cache docker-cli chromium ffmpeg nss freetype harfbuzz ca-certificates ttf-freefont font-noto gcompat mesa-egl mesa-gbm \
   && mv /bin/setpriv /bin/setpriv.busybox \
   && printf '%s\n' \
     '#!/bin/sh' \
@@ -52,6 +52,11 @@ RUN chmod +x scripts/docker-entrypoint.sh \
   && npx patch-package \
   && node scripts/ensure-anon-aadhaar-types.cjs
 RUN yarn build
+# ponytail: busybox wget is the probe (no curl in node:22-alpine). Compose
+# healthcheck overrides this when deployed via compose; this covers plain builds.
+# NOTE: no USER switch — the entrypoint/hydrate + Remotion/chromium paths assume
+# root; adding one needs appuser creation + chown and is out of scope here.
+HEALTHCHECK --interval=30s --timeout=10s --retries=5 --start-period=60s CMD wget -q -O- http://localhost:80/api/health >/dev/null 2>&1 || exit 1
 EXPOSE 80
 ENTRYPOINT ["./scripts/docker-entrypoint.sh"]
 CMD ["npx", "next", "start", "-p", "80"]

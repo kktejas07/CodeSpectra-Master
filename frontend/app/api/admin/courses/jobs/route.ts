@@ -2,6 +2,8 @@ import { NextRequest, NextResponse } from 'next/server'
 import { getAPIUser } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { findBusyJob, clearCourseVideos } from '@/lib/courses/process-job'
+import { normalizeTargetMinutes } from '@/lib/courses/lesson-video'
+import { readS3Config } from '@/lib/s3-storage'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -22,23 +24,29 @@ interface GenerationJob {
   totalItems: number
   completedItems: number
   failedItems: number
+  targetMinutes?: number
   logs: JobLog[]
   startedAt: string
   completedAt?: string
   error?: string
 }
 
-// GET - List all generation jobs
+// GET - List all generation jobs (superadmin), or jobs for one course (?courseId=)
+// scoped to any authenticated user so lesson pages can show live render status.
 export async function GET(request: NextRequest) {
   const user = await getAPIUser()
-  if (!user || user.role !== 'superadmin') {
+  if (!user) {
+    return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+  }
+  const courseId = request.nextUrl.searchParams.get('courseId') || ''
+  if (!courseId && user.role !== 'superadmin') {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
 
   try {
     const db = await getMongoDb()
     const jobs = await db.collection('generation_jobs')
-      .find({})
+      .find(courseId ? { courseId } : {})
       .sort({ startedAt: -1 })
       .limit(50)
       .toArray()
@@ -66,7 +74,19 @@ export async function POST(request: NextRequest) {
   }
 
   try {
-    const { courseId, courseTitle, type, totalItems, force } = await request.json()
+    const { courseId, courseTitle, type, totalItems, force, targetMinutes } = await request.json()
+
+    // R2 preflight: video jobs burn LLM+TTS+render minutes then fail at MP4
+    // upload when no object storage is configured (MP4s >15MB can't live in Mongo).
+    const jobType = String(type || 'all')
+    if (jobType === 'video' || jobType === 'all') {
+      const s3 = await readS3Config().catch(() => null)
+      if (!s3) {
+        return NextResponse.json({
+          error: 'Configure object storage under Admin → Settings → Cloudflare before generating videos — rendered MP4s exceed database limits',
+        }, { status: 400 })
+      }
+    }
 
     const db = await getMongoDb()
 
@@ -82,6 +102,7 @@ export async function POST(request: NextRequest) {
       totalItems: totalItems || 0,
       completedItems: 0,
       failedItems: 0,
+      targetMinutes: normalizeTargetMinutes(targetMinutes ?? 10),
       logs: [{
         timestamp: new Date().toISOString(),
         message: `Job created for "${courseTitle}"`,

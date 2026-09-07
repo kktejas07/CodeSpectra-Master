@@ -11,6 +11,7 @@ import { Button } from '@/components/ui/button'
 import { AllFiltersDialog, type FilterState } from '@/components/listings/all-filters-dialog'
 import { Loader2 } from 'lucide-react'
 import { EmptyState } from '@/components/ui/empty-state'
+import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 const QUIZZES = [
   { id: 'tcs-software-engineer', company: 'TCS', role: 'Software Engineer', type: 'Tech', level: 'Entry-level', href: '/dashboard/mock-tests/tcs-software-engineer' },
@@ -38,8 +39,9 @@ export default function QuizzesPage() {
 
   if (!gate.ready) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading…
+      <div className="w-full space-y-6">
+        <SkeletonText lines={2} />
+        <SkeletonList count={4} />
       </div>
     )
   }

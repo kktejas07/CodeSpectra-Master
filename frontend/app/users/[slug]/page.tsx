@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
+import { SkeletonAvatar, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 type Difficulty = 'easy' | 'medium' | 'hard'
 
@@ -44,10 +45,15 @@ const DIFF_TONE: Record<Difficulty, string> = {
   hard: 'border-destructive/40 bg-destructive/10 text-destructive',
 }
 
-// Mock heatmap data for the streaks view
-const mockHeatmapCells = Array.from({ length: 52 }).map(() =>
-  Array.from({ length: 7 }).map(() => Math.floor(Math.random() * 4))
-)
+// Real heatmap state — loaded from /api/user/heatmap (same endpoint + params +
+// response shape as dashboard/profile). Supports ?userId for other users'
+// public heatmaps (counts only, no PII); on API error keeps the honest empty
+// state (cells=null).
+interface HeatmapState {
+  cells: number[][] | null
+  tooltipData: Record<string, { date: string; count: number; types: { scan: number; review: number; fix: number; challenge: number } }>
+  totalContributions: number
+}
 
 export default function UserProfilePage({
   params,
@@ -64,6 +70,7 @@ export default function UserProfilePage({
   const [data, setData] = useState<ProfileResponse | null>(null)
   const [loading, setLoading] = useState(true)
   const [error, setError] = useState<string | null>(null)
+  const [heatmap, setHeatmap] = useState<HeatmapState>({ cells: null, tooltipData: {}, totalContributions: 0 })
 
   const isOwner = authUser && authUser.email && (authUser.email.split('@')[0] === slug || authUser.uid === slug)
 
@@ -91,10 +98,36 @@ export default function UserProfilePage({
     }
   }, [slug])
 
+  useEffect(() => {
+    if (!data || !authUser) return
+    // /api/user/heatmap supports ?userId for public activity — fetch the
+    // profile owner's heatmap. On API error the state stays at the honest
+    // empty default (0 contributions, no cells).
+    let cancelled = false
+    fetch(`/api/user/heatmap?weeks=52&userId=${encodeURIComponent(data.user.id)}`, { cache: 'no-store' })
+      .then((r) => r.json())
+      .then((json) => {
+        if (cancelled || !json || json.error || !json.cells) return
+        setHeatmap({
+          cells: json.cells,
+          tooltipData: json.tooltipData ?? {},
+          totalContributions: json.totalContributions ?? 0,
+        })
+      })
+      .catch(() => { /* keep honest empty state */ })
+    return () => {
+      cancelled = true
+    }
+  }, [data, authUser, slug])
+
   if (!gate.ready) {
     return (
-      <div className="flex min-h-screen items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading…
+      <div className="min-h-screen space-y-6 bg-background p-6">
+        <div className="flex items-center gap-4">
+          <SkeletonAvatar />
+          <div className="flex-1"><SkeletonText lines={2} /></div>
+        </div>
+        <SkeletonList count={2} />
       </div>
     )
   }
@@ -125,8 +158,12 @@ export default function UserProfilePage({
 
   if (loading) {
     return (
-      <div className="flex min-h-screen items-center justify-center bg-background text-muted-foreground">
-        <Loader2 className="mr-2 h-5 w-5 animate-spin" /> Loading profile…
+      <div className="min-h-screen space-y-6 bg-background p-6">
+        <div className="flex items-center gap-4">
+          <SkeletonAvatar />
+          <div className="flex-1"><SkeletonText lines={2} /></div>
+        </div>
+        <SkeletonList count={2} />
       </div>
     )
   }
@@ -280,7 +317,7 @@ export default function UserProfilePage({
               </div>
               <div className="bg-card w-full overflow-x-auto">
                 <div className="min-w-[800px]">
-                  <ContributionGraph cells={mockHeatmapCells} totalContributions={stats.totalSubmissions || 45} />
+                  <ContributionGraph cells={heatmap.cells} tooltipData={heatmap.tooltipData} totalContributions={heatmap.totalContributions} />
                 </div>
               </div>
               <div className="mt-4 flex items-center gap-4 text-sm font-medium">

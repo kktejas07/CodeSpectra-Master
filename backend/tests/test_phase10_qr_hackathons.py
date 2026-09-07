@@ -15,6 +15,8 @@ import pytest
 from pymongo import MongoClient
 from dotenv import load_dotenv
 
+from live_frontend import login_live, make_live_session
+
 load_dotenv("/app/backend/.env")
 
 BASE_URL = "http://localhost:3000"
@@ -40,10 +42,13 @@ def mongo():
 
 
 def _sign_in(creds):
-    s = requests.Session()
-    r = s.post(f"{BASE_URL}/api/auth/sign-in/email", json=creds, headers=JSON_HEADERS, timeout=15)
-    assert r.status_code == 200, f"sign-in failed for {creds['email']}: {r.status_code} {r.text[:200]}"
-    return s
+    return login_live(creds["email"], creds["password"], BASE_URL)
+
+
+@pytest.fixture(scope="session")
+def anon():
+    """CSRF-primed anonymous session: unauth probes get true 401s, not 403s."""
+    return make_live_session(BASE_URL)
 
 
 @pytest.fixture(scope="session")
@@ -140,8 +145,8 @@ class TestQrResolver:
 
 # ----------------------- HACKATHONS CRUD -----------------------
 class TestHackathonCRUD:
-    def test_create_unauth_401(self):
-        r = requests.post(
+    def test_create_unauth_401(self, anon):
+        r = anon.post(
             f"{BASE_URL}/api/hackathons",
             json={"name": "Nope", "num_teams": 2, "max_per_team": 2, "timeout_minutes": 60},
             headers=JSON_HEADERS,

@@ -16,7 +16,9 @@ import {
   FlaskConical, Cloud, Network, Lightbulb, ChevronLeft, ChevronRight,
 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS } from '@/lib/difficulty-levels'
 
 const PAGE_SIZE = 10
 
@@ -63,12 +65,44 @@ const CATEGORY_IMAGES: Record<string, string> = {
 
 const DEFAULT_IMAGE = '/courses/web.jpg'
 
+// Skeleton loaders for better UX
+const CourseSkeleton = () => (
+  <Card className="overflow-hidden border-border/60 animate-pulse">
+    <div className="relative h-44 w-full overflow-hidden shrink-0 bg-muted">
+      <div className="w-full h-full bg-muted/60 animate-pulse" />
+    </div>
+    <div className="p-5 flex flex-col flex-1">
+      <div className="flex items-center justify-between mb-3">
+        <div className="h-5 w-20 bg-muted/60 rounded animate-pulse" />
+        <div className="h-4 w-8 bg-muted/60 rounded animate-pulse" />
+      </div>
+      <div className="h-5 w-full bg-muted/60 rounded animate-pulse mb-2" />
+      <div className="h-3 w-full bg-muted/50 rounded animate-pulse mb-4" />
+      <div className="flex items-center justify-between pt-3 border-t border-border/50 mt-auto">
+        <div>
+          <div className="flex items-center gap-1.5 text-xs font-medium mb-1">
+            <div className="h-3 w-3 bg-muted/50 rounded animate-pulse" />
+            <div className="h-3 w-12 bg-muted/50 rounded animate-pulse" />
+          </div>
+          <div className="flex items-center gap-1.5 text-[11px]">
+            <div className="h-3 w-3 bg-muted/50 rounded animate-pulse" />
+            <div className="h-3 w-16 bg-muted/50 rounded animate-pulse" />
+          </div>
+        </div>
+        <div className="h-8 w-8 rounded-full border border-border animate-pulse" />
+      </div>
+    </div>
+  </Card>
+)
+
 function LearningPageInner() {
   const router = useRouter()
   const searchParams = useSearchParams()
   const category = searchParams.get('category') || 'all'
+  const levelFilter = searchParams.get('level') || 'all'
   const searchQuery = searchParams.get('q') || ''
   const pageParam = Math.max(1, parseInt(searchParams.get('page') || '1', 10) || 1)
+  const { startTour, setTourSeen } = useTour()
 
   const [courses, setCourses] = useState<any[]>([])
   const [loading, setLoading] = useState(true)
@@ -99,6 +133,40 @@ function LearningPageInner() {
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [])
+
+  // Initialize tour on first visit (outer LearningPage already gates on auth)
+  useEffect(() => {
+    if (!localStorage.getItem('has_seen_courses_tour')) {
+      const coursesTour: TourStep[] = [
+        {
+          target: '[data-tour="courses-header"]',
+          title: 'Course Catalog',
+          description: 'Browse and search through our library of coding courses and learning paths.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="courses-search"]',
+          title: 'Search Courses',
+          description: 'Find specific courses by title, topic, or technology.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="categories"]',
+          title: 'Course Categories',
+          description: 'Filter courses by programming language, skill level, or subject area.',
+          position: 'bottom',
+        },
+        {
+          target: '[data-tour="course-card"]',
+          title: 'Course Details',
+          description: 'View course information, ratings, and enrollment options.',
+          position: 'bottom',
+        },
+      ]
+      startTour(coursesTour, 'courses')
+      setTourSeen('courses')
+    }
+  }, [startTour, setTourSeen])
 
   const toggleSave = async (e: React.MouseEvent, id: string) => {
     e.preventDefault()
@@ -150,6 +218,16 @@ function LearningPageInner() {
     })
   }
 
+  const setLevel = (id: string) => {
+    replaceParams(params => {
+      if (id === 'all') params.delete('level')
+      else params.set('level', id)
+      if (search) params.set('q', search)
+      else params.delete('q')
+      params.delete('page')
+    })
+  }
+
   const handleSearch = (val: string) => {
     setSearch(val)
     replaceParams(params => {
@@ -177,6 +255,9 @@ function LearningPageInner() {
         )
       })
     }
+    if (levelFilter !== 'all') {
+      list = list.filter(c => (c.level || '').toLowerCase() === levelFilter)
+    }
     if (search.trim()) {
       const q = search.toLowerCase()
       list = list.filter(c =>
@@ -186,7 +267,7 @@ function LearningPageInner() {
       )
     }
     return list
-  }, [courses, category, search])
+  }, [courses, category, levelFilter, search])
 
   const totalPages = Math.max(1, Math.ceil(filteredCourses.length / PAGE_SIZE))
   const safePage = Math.min(pageParam, totalPages)
@@ -199,7 +280,7 @@ function LearningPageInner() {
 
   return (
     <div className="space-y-8 w-full mx-auto pb-12 px-2 sm:px-4">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-2" data-tour="courses-header">
         <div className="flex flex-col sm:flex-row sm:items-end gap-2 sm:gap-4">
           <h1 className="text-3xl font-bold">
             <span className="text-foreground">Explore </span>
@@ -209,7 +290,7 @@ function LearningPageInner() {
             <Heart className="h-4 w-4" /> Wishlist
           </Link>
         </div>
-        <div className="relative max-w-sm w-full">
+        <div className="relative max-w-sm w-full" data-tour="courses-search">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input
             className="pl-9 bg-background/50 border-muted rounded-full"
@@ -220,7 +301,7 @@ function LearningPageInner() {
         </div>
       </div>
 
-      <div className="flex flex-wrap gap-2 mb-2">
+      <div className="flex flex-wrap gap-2 mb-2" data-tour="categories">
         {CATEGORIES.map((cat) => (
           <button
             key={cat.id}
@@ -237,9 +318,37 @@ function LearningPageInner() {
         ))}
       </div>
 
+      <div className="flex flex-wrap gap-2 mb-2">
+        <button
+          onClick={() => setLevel('all')}
+          className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 ${
+            levelFilter === 'all'
+              ? 'border-primary bg-primary text-primary-foreground'
+              : 'border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
+          }`}
+        >
+          All Levels
+        </button>
+        {DIFFICULTY_LEVELS.map((lv) => (
+          <button
+            key={lv}
+            onClick={() => setLevel(lv)}
+            className={`px-3 py-1.5 rounded-full border text-xs font-semibold transition-all duration-200 ${
+              levelFilter === lv
+                ? `border-current ${DIFFICULTY_COLORS[lv]}`
+                : 'border-border/50 bg-card text-muted-foreground hover:text-foreground hover:bg-muted/40'
+            }`}
+          >
+            {DIFFICULTY_LABELS[lv]}
+          </button>
+        ))}
+      </div>
+
       {loading && (
-        <div className="flex items-center justify-center py-20">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
+          {Array.from({ length: 10 }).map((_, i) => (
+            <CourseSkeleton key={i} />
+          ))}
         </div>
       )}
 
@@ -258,7 +367,7 @@ function LearningPageInner() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5">
             {pagedCourses.map((course, i) => (
               <Link href={`/dashboard/courses/${course.id}`} key={course.id || i} className="block group">
-                <Card className="overflow-hidden border-border/60 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 bg-card h-full flex flex-col">
+                <Card className="overflow-hidden border-border/60 hover:border-primary/40 transition-all duration-300 hover:shadow-lg hover:shadow-primary/5 bg-card h-full flex flex-col" data-tour="course-card">
                   <div className="relative h-44 w-full overflow-hidden shrink-0 bg-muted">
                     <img
                       src={course.image || CATEGORY_IMAGES[course.category || course.tags?.[0]] || DEFAULT_IMAGE}
