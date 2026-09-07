@@ -1,3 +1,4 @@
+import type { Metadata } from 'next'
 import Link from 'next/link'
 import { notFound } from 'next/navigation'
 import {
@@ -13,12 +14,49 @@ import {
 import { PublicPageWrapper } from '@/app/public-layout'
 import { DocSidebar } from '@/components/docs/DocSidebar'
 import { DocContent } from '@/components/docs/DocContent'
-import { docHref, getDocTree, resolveDoc, type DocSection } from '@/lib/docs'
-
-export const dynamic = 'force-dynamic'
+import { docHref, docDescription, getDocTree, resolveDoc, type DocSection } from '@/lib/docs'
 
 interface Props {
   params: Promise<{ slug?: string[] }>
+}
+
+export async function generateStaticParams(): Promise<{ slug?: string[] }[]> {
+  // Pre-render every doc page at build time (Mintlify/Docusaurus standard) —
+  // docs change rarely, so static HTML + CDN caching beats per-request disk reads.
+  // The index (no slug) stays dynamic-safe via the same shell.
+  const params: { slug?: string[] }[] = []
+  for (const section of getDocTree()) {
+    for (const doc of section.docs) {
+      params.push({ slug: section.id === 'user' ? ['user', doc.slug] : [doc.slug] })
+    }
+  }
+  return params
+}
+
+export async function generateMetadata({ params }: Props): Promise<Metadata> {
+  const { slug } = await params
+  const fallback: Metadata = {
+    title: 'Documentation | CodeSpectra',
+    description: 'Guides for getting started, using CodeSpectra day to day, and integrating with the API.',
+  }
+  if (!slug || slug.length === 0) return fallback
+  const page = resolveDoc(slug)
+  if (!page) return fallback
+  const description = docDescription(page.content)
+  return {
+    title: `${page.meta.title} | CodeSpectra Docs`,
+    description,
+    openGraph: {
+      title: `${page.meta.title} | CodeSpectra Docs`,
+      description,
+      type: 'article',
+    },
+    twitter: {
+      card: 'summary',
+      title: `${page.meta.title} | CodeSpectra Docs`,
+      description,
+    },
+  }
 }
 
 export default async function DocsPage({ params }: Props) {

@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import {
   Search, Home, Trophy, Code2 as CodeIcon, BookOpen, BarChart3, Star, Settings,
-  Users, Lock, ScrollText, Plug, Gauge, Globe2, Shield, FileText, Building2,
+  Users, Lock, Plug, Gauge, Globe2, Shield, FileText, Building2,
   CreditCard, Bell, Database, Sparkles, Bot, Briefcase, Flame, MessageSquare,
   Camera, Layers, UserPlus, Award, ScanSearch, type LucideIcon,
 } from 'lucide-react'
@@ -49,13 +49,11 @@ const SEARCH_ICON_MAP: Record<string, LucideIcon> = {
   '/dashboard/admin/users': Users,
   '/dashboard/admin/roles': Lock,
   '/dashboard/admin/analytics': BarChart3,
-  '/dashboard/admin/audit-logs': ScrollText,
   '/dashboard/admin/integrations': Plug,
   '/dashboard/admin/speed-insights': Gauge,
   '/dashboard/admin/cdn': Globe2,
   '/dashboard/admin/permissions': Shield,
   '/dashboard/admin/plans': FileText,
-  '/dashboard/admin/pricing': FileText,
   '/dashboard/admin/organizations': Building2,
   '/dashboard/admin/coupons': CreditCard,
   '/dashboard/admin/announcements': Bell,
@@ -198,14 +196,18 @@ export function CommandMenu({
       filtered = filtered.filter(item => !isPlatformAdminRoute(item.route))
     }
 
+    // ponytail: overview duplicates the same route's menu item (same href, and
+    // the old hardcoded 'Dashboard'/'Overview' label mismatched ROUTE_LABELS).
+    // Label from ROUTE_LABELS and drop the dup so each destination appears once.
+    const overviewRoute = overviewHref.split('?')[0]
     const overview = {
-      label: overviewHref === '/dashboard' ? 'Dashboard' : 'Overview',
+      label: ROUTE_LABELS[overviewRoute] || 'Overview',
       icon: Home,
       href: overviewHref,
-      route: overviewHref.split('?')[0],
+      route: overviewRoute,
     }
 
-    return [overview, ...filtered]
+    return [overview, ...filtered.filter(item => item.route !== overviewRoute)]
   }, [userRole, overviewHref, allowedRoutes, deniedRoutes])
 
   useEffect(() => {

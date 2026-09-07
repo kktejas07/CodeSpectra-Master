@@ -4,7 +4,7 @@ import matter from 'gray-matter'
 import type { DocMeta, DocPage, DocSection, ServeSection } from './docs-shared'
 
 export type { DocMeta, DocPage, DocSection, ServeSection }
-export { docHref, flattenDocs, getAdjacentDocs } from './docs-shared'
+export { docHref, docDescription, flattenDocs, getAdjacentDocs } from './docs-shared'
 
 function resolveDocsRoot(): string {
   const cwd = process.cwd()

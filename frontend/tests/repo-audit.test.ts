@@ -1,5 +1,5 @@
-import { describe, it, expect } from 'vitest'
-import { similarityScore, parseRepoUrl } from '@/lib/hackathons/repo-audit'
+import { describe, it, expect, vi, afterEach } from 'vitest'
+import { similarityScore, parseRepoUrl, auditSubmissionRepo } from '@/lib/hackathons/repo-audit'
 
 describe('similarityScore', () => {
   it('scores identical code ~1', () => {
@@ -53,5 +53,42 @@ describe('parseRepoUrl', () => {
   it('rejects empty and malformed URLs', () => {
     expect(parseRepoUrl('')).toHaveProperty('error')
     expect(parseRepoUrl('https://github.com/onlyowner')).toHaveProperty('error')
+  })
+})
+
+describe('rateLimited flag', () => {
+  const baseOpts = {
+    repoUrl: 'https://github.com/acme/widget',
+    eventStartISO: '2026-01-01T00:00:00.000Z',
+    eventEndISO: '2026-01-03T00:00:00.000Z',
+    teamSize: 3,
+  }
+
+  afterEach(() => {
+    vi.unstubAllGlobals()
+  })
+
+  it('flags rateLimited on GitHub 403 and explains the fix', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 403,
+      json: async () => ({ message: 'API rate limit exceeded' }),
+    })))
+    const pack = await auditSubmissionRepo(baseOpts)
+    expect(pack.rateLimited).toBe(true)
+    expect(pack.repoAccessible).toBe(false)
+    expect(pack.limitations.some((l) => /rate limit/i.test(l || ''))).toBe(true)
+  })
+
+  it('does not flag rateLimited on 404 (private/missing)', async () => {
+    vi.stubGlobal('fetch', vi.fn(async () => ({
+      ok: false,
+      status: 404,
+      json: async () => ({}),
+    })))
+    const pack = await auditSubmissionRepo(baseOpts)
+    expect(typeof pack.rateLimited).toBe('boolean')
+    expect(pack.rateLimited).toBe(false)
+    expect(pack.repoAccessible).toBe(false)
   })
 })

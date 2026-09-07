@@ -32,6 +32,16 @@ async function checkJudgeOrAdmin(hackathonId: string, user: { id: string; role?:
   return { hk }
 }
 
+/** Name the failing layer; keep provider/model detail, drop anything key-like. */
+function screeningErrorMessage(e: unknown): string {
+  const raw = e instanceof Error ? (e.message || 'unknown error') : String(e ?? 'unknown error')
+  const scrubbed = (raw || '')
+    .replace(/(sk-[A-Za-z0-9-_]{4})[A-Za-z0-9-_]+/g, '$1…')
+    .replace(/(bearer\s+[A-Za-z0-9-_.=]{4})[A-Za-z0-9-_.=]+/gi, '$1…')
+    .replace(/(api[_-]?key["'\s:=]+[A-Za-z0-9-_]{3})[A-Za-z0-9-_.]+/gi, '$1…')
+  return `AI screening failed: ${scrubbed.slice(0, 200)}`
+}
+
 /** Strip audit-doc bookkeeping fields down to the evidence pack. */
 function toPack(doc: Record<string, unknown>): Record<string, unknown> {
   const { _id, hackathonId, submissionId, screening, screenedBy, ...pack } = doc
@@ -211,7 +221,7 @@ export async function POST(
         results.push({
           submissionId,
           ok: false,
-          error: e instanceof Error ? e.message : 'screening failed',
+          error: status === 404 && e instanceof Error ? e.message : screeningErrorMessage(e),
           ...(status ? { status } : {}),
         })
       }
@@ -232,6 +242,6 @@ export async function POST(
       return NextResponse.json({ error: e instanceof Error ? e.message : 'not found' }, { status: 404 })
     }
     console.error('[ai-screening]', e)
-    return NextResponse.json({ error: e instanceof Error ? e.message : 'screening failed' }, { status: 502 })
+    return NextResponse.json({ error: screeningErrorMessage(e) }, { status: 502 })
   }
 }

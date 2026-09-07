@@ -58,6 +58,10 @@ graph TD
 
 ## Pricing Plans
 
+Live prices below come straight from the pricing API — the same numbers on the [pricing page](/pricing), set in **Admin → Pricing**. They update automatically when plans change.
+
+{{live-pricing}}
+
 ### Free
 
 **$0** — forever
@@ -73,9 +77,7 @@ Everything you need to try CodeSpectra and solve coding challenges.
 
 ### Pro
 
-**$29/month** or **$499/month (INR)** — monthly billing
-
-**$199/year (₹4,990)** — yearly billing (save ~17%)
+Monthly and yearly billing — see live prices above.
 
 For professional developers who want AI-powered code quality and skill development.
 
@@ -94,7 +96,7 @@ For professional developers who want AI-powered code quality and skill developme
 
 ### Enterprise
 
-**$99/user/month** — custom pricing for teams
+**Custom pricing** — contact sales for teams (see live plans above for current Pro pricing).
 
 For organizations that need team management, compliance, and dedicated support.
 
@@ -131,11 +133,11 @@ Yes. You can upgrade or downgrade at any time. When upgrading, Pro features are 
 
 ### What payment methods do you accept?
 
-We currently process payments through Razorpay, supporting all major Indian payment methods including UPI, credit/debit cards, net banking, and wallets. Global payments via Stripe are coming soon.
+We currently process payments through Razorpay, supporting all major Indian payment methods including UPI, credit/debit cards, net banking, and wallets. Global payments are processed via Stripe.
 
 ### Is there a discount for annual billing?
 
-Yes. The Pro Yearly plan gives you the equivalent of 10 months for the price of 12, saving approximately 17% compared to monthly billing.
+Yes. The Pro Yearly plan costs roughly 10 months of monthly billing for 12 months of access, saving approximately 17% compared to paying monthly.
 
 ### Do you offer educational or open-source discounts?
 

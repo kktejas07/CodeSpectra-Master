@@ -47,3 +47,19 @@ export function getAdjacentDocs(
     next: idx < flat.length - 1 ? flat[idx + 1] : null,
   }
 }
+
+/** First meaningful paragraph of markdown, stripped for meta descriptions. */
+export function docDescription(content: string, maxLen = 160): string {
+  const lines = (content || '').split('\n')
+  for (const raw of lines) {
+    const line = raw.trim()
+    if (!line || line.startsWith('#') || line.startsWith('>') || line.startsWith('|') || line.startsWith('- ') || line.startsWith('* ') || line.startsWith('```')) continue
+    const clean = line
+      .replace(/\[([^\]]*)\]\([^)]*\)/g, '$1')
+      .replace(/[`*_~]/g, '')
+      .trim()
+    if (clean.length < 20) continue
+    return clean.length > maxLen ? clean.slice(0, maxLen - 1).trimEnd() + '…' : clean
+  }
+  return 'CodeSpectra documentation guides and references.'
+}

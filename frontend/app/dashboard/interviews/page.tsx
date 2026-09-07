@@ -143,6 +143,15 @@ export default function InterviewsPage() {
                 {iv.questions?.length > 0 && (
                   <p className="text-xs text-muted-foreground">{iv.questions.length} questions answered</p>
                 )}
+                {iv.status === 'completed' && (
+                  <Link
+                    href={`/dashboard/interviews/feedback?id=${iv.id}`}
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline mt-1"
+                    onClick={(e) => e.stopPropagation()}
+                  >
+                    View Feedback →
+                  </Link>
+                )}
               </Card>
             </Link>
           ))}

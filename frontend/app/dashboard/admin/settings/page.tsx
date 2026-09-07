@@ -55,7 +55,7 @@ import { CloudflareSettingsSection } from '@/components/dashboard/settings/cloud
 import { LlmSettingsTabs } from '@/components/dashboard/settings/llm-settings-tabs'
 import { RedisSettingsSection } from '@/components/dashboard/settings/redis-section'
 import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
-import KycSettingsSection from '@/app/dashboard/admin/settings/kyc/page'
+import { KycSettingsSection } from '@/components/dashboard/settings/kyc-section'
 import { useToast } from '@/lib/toast-context'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'

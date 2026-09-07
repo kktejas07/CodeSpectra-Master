@@ -91,6 +91,8 @@ interface LeaderboardEntry {
   total_score: number; members: string[]; achievements: number
 }
 
+type JudgeSubTab = 'evaluate' | 'board' | 'compare' | 'reports'
+
 export default function EventDetailPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params)
   const router = useRouter()
@@ -117,6 +119,9 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   // J1 repo-audit evidence (cached packs keyed by submission id)
   const [audits, setAudits] = useState<Record<string, any>>({})
   const [auditingId, setAuditingId] = useState<string | null>(null)
+  const [auditingAll, setAuditingAll] = useState(false)
+  // Per-row failure strings (audit or screening) — toasts vanish, these stay.
+  const [rowErrors, setRowErrors] = useState<Record<string, string>>({})
 
   // J2 AI screening scores (board = ranked leaderboard rows)
   const [screenBoard, setScreenBoard] = useState<any[]>([])
@@ -129,7 +134,10 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   const [cmpCrit, setCmpCrit] = useState('implementation')
   const [cmpResult, setCmpResult] = useState<{ winner: string; reason: string } | null>(null)
   const [comparing, setComparing] = useState(false)
-  
+
+  // Judge sub-tabs: evaluate (working area) | board | compare | reports
+  const [judgeSubTab, setJudgeSubTab] = useState<JudgeSubTab>('evaluate')
+
   // Rejection state
   const [rejectingSub, setRejectingSub] = useState<any>(null)
   const [rejectionReason, setRejectionReason] = useState('')
@@ -223,9 +231,17 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       const data = await res.json()
       if (!res.ok) throw new Error(data.message || data.error || 'Audit failed')
       setAudits((prev) => ({ ...prev, [submissionId]: data }))
+      setRowErrors((prev) => {
+        if (!prev[submissionId]) return prev
+        const next = { ...prev }
+        delete next[submissionId]
+        return next
+      })
       addToast({ type: 'success', title: 'Repo audit complete' })
     } catch (e: any) {
-      addToast({ type: 'error', title: e.message || 'Audit failed' })
+      const msg = (e && typeof e.message === 'string' && e.message) || 'Audit failed'
+      setRowErrors((prev) => ({ ...prev, [submissionId]: msg }))
+      addToast({ type: 'error', title: msg })
     } finally { setAuditingId(null) }
   }, [event?.id, addToast])
 
@@ -254,10 +270,18 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       if (data.screening) {
         setAudits((prev) => ({ ...prev, [submissionId]: { ...(prev[submissionId] || {}), screening: data.screening } }))
       }
+      setRowErrors((prev) => {
+        if (!prev[submissionId]) return prev
+        const next = { ...prev }
+        delete next[submissionId]
+        return next
+      })
       void loadScreening()
       addToast({ type: 'success', title: `AI screening: ${data.screening?.total ?? '?'} / ${data.screening?.maxTotal ?? '?'}` })
     } catch (e: any) {
-      addToast({ type: 'error', title: e.message || 'Screening failed' })
+      const msg = (e && typeof e.message === 'string' && e.message) || 'Screening failed'
+      setRowErrors((prev) => ({ ...prev, [submissionId]: msg }))
+      addToast({ type: 'error', title: msg })
     } finally { setScreeningId(null) }
   }, [event?.id, loadScreening, addToast])
 
@@ -284,12 +308,60 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
       })
       const okCount = results.filter((r: any) => r && r.ok).length
       const failCount = results.length - okCount
+      setRowErrors((prev) => {
+        const next = { ...prev }
+        for (const r of results) {
+          const sid = r && typeof r.submissionId === 'string' ? r.submissionId : ''
+          if (!sid) continue
+          if (r.ok) { delete next[sid] }
+          else { next[sid] = String((r && r.error) || 'Screening failed') }
+        }
+        return next
+      })
       addToast({ type: 'success', title: `Screened ${okCount}${failCount > 0 ? `, ${failCount} failed` : ''}` })
       void loadScreening()
     } catch (e: any) {
       addToast({ type: 'error', title: e.message || 'Bulk screening failed' })
     } finally { setScreeningAll(false) }
   }, [event?.id, loadScreening, addToast])
+
+  const runAuditAll = useCallback(async () => {
+    if (!event) return
+    setAuditingAll(true)
+    try {
+      const res = await csrfFetch(`/api/hackathons/${event.id}/audit-all`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ limit: 12 }),
+      })
+      const data = await res.json()
+      if (!res.ok) throw new Error(data.message || data.error || 'Bulk audit failed')
+      const items = Array.isArray(data.audited) ? data.audited : []
+      const okItems = items.filter((r: any) => r && r.ok && typeof r.submissionId === 'string')
+      const failItems = items.filter((r: any) => r && !r.ok)
+      setRowErrors((prev) => {
+        const next = { ...prev }
+        for (const r of items) {
+          const sid = r && typeof r.submissionId === 'string' ? r.submissionId : ''
+          if (!sid) continue
+          if (r.ok) { delete next[sid] }
+          else { next[sid] = String((r && r.error) || 'Audit failed') }
+        }
+        return next
+      })
+      const remaining = typeof data.remaining === 'number' ? data.remaining : 0
+      addToast({ type: 'success', title: `Audited ${okItems.length}, ${failItems.length} failed, ${remaining} remaining` })
+      if (data.stoppedOn === 'github-rate-limit') {
+        addToast({ type: 'error', title: 'GitHub rate limit hit — connect GitHub OAuth or retry after the reset window' })
+      }
+      // Refresh only the newly audited rows; repeat clicks resume the rest.
+      const okIds = new Set(okItems.map((r: any) => String(r.submissionId || '')))
+      const refreshSubs = (judgeSubmissions || []).filter((s: any) => s && okIds.has(String(s.id || '')))
+      if (refreshSubs.length > 0) await loadAudits(refreshSubs)
+    } catch (e: any) {
+      addToast({ type: 'error', title: (e && e.message) || 'Bulk audit failed' })
+    } finally { setAuditingAll(false) }
+  }, [event?.id, judgeSubmissions, loadAudits, addToast])
 
   // J3/J4: judging config (published rubric; defaults when unset) + calibration inputs
   const judgingCfg = useMemo(() => sanitizeJudgingConfig(event ? event.judging_config : null), [event])
@@ -408,6 +480,48 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     return Array.from(map.values())
   }, [judgeSubmissions])
 
+  // Judge stepper inputs — derived from existing state, no new fetching.
+  const screenIdSet = useMemo(() => {
+    const set = new Set<string>()
+    for (const r of (Array.isArray(screenBoard) ? screenBoard : [])) {
+      if (r && typeof r.submissionId === 'string') set.add(r.submissionId)
+    }
+    for (const [sid, a] of Object.entries(audits || {})) {
+      if (a && typeof a === 'object' && a.screening) set.add(sid)
+    }
+    return set
+  }, [screenBoard, audits])
+  const humanIdSet = useMemo(() => {
+    const set = new Set<string>()
+    for (const h of (Array.isArray(humanScores) ? humanScores : [])) {
+      if (h && typeof h.submissionId === 'string') set.add(h.submissionId)
+    }
+    return set
+  }, [humanScores])
+
+  const totalJudgeSubs = groupedSubmissions.length
+  const auditedJudgeCount = groupedSubmissions.filter((s: any) => s && (audits || {})[s.id]).length
+  const screenedJudgeCount = groupedSubmissions.filter((s: any) => s && screenIdSet.has(String(s.id))).length
+  const scoredJudgeCount = groupedSubmissions.filter(
+    (s: any) => s && (humanIdSet.has(String(s.id)) || (s.score !== null && s.score !== undefined))
+  ).length
+
+  // Clicking a stepper step switches to its sub-tab and scrolls to its section.
+  const gotoJudgeStep = useCallback((sub: JudgeSubTab, anchorId: string) => {
+    setJudgeSubTab(sub)
+    window.setTimeout(() => {
+      document.getElementById(anchorId)?.scrollIntoView({ behavior: 'smooth', block: 'start' })
+    }, 80)
+  }, [])
+
+  const judgeSteps: Array<{ key: string; n: number; label: string; short: string; count: string; done: boolean; tab: JudgeSubTab; anchor: string }> = [
+    { key: 'audit', n: 1, label: 'Audit repos', short: 'Audit', count: `${auditedJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && auditedJudgeCount >= totalJudgeSubs, tab: 'evaluate', anchor: 'judge-evaluate' },
+    { key: 'screen', n: 2, label: 'AI screening', short: 'Screen', count: `${screenedJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && screenedJudgeCount >= totalJudgeSubs, tab: 'reports', anchor: 'judge-reports' },
+    { key: 'score', n: 3, label: 'Judge scores', short: 'Score', count: `${scoredJudgeCount}/${totalJudgeSubs}`, done: totalJudgeSubs > 0 && scoredJudgeCount >= totalJudgeSubs, tab: 'evaluate', anchor: 'judge-eval-table' },
+    { key: 'publish', n: 4, label: 'Publish', short: 'Publish', count: event?.results_released ? 'Released' : `Top ${judgingCfg.displayCount}`, done: !!event?.results_released, tab: 'board', anchor: 'judge-publish' },
+  ]
+  const currentJudgeStep = judgeSteps.findIndex((s) => !s.done)
+
   // J4: final ranked board — AI screening blended with human averages via
   // config aiWeight (+ drop-high-low when enabled). Missing side falls back
   // to whichever score exists; null when neither does.
@@ -506,82 +620,73 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           ? (Number(a.secrets.critical) || 0) + (Number(a.secrets.high) || 0) + (Number(a.secrets.medium) || 0)
           : null
         const pct = a && a.freshness && typeof a.freshness.pctDuringEvent === 'number' ? a.freshness.pctDuringEvent : null
+        const boardScreen = (Array.isArray(screenBoard) ? screenBoard : []).find((r: any) => r && r.submissionId === row.id)
+        const screening = (a && a.screening) || boardScreen || null
         return (
-          <div className="flex flex-col gap-1.5 max-w-[240px]">
-            <Button
-              size="sm"
-              variant="outline"
-              className="h-7 text-xs"
-              disabled={auditingId === row.id || !row.repo_url}
-              title={row.repo_url ? 'Run automated repo audit' : 'No repo URL on this submission'}
-              onClick={() => { void runAudit(row.id) }}
-            >
-              {auditingId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-              {a ? 'Re-audit' : 'Audit repo'}
-            </Button>
-            {a && (
-              <div className="flex flex-wrap gap-1">
-                {pct !== null && (
-                  <Badge variant="outline" className="text-[10px]" title={a.freshness?.reason || ''}>{pct}% in-event</Badge>
-                )}
-                {a.freshness?.likelyPreexisting === true && (
-                  <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30">pre-existing?</Badge>
-                )}
-                {secretsTotal !== null && (
-                  <Badge variant="outline" className={`text-[10px] ${secretsTotal > 0 ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' : ''}`}>
-                    {secretsTotal} secrets
-                  </Badge>
-                )}
-                {a.docs && (
-                  <>
-                    <Badge variant="outline" className="text-[10px]">{a.docs.tests ? 'tests ✓' : 'tests ✗'}</Badge>
-                    <Badge variant="outline" className="text-[10px]">{a.docs.readme ? 'docs ✓' : 'docs ✗'}</Badge>
-                  </>
-                )}
-                {a.vulns && typeof a.vulns.count === 'number' && (
-                  <Badge variant="outline" className="text-[10px]">{a.vulns.count} vulns</Badge>
-                )}
-              </div>
+          <div className="flex flex-col gap-1.5 max-w-[220px]">
+            {rowErrors && typeof rowErrors[row.id] === 'string' && rowErrors[row.id] && (
+              <p className="text-[11px] leading-snug text-rose-600">{rowErrors[row.id]}</p>
             )}
-            {a && (
-              <details className="text-xs">
-                <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Full evidence</summary>
-                <dl className="mt-1 space-y-1 rounded-md border bg-muted/20 p-2">
-                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Repo</dt><dd className="font-mono text-right">{a.repo ? `${(a.repo.stars ?? 0)}★ ${(a.repo.forks ?? 0)}⑂ ${a.repo.language || ''}` : 'n/a'}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Commits</dt><dd className="font-mono text-right">{a.commits ? `${a.commits.eventCommits ?? 0}/${a.commits.total ?? 0} in-event` : 'n/a'}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Contributors</dt><dd className="font-mono text-right">{a.effort?.contributors ?? 'n/a'}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Files</dt><dd className="font-mono text-right">{a.files?.count ?? 'n/a'}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">CI</dt><dd className="font-mono text-right">{a.docs ? (a.docs.ci ? `yes (${(a.docs.ciFiles || []).length})` : 'no') : 'n/a'}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">License</dt><dd className="font-mono text-right">{a.docs ? (a.docs.license ? 'yes' : 'no') : 'n/a'}</dd></div>
-                  <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Freshness</dt><dd className="text-right">{a.freshness?.reason || 'n/a'}</dd></div>
-                  {(a.limitations || []).length > 0 && (
-                    <div><dt className="text-muted-foreground">Gaps</dt>{(a.limitations || []).map((l: string, i: number) => <dd key={i} className="text-muted-foreground">• {l}</dd>)}</div>
+            {!a ? (
+              <span className="text-xs text-muted-foreground">Not audited</span>
+            ) : (
+              <>
+                <div className="flex flex-wrap gap-1">
+                  {pct !== null && (
+                    <Badge variant="outline" className="text-[10px]" title={a.freshness?.reason || ''}>{pct}% in-event</Badge>
                   )}
-                </dl>
-              </details>
+                  {a.freshness?.likelyPreexisting === true && (
+                    <Badge variant="outline" className="text-[10px] bg-amber-500/10 text-amber-600 border-amber-500/30" title={a.freshness?.reason || 'Commits look pre-existing'}>pre-existing?</Badge>
+                  )}
+                  {secretsTotal !== null && (
+                    <Badge
+                      variant="outline"
+                      className={`text-[10px] ${secretsTotal > 0 ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' : ''}`}
+                      title={a.secrets ? `critical ${a.secrets.critical ?? 0} · high ${a.secrets.high ?? 0} · medium ${a.secrets.medium ?? 0}` : 'Secrets scan'}
+                    >
+                      <Shield className="w-3 h-3 mr-0.5" />{secretsTotal}
+                    </Badge>
+                  )}
+                  {a.docs && (
+                    <>
+                      <Badge variant="outline" className="text-[10px]" title={a.docs.tests ? 'Test files detected' : 'No test files detected'}>
+                        {a.docs.tests ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-emerald-600" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}tests
+                      </Badge>
+                      <Badge variant="outline" className="text-[10px]" title={a.docs.readme ? 'README/docs detected' : 'No README/docs detected'}>
+                        {a.docs.readme ? <CheckCircle2 className="w-3 h-3 mr-0.5 text-emerald-600" /> : <XCircle className="w-3 h-3 mr-0.5 text-muted-foreground" />}docs
+                      </Badge>
+                    </>
+                  )}
+                  {a.vulns && typeof a.vulns.count === 'number' && (
+                    <Badge variant="outline" className="text-[10px]" title="Dependency vulnerabilities">{a.vulns.count} vulns</Badge>
+                  )}
+                  {screening && typeof screening.total === 'number' && (
+                    <Badge
+                      variant="outline"
+                      className="text-[10px] bg-violet-500/10 text-violet-600 border-violet-500/30"
+                      title={screening.notes || 'AI screening total'}
+                    >
+                      AI {screening.total}/{screening.maxTotal ?? '?'}
+                    </Badge>
+                  )}
+                </div>
+                <details className="text-xs">
+                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">Full evidence</summary>
+                  <dl className="mt-1 space-y-1 rounded-md border bg-muted/20 p-2">
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Repo</dt><dd className="font-mono text-right">{a.repo ? `${(a.repo.stars ?? 0)}★ ${(a.repo.forks ?? 0)}⑂ ${a.repo.language || ''}` : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Commits</dt><dd className="font-mono text-right">{a.commits ? `${a.commits.eventCommits ?? 0}/${a.commits.total ?? 0} in-event` : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Contributors</dt><dd className="font-mono text-right">{a.effort?.contributors ?? 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Files</dt><dd className="font-mono text-right">{a.files?.count ?? 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">CI</dt><dd className="font-mono text-right">{a.docs ? (a.docs.ci ? `yes (${(a.docs.ciFiles || []).length})` : 'no') : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">License</dt><dd className="font-mono text-right">{a.docs ? (a.docs.license ? 'yes' : 'no') : 'n/a'}</dd></div>
+                    <div className="flex justify-between gap-2"><dt className="text-muted-foreground">Freshness</dt><dd className="text-right">{a.freshness?.reason || 'n/a'}</dd></div>
+                    {(a.limitations || []).length > 0 && (
+                      <div><dt className="text-muted-foreground">Gaps</dt>{(a.limitations || []).map((l: string, i: number) => <dd key={i} className="text-muted-foreground">• {l}</dd>)}</div>
+                    )}
+                  </dl>
+                </details>
+              </>
             )}
-            <div className="flex flex-wrap items-center gap-1">
-              {a?.screening && typeof a.screening.total === 'number' && (
-                <Badge
-                  variant="outline"
-                  className="text-[10px] bg-violet-500/10 text-violet-600 border-violet-500/30"
-                  title={a.screening.notes || 'AI screening total'}
-                >
-                  AI {a.screening.total}/{a.screening.maxTotal ?? '?'}
-                </Badge>
-              )}
-              <Button
-                size="sm"
-                variant="ghost"
-                className="h-7 text-xs px-2"
-                disabled={screeningId === row.id || !a}
-                title={a ? 'Run AI screening on the evidence pack' : 'Audit the repo first'}
-                onClick={() => { void runScreening(row.id) }}
-              >
-                {screeningId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
-                {a?.screening ? 'Re-screen' : 'Run screening'}
-              </Button>
-            </div>
           </div>
         )
       }
@@ -589,8 +694,11 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
     {
       key: 'actions',
       header: 'Action',
-      cell: (row: any) => (
-        <Button size="sm" onClick={() => {
+      cell: (row: any) => {
+        const a = audits[row.id]
+        const hasScreen = !!(a && a.screening) || screenIdSet.has(String(row.id))
+        const hasHuman = humanIdSet.has(String(row.id)) || (row.score !== null && row.score !== undefined)
+        const openEvaluate = () => {
           setSelectedSub(row)
           setScoreForm({
             score: row.score || 0,
@@ -599,10 +707,72 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
           })
           setIsEditingScore(false)
           setIsJudgeSheetOpen(true)
-        }}>Evaluate</Button>
-      )
-    }
-  ], [audits, auditingId, runAudit, screeningId, runScreening])
+        }
+        return (
+          <div className="flex flex-col items-start gap-1">
+            {!a ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                disabled={auditingId === row.id || !row.repo_url}
+                title={row.repo_url ? 'Run automated repo audit' : 'No repo URL on this submission'}
+                onClick={() => { void runAudit(row.id) }}
+              >
+                {auditingId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                Audit repo
+              </Button>
+            ) : !hasScreen ? (
+              <Button
+                size="sm"
+                variant="outline"
+                className="h-7 text-xs"
+                disabled={screeningId === row.id}
+                title="Run AI screening on the evidence pack"
+                onClick={() => { void runScreening(row.id) }}
+              >
+                {screeningId === row.id && <Loader2 className="w-3 h-3 mr-1 animate-spin" />}
+                Run screening
+              </Button>
+            ) : !hasHuman ? (
+              <Button size="sm" className="h-7 text-xs" onClick={openEvaluate}>Score</Button>
+            ) : (
+              <div className="flex items-center gap-1.5">
+                <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30">{row.score ?? '?'}/100</Badge>
+                <Button size="sm" variant="ghost" className="h-7 px-2 text-xs" onClick={openEvaluate}>Re-score</Button>
+              </div>
+            )}
+            {a && (
+              <div className="flex flex-wrap gap-1">
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-6 px-1.5 text-[11px] text-muted-foreground"
+                  disabled={auditingId === row.id || !row.repo_url}
+                  title="Re-run the repo audit"
+                  onClick={() => { void runAudit(row.id) }}
+                >
+                  Re-audit
+                </Button>
+                {hasScreen && (
+                  <Button
+                    size="sm"
+                    variant="ghost"
+                    className="h-6 px-1.5 text-[11px] text-muted-foreground"
+                    disabled={screeningId === row.id}
+                    title="Re-run AI screening"
+                    onClick={() => { void runScreening(row.id) }}
+                  >
+                    Re-screen
+                  </Button>
+                )}
+              </div>
+            )}
+          </div>
+        )
+      }
+    },
+  ], [audits, auditingId, runAudit, screenBoard, screeningId, runScreening, rowErrors, screenIdSet, humanIdSet])
 
   useEffect(() => {
     if (tab === 'submissions') {
@@ -908,292 +1078,417 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
             </Card>
           ) : (
             <div className="space-y-4">
-              {screenBoard.length > 0 && (
-                <Card className="p-5 space-y-3 border-violet-500/20 bg-violet-500/5">
-                  <div className="flex items-center justify-between gap-3">
-                    <div>
-                      <h3 className="font-semibold text-sm text-violet-600 flex items-center gap-1.5">
-                        <Sparkles className="w-4 h-4" /> Screening leaderboard
-                      </h3>
-                      <p className="text-xs text-muted-foreground">AI scores over repo evidence — advisory only, human judges decide.</p>
+              {/* 4-step judging workflow — counts derived from existing state */}
+              <div className="grid grid-cols-2 gap-2 lg:grid-cols-4">
+                {judgeSteps.map((s, i) => {
+                  const isCurrent = i === currentJudgeStep
+                  return (
+                    <button
+                      key={s.key}
+                      onClick={() => gotoJudgeStep(s.tab, s.anchor)}
+                      className={`flex items-center gap-2 rounded-lg border px-3 py-2 text-left transition-colors ${s.done ? 'border-emerald-500/40 bg-emerald-500/5 hover:bg-emerald-500/10' : isCurrent ? 'border-primary/50 bg-primary/5 hover:bg-primary/10' : 'border-border bg-muted/20 opacity-70 hover:opacity-100'}`}
+                    >
+                      <span className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-bold ${s.done ? 'bg-emerald-500 text-white' : isCurrent ? 'bg-primary text-primary-foreground' : 'bg-muted text-muted-foreground'}`}>
+                        {s.done ? <CheckCircle2 className="h-3.5 w-3.5" /> : s.n}
+                      </span>
+                      <span className="min-w-0">
+                        <span className="block truncate text-xs font-semibold">
+                          <span className="sm:hidden">{s.short}</span>
+                          <span className="hidden sm:inline">{s.label}</span>
+                        </span>
+                        <span className="block truncate text-[11px] text-muted-foreground">{s.count}</span>
+                      </span>
+                    </button>
+                  )
+                })}
+              </div>
+
+              {/* Judge sub-tabs */}
+              <div className="flex flex-wrap gap-1.5">
+                {(['evaluate', 'board', 'compare', 'reports'] as JudgeSubTab[]).map((k) => (
+                  <Button
+                    key={k}
+                    size="sm"
+                    variant={judgeSubTab === k ? 'default' : 'outline'}
+                    className="h-8 rounded-full capitalize"
+                    onClick={() => setJudgeSubTab(k)}
+                  >
+                    {k}
+                  </Button>
+                ))}
+              </div>
+
+              {judgeSubTab === 'evaluate' && (
+                <div id="judge-evaluate" className="space-y-4 scroll-mt-4">
+                  <div>
+                    <h3 className="font-semibold text-sm">Steps 1–3 — Evaluate submissions</h3>
+                    <p className="text-xs text-muted-foreground">Work each row left to right: audit the repo, run AI screening, then record a human score.</p>
+                  </div>
+                  {(Object.keys(audits || {}).length === 0 && (screenBoard || []).length === 0 && (humanScores || []).length === 0) ? (
+                    <Card className="p-5 space-y-3 border-amber-500/20 bg-amber-500/5">
+                      <div>
+                        <h3 className="font-semibold text-sm">Get judging started</h3>
+                        <p className="text-xs text-muted-foreground">No repo audits, AI scores, or judge scores yet — work the list top to bottom.</p>
+                      </div>
+                      <ol className="space-y-2 text-sm">
+                        <li className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">1.</span>
+                          <span className="flex-1 min-w-[140px]">Audit repos for hard evidence</span>
+                          <Button size="sm" variant="outline" onClick={() => { void runAuditAll() }} disabled={auditingAll} className="h-8">
+                            {auditingAll && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                            Audit all pending ({groupedSubmissions.filter((s: any) => s && !((audits || {})[s.id])).length})
+                          </Button>
+                        </li>
+                        <li className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">2.</span>
+                          <span className="flex-1 min-w-[140px]">Run AI screening over the evidence</span>
+                          <Button size="sm" variant="outline" onClick={() => { void runScreeningAll() }} disabled={screeningAll} className="h-8">
+                            {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                            Screen all
+                          </Button>
+                        </li>
+                        <li className="flex flex-wrap items-center gap-2">
+                          <span className="font-mono text-xs text-muted-foreground">3.</span>
+                          <span className="flex-1 min-w-[140px]">Record human scores with the Score button on any row below</span>
+                        </li>
+                      </ol>
+                    </Card>
+                  ) : (
+                    <div id="judge-eval-bulk" className="flex flex-wrap items-center gap-x-3 gap-y-2 rounded-lg border bg-muted/20 px-3 py-2.5 scroll-mt-4">
+                      <span className="text-sm font-semibold">Bulk actions</span>
+                      <span className="text-xs text-muted-foreground">{totalJudgeSubs} submissions · {auditedJudgeCount} audited · {screenedJudgeCount} screened · {scoredJudgeCount} scored</span>
+                      <span className="ml-auto flex flex-wrap gap-2">
+                        <Button size="sm" variant="outline" onClick={() => { void runAuditAll() }} disabled={auditingAll} className="h-8">
+                          {auditingAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Shield className="w-4 h-4 mr-2" />}
+                          Audit all pending ({groupedSubmissions.filter((s: any) => s && !((audits || {})[s.id])).length})
+                        </Button>
+                        <Button size="sm" variant="outline" onClick={() => { void runScreeningAll() }} disabled={screeningAll} className="h-8">
+                          {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
+                          Screen all
+                        </Button>
+                      </span>
                     </div>
-                    <Button size="sm" variant="outline" onClick={() => { void runScreeningAll() }} disabled={screeningAll} className="h-9 shrink-0">
-                      {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                      Screen all
-                    </Button>
-                  </div>
-                  <div className="space-y-2">
-                    {screenBoard.map((r: any, i: number) => {
-                      const name = (judgeSubmissions.find((s: any) => s && s.id === r.submissionId)?.team_name || r.teamId || r.submissionId || 'Unknown')
-                      const crits = Array.isArray(r.scores) ? r.scores : []
-                      return (
-                        <div key={r.submissionId || i} className="rounded-lg border bg-background/60 p-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 text-center font-mono text-xs text-muted-foreground">#{i + 1}</span>
-                            <span className="flex-1 min-w-0 truncate text-sm font-medium">{name}</span>
-                            <Badge variant="outline" className="text-xs bg-violet-500/10 text-violet-600 border-violet-500/30">
-                              AI {r.total ?? '?'}/{r.maxTotal ?? '?'}
-                            </Badge>
-                          </div>
-                          {crits.length > 0 && (
-                            <details className="mt-2 text-xs">
-                              <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
-                                Per-criterion citations
-                              </summary>
-                              <ul className="mt-1 space-y-1">
-                                {crits.map((c: any, j: number) => (
-                                  <li key={c?.key || j} className="rounded border bg-muted/20 px-2 py-1">
-                                    <span className="font-medium">{c?.key || '?'}</span>
-                                    <span className="font-mono"> {c?.score ?? '?'}/5</span>
-                                    <span className="text-muted-foreground"> — {c?.citation || 'no citation'}</span>
-                                    {c?.missing && <span className="text-amber-600"> (missing: {c.missing})</span>}
-                                  </li>
-                                ))}
-                              </ul>
-                            </details>
-                          )}
-                        </div>
-                      )
-                    })}
-                  </div>
-                </Card>
-              )}
-              {/* J3/J4 (a): judging config summary — published rubric, read-only */}
-              <Card className="p-4 border-primary/20">
-                <div className="flex flex-wrap items-center gap-2 text-xs">
-                  <span className="font-semibold text-sm mr-1">Judging rubric</span>
-                  <Badge variant="secondary">{judgingCfg.criteria.length} criteria</Badge>
-                  <Badge variant="outline">
-                    AI {Math.round(judgingCfg.aiWeight * 100)}% / human {Math.round((1 - judgingCfg.aiWeight) * 100)}%
-                  </Badge>
-                  <Badge variant="outline">Top {judgingCfg.advanceTopN} advance</Badge>
-                  <Badge variant="outline">Top {judgingCfg.displayCount} published</Badge>
-                  {judgingCfg.blindMode && <Badge variant="outline" className="bg-slate-500/10">Blind mode</Badge>}
-                  {judgingCfg.dropHighLow && <Badge variant="outline" className="bg-slate-500/10">Drop high/low</Badge>}
-                  <details className="text-xs">
-                    <summary className="cursor-pointer text-muted-foreground hover:text-foreground">weights</summary>
-                    <span className="text-muted-foreground">
-                      {(judgingCfg.criteria || []).map((c) => `${c.label} ×${c.weight}`).join(' · ')}
-                    </span>
-                  </details>
-                </div>
-              </Card>
-              {/* J3/J4 (b): calibration — per-judge means, |z|>1.5 flagged */}
-              {calibStats.length > 0 && (
-                <Card className="p-5 space-y-3">
-                  <div>
-                    <h3 className="font-semibold text-sm">Calibration</h3>
-                    <p className="text-xs text-muted-foreground">Per-judge scoring means. Judges whose mean is more than 1.5σ from the panel are flagged.</p>
-                  </div>
-                  <div className="flex flex-wrap gap-2">
-                    {calibStats.map((st) => (
-                      <Badge
-                        key={st.judgeId}
-                        variant="outline"
-                        title={`z = ${st.z}`}
-                        className={`text-[11px] font-mono ${st.outlier ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' : ''}`}
-                      >
-                        {(st.judgeId || '').slice(0, 8)} μ={st.mean} σ={st.std} n={st.count}{st.outlier ? ' · outlier' : ''}
-                      </Badge>
-                    ))}
-                  </div>
-                </Card>
-              )}
-              {/* J3/J4 (e): final ranked board — AI + human blended via config */}
-              {rankedBoard.length > 0 && (
-                <Card className="p-5 space-y-3 border-emerald-500/20">
-                  <div>
-                    <h3 className="font-semibold text-sm flex items-center gap-1.5">
-                      <Trophy className="w-4 h-4" /> Final board
-                    </h3>
-                    <p className="text-xs text-muted-foreground">
-                      AI {Math.round(judgingCfg.aiWeight * 100)}% + human blended
-                      {judgingCfg.dropHighLow ? ', high/low dropped' : ''} — advisory until results are released.
-                    </p>
-                  </div>
-                  <div className="space-y-2">
-                    {rankedBoard.map((r, i) => {
-                      const name = judgingCfg.blindMode
-                        ? `Entry ${i + 1}`
-                        : String(r.sub.team_name || r.sub.team_id || r.sub.id || 'Unknown')
-                      return (
-                        <div key={String(r.sub.id || i)} className="rounded-lg border bg-background/60 p-3">
-                          <div className="flex items-center gap-2">
-                            <span className="w-6 text-center font-mono text-xs text-muted-foreground">#{i + 1}</span>
-                            <span className="flex-1 min-w-0 truncate text-sm font-medium">{name}</span>
-                            {i < judgingCfg.advanceTopN && (
-                              <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">advances</Badge>
-                            )}
-                            {i < judgingCfg.displayCount && (
-                              <Badge variant="outline" className="text-[10px]">published</Badge>
-                            )}
-                            <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
-                              {r.final !== null && r.final !== undefined ? r.final : '?'}
-                            </Badge>
-                          </div>
-                          <p className="mt-1 text-[11px] text-muted-foreground font-mono">
-                            AI {r.aiTotal ?? '?'}{r.aiMax !== null && r.aiMax !== undefined ? `/${r.aiMax}` : ''} · human {r.humanAvg ?? '?'} ({r.humanCount} judge{r.humanCount === 1 ? '' : 's'})
-                          </p>
-                        </div>
-                      )
-                    })}
-                  </div>
-                </Card>
-              )}
-              {/* J3/J4 (c): head-to-head tie-break */}
-              <Card className="p-5 space-y-3">
-                <div>
-                  <h3 className="font-semibold text-sm">Head-to-head tie-break</h3>
-                  <p className="text-xs text-muted-foreground">One AI comparison on a single criterion, citing evidence. Ties allowed.</p>
-                </div>
-                <div className="grid gap-2 sm:grid-cols-2">
-                  <select
-                    value={cmpA}
-                    onChange={(e) => setCmpA(e.target.value)}
-                    className="text-sm rounded-lg border border-border bg-card px-3 py-2"
-                  >
-                    <option value="">Submission A…</option>
-                    {groupedSubmissions.map((s: any, i: number) => (
-                      <option key={String(s.id || i)} value={String(s.id || '')}>
-                        {judgingCfg.blindMode ? `Entry ${i + 1}` : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
-                      </option>
-                    ))}
-                  </select>
-                  <select
-                    value={cmpB}
-                    onChange={(e) => setCmpB(e.target.value)}
-                    className="text-sm rounded-lg border border-border bg-card px-3 py-2"
-                  >
-                    <option value="">Submission B…</option>
-                    {groupedSubmissions.map((s: any, i: number) => (
-                      <option key={String(s.id || i)} value={String(s.id || '')}>
-                        {judgingCfg.blindMode ? `Entry ${i + 1}` : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
-                      </option>
-                    ))}
-                  </select>
-                </div>
-                <div className="flex flex-wrap items-center gap-2">
-                  <select
-                    value={cmpCrit}
-                    onChange={(e) => setCmpCrit(e.target.value)}
-                    className="text-sm rounded-lg border border-border bg-card px-3 py-2"
-                  >
-                    {JUDGING_CRITERION_KEYS.map((k) => (
-                      <option key={k} value={k}>{JUDGING_CRITERION_LABELS[k] || k}</option>
-                    ))}
-                  </select>
-                  <Button size="sm" onClick={() => { void runCompare() }} disabled={comparing || !cmpA || !cmpB || cmpA === cmpB} className="h-9">
-                    {comparing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
-                    Compare
-                  </Button>
-                </div>
-                {cmpResult && (
-                  <div className="rounded-lg border p-3 text-sm">
-                    <span className="font-semibold">
-                      {cmpResult.winner === 'tie'
-                        ? 'Tie'
-                        : `Winner: ${groupedSubmissions.find((s: any) => s && String(s.id) === (cmpResult.winner === 'A' ? cmpA : cmpB))?.team_name || (cmpResult.winner === 'A' ? cmpA : cmpB)} (${cmpResult.winner})`}
-                    </span>
-                    <p className="text-xs text-muted-foreground mt-1">{cmpResult.reason}</p>
-                  </div>
-                )}
-              </Card>
-              {/* J3/J4 (d): per-project reports — deterministic, auditable */}
-              {rankedBoard.length > 0 && (
-                <Card className="p-5 space-y-3">
-                  <div>
-                    <h3 className="font-semibold text-sm">Project reports</h3>
-                    <p className="text-xs text-muted-foreground">Built from stored scores + evidence — no new AI calls.</p>
-                  </div>
-                  <div className="space-y-2">
-                    {rankedBoard.map((r, i) => {
-                      const myScreen = (Array.isArray(screenBoard) ? screenBoard : []).find((x: any) => x && x.submissionId === r.sub.id)
-                        || (audits || {})[r.sub.id]?.screening
-                        || null
-                      const winnerRow = rankedBoard[0]
-                      const wScreen = winnerRow
-                        ? ((Array.isArray(screenBoard) ? screenBoard : []).find((x: any) => x && x.submissionId === winnerRow.sub.id)
-                          || (audits || {})[winnerRow.sub.id]?.screening
-                          || null)
-                        : null
-                      const report = buildProjectReport({
-                        submissionId: String(r.sub.id || ''),
-                        teamName: judgingCfg.blindMode ? `Entry ${i + 1}` : String(r.sub.team_name || 'Unknown'),
-                        problemSlug: String(r.sub.problem_slug || ''),
-                        repoUrl: String(r.sub.repo_url || ''),
-                        liveUrl: String(r.sub.live_url || ''),
-                        videoUrl: String(r.sub.video_url || ''),
-                        screening: myScreen && typeof myScreen === 'object'
-                          ? { scores: myScreen.scores, total: myScreen.total, maxTotal: myScreen.maxTotal, notes: myScreen.notes }
-                          : null,
-                        humanAvg: r.humanAvg,
-                        humanCount: r.humanCount,
-                        finalScore: r.final,
-                        evidence: ((audits || {})[r.sub.id] && typeof (audits || {})[r.sub.id] === 'object' ? (audits || {})[r.sub.id] : null),
-                        winnerId: winnerRow ? String(winnerRow.sub.id || '') : '',
-                        winnerTeamName: winnerRow ? String(winnerRow.sub.team_name || 'the winner') : 'the winner',
-                        winnerScores: wScreen && Array.isArray(wScreen.scores) ? wScreen.scores : null,
-                        rank: i + 1,
-                        totalTeams: rankedBoard.length,
-                      })
-                      return (
-                        <details key={String(r.sub.id || i)} className="rounded-lg border bg-background/60 p-3 text-xs">
-                          <summary className="cursor-pointer text-sm font-medium">
-                            Report — {judgingCfg.blindMode ? `Entry ${i + 1}` : String(r.sub.team_name || r.sub.id || 'Unknown')} (#{i + 1})
-                            <span className="ml-2 text-muted-foreground font-normal">strongest: {report.strongestDimension}</span>
-                          </summary>
-                          <div className="mt-2 space-y-2">
-                            {report.sections.map((sec, j) => (
-                              <div key={j}>
-                                <p className="font-semibold text-muted-foreground">{sec.title}</p>
-                                <p className="whitespace-pre-line mt-0.5">{sec.body}</p>
-                              </div>
-                            ))}
-                            {(r.sub.repo_url || r.sub.live_url || r.sub.video_url) && (
-                              <div className="flex flex-wrap gap-2 pt-1">
-                                {r.sub.repo_url && <a href={String(r.sub.repo_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Repo</a>}
-                                {r.sub.live_url && <a href={String(r.sub.live_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Live</a>}
-                                {r.sub.video_url && <a href={String(r.sub.video_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Video</a>}
-                              </div>
-                            )}
-                          </div>
-                        </details>
-                      )
-                    })}
-                  </div>
-                </Card>
-              )}
-              <Card className="p-5 flex items-center justify-between border-blue-500/20 bg-blue-500/5">
-                <div>
-                  <h3 className="font-semibold text-sm text-blue-500">Judging Dashboard</h3>
-                  <p className="text-xs text-muted-foreground">Showing latest submissions grouped by team and problem.</p>
-                </div>
-                <div className="flex items-center gap-4">
-                  <div className="text-right">
-                    <p className="text-2xl font-bold font-mono">{groupedSubmissions.length}</p>
-                    <p className="text-xs text-muted-foreground">Total Unique Submissions</p>
-                  </div>
-                  {isAdmin && !event?.results_released && (
-                    <Button size="sm" variant="default" onClick={handleReleaseResults} disabled={releasingResults} className="h-9">
-                      {releasingResults ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Award className="w-4 h-4 mr-2" />}
-                      Release Scores
-                    </Button>
                   )}
-                  <Button size="sm" variant="outline" onClick={exportResults} className="h-9">
-                    <Download className="w-4 h-4 mr-2" /> Export CSV
-                  </Button>
-                  <Button size="sm" variant="outline" onClick={() => { void runScreeningAll() }} disabled={screeningAll} className="h-9">
-                    {screeningAll ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Sparkles className="w-4 h-4 mr-2" />}
-                    Screen all
-                  </Button>
+                  <div id="judge-eval-table" className="scroll-mt-4">
+                    <DataTable
+                      columns={columns}
+                      data={groupedSubmissions}
+                      searchPlaceholder="Search by team or problem..."
+                      searchKeys={['team_name', 'problem_slug']}
+                    />
+                  </div>
                 </div>
-              </Card>
-              <DataTable 
-                columns={columns} 
-                data={groupedSubmissions} 
-                searchPlaceholder="Search by team or problem..." 
-                searchKeys={['team_name', 'problem_slug']} 
-              />
+              )}
+
+              {judgeSubTab === 'board' && (
+                <div id="judge-board" className="space-y-4 scroll-mt-4">
+                  <div>
+                    <h3 className="font-semibold text-sm">Step 4 — Review & publish</h3>
+                    <p className="text-xs text-muted-foreground">Blended AI + human board with calibration — advisory until results are released.</p>
+                  </div>
+                  {/* J3/J4 (a): judging config summary — published rubric, read-only */}
+                  <div className="flex flex-wrap items-center gap-2 rounded-lg border border-primary/20 bg-primary/5 px-3 py-2 text-xs">
+                    <span className="font-semibold text-sm mr-1">Judging rubric</span>
+                    <Badge variant="secondary">{judgingCfg.criteria.length} criteria</Badge>
+                    <Badge variant="outline">
+                      AI {Math.round(judgingCfg.aiWeight * 100)}% / human {Math.round((1 - judgingCfg.aiWeight) * 100)}%
+                    </Badge>
+                    <Badge variant="outline">Top {judgingCfg.advanceTopN} advance</Badge>
+                    <Badge variant="outline">Top {judgingCfg.displayCount} published</Badge>
+                    {judgingCfg.blindMode && <Badge variant="outline" className="bg-slate-500/10">Blind mode</Badge>}
+                    {judgingCfg.dropHighLow && <Badge variant="outline" className="bg-slate-500/10">Drop high/low</Badge>}
+                    <details className="text-xs">
+                      <summary className="cursor-pointer text-muted-foreground hover:text-foreground">weights</summary>
+                      <span className="text-muted-foreground">
+                        {(judgingCfg.criteria || []).map((c) => `${c.label} ×${c.weight}`).join(' · ')}
+                      </span>
+                    </details>
+                  </div>
+                  {/* J3/J4 (b): calibration — per-judge means, |z|>1.5 flagged */}
+                  {calibStats.length > 0 && (
+                    <details className="rounded-lg border px-3 py-2">
+                      <summary className="cursor-pointer text-sm font-semibold">
+                        Calibration <span className="font-normal text-muted-foreground">· {calibStats.length} judge{calibStats.length === 1 ? '' : 's'} — outliers flagged</span>
+                      </summary>
+                      <p className="mt-1 text-xs text-muted-foreground">Per-judge scoring means. Judges whose mean is more than 1.5σ from the panel are flagged.</p>
+                      <div className="mt-2 flex flex-wrap gap-2">
+                        {calibStats.map((st) => (
+                          <Badge
+                            key={st.judgeId}
+                            variant="outline"
+                            title={`z = ${st.z}`}
+                            className={`text-[11px] font-mono ${st.outlier ? 'bg-rose-500/10 text-rose-600 border-rose-500/30' : ''}`}
+                          >
+                            {(st.judgeId || '').slice(0, 8)} μ={st.mean} σ={st.std} n={st.count}{st.outlier ? ' · outlier' : ''}
+                          </Badge>
+                        ))}
+                      </div>
+                    </details>
+                  )}
+                  {/* J3/J4 (e): final ranked board — AI + human blended via config */}
+                  {rankedBoard.length > 0 && (
+                    <Card className="p-5 space-y-3 border-emerald-500/20">
+                      <div>
+                        <h3 className="font-semibold text-sm flex items-center gap-1.5">
+                          <Trophy className="w-4 h-4" /> Final board
+                        </h3>
+                        <p className="text-xs text-muted-foreground">
+                          AI {Math.round(judgingCfg.aiWeight * 100)}% + human blended
+                          {judgingCfg.dropHighLow ? ', high/low dropped' : ''} — advisory until results are released.
+                        </p>
+                      </div>
+                      <div className="space-y-2">
+                        {rankedBoard.map((r, i) => {
+                          const name = judgingCfg.blindMode
+                            ? `Entry ${i + 1}`
+                            : String(r.sub.team_name || r.sub.team_id || r.sub.id || 'Unknown')
+                          return (
+                            <div key={String(r.sub.id || i)} className="rounded-lg border bg-background/60 p-3">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 text-center font-mono text-xs text-muted-foreground">#{i + 1}</span>
+                                <span className="flex-1 min-w-0 truncate text-sm font-medium">{name}</span>
+                                {i < judgingCfg.advanceTopN && (
+                                  <Badge variant="outline" className="text-[10px] bg-emerald-500/10 text-emerald-600 border-emerald-500/30">advances</Badge>
+                                )}
+                                {i < judgingCfg.displayCount && (
+                                  <Badge variant="outline" className="text-[10px]">published</Badge>
+                                )}
+                                <Badge variant="outline" className="text-xs bg-emerald-500/10 text-emerald-600 border-emerald-500/30">
+                                  {r.final !== null && r.final !== undefined ? r.final : '?'}
+                                </Badge>
+                              </div>
+                              <p className="mt-1 text-[11px] text-muted-foreground font-mono">
+                                AI {r.aiTotal ?? '?'}{r.aiMax !== null && r.aiMax !== undefined ? `/${r.aiMax}` : ''} · human {r.humanAvg ?? '?'} ({r.humanCount} judge{r.humanCount === 1 ? '' : 's'})
+                              </p>
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </Card>
+                  )}
+                  <Card id="judge-publish" className="p-5 space-y-3 border-blue-500/20 bg-blue-500/5 scroll-mt-4">
+                    <div>
+                      <h3 className="font-semibold text-sm text-blue-500">Step 4 — Publish results</h3>
+                      <p className="text-xs text-muted-foreground">
+                        {event.results_released
+                          ? `Results released${event.released_at ? ` on ${new Date(event.released_at).toLocaleString()}` : ''}.`
+                          : 'Release when judging is complete. Unreviewed submissions score as 0 — this cannot be undone.'}
+                      </p>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <div className="mr-2 text-right">
+                        <p className="text-2xl font-bold font-mono">{groupedSubmissions.length}</p>
+                        <p className="text-xs text-muted-foreground">Submissions</p>
+                      </div>
+                      {isAdmin && !event?.results_released && (
+                        <Button size="sm" variant="default" onClick={handleReleaseResults} disabled={releasingResults} className="h-9">
+                          {releasingResults ? <Loader2 className="w-4 h-4 mr-2 animate-spin" /> : <Award className="w-4 h-4 mr-2" />}
+                          Release Scores
+                        </Button>
+                      )}
+                      <Button size="sm" variant="outline" onClick={exportResults} className="h-9">
+                        <Download className="w-4 h-4 mr-2" /> Export CSV
+                      </Button>
+                    </div>
+                  </Card>
+                </div>
+              )}
+
+              {judgeSubTab === 'compare' && (
+                <div className="space-y-4">
+                  <div>
+                    <h3 className="font-semibold text-sm">Tie-break comparisons</h3>
+                    <p className="text-xs text-muted-foreground">Head-to-head AI comparisons for close calls — ties allowed.</p>
+                  </div>
+                  {/* J3/J4 (c): head-to-head tie-break */}
+                  <Card className="p-5 space-y-3">
+                    <div>
+                      <h3 className="font-semibold text-sm">Head-to-head tie-break</h3>
+                      <p className="text-xs text-muted-foreground">One AI comparison on a single criterion, citing evidence. Ties allowed.</p>
+                    </div>
+                    <div className="grid gap-2 sm:grid-cols-2">
+                      <select
+                        value={cmpA}
+                        onChange={(e) => setCmpA(e.target.value)}
+                        className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                      >
+                        <option value="">Submission A…</option>
+                        {groupedSubmissions.map((s: any, i: number) => (
+                          <option key={String(s.id || i)} value={String(s.id || '')}>
+                            {judgingCfg.blindMode ? `Entry ${i + 1}` : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
+                          </option>
+                        ))}
+                      </select>
+                      <select
+                        value={cmpB}
+                        onChange={(e) => setCmpB(e.target.value)}
+                        className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                      >
+                        <option value="">Submission B…</option>
+                        {groupedSubmissions.map((s: any, i: number) => (
+                          <option key={String(s.id || i)} value={String(s.id || '')}>
+                            {judgingCfg.blindMode ? `Entry ${i + 1}` : `${s.team_name || s.id || 'Unknown'} — ${s.problem_slug || ''}`}
+                          </option>
+                        ))}
+                      </select>
+                    </div>
+                    <div className="flex flex-wrap items-center gap-2">
+                      <select
+                        value={cmpCrit}
+                        onChange={(e) => setCmpCrit(e.target.value)}
+                        className="text-sm rounded-lg border border-border bg-card px-3 py-2"
+                      >
+                        {JUDGING_CRITERION_KEYS.map((k) => (
+                          <option key={k} value={k}>{JUDGING_CRITERION_LABELS[k] || k}</option>
+                        ))}
+                      </select>
+                      <Button size="sm" onClick={() => { void runCompare() }} disabled={comparing || !cmpA || !cmpB || cmpA === cmpB} className="h-9">
+                        {comparing && <Loader2 className="w-4 h-4 mr-2 animate-spin" />}
+                        Compare
+                      </Button>
+                    </div>
+                    {cmpResult && (
+                      <div className="rounded-lg border p-3 text-sm">
+                        <span className="font-semibold">
+                          {cmpResult.winner === 'tie'
+                            ? 'Tie'
+                            : `Winner: ${groupedSubmissions.find((s: any) => s && String(s.id) === (cmpResult.winner === 'A' ? cmpA : cmpB))?.team_name || (cmpResult.winner === 'A' ? cmpA : cmpB)} (${cmpResult.winner})`}
+                        </span>
+                        <p className="text-xs text-muted-foreground mt-1">{cmpResult.reason}</p>
+                      </div>
+                    )}
+                  </Card>
+                </div>
+              )}
+
+              {judgeSubTab === 'reports' && (
+                <div id="judge-reports" className="space-y-4 scroll-mt-4">
+                  <div>
+                    <h3 className="font-semibold text-sm">Screening & project reports</h3>
+                    <p className="text-xs text-muted-foreground">AI screening leaderboard and per-project summaries built from stored scores + evidence.</p>
+                  </div>
+                  {screenBoard.length === 0 && rankedBoard.length === 0 && (
+                    <Card className="p-8 text-center">
+                      <Sparkles className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">No screening results or reports yet — run audits and screening in Evaluate.</p>
+                    </Card>
+                  )}
+                  {screenBoard.length > 0 && (
+                    <Card id="judge-screen-board" className="p-5 space-y-3 border-violet-500/20 bg-violet-500/5 scroll-mt-4">
+                      <div className="flex items-center justify-between gap-3">
+                        <div>
+                          <h3 className="font-semibold text-sm text-violet-600 flex items-center gap-1.5">
+                            <Sparkles className="w-4 h-4" /> Screening leaderboard
+                          </h3>
+                          <p className="text-xs text-muted-foreground">AI scores over repo evidence — advisory only, human judges decide. {screenedJudgeCount} of {totalJudgeSubs} screened.</p>
+                        </div>
+                        <Button size="sm" variant="outline" onClick={() => gotoJudgeStep('evaluate', 'judge-eval-bulk')} className="h-9 shrink-0">
+                          Screen in Evaluate
+                        </Button>
+                      </div>
+                      <div className="space-y-2">
+                        {screenBoard.map((r: any, i: number) => {
+                          const name = (judgeSubmissions.find((s: any) => s && s.id === r.submissionId)?.team_name || r.teamId || r.submissionId || 'Unknown')
+                          const crits = Array.isArray(r.scores) ? r.scores : []
+                          return (
+                            <div key={r.submissionId || i} className="rounded-lg border bg-background/60 p-3">
+                              <div className="flex items-center gap-2">
+                                <span className="w-6 text-center font-mono text-xs text-muted-foreground">#{i + 1}</span>
+                                <span className="flex-1 min-w-0 truncate text-sm font-medium">{name}</span>
+                                <Badge variant="outline" className="text-xs bg-violet-500/10 text-violet-600 border-violet-500/30">
+                                  AI {r.total ?? '?'}/{r.maxTotal ?? '?'}
+                                </Badge>
+                              </div>
+                              {crits.length > 0 && (
+                                <details className="mt-2 text-xs">
+                                  <summary className="cursor-pointer text-muted-foreground hover:text-foreground">
+                                    Per-criterion citations
+                                  </summary>
+                                  <ul className="mt-1 space-y-1">
+                                    {crits.map((c: any, j: number) => (
+                                      <li key={c?.key || j} className="rounded border bg-muted/20 px-2 py-1">
+                                        <span className="font-medium">{c?.key || '?'}</span>
+                                        <span className="font-mono"> {c?.score ?? '?'}/5</span>
+                                        <span className="text-muted-foreground"> — {c?.citation || 'no citation'}</span>
+                                        {c?.missing && <span className="text-amber-600"> (missing: {c.missing})</span>}
+                                      </li>
+                                    ))}
+                                  </ul>
+                                </details>
+                              )}
+                            </div>
+                          )
+                        })}
+                      </div>
+                    </Card>
+                  )}
+                  {/* J3/J4 (d): per-project reports — deterministic, auditable */}
+                  {rankedBoard.length > 0 && (
+                    <Card className="p-5 space-y-3">
+                      <div>
+                        <h3 className="font-semibold text-sm">Project reports</h3>
+                        <p className="text-xs text-muted-foreground">Built from stored scores + evidence — no new AI calls.</p>
+                      </div>
+                      <div className="space-y-2">
+                        {rankedBoard.map((r, i) => {
+                          const myScreen = (Array.isArray(screenBoard) ? screenBoard : []).find((x: any) => x && x.submissionId === r.sub.id)
+                            || (audits || {})[r.sub.id]?.screening
+                            || null
+                          const winnerRow = rankedBoard[0]
+                          const wScreen = winnerRow
+                            ? ((Array.isArray(screenBoard) ? screenBoard : []).find((x: any) => x && x.submissionId === winnerRow.sub.id)
+                              || (audits || {})[winnerRow.sub.id]?.screening
+                              || null)
+                            : null
+                          const report = buildProjectReport({
+                            submissionId: String(r.sub.id || ''),
+                            teamName: judgingCfg.blindMode ? `Entry ${i + 1}` : String(r.sub.team_name || 'Unknown'),
+                            problemSlug: String(r.sub.problem_slug || ''),
+                            repoUrl: String(r.sub.repo_url || ''),
+                            liveUrl: String(r.sub.live_url || ''),
+                            videoUrl: String(r.sub.video_url || ''),
+                            screening: myScreen && typeof myScreen === 'object'
+                              ? { scores: myScreen.scores, total: myScreen.total, maxTotal: myScreen.maxTotal, notes: myScreen.notes }
+                              : null,
+                            humanAvg: r.humanAvg,
+                            humanCount: r.humanCount,
+                            finalScore: r.final,
+                            evidence: ((audits || {})[r.sub.id] && typeof (audits || {})[r.sub.id] === 'object' ? (audits || {})[r.sub.id] : null),
+                            winnerId: winnerRow ? String(winnerRow.sub.id || '') : '',
+                            winnerTeamName: winnerRow ? String(winnerRow.sub.team_name || 'the winner') : 'the winner',
+                            winnerScores: wScreen && Array.isArray(wScreen.scores) ? wScreen.scores : null,
+                            rank: i + 1,
+                            totalTeams: rankedBoard.length,
+                          })
+                          return (
+                            <details key={String(r.sub.id || i)} className="rounded-lg border bg-background/60 p-3 text-xs">
+                              <summary className="cursor-pointer text-sm font-medium">
+                                Report — {judgingCfg.blindMode ? `Entry ${i + 1}` : String(r.sub.team_name || r.sub.id || 'Unknown')} (#{i + 1})
+                                <span className="ml-2 text-muted-foreground font-normal">strongest: {report.strongestDimension}</span>
+                              </summary>
+                              <div className="mt-2 space-y-2">
+                                {report.sections.map((sec, j) => (
+                                  <div key={j}>
+                                    <p className="font-semibold text-muted-foreground">{sec.title}</p>
+                                    <p className="whitespace-pre-line mt-0.5">{sec.body}</p>
+                                  </div>
+                                ))}
+                                {(r.sub.repo_url || r.sub.live_url || r.sub.video_url) && (
+                                  <div className="flex flex-wrap gap-2 pt-1">
+                                    {r.sub.repo_url && <a href={String(r.sub.repo_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Repo</a>}
+                                    {r.sub.live_url && <a href={String(r.sub.live_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Live</a>}
+                                    {r.sub.video_url && <a href={String(r.sub.video_url)} target="_blank" rel="noopener noreferrer" className="text-blue-500 hover:underline">Video</a>}
+                                  </div>
+                                )}
+                              </div>
+                            </details>
+                          )
+                        })}
+                      </div>
+                    </Card>
+                  )}
+                </div>
+              )}
             </div>
           )}
 

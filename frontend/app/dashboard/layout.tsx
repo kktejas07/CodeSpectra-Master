@@ -451,7 +451,6 @@ export default function DashboardLayout({
       [p.cdn]: Globe2,
       [p.permissions]: Shield,
       [p.plans]: FileText,
-      [p.pricing]: CreditCard,
       '/dashboard/admin/organizations': Building2,
       '/dashboard/admin/feedback': MessageSquareWarning,
       '/dashboard/admin/coupons': Ticket,
@@ -465,7 +464,6 @@ export default function DashboardLayout({
       '/dashboard/admin/rag': BrainCircuit,
       '/dashboard/admin/ai-inventory': Sparkles,
       [p.settings]: Settings,
-      [p.settingsKyc]: BadgeCheck,
       [p.security]: ShieldCheck,
       '/dashboard/admin/security/email-monitoring': Mail,
       '/dashboard/admin/proctor': ShieldAlert,
@@ -636,7 +634,11 @@ export default function DashboardLayout({
   }
 
   const isScannerShell = pathname.startsWith('/dashboard/scanner')
-  const isPlatformSettingsShell = pathname.startsWith('/dashboard/admin/settings')
+  // ponytail: exact match only — sub-pages like /settings/kyc are standalone
+  // pages with their own content; prefix-matching swapped the whole sidebar
+  // to the Platform Settings sub-nav and made it look like you landed inside
+  // Settings. (?section= deep-links still match: pathname excludes query.)
+  const isPlatformSettingsShell = pathname === '/dashboard/admin/settings'
   const isLessonPlayer = pathname.includes('/lesson/')
 
   const isActive = (href: string | undefined) => {

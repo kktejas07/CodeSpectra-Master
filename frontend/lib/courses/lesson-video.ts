@@ -575,10 +575,11 @@ async function waitForGlobalCooldown() {
 async function completeWithFallback(args: Parameters<typeof backendComplete>[0]) {
   const primary = await platformModelOverrides()
   const nvidia = PROVIDER_MODELS.filter(p => p.provider === 'nvidia')
+  // ponytail: removed override prepend — the backend's build_chat ignores
+  // model_override and uses MODEL_REGISTRY defaults (groq → dead
+  // llama-3.1-8b-instant).  Dead models burn one 404 per lesson.  The
+  // standard chain has verified-live models; just use those.
   const rest = [
-    ...(primary.providerOverride && primary.modelOverride && primary.providerOverride !== 'openrouter' && primary.providerOverride !== 'nvidia'
-      ? [{ provider: primary.providerOverride, model: primary.modelOverride, endpoint: primary.endpointOverride }]
-      : []),
     ...PROVIDER_MODELS.filter(p => p.provider !== 'nvidia'),
   ]
   const start = rest.length ? (rr++ % rest.length) : 0
