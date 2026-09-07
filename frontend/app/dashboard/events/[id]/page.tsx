@@ -25,6 +25,7 @@ import {
 } from 'lucide-react'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonCard, SkeletonText, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { useToast } from '@/lib/toast-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -793,9 +794,14 @@ export default function EventDetailPage({ params }: { params: Promise<{ id: stri
   }, [tab, judgeSubmissions, loadAudits])
 
   if (!gate.ready || loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" /> Loading event…
-    </div>
+    return (
+      <div className="space-y-6 py-10">
+        <SkeletonText lines={2} />
+        <SkeletonText lines={1} />
+        <SkeletonCard />
+        <SkeletonTable rows={4} />
+      </div>
+    )
   }
 
   if (!event) {

@@ -18,6 +18,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { Building2, Users, Plus, Loader2, Trash2, Search, HelpCircle, Pencil, Eye, EyeOff, LogIn, ShieldAlert, RefreshCw, UserRound, Mail } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { getRoleLabel, normalizeUserRole } from '@/lib/rbac'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 interface Tenant {
   id: string
@@ -449,7 +450,9 @@ export default function TenantsPage() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-16"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+        <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
       ) : filtered.length === 0 ? (
         <Card className="border-border/60 p-12 text-center">
           <Building2 className="mx-auto h-12 w-12 text-muted-foreground/30" />

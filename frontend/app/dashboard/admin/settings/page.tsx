@@ -57,6 +57,7 @@ import { RedisSettingsSection } from '@/components/dashboard/settings/redis-sect
 import { WhatsAppSettingsSection } from '@/components/dashboard/settings/whatsapp-section'
 import { KycSettingsSection } from '@/components/dashboard/settings/kyc-section'
 import { useToast } from '@/lib/toast-context'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import GitHubConnectButton from '@/components/integrations/github-connect-button'
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert'
 import {
@@ -917,9 +918,10 @@ function SystemSettingsInner() {
 
   if (loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        Loading settings…
+      <div className="space-y-6">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonText lines={4} />
       </div>
     )
   }

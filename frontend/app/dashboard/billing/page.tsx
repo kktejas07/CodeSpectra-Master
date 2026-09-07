@@ -33,6 +33,7 @@ import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-heade
 import { findPlan } from '@/lib/billing-catalog'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
 
 type InvoiceRow = {
@@ -357,10 +358,12 @@ function BillingContent() {
 
   if (loading || !subscription) {
     return (
-      <Card className="flex items-center justify-center gap-2 py-20 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        Loading billing…
-      </Card>
+      <div className="space-y-8">
+        <SkeletonCard />
+        <SkeletonStats />
+        <SkeletonTable rows={3} />
+        <SkeletonCard />
+      </div>
     )
   }
 
@@ -760,10 +763,12 @@ export default function BillingPage() {
   return (
     <Suspense
       fallback={
-        <Card className="flex items-center justify-center gap-2 rounded-xl border-border/60 py-20 text-muted-foreground shadow-sm">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading…
-        </Card>
+        <div className="space-y-8">
+          <SkeletonCard />
+          <SkeletonStats />
+          <SkeletonTable rows={3} />
+          <SkeletonCard />
+        </div>
       }
     >
       <BillingContent />

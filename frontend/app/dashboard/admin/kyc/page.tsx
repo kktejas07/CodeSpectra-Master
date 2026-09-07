@@ -11,6 +11,7 @@ import {
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
+import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import {
   DropdownMenu,
@@ -93,10 +94,10 @@ export default function AdminKycPage() {
 
   const getStatusBadge = (status: string) => {
     switch (status) {
-      case 'approved': return <Badge className="bg-emerald-500/20 text-emerald-700"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>
-      case 'rejected': return <Badge className="bg-destructive/20 text-destructive"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>
-      case 'manual_review': return <Badge className="bg-amber-500/20 text-amber-700"><Eye className="h-3 w-3 mr-1" />Review</Badge>
-      case 'pending': return <Badge className="bg-blue-500/20 text-blue-700"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
+      case 'approved': return <Badge variant="success"><CheckCircle2 className="h-3 w-3 mr-1" />Approved</Badge>
+      case 'rejected': return <Badge variant="danger"><XCircle className="h-3 w-3 mr-1" />Rejected</Badge>
+      case 'manual_review': return <Badge variant="warning"><Eye className="h-3 w-3 mr-1" />Review</Badge>
+      case 'pending': return <Badge variant="info"><Clock className="h-3 w-3 mr-1" />Pending</Badge>
       default: return <Badge variant="outline">{status}</Badge>
     }
   }
@@ -182,8 +183,9 @@ export default function AdminKycPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading records...
+        <div className="space-y-6">
+          <SkeletonStats />
+          <SkeletonTable />
         </div>
       ) : (
         <DataTable columns={columns} data={records} searchPlaceholder="Search by name or email..." searchKeys={['user_name', 'user_email']} loading={loading} emptyMessage="No KYC records yet." />

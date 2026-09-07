@@ -5,7 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation'
 import { DynamicInterview } from '@/components/interviews/dynamic-interview'
 import type { InterviewFeedback } from '@/lib/interview-service'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { Loader2 } from 'lucide-react'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 function DynamicInterviewPageInner() {
   const router = useRouter()
@@ -39,8 +39,10 @@ export default function DynamicInterviewPage() {
   return (
     <Suspense
       fallback={
-        <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-          Loading interview…
+        <div className="max-w-4xl space-y-6">
+          <SkeletonCard />
+          <SkeletonText lines={4} />
+          <SkeletonCard />
         </div>
       }
     >

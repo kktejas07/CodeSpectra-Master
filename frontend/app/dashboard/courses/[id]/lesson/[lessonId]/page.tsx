@@ -8,6 +8,7 @@ import {
   ArrowLeft, CheckCircle, Play, Lock, Loader2, 
   Menu, X, ChevronDown, ChevronUp, BookOpen, Puzzle 
 } from 'lucide-react'
+import { SkeletonCard, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/lib/toast-context'
@@ -263,9 +264,19 @@ export default function LessonPlayerPage({ params }: { params: Promise<{ id: str
 
   if (!course && (loading || !gate.ready)) {
     return (
-      <div className="w-full h-screen flex flex-col items-center justify-center bg-background">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="mt-4 text-sm text-muted-foreground">Loading lesson...</p>
+      <div className="w-full h-screen flex flex-col bg-background">
+        <div className="h-14 border-b border-border/40 bg-card shrink-0 flex items-center px-4 gap-4">
+          <SkeletonText lines={1} />
+        </div>
+        <div className="flex flex-1 overflow-hidden">
+          <main className="flex-1 flex flex-col min-w-0 p-6 space-y-4">
+            <SkeletonText lines={1} />
+            <SkeletonCard />
+          </main>
+          <aside className="hidden lg:block w-80 border-l border-border/40 bg-card p-4">
+            <SkeletonList count={4} />
+          </aside>
+        </div>
       </div>
     )
   }

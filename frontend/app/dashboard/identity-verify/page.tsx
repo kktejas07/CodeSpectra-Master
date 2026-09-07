@@ -2,12 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import {
-  CheckCircle2, Loader2, ExternalLink, ShieldCheck, AlertTriangle,
+  CheckCircle2, ExternalLink, ShieldCheck, AlertTriangle, Loader2,
   Info, RefreshCcw, Globe, FileCheck, Eye, Clock, RotateCcw
 } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
+import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
@@ -161,9 +162,20 @@ export default function IdentityVerificationPage() {
   // Purpose routing (SuperAdmin → Purpose routing tab)
   if (identityProvider === null || loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 gap-3">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground">Loading verification status...</p>
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <div className="h-8 w-48 bg-muted/60 rounded animate-pulse" />
+          <div className="h-4 w-72 bg-muted/40 rounded animate-pulse" />
+        </div>
+        <SkeletonCard />
+        <SkeletonCard />
+        <div className="space-y-3">
+          <div className="h-4 w-32 bg-muted/40 rounded animate-pulse" />
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            {Array.from({ length: 4 }).map((_, i) => <SkeletonCard key={i} />)}
+          </div>
+        </div>
+        <SkeletonButton />
       </div>
     )
   }

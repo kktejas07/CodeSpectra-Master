@@ -17,6 +17,7 @@ import {
   Briefcase, Plus, Edit, Trash2, Eye, Users,
   Loader2, X, CheckCircle, AlertCircle,
 } from 'lucide-react'
+import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface JobPosting {
   id: string
@@ -253,8 +254,9 @@ export default function AdminJobsPage() {
   ]
 
   if (!gate.ready) return (
-    <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" />
+    <div className="space-y-6">
+      <SkeletonStats />
+      <SkeletonTable rows={5} />
     </div>
   )
 

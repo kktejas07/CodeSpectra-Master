@@ -9,6 +9,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 
 type Post = {
   slug: string
@@ -75,8 +76,9 @@ export default function ArticlesNewsroomPage() {
 
   if (!gate.ready || loading) {
     return (
-      <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" /> Loading newsroom…
+      <div className="w-full space-y-6">
+        <SkeletonText lines={2} />
+        <SkeletonList count={6} />
       </div>
     )
   }

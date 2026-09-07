@@ -9,6 +9,7 @@ import {
   Brain, Loader2, Clock, Flag, Mic, MicOff, Send, Volume2,
   CheckCircle2, AlertCircle, XCircle, ChevronDown, ChevronUp,
 } from 'lucide-react'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import type { Question, Evaluation } from '@/lib/interviews/ai-mock-types'
 import { createVoiceManager, getVoiceCapabilities } from '@/lib/interviews/ai-mock-voice'
@@ -518,8 +519,10 @@ function ReportView({ sessionId, router }: { sessionId: string; router: ReturnTy
 
   if (loading) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-6 w-6 animate-spin text-primary" />
+      <div className="mx-auto max-w-2xl space-y-6">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonCard />
       </div>
     )
   }

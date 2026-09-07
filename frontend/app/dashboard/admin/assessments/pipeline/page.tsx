@@ -20,6 +20,7 @@ import {
   Play,
   BarChart3,
 } from 'lucide-react'
+import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 
 interface ExamOption {
   id: string
@@ -145,8 +146,9 @@ export default function PipelinePage() {
 
       {/* Loading */}
       {selectedExamId && loadingPipeline && (
-        <div className="flex items-center justify-center py-20 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading pipeline...
+        <div className="space-y-6">
+          <SkeletonStats />
+          <SkeletonList count={4} />
         </div>
       )}
 
@@ -223,7 +225,7 @@ export default function PipelinePage() {
                             <p className="text-xs text-muted-foreground truncate">{c.email}</p>
                             {c.company && <p className="text-xs text-muted-foreground truncate">{c.company}</p>}
                             {c.score != null && (
-                              <Badge className={`text-xs ${c.passed ? 'bg-green-500/20 text-green-700' : 'bg-red-500/20 text-red-700'}`}>
+                              <Badge variant={c.passed ? 'success' : 'danger'} className="text-xs">
                                 {c.score}%
                               </Badge>
                             )}

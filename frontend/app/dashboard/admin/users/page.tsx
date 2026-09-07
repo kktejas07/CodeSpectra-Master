@@ -29,6 +29,7 @@ import type { AdminUserListRow } from '@/lib/admin-users'
 import { normalizeUserRole, type UserRole } from '@/lib/rbac'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 type TableUser = {
   id: string
@@ -379,10 +380,7 @@ export default function UsersManagement() {
       </div>
 
       {loading ? (
-        <Card className="flex items-center justify-center gap-2 py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin" />
-          Loading users…
-        </Card>
+        <SkeletonTable />
       ) : (
         <UserManagementTable
           users={displayUsers}

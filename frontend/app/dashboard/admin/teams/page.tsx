@@ -7,6 +7,7 @@ import { Plus, Search, Loader, Users, HelpCircle } from 'lucide-react'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { Input } from '@/components/ui/input'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 interface Team {
   id: number
@@ -31,7 +32,14 @@ export default function TeamsManagement() {
   }, [])
 
   if (!gate.ready) return null
-  if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+  if (loading) return (
+    <div className="space-y-6">
+      <SkeletonStats />
+      <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4">
+        {Array.from({ length: 6 }).map((_, i) => <SkeletonCard key={i} />)}
+      </div>
+    </div>
+  )
 
   const safeTeams = teams || []
 

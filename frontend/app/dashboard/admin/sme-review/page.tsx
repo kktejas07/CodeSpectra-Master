@@ -6,6 +6,7 @@ import { Users, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { Badge } from '@/components/ui/badge'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface ReviewTask {
   id: string
@@ -60,9 +61,7 @@ export default function SMEReviewPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading review tasks...
-        </div>
+        <SkeletonTable />
       ) : (
         <DataTable columns={columns} data={tasks} searchKeys={['title', 'candidateName']} loading={loading} emptyMessage="No review tasks. Submissions needing manual review will appear here." />
       )}

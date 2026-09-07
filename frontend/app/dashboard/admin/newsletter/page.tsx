@@ -378,7 +378,7 @@ export default function NewsletterPage() {
               <div className="flex items-center justify-between mb-4">
                 <h2 className="font-semibold flex items-center gap-2">
                   <Send className="h-4 w-4" /> Compose Newsletter
-                  {editingId && <Badge className="bg-primary/10 text-primary border-0"><PencilLine className="h-3 w-3 mr-1" />Editing draft</Badge>}
+                  {editingId && <Badge variant="default"><PencilLine className="h-3 w-3 mr-1" />Editing draft</Badge>}
                 </h2>
                 <select
                   className="text-xs border border-border/60 rounded-md px-2 py-1 bg-background"

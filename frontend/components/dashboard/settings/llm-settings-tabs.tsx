@@ -112,7 +112,7 @@ export function LlmSettingsTabs() {
   // (only `<key>_masked` + `has_<key>`), so the draft can only ever hold NEW
   // keys. savedInfo tracks what's actually in the database, otherwise every
   // card permanently shows "Not set" and saves silently overwrite stored keys.
-  const [savedInfo, setSavedInfo] = useState<Record<string, { has: boolean; masked: string | null }>>({})
+  const [savedInfo, setSavedInfo] = useState<Record<string, { has: boolean; masked: string | null; count: number }>>({})
   const [visibleFields, setVisibleFields] = useState<Record<string, boolean>>({})
   const [revealedValues, setRevealedValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
@@ -124,11 +124,12 @@ export function LlmSettingsTabs() {
   // Apply GET meta to per-provider saved-state (the raw secretsMeta is not
   // needed — GET never returns raw secret values, only has_/masked flags).
   const applySecretsMeta = useCallback((sec: Record<string, unknown>) => {
-    const info: Record<string, { has: boolean; masked: string | null }> = {}
+    const info: Record<string, { has: boolean; masked: string | null; count: number }> = {}
     for (const p of PROVIDERS) {
       info[p.key] = {
         has: Boolean(sec[`has_${p.key}`]),
         masked: typeof sec[`${p.key}_masked`] === 'string' ? (sec[`${p.key}_masked`] as string) : null,
+        count: typeof sec[`${p.key}_count`] === 'number' ? sec[`${p.key}_count`] as number : (sec[`has_${p.key}`] ? 1 : 0),
       }
     }
     setSavedInfo(info)
@@ -149,7 +150,22 @@ export function LlmSettingsTabs() {
   const loadUsage = useCallback(() => {
     fetch('/api/admin/platform/ai-usage', { credentials: 'include' })
       .then(r => r.json())
-      .then(d => { if (d.modelStats) setUsageStats(d.modelStats) })
+      .then(d => {
+        const summary = d.summary || d
+        if (summary.byModel) {
+          setUsageStats(summary.byModel)
+        } else if (summary.byFeature) {
+          setUsageStats(summary.byFeature.map((f: any) => ({
+            model: f.feature || 'unknown',
+            provider: 'mixed',
+            requests: f.requests || 0,
+            tokens: f.totalTokens || 0,
+            cost: 0,
+            avgLatency: f.avgLatencyMs || 0,
+            successRate: 100,
+          })))
+        }
+      })
       .catch(() => {})
   }, [])
 
@@ -366,9 +382,9 @@ export function LlmSettingsTabs() {
                               <Badge
                                 variant="outline"
                                 className="text-[9px] bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
-                                title={saved.masked ? `Stored in database: ${saved.masked}` : 'Stored in database'}
+                                title={saved.masked ? `${saved.count || 1} key(s) stored: ${saved.masked}` : 'Stored in database'}
                               >
-                                Saved{saved.masked ? ` · ${saved.masked}` : ''}
+                                Saved{saved.count > 1 ? ` · ${saved.count} keys` : ''}
                               </Badge>
                             )}
                             {!saved?.has && draftCount === 0 && (

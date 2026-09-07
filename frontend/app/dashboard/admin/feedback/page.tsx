@@ -1,14 +1,15 @@
 'use client'
 
-import { useEffect, useState, useMemo } from 'react'
-import { Card } from '@/components/ui/card'
+import { useEffect, useState, useMemo, useCallback } from 'react'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { useConfirm } from '@/lib/confirm-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
-import { MessageSquareWarning, HelpCircle } from 'lucide-react'
+import { MessageSquareWarning, HelpCircle, Send, MessageSquare, Loader2, Inbox } from 'lucide-react'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 
 interface Feedback {
@@ -19,42 +20,48 @@ interface Feedback {
   user_id?: string
   status: 'open' | 'resolved'
   created_at: string
+  admin_reply?: string
+  replied_at?: string
+  replied_by?: string
 }
 
 export default function AdminFeedbackPage() {
   const gate = usePageGuard('superadmin')
   const addToast = useToast()
   const confirm = useConfirm()
-  
+
   const [data, setData] = useState<Feedback[]>([])
   const [loading, setLoading] = useState(true)
+  const [loadError, setLoadError] = useState(false)
+  const [expandedId, setExpandedId] = useState<string | null>(null)
+  const [replyText, setReplyText] = useState('')
+  const [replying, setReplying] = useState(false)
 
-  const fetchData = async () => {
+  const fetchData = useCallback(async () => {
     setLoading(true)
+    setLoadError(false)
     try {
       const res = await fetch('/api/admin/feedback', { credentials: 'include' })
+      if (!res.ok) { setLoadError(true); return }
       const json = await res.json()
-      if (res.ok) {
+      if (Array.isArray(json)) {
         setData(json.map((item: any) => ({ ...item, id: item._id })))
       } else {
-        addToast({ type: 'error', title: 'Failed to load feedback', message: json.error })
+        setLoadError(true)
       }
     } catch {
-      addToast({ type: 'error', title: 'Error', message: 'Failed to load feedback' })
+      setLoadError(true)
     } finally {
       setLoading(false)
     }
-  }
-
-  useEffect(() => {
-    void fetchData()
   }, [])
 
-  const handleUpdateStatus = async (id: string, status: 'open' | 'resolved') => {
+  useEffect(() => { void fetchData() }, [fetchData])
+
+  const handleUpdateStatus = useCallback(async (id: string, status: 'open' | 'resolved') => {
     try {
       const res = await csrfFetch(`/api/admin/feedback/${id}`, {
-        method: 'PATCH',
-        credentials: 'include',
+        method: 'PATCH', credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status })
       })
@@ -64,101 +71,85 @@ export default function AdminFeedbackPage() {
       } else {
         addToast({ type: 'error', title: 'Update failed' })
       }
-    } catch {
-      addToast({ type: 'error', title: 'Update failed' })
-    }
-  }
+    } catch { addToast({ type: 'error', title: 'Update failed' }) }
+  }, [addToast])
 
-  const handleDelete = async (ids: string[]) => {
-    const ok = await confirm({
-      title: 'Delete Feedback?',
-      description: `Are you sure you want to delete ${ids.length} item(s)?`,
-      confirmText: 'Delete',
-      destructive: true,
-    })
+  const handleReply = useCallback(async (id: string) => {
+    if (!replyText.trim()) return
+    setReplying(true)
+    try {
+      const res = await csrfFetch(`/api/admin/feedback/${id}`, {
+        method: 'PATCH', credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ admin_reply: replyText.trim(), status: 'resolved' })
+      })
+      if (res.ok) {
+        addToast({ type: 'success', title: 'Reply sent' })
+        setData(prev => prev.map(f => f._id === id ? {
+          ...f, admin_reply: replyText.trim(), replied_at: new Date().toISOString(), status: 'resolved'
+        } : f))
+        setReplyText('')
+      } else {
+        addToast({ type: 'error', title: 'Reply failed' })
+      }
+    } catch { addToast({ type: 'error', title: 'Reply failed' }) }
+    finally { setReplying(false) }
+  }, [replyText, addToast])
+
+  const handleDelete = useCallback(async (ids: string[]) => {
+    const ok = await confirm({ title: 'Delete Feedback?', description: `Delete ${ids.length} item(s)?`, confirmText: 'Delete', destructive: true })
     if (!ok) return
-
     let successCount = 0
     for (const id of ids) {
-      try {
-        const res = await csrfFetch(`/api/admin/feedback/${id}`, {
-          method: 'DELETE',
-          credentials: 'include'
-        })
-        if (res.ok) successCount++
-      } catch {
-        // ignore individual failures in bulk
-      }
+      try { const res = await csrfFetch(`/api/admin/feedback/${id}`, { method: 'DELETE', credentials: 'include' }); if (res.ok) successCount++ } catch {}
     }
-
     if (successCount > 0) {
       addToast({ type: 'success', title: `Deleted ${successCount} item(s)` })
       setData(prev => prev.filter(f => !ids.includes(f._id)))
     }
-  }
+  }, [confirm, addToast])
 
   const columns: DataTableColumn<Feedback>[] = useMemo(() => [
     {
-      key: 'type',
-      header: 'Type',
-      sortable: true,
-      cell: (item: Feedback) => (
-        <Badge variant={item.type === 'bug' ? 'destructive' : item.type === 'complaint' ? 'secondary' : 'default'} className="capitalize text-[10px]">
-          {item.type}
-        </Badge>
-      )
+      key: 'type', header: 'Type', sortable: true,
+      cell: (item) => <Badge variant={item.type === 'bug' ? 'destructive' : item.type === 'complaint' ? 'secondary' : 'default'} className="capitalize text-[10px]">{item.type}</Badge>
     },
     {
-      key: 'content',
-      header: 'Content',
-      cell: (item: Feedback) => (
-        <div className="max-w-md truncate text-sm" title={item.content}>
-          {item.content}
+      key: 'content', header: 'Content',
+      cell: (item) => (
+        <div className="flex items-center gap-2">
+          <div className="max-w-xs truncate text-sm flex-1" title={item.content}>{item.content}</div>
+          <button
+            onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === item._id ? null : item._id); setReplyText('') }}
+            className="text-xs text-primary hover:underline shrink-0"
+          >
+            {expandedId === item._id ? 'Close' : 'View'}
+          </button>
         </div>
       )
     },
     {
-      key: 'status',
-      header: 'Status',
-      sortable: true,
-      cell: (item: Feedback) => (
-        <Badge variant={item.status === 'open' ? 'outline' : 'secondary'} className="capitalize text-[10px] cursor-pointer" onClick={(e) => {
-          e.stopPropagation()
-          void handleUpdateStatus(item._id, item.status === 'open' ? 'resolved' : 'open')
-        }}>
+      key: 'status', header: 'Status', sortable: true,
+      cell: (item) => (
+        <Badge variant={item.status === 'open' ? 'outline' : 'secondary'} className="capitalize text-[10px] cursor-pointer"
+          onClick={(e) => { e.stopPropagation(); void handleUpdateStatus(item._id, item.status === 'open' ? 'resolved' : 'open') }}>
           {item.status}
         </Badge>
       )
     },
     {
-      key: 'created_at',
-      header: 'Date',
-      sortable: true,
-      cell: (item: Feedback) => (
-        <span className="text-xs text-muted-foreground">
-          {new Date(item.created_at).toLocaleDateString()}
-        </span>
-      )
-    }
-  ], [])
+      key: 'created_at', header: 'Date', sortable: true,
+      cell: (item) => <span className="text-xs text-muted-foreground">{new Date(item.created_at).toLocaleDateString()}</span>
+    },
+  ], [handleUpdateStatus])
 
   const bulkActions: BulkAction[] = useMemo(() => [
-    {
-      label: 'Mark Resolved',
-      onClick: async (ids: string[]) => {
-        for (const id of ids) {
-          // Just update it, the backend checks validity
-          await handleUpdateStatus(id, 'resolved')
-        }
-      },
-      icon: <Badge variant="secondary" className="h-4 w-4 p-0 mr-1 flex items-center justify-center rounded-full">✓</Badge>
-    },
-    {
-      label: 'Delete',
-      onClick: (ids: string[]) => handleDelete(ids),
-      destructive: true
-    }
-  ], [handleDelete])
+    { label: 'Mark Resolved', onClick: async (ids) => { for (const id of ids) await handleUpdateStatus(id, 'resolved') },
+      icon: <Badge variant="secondary" className="h-4 w-4 p-0 mr-1 flex items-center justify-center rounded-full">✓</Badge> },
+    { label: 'Delete', onClick: (ids) => handleDelete(ids), destructive: true },
+  ], [handleUpdateStatus, handleDelete])
+
+  const expandedFeedback = expandedId ? data.find(f => f._id === expandedId) : null
 
   if (!gate.ready) return null
 
@@ -178,7 +169,7 @@ export default function AdminFeedbackPage() {
                     <HelpCircle className="h-3.5 w-3.5 text-muted-foreground cursor-help" />
                   </TooltipTrigger>
                   <TooltipContent side="right">
-                    <p className="text-xs max-w-62.5">View and manage user feedback, bug reports, and complaints.</p>
+                    <p className="text-xs max-w-62.5">View and manage user feedback. Click a row to expand and reply.</p>
                   </TooltipContent>
                 </Tooltip>
               </TooltipProvider>
@@ -188,16 +179,74 @@ export default function AdminFeedbackPage() {
         </div>
       </div>
 
-      <Card className="border-border/60">
-        <DataTable
-          data={data}
-          columns={columns}
-          bulkActions={bulkActions}
-          searchPlaceholder="Search feedback content..."
-          emptyMessage="No feedback reports found."
-          loading={loading}
-        />
-      </Card>
+      {/* Error state */}
+      {loadError && !loading && (
+        <div className="rounded-xl border border-border/60 bg-card/50 p-8 text-center">
+          <Inbox className="h-10 w-10 mx-auto mb-3 text-muted-foreground" />
+          <p className="text-sm font-medium text-muted-foreground">No feedback data available</p>
+          <p className="text-xs text-muted-foreground mt-1">The feedback collection may not exist yet. Try again later.</p>
+          <Button variant="outline" size="sm" className="mt-4" onClick={() => void fetchData()}>Retry</Button>
+        </div>
+      )}
+
+      {/* Table — no Card wrapper needed */}
+      {!loadError && (
+        <div className="space-y-4">
+          <DataTable
+            data={data}
+            columns={columns}
+            bulkActions={bulkActions}
+            searchPlaceholder="Search feedback content..."
+            emptyMessage="No feedback reports found."
+            loading={loading}
+          />
+
+          {/* Expanded detail panel */}
+          {expandedFeedback && (
+            <div className="rounded-xl border border-border/60 bg-card/50 p-6 space-y-4">
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-semibold">Feedback Detail</h3>
+                <Button variant="ghost" size="sm" onClick={() => { setExpandedId(null); setReplyText('') }}>Close</Button>
+              </div>
+              <div>
+                <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Full Content</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{expandedFeedback.content}</p>
+                {expandedFeedback.user_id && (
+                  <p className="text-xs text-muted-foreground mt-2">Submitted by: {expandedFeedback.user_id}</p>
+                )}
+              </div>
+              {expandedFeedback.admin_reply ? (
+                <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">
+                  <div className="flex items-center gap-2 mb-2">
+                    <MessageSquare className="h-3.5 w-3.5 text-primary" />
+                    <span className="text-xs font-semibold text-primary">Admin Response</span>
+                    {expandedFeedback.replied_at && (
+                      <span className="text-[10px] text-muted-foreground">{new Date(expandedFeedback.replied_at).toLocaleString()}</span>
+                    )}
+                  </div>
+                  <p className="text-sm text-foreground whitespace-pre-wrap">{expandedFeedback.admin_reply}</p>
+                </div>
+              ) : (
+                <div className="space-y-2">
+                  <textarea
+                    value={replyText}
+                    onChange={(e) => setReplyText(e.target.value)}
+                    placeholder="Write your response..."
+                    className="w-full min-h-[80px] rounded-lg border border-border bg-background p-3 text-sm resize-none focus:outline-none focus:ring-1 focus:ring-ring"
+                  />
+                  <div className="flex gap-2">
+                    <Button size="sm" disabled={replying || !replyText.trim()} onClick={() => void handleReply(expandedFeedback._id)}>
+                      {replying ? <Loader2 className="h-3 w-3 animate-spin mr-1" /> : <Send className="h-3 w-3 mr-1" />}
+                      Send Reply
+                    </Button>
+                    <Button size="sm" variant="outline" onClick={() => { setExpandedId(null); setReplyText('') }}>Cancel</Button>
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

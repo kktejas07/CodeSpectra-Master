@@ -3,7 +3,8 @@
 import { useRouter } from 'next/navigation'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { CheckCircle, ArrowLeft, Loader2 } from 'lucide-react'
+import { CheckCircle, ArrowLeft } from 'lucide-react'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 export default function InterviewResultsPage() {
@@ -11,7 +12,11 @@ export default function InterviewResultsPage() {
 
   const router = useRouter()
 
-  if (!gate.ready) return null
+  if (!gate.ready) return (
+    <div className="flex items-center justify-center min-h-[60vh]">
+      <SkeletonCard />
+    </div>
+  )
 
   return (
     <div className="flex items-center justify-center min-h-[60vh]">

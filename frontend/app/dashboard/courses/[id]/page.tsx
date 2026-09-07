@@ -16,6 +16,7 @@ import {
   GraduationCap, TrendingUp, Zap, Shield, BarChart2, BookMarked,
   ChevronUp, Share2, Heart, Download, HelpCircle, Check, Copy, Link2
 } from 'lucide-react'
+import { SkeletonStats, SkeletonText, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { useToast } from '@/lib/toast-context'
@@ -320,9 +321,14 @@ const handleEnroll = async () => {
   )
 
   if (loading) return (
-    <div className="flex flex-col items-center justify-center py-32 gap-4">
-      <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-sm text-muted-foreground">Loading course…</p>
+    <div className="space-y-6 py-10">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 space-y-6">
+        <SkeletonText lines={2} />
+        <SkeletonText lines={3} />
+        <SkeletonStats />
+        <SkeletonCard />
+        <SkeletonCard />
+      </div>
     </div>
   )
 

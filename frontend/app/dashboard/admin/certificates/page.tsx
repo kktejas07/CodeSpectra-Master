@@ -35,6 +35,7 @@ import {
   Trophy,
   FileText,
 } from 'lucide-react'
+import { SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import {
   CertificateRenderer,
   TEMPLATES,
@@ -240,8 +241,9 @@ export default function CertificatesPage() {
 
   if (!gate.ready) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        <SkeletonStats />
+        <SkeletonTable rows={5} />
       </div>
     )
   }

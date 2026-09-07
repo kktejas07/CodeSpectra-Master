@@ -12,6 +12,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonStats, SkeletonList } from '@/components/ui/skeleton-boneyard'
 
 interface TeamMember {
   id: string; name: string; email: string; role: string; joinedAt: string; status: string
@@ -79,7 +80,12 @@ export default function TeamManagement() {
   }
 
   if (!gate.ready) return null
-  if (loading) return <div className="flex justify-center py-20"><Loader className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+  if (loading) return (
+    <div className="space-y-6">
+      <SkeletonStats />
+      <SkeletonList count={4} />
+    </div>
+  )
 
   return (
     <div className="space-y-8">

@@ -18,7 +18,7 @@ const SECTIONS = [
     title: 'Platform',
     items: [
       { label: 'Operations Overview', desc: 'Live server health metrics and cache management tools. Auto-refreshes every 30 seconds.', href: '/dashboard/admin/system' },
-      { label: 'Audit Logs', desc: 'Track admin actions, role changes, and security events. Filter by event type and date range.', href: '/dashboard/admin/audit-logs' },
+      { label: 'Audit Logs', desc: 'Track admin actions, role changes, and security events. Filter by event type and date range.', href: '/dashboard/admin/system' },
       { label: 'Integrations', desc: 'Manage third-party connections: GitHub App for PR scanning, email providers, and billing.', href: '/dashboard/admin/integrations' },
       { label: 'Speed Insights', desc: 'Performance monitoring dashboard showing Core Web Vitals for your application.', href: '/dashboard/admin/speed-insights' },
       { label: 'CDN & Edge', desc: 'Configure edge caching, redirects, and routing rules through your CDN provider.', href: '/dashboard/admin/cdn' },

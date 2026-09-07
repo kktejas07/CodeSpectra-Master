@@ -10,9 +10,10 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { useToast } from '@/lib/toast-context'
 import {
-  Briefcase, ExternalLink, Clock, Loader2,
+  Briefcase, ExternalLink, Clock,
   CheckCircle, XCircle, Hourglass, ArrowRight,
 } from 'lucide-react'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 interface AppliedJob {
   id: string
@@ -78,8 +79,15 @@ export default function DashboardJobsPage() {
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return (
-    <div className="flex justify-center py-20">
-      <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+    <div className="space-y-8">
+      <div className="flex items-center justify-between">
+        <div className="space-y-2">
+          <div className="h-8 w-40 bg-muted/60 rounded animate-pulse" />
+          <div className="h-4 w-56 bg-muted/40 rounded animate-pulse" />
+        </div>
+        <div className="h-9 w-28 bg-muted/50 rounded animate-pulse" />
+      </div>
+      <SkeletonCard />
     </div>
   )
 
@@ -97,8 +105,8 @@ export default function DashboardJobsPage() {
 
       <div data-tour="jobs-list">
       {loading ? (
-        <div className="flex justify-center py-20">
-          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+        <div className="space-y-3">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
         </div>
       ) : applications.length === 0 ? (
         <Card className="border-border/60 p-12 text-center">

@@ -9,6 +9,7 @@ import rehypeHighlight from 'rehype-highlight'
 import { Badge } from '@/components/ui/badge'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { Loader2, ArrowLeft, Download, ShieldAlert, CheckCircle2, User, Eye, X, AlertTriangle, Copy, Minimize2, Maximize2, Send, CheckCheck, MoreHorizontal, Link, Mail, Trash2, Clock, XCircle, Bell, Sparkles, MessageSquare, ChevronDown, Camera, Fingerprint, Keyboard } from 'lucide-react'
+import { SkeletonStats, SkeletonTable, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
@@ -1069,8 +1070,13 @@ export default function ExamResultsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20 text-muted-foreground">
-        <Loader2 className="h-6 w-6 animate-spin mr-2" /> Loading results...
+      <div className="space-y-6 pb-12">
+        <div className="space-y-2">
+          <SkeletonText lines={1} />
+          <SkeletonText lines={2} />
+        </div>
+        <SkeletonStats />
+        <SkeletonTable rows={5} />
       </div>
     )
   }

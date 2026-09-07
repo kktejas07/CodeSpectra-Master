@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input'
 import { Textarea } from '@/components/ui/textarea'
 import { Label } from '@/components/ui/label'
 import { Loader2, ArrowLeft } from 'lucide-react'
+import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import Link from 'next/link'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -92,7 +93,13 @@ export default function ScheduleInterviewPage() {
     } finally { setBusy(false) }
   }
 
-  if (!gate.ready) return null
+  if (!gate.ready) return (
+    <div className="max-w-2xl space-y-6">
+      <div className="h-4 w-32 bg-muted/60 rounded animate-pulse" />
+      <div className="h-8 w-48 bg-muted/60 rounded animate-pulse" />
+      <SkeletonCard />
+    </div>
+  )
 
   return (
     <div className="max-w-2xl space-y-6">

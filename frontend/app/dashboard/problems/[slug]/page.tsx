@@ -4,8 +4,9 @@ import { useEffect, useMemo, useRef, useState } from 'react'
 import { useParams, useRouter } from 'next/navigation'
 import dynamic from 'next/dynamic'
 import Link from 'next/link'
-import { ArrowLeft, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Loader2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause, RotateCcw } from 'lucide-react'
+import { ArrowLeft, Loader2, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 import { useLockedFeatures } from '@/lib/use-page-guard'
@@ -456,7 +457,30 @@ export default function ProblemDetailPage() {
   }
 
   if (!problem) {
-    return <div className="flex items-center justify-center h-screen"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+    return (
+      <div className="h-dvh flex flex-col">
+        <header className="flex items-center gap-3 px-4 h-14 border-b border-border bg-card shrink-0">
+          <div className="h-8 w-8 bg-muted/50 rounded animate-pulse" />
+          <div className="h-5 w-48 bg-muted/60 rounded animate-pulse" />
+          <div className="h-8 w-8 bg-muted/50 rounded animate-pulse" />
+        </header>
+        <div className="flex-1 flex flex-col lg:flex-row min-h-0">
+          <section className="lg:w-[45%] border-b lg:border-b-0 lg:border-r border-border p-5 space-y-6">
+            <SkeletonText lines={8} />
+            <SkeletonCard />
+          </section>
+          <section className="flex-1 flex flex-col min-w-0 bg-muted/5">
+            <div className="flex items-center gap-2 px-3 py-2 border-b border-border bg-card">
+              <div className="h-8 w-32 bg-muted/50 rounded animate-pulse" />
+            </div>
+            <div className="flex-1 min-h-75 bg-[#1e1e1e] animate-pulse" />
+            <div className="h-55 border-t border-border bg-card p-4 space-y-3">
+              <SkeletonText lines={3} />
+            </div>
+          </section>
+        </div>
+      </div>
+    )
   }
 
   // Header secondary actions — inline on md+ screens, inside the collapsible menu below md.

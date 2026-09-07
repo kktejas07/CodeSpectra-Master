@@ -1,10 +1,11 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { Activity, CheckCircle2, Clock, Loader2, Sparkles, Target, TrendingUp, Users, Zap } from 'lucide-react'
+import { Activity, CheckCircle2, Clock, Sparkles, Target, TrendingUp, Users, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface SkillData {
   user?: { email?: string; id?: string } | null
@@ -90,8 +91,18 @@ export default function SkillAnalyticsPage() {
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center py-20">
-        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <div className="h-7 w-40 bg-muted/60 rounded animate-pulse" />
+          <div className="h-4 w-56 bg-muted/40 rounded animate-pulse" />
+        </div>
+        <SkeletonStats />
+        <SkeletonCard />
+        <div className="grid lg:grid-cols-2 gap-4">
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+        <SkeletonTable rows={5} />
       </div>
     )
   }

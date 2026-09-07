@@ -4,10 +4,11 @@ import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { Users, Link2, Copy, Check, Loader2, Star, Coins } from 'lucide-react'
+import { Loader2, Users, Link2, Copy, Check, Star, Coins } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 interface ReferralStats {
   code: string | null
@@ -79,7 +80,17 @@ export default function ReferralsPage() {
   }
 
   if (!gate.ready) return null
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+  if (loading) return (
+    <div className="space-y-6">
+      <div className="space-y-2">
+        <div className="h-8 w-28 bg-muted/60 rounded animate-pulse" />
+        <div className="h-4 w-64 bg-muted/40 rounded animate-pulse" />
+      </div>
+      <SkeletonCard />
+      <SkeletonStats />
+      <SkeletonCard />
+    </div>
+  )
 
   const statusColor = (s: string) => {
     if (s === 'completed' || s === 'commissioned') return 'default'

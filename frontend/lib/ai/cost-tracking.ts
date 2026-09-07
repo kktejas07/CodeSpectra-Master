@@ -98,6 +98,7 @@ interface AiUsageFacetResult {
   }[]
   byFeature: AiUsageSummary['byFeature']
   byUser: AiUsageSummary['byUser']
+  byModel: AiUsageSummary['byModel']
 }
 
 const EMPTY_SUMMARY = (days: number): AiUsageSummary => ({
@@ -112,8 +113,9 @@ const EMPTY_SUMMARY = (days: number): AiUsageSummary => ({
     totalTokens: 0,
     avgLatencyMs: 0,
   },
-  byFeature: [],
-  byUser: [],
+    byFeature: [],
+    byUser: [],
+    byModel: [],
 })
 
 /**
@@ -170,6 +172,35 @@ export async function getAiUsageSummary(opts?: { days?: number }): Promise<AiUsa
                   requests: 1,
                   totalTokens: 1,
                   avgLatencyMs: { $round: ['$avgLatencyMs', 0] },
+                },
+              },
+            ],
+            byModel: [
+              {
+                $group: {
+                  _id: {
+                    feature: { $ifNull: ['$feature', 'unknown'] },
+                    provider: { $ifNull: ['$provider', 'unknown'] },
+                  },
+                  requests: { $sum: 1 },
+                  ok: { $sum: { $cond: ['$ok', 1, 0] } },
+                  totalTokens: {
+                    $sum: { $add: [{ $ifNull: ['$promptTokens', 0] }, { $ifNull: ['$completionTokens', 0] }] },
+                  },
+                  avgLatencyMs: { $avg: { $ifNull: ['$latencyMs', 0] } },
+                },
+              },
+              { $sort: { requests: -1 } },
+              {
+                $project: {
+                  _id: 0,
+                  model: '$_id.feature',
+                  provider: '$_id.provider',
+                  requests: 1,
+                  tokens: '$totalTokens',
+                  cost: 0,
+                  avgLatency: { $round: ['$avgLatencyMs', 0] },
+                  successRate: { $round: [{ $multiply: [{ $cond: [{ $eq: ['$requests', 0] }, 0, { $divide: ['$ok', '$requests'] }] }, 100] }, 1] },
                 },
               },
             ],

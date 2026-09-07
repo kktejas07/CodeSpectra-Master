@@ -17,9 +17,10 @@ import {
   SelectValue,
   SelectTrigger,
 } from '@/components/ui/select'
-import { Settings, Moon, Sun, Palette, Bell, Shield, ChevronRight, Loader2, CheckCircle2, XCircle, Key, Download, Trash2, Camera } from 'lucide-react'
+import { Loader2, Settings, Moon, Sun, Palette, Bell, Shield, ChevronRight, CheckCircle2, XCircle, Key, Download, Trash2, Camera } from 'lucide-react'
 import { useTheme } from 'next-themes'
 import { useToast } from '@/lib/toast-context'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import {
   Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter,
 } from '@/components/ui/dialog'
@@ -250,9 +251,21 @@ export default function SettingsPage() {
 
   if (!hydrated || !themeReady) {
     return (
-      <div className="flex min-h-[30vh] items-center justify-center gap-2 text-muted-foreground">
-        <Loader2 className="h-5 w-5 animate-spin" />
-        Loading preferences…
+      <div className="space-y-8">
+        <div className="space-y-2">
+          <div className="h-8 w-24 bg-muted/60 rounded animate-pulse" />
+          <div className="h-4 w-72 bg-muted/40 rounded animate-pulse" />
+        </div>
+        <div className="grid grid-cols-1 gap-6 lg:grid-cols-3">
+          <div className="space-y-6 lg:col-span-2">
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </div>
+          <aside className="lg:col-span-1">
+            <SkeletonCard />
+          </aside>
+        </div>
       </div>
     )
   }

@@ -18,6 +18,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { type ResourcePermission, type PermissionAction } from '@/lib/permissions-db'
 import { buildPermissionMatrix, ROUTE_LABELS } from '@/lib/page-permissions'
 import { getAllFeatureLocks } from '@/lib/feature-locks'
+import { SkeletonCard, SkeletonStats, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface RoleData {
   _id?: string; role: string; name: string; description?: string
@@ -215,7 +216,13 @@ export default function PermissionsPage() {
   const changedCount = Object.keys(editing).length
 
   if (!gate.ready) return null
-  if (loading) return <div className="flex min-h-[40vh] items-center justify-center text-muted-foreground"><Loader2 className="mr-2 h-5 w-5 animate-spin" />Loading permissions…</div>
+  if (loading) return (
+    <div className="space-y-6">
+      <SkeletonCard />
+      <SkeletonStats />
+      <SkeletonTable rows={8} />
+    </div>
+  )
 
   return (
     <div className="space-y-6">

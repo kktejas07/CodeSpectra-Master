@@ -8,6 +8,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface Resume {
   id: string
@@ -83,9 +84,7 @@ export default function AdminResumesPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading resumes...
-        </div>
+        <SkeletonTable />
       ) : (
         <DataTable
           columns={columns}

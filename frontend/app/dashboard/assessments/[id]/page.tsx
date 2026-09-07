@@ -18,6 +18,7 @@ import {
   Clock, AlertTriangle, Send, ArrowLeft, Loader2,
   CheckCircle, XCircle, ChevronRight,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -204,7 +205,20 @@ export default function ExamPage() {
   }
 
   if (!gate.ready) return null
-  if (loading) return <div className="flex items-center justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+  if (loading) return (
+    <div className="max-w-4xl mx-auto space-y-6 p-6">
+      <div className="flex items-center gap-3">
+        <SkeletonButton />
+        <div className="h-6 w-48 bg-muted/60 rounded animate-pulse" />
+        <div className="h-6 w-16 bg-muted/40 rounded animate-pulse" />
+      </div>
+      <SkeletonCard />
+      <div className="flex justify-between">
+        <SkeletonButton />
+        <SkeletonButton />
+      </div>
+    </div>
+  )
   if (!exam) return <div className="p-8 text-center text-muted-foreground">Assessment not found.</div>
 
   const isLowTime = timeRemaining <= 60 && timeRemaining > 0
@@ -492,7 +506,7 @@ export default function ExamPage() {
                     <label className="text-sm font-medium text-muted-foreground">
                       {['code', 'coding'].includes(question.type) ? 'Your Code Solution:' : 'Your Answer:'}
                     </label>
-                    <Badge className="bg-blue-500/10 text-blue-500 border-blue-500/20">Saved locally</Badge>
+                    <Badge variant="info">Saved locally</Badge>
                   </div>
                   <Textarea
                     value={answers[question.id] || ''}

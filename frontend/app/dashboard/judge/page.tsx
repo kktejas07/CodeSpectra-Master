@@ -9,8 +9,9 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import {
-  Loader2, Gavel, Trophy, Users, Clock, ArrowRight, Inbox,
+  Gavel, Trophy, Users, Clock, ArrowRight, Inbox,
 } from 'lucide-react'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 
 interface Hackathon {
   id: string; name: string; slug: string; description?: string
@@ -80,9 +81,17 @@ export default function JudgeDashboardPage() {
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" /> Loading submissions to review…
-    </div>
+    return (
+      <div className="space-y-6">
+        <div className="space-y-2">
+          <div className="h-7 w-36 bg-muted/60 rounded animate-pulse" />
+          <div className="h-4 w-56 bg-muted/40 rounded animate-pulse" />
+        </div>
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          {Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)}
+        </div>
+      </div>
+    )
   }
 
   return (

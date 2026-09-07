@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
@@ -182,8 +183,10 @@ export default function CalendarPage() {
             ))}
           </div>
           {loading ? (
-            <div className="flex h-40 items-center justify-center text-muted-foreground">
-              <Loader2 className="h-4 w-4 animate-spin mr-2" /> Loading…
+            <div className="grid grid-cols-7 gap-1">
+              {Array.from({ length: 35 }).map((_, i) => (
+                <div key={i} className="min-h-18 rounded-md border border-border bg-card/50 p-1 animate-pulse" />
+              ))}
             </div>
           ) : (
             <div className="grid grid-cols-7 gap-1">

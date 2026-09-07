@@ -10,6 +10,7 @@ import { Label } from '@/components/ui/label'
 import { Badge } from '@/components/ui/badge'
 import { Sparkles, ArrowRight, ArrowLeft, Loader2, Play, CheckCircle2, Video, Database, BookOpen, Layers, Zap, Clock, ShieldAlert } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { useTour, type TourStep } from '@/components/tour/tour-context'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -80,7 +81,12 @@ export default function GenerateCoursePage() {
     }
   }, [gate.ready, startTour, setTourSeen])
 
-  if (!gate.ready) return null
+  if (!gate.ready) return (
+    <div className="space-y-6 py-10">
+      <SkeletonText lines={2} />
+      <SkeletonCard />
+    </div>
+  )
 
   const handleNext = () => setStep(step + 1)
   const handleBack = () => setStep(step - 1)

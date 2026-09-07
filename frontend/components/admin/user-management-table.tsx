@@ -103,14 +103,9 @@ export function UserManagementTable({
 
   const getRoleColor = (role: string) => {
     switch (normalizeUserRole(role)) {
-      case 'superadmin':
-        return 'bg-red-500/20 text-red-700 dark:text-red-400'
-      case 'tenant_admin':
-        return 'bg-blue-500/20 text-blue-700 dark:text-blue-400'
-      case 'user':
-        return 'bg-gray-500/20 text-gray-700 dark:text-gray-400'
-      default:
-        return 'bg-gray-500/20 text-gray-700'
+      case 'superadmin': return 'danger'
+      case 'tenant_admin': return 'info'
+      default: return 'secondary'
     }
   }
 
@@ -259,15 +254,12 @@ export function UserManagementTable({
                     <td className="py-3 px-4 font-medium">{user.name}</td>
                     <td className="py-3 px-4 text-muted-foreground">{user.email}</td>
                     <td className="py-3 px-4">
-                      <Badge className={getRoleColor(user.role)}>
+                      <Badge variant={getRoleColor(user.role)}>
                         {getRoleLabel(normalizeUserRole(user.role))}
                       </Badge>
                     </td>
                     <td className="py-3 px-4">
-                      <Badge className={user.status === 'active' 
-                        ? 'bg-green-500/20 text-green-700 dark:text-green-400' 
-                        : 'bg-gray-500/20 text-gray-700 dark:text-gray-400'
-                      }>
+                      <Badge variant={user.status === 'active' ? 'success' : 'secondary'}>
                         {user.status}
                       </Badge>
                     </td>

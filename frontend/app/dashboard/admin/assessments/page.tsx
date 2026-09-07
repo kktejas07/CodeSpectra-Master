@@ -4,7 +4,8 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import {   BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users, Link2, LayoutDashboard } from 'lucide-react'
+import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users, Link2, LayoutDashboard } from 'lucide-react'
+import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
@@ -323,7 +324,7 @@ export default function AdminExamsPage() {
     { key: 'duration', header: 'Duration', sortable: true, cell: (r) => `${r.duration} min` },
     { key: 'questions', header: 'Questions', sortable: true, cell: (r) => r.questions },
     { key: 'status', header: 'Status', cell: (r) => (
-      <Badge className={r.published ? 'bg-green-500/20 text-green-700' : 'bg-gray-500/20 text-gray-700'}>
+      <Badge variant={r.published ? 'success' : 'secondary'}>
         {r.published ? 'Published' : 'Draft'}
       </Badge>
     )},
@@ -424,9 +425,7 @@ export default function AdminExamsPage() {
       </div>
 
       {loading ? (
-        <div className="flex items-center justify-center py-16 text-muted-foreground">
-          <Loader2 className="h-5 w-5 animate-spin mr-2" />Loading assessments...
-        </div>
+        <SkeletonTable rows={5} />
       ) : (
         <DataTable
           columns={columns}

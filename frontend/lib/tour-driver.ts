@@ -201,6 +201,8 @@ let activeTourId: string | null = null
 // ponytail: registry of last-started steps per tour id, so replayTour works
 // with zero changes to the 15+ tour pages.
 const registry: Record<string, TourStep[]> = {}
+// Flag to suppress markTourSeen when destroying the old instance to replay.
+let replaying = false
 
 function getDriver(): Driver | null {
   if (typeof window === 'undefined' || typeof document === 'undefined') return null
@@ -219,9 +221,8 @@ function getDriver(): Driver | null {
       doneBtnText: 'Finish',
       onDestroyed: () => {
         // ponytail: mark seen on EVERY destroy (finish, X, overlay click) —
-        // otherwise a replayed/closed tour has its flag cleared and auto-starts
-        // again on the next visit, feeling completely broken.
-        if (activeTourId) markTourSeen(activeTourId)
+        // but NOT when we're destroying the old instance to replay.
+        if (!replaying && activeTourId) markTourSeen(activeTourId)
         activeTourId = null
       },
     })
@@ -235,6 +236,9 @@ export function startPageTour(tourId: string, steps: TourStep[]) {
   registry[tourId] = steps
   const d = getDriver()
   if (!d) return
+  // If the driver is active (stale overlay), destroy it first — but do NOT
+  // markTourSeen yet, because onDestroyed fires synchronously and would
+  // undo the clearTourSeen that replayPageTour just did.
   if (d.isActive()) d.destroy()
   activeTourId = tourId
   d.setSteps(toDriveSteps(steps))
@@ -250,7 +254,12 @@ export function replayPageTour(tourId: string): boolean {
   const steps = registry[tourId]
   if (!steps || steps.length === 0) return false
   clearTourSeen(tourId)
-  startPageTour(tourId, steps)
+  replaying = true
+  try {
+    startPageTour(tourId, steps)
+  } finally {
+    replaying = false
+  }
   return true
 }
 

@@ -34,6 +34,7 @@ import {
   ExternalLink,
   Save,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { Countdown } from '@/components/hackathons/countdown'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -320,8 +321,10 @@ export default function HackathonDetailPage({
 
   if (loading && !event) {
     return (
-      <div className="flex h-64 items-center justify-center text-muted-foreground">
-        <Loader2 className="mr-2 h-4 w-4 animate-spin" /> Loading event…
+      <div className="min-h-screen bg-background text-foreground space-y-8 p-6 md:p-10">
+        <SkeletonCard />
+        <SkeletonCard />
+        <SkeletonList count={3} />
       </div>
     )
   }

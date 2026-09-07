@@ -11,6 +11,7 @@ import {
   Shield, Copy, Eye, Download, ChevronDown, ChevronRight,
   FileText, CheckCircle, XCircle, Timer, Trophy,
 } from 'lucide-react'
+import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 
 interface Hackathon {
@@ -105,9 +106,7 @@ export default function HackathonReportPage({ params }: { params: Promise<{ id: 
   useEffect(() => { if (gate.ready) void load() }, [gate.ready, load])
 
   if (!gate.ready || loading) {
-    return <div className="flex min-h-[40vh] items-center justify-center gap-2 text-muted-foreground">
-      <Loader2 className="h-5 w-5 animate-spin" /> Loading report…
-    </div>
+    return <div className="space-y-6"><SkeletonStats /><SkeletonCard /><SkeletonTable rows={5} /></div>
   }
 
   if (!hackathon) {

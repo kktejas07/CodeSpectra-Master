@@ -25,6 +25,7 @@ import {
   Send,
   Check,
 } from 'lucide-react'
+import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface ExamOption {
   id: string
@@ -227,8 +228,8 @@ export default function BulkSchedulePage() {
     {
       key: 'status', header: 'Status', sortable: true,
       cell: r => r.status === 'valid'
-        ? <Badge className="bg-green-500/20 text-green-700 gap-1"><Check className="h-3 w-3" />Valid</Badge>
-        : <Badge className="bg-red-500/20 text-red-700 gap-1"><XCircle className="h-3 w-3" />{r.error}</Badge>,
+        ? <Badge variant="success" className="gap-1"><Check className="h-3 w-3" />Valid</Badge>
+        : <Badge variant="danger" className="gap-1"><XCircle className="h-3 w-3" />{r.error}</Badge>,
     },
   ]
 
@@ -348,8 +349,8 @@ export default function BulkSchedulePage() {
                 </p>
               </div>
               <div className="flex gap-3 text-sm">
-                <Badge className="bg-green-500/20 text-green-700">{validCount} valid</Badge>
-                {invalidCount > 0 && <Badge className="bg-red-500/20 text-red-700">{invalidCount} invalid</Badge>}
+                <Badge variant="success">{validCount} valid</Badge>
+                {invalidCount > 0 && <Badge variant="danger">{invalidCount} invalid</Badge>}
               </div>
             </div>
 

@@ -4,6 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Loader2, DollarSign, Users, TrendingUp, Activity } from 'lucide-react'
+import { SkeletonStats, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { getCurrencySymbol } from '@/lib/currency'
 
@@ -60,7 +61,7 @@ export default function AdminBillingPage() {
   }
 
   if (!gate.ready) return null
-  if (loading) return <div className="flex justify-center py-20"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>
+  if (loading) return <div className="space-y-6"><SkeletonStats /><SkeletonCard /><div className="grid gap-4 md:grid-cols-2"><SkeletonCard /><SkeletonCard /></div></div>
 
   const revDays = Object.entries(revenueByDay).sort(([a], [b]) => a.localeCompare(b))
   const maxRev = Math.max(...revDays.map(([, v]) => v), 1)
