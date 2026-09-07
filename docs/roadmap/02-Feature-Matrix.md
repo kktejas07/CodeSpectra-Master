@@ -2,7 +2,7 @@
 
 > **Auto-Generated**: Internal Engineering documentation.
 
-> **Auto-generated:** Based on codebase audit. Last updated: 2026-07-08.
+> **Auto-generated:** Based on codebase audit. Last updated: 2026-09-06 (rows touched since 2026-07-08 carry a ✓26 note; category rollups recounted 2026-09-06 from current row symbols: ✅=1, 🟡=0.5, ❌=0).
 > **Legend:** ✅ Complete | 🟡 Partial | ❌ Missing
 
 ---
@@ -15,14 +15,14 @@
 | Email/password signup | ✅ | P0 | `app/api/auth/signup/route.ts` — inserts into `user` collection |
 | Google OAuth | 🟡 | P1 | `auth-context.tsx:168` — client-side popup, no server-side sync |
 | GitHub OAuth | 🟡 | P1 | `auth-context.tsx:176` — same Google OAuth pattern |
-| Session management (JWT) | 🟡 | P0 | `lib/session.ts` — hardcoded fallback secret (#1 security issue) |
+| Session management (JWT) | ✅ | P0 | `lib/session.ts` — prod hard-fail when unset, Mongo-backed fallback secret ✓26 |
 | Session cookie | ✅ | P0 | `httpOnly`, `secure`, `sameSite: lax`, 7-day expiry |
-| 2FA (TOTP) | ❌ | P2 | Referenced in UI routes but no implementation found |
-| Email verification | ❌ | P2 | `emailVerified: false` on signup, no verification flow |
-| Password reset | 🟡 | P2 | `auth-context.tsx` calls Firebase; no self-contained flow |
-| Session revocation | ❌ | P2 | No token blacklist |
-| Rate limiting (login) | ❌ | P0 | No protection on auth endpoints |
-| Rate limiting (signup) | ❌ | P0 | No protection on signup endpoint |
+| 2FA (TOTP) | 🟡 | P2 | Setup/verify/disable/status routes + login `totpToken` exist; admin enforcement policy pending ✓26 |
+| Email verification | 🟡 | P2 | `verify-email` route enforces token + expiry; signup issues tokens ✓26 (needs email provider configured) |
+| Password reset | ✅ | P2 | Self-contained hashed-token email flow (`forgot-password` + `reset-password`) ✓26 |
+| Session revocation | ✅ | P2 | `session_version` bumped on signup/reset/change-password; logout clears cookie ✓26 |
+| Rate limiting (login) | ✅ | P0 | `rateLimitRedis` per-IP + per-email ✓26 |
+| Rate limiting (signup) | ✅ | P0 | `rateLimitRedis` per-IP ✓26 |
 | Account deletion | 🟡 | P3 | `admin.ts:150` — `deleteUserById` exists but no user-facing flow |
 | Firebase Auth integration | ✅ | P0 | `firebase.ts` + `firebase-admin.ts` — client + admin SDK |
 | Firebase config (dynamic) | ✅ | P2 | `api/firebase-config` route serves config from DB |
@@ -84,13 +84,13 @@
 | Claude Sonnet 4.5 integration | ✅ | P1 | Primary reasoning model |
 | Gemini 3 Flash integration | ✅ | P2 | Fast/cheap model for hints/analysis |
 | GPT-4o-mini integration | 🟡 | P2 | Via Vercel AI SDK, not FastAPI |
-| Rate limiting (AI endpoints) | ❌ | P0 | No rate limits on any AI endpoint |
+| Rate limiting (AI endpoints) | ✅ | P0 | Upstash Redis + edge + per-route limits ✓26 |
 | Cost tracking | ❌ | P1 | No per-user/per-request cost tracking |
 | Output schema validation | ❌ | P2 | Manual JSON parsing, no Zod/Pydantic validation |
 | Prompt injection detection | ❌ | P2 | No injection scanning |
-| RAG pipeline | 🟡 | P3 | Basic error-context in hints prompt, no vector search |
+| RAG pipeline | ✅ | P3 | `backend/rag.py` (Gemini embeddings + cosine search) wired into AI service ✓26 (in-memory search, not Atlas Vector Search) |
 | Semantic caching | ❌ | P3 | No AI response caching |
-| Model fallback chain | ❌ | P3 | Single model per endpoint, no failover |
+| Model fallback chain | ✅ | P3 | `provider-fallback.ts` — failover + backoff + rotation across 10+ providers ✓26 |
 
 ## Scanner (Static Analysis)
 
@@ -129,7 +129,7 @@
 | eSkill-style catalog (industries, levels, categories) | ✅ | P2 | `LEVELS`/`INDUSTRIES`/`ASSESSMENT_CATEGORIES` in `engineering-catalog.ts`; filters + form fields on `/dashboard/admin/question-bank` |
 | Exam taking flow | 🟡 | P2 | Routes exist, full flow not verified |
 | Certification management | 🟡 | P2 | `/dashboard/certifications` route exists |
-| Certificate generation | ❌ | P3 | Placeholder — no PDF/integration |
+| Certificate generation | 🟡 | P3 | Next verify flow + QR lib exist; legacy FastAPI cert router removed (had fake QR/PDF) — PDF issuance pending ✓26 |
 | Proctoring | 🟡 | P3 | `/api/proctor` route exists |
 | Identity verification flow | ✅ | P2 | `identity-verify` AI endpoint |
 | Coding tests (live) | 🟡 | P2 | Interview coding test flow |
@@ -144,12 +144,12 @@
 | Billing order persistence | ✅ | P1 | `db/billing.ts` — `billing_orders`, `billing_payments` |
 | Billing subscription persistence | ✅ | P1 | `billing_subscriptions` collection |
 | Plan catalog (Pro, Yearly, Packs) | ✅ | P1 | `db/billing.ts:64` — 3 plans defined |
-| Stripe checkout | ❌ | P2 | Returns 503 — `"Billing is not configured"` |
-| Stripe subscription | ❌ | P2 | Returns 503 — stub implementation |
-| Stripe webhook sync | ❌ | P2 | `stripe-webhook-sync.ts` — all functions throw |
-| Payment method management | ❌ | P2 | `/api/billing/payment-methods` — needs audit |
-| Invoice history | ❌ | P3 | `/api/billing/invoices` — needs audit |
-| Subscription cancellation | ❌ | P2 | Needs implementation |
+| Stripe checkout | ✅ | P2 | `PaymentService` — real checkout, 503 only when no provider configured ✓26 |
+| Stripe subscription | ✅ | P2 | Real subscription sync into shared billing collections ✓26 |
+| Stripe webhook sync | ✅ | P2 | `stripe-webhook-sync.ts` fully implemented (was DEAD stubs) ✓26 |
+| Payment method management | 🟡 | P2 | Provider adapters exist; UI flow partial ✓26 |
+| Invoice history | 🟡 | P3 | Persisted in `billing_payments`; history UI partial ✓26 |
+| Subscription cancellation | 🟡 | P2 | Cancel route exists behind provider config ✓26 |
 | Subscription management UI | 🟡 | P2 | `/dashboard/billing` route exists |
 | Pricing page | ✅ | P2 | `/dashboard/pricing` — display only |
 
@@ -184,7 +184,7 @@
 | GitHub token encryption | ✅ | P1 | `github-token-crypto.ts` — AES-256-GCM |
 | GitHub code review bot | ✅ | P2 | AI review on incoming PRs |
 | Razorpay payments | ✅ | P1 | Full implementation |
-| Stripe payments | ❌ | P2 | Stub — returns 503 |
+| Stripe payments | ✅ | P2 | Full implementation behind credentials config ✓26 |
 | Resend email | ✅ | P2 | `transactional-mail.ts` — production-ready |
 | SendGrid email | ✅ | P2 | `transactional-mail.ts` — production-ready |
 | Postal email | ✅ | P2 | `transactional-mail.ts` — production-ready |
@@ -203,8 +203,8 @@
 | Dockerfile (frontend) | ✅ | P0 | `frontend/Dockerfile` |
 | Dockerfile (backend) | ✅ | P0 | `backend/Dockerfile` |
 | Health checks | ✅ | P1 | Piston health check in compose |
-| GitHub Actions CI | ❌ | P2 | No CI/CD pipeline |
-| Test runner | ✅ | P1 | Vitest configured |
+| GitHub Actions CI | ✅ | P2 | `ci.yml` (lint + typecheck + tests on main) + doc-sync ✓26 |
+| Test runner | ✅ | P1 | Vitest configured + suites (grading, lesson-video, captions, quiz, syllabus) ✓26 |
 | ESLint | ✅ | P1 | `next lint` configured |
 | TypeScript strict mode | 🟡 | P1 | NOSONAR/nolint annotations suggest suppression |
 | Environment validation | 🟡 | P2 | Runtime checks for required env vars |
@@ -247,17 +247,17 @@
 
 | Category | Total Features | ✅ Complete | 🟡 Partial | ❌ Missing | Completion % |
 |----------|---------------|-------------|------------|------------|--------------|
-| Authentication | 14 | 5 | 5 | 4 | 54% |
-| Organizations | 5 | 1 | 3 | 1 | 30% |
+| Authentication | 15 | 10 | 5 | 0 | 83% |
+| Organizations | 8 | 7 | 1 | 0 | 94% |
 | Content | 10 | 7 | 3 | 0 | 85% |
 | Code Execution | 8 | 8 | 0 | 0 | 100% |
-| AI Features | 17 | 10 | 2 | 5 | 65% |
+| AI Features | 19 | 13 | 2 | 4 | 74% |
 | Scanner | 18 | 16 | 2 | 0 | 94% |
-| Assessments | 6 | 2 | 3 | 1 | 50% |
-| Billing | 12 | 6 | 1 | 5 | 54% |
-| Admin | 17 | 16 | 1 | 0 | 97% |
-| Integrations | 17 | 15 | 0 | 2 | 88% |
-| DevOps | 9 | 6 | 2 | 1 | 78% |
-| Hiring | 7 | 1 | 5 | 1 | 43% |
-| User Features | 14 | 11 | 3 | 0 | 89% |
-| **Total** | **154** | **104** | **30** | **20** | **78%** |
+| Assessments | 14 | 9 | 5 | 0 | 82% |
+| Billing | 14 | 10 | 4 | 0 | 86% |
+| Admin | 17 | 15 | 2 | 0 | 94% |
+| Integrations | 15 | 15 | 0 | 0 | 100% |
+| DevOps | 10 | 8 | 2 | 0 | 90% |
+| Hiring | 8 | 1 | 5 | 2 | 44% |
+| User Features | 15 | 13 | 2 | 0 | 93% |
+| **Total** | **171** | **132** | **33** | **6** | **87%** |

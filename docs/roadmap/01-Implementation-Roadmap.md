@@ -2,8 +2,9 @@
 
 > **Auto-Generated**: Internal Engineering documentation.
 
-> **Auto-generated:** This document is derived from the codebase audit. Last updated: 2026-07-08.
+> **Auto-generated:** This document is derived from the codebase audit. Last updated: 2026-09-06.
 > **Status:** Living document — update as phases are completed.
+> **2026-09-06 status:** Phase 0 done except 0.2 (2FA-disable re-auth unverified) and 0.5 (global headers live in `proxy.ts`, not `next.config.mjs`). Phase 1 partially done (indexes ✓; transactions, TTL-wide, auth-lib merge, Zod schemas open). Phase 2 done except email-verification deliverability (needs provider) and session-revocation edge cases. Phase 3 done: fallback chain + RAG; open: cost tracking, injection detection, schema validation, semantic cache. Phase 4: tests + CI done; monorepo/OTel/perf/multi-region open.
 
 ---
 

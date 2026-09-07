@@ -224,6 +224,19 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
     { key: { model: 1, timestamp: -1 } },
     { key: { provider: 1 } },
   ],
+  status_logs: [
+    // TTL: cron status snapshots expire after 30 days (requires BSON Date —
+    // see `createdAt` in app/api/cron/status-check/route.ts).
+    { key: { createdAt: -1 }, expireAfterSeconds: 30 * 24 * 60 * 60 },
+  ],
+  ai_cache: [
+    // TTL: cached AI completions expire after 7 days (BSON Date `createdAt`
+    // written by lib/ai/semantic-cache.ts).
+    { key: { createdAt: -1 }, expireAfterSeconds: 7 * 24 * 60 * 60 },
+  ],
+  ai_usage: [
+    { key: { createdAt: -1 }, expireAfterSeconds: 90 * 24 * 60 * 60 },
+  ],
 }
 
 async function main() {
@@ -244,6 +257,7 @@ async function main() {
           await col.createIndex(spec.key as IndexSpecification, {
             unique: spec.unique as boolean | undefined,
             sparse: spec.sparse as boolean | undefined,
+            expireAfterSeconds: spec.expireAfterSeconds as number | undefined,
             background: false,
           })
           process.stdout.write(`+${Object.keys(spec.key as Record<string, unknown>).join(',')} `)

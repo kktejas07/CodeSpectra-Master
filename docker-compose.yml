@@ -1,5 +1,7 @@
 services:
   piston:
+    # ponytail: intentionally :latest — ghcr.io/engineer-man/piston publishes no
+    # verifiable versioned tags (only `latest` on the package page as of 2026-09-06).
     image: ghcr.io/engineer-man/piston:latest
     container_name: codespectra-piston
     cap_add:
@@ -29,6 +31,9 @@ services:
         NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET: ${NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET}
         NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID: ${NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID}
         NEXT_PUBLIC_FIREBASE_APP_ID: ${NEXT_PUBLIC_FIREBASE_APP_ID}
+        DIDIT_API_KEY: ${DIDIT_API_KEY}
+        DIDIT_WEBHOOK_SECRET: ${DIDIT_WEBHOOK_SECRET}
+        DIDIT_WORKFLOW_ID: ${DIDIT_WORKFLOW_ID}
     container_name: codespectra-frontend
     ports:
       - "3000:80"
@@ -37,6 +42,13 @@ services:
     depends_on:
       piston:
         condition: service_healthy
+    # ponytail: node:22-alpine has no curl — busybox wget is the probe.
+    healthcheck:
+      test: ["CMD-SHELL", "wget -q -O- http://localhost:80/api/health >/dev/null 2>&1 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 60s
     restart: unless-stopped
 
   # Same image as frontend, no HTTP. Polls generation_jobs. 1 replica only.
@@ -60,7 +72,8 @@ services:
       - INTERNAL_BACKEND_URL=http://backend:8000
       - INTERNAL_BACKEND_SECRET=${INTERNAL_BACKEND_SECRET}
     depends_on:
-      - backend
+      backend:
+        condition: service_healthy
     restart: unless-stopped
     # ponytail: 1 replica. A second replica can race-claim; scale only after a Redis lock.
 
@@ -76,7 +89,28 @@ services:
     env_file:
       - ./backend/.env
     depends_on:
-      - frontend
+      frontend:
+        condition: service_healthy
+    # ponytail: python:3.12-slim ships neither curl nor wget — stdlib urllib is the probe.
+    healthcheck:
+      test: ["CMD-SHELL", "python -c \"import urllib.request; urllib.request.urlopen('http://localhost:8000/__proxy_health', timeout=5)\" || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 30s
+    restart: unless-stopped
+
+  livekit:
+    # ponytail: pinned to v1.13.6 (verified current on Docker Hub 2026-09-06);
+    # --dev is a documented dev choice (ephemeral keys, no TLS). Prod needs
+    # static keys via livekit.conf + TURN. No healthcheck: the image has no
+    # shell and LiveKit exposes no plain-HTTP health endpoint.
+    image: livekit/livekit-server:v1.13.6
+    container_name: codespectra-livekit
+    command: --dev
+    ports:
+      - "7880:7880"
+      - "50000-50010:50000-50010/udp"
     restart: unless-stopped
 
 volumes:

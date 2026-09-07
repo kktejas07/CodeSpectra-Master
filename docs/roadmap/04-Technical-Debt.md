@@ -2,8 +2,25 @@
 
 > **Auto-Generated**: Internal Engineering documentation.
 
-> **Auto-generated:** Based on codebase audit. Last updated: 2026-07-08.
+> **Auto-generated:** Based on codebase audit. Last updated: 2026-09-06.
 > **Priority:** CRITICAL > HIGH > MEDIUM > LOW
+
+---
+
+## Resolved 2026-09-06 (verified in code — rows below kept for history)
+
+| ID | Resolution |
+|---|---|
+| C01 (JWT fallback secret) | `session.ts` prod hard-fail + Mongo-backed fallback secret |
+| C03/C04 (login/signup rate limits) | `rateLimitRedis` per-IP (+per-email on login) |
+| C05 (AI rate limits) | Upstash Redis + edge + per-route AI limits |
+| H07/H08 (Stripe stubs) | Full `PaymentService` + real webhook sync; 503 only when unconfigured |
+| H09 (email verification) | Partial — verify route + signup tokens; needs email provider |
+| H10 (session revocation) | `session_version` enforced + bumped on password change; logout route |
+| M03 (indexes) | `scripts/create-indexes.ts` with `createIndex` calls |
+| L02 (tests) | Vitest suites (grading, lesson-video, captions, quiz, syllabus) green |
+| L03 (CI/CD) | `.github/workflows/ci.yml` + doc-sync |
+| L08 (model fallback) | `provider-fallback.ts` wired into AI backend |
 
 ---
 
