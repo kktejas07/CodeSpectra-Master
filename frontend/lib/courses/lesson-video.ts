@@ -552,6 +552,25 @@ const PROVIDER_MODELS: { provider: string; model: string; endpoint?: string }[] 
 
 let rr = 0
 
+// ponytail: free-tier provider keys are SHARED across every lesson of a job.
+// A 429 on any lesson means the keys are hot for all of them, so a lesson
+// that hits a rate limit parks a global cooldown that every subsequent
+// lesson waits out — otherwise each of the 72 lessons burns its own 60s
+// wait and hammers on, and the whole job fails in lockstep.
+let globalCooldownUntil = 0
+
+function noteGlobalRateLimit(waitMs: number) {
+  globalCooldownUntil = Math.max(globalCooldownUntil, Date.now() + waitMs)
+}
+
+async function waitForGlobalCooldown() {
+  const ms = globalCooldownUntil - Date.now()
+  if (ms > 0) {
+    console.log('[course-worker] global rate-limit cooldown, waiting', Math.ceil(ms / 1000), 's')
+    await new Promise((r) => setTimeout(r, ms))
+  }
+}
+
 /** Fail over across configured keys. Uses unified getApiKey() with round-robin. */
 async function completeWithFallback(args: Parameters<typeof backendComplete>[0]) {
   const primary = await platformModelOverrides()
@@ -570,6 +589,9 @@ async function completeWithFallback(args: Parameters<typeof backendComplete>[0])
 
   // Import the unified getApiKey utility
   const { getApiKey } = await import('@/lib/ai/get-api-key')
+
+  // Honor a cooldown parked by an earlier lesson's 429 before trying at all.
+  await waitForGlobalCooldown()
 
   for (const p of chain) {
     if (!p.provider || !p.model) continue
@@ -602,15 +624,25 @@ async function completeWithFallback(args: Parameters<typeof backendComplete>[0])
         // ponytail: one wait then retry same provider; spraying every key in 1s burns the shared 60/min
         if (waitSec && !waitedRateLimit) {
           waitedRateLimit = true
+          noteGlobalRateLimit((waitSec + 2) * 1000)
           console.log('[course-worker] rate limited, waiting', waitSec, 's then retry', id)
           await new Promise(r => setTimeout(r, (waitSec + 2) * 1000))
           seen.delete(id)
+        } else if (waitSec) {
+          // Already waited once this lesson — still park the cooldown so the
+          // NEXT lessons back off instead of burning their own waits.
+          noteGlobalRateLimit((waitSec + 2) * 1000)
         }
         continue
       }
       return res
     } catch (e: unknown) {
-      last = `${id}: ${e instanceof Error ? e.message : String(e)}`
+      const msg = e instanceof Error ? e.message : String(e)
+      last = `${id}: ${msg}`
+      // ponytail: 429s now propagate as thrown errors (backend no longer
+      // masks them as 500s) — park the global cooldown for those too.
+      const m = msg.match(/Try again in (\d+)s|rate limit[^a-z]|429/i)
+      if (m) noteGlobalRateLimit(((Number(m[1]) || 60) + 2) * 1000)
     }
   }
   throw new Error(`All LLM providers failed. Last: ${last}`)

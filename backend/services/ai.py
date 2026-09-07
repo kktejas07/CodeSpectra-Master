@@ -231,9 +231,11 @@ async def handle_complete(request: Request, req: CompleteReq) -> dict[str, Any]:
                     elif isinstance(ev, StreamDone):
                         break
             except Exception as e2:
+                # ponytail: carry the underlying failure (truncated) so job
+                # logs stay diagnostic instead of a uniform "unavailable".
                 raise HTTPException(
                     status_code=500,
-                    detail="AI service temporarily unavailable. Please try again.",
+                    detail=f"AI service temporarily unavailable. Please try again. ({str(e2)[:200]})",
                 )
         else:
             raise HTTPException(status_code=500, detail="AI service temporarily unavailable. Please try again.")
