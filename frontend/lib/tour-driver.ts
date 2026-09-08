@@ -105,6 +105,7 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/pricing': 'pricing',
   '/dashboard/cad': 'cad',
   '/dashboard/challenges/[id]': 'challenge-detail',
+  '/dashboard/team/invites/[token]': 'team-invite',
 }
 
 /**

@@ -1128,4 +1128,19 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
     tips: ['Reply before resolving — the reporter gets notified of your response.'],
   },
+  'team-invite': {
+    title: 'Team Invitation',
+    about: 'You were invited to join an organization team — review and accept in one tap.',
+    features: [
+      {
+        title: 'Invite details',
+        text: 'Shows which organization and team invited you and who sent it.',
+      },
+      {
+        title: 'Accept invitation',
+        text: 'One tap joins the team and takes you to the dashboard.',
+      },
+    ],
+    tips: ['Only accept invites you recognize — team membership grants data access.'],
+  },
 }
