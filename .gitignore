@@ -104,3 +104,7 @@ frontend/extensions/*.crx
 frontend/extensions/*.pem
 # Environment files
 docker-compose.override.yml
+
+# Face-api model binaries mirrored at Docker build time (see frontend/Dockerfile
+# + scripts/fetch-face-models.cjs). Never commit ~7MB of weights.
+frontend/public/models/

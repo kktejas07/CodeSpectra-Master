@@ -11,9 +11,17 @@ interface FaceCameraProps {
   onError?: (err: Error) => void
 }
 
-const MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model'
+const CDN_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model'
+// ponytail: self-hosted first, CDN fallback. The Docker image bakes the 6
+// model files (~6.7MB) into public/models (see Dockerfile + .gitignore), so
+// production never touches a third-party CDN at verification time — no CDN
+// outage, throttling, or regional block can stall face capture. Local dev
+// machines without public/models fall through to jsdelivr automatically.
+const MODEL_URLS = ['/models', CDN_MODEL_URL]
 const DETECT_TIMEOUT_MS = 8000
 const CAPTURE_BUDGET_MS = 25000
+const MODEL_LOAD_TIMEOUT_MS = 45000
+const MODEL_SLOW_HINT_MS = 12000
 
 function detectOptions() {
   return new faceapi.TinyFaceDetectorOptions({ scoreThreshold: 0.35, inputSize: 320 })
@@ -25,11 +33,20 @@ function loadFaceModels() {
   if (!modelsPromise) {
     modelsPromise = (async () => {
       await (faceapi.tf as { ready?: () => Promise<void> }).ready?.()
-      await Promise.all([
-        faceapi.nets.tinyFaceDetector.loadFromUri(MODEL_URL),
-        faceapi.nets.faceLandmark68TinyNet.loadFromUri(MODEL_URL),
-        faceapi.nets.faceRecognitionNet.loadFromUri(MODEL_URL),
-      ])
+      let lastErr: unknown = null
+      for (const base of MODEL_URLS) {
+        try {
+          await Promise.all([
+            faceapi.nets.tinyFaceDetector.loadFromUri(base),
+            faceapi.nets.faceLandmark68TinyNet.loadFromUri(base),
+            faceapi.nets.faceRecognitionNet.loadFromUri(base),
+          ])
+          return
+        } catch (err) {
+          lastErr = err
+        }
+      }
+      throw lastErr instanceof Error ? lastErr : new Error('Face model download failed from all sources')
     })().catch((err) => {
       modelsPromise = null
       throw err
@@ -56,16 +73,27 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
   const runIdRef = useRef(0)
   const [status, setStatus] = useState<'initializing' | 'ready' | 'detecting' | 'captured' | 'error'>('initializing')
   const [message, setMessage] = useState('Loading face recognition models...')
+  // Bumped by retryInit to re-run the init effect below (full re-init:
+  // models are cached after first success, camera stream is re-requested).
+  const [initNonce, setInitNonce] = useState(0)
 
   onErrorRef.current = onError
   onCaptureRef.current = onCapture
 
   useEffect(() => {
     let mounted = true
+    // ponytail: staged init messages — model files are ~6-15MB from a CDN and
+    // previously the screen sat on one static line until they arrived (or never,
+    // with no timeout). The slow-hint timer proves the app is alive on bad networks.
+    let slowTimer: ReturnType<typeof setTimeout> | null = null
 
     async function start() {
       try {
-        await loadFaceModels()
+        slowTimer = setTimeout(() => {
+          if (mounted) setMessage('Still downloading recognition models — slow connection, please wait…')
+        }, MODEL_SLOW_HINT_MS)
+        await withTimeout(loadFaceModels(), MODEL_LOAD_TIMEOUT_MS, 'Model download timed out')
+        if (slowTimer) { clearTimeout(slowTimer); slowTimer = null }
         if (!mounted) return
         setMessage('Please grant camera permissions.')
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -78,14 +106,25 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
         }
         if (videoRef.current) {
           videoRef.current.srcObject = stream
-          await videoRef.current.play().catch(() => {})
+          // ponytail: play() rejections used to be swallowed (`.catch(()=>{})`),
+          // leaving the preview black and status stuck on initializing forever
+          // with zero feedback. A failed play is now a visible, retryable error.
+          await withTimeout(videoRef.current.play(), 8000, 'Camera preview failed to start')
         }
       } catch (err: any) {
+        if (slowTimer) { clearTimeout(slowTimer); slowTimer = null }
         console.error('Face camera init failed:', err)
         if (!mounted) return
         const denied = err?.name === 'NotAllowedError' || /permission|denied/i.test(err?.message || '')
+        const timedOut = /timed out|timeout/i.test(err?.message || '')
         setStatus('error')
-        setMessage(denied ? 'Camera access denied or unavailable.' : 'Failed to load biometric models.')
+        setMessage(
+          denied
+            ? 'Camera access denied or unavailable.'
+            : timedOut
+              ? 'Setup took too long (models or camera). Check your connection and retry.'
+              : 'Failed to load biometric models.',
+        )
         onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)))
       }
     }
@@ -94,13 +133,27 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
 
     return () => {
       mounted = false
+      if (slowTimer) clearTimeout(slowTimer)
       runIdRef.current += 1
       if (streamRef.current) {
         streamRef.current.getTracks().forEach((track) => track.stop())
         streamRef.current = null
       }
     }
-  }, [])
+  }, [initNonce])
+
+  /** Full re-initialization for the error-state Retry button (models are
+   *  cached after first success; camera stream is re-requested). */
+  const retryInit = () => {
+    if (streamRef.current) {
+      streamRef.current.getTracks().forEach((track) => track.stop())
+      streamRef.current = null
+    }
+    runIdRef.current += 1
+    setStatus('initializing')
+    setMessage('Loading face recognition models...')
+    setInitNonce((n) => n + 1)
+  }
 
   const handleVideoPlay = () => {
     setStatus((prev) => (prev === 'initializing' ? 'ready' : prev))
@@ -126,16 +179,23 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
       }
 
       try {
-        const detection = await faceapi
-          .detectSingleFace(videoRef.current, detectOptions())
-          .withFaceLandmarks(true) as {
-            detection: { box: { width: number; height: number } }
-            landmarks: {
-              getNose: () => Array<{ x: number }>
-              getLeftEye: () => Array<{ x: number }>
-              getRightEye: () => Array<{ x: number }>
-            }
-          } | undefined
+        // ponytail: a stalled TFJS backend hangs detectSingleFace FOREVER,
+        // freezing the loop with no message and never reaching the 25s budget.
+        // The 8s timeout turns a hang into an ordinary miss (loop continues).
+        const detection = (await withTimeout(
+          faceapi
+            .detectSingleFace(videoRef.current, detectOptions())
+            .withFaceLandmarks(true),
+          DETECT_TIMEOUT_MS,
+          'Face detection timed out',
+        )) as {
+          detection: { box: { width: number; height: number } }
+          landmarks: {
+            getNose: () => Array<{ x: number }>
+            getLeftEye: () => Array<{ x: number }>
+            getRightEye: () => Array<{ x: number }>
+          }
+        } | undefined
 
         if (runIdRef.current !== runId) return
 
@@ -168,10 +228,14 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
         }
 
         setMessage('Capturing biometric template...')
-        const fullDetection = await faceapi
-          .detectSingleFace(videoRef.current, detectOptions())
-          .withFaceLandmarks(true)
-          .withFaceDescriptor() as { descriptor: Float32Array } | undefined
+        const fullDetection = (await withTimeout(
+          faceapi
+            .detectSingleFace(videoRef.current, detectOptions())
+            .withFaceLandmarks(true)
+            .withFaceDescriptor(),
+          DETECT_TIMEOUT_MS,
+          'Descriptor timed out',
+        )) as { descriptor: Float32Array } | undefined
 
         if (runIdRef.current !== runId) return
 
@@ -289,8 +353,8 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
         )}
 
         {status === 'error' && (
-          <Button onClick={resetCapture} className="w-full gap-2">
-            <RefreshCw className="w-4 h-4" />
+          <Button onClick={retryInit} className="w-full gap-2">
+            <RefreshCw className="h-4 w-4" />
             Retry Capture
           </Button>
         )}

@@ -28,6 +28,8 @@ interface Exam {
   level: string
   techStack?: string[]
   duration: number
+  starts_at?: string | null
+  ends_at?: string | null
   questions: number
   published: boolean
   attempts: number
@@ -78,6 +80,9 @@ export default function AdminExamsPage() {
   const [level, setLevel] = useState('Beginner')
   const [techStack, setTechStack] = useState('')
   const [duration, setDuration] = useState(60)
+  const [startsAt, setStartsAt] = useState('')
+  const [endsAt, setEndsAt] = useState('')
+  const [requireTokenLinks, setRequireTokenLinks] = useState(false)
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
   const [accessType, setAccessType] = useState<'invite_only' | 'open'>('invite_only')
@@ -85,6 +90,19 @@ export default function AdminExamsPage() {
   const [branch, setBranch] = useState('')
   const [screeningType, setScreeningType] = useState('mixed')
   const [saving, setSaving] = useState(false)
+
+  // Share-link dialog state (replaces immediate ?share=true copy)
+  const [isLinkOpen, setIsLinkOpen] = useState(false)
+  const [linkExam, setLinkExam] = useState<Exam | null>(null)
+  const [linkType, setLinkType] = useState<'public' | 'invited'>('public')
+  const [linkEmail, setLinkEmail] = useState('')
+  const [linkPreset, setLinkPreset] = useState<'1h' | '24h' | '7d' | '30d' | 'never' | 'custom'>('7d')
+  const [linkCustom, setLinkCustom] = useState('')
+  const [linkMaxUses, setLinkMaxUses] = useState('')
+  const [linkCreating, setLinkCreating] = useState(false)
+  const [linkCreatedUrl, setLinkCreatedUrl] = useState<string | null>(null)
+  const [linkRows, setLinkRows] = useState<{ id: string; type: string; token: string; url: string; expires_at: string | null; max_uses: number | null; used_count: number; revoked: boolean; created_at: string }[]>([])
+  const [linkLoading, setLinkLoading] = useState(false)
 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -153,6 +171,9 @@ export default function AdminExamsPage() {
     setLevel('Beginner')
     setTechStack('')
     setDuration(60)
+    setStartsAt('')
+    setEndsAt('')
+    setRequireTokenLinks(false)
     setQuestions(0)
     setPublished(false)
     setAccessType('invite_only')
@@ -169,6 +190,8 @@ export default function AdminExamsPage() {
     setLevel(exam.level)
     setTechStack((exam.techStack || []).join(', '))
     setDuration(exam.duration)
+    setStartsAt(exam.starts_at ? new Date(exam.starts_at).toISOString().slice(0, 16) : '')
+    setEndsAt(exam.ends_at ? new Date(exam.ends_at).toISOString().slice(0, 16) : '')
     setQuestions(exam.questions)
     setPublished(exam.published)
     setDegreeType(exam.degree_type || '')
@@ -182,6 +205,12 @@ export default function AdminExamsPage() {
       addToast({ type: 'error', title: 'Title is required' })
       return
     }
+    const startsIso = startsAt ? new Date(startsAt).toISOString() : null
+    const endsIso = endsAt ? new Date(endsAt).toISOString() : null
+    if (startsIso && endsIso && new Date(endsIso).getTime() <= new Date(startsIso).getTime()) {
+      addToast({ type: 'error', title: 'Deadline must be after the available-from time' })
+      return
+    }
     
     setSaving(true)
     const       payload = { 
@@ -189,7 +218,10 @@ export default function AdminExamsPage() {
       subject, 
       level, 
       techStack: techStack.split(',').map(s => s.trim()).filter(Boolean),
-      duration, 
+      duration,
+      starts_at: startsIso,
+      ends_at: endsIso,
+      require_token_links: requireTokenLinks,
       questions, 
       published,
       access_type: accessType,
@@ -215,6 +247,16 @@ export default function AdminExamsPage() {
           body: JSON.stringify(payload)
         })
         const newExam = await createRes.json()
+        // POST builds the doc from known fields only — persist the window
+        // via PATCH (pass-through) so create+edit stay in parity.
+        if (startsIso || endsIso) {
+          await csrfFetch('/api/exams', {
+            method: 'PATCH',
+            headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
+            body: JSON.stringify({ id: newExam.id, starts_at: startsIso, ends_at: endsIso })
+          })
+        }
         addToast({ type: 'success', title: 'Draft generated! Redirecting to review...' })
         setIsModalOpen(false)
         router.push(`/dashboard/admin/assessments/${newExam.id}/edit`)
@@ -311,8 +353,89 @@ export default function AdminExamsPage() {
     addToast({ type: sent > 0 ? 'success' : 'error', title: `${sent} sent, ${failed} failed` })
   }
 
-  const columns: DataTableColumn<Exam>[] = [
-    { key: 'title', header: 'Title', sortable: true, cell: (r) => <span className="font-medium">{r.title}</span> },
+  const openLinkDialog = (exam: Exam) => {
+    setLinkExam(exam)
+    setLinkType('public')
+    setLinkEmail('')
+    setLinkPreset('7d')
+    setLinkCustom('')
+    setLinkMaxUses('')
+    setLinkCreatedUrl(null)
+    setIsLinkOpen(true)
+    void fetchLinks(exam.id)
+  }
+
+  const fetchLinks = async (examId: string) => {
+    setLinkLoading(true)
+    try {
+      const res = await fetch(`/api/exams/${examId}/links`, { credentials: 'include' })
+      const json = await res.json()
+      setLinkRows(json.data || [])
+    } catch { /* ignore */ }
+    finally { setLinkLoading(false) }
+  }
+
+  const linkExpiryIso = (): string | null => {
+    if (linkPreset === 'never') return null
+    if (linkPreset === 'custom') return linkCustom ? new Date(linkCustom).toISOString() : null
+    const hours = linkPreset === '1h' ? 1 : linkPreset === '24h' ? 24 : linkPreset === '7d' ? 168 : 720
+    return new Date(Date.now() + hours * 3600000).toISOString()
+  }
+
+  const linkExpirySummary = (iso: string | null): string => {
+    if (!iso) return 'never expires'
+    return `expires ${new Date(iso).toLocaleString()}`
+  }
+
+  const handleCreateLink = async () => {
+    if (!linkExam) return
+    if (linkType === 'invited' && !linkEmail.includes('@')) {
+      addToast({ type: 'error', title: 'Email is required for invited links' })
+      return
+    }
+    setLinkCreating(true)
+    try {
+      const expiresAt = linkExpiryIso()
+      const res = await csrfFetch(`/api/exams/${linkExam.id}/links`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify({
+          type: linkType,
+          email: linkType === 'invited' ? linkEmail.trim() : undefined,
+          expires_at: expiresAt,
+          max_uses: linkMaxUses ? parseInt(linkMaxUses) || null : null,
+        }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Failed to create link')
+      setLinkCreatedUrl(json.url)
+      navigator.clipboard.writeText(json.url).catch(() => {})
+      addToast({ type: 'success', title: `Link copied — ${linkExpirySummary(json.expires_at)}${json.max_uses ? `, max ${json.max_uses} uses` : ''}` })
+      void fetchLinks(linkExam.id)
+    } catch (err: unknown) {
+      addToast({ type: 'error', title: err instanceof Error ? err.message : 'Failed to create link' })
+    } finally {
+      setLinkCreating(false)
+    }
+  }
+
+  const handleRevokeLink = async (linkId: string) => {
+    if (!linkExam) return
+    try {
+      const res = await csrfFetch(`/api/exams/${linkExam.id}/links?linkId=${linkId}`, {
+        method: 'DELETE',
+        credentials: 'include',
+      })
+      if (!res.ok) throw new Error('Failed to revoke link')
+      addToast({ type: 'success', title: 'Link revoked' })
+      void fetchLinks(linkExam.id)
+    } catch {
+      addToast({ type: 'error', title: 'Failed to revoke link' })
+    }
+  }
+
+  const columns: DataTableColumn<Exam>[] = [    { key: 'title', header: 'Title', sortable: true, cell: (r) => <span className="font-medium">{r.title}</span> },
     { key: 'subject', header: 'Subject', sortable: true, cell: (r) => r.subject },
     { key: 'tenant', header: 'Organization', sortable: true, cell: (r) => {
       if (!r.tenant_id) return <span className="text-muted-foreground">Platform</span>
@@ -351,11 +474,7 @@ export default function AdminExamsPage() {
               <Users className="h-4 w-4" /> Bulk Invite
             </DropdownMenuItem>
             {r.published && (
-              <DropdownMenuItem onClick={() => {
-                const url = `${window.location.origin}/assessment/${r.id}?share=true`
-                navigator.clipboard.writeText(url)
-                addToast({ type: 'success', title: 'Public link copied!' })
-              }} className="gap-2">
+              <DropdownMenuItem onSelect={() => setTimeout(() => openLinkDialog(r), 0)} className="gap-2">
                 <Link2 className="h-4 w-4" /> Copy Public Link
               </DropdownMenuItem>
             )}
@@ -504,6 +623,27 @@ export default function AdminExamsPage() {
               <Label htmlFor="duration">Duration (mins)</Label>
               <Input id="duration" type="number" min="0" value={duration} onChange={(e) => setDuration(parseInt(e.target.value) || 0)} />
             </div>
+            <div className="grid gap-2">
+              <Label htmlFor="startsAt">Available from (UTC, optional)</Label>
+              <Input id="startsAt" type="datetime-local" value={startsAt} onChange={(e) => setStartsAt(e.target.value)} />
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="endsAt">Submit-by deadline (UTC, optional)</Label>
+              <Input id="endsAt" type="datetime-local" value={endsAt} onChange={(e) => setEndsAt(e.target.value)} />
+            </div>
+            <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireTokenLinks">
+              <input
+                id="requireTokenLinks"
+                type="checkbox"
+                checked={requireTokenLinks}
+                onChange={(e) => setRequireTokenLinks(e.target.checked)}
+                className="mt-1 h-4 w-4 rounded border-input accent-primary"
+              />
+              <span>
+                Require personal links
+                <span className="block text-xs text-muted-foreground font-normal">Disable legacy ?share=true URLs — candidates must use token links or invites.</span>
+              </span>
+            </label>
             <div className="grid gap-2">
               <Label htmlFor="questions">Questions</Label>
               <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
@@ -729,6 +869,133 @@ export default function AdminExamsPage() {
               </Button>
             </DialogFooter>
           )}
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={isLinkOpen} onOpenChange={setIsLinkOpen}>
+        <DialogContent className="sm:max-w-160 max-h-[90vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Share Links — {linkExam?.title}</DialogTitle>
+          </DialogHeader>
+          <div className="py-4 space-y-5">
+            <div className="grid gap-2">
+              <Label>Link type</Label>
+              <div className="flex gap-2">
+                <button
+                  type="button"
+                  onClick={() => setLinkType('public')}
+                  className={`px-3 py-1.5 text-xs rounded-md border font-medium transition-colors ${
+                    linkType === 'public'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                  }`}
+                >
+                  Public — anyone with the link
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setLinkType('invited')}
+                  className={`px-3 py-1.5 text-xs rounded-md border font-medium transition-colors ${
+                    linkType === 'invited'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                  }`}
+                >
+                  Invited — single candidate
+                </button>
+              </div>
+            </div>
+            {linkType === 'invited' && (
+              <div className="grid gap-2">
+                <Label htmlFor="linkEmail">Candidate email *</Label>
+                <Input id="linkEmail" type="email" value={linkEmail} onChange={(e) => setLinkEmail(e.target.value)} placeholder="candidate@example.com" />
+              </div>
+            )}
+            <div className="grid gap-2">
+              <Label>Expiry</Label>
+              <div className="flex gap-2 flex-wrap">
+                {([['1h', '1 hour'], ['24h', '24 hours'], ['7d', '7 days'], ['30d', '30 days'], ['never', 'Never']] as const).map(([val, label]) => (
+                  <button
+                    key={val}
+                    type="button"
+                    onClick={() => setLinkPreset(val)}
+                    className={`px-3 py-1.5 text-xs rounded-md border font-medium transition-colors ${
+                      linkPreset === val
+                        ? 'bg-primary text-primary-foreground border-primary'
+                        : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                    }`}
+                  >
+                    {label}
+                  </button>
+                ))}
+                <button
+                  type="button"
+                  onClick={() => setLinkPreset('custom')}
+                  className={`px-3 py-1.5 text-xs rounded-md border font-medium transition-colors ${
+                    linkPreset === 'custom'
+                      ? 'bg-primary text-primary-foreground border-primary'
+                      : 'bg-card text-muted-foreground border-border hover:border-primary/50'
+                  }`}
+                >
+                  Custom
+                </button>
+              </div>
+              {linkPreset === 'custom' && (
+                <Input type="datetime-local" value={linkCustom} onChange={(e) => setLinkCustom(e.target.value)} className="max-w-60" />
+              )}
+            </div>
+            <div className="grid gap-2">
+              <Label htmlFor="linkMaxUses">Max uses <span className="text-muted-foreground">(optional)</span></Label>
+              <Input id="linkMaxUses" type="number" min="1" value={linkMaxUses} onChange={(e) => setLinkMaxUses(e.target.value)} placeholder="Unlimited" className="max-w-40" />
+            </div>
+            {linkCreatedUrl && (
+              <div className="space-y-2">
+                <Label>New link</Label>
+                <div className="flex gap-2">
+                  <Input readOnly value={linkCreatedUrl} className="font-mono text-sm" />
+                  <Button variant="secondary" onClick={() => {
+                    navigator.clipboard.writeText(linkCreatedUrl)
+                    addToast({ type: 'success', title: 'Copied!' })
+                  }}>
+                    <Copy className="h-4 w-4" />
+                  </Button>
+                </div>
+              </div>
+            )}
+            <div className="space-y-2">
+              <Label>Active links for this assessment</Label>
+              {linkLoading ? (
+                <p className="text-sm text-muted-foreground">Loading links...</p>
+              ) : linkRows.length === 0 ? (
+                <p className="text-sm text-muted-foreground">No links yet. Create one below.</p>
+              ) : (
+                <div className="border rounded-md divide-y divide-border/40 max-h-56 overflow-y-auto">
+                  {linkRows.map((l) => (
+                    <div key={l.id} className="flex items-center gap-2 px-3 py-2 text-xs">
+                      <Badge variant={l.revoked ? 'destructive' : 'secondary'}>{l.revoked ? 'revoked' : l.type}</Badge>
+                      <span className="text-muted-foreground truncate flex-1" title={l.url}>{l.url}</span>
+                      <span className="text-muted-foreground whitespace-nowrap">
+                        {l.expires_at ? new Date(l.expires_at).toLocaleString() : 'never'}
+                        {l.max_uses ? ` · ${l.used_count}/${l.max_uses}` : ` · ${l.used_count} uses`}
+                      </span>
+                      {!l.revoked && (
+                        <Button size="sm" variant="ghost" className="h-7 text-destructive" onClick={() => handleRevokeLink(l.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsLinkOpen(false)}>Close</Button>
+            <Button onClick={handleCreateLink} disabled={linkCreating || (linkType === 'invited' && !linkEmail.includes('@'))}>
+              {linkCreating ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Copy className="h-4 w-4 mr-2" />}
+              Create & Copy Link
+            </Button>
+          </DialogFooter>
         </DialogContent>
       </Dialog>
     </div>

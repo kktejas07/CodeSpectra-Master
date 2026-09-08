@@ -84,6 +84,8 @@ interface Exam {
   title: string
   level: string
   duration: number
+  starts_at?: string | null
+  ends_at?: string | null
   access_type?: 'invite_only' | 'open'
   questionList: Question[]
 }
@@ -100,6 +102,7 @@ export default function CandidateAssessmentPage() {
   const [exam, setExam] = useState<Exam | null>(null)
   const [loading, setLoading] = useState(true)
   const [accessError, setAccessError] = useState<string | null>(null)
+  const [windowState, setWindowState] = useState<'open' | 'not_started' | 'closed' | null>(null)
 
   // Assessment State — all hooks declared unconditionally (React rule of hooks)
   const [hasStarted, setHasStarted] = useState(false)
@@ -218,6 +221,45 @@ interface RunResult {
           return
         }
 
+        // Availability-window entry gate (displayed before any access logic;
+        // hard enforcement happens server-side in the submit route).
+        const nowMs = Date.now()
+        const startsMs = found.starts_at ? new Date(found.starts_at).getTime() : NaN
+        const endsMs = found.ends_at ? new Date(found.ends_at).getTime() : NaN
+        if (!Number.isNaN(endsMs) && nowMs > endsMs) {
+          setExam(found)
+          setWindowState('closed')
+          setLoading(false)
+          return
+        }
+        if (!Number.isNaN(startsMs) && nowMs < startsMs) {
+          setExam(found)
+          setWindowState('not_started')
+          setLoading(false)
+          return
+        }
+        setWindowState('open')
+
+        // Server-checked share-link validation (?link=TOKEN records live in
+        // assessment_links; revoked/expired/over-limit links are rejected
+        // here with no questions ever shown).
+        const linkToken = searchParams.get('link')
+        if (linkToken) {
+          try {
+            const linkRes = await fetch(`/api/exams/${params.id}/links?token=${encodeURIComponent(linkToken)}`)
+            if (!linkRes.ok) {
+              const linkErr = await linkRes.json().catch(() => ({}))
+              setAccessError(linkErr.error || 'This link has expired or been revoked.')
+              setLoading(false)
+              return
+            }
+          } catch {
+            setAccessError('This link could not be verified. Please try again.')
+            setLoading(false)
+            return
+          }
+        }
+
         const accType = found.access_type || 'invite_only'
         const inviteToken = searchParams.get('inviteToken')
         const inviteEmail = searchParams.get('inviteEmail')
@@ -231,7 +273,17 @@ interface RunResult {
         }
 
         // Share link: skip invite-only check. Track public link view.
-        if (isShareLink) {
+        // Hard guarantee: exams with require_token_links reject bare
+        // ?share=true — a validated ?link= token (above) or invite is mandatory.
+        if (isShareLink && !linkToken) {
+          const needsToken = (found as { require_token_links?: boolean }).require_token_links === true
+          if (needsToken) {
+            setAccessError('This assessment requires a personal link. Legacy share links are disabled — ask your administrator for an invite link.')
+            setLoading(false)
+            return
+          }
+          csrfFetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
+        } else if (isShareLink) {
           csrfFetch(`/api/exams/${params.id}/public-view`, { method: 'POST', credentials: 'include' }).catch(() => {})
         } else if (accType === 'invite_only') {
           if (!inviteToken) {
@@ -493,6 +545,29 @@ interface RunResult {
   }
 
   if (!exam) return null
+
+  if (windowState === 'closed' || windowState === 'not_started') {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background p-4">
+        <Card className="max-w-md w-full p-8 text-center border-destructive/30 space-y-4">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-destructive/10 mx-auto text-destructive">
+            <ShieldX className="h-7 w-7" />
+          </div>
+          <h1 className="text-xl font-bold">{windowState === 'closed' ? 'Assessment Closed' : 'Assessment Not Yet Open'}</h1>
+          <p className="text-sm text-muted-foreground">
+            {windowState === 'closed'
+              ? `This assessment closed on ${exam.ends_at ? new Date(exam.ends_at).toLocaleString() : 'its deadline'}. Please contact your administrator if you need access.`
+              : `This assessment opens on ${exam.starts_at ? new Date(exam.starts_at).toLocaleString() : 'its scheduled start time'}. Please check back then.`}
+          </p>
+          <div className="pt-2">
+            <Link href="/">
+              <Button variant="outline" className="w-full">Return Home</Button>
+            </Link>
+          </div>
+        </Card>
+      </div>
+    )
+  }
 
   if (accessError) {
     return (

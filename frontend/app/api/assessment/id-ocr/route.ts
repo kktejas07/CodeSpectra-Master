@@ -93,6 +93,10 @@ export async function POST(req: Request) {
       })
     }
 
+    // Names read but NOT matching the account. Only treated as a genuine
+    // mismatch when two providers independently agree; otherwise the card
+    // was simply unreadable (hallucination risk) → ask for a retake.
+    const mismatchNames: string[] = []
     for (const attempt of attempts) {
       try {
         const extracted = await attempt.run()
@@ -104,9 +108,10 @@ export async function POST(req: Request) {
           if (isFuzzyNameMatch(extracted.name, userName)) {
             return NextResponse.json({ success: true, message: 'ID verified successfully (AI)' })
           }
-          return NextResponse.json({
-            error: `ID name (${extracted.name}) does not match account name (${userName}). Please use a valid ID or try again.`,
-          }, { status: 400 })
+          // ponytail: vision models hallucinate plausible names (e.g. invented
+          // names on blurry cards) — NEVER treat one provider's reading as fact.
+          // Collect it and let a second provider confirm before crying mismatch.
+          mismatchNames.push(extracted.name)
         }
       } catch (e) {
         console.error(`[id-ocr] ${attempt.label} failed:`, e)
@@ -142,9 +147,7 @@ export async function POST(req: Request) {
             if (isFuzzyNameMatch(extracted.name, userName)) {
               return NextResponse.json({ success: true, message: 'ID verified successfully (AI)' })
             }
-            return NextResponse.json({
-              error: `ID name (${extracted.name}) does not match account name (${userName}). Please use a valid ID or try again.`,
-            }, { status: 400 })
+            mismatchNames.push(extracted.name)
           }
         } else {
           console.error(`[id-ocr] gemini HTTP ${geminiRes.status}`)
@@ -159,6 +162,29 @@ export async function POST(req: Request) {
     // no response → Cloudflare 524). All AI providers failed, so answer fast
     // with a clean error instead of hanging. Re-add Tesseract only if we make
     // tesseract.js ship its worker core:true with the bundle.
+    //
+    // Resolve collected mismatches: two providers agreeing with each other but
+    // not the account = genuine wrong-ID (400). A single unconfirmed reading
+    // (or providers disagreeing) = unreadable card, ask for a retake (422) —
+    // never present one model's guess as ground truth.
+    if (mismatchNames.length >= 2) {
+      const [m0, m1] = mismatchNames
+      const agree = isFuzzyNameMatch(m0, m1) || isFuzzyNameMatch(m1, m0)
+      if (agree) {
+        return NextResponse.json({
+          error: `The name on this ID does not match your account name (${userName}). Two independent reads both saw "${m0}". Please use your own valid government ID.`,
+          readName: m0,
+          mismatch: true,
+        }, { status: 400 })
+      }
+    }
+    if (mismatchNames.length >= 1) {
+      return NextResponse.json({
+        error: `We couldn't clearly read the name on this ID (account: ${userName}). Hold it steady in good light with all text visible, then try again.`,
+        readName: mismatchNames[0],
+        uncertain: true,
+      }, { status: 422 })
+    }
     return NextResponse.json({ error: 'ID verification service could not read the ID. Please try again.' }, { status: 422 })
 
   } catch (error: any) {

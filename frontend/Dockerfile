@@ -46,6 +46,11 @@ COPY package.json yarn.lock ./
 COPY patches ./patches
 RUN yarn install --frozen-lockfile
 COPY . .
+# ponytail: self-host face-api models (~6.7MB) so verification never depends
+# on a third-party CDN at runtime (outages/throttling/regional blocks stalled
+# face capture with zero feedback). Best-effort: the loader falls back to
+# jsdelivr if any file is missing, so a mirror hiccup can't break the build.
+RUN mkdir -p public/models && for f in tiny_face_detector_model-weights_manifest.json tiny_face_detector_model.bin face_landmark_68_tiny_model-weights_manifest.json face_landmark_68_tiny_model.bin face_recognition_model-weights_manifest.json face_recognition_model.bin; do wget -q -O "public/models/$f" "https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model/$f" || echo "WARN: face model $f not mirrored, CDN fallback covers runtime"; done; ls -la public/models/
 # markdown docs must be present at /app/docs (mirrored into frontend/docs for this context)
 RUN test -d docs/public || (echo "ERROR: docs/public missing — run scripts/sync-docs.cjs before build" && exit 1)
 RUN chmod +x scripts/docker-entrypoint.sh \

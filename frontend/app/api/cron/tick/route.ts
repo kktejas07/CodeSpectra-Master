@@ -20,6 +20,7 @@
  */
 import { NextRequest, NextResponse } from 'next/server'
 import { runDueWorkflows, startSchedulerLoop } from '@/lib/scheduler'
+import { getMongoDb } from '@/lib/mongodb'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -46,7 +47,23 @@ async function handle(req: NextRequest) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
   const report = await runDueWorkflows(new Date())
-  return NextResponse.json({ ok: true, ...report })
+  // Auto-close: flip available exams past their submit-by deadline to
+  // archived so stale assessments disappear from lists. Idempotent by
+  // construction (only matches status 'available'); ISO strings compare
+  // lexicographically, and docs without ends_at never match $lt.
+  let autoClosed = 0
+  try {
+    const db = await getMongoDb()
+    const nowIso = new Date().toISOString()
+    const r = await db.collection('exams').updateMany(
+      { status: 'available', ends_at: { $lt: nowIso } },
+      { $set: { status: 'archived', updatedAt: nowIso } },
+    )
+    autoClosed = r.modifiedCount || 0
+  } catch {
+    // Never fail the tick over housekeeping.
+  }
+  return NextResponse.json({ ok: true, ...report, autoClosedExams: autoClosed })
 }
 
 export async function POST(req: NextRequest) {
