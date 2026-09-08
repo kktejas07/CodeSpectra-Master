@@ -719,6 +719,28 @@ export default function ExamReviewPage() {
               No questions yet. Click "Add Question" to create one manually.
             </div>
           )}
+          {/* ponytail: the API strips questionList for non-admin sessions, so
+              exam.questions > 0 with an empty list means a stale/forbidden
+              session — not an empty exam. Say so instead of misleading. */}
+          {exam.questionList.length === 0 && (exam.questions || 0) > 0 && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+              <p className="font-medium text-amber-700 dark:text-amber-400">
+                Expected {exam.questions} questions, but the server sent none.
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                This usually means your session lost admin rights. Try reloading — if it
+                persists, sign out and sign back in, then reopen this page.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => void fetchExam()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Retry
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => router.push('/auth/login')}>
+                  Sign in again
+                </Button>
+              </div>
+            </div>
+          )}
         </div>
       </div>
 
