@@ -45,14 +45,14 @@ export default function ReferralsPage() {
       const referralsTour: TourStep[] = [
         {
           target: '[data-tour="referrals-header"]',
-          title: 'Invite and earn',
-          description: 'Invite friends and earn XP plus commission rewards.',
+          title: 'Invite friends, earn rewards',
+          description: 'This page lets users invite friends to earn XP and commission rewards.',
           position: 'bottom',
         },
         {
           target: '[data-tour="referrals-action"]',
-          title: 'Your referral code',
-          description: 'Generate your code, share the link, and track rewards here.',
+          title: 'Generate code, track rewards',
+          description: 'Generate your referral code, copy the link to share, then track referrals and rewards below; check statuses here.',
           position: 'top',
         },
       ]

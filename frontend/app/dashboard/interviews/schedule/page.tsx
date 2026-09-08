@@ -45,20 +45,20 @@ export default function ScheduleInterviewPage() {
       const interviewScheduleTour: TourStep[] = [
         {
           target: '[data-tour="interview-schedule-header"]',
-          title: 'Schedule an interview',
-          description: 'Set up a new interview by filling in the details below.',
+          title: 'Book Interviews For Candidates',
+          description: 'This page books a new interview slot for a registered candidate.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-schedule-submit"]',
-          title: 'Send the invite',
-          description: 'Click here to schedule the interview and notify the candidate.',
+          title: 'Schedule Interview Now',
+          description: 'Click Schedule Interview to book the slot and open the interview room.',
           position: 'top',
         },
         {
           target: '[data-tour="interview-schedule-form"]',
-          title: 'Interview details',
-          description: 'Add the title, role, candidate email, and time slot for the session.',
+          title: 'Enter Accurate Candidate Details',
+          description: 'Pro tip: use a registered candidate email or scheduling fails.',
           position: 'top',
         },
       ]

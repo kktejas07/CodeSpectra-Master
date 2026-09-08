@@ -135,20 +135,20 @@ export default function IdentityVerificationPage() {
       const identityVerifyTour: TourStep[] = [
         {
           target: '[data-tour="identity-verify-header"]',
-          title: 'Verify your identity',
-          description: 'One-time verification unlocks exams, assessments, and all gated features.',
+          title: 'Verify Identity to Unlock',
+          description: 'This page runs one-time KYC for every user to unlock exams and gated features.',
           position: 'bottom',
         },
         {
           target: '[data-tour="identity-verify-start"]',
-          title: 'Start verification',
-          description: 'Click here to open the secure verification flow; results usually arrive in under a minute.',
+          title: 'Start Verification Flow',
+          description: 'Start verification to open the secure Didit page and get results in seconds.',
           position: 'top',
         },
         {
           target: '[data-tour="identity-verify-features"]',
-          title: "What's checked",
-          description: 'ID document, liveness, face match, and fraud signals are all covered in one pass.',
+          title: 'Tip: Prepare ID First',
+          description: 'Tip: keep a government ID and selfie ready — this panel lists the ID, liveness, face, and fraud checks.',
           position: 'top',
         },
       ]

@@ -155,20 +155,20 @@ export default function InterviewPrepPage() {
       const interviewPrepTour: TourStep[] = [
         {
           target: '[data-tour="interview-prep-header"]',
-          title: 'Prep headquarters',
-          description: 'Browse 300+ frontend questions and generate AI quizzes from one place.',
+          title: 'Interview Prep Home',
+          description: 'This page prepares frontend candidates with 300+ questions and AI quizzes in one place.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-prep-actions"]',
-          title: 'Browse or quiz',
-          description: 'Switch between browsing questions and generating a custom AI quiz.',
+          title: 'Browse Or Quiz',
+          description: 'Switch tabs to browse questions or generate a custom AI quiz.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-prep-list"]',
-          title: 'Pick a question',
-          description: 'Click any question to reveal its AI-generated answer and key points.',
+          title: 'Study Answers Deeply',
+          description: 'Tip: open one question at a time and study its AI answer, key points, and follow-up.',
           position: 'top',
         },
       ]

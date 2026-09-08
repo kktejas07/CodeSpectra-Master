@@ -48,20 +48,20 @@ export default function MockTestsPage() {
       const mockTestsTour: TourStep[] = [
         {
           target: '[data-tour="mock-tests-header"]',
-          title: 'AI-powered mock tests',
-          description: 'Practice role-based assessments generated dynamically by AI for top companies.',
+          title: 'Company Mock Test Library',
+          description: 'Browse AI-generated role tests for top companies, built for job seekers practicing interviews.',
           position: 'bottom',
         },
         {
           target: '[data-tour="mock-tests-create"]',
-          title: 'Create custom test',
+          title: 'Generate Custom Company Test',
           description: 'Generate a tailored test for any company and role for one AI credit.',
           position: 'left',
         },
         {
           target: '[data-tour="mock-tests-list"]',
-          title: 'Browse sample tests',
-          description: 'Pick a company card and start a test instantly.',
+          title: 'Start Sample Before Spending',
+          description: 'Pro tip: Start a Sample card first to preview the format before spending a credit on a custom test.',
           position: 'top',
         },
       ]

@@ -30,20 +30,20 @@ export default function MockTestSetupPage() {
       const mockTestDetailTour: TourStep[] = [
         {
           target: '[data-tour="mock-test-detail-header"]',
-          title: 'Configure your test',
-          description: 'Tell us your comfort level so AI generates questions at the right difficulty.',
+          title: 'Set Test Difficulty Level',
+          description: 'Configure this company role test for your interview prep so AI matches your level.',
           position: 'bottom',
         },
         {
           target: '[data-tour="mock-test-detail-levels"]',
-          title: 'Pick a difficulty',
-          description: 'Choose from Beginner to Expert based on your interview readiness.',
+          title: 'Pick Your Difficulty Card',
+          description: 'Select one card from Beginner to Expert to set question depth for your test.',
           position: 'top',
         },
         {
           target: '[data-tour="mock-test-detail-continue"]',
-          title: 'Start the test',
-          description: 'Continue to begin your AI-generated mock test.',
+          title: 'Continue to Start Test',
+          description: 'Where next: select a level first, then Continue to open your generated test.',
           position: 'top',
         },
       ]

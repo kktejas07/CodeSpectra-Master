@@ -158,20 +158,20 @@ export default function NotificationsPage() {
       const notificationsTour: TourStep[] = [
         {
           target: '[data-tour="notifications-header"]',
-          title: 'Stay in the loop',
-          description: 'Course updates, assessment results, and account activity land here.',
+          title: 'Your Notification Inbox',
+          description: 'This inbox gathers your product and account updates; use Mark all read to clear them.',
           position: 'bottom',
         },
         {
           target: '[data-tour="notifications-filters"]',
-          title: 'Filter by topic',
-          description: 'Narrow the inbox by category to find billing, security, or learning updates fast.',
+          title: 'Filter Inbox by Category',
+          description: 'Filter inbox by category to find billing, security, or learning updates fast.',
           position: 'bottom',
         },
         {
           target: '[data-tour="notifications-list"]',
-          title: 'Tap to act',
-          description: 'Click any notification to jump to the related course, event, or setting.',
+          title: 'Tip: Open Unread First',
+          description: 'Tip: open unread items first; each jumps to its related page or newsletter.',
           position: 'top',
         },
       ]

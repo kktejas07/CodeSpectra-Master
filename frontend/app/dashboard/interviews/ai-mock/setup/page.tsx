@@ -38,20 +38,20 @@ export default function AiMockSetupPage() {
       const aiMockSetupTour: TourStep[] = [
         {
           target: '[data-tour="ai-mock-setup-header"]',
-          title: 'AI mock interview',
-          description: 'Configure an AI-led practice session tailored to your goals.',
+          title: 'AI Practice For Candidates',
+          description: 'This page configures an AI-led mock interview for practicing candidates.',
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-mock-setup-start"]',
-          title: 'Start the session',
-          description: 'Click here to begin your AI mock interview when ready.',
+          title: 'Start AI Interview',
+          description: 'Click Start Interview to generate questions and enter your mock session.',
           position: 'top',
         },
         {
           target: '[data-tour="ai-mock-setup-options"]',
-          title: 'Tune your practice',
-          description: 'Pick a role, difficulty, duration, and optionally add your resume.',
+          title: 'Match Settings To Goal',
+          description: 'Pro tip: paste your resume and match difficulty to your target role.',
           position: 'top',
         },
       ]

@@ -64,14 +64,14 @@ export default function InterviewSetupPage() {
       const interviewSetupTour: TourStep[] = [
         {
           target: '[data-tour="interview-setup-header"]',
-          title: 'Set up interview',
-          description: 'Follow these steps to configure and launch your practice interview.',
+          title: 'Practice Setup For Candidates',
+          description: 'This page sets up a guided practice interview for job seekers.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-setup-roles"]',
-          title: 'Pick your role',
-          description: 'Choose a role to tailor the interview questions to that position.',
+          title: 'Pick Role To Continue',
+          description: 'Pro tip: pick your target role to unlock resume upload and device setup next.',
           position: 'bottom',
         },
       ]

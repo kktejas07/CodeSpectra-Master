@@ -736,20 +736,20 @@ export default function BillingPage() {
       const billingTour: TourStep[] = [
         {
           target: '[data-tour="billing-header"]',
-          title: 'Billing overview',
-          description: 'Manage your plan, billing cycle, payment method, and receipts from one place.',
+          title: 'Billing central hub',
+          description: 'Manage your subscription, payment method, and receipts in one place.',
           position: 'bottom',
         },
         {
           target: '[data-tour="billing-actions"]',
-          title: 'Change your plan',
-          description: 'Upgrade, switch billing cycle, or cancel — changes take effect immediately.',
+          title: 'Adjust subscription here',
+          description: 'Start plan upgrades, cycle switches, or cancellation while keeping access until period end.',
           position: 'bottom',
         },
         {
           target: '[data-tour="billing-invoices"]',
-          title: 'Invoice history',
-          description: 'View or download receipts for every payment here.',
+          title: 'Download receipts quickly',
+          description: 'Tip: open View for invoice details or use Download to save receipts.',
           position: 'top',
         },
       ]

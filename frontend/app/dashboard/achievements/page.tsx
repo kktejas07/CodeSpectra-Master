@@ -58,32 +58,32 @@ export default function AchievementsPage() {
       const achievementsTour: TourStep[] = [
         {
           target: '[data-tour="achievements-header"]',
-          title: 'Achievements & Badges',
-          description: 'Showcase your platform achievements and earned skill badges.',
+          title: 'Your Achievements Overview',
+          description: 'This page shows your earned achievements, skill badges, and progress for all learners.',
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-stats"]',
-          title: 'Your Progress',
-          description: 'Track your level, XP, achievements earned, and problems solved.',
+          title: 'Track Level and XP',
+          description: 'Track your level, XP, earned achievements, and solved problems at a glance.',
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-graph"]',
-          title: 'Contribution Graph',
-          description: 'Visualize your activity and streaks over time.',
+          title: 'Review Activity Streaks',
+          description: 'Review your contribution graph to spot activity streaks and gaps over time.',
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-badges"]',
-          title: 'Skill Badges',
-          description: 'Earn badges for mastering specific technologies and skills.',
+          title: 'Earn Skill Badges',
+          description: 'Earn skill badges as you master technologies tracked in the SkillBadges section.',
           position: 'bottom',
         },
         {
           target: '[data-tour="achievements-tabs"]',
-          title: 'Achievements List',
-          description: 'Browse all available achievements and track your progress toward each one.',
+          title: 'Browse Every Achievement',
+          description: 'Pro tip: open each achievement card to check progress counts and finish remaining tasks first.',
           position: 'bottom',
         },
       ]

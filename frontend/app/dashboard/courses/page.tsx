@@ -141,26 +141,26 @@ function LearningPageInner() {
       const coursesTour: TourStep[] = [
         {
           target: '[data-tour="courses-header"]',
-          title: 'Course Catalog',
-          description: 'Browse and search through our library of coding courses and learning paths.',
+          title: 'Explore Course Catalog',
+          description: 'Course library where learners browse courses and open the wishlist.',
           position: 'bottom',
         },
         {
           target: '[data-tour="courses-search"]',
-          title: 'Search Courses',
-          description: 'Find specific courses by title, topic, or technology.',
+          title: 'Search Courses Quickly',
+          description: 'Type a title, topic, or tag to narrow the catalog instantly.',
           position: 'bottom',
         },
         {
           target: '[data-tour="categories"]',
-          title: 'Course Categories',
-          description: 'Filter courses by programming language, skill level, or subject area.',
+          title: 'Filter by Category',
+          description: 'Tap a category pill to show only matching courses.',
           position: 'bottom',
         },
         {
           target: '[data-tour="course-card"]',
-          title: 'Course Details',
-          description: 'View course information, ratings, and enrollment options.',
+          title: 'Tip Open Course Cards',
+          description: 'Tip: click a card to open details, or tap the heart to save it.',
           position: 'bottom',
         },
       ]

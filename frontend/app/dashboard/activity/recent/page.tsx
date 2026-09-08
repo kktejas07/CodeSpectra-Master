@@ -123,9 +123,9 @@ export default function RecentlyViewedPage() {
       const recentTour: TourStep[] = [
         {
           target: '[data-tour="recent-header"]',
-          title: 'Recently Viewed',
+          title: 'Recently Viewed History',
           description:
-            'Everything you open — courses, lessons, problems — lands here so you can pick up where you left off.',
+            'This page lists everything you opened so you can resume courses, lessons, and problems.',
           position: 'bottom',
         },
         {

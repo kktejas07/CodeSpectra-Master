@@ -82,8 +82,8 @@ export default function NotificationPreferencesPage() {
       const notificationPreferencesTour: TourStep[] = [
         {
           target: '[data-tour="notification-preferences-header"]',
-          title: 'Control the noise',
-          description: 'Fine-tune which channels and categories can reach you.',
+          title: 'Control Notification Channels',
+          description: 'This page lets you control which channels and categories notify you.',
           position: 'bottom',
         },
         {

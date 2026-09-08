@@ -127,8 +127,8 @@ export default function AgentPage() {
       const agentTour: TourStep[] = [
         {
           target: '[data-tour="agent-header"]',
-          title: 'Agent workspace',
-          description: 'Configure language, reasoning steps, and model for the autonomous coding loop.',
+          title: 'Agent Workspace Overview',
+          description: 'This workspace lets developers run an autonomous coding agent to plan and rewrite code.',
           position: 'bottom',
         },
         {

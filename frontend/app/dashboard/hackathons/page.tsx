@@ -72,20 +72,20 @@ export default function UserHackathonsPage() {
       const hackathonsTour: TourStep[] = [
         {
           target: '[data-tour="hackathons-header"]',
-          title: 'Hackathons',
-          description: 'Join live coding events, compete in teams, and win prizes.',
+          title: 'Join Team Hackathons',
+          description: 'Team coding events page where participants join teams and compete live.',
           position: 'bottom',
         },
         {
           target: '[data-tour="hackathons-live"]',
-          title: 'Live Events',
-          description: 'Hackathons currently in progress. Jump in and start competing!',
+          title: 'Enter Live Workspaces',
+          description: 'Enter a live workspace, register your team, or view details.',
           position: 'bottom',
         },
         {
           target: '[data-tour="hackathons-upcoming"]',
-          title: 'Upcoming Events',
-          description: 'Register early for upcoming hackathons and secure your spot.',
+          title: 'Tip Register Early',
+          description: 'Tip: open an upcoming card to register before it goes live.',
           position: 'bottom',
         },
       ]

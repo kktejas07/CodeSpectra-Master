@@ -100,26 +100,26 @@ function CodeScannerPageInner() {
       const scannerTour: TourStep[] = [
         {
           target: '[data-tour="scanner-code-input"]',
-          title: 'Code Input',
-          description: 'Paste your code here to analyze it for bugs, vulnerabilities, and quality issues.',
+          title: 'Manual Code Scanner',
+          description: 'Manual scan page: paste code here for bug and quality feedback.',
           position: 'bottom',
         },
         {
           target: '[data-tour="scanner-scan-button"]',
-          title: 'Scan Code',
-          description: 'Click this button to run the analysis and get detailed insights about your code.',
+          title: 'Run Code Scan',
+          description: 'Click Scan Code to analyze pasted code and reveal quality issues.',
           position: 'bottom',
         },
         {
           target: '[data-tour="scanner-results"]',
-          title: 'Analysis Results',
-          description: 'View detailed metrics, suggested fixes, and AI-powered recommendations for your code.',
+          title: 'Review Quality Results',
+          description: 'Review quality score, issues, fixes, and recommendations after each scan.',
           position: 'top',
         },
         {
           target: '[data-tour="scanner-history"]',
-          title: 'Scan History',
-          description: 'Review your previous scans, reload them, or delete them.',
+          title: 'Reload Past Scans',
+          description: 'Tip: select any past scan to reload its code and results instantly.',
           position: 'bottom',
         },
       ]

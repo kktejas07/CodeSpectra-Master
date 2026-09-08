@@ -52,20 +52,20 @@ export default function SupportPage() {
       const supportTour: TourStep[] = [
         {
           target: '[data-tour="support-header"]',
-          title: 'Support tickets',
-          description: 'Track every help request you raise — replies from the team land here.',
+          title: 'Support tickets overview',
+          description: 'Your place to raise help requests and track team replies.',
           position: 'bottom',
         },
         {
           target: '[data-tour="support-new"]',
-          title: 'Raise a ticket',
-          description: 'Click New Ticket, pick a category, and describe your issue.',
+          title: 'Create support ticket',
+          description: 'Start a ticket with a subject, category, and detailed message, then submit.',
           position: 'bottom',
         },
         {
           target: '[data-tour="support-list"]',
-          title: 'Follow conversations',
-          description: 'Click any ticket to read replies and respond until it is resolved.',
+          title: 'Follow up faster',
+          description: 'Tip: click a ticket to open its replies and keep responding until closed.',
           position: 'top',
         },
       ]

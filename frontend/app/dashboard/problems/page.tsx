@@ -58,20 +58,20 @@ export default function ProblemsListPage() {
       const problemsTour: TourStep[] = [
         {
           target: '[data-tour="problems-search"]',
-          title: 'Search Problems',
-          description: 'Search for coding problems by title, topic, or difficulty.',
+          title: 'Coding Practice Library',
+          description: 'Practice library for placements and interviews; type here to filter questions.',
           position: 'bottom',
         },
         {
           target: '[data-tour="problems-stats"]',
-          title: 'Your Progress',
-          description: 'Track your solved problems across Easy, Medium, and Hard difficulties.',
+          title: 'Track Solved Progress',
+          description: 'Track solved totals and Easy, Medium, Hard bars to gauge readiness.',
           position: 'bottom',
         },
         {
           target: '[data-tour="problems-table"]',
-          title: 'Problem List',
-          description: 'Browse all available problems. Click Solve to start coding.',
+          title: 'Start Solving Problems',
+          description: 'Tip: click Solve on any row to open its coding workspace.',
           position: 'bottom',
         },
       ]

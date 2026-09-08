@@ -69,20 +69,20 @@ export default function ExamPage() {
       const assessmentDetailTour: TourStep[] = [
         {
           target: '[data-tour="assessment-detail-header"]',
-          title: 'Assessment header',
-          description: 'Track your progress and the remaining time from this bar.',
+          title: 'Timed Test For Candidates',
+          description: 'This page runs a timed assessment for candidates to answer and submit.',
           position: 'bottom',
         },
         {
           target: '[data-tour="assessment-detail-nav"]',
-          title: 'Navigate questions',
-          description: 'Move between questions or submit your assessment when finished.',
+          title: 'Move Between Questions',
+          description: 'Click Next, Previous, or a number to jump questions and submit last.',
           position: 'top',
         },
         {
           target: '[data-tour="assessment-detail-question"]',
-          title: 'Answer here',
-          description: 'Read each question and select or type your answer in this card.',
+          title: 'Drafts Save Automatically Here',
+          description: 'Pro tip: answers draft to this device, so finish all questions before submitting.',
           position: 'top',
         },
       ]

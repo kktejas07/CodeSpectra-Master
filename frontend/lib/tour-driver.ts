@@ -124,9 +124,9 @@ export function resolveTourId(pathname: string): string | null {
 export const WELCOME_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="dashboard-overview"]',
-    title: 'Welcome to CodeSpectra!',
+    title: 'Your Developer Home',
     description:
-      'Your AI-powered engineering platform. Get insights into your code, practice challenges, and showcase your skills.',
+      'Your command center: track XP and streaks here, then jump into practice, scans, or events below.',
     position: 'bottom',
   },
   {

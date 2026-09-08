@@ -123,20 +123,20 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
       const courseDetailTour: TourStep[] = [
         {
           target: '[data-tour="course-detail-header"]',
-          title: 'Course overview',
-          description: 'Title, rating, and what this course covers at a glance.',
+          title: 'Course Details At Glance',
+          description: 'This page shows one course content, ratings, and enrollment options for learners deciding what to study.',
           position: 'bottom',
         },
         {
           target: '[data-tour="course-detail-enroll"]',
-          title: 'Enroll or continue',
-          description: 'Enroll for free, or jump straight back into your lessons.',
+          title: 'Enroll or Resume Learning',
+          description: 'Enroll free to unlock lessons, or resume where you stopped to keep progressing.',
           position: 'bottom',
         },
         {
           target: '[data-tour="course-detail-curriculum"]',
-          title: 'Learn step by step',
-          description: 'Work through the curriculum, track progress, and earn your certificate.',
+          title: 'Finish Lessons, Earn Certificate',
+          description: 'Complete lessons in order and pass module quizzes to unlock your verified certificate.',
           position: 'top',
         },
       ]

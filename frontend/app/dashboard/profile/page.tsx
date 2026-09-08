@@ -283,20 +283,20 @@ export default function ProfilePage() {
       const profileTour: TourStep[] = [
         {
           target: '[data-tour="profile-header"]',
-          title: 'Your public identity',
-          description: 'Your avatar, level, and XP introduce you to recruiters and teammates.',
+          title: 'Your Developer Profile Overview',
+          description: 'This page showcases your identity, level, and progress to recruiters and teammates.',
           position: 'bottom',
         },
         {
           target: '[data-tour="profile-edit"]',
-          title: 'Keep it fresh',
-          description: 'Edit your bio, links, and experience to raise your profile completeness.',
+          title: 'Edit Profile Details',
+          description: 'Open the profile editor to update bio, links, and experience for completeness.',
           position: 'bottom',
         },
         {
           target: '[data-tour="profile-about"]',
-          title: 'Tell your story',
-          description: 'Your About section, activity streaks, and history live in this column.',
+          title: 'Tip: Strengthen About Bio',
+          description: 'Tip: write two lines on skills and goals so recruiters understand you quickly.',
           position: 'top',
         },
       ]

@@ -17,20 +17,20 @@ export default function AISettingsPage() {
       const aiSettingsTour: TourStep[] = [
         {
           target: '[data-tour="ai-settings-header"]',
-          title: 'Pick your models',
-          description: 'Choose which AI model powers each platform feature on this page.',
+          title: 'Choose AI Models Here',
+          description: 'This page lets every user assign which AI model powers each platform feature.',
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-settings-chat"]',
-          title: 'Chat and agent',
-          description: 'This selector controls the model behind chat, codebase chat, and the agent workspace.',
+          title: 'Set Chat Model First',
+          description: 'Select the model powering chat, codebase chat, and the agent workspace.',
           position: 'bottom',
         },
         {
           target: '[data-tour="ai-settings-models"]',
-          title: 'Tune every feature',
-          description: 'Set separate models for reviews, hints, and grading; changes apply immediately.',
+          title: 'Tip: Keep Flash Default',
+          description: 'Tip: changes apply instantly — keep free Gemini Flash unless your admin added API keys.',
           position: 'top',
         },
       ]

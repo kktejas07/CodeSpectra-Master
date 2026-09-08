@@ -53,20 +53,20 @@ export default function MyResumesPage() {
       const resumesTour: TourStep[] = [
         {
           target: '[data-tour="resumes-templates"]',
-          title: 'Choose a template',
-          description: 'Browse polished templates and click any card to start building your resume.',
+          title: 'Resumes workspace overview',
+          description: 'Your space to build and manage resumes from templates or profile data.',
           position: 'bottom',
         },
         {
           target: '[data-tour="resumes-create"]',
-          title: 'Create new resume',
-          description: 'Click the dashed card to build a resume from your profile or from scratch.',
+          title: 'Start new resume',
+          description: 'Start a resume from profile data or from scratch via the builder.',
           position: 'bottom',
         },
         {
           target: '[data-tour="resumes-list"]',
-          title: 'Manage your resumes',
-          description: 'All saved resumes appear here — search, preview, or delete them in bulk.',
+          title: 'Search and clean up',
+          description: 'Tip: search by file name and select rows to delete resumes in bulk.',
           position: 'top',
         },
       ]

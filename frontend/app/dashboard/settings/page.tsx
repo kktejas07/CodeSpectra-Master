@@ -116,32 +116,32 @@ export default function SettingsPage() {
       const settingsTour: TourStep[] = [
         {
           target: '[data-tour="settings-header"]',
-          title: 'Settings',
-          description: 'Manage your account preferences, theme, language, notifications, and security.',
+          title: 'Account Settings Hub',
+          description: 'Manage theme, language, notifications, and security for your account.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-appearance"]',
-          title: 'Appearance',
-          description: 'Choose your theme (light, dark, system) and language.',
+          title: 'Set Theme Language',
+          description: 'Pick Light, Dark, or System theme and language, then save appearance.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-notifications"]',
-          title: 'Notifications',
-          description: 'Configure email and push notification preferences.',
+          title: 'Toggle Email Push',
+          description: 'Toggle Email and Push alerts, then save; fine-tune channels in preferences.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-security"]',
-          title: 'Security',
-          description: 'Manage two-factor authentication, face biometrics, and password.',
+          title: 'Secure Sign-In Methods',
+          description: 'Review 2FA status, enroll face biometrics, or change your password.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-danger"]',
-          title: 'Danger Zone',
-          description: 'Export your data or delete your account (irreversible actions).',
+          title: 'Export Before Deleting',
+          description: 'Tip: export your data first; deletion needs password confirmation and cannot be undone.',
           position: 'bottom',
         },
       ]
