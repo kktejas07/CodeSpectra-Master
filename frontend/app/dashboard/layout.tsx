@@ -130,7 +130,8 @@ import { PlatformSettingsSidebarNav } from '@/components/dashboard/platform-sett
 import { AskCodeSpectra } from '@/components/ai/ask-codespectra'
 import { PageLocked } from '@/components/page-locked'
 import { fetchLockedPages } from '@/lib/use-page-guard'
-import { useTour, resolveTourId } from '@/components/tour/tour-context'
+import { resolveTourId } from '@/components/tour/tour-context'
+import { GuideDrawer } from '@/components/tour/guide-drawer'
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -173,10 +174,10 @@ export default function DashboardLayout({
   const [permsLoaded, setPermsLoaded] = useState(false)
   const [lockedPages, setLockedPages] = useState<string[]>([])
   const [chatbotEnabled, setChatbotEnabled] = useState(false)
+  const [guideOpen, setGuideOpen] = useState(false)
   const [collapsedSections, setCollapsedSections] = useState<Set<string>>(new Set())
 
   const { user: fbUser, signOut } = useAuth()
-  const { replayTour } = useTour()
 
   useEffect(() => {
     if (!fbUser) { setUserRole(null); return }
@@ -616,22 +617,21 @@ export default function DashboardLayout({
   }
 
   const handleGuideClick = () => {
-    // ponytail: replay the last-started tour straight from the tour registry.
-    // The old code cleared the flag + router.refresh(), but App Router refresh
-    // doesn't remount client components, so tour effects never re-fired and
-    // Guide looked completely dead. Direct replay always works; full reload is
-    // only the fallback when this page's tour hasn't run yet this session.
-    const tourId = resolveTourId(pathname)
-    if (tourId && replayTour(tourId)) return
-    if (tourId) {
-      try {
-        window.localStorage.removeItem(`has_seen_${tourId}_tour`)
-      } catch {
-        /* ignore */
-      }
-      window.location.reload()
-    }
+    // ponytail: the Guide button opens the Unstop-style explanation drawer —
+    // never a reload. The drawer resolves content by route and offers the
+    // spotlight tour when the page registered one.
+    setGuideOpen(true)
   }
+
+  const guideTourId = resolveTourId(pathname)
+  const guideFallbackTitle = (() => {
+    const base = pathname.split('?')[0]
+    if (ROUTE_LABELS[base]) return ROUTE_LABELS[base]
+    for (const [route, label] of Object.entries(ROUTE_LABELS)) {
+      if (base.startsWith(route + '/')) return label
+    }
+    return 'Guide'
+  })()
 
   const isScannerShell = pathname.startsWith('/dashboard/scanner')
   // ponytail: exact match only — sub-pages like /settings/kyc are standalone
@@ -1144,6 +1144,12 @@ export default function DashboardLayout({
           </div>
         </div>
         )}
+        <GuideDrawer
+          open={guideOpen}
+          onClose={() => setGuideOpen(false)}
+          tourId={guideTourId}
+          fallbackTitle={guideFallbackTitle}
+        />
 
         {/* Page Content — full width with proper padding */}
         <main className={cn("w-full", isLessonPlayer ? "p-0" : "px-4 py-5 lg:px-6 lg:py-8")}>

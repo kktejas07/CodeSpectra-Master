@@ -89,6 +89,7 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/certifications': 'certifications',
   '/dashboard/skill-analytics': 'skill-analytics',
   '/dashboard/resources/[slug]': 'resource-reader',
+  '/dashboard/resources': 'resources',
   '/dashboard/interview-prep': 'interview-prep',
   '/dashboard/agent': 'agent',
   '/dashboard/100-days': '100-days',
@@ -97,6 +98,8 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/settings/ai': 'ai-settings',
   '/dashboard/recruiter-analytics': 'recruiter-analytics',
   '/dashboard/pricing': 'pricing',
+  '/dashboard/cad': 'cad',
+  '/dashboard/challenges/[id]': 'challenge-detail',
 }
 
 /**
@@ -294,6 +297,12 @@ export function goTourStep(index: number) {
 
 export function getActiveTourId(): string | null {
   return activeTourId
+}
+
+/** True when steps were registered for a tour id this session (replayable). */
+export function hasRegisteredTour(tourId: string): boolean {
+  const steps = registry[tourId]
+  return !!steps && steps.length > 0
 }
 
 // ── Feature hints (driver.js/hints) ─────────────────────────────────────────
