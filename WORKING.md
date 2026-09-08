@@ -6,6 +6,7 @@
 
 ## Current Claims
 
+| opencode (this session, FEEDBACK-FIX2) | DONE — tsc clean, committed (no push). (1) Reporter showed sliced UID as name: admin GET now resolves missing user_name/user_email via getUserById (bounded 100, stored values win); UI fallback is honest Anonymous, never truncated UID. (2) Baked-in "Report for [..] ..:" caption: reports route stores clean content + source + user_name, entity context kept in fields; UI renders Regarding line + strips legacy prefix for old docs. | frontend/app/api/admin/feedback/route.ts, frontend/app/api/reports/route.ts, frontend/app/dashboard/admin/feedback/page.tsx | DONE — COMMITTED | 2026-09-07 |
 | opencode (this session, PULL-MAIN-SYNC) | DONE — fetched origin/main (12 ahead: PR #260 tour autoplay + skeleton loading + orphaned session work) and merged into dev-fixes cleanly (643c0b45, no conflicts, tree clean). tsc clean. Local 500s are the pre-existing broken react/jsx-runtime modules (Playwright install), unrelated to merge. NO push. | merge commit only | DONE | 2026-09-06 |
 
 | opencode (this session, TOUR-COPY) | DONE — tsc clean, pushed + PR #261 to main. 9/11 copy agents cancelled mid-flight; recovered: all 38 touched files verified copy-only (one rewrap), 17 untouched pages already had structured copy. Final: all 55 tours follow what-is/features/pro-tip structure, verb-first, no emojis; anchors/ids/counts frozen, phantom audit clean. | 38× dashboard page tour copy (strings only) | DONE — PUSHED (PR #261) | 2026-09-07 |

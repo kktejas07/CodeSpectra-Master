@@ -24,11 +24,19 @@ export async function POST(req: NextRequest) {
 
     const db = await getMongoDb()
     
-    // Map to the platform_feedback schema + extra fields
+    // Map to the platform_feedback schema + extra fields.
+    // ponytail: content stays the raw message — the old baked-in
+    // "Report for [type] title: ..." caption prefix is gone; context lives
+    // in entityType/entityTitle/source which the admin UI renders as
+    // "Regarding". Reporter identity is captured so the admin list never
+    // falls back to showing a raw UID as a name.
     const doc = {
       type: kind === 'complaint' ? 'complaint' : 'bug', // Map 'issue' to 'bug' for Admin UI badge
-      content: `Report for [${entityType}] ${entityTitle}: ${message}`,
+      content: message,
       user_id: user?.id || null,
+      user_name: user?.name || user?.fullName || null,
+      user_email: user?.email || contactEmail || null,
+      source: entityType || undefined,
       status: 'open',
       created_at: new Date().toISOString(),
       // Additional metadata
