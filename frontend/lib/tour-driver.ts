@@ -55,6 +55,11 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/settings': 'settings',
   '/dashboard/activity/recent': 'recent',
   '/dashboard/admin/system': 'admin-system',
+  // ponytail: prefix catch-all — every other /dashboard/admin/* page shows
+  // the generic admin guide. Longer exact entries (like admin/system above)
+  // still win by longest-match.
+  '/dashboard/admin': 'admin',
+  '/dashboard/admin/feedback': 'feedback',
   // ponytail: bracket segments are dynamic ids — resolveTourId matches them
   // against any single path segment (see below).
   '/dashboard/interviews/[id]': 'interview-detail',
@@ -89,6 +94,7 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/certifications': 'certifications',
   '/dashboard/skill-analytics': 'skill-analytics',
   '/dashboard/resources/[slug]': 'resource-reader',
+  '/dashboard/resources': 'resources',
   '/dashboard/interview-prep': 'interview-prep',
   '/dashboard/agent': 'agent',
   '/dashboard/100-days': '100-days',
@@ -97,6 +103,9 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/settings/ai': 'ai-settings',
   '/dashboard/recruiter-analytics': 'recruiter-analytics',
   '/dashboard/pricing': 'pricing',
+  '/dashboard/cad': 'cad',
+  '/dashboard/challenges/[id]': 'challenge-detail',
+  '/dashboard/team/invites/[token]': 'team-invite',
 }
 
 /**
@@ -294,6 +303,12 @@ export function goTourStep(index: number) {
 
 export function getActiveTourId(): string | null {
   return activeTourId
+}
+
+/** True when steps were registered for a tour id this session (replayable). */
+export function hasRegisteredTour(tourId: string): boolean {
+  const steps = registry[tourId]
+  return !!steps && steps.length > 0
 }
 
 // ── Feature hints (driver.js/hints) ─────────────────────────────────────────

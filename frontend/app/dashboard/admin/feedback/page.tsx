@@ -21,6 +21,11 @@ interface Feedback {
   user_name?: string
   user_email?: string
   source?: string
+  entityType?: string
+  entityId?: string
+  entityTitle?: string
+  contactEmail?: string
+  userEmail?: string
   status: 'open' | 'resolved'
   created_at: string
   admin_reply?: string
@@ -29,7 +34,16 @@ interface Feedback {
 }
 
 function reporterLabel(f: Pick<Feedback, 'user_name' | 'user_email' | 'user_id'>): string {
-  return f.user_name || f.user_email || (f.user_id ? `${f.user_id.slice(0, 8)}…` : 'Anonymous')
+  // ponytail: never render a sliced UID as a "name" — a truncated Firebase
+  // UID (e.g. "DEljTlrD…") reads as a broken person name. No identity →
+  // honest "Anonymous".
+  return f.user_name || f.user_email || 'Anonymous'
+}
+
+/** Strip the legacy baked-in caption ("Report for [type] title: ...") that
+ *  /api/reports used to prepend; context now lives in entity fields. */
+function displayContent(content: string): string {
+  return (content || '').replace(/^Report for \[[^\]]+\] [^:]+:\s*/, '')
 }
 
 export default function AdminFeedbackPage() {
@@ -125,7 +139,7 @@ export default function AdminFeedbackPage() {
       key: 'content', header: 'Content',
       cell: (item) => (
         <div className="flex items-center gap-2">
-          <div className="max-w-xs truncate text-sm flex-1" title={item.content}>{item.content}</div>
+          <div className="max-w-xs truncate text-sm flex-1" title={displayContent(item.content)}>{displayContent(item.content)}</div>
           <button
             onClick={(e) => { e.stopPropagation(); setExpandedId(expandedId === item._id ? null : item._id); setReplyText('') }}
             className="text-xs text-primary hover:underline shrink-0"
@@ -237,7 +251,15 @@ export default function AdminFeedbackPage() {
               </div>
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Full Content</p>
-                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{expandedFeedback.content}</p>
+                <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{displayContent(expandedFeedback.content)}</p>
+                {(expandedFeedback.entityType || expandedFeedback.entityTitle) && (
+                  <p className="mt-2 text-xs text-muted-foreground">
+                    Regarding:{' '}
+                    <span className="font-medium text-foreground">
+                      {expandedFeedback.entityType ? `[${expandedFeedback.entityType}] ` : ''}{expandedFeedback.entityTitle || ''}
+                    </span>
+                  </p>
+                )}
                 <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
                   <span>
                     Reported by:{' '}
