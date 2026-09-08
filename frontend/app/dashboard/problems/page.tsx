@@ -13,7 +13,7 @@ import { Card } from '@/components/ui/card'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useProblemsViewModel, type ProblemSummary } from './use-problems-viewmodel'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 function FilterAccordion({ title, items, selected, onToggle }: { title: string, items: {id: string, label: string}[], selected: string[], onToggle: (id: string) => void }) {
   const [open, setOpen] = useState(true)
@@ -54,30 +54,28 @@ export default function ProblemsListPage() {
 
   // Initialize tour if this is the first visit to problems page
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_problems_tour')) {
+    if (gate.ready) {
       const problemsTour: TourStep[] = [
         {
           target: '[data-tour="problems-search"]',
-          title: 'Search Problems',
-          description: 'Search for coding problems by title, topic, or difficulty.',
+          title: 'Coding Practice Library',
+          description: 'Practice library for placements and interviews; type here to filter questions.',
           position: 'bottom',
         },
         {
           target: '[data-tour="problems-stats"]',
-          title: 'Your Progress',
-          description: 'Track your solved problems across Easy, Medium, and Hard difficulties.',
+          title: 'Track Solved Progress',
+          description: 'Track solved totals and Easy, Medium, Hard bars to gauge readiness.',
           position: 'bottom',
         },
         {
           target: '[data-tour="problems-table"]',
-          title: 'Problem List',
-          description: 'Browse all available problems. Click Solve to start coding.',
+          title: 'Start Solving Problems',
+          description: 'Tip: click Solve on any row to open its coding workspace.',
           position: 'bottom',
         },
       ]
-      startTour(problemsTour, 'problems')
-      setTourSeen('problems')
-    }
+      autoPlayPageTour('problems', problemsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   // Compute real stats from problems data

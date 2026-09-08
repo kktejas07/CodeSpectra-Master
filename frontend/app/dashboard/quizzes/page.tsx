@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from 'react'
 import Link from 'next/link'
 import { HelpCircle, Search } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -41,7 +41,7 @@ export default function QuizzesPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_quizzes_tour')) {
+    if (gate.ready) {
       const quizzesTour: TourStep[] = [
         {
           target: '[data-tour="quizzes-header"]',
@@ -62,9 +62,7 @@ export default function QuizzesPage() {
           position: 'top',
         },
       ]
-      startTour(quizzesTour, 'quizzes')
-      setTourSeen('quizzes')
-    }
+      autoPlayPageTour('quizzes', quizzesTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) {

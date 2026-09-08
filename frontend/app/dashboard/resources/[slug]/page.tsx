@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useParams } from 'next/navigation'
 import { ArrowLeft, Loader2, HelpCircle } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { FlipbookViewer } from '@/components/resources/flipbook-viewer'
 import { EbookQuiz } from '@/components/resources/ebook-quiz'
@@ -166,30 +166,28 @@ export default function EbookReaderPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_resource-reader_tour')) {
+    if (gate.ready) {
       const resourceReaderTour: TourStep[] = [
         {
           target: '[data-tour="resource-reader-header"]',
-          title: 'Ebook overview',
-          description: 'This header shows the guide title, topic, and estimated reading time.',
+          title: 'Guide Reader Overview',
+          description: 'This page opens one saved resource guide for learners, showing its title, topic, and estimated read time.',
           position: 'bottom',
         },
         {
           target: '[data-tour="resource-reader-actions"]',
-          title: 'Back to library',
-          description: 'Use this link anytime to return to the full resources library.',
+          title: 'Return To Library',
+          description: 'Click Resources to return to the full library and pick another guide.',
           position: 'bottom',
         },
         {
           target: '[data-tour="resource-reader-viewer"]',
-          title: 'Read and flip',
-          description: 'Flip through pages here and export the whole guide as a PDF.',
+          title: 'Read Then Export',
+          description: 'Tip: flip through every page first, then export the full guide as PDF for offline review.',
           position: 'top',
         },
       ]
-      startTour(resourceReaderTour, 'resource-reader')
-      setTourSeen('resource-reader')
-    }
+      autoPlayPageTour('resource-reader', resourceReaderTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

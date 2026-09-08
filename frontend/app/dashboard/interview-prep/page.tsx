@@ -13,7 +13,7 @@ import { useLockedFeatures } from '@/lib/use-page-guard'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { INTERVIEW_PREP_QUESTIONS, type InterviewPrepQuestion } from '@/lib/interview-prep-data'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 type Tab = 'browse' | 'quiz'
 
@@ -151,30 +151,28 @@ export default function InterviewPrepPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_interview-prep_tour')) {
+    if (gate.ready) {
       const interviewPrepTour: TourStep[] = [
         {
           target: '[data-tour="interview-prep-header"]',
-          title: 'Prep headquarters',
-          description: 'Browse 300+ frontend questions and generate AI quizzes from one place.',
+          title: 'Interview Prep Home',
+          description: 'This page prepares frontend candidates with 300+ questions and AI quizzes in one place.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-prep-actions"]',
-          title: 'Browse or quiz',
-          description: 'Switch between browsing questions and generating a custom AI quiz.',
+          title: 'Browse Or Quiz',
+          description: 'Switch tabs to browse questions or generate a custom AI quiz.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-prep-list"]',
-          title: 'Pick a question',
-          description: 'Click any question to reveal its AI-generated answer and key points.',
+          title: 'Study Answers Deeply',
+          description: 'Tip: open one question at a time and study its AI answer, key points, and follow-up.',
           position: 'top',
         },
       ]
-      startTour(interviewPrepTour, 'interview-prep')
-      setTourSeen('interview-prep')
-    }
+      autoPlayPageTour('interview-prep', interviewPrepTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

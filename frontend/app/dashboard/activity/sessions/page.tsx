@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import Link from 'next/link'
 import { Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
@@ -38,30 +38,28 @@ export default function MySessionsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_sessions_tour')) {
+    if (gate.ready) {
       const sessionsTour: TourStep[] = [
         {
           target: '[data-tour="sessions-header"]',
-          title: 'Your sessions',
-          description: 'Interview and mock sessions linked to your account live here.',
+          title: 'Sessions linked to you',
+          description: 'This page lists interview and mock sessions linked to your account.',
           position: 'bottom',
         },
         {
           target: '[data-tour="sessions-action"]',
-          title: 'Find sessions',
-          description: 'Browse or schedule interview sessions to get started.',
+          title: 'Browse interview sessions',
+          description: 'Follow this button to the interviews page to schedule or browse sessions.',
           position: 'bottom',
         },
         {
           target: '[data-tour="sessions-list"]',
-          title: 'Session history',
-          description: 'Upcoming and past sessions appear here with their status.',
+          title: 'Review sessions, open details',
+          description: 'Review each session status here and click a card to open it; if empty, try interview prep next.',
           position: 'top',
         },
       ]
-      startTour(sessionsTour, 'sessions')
-      setTourSeen('sessions')
-    }
+      autoPlayPageTour('sessions', sessionsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

@@ -18,7 +18,7 @@ import {
 } from 'lucide-react'
 import { SkeletonStats, SkeletonText, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { pickResumeLessonId } from '@/lib/courses/watch-progress'
@@ -119,30 +119,28 @@ export default function CoursePage({ params }: { params: Promise<{ id: string }>
   // First-visit guided tour (same pattern as the other dashboard pages).
   // Gated on course load so the anchored landmarks exist on first paint.
   useEffect(() => {
-    if (gate.ready && !loading && course && !localStorage.getItem('has_seen_course-detail_tour')) {
+    if (gate.ready && !loading && course) {
       const courseDetailTour: TourStep[] = [
         {
           target: '[data-tour="course-detail-header"]',
-          title: 'Course overview',
-          description: 'Title, rating, and what this course covers at a glance.',
+          title: 'Course Details At Glance',
+          description: 'This page shows one course content, ratings, and enrollment options for learners deciding what to study.',
           position: 'bottom',
         },
         {
           target: '[data-tour="course-detail-enroll"]',
-          title: 'Enroll or continue',
-          description: 'Enroll for free, or jump straight back into your lessons.',
+          title: 'Enroll or Resume Learning',
+          description: 'Enroll free to unlock lessons, or resume where you stopped to keep progressing.',
           position: 'bottom',
         },
         {
           target: '[data-tour="course-detail-curriculum"]',
-          title: 'Learn step by step',
-          description: 'Work through the curriculum, track progress, and earn your certificate.',
+          title: 'Finish Lessons, Earn Certificate',
+          description: 'Complete lessons in order and pass module quizzes to unlock your verified certificate.',
           position: 'top',
         },
       ]
-      startTour(courseDetailTour, 'course-detail')
-      setTourSeen('course-detail')
-    }
+      autoPlayPageTour('course-detail', courseDetailTour)}
   }, [gate.ready, loading, course, startTour, setTourSeen])
 
   useEffect(() => {

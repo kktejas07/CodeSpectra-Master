@@ -6,7 +6,7 @@ import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Countdown } from '@/components/hackathons/countdown'
 import {
   Gavel, Trophy, Users, Clock, ArrowRight, Inbox,
@@ -60,7 +60,7 @@ export default function JudgeDashboardPage() {
   // Only 2 steps: the page has no stable primary-action button — per-card
   // "Review Submissions" buttons render only when events are assigned.
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_judge-desk_tour')) {
+    if (gate.ready) {
       const judgeDeskTour: TourStep[] = [
         {
           target: '[data-tour="judge-header"]',
@@ -75,9 +75,7 @@ export default function JudgeDashboardPage() {
           position: 'top',
         },
       ]
-      startTour(judgeDeskTour, 'judge-desk')
-      setTourSeen('judge-desk')
-    }
+      autoPlayPageTour('judge-desk', judgeDeskTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

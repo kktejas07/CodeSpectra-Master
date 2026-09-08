@@ -1,7 +1,7 @@
 'use client'
 import { useConfirm } from '@/lib/confirm-context'
 import { useAuth } from '@/lib/auth-context'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 import { useCallback, useEffect, useState } from 'react'
 import Link from 'next/link'
@@ -112,42 +112,40 @@ export default function SettingsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_settings_tour')) {
+    if (gate.ready) {
       const settingsTour: TourStep[] = [
         {
           target: '[data-tour="settings-header"]',
-          title: 'Settings',
-          description: 'Manage your account preferences, theme, language, notifications, and security.',
+          title: 'Account Settings Hub',
+          description: 'Manage theme, language, notifications, and security for your account.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-appearance"]',
-          title: 'Appearance',
-          description: 'Choose your theme (light, dark, system) and language.',
+          title: 'Set Theme Language',
+          description: 'Pick Light, Dark, or System theme and language, then save appearance.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-notifications"]',
-          title: 'Notifications',
-          description: 'Configure email and push notification preferences.',
+          title: 'Toggle Email Push',
+          description: 'Toggle Email and Push alerts, then save; fine-tune channels in preferences.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-security"]',
-          title: 'Security',
-          description: 'Manage two-factor authentication, face biometrics, and password.',
+          title: 'Secure Sign-In Methods',
+          description: 'Review 2FA status, enroll face biometrics, or change your password.',
           position: 'bottom',
         },
         {
           target: '[data-tour="settings-danger"]',
-          title: 'Danger Zone',
-          description: 'Export your data or delete your account (irreversible actions).',
+          title: 'Export Before Deleting',
+          description: 'Tip: export your data first; deletion needs password confirmation and cannot be undone.',
           position: 'bottom',
         },
       ]
-      startTour(settingsTour, 'settings')
-      setTourSeen('settings')
-    }
+      autoPlayPageTour('settings', settingsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {

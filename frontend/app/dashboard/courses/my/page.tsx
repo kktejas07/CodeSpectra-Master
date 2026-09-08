@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { Heart, Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { Card } from '@/components/ui/card'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -36,30 +36,28 @@ export default function MyCoursesPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !loading && !localStorage.getItem('has_seen_my-courses_tour')) {
+    if (gate.ready && !loading) {
       const myCoursesTour: TourStep[] = [
         {
           target: '[data-tour="my-courses-header"]',
-          title: 'Your enrolled courses',
-          description: 'Every course you enroll in shows up here for quick access.',
+          title: 'Your Enrolled Courses Hub',
+          description: 'This page collects every course you enrolled in so you can resume learning quickly.',
           position: 'bottom',
         },
         {
           target: '[data-tour="my-courses-actions"]',
-          title: 'Browse or revisit',
-          description: 'Explore the catalog or revisit courses on your watchlist.',
+          title: 'Open Watchlist or Catalog',
+          description: 'Visit your watchlist or browse the full catalog to find courses to start.',
           position: 'bottom',
         },
         {
           target: '[data-tour="my-courses-list"]',
-          title: 'Continue learning',
-          description: 'Click any course card to pick up exactly where you left off.',
+          title: 'Resume Any Course Here',
+          description: 'Tip: click any course card to open its detail page and continue lessons.',
           position: 'top',
         },
       ]
-      startTour(myCoursesTour, 'my-courses')
-      setTourSeen('my-courses')
-    }
+      autoPlayPageTour('my-courses', myCoursesTour)}
   }, [gate.ready, loading, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

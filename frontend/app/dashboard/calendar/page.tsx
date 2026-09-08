@@ -9,7 +9,7 @@ import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
 
@@ -43,30 +43,28 @@ export default function CalendarPage() {
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_calendar_tour')) {
+    if (gate.ready) {
       const calendarTour: TourStep[] = [
         {
           target: '[data-tour="calendar-header"]',
-          title: 'Your calendar',
-          description: 'Deadlines, study sessions, and course events live here.',
+          title: 'Personal Study Calendar Hub',
+          description: 'Manage study sessions, deadlines, and course events in one place for your prep.',
           position: 'bottom',
         },
         {
           target: '[data-tour="calendar-grid"]',
-          title: 'Month view',
-          description: 'Browse events by day and jump between months.',
+          title: 'Browse Events by Month',
+          description: 'Browse days with the arrow buttons to spot sessions and deadlines across months.',
           position: 'right',
         },
         {
           target: '[data-tour="calendar-add"]',
-          title: 'Add an event',
-          description: 'Save a study session or deadline to your CodeSpectra calendar.',
+          title: 'Save Study Session Fast',
+          description: 'Where next: enter a title and date, Save on CodeSpectra, then track it in Upcoming.',
           position: 'left',
         },
       ]
-      startTour(calendarTour, 'calendar')
-      setTourSeen('calendar')
-    }
+      autoPlayPageTour('calendar', calendarTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const load = useCallback(async () => {

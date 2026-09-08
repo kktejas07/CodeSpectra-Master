@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { useSearchParams, useRouter } from 'next/navigation'
 import { Loader2 } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -63,30 +63,28 @@ function BookmarksInner() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_bookmarks_tour')) {
+    if (gate.ready) {
       const bookmarksTour: TourStep[] = [
         {
           target: '[data-tour="bookmarks-header"]',
-          title: 'Saved for later',
-          description: 'Problems and quiz questions you bookmark live here.',
+          title: 'Your saved questions',
+          description: 'This page collects problems and quiz questions you saved for later review.',
           position: 'bottom',
         },
         {
           target: '[data-tour="bookmarks-tabs"]',
-          title: 'Switch collections',
-          description: 'Toggle between bookmarked problems and module-quiz questions.',
+          title: 'Switch saved collections',
+          description: 'Toggle between Problems and Module quizzes to find saved items faster.',
           position: 'bottom',
         },
         {
           target: '[data-tour="bookmarks-list"]',
-          title: 'Revisit and remove',
-          description: 'Click any entry to jump back in, or remove it when done.',
+          title: 'Reopen or remove saves',
+          description: 'Click an entry to jump back in or press Remove; empty lists point to problems or courses next.',
           position: 'top',
         },
       ]
-      startTour(bookmarksTour, 'bookmarks')
-      setTourSeen('bookmarks')
-    }
+      autoPlayPageTour('bookmarks', bookmarksTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   async function removeProblem(problemId: string, slug: string, title: string) {

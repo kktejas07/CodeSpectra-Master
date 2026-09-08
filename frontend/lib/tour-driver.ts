@@ -68,7 +68,6 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/mock-tests': 'mock-tests',
   '/dashboard/mock-tests/[id]': 'mock-test-detail',
   '/dashboard/challenges': 'challenges',
-  '/dashboard/challenges/[id]': 'challenge-detail',
   '/dashboard/courses/[id]': 'course-detail',
   '/dashboard/courses/my': 'my-courses',
   '/dashboard/courses/wishlist': 'wishlist',
@@ -79,7 +78,6 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/interviews/setup': 'interview-setup',
   '/dashboard/interviews/ai-mock/setup': 'ai-mock-setup',
   '/dashboard/assessments/[id]': 'assessment-detail',
-  '/dashboard/assessments/ai-fluency': 'ai-fluency',
   '/dashboard/resumes': 'resumes',
   '/dashboard/calendar': 'calendar',
   '/dashboard/billing': 'billing',
@@ -90,7 +88,6 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/referrals': 'referrals',
   '/dashboard/certifications': 'certifications',
   '/dashboard/skill-analytics': 'skill-analytics',
-  '/dashboard/resources': 'resources',
   '/dashboard/resources/[slug]': 'resource-reader',
   '/dashboard/interview-prep': 'interview-prep',
   '/dashboard/agent': 'agent',
@@ -100,7 +97,6 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/settings/ai': 'ai-settings',
   '/dashboard/recruiter-analytics': 'recruiter-analytics',
   '/dashboard/pricing': 'pricing',
-  '/dashboard/cad': 'cad',
 }
 
 /**
@@ -128,9 +124,9 @@ export function resolveTourId(pathname: string): string | null {
 export const WELCOME_TOUR_STEPS: TourStep[] = [
   {
     target: '[data-tour="dashboard-overview"]',
-    title: 'Welcome to CodeSpectra!',
+    title: 'Your Developer Home',
     description:
-      'Your AI-powered engineering platform. Get insights into your code, practice challenges, and showcase your skills.',
+      'Your command center: track XP and streaks here, then jump into practice, scans, or events below.',
     position: 'bottom',
   },
   {

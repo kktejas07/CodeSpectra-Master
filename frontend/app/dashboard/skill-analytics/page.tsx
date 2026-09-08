@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { Activity, CheckCircle2, Clock, Sparkles, Target, TrendingUp, Users, Zap } from 'lucide-react'
 import { cn } from '@/lib/utils'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
 
 interface SkillData {
@@ -61,7 +61,7 @@ export default function SkillAnalyticsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_skill-analytics_tour')) {
+    if (gate.ready) {
       const skillAnalyticsTour: TourStep[] = [
         {
           target: '[data-tour="skill-analytics-header"]',
@@ -82,9 +82,7 @@ export default function SkillAnalyticsPage() {
           position: 'top',
         },
       ]
-      startTour(skillAnalyticsTour, 'skill-analytics')
-      setTourSeen('skill-analytics')
-    }
+      autoPlayPageTour('skill-analytics', skillAnalyticsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

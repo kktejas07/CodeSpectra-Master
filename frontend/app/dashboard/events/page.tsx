@@ -13,7 +13,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { isAdmin, type UserRole } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 import { EmptyState } from '@/components/ui/empty-state'
@@ -239,30 +239,28 @@ export default function EventsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_events_tour')) {
+    if (gate.ready) {
       const eventsTour: TourStep[] = [
         {
           target: '[data-tour="events-header"]',
-          title: 'Events',
-          description: 'Browse hackathons, codeathons, and coding competitions. Join events to compete and win prizes.',
+          title: 'Browse All Events',
+          description: 'Central hub where participants discover hackathons and codeathons in one list.',
           position: 'bottom',
         },
         {
           target: '[data-tour="events-tabs"]',
-          title: 'Filter Events',
-          description: 'Use tabs to filter events by status: All, My Events, Live, Upcoming, or Past.',
+          title: 'Filter Events Fast',
+          description: 'Switch tabs to show all, joined, live, upcoming, or past events.',
           position: 'bottom',
         },
         {
           target: '[data-tour="events-grid"]',
-          title: 'Event Cards',
-          description: 'Click any event card to view details, join a team, or enter the workspace.',
+          title: 'Tip Enter an Event',
+          description: 'Tip: open a card and press its button to enter, view details, or see results.',
           position: 'bottom',
         },
       ]
-      startTour(eventsTour, 'events')
-      setTourSeen('events')
-    }
+      autoPlayPageTour('events', eventsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   useEffect(() => {

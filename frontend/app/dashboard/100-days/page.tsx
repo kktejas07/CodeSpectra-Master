@@ -12,7 +12,7 @@ import { HUNDRED_DAYS, type HundredDay } from '@/lib/100-days-data'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
 import { csrfFetch } from '@/lib/csrf-fetch'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonCard, SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 function getCompletedLocal(): Set<number> {
@@ -139,7 +139,7 @@ export default function HundredDaysPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_100-days_tour')) {
+    if (gate.ready) {
       const hundredDaysTour: TourStep[] = [
         {
           target: '[data-tour="100-days-header"]',
@@ -160,9 +160,7 @@ export default function HundredDaysPage() {
           position: 'top',
         },
       ]
-      startTour(hundredDaysTour, '100-days')
-      setTourSeen('100-days')
-    }
+      autoPlayPageTour('100-days', hundredDaysTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

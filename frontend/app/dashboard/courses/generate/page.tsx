@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { Sparkles, ArrowRight, ArrowLeft, Loader2, Play, CheckCircle2, Video, Database, BookOpen, Layers, Zap, Clock, ShieldAlert } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useAuth } from '@/lib/auth-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { COURSE_LEVELS, INDUSTRIES, subjectsForIndustry, estimateCourse } from '@/lib/courses/syllabus'
@@ -55,7 +55,7 @@ export default function GenerateCoursePage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_course-generate_tour')) {
+    if (gate.ready) {
       const courseGenerateTour: TourStep[] = [
         {
           target: '[data-tour="course-generate-header"]',
@@ -76,9 +76,7 @@ export default function GenerateCoursePage() {
           position: 'top',
         },
       ]
-      startTour(courseGenerateTour, 'course-generate')
-      setTourSeen('course-generate')
-    }
+      autoPlayPageTour('course-generate', courseGenerateTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return (

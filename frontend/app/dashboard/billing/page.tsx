@@ -32,7 +32,7 @@ import { cn } from '@/lib/utils'
 import { DashboardPageHeader } from '@/components/dashboard/dashboard-page-header'
 import { findPlan } from '@/lib/billing-catalog'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonStats, SkeletonTable, SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { getCurrencySymbol, formatCurrencyAmount } from '@/lib/currency'
 
@@ -732,30 +732,28 @@ export default function BillingPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_billing_tour')) {
+    if (gate.ready) {
       const billingTour: TourStep[] = [
         {
           target: '[data-tour="billing-header"]',
-          title: 'Billing overview',
-          description: 'Manage your plan, billing cycle, payment method, and receipts from one place.',
+          title: 'Billing central hub',
+          description: 'Manage your subscription, payment method, and receipts in one place.',
           position: 'bottom',
         },
         {
           target: '[data-tour="billing-actions"]',
-          title: 'Change your plan',
-          description: 'Upgrade, switch billing cycle, or cancel — changes take effect immediately.',
+          title: 'Adjust subscription here',
+          description: 'Start plan upgrades, cycle switches, or cancellation while keeping access until period end.',
           position: 'bottom',
         },
         {
           target: '[data-tour="billing-invoices"]',
-          title: 'Invoice history',
-          description: 'View or download receipts for every payment here.',
+          title: 'Download receipts quickly',
+          description: 'Tip: open View for invoice details or use Download to save receipts.',
           position: 'top',
         },
       ]
-      startTour(billingTour, 'billing')
-      setTourSeen('billing')
-    }
+      autoPlayPageTour('billing', billingTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

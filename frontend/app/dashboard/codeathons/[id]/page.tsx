@@ -18,7 +18,7 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Problem {
   id: string
@@ -127,30 +127,28 @@ export default function CodeathonDetailPage({ params }: { params: Promise<{ id: 
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_codeathon-detail_tour')) {
+    if (gate.ready) {
       const codeathonDetailTour: TourStep[] = [
         {
           target: '[data-tour="codeathon-detail-header"]',
-          title: 'Codeathon overview',
-          description: 'See the event title, status, and key details at a glance.',
+          title: 'Codeathon Details For Participants',
+          description: 'This page shows one codeathon’s rules, teams, and problems for participants.',
           position: 'bottom',
         },
         {
           target: '[data-tour="codeathon-detail-register"]',
-          title: 'Join the event',
-          description: 'Register for this codeathon with one click when entries are open.',
+          title: 'Register For Event',
+          description: 'Click Register for Codeathon to join, then solve problems when contest starts.',
           position: 'top',
         },
         {
           target: '[data-tour="codeathon-detail-overview"]',
-          title: 'Explore event tabs',
-          description: 'Browse stats, teams, and problems from the overview section.',
+          title: 'Check Stats Before Registering',
+          description: 'Pro tip: check prize, difficulty, and countdown here before registering or forming a team.',
           position: 'top',
         },
       ]
-      startTour(codeathonDetailTour, 'codeathon-detail')
-      setTourSeen('codeathon-detail')
-    }
+      autoPlayPageTour('codeathon-detail', codeathonDetailTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   async function fetchData() {

@@ -14,7 +14,7 @@ import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 interface NotificationPreference {
   id: string
@@ -78,12 +78,12 @@ export default function NotificationPreferencesPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_notification-preferences_tour')) {
+    if (gate.ready) {
       const notificationPreferencesTour: TourStep[] = [
         {
           target: '[data-tour="notification-preferences-header"]',
-          title: 'Control the noise',
-          description: 'Fine-tune which channels and categories can reach you.',
+          title: 'Control Notification Channels',
+          description: 'This page lets you control which channels and categories notify you.',
           position: 'bottom',
         },
         {
@@ -99,9 +99,7 @@ export default function NotificationPreferencesPage() {
           position: 'top',
         },
       ]
-      startTour(notificationPreferencesTour, 'notification-preferences')
-      setTourSeen('notification-preferences')
-    }
+      autoPlayPageTour('notification-preferences', notificationPreferencesTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const handleToggle = async (prefId: string, field: string, value: boolean) => {

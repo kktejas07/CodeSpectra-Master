@@ -8,7 +8,7 @@ import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { EmptyState } from '@/components/ui/empty-state'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText, SkeletonList } from '@/components/ui/skeleton-boneyard'
 
 type Post = {
@@ -48,7 +48,7 @@ export default function ArticlesNewsroomPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_articles_tour')) {
+    if (gate.ready) {
       const articlesTour: TourStep[] = [
         {
           target: '[data-tour="articles-header"]',
@@ -69,9 +69,7 @@ export default function ArticlesNewsroomPage() {
           position: 'bottom',
         },
       ]
-      startTour(articlesTour, 'articles')
-      setTourSeen('articles')
-    }
+      autoPlayPageTour('articles', articlesTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {

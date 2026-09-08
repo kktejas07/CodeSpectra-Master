@@ -5,7 +5,7 @@ import Link from 'next/link'
 import { ArrowRight, Code2, Database, FileCode2, GitBranch, Layers, ServerCog, Sparkles, Terminal, TrendingUp, HelpCircle } from 'lucide-react'
 import { Card } from '@/components/ui/card'
 import { cn } from '@/lib/utils'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
@@ -59,30 +59,28 @@ export default function TracksPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_tracks_tour')) {
+    if (gate.ready) {
       const tracksTour: TourStep[] = [
         {
           target: '[data-tour="tracks-header"]',
-          title: 'Tech-stack Tracks',
-          description: 'Pick a stack and grind through curated problems to build real-world skills.',
+          title: 'Tech Stack Tracks',
+          description: 'Curated problem tracks by stack for learners building real-world skills.',
           position: 'bottom',
         },
         {
           target: '[data-tour="tracks-tooltip"]',
-          title: 'Track Description',
-          description: 'Each track includes a curated list of problems, a badge, and a suggested learning path.',
+          title: 'Hover Help Icon',
+          description: 'Hover the help icon to preview the pick-a-stack hint.',
           position: 'bottom',
         },
         {
           target: '[data-tour="tracks-grid"]',
-          title: 'Available Tracks',
-          description: 'Browse all available tracks and start practicing problems in your chosen stack.',
+          title: 'Open Track Practice',
+          description: 'Tip: click any track card to practice its filtered problems list.',
           position: 'bottom',
         },
       ]
-      startTour(tracksTour, 'tracks')
-      setTourSeen('tracks')
-    }
+      autoPlayPageTour('tracks', tracksTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   function trackProblemCount(track: TrackDef): number {

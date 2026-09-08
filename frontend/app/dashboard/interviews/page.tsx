@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge'
 import { Video, Calendar, Clock, ArrowRight, Bot, Brain } from 'lucide-react'
 import { SkeletonList } from '@/components/ui/skeleton-boneyard'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 
 interface Interview {
@@ -39,7 +39,7 @@ export default function InterviewsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_interviews_tour')) {
+    if (gate.ready) {
       const interviewsTour: TourStep[] = [
         {
           target: '[data-tour="interviews-header"]',
@@ -60,9 +60,7 @@ export default function InterviewsPage() {
           position: 'bottom',
         },
       ]
-      startTour(interviewsTour, 'interviews')
-      setTourSeen('interviews')
-    }
+      autoPlayPageTour('interviews', interviewsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

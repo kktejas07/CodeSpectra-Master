@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { Award, BookOpen, CheckCircle2, ExternalLink, FileBadge2, GraduationCap } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { prepTracks, freeCredentials, type CertTrack } from '@/lib/cert-catalog'
 
 export default function CertificationsPage() {
@@ -16,18 +16,18 @@ export default function CertificationsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_certifications_tour')) {
+    if (gate.ready) {
       const certificationsTour: TourStep[] = [
         {
           target: '[data-tour="certifications-header"]',
-          title: 'Real certifications',
-          description: 'The honest guide to recognized certs, paid exams, and free credentials.',
+          title: 'Honest certification guide',
+          description: 'This page guides users to recognized paid exams and free verifiable credentials.',
           position: 'bottom',
         },
         {
           target: '[data-tour="certifications-prep"]',
-          title: 'Prepare for exams',
-          description: 'Follow free study paths, take official practice exams, then book the real thing.',
+          title: 'Study, practice, book exams',
+          description: 'Open a prep card to study free, take the official practice, then book the vendor exam.',
           position: 'top',
         },
         {
@@ -37,9 +37,7 @@ export default function CertificationsPage() {
           position: 'top',
         },
       ]
-      startTour(certificationsTour, 'certifications')
-      setTourSeen('certifications')
-    }
+      autoPlayPageTour('certifications', certificationsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

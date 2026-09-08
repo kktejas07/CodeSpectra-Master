@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       json.user_id = user.id
     }
 
-    const parseResult = feedbackSchema.pick({ type: true, content: true, user_id: true }).safeParse(json)
+    const parseResult = feedbackSchema.pick({ type: true, content: true, user_id: true, user_name: true, user_email: true, source: true }).safeParse(json)
 
     if (!parseResult.success) {
       return NextResponse.json({ error: parseResult.error.issues }, { status: 400 })
@@ -24,6 +24,11 @@ export async function POST(req: Request) {
       type: data.type as 'bug' | 'complaint' | 'suggestion' | 'other',
       content: data.content,
       user_id: data.user_id,
+      // ponytail: prefer the authenticated session over client-sent values
+      // (clients must not be able to impersonate another reporter).
+      user_name: user?.name || user?.fullName || data.user_name,
+      user_email: user?.email || data.user_email,
+      source: typeof json.source === 'string' ? json.source.slice(0, 64) : undefined,
       status: 'open',
     })
 

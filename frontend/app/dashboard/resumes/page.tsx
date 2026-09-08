@@ -5,7 +5,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { FileText, Upload, Trash2, Plus, Search } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useToast } from '@/lib/toast-context'
@@ -49,30 +49,28 @@ export default function MyResumesPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_resumes_tour')) {
+    if (gate.ready) {
       const resumesTour: TourStep[] = [
         {
           target: '[data-tour="resumes-templates"]',
-          title: 'Choose a template',
-          description: 'Browse polished templates and click any card to start building your resume.',
+          title: 'Resumes workspace overview',
+          description: 'Your space to build and manage resumes from templates or profile data.',
           position: 'bottom',
         },
         {
           target: '[data-tour="resumes-create"]',
-          title: 'Create new resume',
-          description: 'Click the dashed card to build a resume from your profile or from scratch.',
+          title: 'Start new resume',
+          description: 'Start a resume from profile data or from scratch via the builder.',
           position: 'bottom',
         },
         {
           target: '[data-tour="resumes-list"]',
-          title: 'Manage your resumes',
-          description: 'All saved resumes appear here — search, preview, or delete them in bulk.',
+          title: 'Search and clean up',
+          description: 'Tip: search by file name and select rows to delete resumes in bulk.',
           position: 'top',
         },
       ]
-      startTour(resumesTour, 'resumes')
-      setTourSeen('resumes')
-    }
+      autoPlayPageTour('resumes', resumesTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const handleDelete = async (ids: string[]) => {

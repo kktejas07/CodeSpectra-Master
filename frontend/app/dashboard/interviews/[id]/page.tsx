@@ -12,7 +12,7 @@ import { CollabEditor } from '@/components/interviews/collab-editor'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import Link from 'next/link'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 interface Interview {
   id: string; title: string; type: string; role: string
@@ -50,7 +50,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
 
   // Initialize tour if this is the first visit to interview detail
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_interview-detail_tour')) {
+    if (gate.ready) {
       const interviewTour: TourStep[] = [
         {
           target: '[data-tour="back-to-interviews"]',
@@ -95,9 +95,7 @@ export default function InterviewDetailPage({ params }: { params: Promise<{ id: 
           position: 'bottom',
         }
       ]
-      startTour(interviewTour, 'interview-detail')
-      setTourSeen('interview-detail')
-    }
+      autoPlayPageTour('interview-detail', interviewTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const load = useCallback(async () => {

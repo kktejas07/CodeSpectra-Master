@@ -12,7 +12,7 @@ import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import Link from 'next/link'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 export default function ScheduleInterviewPage() {
   const gate = usePageGuard('user')
@@ -41,30 +41,28 @@ export default function ScheduleInterviewPage() {
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_interview-schedule_tour')) {
+    if (gate.ready) {
       const interviewScheduleTour: TourStep[] = [
         {
           target: '[data-tour="interview-schedule-header"]',
-          title: 'Schedule an interview',
-          description: 'Set up a new interview by filling in the details below.',
+          title: 'Book Interviews For Candidates',
+          description: 'This page books a new interview slot for a registered candidate.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-schedule-submit"]',
-          title: 'Send the invite',
-          description: 'Click here to schedule the interview and notify the candidate.',
+          title: 'Schedule Interview Now',
+          description: 'Click Schedule Interview to book the slot and open the interview room.',
           position: 'top',
         },
         {
           target: '[data-tour="interview-schedule-form"]',
-          title: 'Interview details',
-          description: 'Add the title, role, candidate email, and time slot for the session.',
+          title: 'Enter Accurate Candidate Details',
+          description: 'Pro tip: use a registered candidate email or scheduling fails.',
           position: 'top',
         },
       ]
-      startTour(interviewScheduleTour, 'interview-schedule')
-      setTourSeen('interview-schedule')
-    }
+      autoPlayPageTour('interview-schedule', interviewScheduleTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   async function schedule() {

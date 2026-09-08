@@ -16,7 +16,7 @@ import { AnalyticsDashboard, type AnalyticsDashboardProps } from '@/components/a
 import { AuditLogsViewer } from '@/components/admin/audit-logs-viewer'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { SkeletonList, SkeletonStats, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
@@ -276,47 +276,46 @@ export default function SystemAdminDashboard() {
   // Initialize tour on first visit — placed before the early return below
   // (hooks must not be called conditionally).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_admin-system_tour')) {
+    if (gate.ready) {
       const adminSystemTour: TourStep[] = [
         {
           target: '[data-tour="admin-system-header"]',
-          title: 'Operations Overview',
-          description: 'View live server health, platform metrics, and audit access.',
+          title: 'Platform Operations Overview',
+          description: 'Admin hub for live server health, platform metrics, and audit access.',
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-server-health"]',
-          title: 'Server Health',
-          description: 'Monitor CPU, RAM, disk usage, container status, and Redis health.',
+          title: 'Monitor Server Health',
+          description: 'Monitor CPU, RAM, disk, and containers; refresh or clear caches in Maintenance.',
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-redis"]',
-          title: 'Redis & Rate Limiting',
-          description: 'Check Redis status, latency, memory, and live rate-limit counters.',
+          title: 'Check Redis Limits',
+          description: 'Check Redis mode, latency, and live rate-limit counters before debugging throttles.',
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-quick-links"]',
-          title: 'Quick Links',
-          description: 'Navigate to key admin sections: Users & Roles, Insights, Platform Settings, and Audit Logs.',
+          title: 'Jump to Admin Sections',
+          description: 'Open Users and roles, Insights, Platform settings, or Audit logs quickly.',
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-web-vitals"]',
-          title: 'Performance & Web Vitals',
-          description: 'Monitor Core Web Vitals and other performance metrics.',
+          title: 'Review Web Vitals',
+          description: 'Review LCP, INP, and CLS p75 scores by range; refresh for latest samples.',
           position: 'bottom',
         },
         {
           target: '[data-tour="admin-system-analytics"]',
-          title: 'Analytics & Audit Logs',
-          description: 'View detailed platform analytics and audit logs for security and compliance.',
+          title: 'Spot Trends Next',
+          description: 'Tip: spot user growth and activity trends here, then check audit logs below.',
           position: 'bottom',
         },
       ];
-      startTour(adminSystemTour, 'admin-system');
-      setTourSeen('admin-system');
+      autoPlayPageTour('admin-system', adminSystemTour)
     }
   }, [gate.ready, startTour]);
 

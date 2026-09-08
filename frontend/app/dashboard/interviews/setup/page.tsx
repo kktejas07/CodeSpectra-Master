@@ -6,7 +6,7 @@ import { ResumeUpload } from '@/components/interviews/resume-upload'
 import { AudioCameraSettings } from '@/components/interviews/audio-camera-settings'
 import { InterviewRoleSelector } from '@/components/interviews/interview-role-selector'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Loader2 } from 'lucide-react'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 
@@ -60,24 +60,22 @@ export default function InterviewSetupPage() {
   // so the tour anchors the always-rendered wrapper and the initial role step.
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_interview-setup_tour')) {
+    if (gate.ready) {
       const interviewSetupTour: TourStep[] = [
         {
           target: '[data-tour="interview-setup-header"]',
-          title: 'Set up interview',
-          description: 'Follow these steps to configure and launch your practice interview.',
+          title: 'Practice Setup For Candidates',
+          description: 'This page sets up a guided practice interview for job seekers.',
           position: 'bottom',
         },
         {
           target: '[data-tour="interview-setup-roles"]',
-          title: 'Pick your role',
-          description: 'Choose a role to tailor the interview questions to that position.',
+          title: 'Pick Role To Continue',
+          description: 'Pro tip: pick your target role to unlock resume upload and device setup next.',
           position: 'bottom',
         },
       ]
-      startTour(interviewSetupTour, 'interview-setup')
-      setTourSeen('interview-setup')
-    }
+      autoPlayPageTour('interview-setup', interviewSetupTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return (

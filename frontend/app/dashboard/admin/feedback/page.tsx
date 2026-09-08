@@ -18,11 +18,18 @@ interface Feedback {
   type: string
   content: string
   user_id?: string
+  user_name?: string
+  user_email?: string
+  source?: string
   status: 'open' | 'resolved'
   created_at: string
   admin_reply?: string
   replied_at?: string
   replied_by?: string
+}
+
+function reporterLabel(f: Pick<Feedback, 'user_name' | 'user_email' | 'user_id'>): string {
+  return f.user_name || f.user_email || (f.user_id ? `${f.user_id.slice(0, 8)}…` : 'Anonymous')
 }
 
 export default function AdminFeedbackPage() {
@@ -129,6 +136,25 @@ export default function AdminFeedbackPage() {
       )
     },
     {
+      key: 'reporter', header: 'Reporter', sortable: true,
+      cell: (item) => (
+        <div className="min-w-0 max-w-[180px]" title={item.user_email || item.user_id || 'Anonymous'}>
+          <p className="truncate text-sm font-medium">{reporterLabel(item)}</p>
+          {item.user_email && item.user_name && (
+            <p className="truncate text-[11px] text-muted-foreground">{item.user_email}</p>
+          )}
+        </div>
+      )
+    },
+    {
+      key: 'source', header: 'Source', sortable: true,
+      cell: (item) => (
+        item.source
+          ? <Badge variant="outline" className="text-[10px] capitalize">{item.source}</Badge>
+          : <span className="text-[11px] text-muted-foreground">—</span>
+      )
+    },
+    {
       key: 'status', header: 'Status', sortable: true,
       cell: (item) => (
         <Badge variant={item.status === 'open' ? 'outline' : 'secondary'} className="capitalize text-[10px] cursor-pointer"
@@ -196,7 +222,8 @@ export default function AdminFeedbackPage() {
             data={data}
             columns={columns}
             bulkActions={bulkActions}
-            searchPlaceholder="Search feedback content..."
+            searchPlaceholder="Search feedback, reporter, source..."
+            searchKeys={['content', 'user_name', 'user_email', 'source', 'type', 'status']}
             emptyMessage="No feedback reports found."
             loading={loading}
           />
@@ -211,9 +238,23 @@ export default function AdminFeedbackPage() {
               <div>
                 <p className="text-xs font-semibold uppercase tracking-wide text-muted-foreground mb-2">Full Content</p>
                 <p className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{expandedFeedback.content}</p>
-                {expandedFeedback.user_id && (
-                  <p className="text-xs text-muted-foreground mt-2">Submitted by: {expandedFeedback.user_id}</p>
-                )}
+                <div className="mt-3 flex flex-wrap gap-x-6 gap-y-1 text-xs text-muted-foreground">
+                  <span>
+                    Reported by:{' '}
+                    <span className="font-medium text-foreground">{reporterLabel(expandedFeedback)}</span>
+                    {expandedFeedback.user_email && expandedFeedback.user_name && (
+                      <span> ({expandedFeedback.user_email})</span>
+                    )}
+                  </span>
+                  {expandedFeedback.source && (
+                    <span>
+                      Source: <span className="font-medium text-foreground capitalize">{expandedFeedback.source}</span>
+                    </span>
+                  )}
+                  {expandedFeedback.user_id && (
+                    <span className="font-mono">ID: {expandedFeedback.user_id}</span>
+                  )}
+                </div>
               </div>
               {expandedFeedback.admin_reply ? (
                 <div className="rounded-lg bg-primary/5 border border-primary/20 p-3">

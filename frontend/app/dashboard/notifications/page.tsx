@@ -11,7 +11,7 @@ import {
 import { Loader2, Bell, CheckCheck, Trophy, Shield, CreditCard, Video, Search, Users, Award, LogIn, AlertTriangle, FileText, MessageSquare, Clock, Building, Key, Play, XCircle, Star, Mail } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { EmptyState } from '@/components/ui/empty-state'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import DOMPurify from 'isomorphic-dompurify'
@@ -154,30 +154,28 @@ export default function NotificationsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_notifications_tour')) {
+    if (gate.ready) {
       const notificationsTour: TourStep[] = [
         {
           target: '[data-tour="notifications-header"]',
-          title: 'Stay in the loop',
-          description: 'Course updates, assessment results, and account activity land here.',
+          title: 'Your Notification Inbox',
+          description: 'This inbox gathers your product and account updates; use Mark all read to clear them.',
           position: 'bottom',
         },
         {
           target: '[data-tour="notifications-filters"]',
-          title: 'Filter by topic',
-          description: 'Narrow the inbox by category to find billing, security, or learning updates fast.',
+          title: 'Filter Inbox by Category',
+          description: 'Filter inbox by category to find billing, security, or learning updates fast.',
           position: 'bottom',
         },
         {
           target: '[data-tour="notifications-list"]',
-          title: 'Tap to act',
-          description: 'Click any notification to jump to the related course, event, or setting.',
+          title: 'Tip: Open Unread First',
+          description: 'Tip: open unread items first; each jumps to its related page or newsletter.',
           position: 'top',
         },
       ]
-      startTour(notificationsTour, 'notifications')
-      setTourSeen('notifications')
-    }
+      autoPlayPageTour('notifications', notificationsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const openNewsletter = async (n: Notification) => {

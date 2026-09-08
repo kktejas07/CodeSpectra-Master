@@ -8,7 +8,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { Trophy, BarChart3, CheckCircle, XCircle, FileText, BrainCircuit } from 'lucide-react'
 import { SkeletonStats, SkeletonCard, SkeletonTable } from '@/components/ui/skeleton-boneyard'
@@ -62,7 +62,7 @@ export default function MyAssessmentsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_assessments_tour')) {
+    if (gate.ready) {
       const assessmentsTour: TourStep[] = [
         {
           target: '[data-tour="assessments-header"]',
@@ -95,9 +95,7 @@ export default function MyAssessmentsPage() {
           position: 'bottom',
         },
       ]
-      startTour(assessmentsTour, 'assessments')
-      setTourSeen('assessments')
-    }
+      autoPlayPageTour('assessments', assessmentsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

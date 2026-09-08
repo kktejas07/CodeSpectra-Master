@@ -10,7 +10,7 @@ import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 type Category = 'Global' | 'Female' | 'Arts & Science' | 'Engineering' | 'Management' | 'Quiz' | 'Hackathon'
 
@@ -65,7 +65,7 @@ export default function LeaderboardPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_leaderboard_tour')) {
+    if (gate.ready) {
       const leaderboardTour: TourStep[] = [
         {
           target: '[data-tour="leaderboard-header"]',
@@ -104,9 +104,7 @@ export default function LeaderboardPage() {
           position: 'top',
         },
       ]
-      startTour(leaderboardTour, 'leaderboard')
-      setTourSeen('leaderboard')
-    }
+      autoPlayPageTour('leaderboard', leaderboardTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const filtered = useMemo(() => {

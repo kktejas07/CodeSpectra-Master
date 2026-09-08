@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Textarea } from '@/components/ui/textarea'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { ProctorMonitor } from '@/components/ai/proctor-monitor'
 import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
@@ -65,30 +65,28 @@ export default function ExamPage() {
   // First-visit guided tour (same pattern as the other dashboard pages).
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_assessment-detail_tour')) {
+    if (gate.ready) {
       const assessmentDetailTour: TourStep[] = [
         {
           target: '[data-tour="assessment-detail-header"]',
-          title: 'Assessment header',
-          description: 'Track your progress and the remaining time from this bar.',
+          title: 'Timed Test For Candidates',
+          description: 'This page runs a timed assessment for candidates to answer and submit.',
           position: 'bottom',
         },
         {
           target: '[data-tour="assessment-detail-nav"]',
-          title: 'Navigate questions',
-          description: 'Move between questions or submit your assessment when finished.',
+          title: 'Move Between Questions',
+          description: 'Click Next, Previous, or a number to jump questions and submit last.',
           position: 'top',
         },
         {
           target: '[data-tour="assessment-detail-question"]',
-          title: 'Answer here',
-          description: 'Read each question and select or type your answer in this card.',
+          title: 'Drafts Save Automatically Here',
+          description: 'Pro tip: answers draft to this device, so finish all questions before submitting.',
           position: 'top',
         },
       ]
-      startTour(assessmentDetailTour, 'assessment-detail')
-      setTourSeen('assessment-detail')
-    }
+      autoPlayPageTour('assessment-detail', assessmentDetailTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const [exam, setExam] = useState<ExamDoc | null>(null)

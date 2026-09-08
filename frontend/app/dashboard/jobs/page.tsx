@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { useToast } from '@/lib/toast-context'
 import {
   Briefcase, ExternalLink, Clock,
@@ -52,7 +52,7 @@ export default function DashboardJobsPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_jobs_tour')) {
+    if (gate.ready) {
       const jobsTour: TourStep[] = [
         {
           target: '[data-tour="jobs-header"]',
@@ -73,9 +73,7 @@ export default function DashboardJobsPage() {
           position: 'top',
         },
       ]
-      startTour(jobsTour, 'jobs')
-      setTourSeen('jobs')
-    }
+      autoPlayPageTour('jobs', jobsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return (

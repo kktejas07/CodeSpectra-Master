@@ -21,7 +21,7 @@ import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, D
 import { Label } from '@/components/ui/label'
 import { useToast } from '@/lib/toast-context'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 const MOCK_TESTS = [
   { id: 'tcs-software-engineer', company: 'TCS', role: 'Software Engineer', color: 'bg-blue-600', type: 'Tech', level: 'Entry-level' },
@@ -44,30 +44,28 @@ export default function MockTestsPage() {
   const { startTour, setTourSeen } = useTour()
 
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_mock-tests_tour')) {
+    if (gate.ready) {
       const mockTestsTour: TourStep[] = [
         {
           target: '[data-tour="mock-tests-header"]',
-          title: 'AI-powered mock tests',
-          description: 'Practice role-based assessments generated dynamically by AI for top companies.',
+          title: 'Company Mock Test Library',
+          description: 'Browse AI-generated role tests for top companies, built for job seekers practicing interviews.',
           position: 'bottom',
         },
         {
           target: '[data-tour="mock-tests-create"]',
-          title: 'Create custom test',
+          title: 'Generate Custom Company Test',
           description: 'Generate a tailored test for any company and role for one AI credit.',
           position: 'left',
         },
         {
           target: '[data-tour="mock-tests-list"]',
-          title: 'Browse sample tests',
-          description: 'Pick a company card and start a test instantly.',
+          title: 'Start Sample Before Spending',
+          description: 'Pro tip: Start a Sample card first to preview the format before spending a credit on a custom test.',
           position: 'top',
         },
       ]
-      startTour(mockTestsTour, 'mock-tests')
-      setTourSeen('mock-tests')
-    }
+      autoPlayPageTour('mock-tests', mockTestsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const filteredTests = MOCK_TESTS.filter(t => 

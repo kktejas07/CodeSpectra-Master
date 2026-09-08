@@ -4,7 +4,7 @@ import { useCallback, useEffect, useState } from 'react'
 import { Plus, MessageSquare, ArrowLeft, Send, Clock, CheckCircle2, XCircle } from 'lucide-react'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { Button } from '@/components/ui/button'
 import { Input } from '@/components/ui/input'
 import { Badge } from '@/components/ui/badge'
@@ -48,30 +48,28 @@ export default function SupportPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_support_tour')) {
+    if (gate.ready) {
       const supportTour: TourStep[] = [
         {
           target: '[data-tour="support-header"]',
-          title: 'Support tickets',
-          description: 'Track every help request you raise — replies from the team land here.',
+          title: 'Support tickets overview',
+          description: 'Your place to raise help requests and track team replies.',
           position: 'bottom',
         },
         {
           target: '[data-tour="support-new"]',
-          title: 'Raise a ticket',
-          description: 'Click New Ticket, pick a category, and describe your issue.',
+          title: 'Create support ticket',
+          description: 'Start a ticket with a subject, category, and detailed message, then submit.',
           position: 'bottom',
         },
         {
           target: '[data-tour="support-list"]',
-          title: 'Follow conversations',
-          description: 'Click any ticket to read replies and respond until it is resolved.',
+          title: 'Follow up faster',
+          description: 'Tip: click a ticket to open its replies and keep responding until closed.',
           position: 'top',
         },
       ]
-      startTour(supportTour, 'support')
-      setTourSeen('support')
-    }
+      autoPlayPageTour('support', supportTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   const openTicket = async (t: Ticket) => {

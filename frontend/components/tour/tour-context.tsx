@@ -24,7 +24,7 @@ import {
   type TourStep,
 } from '@/lib/tour-driver'
 
-export { TOUR_ID_FOR_PATHS, resolveTourId, type TourStep, type TourHint } from '@/lib/tour-driver'
+export { TOUR_ID_FOR_PATHS, resolveTourId, autoPlayPageTour, type TourStep, type TourHint } from '@/lib/tour-driver'
 
 interface TourContextValue {
   /** Static snapshots — driver.js owns live tour state; pages don't read these. */

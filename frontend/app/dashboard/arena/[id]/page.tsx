@@ -13,7 +13,7 @@ import { getArenaChallenge, getNextArenaChallengeId, type ArenaChallenge } from 
 import { PROGRAMMING_LANGUAGES } from '@/lib/languages'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), {
   ssr: false,
@@ -431,30 +431,28 @@ export default function ArenaChallengePage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_arena-detail_tour')) {
+    if (gate.ready) {
       const arenaDetailTour: TourStep[] = [
         {
           target: '[data-tour="arena-detail-header"]',
-          title: 'Solve this challenge',
-          description: 'Check the title, difficulty, and points before you start coding.',
+          title: 'Solve Rated Coding Challenges',
+          description: 'This page gives every user one arena challenge with its difficulty and points.',
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-detail-actions"]',
-          title: 'Run and submit',
-          description: 'Test your solution with Run, then Submit to advance to the next challenge.',
+          title: 'Run Then Submit Solution',
+          description: 'Test with Run, then Submit to advance to the next challenge.',
           position: 'bottom',
         },
         {
           target: '[data-tour="arena-detail-editor"]',
-          title: 'Write code here',
-          description: 'Pick a language and type your solution; results appear below the editor.',
+          title: 'Tip: Match Sample Outputs',
+          description: 'Tip: type your solution here in the selected language and mirror the example inputs and outputs.',
           position: 'top',
         },
       ]
-      startTour(arenaDetailTour, 'arena-detail')
-      setTourSeen('arena-detail')
-    }
+      autoPlayPageTour('arena-detail', arenaDetailTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

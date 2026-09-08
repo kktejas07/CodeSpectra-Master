@@ -11,7 +11,7 @@ import { Badge } from '@/components/ui/badge'
 import { SkeletonCard, SkeletonButton } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 // Helper to render warnings (handles both strings and Didit warning objects)
 function renderWarning(w: unknown): string {
@@ -131,30 +131,28 @@ export default function IdentityVerificationPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_identity-verify_tour')) {
+    if (gate.ready) {
       const identityVerifyTour: TourStep[] = [
         {
           target: '[data-tour="identity-verify-header"]',
-          title: 'Verify your identity',
-          description: 'One-time verification unlocks exams, assessments, and all gated features.',
+          title: 'Verify Identity to Unlock',
+          description: 'This page runs one-time KYC for every user to unlock exams and gated features.',
           position: 'bottom',
         },
         {
           target: '[data-tour="identity-verify-start"]',
-          title: 'Start verification',
-          description: 'Click here to open the secure verification flow; results usually arrive in under a minute.',
+          title: 'Start Verification Flow',
+          description: 'Start verification to open the secure Didit page and get results in seconds.',
           position: 'top',
         },
         {
           target: '[data-tour="identity-verify-features"]',
-          title: "What's checked",
-          description: 'ID document, liveness, face match, and fraud signals are all covered in one pass.',
+          title: 'Tip: Prepare ID First',
+          description: 'Tip: keep a government ID and selfie ready — this panel lists the ID, liveness, face, and fraud checks.',
           position: 'top',
         },
       ]
-      startTour(identityVerifyTour, 'identity-verify')
-      setTourSeen('identity-verify')
-    }
+      autoPlayPageTour('identity-verify', identityVerifyTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

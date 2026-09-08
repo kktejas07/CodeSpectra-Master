@@ -10,7 +10,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { useLockedFeatures } from '@/lib/use-page-guard'
 import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/components/ui/tooltip'
 import { usePageGuard } from '@/lib/use-page-guard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 
 const Editor = dynamic(() => import('@monaco-editor/react'), { ssr: false })
 const DiffEditor = dynamic(() => import('@monaco-editor/react').then(m => m.DiffEditor), { ssr: false })
@@ -123,12 +123,12 @@ export default function AgentPage() {
 
   // First-visit guided tour (same pattern as the other dashboard pages).
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_agent_tour')) {
+    if (gate.ready) {
       const agentTour: TourStep[] = [
         {
           target: '[data-tour="agent-header"]',
-          title: 'Agent workspace',
-          description: 'Configure language, reasoning steps, and model for the autonomous coding loop.',
+          title: 'Agent Workspace Overview',
+          description: 'This workspace lets developers run an autonomous coding agent to plan and rewrite code.',
           position: 'bottom',
         },
         {
@@ -144,9 +144,7 @@ export default function AgentPage() {
           position: 'left',
         },
       ]
-      startTour(agentTour, 'agent')
-      setTourSeen('agent')
-    }
+      autoPlayPageTour('agent', agentTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null

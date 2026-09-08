@@ -12,7 +12,7 @@ import {
 import { useAuth } from '@/lib/auth-context'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
-import { useTour, type TourStep } from '@/components/tour/tour-context'
+import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { isSuperAdmin } from '@/lib/rbac'
 import { Countdown } from '@/components/hackathons/countdown'
 
@@ -68,30 +68,28 @@ export default function UserHackathonsPage() {
 
   // Initialize tour on first visit
   useEffect(() => {
-    if (gate.ready && !localStorage.getItem('has_seen_hackathons_tour')) {
+    if (gate.ready) {
       const hackathonsTour: TourStep[] = [
         {
           target: '[data-tour="hackathons-header"]',
-          title: 'Hackathons',
-          description: 'Join live coding events, compete in teams, and win prizes.',
+          title: 'Join Team Hackathons',
+          description: 'Team coding events page where participants join teams and compete live.',
           position: 'bottom',
         },
         {
           target: '[data-tour="hackathons-live"]',
-          title: 'Live Events',
-          description: 'Hackathons currently in progress. Jump in and start competing!',
+          title: 'Enter Live Workspaces',
+          description: 'Enter a live workspace, register your team, or view details.',
           position: 'bottom',
         },
         {
           target: '[data-tour="hackathons-upcoming"]',
-          title: 'Upcoming Events',
-          description: 'Register early for upcoming hackathons and secure your spot.',
+          title: 'Tip Register Early',
+          description: 'Tip: open an upcoming card to register before it goes live.',
           position: 'bottom',
         },
       ]
-      startTour(hackathonsTour, 'hackathons')
-      setTourSeen('hackathons')
-    }
+      autoPlayPageTour('hackathons', hackathonsTour)}
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready || loading) {
