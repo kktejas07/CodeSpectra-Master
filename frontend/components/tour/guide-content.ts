@@ -1143,4 +1143,836 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
     tips: ['Only accept invites you recognize — team membership grants data access.'],
   },
+  'admin-ai-inventory': {
+    title: 'AI Inventory & Control Plane',
+    about: 'Every AI dependency in one place, with vulnerability and audit findings.',
+    features: [
+      {
+        title: 'Inventory list',
+        text: 'Each AI integration, model, and key surface with ownership and status.',
+      },
+      {
+        title: 'Vulnerability audit',
+        text: 'Dependency and configuration findings ranked by severity.',
+      },
+    ],
+    tips: ['Clear critical findings first — they gate security sign-off.'],
+  },
+  'admin-analytics': {
+    title: 'Analytics',
+    about: 'Platform traffic and usage: hourly activity, top pages, and traffic sources.',
+    features: [
+      {
+        title: 'Hourly activity',
+        text: 'Requests over the last 24 hours — spikes point at cron jobs or campaigns.',
+      },
+      {
+        title: 'Top pages',
+        text: 'Most-visited routes, so you know where users actually spend time.',
+      },
+      {
+        title: 'Traffic sources',
+        text: 'Where visits come from, plus flag management with delete actions.',
+      },
+    ],
+    tips: ['Compare hourly spikes against the cron schedule before suspecting abuse.'],
+  },
+  'admin-announcements': {
+    title: 'Announcements',
+    about: 'Compose platform-wide announcements with channels and scheduling.',
+    features: [
+      {
+        title: 'New announcement',
+        text: 'Write the title and body of the broadcast.',
+      },
+      {
+        title: 'Delivery channels',
+        text: 'Choose where it appears: inbox, email, banner, or several at once.',
+      },
+      {
+        title: 'Schedule',
+        text: 'Publish now or set a future date and time.',
+      },
+    ],
+    tips: ['Schedule maintenance notices at least a day ahead of the window.'],
+  },
+  'admin-assessments': {
+    title: 'Assessment Management',
+    about: 'Create, publish, invite, and grade proctored assessments.',
+    features: [
+      {
+        title: 'Assessment list',
+        text: 'Every exam with status; open one for results or editing.',
+      },
+      {
+        title: 'Create and invite',
+        text: 'Build new assessments, then bulk-invite candidates by email.',
+      },
+      {
+        title: 'Clear filters',
+        text: 'Reset the list view when filters hide what you need.',
+      },
+    ],
+    tips: ['Publish only after previewing every question — edits mid-window confuse candidates.'],
+  },
+  'admin-assessments-edit': {
+    title: 'Edit Assessment',
+    about: 'Edit one assessment: metadata, questions, and bank imports.',
+    features: [
+      {
+        title: 'Exam metadata',
+        text: 'Title, description, timing, and proctoring toggles.',
+      },
+      {
+        title: 'Question list',
+        text: 'Reorder, edit, or remove questions; counts update live.',
+      },
+      {
+        title: 'Bank import',
+        text: 'Pull questions from the bank with paging, preview, and cancel.',
+      },
+    ],
+    tips: ['Import from the bank instead of retyping — it preserves answer keys.'],
+  },
+  'admin-assessment-results': {
+    title: 'Assessment Results',
+    about: 'Scores, proctor report, and per-candidate breakdown for one assessment.',
+    features: [
+      {
+        title: 'Proctor report',
+        text: 'Event-type summary: tab switches, faces, and flags per candidate.',
+      },
+      {
+        title: 'Results table',
+        text: 'Every attempt with score; filter all, flagged, or passed.',
+      },
+      {
+        title: 'Candidate detail',
+        text: 'Per-candidate answers with email fallback when names are missing.',
+      },
+    ],
+    tips: ['Review flagged sessions before releasing scores to candidates.'],
+  },
+  'admin-assessments-bulk': {
+    title: 'Bulk Schedule Assessments',
+    about: 'Invite hundreds of candidates at once from a CSV upload.',
+    features: [
+      {
+        title: 'Select assessment',
+        text: 'Pick which published exam the batch will take.',
+      },
+      {
+        title: 'Upload CSV',
+        text: 'Candidate emails and names in the documented columns.',
+      },
+      {
+        title: 'Preview candidates',
+        text: 'Verify parsed rows before sending a single invite.',
+      },
+    ],
+    tips: ['Preview catches malformed rows before invites go out — never skip it.'],
+  },
+  'admin-assessments-pipeline': {
+    title: 'Candidate Pipeline',
+    about: 'Every candidate across assessments on a stage board: invited to hired.',
+    features: [
+      {
+        title: 'Pipeline columns',
+        text: 'Drag-free stage view from invite through screening to decision.',
+      },
+      {
+        title: 'Candidate cards',
+        text: 'Scores and status per candidate; open for full history.',
+      },
+    ],
+    tips: ['Stale cards in early stages usually mean invites never arrived — check email logs.'],
+  },
+  'admin-billing': {
+    title: 'Billing Analytics',
+    about: 'Revenue, orders, and subscription health for the last 30 days.',
+    features: [
+      {
+        title: 'Revenue chart',
+        text: 'Paid volume over the last 30 days with plan splits.',
+      },
+      {
+        title: 'Orders by plan',
+        text: 'Which tiers actually sell, per plan and cycle.',
+      },
+      {
+        title: 'Subscription status',
+        text: 'Active, trialing, past-due, and churned counts.',
+      },
+    ],
+    tips: ['A rising past-due count means dunning emails need attention, not pricing.'],
+  },
+  'admin-blog': {
+    title: 'Newsroom',
+    about: 'Write and publish platform blog posts and announcements.',
+    features: [
+      {
+        title: 'Post list',
+        text: 'Drafts and published pieces with edit actions.',
+      },
+      {
+        title: 'Editor',
+        text: 'Compose with formatting, covers, and scheduled publishing.',
+      },
+    ],
+    tips: ['Publish release notes alongside every deploy train.'],
+  },
+  'admin-cdn': {
+    title: 'CDN & Edge Operations',
+    about: 'Cache, edge performance, and delivery health for static assets.',
+    features: [
+      {
+        title: 'Cache status',
+        text: 'Hit ratios and purge controls when content goes stale.',
+      },
+      {
+        title: 'Edge metrics',
+        text: 'Latency and throughput per region over time.',
+      },
+    ],
+    tips: ['Purge the cache after every frontend deploy, not before.'],
+  },
+  'admin-certificates': {
+    title: 'Certificates',
+    about: 'Issue, verify, and revoke completion certificates.',
+    features: [
+      {
+        title: 'Certificate list',
+        text: 'Every issued credential with recipient and status.',
+      },
+      {
+        title: 'Issue and revoke',
+        text: 'Mint new certificates or invalidate compromised ones.',
+      },
+    ],
+    tips: ['Revoke rather than delete — the audit trail stays intact.'],
+  },
+  'admin-codeathons': {
+    title: 'Codeathon & Hackathon Management',
+    about: 'Create and operate coding competitions end to end.',
+    features: [
+      {
+        title: 'Event list',
+        text: 'All competitions with live, upcoming, and closed states.',
+      },
+      {
+        title: 'Create flow',
+        text: 'Multi-step wizard: details, problems, rules, then publish.',
+      },
+    ],
+    tips: ['Lock problems before opening registration to avoid mid-event edits.'],
+  },
+  'admin-content-studio': {
+    title: 'Content Studio',
+    about: 'Newsroom articles and automated Signals drafts in one pipeline.',
+    features: [
+      {
+        title: 'Newsroom tab',
+        text: 'Hand-written posts with edit actions.',
+      },
+      {
+        title: 'Signals tab',
+        text: 'Machine-drafted items awaiting human review and publish.',
+      },
+    ],
+    tips: ['Never auto-publish Signals — a human pass catches tone and factual slips.'],
+  },
+  'admin-coupons': {
+    title: 'Coupons',
+    about: 'Discount codes for plans: create, limit, and track redemption.',
+    features: [
+      {
+        title: 'Coupon list',
+        text: 'Active and expired codes with usage counts.',
+      },
+      {
+        title: 'Create coupon',
+        text: 'Set percentage, plan scope, expiry, and redemption caps.',
+      },
+    ],
+    tips: ['Cap redemptions on public codes — uncapped codes leak to deal sites.'],
+  },
+  'admin-courses': {
+    title: 'Course Management',
+    about: 'Publish, edit, and retire learning courses and their lessons.',
+    features: [
+      {
+        title: 'Course list',
+        text: 'Every course with enrollment counts and publish state.',
+      },
+      {
+        title: 'Editor',
+        text: 'Open any course to manage modules, lessons, and media jobs.',
+      },
+    ],
+    tips: ['Unpublish instead of deleting — enrolled learners keep access to history.'],
+  },
+  'admin-course-detail': {
+    title: 'Edit Course',
+    about: 'Modules, lessons, and media generation for one course.',
+    features: [
+      {
+        title: 'Modules and lessons',
+        text: 'Reorder, edit, and add lessons within each module.',
+      },
+      {
+        title: 'Media jobs',
+        text: 'Trigger and monitor video/voiceover generation per lesson.',
+      },
+    ],
+    tips: ['Regenerate single lessons instead of the whole course when fixing narration.'],
+  },
+  'admin-cron-jobs': {
+    title: 'Cron Jobs',
+    about: 'Built-in loops, HTTP cron endpoints, and scheduled workflows.',
+    features: [
+      {
+        title: 'Built-in loops',
+        text: 'Always-on schedulers with last-run status and errors.',
+      },
+      {
+        title: 'HTTP endpoints',
+        text: 'External cron targets with URLs and secrets.',
+      },
+      {
+        title: 'Scheduled workflows',
+        text: 'Configured jobs with run counts and manual triggers.',
+      },
+    ],
+    tips: ['Trigger manually once after any schedule change to catch config errors early.'],
+  },
+  'admin-hackathons': {
+    title: 'Hackathon Events',
+    about: 'Create events, manage teams, assign judges, and publish results.',
+    features: [
+      {
+        title: 'Event list',
+        text: 'All hackathons with state; inline edit or open the detail page.',
+      },
+      {
+        title: 'Creation wizard',
+        text: 'Steps for details, problems, and rules before publishing.',
+      },
+    ],
+    tips: ['Assign judges before teams submit — late assignments delay scoring.'],
+  },
+  'admin-hackathon-detail': {
+    title: 'Hackathon Detail',
+    about: 'One event: teams, members, judges, and judging controls.',
+    features: [
+      {
+        title: 'Teams',
+        text: 'Roster per team with rename, member add, and save actions.',
+      },
+      {
+        title: 'Judges',
+        text: 'Assign and save judges who will score submissions.',
+      },
+      {
+        title: 'Judging controls',
+        text: 'Open, pause, and close scoring rounds for the event.',
+      },
+    ],
+    tips: ['Freeze teams before judging starts to keep scores comparable.'],
+  },
+  'admin-hackathon-report': {
+    title: 'Judge Report',
+    about: 'Final scoring breakdown: team totals and the proctor event log.',
+    features: [
+      {
+        title: 'Team breakdown',
+        text: 'Per-team scores across judges and criteria.',
+      },
+      {
+        title: 'Proctor event log',
+        text: 'Flagged session events attached to submissions.',
+      },
+    ],
+    tips: ['Cross-check outliers against the proctor log before publishing winners.'],
+  },
+  'admin-hackathon-create': {
+    title: 'New Hackathon Event',
+    about: 'Step-by-step event builder: details, problems, rules.',
+    features: [
+      {
+        title: 'Details step',
+        text: 'Name, dates, format, and prize information.',
+      },
+      {
+        title: 'Problems step',
+        text: 'Attach the problem set teams will solve.',
+      },
+      {
+        title: 'Rules step',
+        text: 'Eligibility, team sizes, and judging criteria.',
+      },
+    ],
+    tips: ['Complete all three steps — drafts do not accept registrations.'],
+  },
+  'admin-hackathon-edit': {
+    title: 'Edit Hackathon Event',
+    about: 'Modify a live or draft event across details, problems, and rules.',
+    features: [
+      {
+        title: 'Details step',
+        text: 'Dates, format, and prize edits with validation.',
+      },
+      {
+        title: 'Problems step',
+        text: 'Swap or reorder the attached problem set.',
+      },
+      {
+        title: 'Rules step',
+        text: 'Eligibility and judging criteria updates.',
+      },
+    ],
+    tips: ['Announce rule changes to registered teams — silent edits erode trust.'],
+  },
+  'admin-help': {
+    title: 'Admin Help',
+    about: 'Operator documentation for admin workflows, section by section.',
+    features: [
+      {
+        title: 'Section browser',
+        text: 'Pick a topic to read the exact steps for common admin tasks.',
+      },
+    ],
+    tips: ['Check here before pinging engineering — most flows are documented.'],
+  },
+  'admin-hiring-report': {
+    title: 'Hiring Manager Report',
+    about: 'Candidate outcomes formatted for hiring managers and clients.',
+    features: [
+      {
+        title: 'Report view',
+        text: 'Scores, recommendations, and interview highlights per candidate.',
+      },
+      {
+        title: 'Refresh',
+        text: 'Recompute from the latest interview and assessment data.',
+      },
+    ],
+    tips: ['Refresh right before sharing — stale reports mislead hiring calls.'],
+  },
+  'admin-integrations': {
+    title: 'Integrations',
+    about: 'Third-party connections: OAuth apps, webhooks, and API clients.',
+    features: [
+      {
+        title: 'Integration list',
+        text: 'Each connection with status and configuration entry points.',
+      },
+      {
+        title: 'Connect flow',
+        text: 'Authorize new integrations and store their credentials.',
+      },
+    ],
+    tips: ['Rotate integration secrets on staff changes, not just on incidents.'],
+  },
+  'admin-jobs': {
+    title: 'Job Postings',
+    about: 'Publish and edit the roles candidates apply to.',
+    features: [
+      {
+        title: 'Posting list',
+        text: 'Open and closed roles with applicant counts.',
+      },
+      {
+        title: 'Post / edit form',
+        text: 'Title, description, requirements, and visibility controls.',
+      },
+    ],
+    tips: ['Close filled roles the day offers are signed — stale posts attract noise.'],
+  },
+  'admin-kyc': {
+    title: 'KYC Verification',
+    about: 'Review identity verification submissions and clear or reject them.',
+    features: [
+      {
+        title: 'Review queue',
+        text: 'Pending records with documents and liveness evidence.',
+      },
+      {
+        title: 'Record actions',
+        text: 'Approve, reject, or close a record from its detail view.',
+      },
+    ],
+    tips: ['Reject with a reason — applicants cannot fix what they cannot see.'],
+  },
+  'admin-newsletter': {
+    title: 'Newsletter Composer',
+    about: 'Draft and send platform newsletters with templates and previews.',
+    features: [
+      {
+        title: 'Template blocks',
+        text: 'Headlines, highlights, and feature slots with placeholders.',
+      },
+      {
+        title: 'Preview',
+        text: 'See exactly what subscribers receive before sending.',
+      },
+    ],
+    tips: ['Send a test to yourself first — placeholders render differently live.'],
+  },
+  'admin-organizations': {
+    title: 'Organizations',
+    about: 'Tenant companies: members, roles, and lifecycle.',
+    features: [
+      {
+        title: 'Organization list',
+        text: 'Every tenant with member counts and status.',
+      },
+      {
+        title: 'Members dialog',
+        text: 'View, add, and remove members per organization.',
+      },
+      {
+        title: 'Create and edit',
+        text: 'Provision new tenants or update their details.',
+      },
+    ],
+    tips: ['Remove departed admins the day access should end.'],
+  },
+  'admin-permissions': {
+    title: 'Role & Permission Manager',
+    about: 'Which roles can see and do what across every dashboard page.',
+    features: [
+      {
+        title: 'Role matrix',
+        text: 'Pages down the side, roles across the top — toggle to grant or revoke.',
+      },
+      {
+        title: 'Status and stats',
+        text: 'Save state plus coverage counts per role.',
+      },
+    ],
+    tips: ['Deny-by-default for new pages, then open up deliberately.'],
+  },
+  'admin-plans': {
+    title: 'Plans & Pricing Management',
+    about: 'Subscription tiers, feature lists, and current plan state.',
+    features: [
+      {
+        title: 'Plan cards',
+        text: 'Each tier with limits and feature bullets.',
+      },
+      {
+        title: 'Current plan',
+        text: 'What is live now, with change controls.',
+      },
+    ],
+    tips: ['Mirror plan changes in the public pricing page the same day.'],
+  },
+  'admin-predictive': {
+    title: 'Predictive Validity & Adverse Impact',
+    about: 'Statistical checks that assessments predict performance fairly.',
+    features: [
+      {
+        title: 'Validity metrics',
+        text: 'Correlations between scores and outcomes per assessment.',
+      },
+      {
+        title: 'Impact analysis',
+        text: 'Adverse-impact ratios across demographic slices.',
+      },
+      {
+        title: 'Refresh',
+        text: 'Recompute after new hiring data lands.',
+      },
+    ],
+    tips: ['Re-run after every hiring round — drift hides in stale numbers.'],
+  },
+  'admin-proctor': {
+    title: 'Proctor Dashboard',
+    about: 'Live and historical proctoring events across assessments.',
+    features: [
+      {
+        title: 'Event stream',
+        text: 'Flagged moments — tab switches, faces, devices — as they happen.',
+      },
+      {
+        title: 'Session lookup',
+        text: 'Drill into any candidate session for the full timeline.',
+      },
+    ],
+    tips: ['One flag is noise; patterns across a session are signal.'],
+  },
+  'admin-question-bank': {
+    title: 'Engineering Question Bank',
+    about: 'The shared pool of vetted questions feeding assessments and interviews.',
+    features: [
+      {
+        title: 'Question list',
+        text: 'Filter by topic, difficulty, and type; preview any item.',
+      },
+      {
+        title: 'View and edit',
+        text: 'Inspect full content or fix wording, options, and answers.',
+      },
+      {
+        title: 'AI generation',
+        text: 'Draft new items to spec, then review before approving.',
+      },
+    ],
+    tips: ['Approve AI drafts only after checking the answer key by hand.'],
+  },
+  'admin-question-generator': {
+    title: 'AI Question Generator',
+    about: 'Generate assessment questions from a topic and spec.',
+    features: [
+      {
+        title: 'Spec form',
+        text: 'Topic, difficulty, type, and count controls.',
+      },
+      {
+        title: 'Generated output',
+        text: 'Review drafts before pushing them into the bank.',
+      },
+    ],
+    tips: ['Generate in small batches — review quality drops in bulk.'],
+  },
+  'admin-rag': {
+    title: 'RAG & Embeddings',
+    about: 'The retrieval layer behind AI answers: index health and live search tests.',
+    features: [
+      {
+        title: 'Index overview',
+        text: 'Document counts, chunk stats, and embedding status.',
+      },
+      {
+        title: 'Test search',
+        text: 'Run a query to see exactly what the retriever returns.',
+      },
+    ],
+    tips: ['Test-search after every reindex — empty results mean a broken pipeline.'],
+  },
+  'admin-resources': {
+    title: 'Resources / Ebooks',
+    about: 'Publish learning ebooks and resource packs for the library.',
+    features: [
+      {
+        title: 'Resource list',
+        text: 'Ebooks with covers, topics, and publish state.',
+      },
+      {
+        title: 'Generate ebook',
+        text: 'AI-draft a full ebook, then edit before publishing.',
+      },
+    ],
+    tips: ['Read generated ebooks end to end before publishing — AI filler is obvious.'],
+  },
+  'admin-resumes': {
+    title: 'Resume Analysis',
+    about: 'AI review of candidate resumes: parsing, scoring, and red flags.',
+    features: [
+      {
+        title: 'Resume queue',
+        text: 'Submissions with parsed skills and match scores.',
+      },
+      {
+        title: 'Analysis view',
+        text: 'Strengths, gaps, and role-fit breakdown per resume.',
+      },
+    ],
+    tips: ['Use scores to shortlist, never to auto-reject — humans decide.'],
+  },
+  'admin-roles': {
+    title: 'Roles',
+    about: 'Platform roles and who holds them.',
+    features: [
+      {
+        title: 'Role list',
+        text: 'Every role with member counts.',
+      },
+      {
+        title: 'User table',
+        text: 'Search members, change roles, and deactivate accounts.',
+      },
+    ],
+    tips: ['Grant superadmin to as few people as possible — it bypasses everything.'],
+  },
+  'admin-security': {
+    title: 'Security & Audit',
+    about: 'Sessions, audit trail, and security posture in one place.',
+    features: [
+      {
+        title: 'Stat cards',
+        text: 'Active sessions, recent failures, and anomaly counts.',
+      },
+      {
+        title: 'Settings card',
+        text: 'Session, password, and enforcement policies.',
+      },
+      {
+        title: 'Sessions table',
+        text: 'Who is logged in where, with revoke actions.',
+      },
+    ],
+    tips: ['Revoke unknown sessions first, ask questions later.'],
+  },
+  'admin-email-monitoring': {
+    title: 'Email Monitoring',
+    about: 'Outbound mail health: delivery, bounces, and skips.',
+    features: [
+      {
+        title: 'Delivery stats',
+        text: 'Sent, delivered, bounced, and skipped volumes.',
+      },
+      {
+        title: 'Clear and paging',
+        text: 'Reset the view or page through the event log.',
+      },
+    ],
+    tips: ['A bounce spike usually means a stale mailing list, not a broken sender.'],
+  },
+  'admin-settings': {
+    title: 'Platform Settings',
+    about: 'Every platform knob: branding, mail, billing, AI keys, KYC, and more.',
+    features: [
+      {
+        title: 'Section sidebar',
+        text: 'Branding, media, Cloudflare, mail, ops, product, certificates, integrations, payments, templates, LLM, gamification, KYC, Redis, WhatsApp.',
+      },
+      {
+        title: 'Save per section',
+        text: 'Each section saves independently with validation.',
+      },
+    ],
+    tips: ['Change one section at a time so rollbacks stay obvious.'],
+  },
+  'admin-signals': {
+    title: 'Signals',
+    about: 'Automated content drafts from monitored sources, awaiting review.',
+    features: [
+      {
+        title: 'Draft queue',
+        text: 'Machine-written items with source links attached.',
+      },
+      {
+        title: 'Review actions',
+        text: 'Approve to publish, edit first, or discard.',
+      },
+    ],
+    tips: ['Check the source link before approving — drafts inherit source errors.'],
+  },
+  'admin-sme-review': {
+    title: 'SME Review & Grading',
+    about: 'Subject-matter-expert grading queue for open-ended answers.',
+    features: [
+      {
+        title: 'Review queue',
+        text: 'Answers awaiting human grades with rubrics attached.',
+      },
+      {
+        title: 'Refresh',
+        text: 'Pull the latest ungraded submissions.',
+      },
+    ],
+    tips: ['Grade against the rubric text, not gut feel — candidates appeal on rubrics.'],
+  },
+  'admin-speed-insights': {
+    title: 'Speed Insights',
+    about: 'Real-user frontend performance: loads, paints, and slow routes.',
+    features: [
+      {
+        title: 'Performance cards',
+        text: 'Core Web Vitals from actual sessions, not lab tests.',
+      },
+    ],
+    tips: ['Fix the slowest route first — averages hide the worst experience.'],
+  },
+  'admin-sso': {
+    title: 'SSO / Enterprise Auth',
+    about: 'Single sign-on providers for organization logins.',
+    features: [
+      {
+        title: 'Provider cards',
+        text: 'Configured identity providers with status.',
+      },
+      {
+        title: 'New provider form',
+        text: 'Register OIDC/SAML with client IDs and secrets.',
+      },
+    ],
+    tips: ['Test login in an incognito window before announcing SSO to the org.'],
+  },
+  'admin-team': {
+    title: 'Team',
+    about: 'Your organization team: members, roles, and invites.',
+    features: [
+      {
+        title: 'Member list',
+        text: 'Everyone on the team with roles and status.',
+      },
+      {
+        title: 'Add members',
+        text: 'Invite by email with the right role from the start.',
+      },
+    ],
+    tips: ['Assign the least privilege that still lets people do their jobs.'],
+  },
+  'admin-team-activity': {
+    title: 'Team Activity',
+    about: 'What your team actually did: top contributors and recent events.',
+    features: [
+      {
+        title: 'Top contributors',
+        text: 'Ranked members by recent output.',
+      },
+      {
+        title: 'Recent activity',
+        text: 'Chronological feed of team events.',
+      },
+    ],
+    tips: ['Praise in public from this feed — recognition compounds.'],
+  },
+  'admin-teams': {
+    title: 'Tenant Teams',
+    about: 'All teams across tenants with stats and management.',
+    features: [
+      {
+        title: 'Team cards',
+        text: 'Per-team members, activity, and health at a glance.',
+      },
+      {
+        title: 'Stat header',
+        text: 'Totals across the tenant fleet.',
+      },
+    ],
+    tips: ['Empty teams older than a quarter are usually abandoned — archive them.'],
+  },
+  'admin-users': {
+    title: 'Users Management',
+    about: 'Every account: search, inspect, change roles, and deactivate.',
+    features: [
+      {
+        title: 'User table',
+        text: 'Searchable rows with role, plan, and status columns.',
+      },
+      {
+        title: 'Row actions',
+        text: 'Edit roles, reset access, or deactivate accounts.',
+      },
+    ],
+    tips: ['Deactivate instead of deleting — history matters for audits.'],
+  },
+  'admin-workflows': {
+    title: 'Workflow Automation',
+    about: 'Zapier-style automations: triggers, steps, and run history.',
+    features: [
+      {
+        title: 'Workflow list',
+        text: 'Sidebar of automations with enable toggles.',
+      },
+      {
+        title: 'Editor',
+        text: 'Build trigger → action chains for the selected workflow.',
+      },
+    ],
+    tips: ['Test with a dry run before enabling — live workflows are hard to unwind.'],
+  },
 }
