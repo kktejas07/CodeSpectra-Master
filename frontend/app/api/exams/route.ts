@@ -150,10 +150,14 @@ export async function GET() {
       const isReleased = userSub?.score_released === true
       const isAdmin = gate.user.role === 'superadmin' || gate.user.role === 'tenant_admin'
       // Non-admins must never receive answer keys via the list endpoint.
-      const { questionList: _q, ...safeExam } = isAdmin ? exam : { ...exam, questionList: [] }
+      // ponytail: the old destructure (`...safeExam`) dropped questionList
+      // in BOTH branches, so the admin edit page always saw Questions (0).
+      // Re-attach it for admins explicitly.
+      const { questionList: _q, ...safeExam } = exam
       void _q
       return {
         ...safeExam,
+        ...(isAdmin ? { questionList: (exam as any).questionList ?? [] } : {}),
         attempts: examStats.attempts,
         released: examStats.released || 0,
         invites: invitesMap.get(exam.id) || 0,
@@ -306,6 +310,9 @@ export async function POST(request: Request) {
       screening_type: screeningType,
       techStack: stacks,
       duration: body.duration || 60,
+      starts_at: body.starts_at || null,
+      ends_at: body.ends_at || null,
+      require_token_links: body.require_token_links === true,
       questions: numQuestions,
       questionList,
       access_type: body.access_type || 'invite_only',

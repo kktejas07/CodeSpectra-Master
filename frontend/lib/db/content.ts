@@ -43,9 +43,16 @@ export interface ExamDoc {
   difficulty_level?: string | null
   duration?: number | null
   passing_score?: number | null
+  /** UTC ISO — assessment becomes available from this time (null = no open restriction). */
+  starts_at?: string | null
+  /** UTC ISO — deadline: candidates must SUBMIT by this time (null = no deadline). */
+  ends_at?: string | null
   description?: string | null
   status: 'available' | 'archived' | 'draft'
   access_type?: 'invite_only' | 'open'
+  /** When true, legacy ?share=true URLs are rejected — entry requires a
+   *  valid token link (?link=) or invite. Null/false = legacy allowed. */
+  require_token_links?: boolean | null
   cert_template?: 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
   questions?: Array<{
     id: string

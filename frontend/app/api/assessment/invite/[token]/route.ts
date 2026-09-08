@@ -27,7 +27,7 @@ export async function PATCH(
       return NextResponse.json({ error: 'This invitation has already been used.' }, { status: 409 })
     }
 
-    if (new Date(invite.expires_at).getTime() < Date.now()) {
+    if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
       await col.updateOne({ token }, { $set: { status: 'expired' } })
       return NextResponse.json({ error: 'This invitation has expired.' }, { status: 410 })
     }
@@ -64,7 +64,7 @@ export async function GET(
       return NextResponse.json({ error: 'Candidate invitation link invalid or expired.' }, { status: 404 })
     }
 
-  if (new Date(invite.expires_at).getTime() < Date.now()) {
+  if (invite.expires_at && new Date(invite.expires_at).getTime() < Date.now()) {
       await col.updateOne({ token }, { $set: { status: 'expired' } })
       return NextResponse.json({ error: 'This candidate assessment link has expired.', is_expired: true }, { status: 410 })
     }

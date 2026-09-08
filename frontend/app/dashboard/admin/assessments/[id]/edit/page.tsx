@@ -62,6 +62,9 @@ interface Exam {
   level: string
   techStack?: string[]
   duration: number
+  starts_at?: string | null
+  ends_at?: string | null
+  require_token_links?: boolean | null
   questions: number
   questionList: Question[]
   published: boolean
@@ -201,6 +204,9 @@ export default function ExamReviewPage() {
   const [metaSubject, setMetaSubject] = useState('')
   const [metaLevel, setMetaLevel] = useState('')
   const [metaDuration, setMetaDuration] = useState(30)
+  const [metaStartsAt, setMetaStartsAt] = useState('')
+  const [metaEndsAt, setMetaEndsAt] = useState('')
+  const [metaRequireTokenLinks, setMetaRequireTokenLinks] = useState(false)
   const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
   const [metaDegreeType, setMetaDegreeType] = useState('')
   const [metaBranch, setMetaBranch] = useState('')
@@ -220,6 +226,10 @@ export default function ExamReviewPage() {
         setMetaSubject(found.subject || '')
         setMetaLevel(found.level || found.difficulty_level || '')
         setMetaDuration(found.duration || 30)
+        // datetime-local inputs (stored UTC ISO); empty = unbounded.
+        setMetaStartsAt(found.starts_at ? new Date(found.starts_at).toISOString().slice(0, 16) : '')
+        setMetaEndsAt(found.ends_at ? new Date(found.ends_at).toISOString().slice(0, 16) : '')
+        setMetaRequireTokenLinks((found as { require_token_links?: boolean }).require_token_links === true)
         setMetaCertTemplate(found.cert_template || 'classic')
         setMetaDegreeType(found.degree_type || '')
         setMetaBranch(found.branch || '')
@@ -255,6 +265,12 @@ export default function ExamReviewPage() {
 
   const saveExamMeta = async () => {
     if (!exam) return
+    const startsIso = metaStartsAt ? new Date(metaStartsAt).toISOString() : null
+    const endsIso = metaEndsAt ? new Date(metaEndsAt).toISOString() : null
+    if (startsIso && endsIso && new Date(endsIso).getTime() <= new Date(startsIso).getTime()) {
+      addToast({ type: 'error', title: 'Deadline must be after the available-from time' })
+      return
+    }
     setSavingMeta(true)
     try {
       await csrfFetch('/api/exams', {
@@ -268,13 +284,16 @@ export default function ExamReviewPage() {
           level: metaLevel,
           difficulty_level: metaLevel,
           duration: metaDuration,
+          starts_at: startsIso,
+          ends_at: endsIso,
+          require_token_links: metaRequireTokenLinks,
           cert_template: metaCertTemplate,
           degree_type: metaDegreeType,
           branch: metaBranch,
           screening_type: metaScreeningType,
         })
       })
-      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
+      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -533,6 +552,35 @@ export default function ExamReviewPage() {
                   />
                 </div>
                 <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Available from:</Label>
+                  <Input
+                    type="datetime-local"
+                    value={metaStartsAt}
+                    onChange={(e) => setMetaStartsAt(e.target.value)}
+                    className="h-8 w-44 text-sm"
+                    title="Candidates can start from this UTC time (empty = open)"
+                  />
+                </div>
+                <div className="flex items-center gap-1.5">
+                  <Label className="text-xs text-muted-foreground whitespace-nowrap">Submit by:</Label>
+                  <Input
+                    type="datetime-local"
+                    value={metaEndsAt}
+                    onChange={(e) => setMetaEndsAt(e.target.value)}
+                    className="h-8 w-44 text-sm"
+                    title="Candidates must submit by this UTC time (empty = no deadline)"
+                  />
+                </div>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Disable legacy ?share=true URLs — entry requires token links or invites">
+                  <input
+                    type="checkbox"
+                    checked={metaRequireTokenLinks}
+                    onChange={(e) => setMetaRequireTokenLinks(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Require personal links</span>
+                </label>
+                <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Cert Template:</Label>
                   <select
                     value={metaCertTemplate}
@@ -717,6 +765,28 @@ export default function ExamReviewPage() {
           {exam.questionList.length === 0 && (
             <div className="text-center py-12 border border-dashed rounded-lg text-muted-foreground">
               No questions yet. Click "Add Question" to create one manually.
+            </div>
+          )}
+          {/* ponytail: the API strips questionList for non-admin sessions, so
+              exam.questions > 0 with an empty list means a stale/forbidden
+              session — not an empty exam. Say so instead of misleading. */}
+          {exam.questionList.length === 0 && (exam.questions || 0) > 0 && (
+            <div className="rounded-lg border border-amber-500/40 bg-amber-500/5 p-4 text-sm">
+              <p className="font-medium text-amber-700 dark:text-amber-400">
+                Expected {exam.questions} questions, but the server sent none.
+              </p>
+              <p className="mt-1 text-muted-foreground">
+                This usually means your session lost admin rights. Try reloading — if it
+                persists, sign out and sign back in, then reopen this page.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <Button size="sm" variant="outline" onClick={() => void fetchExam()}>
+                  <RefreshCw className="h-3.5 w-3.5 mr-1" /> Retry
+                </Button>
+                <Button size="sm" variant="outline" onClick={() => router.push('/auth/login')}>
+                  Sign in again
+                </Button>
+              </div>
             </div>
           )}
         </div>

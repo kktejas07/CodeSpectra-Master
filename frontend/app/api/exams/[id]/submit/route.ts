@@ -85,6 +85,12 @@ export async function POST(
     const exam = await exams.findOne({ id: examId })
     if (!exam) return NextResponse.json({ error: 'Exam not found' }, { status: 404 })
 
+    // Availability-window enforcement: must SUBMIT by ends_at (UTC ISO).
+    const endsAt = (exam as { ends_at?: string | null }).ends_at
+    if (endsAt && new Date(endsAt).getTime() < Date.now()) {
+      return NextResponse.json({ error: 'Assessment window has closed' }, { status: 403 })
+    }
+
     // Extension enforcement: every candidate must have a hardware_port_audit
     // event recorded for this exam (the Device Audit extension posts it on page
     // load). Without it, the submit is rejected — no extension, no assessment.
