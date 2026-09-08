@@ -1080,4 +1080,52 @@ export const GUIDE_CONTENT: Record<string, GuideContent> = {
     ],
     tips: ['Read the constraints before coding — they hint the intended approach.'],
   },
+  admin: {
+    title: 'Admin Console',
+    about:
+      'Superadmin operations for this section: review rows, update status, and act in bulk.',
+    features: [
+      {
+        title: 'Search and table',
+        text: 'Filter rows instantly with search; sortable columns order by date or status.',
+      },
+      {
+        title: 'Bulk select',
+        text: 'Tick checkboxes to select many rows, then apply one action to all of them.',
+      },
+      {
+        title: 'Row actions',
+        text: 'Click a row or its action buttons to inspect details and change state.',
+      },
+    ],
+    tips: ['Bulk actions beat row-by-row work once the list grows past a screen.'],
+  },
+  feedback: {
+    title: 'Feedback & Reports',
+    about:
+      'Every user report and complaint in one queue — read, reply, resolve, or delete.',
+    features: [
+      {
+        title: 'Report table',
+        text: 'Type, content, reporter, source, status, and date per row; search covers all of them.',
+      },
+      {
+        title: 'Reporter column',
+        text: 'Who wrote it — name, email, or Anonymous for guests and old entries.',
+      },
+      {
+        title: 'View and reply',
+        text: 'Expand a row for the full text plus reporter and source context, then send an admin response.',
+      },
+      {
+        title: 'Status toggle',
+        text: 'Click the status badge to flip between open and resolved.',
+      },
+      {
+        title: 'Bulk actions',
+        text: 'Select rows to mark many resolved or delete them at once.',
+      },
+    ],
+    tips: ['Reply before resolving — the reporter gets notified of your response.'],
+  },
 }

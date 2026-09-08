@@ -55,6 +55,11 @@ export const TOUR_ID_FOR_PATHS: Record<string, string> = {
   '/dashboard/settings': 'settings',
   '/dashboard/activity/recent': 'recent',
   '/dashboard/admin/system': 'admin-system',
+  // ponytail: prefix catch-all — every other /dashboard/admin/* page shows
+  // the generic admin guide. Longer exact entries (like admin/system above)
+  // still win by longest-match.
+  '/dashboard/admin': 'admin',
+  '/dashboard/admin/feedback': 'feedback',
   // ponytail: bracket segments are dynamic ids — resolveTourId matches them
   // against any single path segment (see below).
   '/dashboard/interviews/[id]': 'interview-detail',
