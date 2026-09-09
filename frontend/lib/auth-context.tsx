@@ -66,7 +66,7 @@ interface AuthContextValue {
   loading: boolean
   sessionExpired: boolean
   clearSessionExpired: () => void
-  signInWithEmail: (email: string, password: string, totpToken?: string) => Promise<void>
+  signInWithEmail: (email: string, password: string, totpToken?: string, turnstileToken?: string) => Promise<void>
   signUpWithEmail: (email: string, password: string, name: string, extendedProfileData?: Record<string, string>) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signInWithGithub: () => Promise<void>
@@ -237,10 +237,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => clearInterval(interval)
   }, [loading, user])
 
-  const signInWithEmailFn = async (email: string, password: string, totpToken?: string) => {
+  const signInWithEmailFn = async (email: string, password: string, totpToken?: string, turnstileToken?: string) => {
     setSessionExpired(false)
     const body: Record<string, string> = { email, password }
     if (totpToken) body.totpToken = totpToken
+    if (turnstileToken) body.turnstileToken = turnstileToken
     await withFingerprint(body)
     const res = await csrfFetch('/api/auth/login', {
       method: 'POST',

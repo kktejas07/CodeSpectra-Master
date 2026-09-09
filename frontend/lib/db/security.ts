@@ -18,6 +18,7 @@ export type SecurityEventType =
   | 'auth.impossible_travel'
   | 'auth.multi_account'
   | 'auth.blocked_fingerprint'
+  | 'auth.captcha_failed'
   | 'admin.block_ip'
   | 'admin.unblock_ip'
 

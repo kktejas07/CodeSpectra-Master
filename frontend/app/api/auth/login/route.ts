@@ -51,13 +51,39 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
     }
 
-    const { email, password, totpToken, visitorId } = await request.json()
+    const { email, password, totpToken, visitorId, turnstileToken } = await request.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
 
     const ident = String(email).toLowerCase().trim()
     const actorIp = rawIp
+
+    // Turnstile bot check — enforced only when keys are configured (see
+    // lib/captcha). Every attempt is tracked via security events + audit log.
+    const { verifyTurnstileToken, isCaptchaConfigured } = await import('@/lib/captcha/turnstile')
+    if (await isCaptchaConfigured()) {
+      const captcha = await verifyTurnstileToken(
+        typeof turnstileToken === 'string' ? turnstileToken : null,
+        rawIp,
+      )
+      if (!captcha.ok) {
+        await recordSecurityEvent({
+          type: 'auth.captcha_failed',
+          severity: 'warning',
+          ip: rawIp,
+          email: ident,
+          detail: `Turnstile verification failed (${captcha.error || 'unknown'})`,
+          metadata: { userAgent: request.headers.get('user-agent') },
+        })
+        return NextResponse.json({ error: 'Bot check failed. Please retry.' }, { status: 403 })
+      }
+      await writeAuditLog({
+        action: 'auth.captcha', outcome: 'success', actor: ident, actorIp,
+        resource: 'email/' + ident, resourceType: 'auth', severity: 'info',
+        detail: 'turnstile passed', user_id: ident,
+      })
+    }
     const db = await getMongoDb()
     const escaped = ident.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
     const user = await db.collection('user').findOne({

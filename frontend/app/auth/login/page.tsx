@@ -23,6 +23,7 @@ import {
 import { Github } from "@/components/ui/brand-icons";
 import { useAuth, getLastLogin } from "@/lib/auth-context";
 import { FaceCamera } from "@/components/auth/face-camera";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 function LoginInner() {
   const router = useRouter();
@@ -41,6 +42,8 @@ function LoginInner() {
   const [ssoMode, setSsoMode] = useState(false);
   const [faceMode, setFaceMode] = useState(false);
   const [platformSettings, setPlatformSettings] = useState<{ enable_sso_login?: boolean }>({});
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
   useEffect(() => {
     const info = getLastLogin()
@@ -80,10 +83,13 @@ function LoginInner() {
     setLoading(true);
 
     try {
-      await signInWithEmail(email.trim().toLowerCase(), password, totpCode || undefined);
+      await signInWithEmail(email.trim().toLowerCase(), password, totpCode || undefined, turnstileToken || undefined);
       router.push(redirectTo);
       router.refresh();
     } catch (err: unknown) {
+      // Fresh captcha for the retry (tokens are single-use).
+      setTurnstileToken(null);
+      setTurnstileResetKey((k) => k + 1);
       if (err && typeof err === 'object' && 'twoFactorRequired' in err) {
         setTotpRequired(true);
         setError('Enter your two-factor code');
@@ -521,6 +527,10 @@ function LoginInner() {
                   Sign in
                   {!loading && <ArrowRight className="ml-2 h-4 w-4 transition-transform group-hover:translate-x-0.5" />}
                 </Button>
+                <TurnstileWidget
+                  onVerify={(token) => setTurnstileToken(token)}
+                  resetKey={turnstileResetKey}
+                />
               </>
             )}
           </form>
