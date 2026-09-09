@@ -44,7 +44,10 @@ export function setFirebaseConfig(config: FirebaseConfig): void {
 export function prefetchFirebaseConfig(): Promise<FirebaseConfig | null> {
   if (typeof window === 'undefined') return Promise.resolve(null)
   if (_dynamicConfig) return Promise.resolve(_dynamicConfig)
-  return fetch('/api/firebase-config', { credentials: 'omit' })
+  const controller = new AbortController()
+  const timeout = setTimeout(() => controller.abort(), 5000)
+  return fetch('/api/firebase-config', { credentials: 'include', signal: controller.signal })
+    .finally(() => clearTimeout(timeout))
     .then((r) => (r.ok ? r.json() : null))
     .then((data: Record<string, string> | null) => {
       if (data?.apiKey && data?.authDomain && data?.projectId) {
