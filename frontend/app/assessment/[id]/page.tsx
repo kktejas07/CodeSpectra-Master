@@ -127,29 +127,12 @@ export default function CandidateAssessmentPage() {
   // Timer Ref for cleanup
   const timerRef = useRef<NodeJS.Timeout | null>(null)
 
-  // Code execution state
-  const [runResult, setRunResult] = useState<RunResult | null>(null)
-  const [isRunning, setIsRunning] = useState(false)
-
   // Answer pattern tracking
   const answerEventsRef = useRef<AnswerEvent[]>([])
   const questionViewTimeRef = useRef<number>(Date.now())
   const questionViewIdRef = useRef<string>('')
   const startedAtRef = useRef<number>(0)
   const questionTimingsRef = useRef<Record<string, number>>({})
-
-interface RunResult {
-  passed: boolean
-  results: Array<{
-    passed: boolean
-    input: string
-    expected: string
-    output: string
-    stderr: string
-    isSample: boolean
-  }>
-  execution_time_ms: number
-}
 
   const trackQuestionView = useCallback((qId: string) => {
     // Record time spent on previous question
@@ -407,65 +390,6 @@ interface RunResult {
 
   const handleManualSubmit = () => {
     setShowSubmitConfirm(true)
-  }
-
-  const handleRunCode = async () => {
-    if (!exam) return
-    const currentQ = exam.questionList[currentQIndex]
-
-    let codeValue = ''
-    let codeLang = 'python'
-    if (answers[currentQ.id]) {
-      try {
-        const parsed = JSON.parse(answers[currentQ.id] as string)
-        if (parsed && typeof parsed === 'object') {
-          codeValue = parsed.code || ''
-          codeLang = parsed.language || 'python'
-        } else {
-          codeValue = answers[currentQ.id] as string
-        }
-      } catch {
-        codeValue = answers[currentQ.id] as string
-      }
-    }
-
-    if (!codeValue.trim()) {
-      addToast({ type: 'warning', title: 'No code to run' })
-      return
-    }
-
-    setIsRunning(true)
-    setRunResult(null)
-
-    try {
-      const testCases = (currentQ as any).test_cases || []
-      const sampleCases = testCases.filter((tc: TestCase) => tc.isSample !== false)
-
-      const res = await csrfFetch('/api/execute-code', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({
-          language: codeLang,
-          source: codeValue,
-          test_cases: sampleCases,
-        }),
-      })
-
-      const data = await res.json()
-      if (!res.ok) throw new Error(data.error || 'Execution failed')
-
-      setRunResult({
-        passed: data.passed,
-        results: data.results || [],
-        execution_time_ms: data.execution_time_ms || 0,
-      })
-    } catch (e: any) {
-      addToast({ type: 'error', title: 'Run failed', message: e.message })
-      setRunResult(null)
-    } finally {
-      setIsRunning(false)
-    }
   }
 
   const submitAssessment = async (autoSubmitted = false) => {
@@ -933,9 +857,6 @@ interface RunResult {
                     }
                     return currentQ.language || 'python'
                   })()}
-                  isRunning={isRunning}
-                  runResult={runResult}
-                  onRun={handleRunCode}
                 />
               ) : (
                 <div className="space-y-2">

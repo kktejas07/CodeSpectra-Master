@@ -67,11 +67,11 @@ interface AuthContextValue {
   sessionExpired: boolean
   clearSessionExpired: () => void
   signInWithEmail: (email: string, password: string, totpToken?: string, turnstileToken?: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string, name: string, extendedProfileData?: Record<string, string>) => Promise<void>
+  signUpWithEmail: (email: string, password: string, name: string, extendedProfileData?: Record<string, string>, turnstileToken?: string) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signInWithGithub: () => Promise<void>
   signOut: () => Promise<void>
-  sendPasswordReset: (email: string) => Promise<void>
+  sendPasswordReset: (email: string, turnstileToken?: string) => Promise<void>
   confirmPasswordReset: (code: string, newPassword: string) => Promise<void>
   refreshUser: () => Promise<void>
 }
@@ -260,8 +260,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reportFingerprint(json.user.id)
   }
 
-  const signUpWithEmailFn = async (email: string, password: string, name: string, extendedProfileData?: Record<string, string>) => {
+  const signUpWithEmailFn = async (email: string, password: string, name: string, extendedProfileData?: Record<string, string>, turnstileToken?: string) => {
     const body: Record<string, string> = { email, password, name, ...(extendedProfileData || {}) }
+    if (turnstileToken) body.turnstileToken = turnstileToken
     await withFingerprint(body)
     const res = await csrfFetch('/api/auth/signup', {
       method: 'POST',
@@ -303,11 +304,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSessionExpired(false)
   }
 
-  const sendPasswordResetFn = async (email: string) => {
+  const sendPasswordResetFn = async (email: string, turnstileToken?: string) => {
+    const body: Record<string, string> = { email }
+    if (turnstileToken) body.turnstileToken = turnstileToken
     const res = await csrfFetch('/api/auth/forgot-password', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ email }),
+      body: JSON.stringify(body),
     })
     const json = await res.json()
     if (!res.ok) throw new Error(json.error || 'Failed to send reset email')

@@ -19,15 +19,29 @@ export async function POST(request: Request) {
   }
 
   let email = ''
+  let turnstileToken = ''
   try {
     const body = await request.json()
     email = String(body.email || '').toLowerCase().trim()
+    turnstileToken = String(body.turnstileToken || '')
   } catch {
     return NextResponse.json({ error: 'Invalid request' }, { status: 400 })
   }
 
   if (!email) {
     return NextResponse.json({ error: 'Email is required' }, { status: 400 })
+  }
+
+  // Cloudflare Turnstile verification (fail-closed when configured)
+  const { verifyTurnstileToken, isCaptchaConfigured } = await import('@/lib/captcha/turnstile')
+  if (await isCaptchaConfigured()) {
+    if (!turnstileToken) {
+      return NextResponse.json({ error: 'Captcha verification required' }, { status: 403 })
+    }
+    const captchaResult = await verifyTurnstileToken(turnstileToken)
+    if (!captchaResult.ok) {
+      return NextResponse.json({ error: 'Captcha verification failed' }, { status: 403 })
+    }
   }
 
   const db = await getMongoDb()

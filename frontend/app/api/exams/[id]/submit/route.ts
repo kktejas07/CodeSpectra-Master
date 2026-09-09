@@ -91,19 +91,18 @@ export async function POST(
       return NextResponse.json({ error: 'Assessment window has closed' }, { status: 403 })
     }
 
-    // Extension enforcement: every candidate must have a hardware_port_audit
-    // event recorded for this exam (the Device Audit extension posts it on page
-    // load). Without it, the submit is rejected — no extension, no assessment.
+    // Extension check: log if no hardware_port_audit event exists, but
+    // don't block submission — the extension is a proctoring aid, not a
+    // hard requirement for candidates who can't install it (mobile, etc.).
     const auditEvents = await db.collection('proctor_events').countDocuments({
       user_id: userId,
       session_id: examId,
       event_type: 'hardware_port_audit',
       created_at: { $gte: new Date(Date.now() - 24 * 3600 * 1000).toISOString() },
     })
-    if (auditEvents === 0) {
-      return NextResponse.json({
-        error: 'Device Audit extension not detected. Install the CodeSpectra Device Audit Chrome extension, reload this page, and try again.',
-      }, { status: 403 })
+    const extensionDetected = auditEvents > 0
+    if (!extensionDetected) {
+      console.warn(`[CodeSpectra] submit exam=${examId} user=${userId}: no hardware_port_audit event — extension not detected`)
     }
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
@@ -151,6 +150,7 @@ export async function POST(
       user_id: userId,
       email: email,
       source: inviteToken ? 'invite' : 'public_link',
+      extension_detected: extensionDetected,
       answers,
       score: totalScore,
       max_score: maxScore,
