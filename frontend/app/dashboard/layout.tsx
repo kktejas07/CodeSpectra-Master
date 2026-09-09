@@ -467,6 +467,7 @@ export default function DashboardLayout({
       [p.settings]: Settings,
       [p.security]: ShieldCheck,
       '/dashboard/admin/security/email-monitoring': Mail,
+      '/dashboard/admin/security/scans': ShieldCheck,
       '/dashboard/admin/proctor': ShieldAlert,
       '/dashboard/admin/certificates': Award,
       [p.jobs]: Briefcase,
