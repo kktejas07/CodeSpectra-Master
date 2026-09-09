@@ -16,12 +16,15 @@ import {
   Mail,
 } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 export default function ForgotPasswordPage() {
   const [email, setEmail] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [sent, setSent] = useState(false);
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
   const { sendPasswordReset } = useAuth();
 
   async function onSubmit(e: React.FormEvent) {
@@ -30,11 +33,12 @@ export default function ForgotPasswordPage() {
     setLoading(true);
 
     try {
-      await sendPasswordReset(email.trim().toLowerCase());
+      await sendPasswordReset(email.trim().toLowerCase(), turnstileToken || undefined);
       setSent(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : "Failed to send reset email";
       setError(msg);
+      setTurnstileResetKey((k) => k + 1);
     } finally {
       setLoading(false);
     }
@@ -106,6 +110,10 @@ export default function ForgotPasswordPage() {
                 )}
                 {loading ? "Sending..." : "Send reset link"}
               </Button>
+              <TurnstileWidget
+                onVerify={(token) => setTurnstileToken(token)}
+                resetKey={turnstileResetKey}
+              />
             </form>
           )}
         </div>

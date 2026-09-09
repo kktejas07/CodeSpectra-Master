@@ -34,6 +34,7 @@ import { Github } from "@/components/ui/brand-icons";
 import { useAuth } from "@/lib/auth-context";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { SignupIllustration } from "@/components/ui/signup-illustration";
+import { TurnstileWidget } from "@/components/auth/turnstile-widget";
 
 function SignupInner() {
   const router = useRouter();
@@ -71,6 +72,8 @@ function SignupInner() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const { signUpWithEmail, signInWithGoogle, signInWithGithub } = useAuth();
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [turnstileResetKey, setTurnstileResetKey] = useState(0);
 
   useEffect(() => {
     if (refCode) localStorage.setItem('referral_code', refCode);
@@ -141,7 +144,7 @@ function SignupInner() {
 
     try {
       const extendedData = { mobile, userType, domain: domain === 'Other' ? customDomain : domain, experience, classGrade, graduationYear, currentJobRole, organisationName, organisationType };
-      await signUpWithEmail(email.trim().toLowerCase(), password, name.trim(), extendedData);
+      await signUpWithEmail(email.trim().toLowerCase(), password, name.trim(), extendedData, turnstileToken || undefined);
       await applyReferral();
       // Redirect to Face Biometric Enrollment step
       router.push(`/auth/enroll-face?redirect=${encodeURIComponent(redirectTo)}`);
@@ -520,10 +523,18 @@ function SignupInner() {
                   Next <ArrowRight className="ml-2 h-4 w-4" />
                 </Button>
               ) : (
+                <>
                 <Button type="submit" disabled={loading} className={`${step > 1 ? 'w-2/3' : 'w-full'} h-11 bg-primary`}>
                   {loading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <CheckCircle2 className="mr-2 h-4 w-4" />}
                   Complete Signup
                 </Button>
+                {step === totalSteps && (
+                  <TurnstileWidget
+                    onVerify={(token) => setTurnstileToken(token)}
+                    resetKey={turnstileResetKey}
+                  />
+                )}
+                </>
               )}
             </div>
           </form>

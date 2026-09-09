@@ -49,12 +49,27 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Access denied from this location' }, { status: 403 })
     }
 
-    const { email, password, name, visitorId, mobile, userType, domain, experience, classGrade, currentJobRole, organisationName, organisationType } = await request.json()
+    const { email, password, name, visitorId, mobile, userType, domain, experience, classGrade, currentJobRole, organisationName, organisationType, turnstileToken } = await request.json()
     if (!email || !password) {
       return NextResponse.json({ error: 'Email and password are required' }, { status: 400 })
     }
     if (password.length < 6) {
       return NextResponse.json({ error: 'Password must be at least 6 characters' }, { status: 400 })
+    }
+
+    // Cloudflare Turnstile verification (fail-closed when configured)
+    const { verifyTurnstileToken, isCaptchaConfigured } = await import('@/lib/captcha/turnstile')
+    if (await isCaptchaConfigured()) {
+      if (!turnstileToken) {
+        await writeAuditLog({ action: 'auth.signup', outcome: 'denied', actor: email?.toLowerCase(), actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'warning', detail: 'Missing captcha token', user_id: email?.toLowerCase() || '' })
+        return NextResponse.json({ error: 'Captcha verification required' }, { status: 403 })
+      }
+      const captchaResult = await verifyTurnstileToken(turnstileToken, rawIp)
+      if (!captchaResult.ok) {
+        await writeAuditLog({ action: 'auth.signup', outcome: 'denied', actor: email?.toLowerCase(), actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'warning', detail: `Captcha failed: ${captchaResult.error || 'invalid token'}`, user_id: email?.toLowerCase() || '' })
+        return NextResponse.json({ error: 'Captcha verification failed' }, { status: 403 })
+      }
+      await writeAuditLog({ action: 'auth.captcha', outcome: 'success', actor: email?.toLowerCase(), actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'info', detail: 'Turnstile verified on signup', user_id: email?.toLowerCase() || '' })
     }
 
     const normalizedEmail = email.toLowerCase().trim()
