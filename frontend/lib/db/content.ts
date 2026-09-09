@@ -111,6 +111,7 @@ export interface ResumeDoc {
   file_name: string
   file_size: number
   storage_url?: string | null
+  text_content?: string | null
   is_primary: boolean
   status: 'uploaded' | 'analyzing' | 'analyzed' | 'failed'
   analysis?: Record<string, unknown> | null

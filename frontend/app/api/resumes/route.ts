@@ -35,6 +35,7 @@ export async function POST(request: Request) {
       file_name: String(body.file_name || 'resume.pdf'),
       file_size: Number(body.file_size ?? 0),
       storage_url: body.storage_url ?? null,
+      text_content: body.text_content ? String(body.text_content).slice(0, 50000) : null,
       is_primary: false,
       status: 'uploaded',
       analysis: null,

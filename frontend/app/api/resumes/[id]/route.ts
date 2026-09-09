@@ -56,6 +56,7 @@ export async function PATCH(request: Request, { params }: IdRouteContext) {
     const patch: Record<string, unknown> = {}
     if ('file_name' in body) patch.file_name = String(body.file_name || '').trim() || doc.file_name
     if ('storage_url' in body) patch.storage_url = body.storage_url === null ? null : String(body.storage_url ?? '')
+    if ('text_content' in body) patch.text_content = body.text_content ? String(body.text_content).slice(0, 50000) : null
     if ('is_primary' in body) patch.is_primary = Boolean(body.is_primary)
     if ('status' in body) patch.status = String(body.status || doc.status)
     if ('analysis' in body) patch.analysis = body.analysis ?? null
