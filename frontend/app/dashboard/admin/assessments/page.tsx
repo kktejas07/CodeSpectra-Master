@@ -4,7 +4,7 @@ import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
-import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users, Link2, LayoutDashboard } from 'lucide-react'
+import { BookOpen, Plus, Loader2, Trash2, Edit, Send, CheckCircle2, Copy, Wand2, Eye, MoreHorizontal, Upload, Download, Users, Link2, LayoutDashboard, ChevronDown, ChevronUp, Monitor, Smartphone, Tablet, Globe } from 'lucide-react'
 import { SkeletonTable } from '@/components/ui/skeleton-boneyard'
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -103,6 +103,15 @@ export default function AdminExamsPage() {
   const [linkCreatedUrl, setLinkCreatedUrl] = useState<string | null>(null)
   const [linkRows, setLinkRows] = useState<{ id: string; type: string; token: string; url: string; expires_at: string | null; max_uses: number | null; used_count: number; revoked: boolean; created_at: string }[]>([])
   const [linkLoading, setLinkLoading] = useState(false)
+
+  // Link usage log state
+  const [usageLinkId, setUsageLinkId] = useState<string | null>(null)
+  const [usageRows, setUsageRows] = useState<Array<{
+    id: string; ip_address: string | null; user_agent: string | null;
+    device_type: string; browser: string; os: string;
+    user_email: string | null; user_name: string | null; accessed_at: string
+  }>>([])
+  const [usageLoading, setUsageLoading] = useState(false)
 
   const [dateFrom, setDateFrom] = useState('')
   const [dateTo, setDateTo] = useState('')
@@ -373,6 +382,22 @@ export default function AdminExamsPage() {
       setLinkRows(json.data || [])
     } catch { /* ignore */ }
     finally { setLinkLoading(false) }
+  }
+
+  const fetchUsage = async (examId: string, linkId: string) => {
+    if (usageLinkId === linkId) {
+      setUsageLinkId(null)
+      setUsageRows([])
+      return
+    }
+    setUsageLinkId(linkId)
+    setUsageLoading(true)
+    try {
+      const res = await fetch(`/api/exams/${examId}/links?linkId=${encodeURIComponent(linkId)}`, { credentials: 'include' })
+      const json = await res.json()
+      setUsageRows(json.data || [])
+    } catch { /* ignore */ }
+    finally { setUsageLoading(false) }
   }
 
   const linkExpiryIso = (): string | null => {
@@ -952,7 +977,7 @@ export default function AdminExamsPage() {
               <div className="space-y-2">
                 <Label>New link</Label>
                 <div className="flex gap-2">
-                  <Input readOnly value={linkCreatedUrl} className="font-mono text-sm" />
+                  <Input readOnly value={linkCreatedUrl} className="font-mono text-sm break-all" />
                   <Button variant="secondary" onClick={() => {
                     navigator.clipboard.writeText(linkCreatedUrl)
                     addToast({ type: 'success', title: 'Copied!' })
@@ -969,19 +994,60 @@ export default function AdminExamsPage() {
               ) : linkRows.length === 0 ? (
                 <p className="text-sm text-muted-foreground">No links yet. Create one below.</p>
               ) : (
-                <div className="border rounded-md divide-y divide-border/40 max-h-56 overflow-y-auto">
+                <div className="border rounded-md divide-y divide-border/40 max-h-72 overflow-y-auto">
                   {linkRows.map((l) => (
-                    <div key={l.id} className="flex items-center gap-2 px-3 py-2 text-xs">
-                      <Badge variant={l.revoked ? 'destructive' : 'secondary'}>{l.revoked ? 'revoked' : l.type}</Badge>
-                      <span className="text-muted-foreground truncate flex-1" title={l.url}>{l.url}</span>
-                      <span className="text-muted-foreground whitespace-nowrap">
-                        {l.expires_at ? new Date(l.expires_at).toLocaleString() : 'never'}
-                        {l.max_uses ? ` · ${l.used_count}/${l.max_uses}` : ` · ${l.used_count} uses`}
-                      </span>
-                      {!l.revoked && (
-                        <Button size="sm" variant="ghost" className="h-7 text-destructive" onClick={() => handleRevokeLink(l.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
+                    <div key={l.id} className="px-3 py-2 text-xs space-y-1">
+                      <div className="flex items-center gap-2">
+                        <Badge variant={l.revoked ? 'destructive' : 'secondary'}>{l.revoked ? 'revoked' : l.type}</Badge>
+                        <span className="text-muted-foreground break-all flex-1 min-w-0" title={l.url}>{l.url}</span>
+                        <span className="text-muted-foreground whitespace-nowrap shrink-0">
+                          {l.expires_at ? new Date(l.expires_at).toLocaleString() : 'never'}
+                          {l.max_uses ? ` · ${l.used_count}/${l.max_uses}` : ` · ${l.used_count} uses`}
+                        </span>
+                        {!l.revoked && (
+                          <>
+                            <Button size="sm" variant="ghost" className="h-7 shrink-0" onClick={() => void fetchUsage(linkExam?.id || '', l.id)}>
+                              {usageLinkId === l.id ? <ChevronUp className="h-3.5 w-3.5" /> : <Eye className="h-3.5 w-3.5" />}
+                            </Button>
+                            <Button size="sm" variant="ghost" className="h-7 text-destructive shrink-0" onClick={() => handleRevokeLink(l.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                      {/* Usage log expansion */}
+                      {usageLinkId === l.id && (
+                        <div className="mt-2 border-t border-border/40 pt-2">
+                          {usageLoading ? (
+                            <p className="text-muted-foreground flex items-center gap-1"><Loader2 className="h-3 w-3 animate-spin" /> Loading usage logs...</p>
+                          ) : usageRows.length === 0 ? (
+                            <p className="text-muted-foreground">No usage recorded yet.</p>
+                          ) : (
+                            <div className="space-y-1 max-h-48 overflow-y-auto">
+                              <div className="grid grid-cols-12 gap-2 text-[10px] font-medium text-muted-foreground uppercase tracking-wider px-2 pb-1 border-b border-border/30">
+                                <span className="col-span-2">Time</span>
+                                <span className="col-span-2">IP</span>
+                                <span className="col-span-2">Device</span>
+                                <span className="col-span-2">Browser</span>
+                                <span className="col-span-2">OS</span>
+                                <span className="col-span-2">User</span>
+                              </div>
+                              {usageRows.map((u) => (
+                                <div key={u.id} className="grid grid-cols-12 gap-2 px-2 py-1 rounded hover:bg-muted/30">
+                                  <span className="col-span-2 text-muted-foreground">{new Date(u.accessed_at).toLocaleString()}</span>
+                                  <span className="col-span-2 font-mono text-muted-foreground">{u.ip_address || '—'}</span>
+                                  <span className="col-span-2 flex items-center gap-1">
+                                    {u.device_type === 'mobile' ? <Smartphone className="h-3 w-3" /> : u.device_type === 'tablet' ? <Tablet className="h-3 w-3" /> : <Monitor className="h-3 w-3" />}
+                                    {u.device_type}
+                                  </span>
+                                  <span className="col-span-2">{u.browser}</span>
+                                  <span className="col-span-2">{u.os}</span>
+                                  <span className="col-span-2 truncate" title={u.user_email || ''}>{u.user_name || u.user_email || 'Anonymous'}</span>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
                   ))}

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server'
 import { getMongoDb } from '@/lib/mongodb'
 import { getAPIUser } from '@/lib/route-auth'
+import { getUserById } from '@/lib/db/admin'
 import { writeAuditLog } from '@/lib/db/misc'
 import { clientLimiterKeyFromRequest } from '@/lib/in-memory-rate-limit'
 
@@ -31,7 +32,7 @@ export async function POST(request: Request) {
     }
 
     const db = await getMongoDb()
-    const dbUser = await db.collection('user').findOne({ id: user.id })
+    const dbUser = await getUserById(user.id) as Record<string, unknown> | null
 
     if (!dbUser) {
       return NextResponse.json({ error: 'User not found' }, { status: 401 })
@@ -44,7 +45,7 @@ export async function POST(request: Request) {
       // first verification, so first-time candidates aren't hard-blocked.
       try {
         await db.collection('user').updateOne(
-          { _id: dbUser._id },
+          { _id: dbUser._id } as any,
           { $set: { facial_biometric_template: descriptor, biometric_enrolled_at: new Date() } }
         )
       } catch (enrollErr) {
@@ -67,7 +68,7 @@ export async function POST(request: Request) {
     }
 
     // Compare face embeddings
-    const similarityScore = cosineSimilarity(descriptor, dbUser.facial_biometric_template);
+    const similarityScore = cosineSimilarity(descriptor, dbUser.facial_biometric_template as number[]);
     
     // Threshold > 0.85 indicates a very strong match for 128d embeddings (face-api.js)
     if (similarityScore < 0.85) {

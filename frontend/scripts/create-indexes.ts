@@ -176,6 +176,14 @@ const INDEX_SPECS: Record<string, Record<string, unknown>[]> = {
   exam_submissions: [
     { key: { exam_id: 1, user_id: 1 }, unique: true },
   ],
+  assessment_links: [
+    { key: { exam_id: 1, created_at: -1 } },
+    { key: { exam_id: 1, token: 1 } },
+  ],
+  assessment_link_usage: [
+    { key: { link_id: 1, accessed_at: -1 } },
+    { key: { exam_id: 1, accessed_at: -1 } },
+  ],
   codeathon_registrations: [
     { key: { codeathon_id: 1, user_id: 1 }, unique: true },
   ],
