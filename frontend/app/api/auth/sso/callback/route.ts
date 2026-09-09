@@ -3,6 +3,7 @@ import { NextRequest, NextResponse } from 'next/server'
 import { ssoProviders } from '@/lib/db/sso'
 import { getMongoDb } from '@/lib/mongodb'
 import { setSessionCookie } from '@/lib/session'
+import { safeRedirect } from '@/lib/safe-redirect'
 
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
@@ -180,9 +181,9 @@ export async function GET(req: NextRequest) {
       role: user.role,
     })
 
-    // Redirect to dashboard
+    // Redirect to dashboard — redirect param strictly same-origin (see safe-redirect).
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'http://localhost:3000'
-    const redirect = searchParams.get('redirect') || '/dashboard'
+    const redirect = safeRedirect(searchParams.get('redirect'))
     return NextResponse.redirect(`${baseUrl}${redirect}`)
 
   } catch (e) {

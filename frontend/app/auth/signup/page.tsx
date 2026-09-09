@@ -2,6 +2,7 @@
 
 import { Suspense, useEffect, useMemo, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { safeRedirect } from "@/lib/safe-redirect";
 import Link from "next/link";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -37,7 +38,7 @@ import { SignupIllustration } from "@/components/ui/signup-illustration";
 function SignupInner() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const redirectTo = searchParams.get("redirect") || searchParams.get("redirectTo") || "/dashboard";
+  const redirectTo = safeRedirect(searchParams.get("redirect") || searchParams.get("redirectTo"));
   const refCode = searchParams.get("ref");
 
   // Multi-step Wizard State
