@@ -274,6 +274,49 @@ export default function ExamResultsPage() {
   const [exportingReport, setExportingReport] = useState(false)
   const [showReleaseAllConfirm, setShowReleaseAllConfirm] = useState(false)
 
+  // Invite recovery — invites stuck in `used` with no matching submission
+  // (invite-lockout chain). Resetting flips them back to pending so the
+  // candidate can resubmit from the same browser (draft restores).
+  const [stuckInvites, setStuckInvites] = useState<Array<{
+    token: string; email: string; full_name: string; status: string;
+    created_at: string | null; updated_at: string | null; has_draft: boolean | null
+  }>>([])
+  const [recoveryLoading, setRecoveryLoading] = useState(false)
+  const [recovering, setRecovering] = useState<string | null>(null)
+
+  const fetchRecovery = useCallback(async () => {
+    if (!params.id) return
+    setRecoveryLoading(true)
+    try {
+      const res = await fetch(`/api/admin/exams/${params.id}/invites/recover`, { credentials: 'include' })
+      const json = await res.json()
+      if (res.ok) setStuckInvites(json.data || [])
+    } catch { /* ignore — recovery panel simply stays empty */ }
+    finally { setRecoveryLoading(false) }
+  }, [params.id])
+
+  const resetInvites = async (tokens: string[] | 'all', label: string) => {
+    if (!params.id || recovering) return
+    setRecovering(label)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/invites/recover`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        credentials: 'include',
+        body: JSON.stringify(Array.isArray(tokens) ? { tokens } : { all: true }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Reset failed')
+      addToast({ type: 'success', title: `Invite reset — ${json.reset} candidate(s) can resubmit` })
+      await fetchRecovery()
+      await fetchData()
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: 'Reset failed', message: e instanceof Error ? e.message : '' })
+    } finally {
+      setRecovering(null)
+    }
+  }
+
   const fetchData = useCallback(async () => {
     if (!params.id) return
     setLoading(true)
@@ -295,6 +338,7 @@ export default function ExamResultsPage() {
   }, [params.id, router])
 
   useEffect(() => { fetchData() }, [fetchData])
+  useEffect(() => { fetchRecovery() }, [fetchRecovery])
 
   // Real-time polling for proctor events when review modal is open
   useEffect(() => {
@@ -1199,6 +1243,57 @@ export default function ExamResultsPage() {
         <div className="flex items-center gap-2 text-sm">
           <span className="text-muted-foreground">Showing {filteredResults.length} of {results.length} candidates.</span>
           <Button variant="ghost" size="sm" className="h-7 text-xs px-2" onClick={() => setResultFilter('all')}>Show all</Button>
+        </div>
+      )}
+
+      {/* Invite recovery — only renders when stuck invites exist */}
+      {!recoveryLoading && stuckInvites.length > 0 && (
+        <div className="rounded-lg border border-amber-500/30 bg-amber-500/5 p-4 space-y-3">
+          <div className="flex flex-wrap items-center justify-between gap-2">
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-amber-500" />
+              <h2 className="text-sm font-semibold">Invite recovery — {stuckInvites.length} stuck</h2>
+            </div>
+            <Button
+              size="sm"
+              variant="outline"
+              className="gap-2 border-amber-500/40 text-amber-600 hover:bg-amber-500/10"
+              onClick={() => void resetInvites('all', 'all')}
+              disabled={!!recovering}
+            >
+              {recovering === 'all' ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+              Reset all to pending
+            </Button>
+          </div>
+          <p className="text-xs text-muted-foreground">
+            These invites show as used but have no submission — the candidate was locked out mid-exam.
+            Resetting flips them back to pending; the candidate resubmits from the same browser (answers restore from draft).
+          </p>
+          <div className="border rounded-md divide-y divide-border/40 max-h-56 overflow-y-auto bg-card">
+            {stuckInvites.map((s) => (
+              <div key={s.token} className="flex items-center gap-2 px-3 py-2 text-xs">
+                <div className="flex-1 min-w-0">
+                  <p className="font-medium truncate">{s.full_name || s.email.split('@')[0] || 'Candidate'}</p>
+                  <p className="text-muted-foreground truncate">{s.email}</p>
+                </div>
+                {s.has_draft === true && (
+                  <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600 shrink-0">draft saved</Badge>
+                )}
+                {s.has_draft === false && (
+                  <Badge variant="secondary" className="bg-muted text-muted-foreground shrink-0">no draft</Badge>
+                )}
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-7 shrink-0"
+                  onClick={() => void resetInvites([s.token], s.token)}
+                  disabled={!!recovering}
+                >
+                  {recovering === s.token ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : 'Reset'}
+                </Button>
+              </div>
+            ))}
+          </div>
         </div>
       )}
 
