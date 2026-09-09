@@ -37,23 +37,33 @@ export async function POST(
 
     const inviteToken = body.inviteToken || req.headers.get('x-invite-token')
 
-    // If an invite token is provided, validate it, ensure the signed-in account
-    // owns it, and mark it used on submission.
+    // If an invite token is provided, validate it and ensure the signed-in
+    // account owns it. The invite is marked used only AFTER the submission
+    // is saved (see below) — marking it before the save permanently locks
+    // the candidate out if anything later in this handler fails.
+    let inviteDoc: Record<string, unknown> | null = null
     if (inviteToken) {
-      const invite = await db.collection('candidate_invites').findOne({ token: inviteToken })
-      if (!invite) {
+      inviteDoc = (await db.collection('candidate_invites').findOne({ token: inviteToken })) as Record<string, unknown> | null
+      if (!inviteDoc) {
         return NextResponse.json({ error: 'Invalid invitation token' }, { status: 403 })
       }
-      if (invite.status === 'used') {
-        return NextResponse.json({ error: 'This invitation has already been used' }, { status: 403 })
-      }
-      if ((invite.email || '').toLowerCase() !== (email || '').toLowerCase()) {
+      if ((String(inviteDoc.email || '')).toLowerCase() !== (email || '').toLowerCase()) {
         return NextResponse.json({ error: 'Email mismatch — this invitation belongs to a different account.' }, { status: 403 })
       }
-      await db.collection('candidate_invites').updateOne(
-        { token: inviteToken },
-        { $set: { status: 'used', updatedAt: nowIso() } }
-      )
+      if (inviteDoc.status === 'used') {
+        // Recovery: a previous attempt may have marked the invite used but
+        // failed before saving. If no submission exists for this exam+email,
+        // allow the submit through instead of locking the candidate out.
+        const prior = await db.collection('exam_submissions').countDocuments({
+          exam_id: examId,
+          $or: [{ user_id: userId }, { email: String(inviteDoc.email || '') }],
+        })
+        if (!prior) {
+          console.warn(`[CodeSpectra] submit exam=${examId} user=${userId}: invite already used but no submission found — allowing recovery submit`)
+        } else {
+          return NextResponse.json({ error: 'This invitation has already been used' }, { status: 403 })
+        }
+      }
     }
 
     // IP blocking check (supports CIDR notation) — reuse shared matcher from
@@ -169,9 +179,21 @@ export async function POST(
       question_timings: body.question_timings || {},
       total_time_ms: body.total_time_ms || 0,
       started_at: body.started_at || null,
+      submitted_at: nowIso(),
       created_at: nowIso(),
     }
     await submissions.insertOne(submission)
+
+    // Mark the invite used only now that the submission is safely stored,
+    // and link it to the submitting account so the results page can join
+    // submissions to invites even when the invite was created with an
+    // empty user_id (invited-link flow).
+    if (inviteToken) {
+      await db.collection('candidate_invites').updateOne(
+        { token: inviteToken },
+        { $set: { status: 'used', updatedAt: nowIso(), user_id: userId, email } }
+      ).catch(() => {})
+    }
 
     // Award XP + real-time notification (invite-only candidates are real
     // accounts now that login is mandatory). Idempotent per submission.

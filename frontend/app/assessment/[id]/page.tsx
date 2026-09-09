@@ -133,6 +133,10 @@ export default function CandidateAssessmentPage() {
   const questionViewIdRef = useRef<string>('')
   const startedAtRef = useRef<number>(0)
   const questionTimingsRef = useRef<Record<string, number>>({})
+  // Auto-submit must fire exactly once — without this guard a failed
+  // auto-submit (isSubmitting false again, timeLeft still 0) re-triggers
+  // every render into an infinite 403 retry loop.
+  const autoSubmitAttemptedRef = useRef(false)
 
   const trackQuestionView = useCallback((qId: string) => {
     // Record time spent on previous question
@@ -326,7 +330,8 @@ export default function CandidateAssessmentPage() {
   useEffect(() => {
     if (hasStarted && timeLeft !== null && timeLeft > 0 && !isSubmitted && !isSubmitting) {
       timerRef.current = setTimeout(() => setTimeLeft(prev => (prev !== null ? prev - 1 : 0)), 1000)
-    } else if (hasStarted && timeLeft === 0 && !isSubmitted && !isSubmitting) {
+    } else if (hasStarted && timeLeft === 0 && !isSubmitted && !isSubmitting && !autoSubmitAttemptedRef.current) {
+      autoSubmitAttemptedRef.current = true
       handleAutoSubmit()
     }
     return () => {
@@ -448,7 +453,12 @@ export default function CandidateAssessmentPage() {
       } catch { /* fire-and-forget */ }
       addToast({ type: 'success', title: 'Assessment submitted successfully!' })
     } catch (e: any) {
-      addToast({ type: 'error', title: 'Failed to submit', message: e.message || '' })
+      const reason = e.message || ''
+      if (autoSubmitted) {
+        addToast({ type: 'error', title: 'Auto-submit failed', message: `${reason} Your answers are auto-saved on this device — do not close this tab. Contact your administrator with your email address.` })
+      } else {
+        addToast({ type: 'error', title: 'Failed to submit', message: reason })
+      }
     } finally {
       setIsSubmitting(false)
     }
