@@ -168,18 +168,26 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       seenEmails.add(email.toLowerCase())
     }
 
-    // Run plagiarism and leak detection on submissions
+    // Run plagiarism and leak detection with a timeout — don't block the
+    // results response on slow LLM calls. Fire in parallel, best-effort.
     let plagiarism = null
     let leakDetection = null
+    const detectionTimeout = 15000 // 15s max for detection
     try {
-      plagiarism = await detectPlagiarism(id)
+      plagiarism = await Promise.race([
+        detectPlagiarism(id),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('plagiarism timeout')), detectionTimeout)),
+      ])
     } catch (e) {
-      console.error('[CodeSpectra] plagiarism detection failed:', e)
+      console.warn('[CodeSpectra] plagiarism detection skipped:', (e as Error).message || e)
     }
     try {
-      leakDetection = await detectLeaks(id)
+      leakDetection = await Promise.race([
+        detectLeaks(id),
+        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('leak timeout')), detectionTimeout)),
+      ])
     } catch (e) {
-      console.error('[CodeSpectra] leak detection failed:', e)
+      console.warn('[CodeSpectra] leak detection skipped:', (e as Error).message || e)
     }
 
     return NextResponse.json({
