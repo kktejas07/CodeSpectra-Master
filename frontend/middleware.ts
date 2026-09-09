@@ -11,7 +11,7 @@ const CSP = [
   "font-src 'self' https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://fonts.gstatic.com data:",
   "img-src 'self' data: blob: https: http:",
   "connect-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com https://unpkg.com https://*.googleapis.com https://*.firebaseio.com https://*.firebase.com https://identitytoolkit.googleapis.com https://securetoken.googleapis.com https://api.anthropic.com https://generativelanguage.googleapis.com https://api.github.com https://*.razorpay.com https://api.razorpay.com https://checkout.razorpay.com wss://*.firebaseio.com https://i.ytimg.com https://*.r2.cloudflarestorage.com https://*.cloudflarestorage.com https://*.amazonaws.com https://s3.amazonaws.com https://storage.googleapis.com https://*.your-objectstorage.com",
-  "frame-src 'self' blob: data: https://*.firebaseapp.com https://checkout.razorpay.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com",
+  "frame-src 'self' blob: data: https://*.firebaseapp.com https://checkout.razorpay.com https://www.youtube.com https://youtube.com https://www.youtube-nocookie.com https://challenges.cloudflare.com",
   "worker-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
   "child-src 'self' blob: data: https://cdn.jsdelivr.net https://cdnjs.cloudflare.com",
   "media-src 'self' blob: data: https:",
