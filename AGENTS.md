@@ -164,6 +164,23 @@ curl -s -o /dev/null -w "%{http_code}" https://codespectra.ai/dashboard/assessme
 - Compiled routes inside container: `docker exec <task> ls /app/.next/server/app/dashboard/` → should show `assessments` (not `exams`), and `admin/organizations` (not `admin/tenants`)
 - External: `/dashboard/assessments` and `/dashboard/admin/organizations` return 200; `/dashboard/exams` and `/dashboard/admin/tenants` return 404
 
+### Push Gate (mandatory before every `git push`)
+
+GitHub Actions runs *on* pushed code — it physically cannot run *before* a push.
+So the gate is three layers, and every session follows all three:
+
+1. **Local fast gate (you run it):** `sh scripts/pre-push-gate.sh` from the repo
+   root (tsc + vitest + offline backend-unit, ~2 min). Do NOT push on red.
+   Slow gates (`yarn build`, docker image, dep/secret audits) run in Actions —
+   check them after pushing and fix-forward (new commit) on red. Never amend a
+   pushed commit.
+2. **CI on `dev-fixes`:** every push runs the pipeline
+   (`.github/workflows/ci.yml`). Red required job = stop and fix, same session.
+3. **`main` is protected:** Dokploy deploys from `main` only. Land via PR with
+   all required checks green (repo Settings → Branches → protection rule on
+   `main`: require PR, require status checks, no direct pushes, no force-pushes).
+   Never push directly to `main`, never `git push --force` (see Coordination §7).
+
 ---
 
 ## MongoDB Collections

@@ -1,0 +1,12 @@
+# Gitleaks config — extend the default rules, allowlist only the two
+# provably-fake scanner fixtures. Everything else that looks like a secret
+# fails CI (see `secrets` job in .github/workflows/ci.yml).
+[extend]
+useDefault = true
+
+[[allowlist]]
+description = "secret-scanner demo + test fixtures use documented-fake keys (AKIA...EXAMPLE, x-masked ghp token, truncated RSA block)"
+paths = [
+  '''frontend/components/scanner/secret-scanner-panel.tsx''',
+  '''frontend/tests/secret-scanner.test.ts''',
+]
