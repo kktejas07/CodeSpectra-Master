@@ -89,6 +89,7 @@
     "nodemailer": "^9.0.5",
     "otplib": "^13.4.1",
     "patch-package": "^8.0.1",
+    "pdfjs-dist": "4.10.38",
     "postinstall-postinstall": "^2.1.0",
     "qrcode": "^1.5.4",
     "razorpay": "^2.9.8",

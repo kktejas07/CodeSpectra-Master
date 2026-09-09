@@ -1,11 +1,15 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useCallback, useRef } from 'react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
-import { Brain, ArrowLeft, Loader2, FileText, Sparkles } from 'lucide-react'
+import {
+  Brain, ArrowLeft, Loader2, FileText, Sparkles, Upload,
+  CheckCircle, AlertCircle, ChevronDown, ClipboardPaste, User
+} from 'lucide-react'
+import type { TextItem } from 'pdfjs-dist/types/src/display/api'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { ROLE_OPTIONS, DIFFICULTY_LEVELS } from '@/lib/interviews/ai-mock-types'
@@ -19,11 +23,53 @@ const DIFFICULTY_LABELS: Record<string, string> = {
 
 const DURATION_OPTIONS = [15, 20, 30, 45]
 
+type ResumeSource = 'none' | 'upload' | 'profile'
+
+interface ProfileResume {
+  id: string
+  file_name: string
+  file_size: number
+  text_content?: string | null
+  status: string
+  uploaded_at: string
+}
+
+async function extractTextFromPdf(file: File): Promise<string> {
+  const pdfjsLib = await import('pdfjs-dist')
+  pdfjsLib.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjsLib.version}/pdf.worker.min.mjs`
+
+  const arrayBuffer = await file.arrayBuffer()
+  const pdf = await pdfjsLib.getDocument({ data: arrayBuffer }).promise
+  const textParts: string[] = []
+
+  for (let i = 1; i <= pdf.numPages; i++) {
+    const page = await pdf.getPage(i)
+    const content = await page.getTextContent()
+    const pageText = content.items
+      .filter((item): item is TextItem => 'str' in item)
+      .map((item) => item.str)
+      .join(' ')
+    if (pageText.trim()) textParts.push(pageText)
+  }
+
+  return textParts.join('\n\n')
+}
+
 export default function AiMockSetupPage() {
   const gate = usePageGuard('user')
   const router = useRouter()
 
   const [resumeText, setResumeText] = useState('')
+  const [resumeSource, setResumeSource] = useState<ResumeSource>('none')
+  const [profileResumes, setProfileResumes] = useState<ProfileResume[]>([])
+  const [selectedResumeId, setSelectedResumeId] = useState<string | null>(null)
+  const [extracting, setExtracting] = useState(false)
+  const [extractError, setExtractError] = useState('')
+  const [loadingResumes, setLoadingResumes] = useState(false)
+  const [dragOver, setDragOver] = useState(false)
+  const fileInputRef = useRef<HTMLInputElement>(null)
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
   const [role, setRole] = useState('Software Engineer')
   const [customRole, setCustomRole] = useState('')
   const [difficulty, setDifficulty] = useState('intermediate')
@@ -31,7 +77,24 @@ export default function AiMockSetupPage() {
   const [starting, setStarting] = useState(false)
   const [error, setError] = useState('')
 
-  // First-visit guided tour (same pattern as the other dashboard pages).
+  const fetchResumes = useCallback(async () => {
+    setLoadingResumes(true)
+    try {
+      const res = await fetch('/api/resumes')
+      if (res.ok) {
+        const data = await res.json()
+        setProfileResumes(data)
+      }
+    } catch { /* silent */ }
+    setLoadingResumes(false)
+  }, [])
+
+  useEffect(() => {
+    if (resumeSource === 'profile' && profileResumes.length === 0 && !loadingResumes) {
+      fetchResumes()
+    }
+  }, [resumeSource, profileResumes.length, loadingResumes, fetchResumes])
+
   const { startTour, setTourSeen } = useTour()
   useEffect(() => {
     if (gate.ready) {
@@ -43,6 +106,12 @@ export default function AiMockSetupPage() {
           position: 'bottom',
         },
         {
+          target: '[data-tour="ai-mock-resume-source"]',
+          title: 'Resume Source',
+          description: 'Select a resume to get personalized interview questions. Upload a PDF or pick one from your profile.',
+          position: 'bottom',
+        },
+        {
           target: '[data-tour="ai-mock-setup-start"]',
           title: 'Start AI Interview',
           description: 'Click Start Interview to generate questions and enter your mock session.',
@@ -51,16 +120,76 @@ export default function AiMockSetupPage() {
         {
           target: '[data-tour="ai-mock-setup-options"]',
           title: 'Match Settings To Goal',
-          description: 'Pro tip: paste your resume and match difficulty to your target role.',
+          description: 'Pro tip: match difficulty to your target role for the best practice.',
           position: 'top',
         },
       ]
-      autoPlayPageTour('ai-mock-setup', aiMockSetupTour)}
+      autoPlayPageTour('ai-mock-setup', aiMockSetupTour)
+    }
   }, [gate.ready, startTour, setTourSeen])
 
   if (!gate.ready) return null
 
   const effectiveRole = role === 'Custom' ? customRole.trim() : role
+
+  const handleFileUpload = async (file: File) => {
+    if (!file.name.toLowerCase().endsWith('.pdf')) {
+      setExtractError('Only PDF files are supported.')
+      return
+    }
+    if (file.size > 5 * 1024 * 1024) {
+      setExtractError('File must be under 5 MB.')
+      return
+    }
+    setExtracting(true)
+    setExtractError('')
+    try {
+      const text = await extractTextFromPdf(file)
+      if (!text.trim()) {
+        setExtractError('Could not extract text from this PDF. It may be image-based.')
+        setExtracting(false)
+        return
+      }
+      setResumeText(text)
+      setSelectedResumeId(null)
+    } catch {
+      setExtractError('Failed to read PDF. Please try another file.')
+    }
+    setExtracting(false)
+  }
+
+  const handleDrop = (e: React.DragEvent) => {
+    e.preventDefault()
+    setDragOver(false)
+    const file = e.dataTransfer.files[0]
+    if (file) handleFileUpload(file)
+  }
+
+  const handleFileInputChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0]
+    if (file) handleFileUpload(file)
+    e.target.value = ''
+  }
+
+  const handleSelectProfileResume = (resume: ProfileResume) => {
+    setSelectedResumeId(resume.id)
+    if (resume.text_content) {
+      setResumeText(resume.text_content)
+      setExtractError('')
+    } else {
+      setResumeText('')
+      setExtractError('This resume doesn\'t have extracted text. Upload the PDF below to use it.')
+    }
+  }
+
+  const handleSourceChange = (source: ResumeSource) => {
+    setResumeSource(source)
+    setExtractError('')
+    if (source === 'none') {
+      setResumeText('')
+      setSelectedResumeId(null)
+    }
+  }
 
   const handleStart = async () => {
     if (!effectiveRole) {
@@ -104,6 +233,12 @@ export default function AiMockSetupPage() {
       setStarting(false)
     }
   }
+
+  const resumeSourceOptions: { value: ResumeSource; label: string; icon: React.ReactNode }[] = [
+    { value: 'none', label: 'None', icon: <FileText className="h-4 w-4" /> },
+    { value: 'upload', label: 'Upload PDF', icon: <Upload className="h-4 w-4" /> },
+    { value: 'profile', label: 'From Profile', icon: <User className="h-4 w-4" /> },
+  ]
 
   return (
     <div className="mx-auto max-w-lg space-y-6">
@@ -181,17 +316,205 @@ export default function AiMockSetupPage() {
           </div>
         </div>
 
-        {/* Resume */}
-        <div className="space-y-2">
+        {/* Resume Source Selector */}
+        <div className="space-y-3" data-tour="ai-mock-resume-source">
           <label className="text-sm font-medium flex items-center gap-2">
             <FileText className="h-4 w-4" /> Resume (optional)
           </label>
-          <textarea
-            value={resumeText}
-            onChange={(e) => setResumeText(e.target.value)}
-            placeholder="Paste your resume for personalized questions..."
-            className="w-full h-24 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
-          />
+
+          {/* Segmented Control */}
+          <div className="flex rounded-lg border border-border bg-muted/50 p-0.5">
+            {resumeSourceOptions.map((opt) => (
+              <button
+                key={opt.value}
+                type="button"
+                onClick={() => handleSourceChange(opt.value)}
+                className={`flex-1 flex items-center justify-center gap-1.5 rounded-md px-3 py-1.5 text-xs font-medium transition-all ${
+                  resumeSource === opt.value
+                    ? 'bg-background text-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground'
+                }`}
+              >
+                {opt.icon}
+                {opt.label}
+              </button>
+            ))}
+          </div>
+
+          {/* Upload PDF Panel */}
+          {resumeSource === 'upload' && (
+            <div className="space-y-3">
+              <div
+                onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                onDragLeave={() => setDragOver(false)}
+                onDrop={handleDrop}
+                onClick={() => fileInputRef.current?.click()}
+                className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-6 cursor-pointer transition-colors ${
+                  dragOver
+                    ? 'border-primary bg-primary/5'
+                    : resumeText
+                      ? 'border-green-500/40 bg-green-500/5'
+                      : 'border-border hover:border-primary/40'
+                }`}
+              >
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept=".pdf"
+                  className="hidden"
+                  onChange={handleFileInputChange}
+                />
+                {extracting ? (
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                ) : resumeText ? (
+                  <>
+                    <CheckCircle className="h-8 w-8 text-green-500" />
+                    <p className="text-sm font-medium text-green-600 dark:text-green-400">Resume extracted</p>
+                    <p className="text-xs text-muted-foreground">Click or drop to replace</p>
+                  </>
+                ) : (
+                  <>
+                    <Upload className="h-8 w-8 text-muted-foreground" />
+                    <p className="text-sm font-medium">Drop your PDF here</p>
+                    <p className="text-xs text-muted-foreground">or click to browse (PDF, max 5 MB)</p>
+                  </>
+                )}
+              </div>
+
+              {extractError && (
+                <div className="flex items-start gap-2 rounded-lg bg-destructive/10 p-3">
+                  <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                  <p className="text-xs text-destructive">{extractError}</p>
+                </div>
+              )}
+
+              {/* Paste fallback */}
+              <div className="relative">
+                <div className="absolute inset-0 flex items-center">
+                  <div className="w-full border-t border-border" />
+                </div>
+                <div className="relative flex justify-center text-xs">
+                  <span className="bg-card px-2 text-muted-foreground">or paste text</span>
+                </div>
+              </div>
+              <textarea
+                ref={textareaRef}
+                value={resumeText}
+                onChange={(e) => setResumeText(e.target.value)}
+                placeholder="Paste your resume content here..."
+                className="w-full h-24 rounded-lg border border-border bg-background px-3 py-2 text-sm font-mono resize-none focus:outline-none focus:ring-2 focus:ring-primary/40"
+              />
+            </div>
+          )}
+
+          {/* Select from Profile Panel */}
+          {resumeSource === 'profile' && (
+            <div className="space-y-3">
+              {loadingResumes ? (
+                <div className="flex items-center justify-center gap-2 rounded-lg border border-border p-6">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  <span className="text-sm text-muted-foreground">Loading your resumes...</span>
+                </div>
+              ) : profileResumes.length === 0 ? (
+                <div className="flex flex-col items-center gap-3 rounded-lg border border-border p-6">
+                  <FileText className="h-8 w-8 text-muted-foreground" />
+                  <div className="text-center">
+                    <p className="text-sm font-medium">No resumes found</p>
+                    <p className="text-xs text-muted-foreground">
+                      Upload a resume in{' '}
+                      <Link href="/dashboard/resumes" className="text-primary underline">
+                        My Resumes
+                      </Link>{' '}
+                      first, or upload a PDF above.
+                    </p>
+                  </div>
+                </div>
+              ) : (
+                <div className="space-y-2 max-h-48 overflow-y-auto">
+                  {profileResumes.map((resume) => (
+                    <button
+                      key={resume.id}
+                      type="button"
+                      onClick={() => handleSelectProfileResume(resume)}
+                      className={`w-full flex items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                        selectedResumeId === resume.id
+                          ? 'border-primary bg-primary/5'
+                          : 'border-border hover:border-primary/40'
+                      }`}
+                    >
+                      <FileText className="h-5 w-5 shrink-0 text-muted-foreground" />
+                      <div className="flex-1 min-w-0">
+                        <p className="text-sm font-medium truncate">{resume.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {resume.text_content ? 'Text ready' : 'Upload PDF to use'}
+                          {' · '}
+                          {new Date(resume.uploaded_at).toLocaleDateString()}
+                        </p>
+                      </div>
+                      {selectedResumeId === resume.id && (
+                        <CheckCircle className="h-4 w-4 text-primary shrink-0" />
+                      )}
+                    </button>
+                  ))}
+                </div>
+              )}
+
+              {/* Show inline upload if selected resume has no text */}
+              {selectedResumeId && extractError && (
+                <div className="space-y-2">
+                  <div
+                    onDragOver={(e) => { e.preventDefault(); setDragOver(true) }}
+                    onDragLeave={() => setDragOver(false)}
+                    onDrop={handleDrop}
+                    onClick={() => fileInputRef.current?.click()}
+                    className={`flex flex-col items-center justify-center gap-2 rounded-lg border-2 border-dashed p-4 cursor-pointer transition-colors ${
+                      dragOver ? 'border-primary bg-primary/5' : 'border-border hover:border-primary/40'
+                    }`}
+                  >
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept=".pdf"
+                      className="hidden"
+                      onChange={handleFileInputChange}
+                    />
+                    {extracting ? (
+                      <Loader2 className="h-6 w-6 animate-spin text-primary" />
+                    ) : (
+                      <>
+                        <Upload className="h-6 w-6 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground">
+                          Drop the PDF for this resume, or click to browse
+                        </p>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Resume text preview (when text is loaded from any source) */}
+          {resumeSource !== 'none' && resumeText && (
+            <div className="rounded-lg bg-muted/50 p-3">
+              <div className="flex items-center justify-between mb-1">
+                <p className="text-xs font-medium text-muted-foreground">
+                  <ClipboardPaste className="inline h-3 w-3 mr-1" />
+                  Resume text loaded ({resumeText.length.toLocaleString()} chars)
+                </p>
+                <button
+                  type="button"
+                  onClick={() => { setResumeText(''); setSelectedResumeId(null) }}
+                  className="text-xs text-muted-foreground hover:text-foreground"
+                >
+                  Clear
+                </button>
+              </div>
+              <p className="text-xs text-muted-foreground line-clamp-3 font-mono">
+                {resumeText.slice(0, 300)}{resumeText.length > 300 ? '...' : ''}
+              </p>
+            </div>
+          )}
         </div>
 
         {error && (
