@@ -1,6 +1,7 @@
 'use client'
 
 import { useEffect, useState, useCallback, useRef } from 'react'
+import Link from 'next/link'
 import { Card } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -15,7 +16,7 @@ import {
   Shield, Users, LogIn, Ban, Globe, Monitor, Smartphone, Tablet,
   AlertTriangle, CheckCircle, XCircle, Clock, MapPin, Activity,
   RefreshCw, ChevronDown, ChevronUp, Loader2, Fingerprint, ShieldOff,
-  ShieldAlert, Plus, Trash2, Blocks, Download, ScrollText,
+  ShieldAlert, ShieldCheck, Plus, Trash2, Blocks, Download, ScrollText, ArrowRight,
 } from 'lucide-react'
 import {
   AreaChart, Area, BarChart, Bar, LineChart, Line,
@@ -125,6 +126,51 @@ function StatCard({ label, value, sub, icon: Icon, color }: { label: string; val
         {sub && <p className="text-xs text-muted-foreground/70 mt-0.5">{sub}</p>}
       </div>
     </Card>
+  )
+}
+
+/** Weekly host-scan status banner linking to the full scans report page. */
+function ScanBanner() {
+  const [summary, setSummary] = useState<{ critical: number; infected: number; ranAt: string } | null>(null)
+  useEffect(() => {
+    fetch('/api/cron/security-scan', { credentials: 'include' })
+      .then((r) => (r.ok ? r.json() : null))
+      .then((d) => {
+        if (!d?.latest) return
+        const crit = (d.latest.images || []).reduce((n: number, i: any) => n + (i.critical || 0), 0)
+        setSummary({
+          critical: crit,
+          infected: (d.latest.clamav?.infected || []).length,
+          ranAt: d.latest.ranAt,
+        })
+      })
+      .catch(() => {})
+  }, [])
+  const bad = (summary?.critical || 0) > 0 || (summary?.infected || 0) > 0
+  return (
+    <Link href="/dashboard/admin/security/scans" className="block">
+      <Card className="flex flex-wrap items-center gap-3 border-border/60 p-4 transition-colors hover:bg-muted/40">
+        <span className={`flex h-9 w-9 items-center justify-center rounded-lg ${bad ? 'bg-red-500/10' : 'bg-emerald-500/10'}`}>
+          {bad ? <ShieldAlert className="h-4 w-4 text-red-500" /> : <ShieldCheck className="h-4 w-4 text-emerald-500" />}
+        </span>
+        <span className="min-w-0 flex-1">
+          <span className="block text-sm font-semibold">
+            Host security scans
+            {summary && (
+              <span className="ml-2 font-normal text-muted-foreground tabular-nums">
+                {summary.critical} critical · {summary.infected} infected
+              </span>
+            )}
+          </span>
+          <span className="block text-xs text-muted-foreground">
+            {summary
+              ? `Last run ${new Date(summary.ranAt).toLocaleString()} — open the full report`
+              : 'Weekly Trivy + ClamAV reports appear here after the first run'}
+          </span>
+        </span>
+        <ArrowRight className="h-4 w-4 shrink-0 text-muted-foreground" />
+      </Card>
+    </Link>
   )
 }
 
@@ -470,6 +516,7 @@ export default function Security() {
           </TabsList>
 
           <TabsContent value="overview" className="space-y-6">
+          <ScanBanner />
           {/* ── Charts ──────────────────────────────────────────────── */}
           <div className="grid gap-6 lg:grid-cols-3">
             <Card className="border-border/60 p-4">
