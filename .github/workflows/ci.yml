@@ -30,6 +30,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # setup-node's yarn cache restores via the cache API
+      actions: read
     defaults:
       run:
         working-directory: frontend
@@ -51,6 +53,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # setup-node's yarn cache restores via the cache API
+      actions: read
     defaults:
       run:
         working-directory: frontend
@@ -98,6 +102,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # setup-node's yarn cache restores via the cache API
+      actions: read
     defaults:
       run:
         working-directory: frontend
@@ -122,6 +128,8 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       contents: read
+      # setup-node's yarn cache restores via the cache API
+      actions: read
     steps:
       - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4
