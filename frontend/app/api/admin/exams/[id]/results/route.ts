@@ -37,6 +37,18 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       submissionsByUser[sub.user_id] = sub
     }
 
+    // Email fallback map — invited-link invites are created with an empty
+    // user_id, so join by email when the user_id lookup misses.
+    const submissionsByEmail: Record<string, typeof submissions[0]> = {}
+    for (const sub of submissions) {
+      const key = String(sub.email || '').toLowerCase()
+      if (!key) continue
+      const existing = submissionsByEmail[key]
+      if (!existing || String(sub.created_at || '') > String(existing.created_at || '')) {
+        submissionsByEmail[key] = sub
+      }
+    }
+
     const userMap: Record<string, { name?: string; email?: string }> = {}
     const fetchedIds = new Set<string>()
     const fetchUser = async (uid: string) => {
@@ -110,9 +122,13 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
 
     const results: CandidateResultRow[] = []
     const seenEmails = new Set<string>()
+    const matchedSubmissionIds = new Set<string>()
 
     for (const [, inv] of latestInviteByEmail) {
+      const invEmail = String(inv.email || '').toLowerCase()
       const sub = submissionsByUser[inv.user_id]
+        || (invEmail ? submissionsByEmail[invEmail] : undefined)
+      if (sub) matchedSubmissionIds.add(String(sub.id))
       const user = userMap[inv.user_id] || {}
 
       // Only mark as completed if there's an actual submission record
@@ -132,7 +148,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         maxScore: sub ? sub.max_score : null,
         submittedAt: sub?.submitted_at || sub?.created_at || null,
         invitedAt: inv.created_at || null,
-        proctoringFlags: proctorMap.get(inv.user_id) || 0,
+        proctoringFlags: proctorMap.get(inv.user_id) || (sub ? proctorMap.get(sub.user_id) || 0 : 0),
         released: sub?.released_at ? true : false,
         deliveryStatus: sub && inv.delivery_status === 'sending' ? 'delivered' : (inv.delivery_status || null),
         graded: sub ? (sub.has_pending_review === false) : false,
@@ -140,8 +156,10 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
     }
 
     for (const sub of submissions) {
-      // Skip if this submission belongs to an invite user (already handled above)
-      if (invites.some(inv => inv.user_id === sub.user_id)) continue
+      // Skip submissions already shown on an invite row above (matched by
+      // user_id or by email fallback).
+      if (matchedSubmissionIds.has(String(sub.id))) continue
+      if (invites.some(inv => inv.user_id && inv.user_id === sub.user_id)) continue
 
       const email = sub.email || userMap[sub.user_id]?.email || ''
       if (!email || seenEmails.has(email.toLowerCase())) continue
