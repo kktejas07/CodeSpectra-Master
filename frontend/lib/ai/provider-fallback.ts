@@ -16,27 +16,35 @@ import { readServerSecrets, isMaskedSecret } from '@/lib/server-secrets-cache'
 import { type LLMProviderId } from '@/lib/llm-config'
 import { markKeyRateLimited, getRoundRobinKey } from '@/lib/ai/get-round-robin-key'
 
-// Provider fallback order (priority: free first, then paid)
-const PROVIDER_FALLBACK_CHAIN: {
+// Provider fallback order (priority: free first, then paid).
+// ponytail: model IDs verified 2026-09-21 — gemini-2.0-flash 404s, Groq
+// llama-3.1-8b-instant 404s, Zen deepseek-v4-flash-free upstream-unavailable
+// (prod job logs). Free providers rotate models often — re-check the
+// provider /models catalog if the chain starts failing, and keep this in
+// sync with PROVIDER_MODELS in lib/courses/lesson-video.ts.
+export const PROVIDER_FALLBACK_CHAIN: {
   provider: LLMProviderId
   model: string
   endpoint?: string
   secretKey: string
   free: boolean
 }[] = [
-  // Free tiers first (models verified live 2026-09-06; free providers rotate
-  // models often — re-check GET /models if the chain starts failing)
+  // Free tiers first
   { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
   { provider: 'groq', model: 'openai/gpt-oss-20b', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
-  { provider: 'gemini', model: 'gemini-2.0-flash', secretKey: 'gemini_api_key', free: true },
-  { provider: 'opencode', model: 'deepseek-v4-flash-free', secretKey: 'opencode_api_key', free: true },
-  { provider: 'openrouter', model: 'google/gemini-2.0-flash-lite-001:free', secretKey: 'openrouter_api_key', free: true },
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', endpoint: 'https://api.groq.com/openai/v1', secretKey: 'groq_api_key', free: true },
+  { provider: 'nvidia', model: 'nvidia/llama-3.1-nemotron-70b-instruct', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: true },
+  { provider: 'nvidia', model: 'deepseek-ai/deepseek-v4-flash-0731', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: true },
+  { provider: 'gemini', model: 'gemini-3-flash-preview', secretKey: 'gemini_api_key', free: true },
+  { provider: 'cerebras', model: 'llama-3.3-70b', endpoint: 'https://api.cerebras.ai/v1', secretKey: 'cerebras_api_key', free: true },
+  { provider: 'opencode', model: 'mimo-v2.5-free', secretKey: 'opencode_api_key', free: true },
+  { provider: 'opencode', model: 'minimax-m3-free', secretKey: 'opencode_api_key', free: true },
+  { provider: 'openrouter', model: 'openrouter/auto', secretKey: 'openrouter_api_key', free: true },
+  { provider: 'mistral', model: 'mistral-small-latest', endpoint: 'https://api.mistral.ai/v1', secretKey: 'mistral_api_key', free: false },
   // Paid tiers
+  { provider: 'deepseek', model: 'deepseek-chat', endpoint: 'https://api.deepseek.com/v1', secretKey: 'deepseek_api_key', free: false },
   { provider: 'openai', model: 'gpt-4o-mini', secretKey: 'openai_api_key', free: false },
   { provider: 'anthropic', model: 'claude-3-5-haiku-20241022', secretKey: 'anthropic_api_key', free: false },
-  { provider: 'nvidia', model: 'nvidia/llama-3.1-nemotron-70b-instruct', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: false },
-  { provider: 'deepseek', model: 'deepseek-chat', secretKey: 'deepseek_api_key', free: false },
-  { provider: 'gemini', model: 'gemini-2.0-flash-lite', secretKey: 'gemini_api_key', free: true },
 ]
 
 // Rate limit detection patterns
@@ -256,11 +264,39 @@ export async function providerFallbackComplete(args: BackendCompleteArgs): Promi
     throw new Error('No LLM provider with a configured API key is available')
   }
 
+  // ponytail: honor an explicit caller override FIRST (preferred model), the
+  // chain backstops it. Previously overrides were silently ignored here, so
+  // every caller walked the same chain head regardless of its preference.
+  if (args.providerOverride && args.modelOverride) {
+    const { getApiKey } = await import('@/lib/ai/get-api-key')
+    const keyResult = args.apiKeyOverride
+      ? { key: args.apiKeyOverride }
+      : await getApiKey(args.providerOverride as any)
+    if (keyResult?.key) {
+      providers.unshift({
+        provider: args.providerOverride as LLMProviderId,
+        model: args.modelOverride,
+        endpoint: args.endpointOverride || undefined,
+        apiKey: keyResult.key,
+        free: false,
+      })
+      // Dedupe: drop the later chain twin of the explicit request.
+      const seen = new Set([`${args.providerOverride}/${args.modelOverride}`])
+      for (let i = providers.length - 1; i > 0; i--) {
+        const id = `${providers[i].provider}/${providers[i].model}`
+        if (seen.has(id)) providers.splice(i, 1)
+        else seen.add(id)
+      }
+    }
+  }
+
   const fallbackPath: string[] = []
   let lastError = ''
   let totalRetries = 0
   const MAX_RETRIES = 3
-  const MAX_PROVIDER_ATTEMPTS = Math.min(providers.length, 8)
+  // ponytail: walk the WHOLE keyed chain, not just the first 8 — with 10+
+  // providers configured the tail (paid backstops) must still be reachable.
+  const MAX_PROVIDER_ATTEMPTS = providers.length
 
   for (let i = 0; i < MAX_PROVIDER_ATTEMPTS; i++) {
     const p = providers[i % providers.length]
