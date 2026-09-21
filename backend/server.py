@@ -80,11 +80,13 @@ from routers.ai import router as ai_rtr
 from routers.item_bank_router import router as item_bank_rtr
 from routers.webhooks_router import router as webhooks_rtr
 from routers.learning import router as learning_rtr
+from routers.security import router as security_rtr
 
 app.include_router(ai_rtr)
 app.include_router(item_bank_rtr)
 app.include_router(webhooks_rtr)
 app.include_router(learning_rtr)
+app.include_router(security_rtr)
 
 # ── Proxy to Next.js (for all /api/* requests NOT handled above) ──
 
