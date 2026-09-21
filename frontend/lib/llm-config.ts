@@ -13,10 +13,12 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     label: 'Google Gemini',
     free: true,
     models: [
+      // ponytail: live-first order (verified 2026-09-21: gemini-2.0-flash 404s,
+      // 1.5 family retired — kept at tail so saved configs still resolve).
+      'gemini-3-flash-preview', 'gemini-3.5-flash', 'gemini-3.1-flash-lite',
       'gemini-2.0-flash', 'gemini-2.0-flash-lite',
       'gemini-1.5-pro', 'gemini-1.5-flash',
-      'gemini-3.0-flash', 'gemini-3.5-flash',
-      'gemini-3.6-flash', 'gemini-3.1-pro',
+      'gemini-3.0-flash', 'gemini-3.6-flash', 'gemini-3.1-pro',
     ],
     endpoint: 'https://generativelanguage.googleapis.com/v1beta',
     authType: 'gemini-key',
@@ -26,11 +28,15 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     label: 'OpenCode (opencode.ai)',
     free: true,
     models: [
-      'deepseek-v4-flash-free',
+      // ponytail: Zen free catalog rotates ("limited time" models) — live
+      // free IDs first (models.dev 2026-09-21), paid fallbacks after.
       'mimo-v2.5-free',
-      'ling-3.0-flash-free',
+      'minimax-m3-free',
+      'qwen3.6-plus-free',
       'nemotron-3-ultra-free',
       'north-mini-code-free',
+      'deepseek-v4-flash-free',
+      'ling-3.0-flash-free',
       'laguna-s-2.1-free',
       'claude-fable-5',
       'claude-sonnet-5',
@@ -54,12 +60,14 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     label: 'Groq (fast inference)',
     free: true,
     models: [
+      // ponytail: live-first (llama-3.1-8b-instant 404s as of 2026-09-21).
       'openai/gpt-oss-120b',
       'openai/gpt-oss-20b',
+      'llama-3.3-70b-versatile',
       'qwen/qwen3.6-27b',
+      'deepseek-r1-distill-llama-70b',
       'mixtral-8x7b-32768',
       'gemma2-9b-it',
-      'deepseek-r1-distill-llama-70b',
     ],
     endpoint: 'https://api.groq.com/openai/v1',
     authType: 'bearer',
@@ -116,11 +124,28 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     label: 'NVIDIA NIM',
     free: false,
     models: [
+      'nvidia/llama-3.1-nemotron-70b-instruct',
+      'deepseek-ai/deepseek-v4-flash-0731',
       'meta/llama-3.1-405b-instruct',
       'mistralai/mistral-7b-instruct-v0.3',
-      'nvidia/llama-3.1-nemotron-70b-instruct',
     ],
     endpoint: 'https://integrate.api.nvidia.com/v1',
+    authType: 'bearer',
+  },
+  {
+    id: 'cerebras',
+    label: 'Cerebras (fast inference)',
+    free: true,
+    models: ['llama-3.3-70b', 'openai/gpt-oss-120b'],
+    endpoint: 'https://api.cerebras.ai/v1',
+    authType: 'bearer',
+  },
+  {
+    id: 'mistral',
+    label: 'Mistral AI',
+    free: false,
+    models: ['mistral-small-latest', 'mistral-medium-latest', 'mistral-large-latest'],
+    endpoint: 'https://api.mistral.ai/v1',
     authType: 'bearer',
   },
 ] as const
@@ -152,7 +177,7 @@ export interface LLMConfig {
 
 export const LLM_CONFIG_DEFAULTS: LLMConfig = {
   provider: 'gemini',
-  model: 'gemini-2.0-flash',
+  model: 'gemini-3-flash-preview',
   endpoint: '',
   api_key: '',
   keys: {},
