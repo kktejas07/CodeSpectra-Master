@@ -39,6 +39,39 @@ interface UsageStats {
   successRate: number
 }
 
+// Mirrors ProbeResult in lib/ai/provider-health.ts (local copy keeps this
+// client component free of server-only import chains).
+interface HealthRow {
+  provider: string
+  model: string
+  secretKey: string
+  free: boolean
+  status: 'ok' | 'rate_limited' | 'bad_key' | 'dead_model' | 'no_key' | 'error'
+  latencyMs: number | null
+  keys: number
+  error?: string
+  quota?: { limit: number | null; usage: number | null } | null
+  rateLimitedUntil?: number | null
+}
+
+const HEALTH_META: Record<HealthRow['status'], { label: string; dot: string; pill: string; hint: string }> = {
+  ok: { label: 'Working', dot: 'bg-emerald-500', pill: 'bg-emerald-500/10 text-emerald-600 border-emerald-500/20', hint: 'Live probe succeeded' },
+  rate_limited: { label: 'Rate limited', dot: 'bg-amber-500', pill: 'bg-amber-500/10 text-amber-600 border-amber-500/20', hint: 'Out of credits / throttled — waits out, then retries automatically' },
+  bad_key: { label: 'Bad key', dot: 'bg-red-500', pill: 'bg-red-500/10 text-red-600 border-red-500/20', hint: 'Key rejected (401/403) — replace it in the API Keys tab' },
+  dead_model: { label: 'Dead model', dot: 'bg-red-500', pill: 'bg-red-500/10 text-red-600 border-red-500/20', hint: 'Model retired/unknown — update the fallback chain model ID' },
+  no_key: { label: 'No key', dot: 'bg-muted-foreground', pill: 'bg-muted text-muted-foreground border-border', hint: 'Add a key in the API Keys tab to enable this provider' },
+  error: { label: 'Error', dot: 'bg-red-500', pill: 'bg-red-500/10 text-red-600 border-red-500/20', hint: 'Probe failed — expand for details' },
+}
+
+function timeAgo(iso: string | null): string {
+  if (!iso) return 'never'
+  const s = Math.max(0, Math.round((Date.now() - new Date(iso).getTime()) / 1000))
+  if (s < 60) return `${s}s ago`
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
+}
+
 const PROVIDERS: ProviderKey[] = [
   // LLM Providers
   { id: 'gemini', label: 'Google Gemini', placeholder: 'AIza...', url: 'https://aistudio.google.com/apikey', urlLabel: 'Google AI Studio', desc: 'Free tier. Code analysis, hints, fast completions.', key: 'gemini_api_key', icon: Brain, category: 'llm', categoryLabel: 'LLM Providers' },
@@ -120,6 +153,36 @@ export function LlmSettingsTabs() {
   const [usageStats, setUsageStats] = useState<UsageStats[]>([])
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<{ provider: string; index: number; value: string } | null>(null)
+  // ponytail: probe results from GET/POST /api/admin/llm-health (cached doc —
+  // loads instantly, "Test all" refreshes with live 1-token probes).
+  const [health, setHealth] = useState<{ checkedAt: string | null; results: HealthRow[] }>({ checkedAt: null, results: [] })
+  const [healthTesting, setHealthTesting] = useState(false)
+
+  const loadHealth = useCallback(async () => {
+    try {
+      const r = await fetch('/api/admin/llm-health', { credentials: 'include' })
+      const d = await r.json().catch(() => ({}))
+      if (r.ok) setHealth({ checkedAt: d.checkedAt ?? null, results: Array.isArray(d.results) ? d.results : [] })
+    } catch {}
+  }, [])
+
+  useEffect(() => { void loadHealth() }, [loadHealth])
+
+  const runHealthTest = useCallback(async () => {
+    setHealthTesting(true)
+    try {
+      const res = await csrfFetch('/api/admin/llm-health', { method: 'POST', credentials: 'include' })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Health check failed')
+      setHealth({ checkedAt: json.checkedAt ?? null, results: Array.isArray(json.results) ? json.results : [] })
+      const ok = (json.results || []).filter((r: HealthRow) => r.status === 'ok').length
+      addToast({ type: ok > 0 ? 'success' : 'error', title: `${ok}/${(json.results || []).length} providers working` })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Health check failed', message: e instanceof Error ? e.message : 'Unknown error' })
+    } finally {
+      setHealthTesting(false)
+    }
+  }, [addToast])
 
   // Apply GET meta to per-provider saved-state (the raw secretsMeta is not
   // needed — GET never returns raw secret values, only has_/masked flags).
@@ -325,8 +388,9 @@ export function LlmSettingsTabs() {
 
   return (
     <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-      <TabsList className="grid w-full grid-cols-3">
+      <TabsList className="grid w-full grid-cols-4">
         <TabsTrigger value="keys" className="flex items-center gap-2"><Key className="h-4 w-4" /> API Keys</TabsTrigger>
+        <TabsTrigger value="health" className="flex items-center gap-2"><Activity className="h-4 w-4" /> Health</TabsTrigger>
         <TabsTrigger value="usage" className="flex items-center gap-2"><BarChart3 className="h-4 w-4" /> Usage Stats</TabsTrigger>
         <TabsTrigger value="routing" className="flex items-center gap-2"><Zap className="h-4 w-4" /> Routing</TabsTrigger>
       </TabsList>
@@ -592,6 +656,87 @@ export function LlmSettingsTabs() {
             <p><strong>4. Auto-Recovery:</strong> Rate-limited keys automatically become available again after the cooldown period.</p>
           </div>
         </Card>
+      </TabsContent>
+
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      {/* HEALTH TAB — live per-provider probe results */}
+      {/* ═══════════════════════════════════════════════════════════════════════ */}
+      <TabsContent value="health" className="space-y-4">
+        <Card className="p-4 flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2 min-w-0">
+            <span className={`inline-block h-2.5 w-2.5 rounded-full shrink-0 ${
+              health.results.length === 0 ? 'bg-muted-foreground'
+              : health.results.every(r => r.status === 'ok') ? 'bg-emerald-500'
+              : health.results.some(r => r.status === 'ok') ? 'bg-amber-500' : 'bg-red-500'
+            }`} />
+            <div className="min-w-0">
+              <p className="text-sm font-semibold">
+                {health.results.length === 0
+                  ? 'Not checked yet'
+                  : `${health.results.filter(r => r.status === 'ok').length}/${health.results.length} providers working`}
+              </p>
+              <p className="text-[11px] text-muted-foreground">
+                {health.checkedAt ? `Last checked ${timeAgo(health.checkedAt)}` : 'Run a live probe to verify every key + model'} · 1-token completion per provider through the production path
+              </p>
+            </div>
+          </div>
+          <div className="flex-1" />
+          <Button variant="outline" size="sm" onClick={() => void loadHealth}><RefreshCw className="h-4 w-4 mr-1" /> Reload</Button>
+          <Button size="sm" onClick={() => void runHealthTest} disabled={healthTesting}>
+            {healthTesting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Activity className="mr-1 h-4 w-4" />}
+            {healthTesting ? 'Probing…' : 'Test all providers'}
+          </Button>
+        </Card>
+
+        {health.results.length === 0 ? (
+          <Card className="p-8 text-center text-muted-foreground">
+            <Activity className="h-8 w-8 mx-auto mb-2 opacity-50" />
+            <p className="text-sm">No probe data yet. Click “Test all providers” — each chain model gets a 1-token live completion.</p>
+          </Card>
+        ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            {health.results.map((r) => {
+              const meta = HEALTH_META[r.status]
+              const label = PROVIDERS.find(p => p.key === r.secretKey)?.label
+                || (r.provider.charAt(0).toUpperCase() + r.provider.slice(1))
+              const cooldownSec = typeof r.rateLimitedUntil === 'number' && r.rateLimitedUntil > Date.now()
+                ? Math.ceil((r.rateLimitedUntil - Date.now()) / 1000)
+                : 0
+              return (
+                <Card key={`${r.provider}/${r.model}`} className="p-4 space-y-2">
+                  <div className="flex items-center gap-2">
+                    <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${meta.dot}`} />
+                    <p className="text-sm font-semibold truncate flex-1">{label}</p>
+                    {r.free && <Badge variant="outline" className="text-[9px] text-muted-foreground">free tier</Badge>}
+                    <Badge variant="outline" className={`text-[9px] ${meta.pill}`}>{meta.label}</Badge>
+                  </div>
+                  <p className="text-[11px] font-mono text-muted-foreground truncate" title={r.model}>{r.model}</p>
+                  <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-[11px] text-muted-foreground">
+                    <span>{r.keys} key{r.keys === 1 ? '' : 's'}</span>
+                    {typeof r.latencyMs === 'number' && <span>{(r.latencyMs / 1000).toFixed(1)}s probe</span>}
+                    {r.quota && typeof r.quota.limit === 'number' && typeof r.quota.usage === 'number' && (
+                      <span title="OpenRouter credit usage (genuine vendor data)">
+                        ${r.quota.usage.toFixed(2)} / ${r.quota.limit.toFixed(2)} used
+                      </span>
+                    )}
+                    {cooldownSec > 0 && <span className="text-amber-600">cooldown {cooldownSec}s</span>}
+                  </div>
+                  {r.status !== 'ok' && (
+                    <p className="text-[11px] leading-relaxed text-muted-foreground">
+                      <span className="font-medium text-foreground">{meta.hint}</span>
+                      {r.error && <span className="block font-mono mt-0.5 break-words">{r.error}</span>}
+                    </p>
+                  )}
+                </Card>
+              )
+            })}
+          </div>
+        )}
+        <p className="text-[11px] text-muted-foreground leading-relaxed px-1">
+          Quotas: only OpenRouter exposes real credit usage via API (shown when available). Other vendors publish no quota endpoint,
+          so limits are tracked as observed traffic in Usage Stats. If every row is red, course generation and all AI features are down —
+          fix the topmost failing provider first; the fallback chain tries them in this order.
+        </p>
       </TabsContent>
     </Tabs>
   )
