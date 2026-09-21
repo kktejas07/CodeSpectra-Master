@@ -6,6 +6,8 @@
 
 ## Current Claims
 
+| opencode (this session, COURSE-CHAIN-FIX) | IN PROGRESS — replace dead models in course-worker LLM chain with verified-live ones + harden provider/key rotation (429/dead-model handling) across all configured providers. | frontend/lib/courses/lesson-video.ts, frontend/lib/ai/* (as needed) | IN PROGRESS | 2026-09-21 |
+| opencode (this session, COURSE-GEN-AUDIT) | DONE — root cause PROVEN via prod SSH + Mongo job logs: every LLM provider in the deployed worker's chain is dead (OpenAI out of credits 429, Groq llama-3.1-8b-instant 404, Gemini gemini-2.0-flash 404, OpenRouter 401 bad key, opencode model unavailable) + worker image is stale (built 2026-08-22, predates Sept-6 model-chain fix). No code changed; fix proposal delivered to user. | none (read-only) | DONE | 2026-09-21 |
 | opencode (this session, UPLOAD-VIRUS-SCAN) | DONE — tsc clean, 44 tests pass (6 new security-scan + 38 existing), gate green. Wire ClamAV INSTREAM scan into /api/upload via backend /internal/security/scan. scan_file_for_viruses() talks to existing Docker service globalservices-universalclamav-v9rmvc:3310 (same overlay network). Fail-closed: scanner down → 503, virus → 400. | backend/services/security_scanner.py (new), backend/routers/security.py (new), backend/server.py, frontend/app/api/upload/route.ts, backend/tests/test_security_scan.py (new) | DONE — COMMITTED | 2026-09-15 |
 
 | opencode (this session, VITALS-BATCH) | DONE — tsc clean, committed (no push). ~20 web-vitals POSTs traced to per-metric useReportWebVitals; now buffered + flushed every 30s/pagehide via sendBeacon in server-shaped {events[]} chunks (≤24). Polling verified intentional. | frontend/components/dashboard/web-vitals-reporter.tsx | DONE — COMMITTED | 2026-09-07 |
