@@ -528,26 +528,40 @@ const PROVIDER_SECRET: Record<string, string> = {
   nvidia: 'nvidia_api_key',
   groq: 'groq_api_key',
   gemini: 'gemini_api_key',
+  cerebras: 'cerebras_api_key',
+  mistral: 'mistral_api_key',
   openai: 'openai_api_key',
   opencode: 'opencode_api_key',
   openrouter: 'openrouter_api_key',
+  deepseek: 'deepseek_api_key',
+  anthropic: 'anthropic_api_key',
 }
 
 const NVIDIA_ENDPOINT = 'https://integrate.api.nvidia.com/v1'
 
-/** Own keys from SuperAdmin. NVIDIA first (user request), then the rest.
- *  ponytail: models verified live 2026-09-06 (llama-3.1-8b-instant 404s,
- *  llama-3.1-70b/8b-instruct EOL'd on NIM) — re-verify via GET /models if
- *  the chain starts failing; free providers rotate models often. */
-const PROVIDER_MODELS: { provider: string; model: string; endpoint?: string }[] = [
+/** Own keys from SuperAdmin. Free megamodels first, paid backstops last.
+ *  ponytail: model IDs verified 2026-09-21 against prod failures
+ *  (groq llama-3.1-8b-instant 404, gemini-2.0-flash 404, Zen
+ *  deepseek-v4-flash-free upstream-unavailable) + Google Zen catalogs.
+ *  Keep in sync with PROVIDER_FALLBACK_CHAIN in lib/ai/provider-fallback.ts
+ *  (the shared layer tries an explicit override first, then that chain). */
+export const PROVIDER_MODELS: { provider: string; model: string; endpoint?: string }[] = [
   { provider: 'nvidia', model: 'nvidia/llama-3.1-nemotron-70b-instruct', endpoint: NVIDIA_ENDPOINT },
   { provider: 'nvidia', model: 'deepseek-ai/deepseek-v4-flash-0731', endpoint: NVIDIA_ENDPOINT },
   { provider: 'groq', model: 'openai/gpt-oss-120b', endpoint: 'https://api.groq.com/openai/v1' },
   { provider: 'groq', model: 'openai/gpt-oss-20b', endpoint: 'https://api.groq.com/openai/v1' },
-  { provider: 'gemini', model: 'gemini-2.0-flash' },
+  { provider: 'groq', model: 'llama-3.3-70b-versatile', endpoint: 'https://api.groq.com/openai/v1' },
+  { provider: 'gemini', model: 'gemini-3-flash-preview' },
+  { provider: 'cerebras', model: 'llama-3.3-70b', endpoint: 'https://api.cerebras.ai/v1' },
+  { provider: 'mistral', model: 'mistral-small-latest', endpoint: 'https://api.mistral.ai/v1' },
   { provider: 'openai', model: 'gpt-4o-mini' },
-  { provider: 'opencode', model: 'deepseek-v4-flash-free' },
-  { provider: 'openrouter', model: 'google/gemini-2.0-flash-lite-001:free' },
+  { provider: 'opencode', model: 'mimo-v2.5-free' },
+  { provider: 'opencode', model: 'minimax-m3-free' },
+  // ponytail: openrouter/auto never 404s — the router picks a live free
+  // model. Pinned :free IDs rot constantly (gemini-2.0-flash 404 2026-09-21).
+  { provider: 'openrouter', model: 'openrouter/auto' },
+  { provider: 'deepseek', model: 'deepseek-chat', endpoint: 'https://api.deepseek.com/v1' },
+  { provider: 'anthropic', model: 'claude-3-5-haiku-20241022' },
 ]
 
 let rr = 0
@@ -575,10 +589,9 @@ async function waitForGlobalCooldown() {
 async function completeWithFallback(args: Parameters<typeof backendComplete>[0]) {
   const primary = await platformModelOverrides()
   const nvidia = PROVIDER_MODELS.filter(p => p.provider === 'nvidia')
-  // ponytail: removed override prepend — the backend's build_chat ignores
-  // model_override and uses MODEL_REGISTRY defaults (groq → dead
-  // llama-3.1-8b-instant).  Dead models burn one 404 per lesson.  The
-  // standard chain has verified-live models; just use those.
+  // ponytail: the shared fallback layer tries this explicit override first,
+  // then its own chain — so each entry here gets exactly one targeted shot
+  // (plus round-robin key rotation) instead of a full chain re-walk.
   const rest = [
     ...PROVIDER_MODELS.filter(p => p.provider !== 'nvidia'),
   ]
