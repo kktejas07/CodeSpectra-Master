@@ -1,6 +1,6 @@
 fastapi==0.110.1
 uvicorn==0.25.0
-cryptography>=42.0.8
+cryptography>=50.0.1
 python-dotenv>=1.0.1
 pymongo==4.9.2
 pydantic>=2.6.4
