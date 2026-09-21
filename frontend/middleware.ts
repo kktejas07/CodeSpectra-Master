@@ -51,6 +51,11 @@ export default function proxy(request: NextRequest) {
     '/api/security/track',
     '/api/auth/face-enroll',
     '/api/auth/face-verify',
+    // Login/token endpoints ESTABLISH the session, so there is no session to
+    // forge — and cookie-less native clients cannot obtain a CSRF token
+    // before their first call. Brute-force/IP protections live in the routes.
+    '/api/auth/login',
+    '/api/auth/mobile-token',
   ]
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
     const rl = edgeRateLimit(`api:${edgeClientKey(request)}`, 240, 60_000)

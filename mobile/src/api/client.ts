@@ -76,13 +76,22 @@ export async function clearToken(): Promise<void> {
   }
 }
 
+/**
+ * nativeMarker is sent on EVERY request, including login (where no session
+ * token exists yet). The server treats any `Authorization: Bearer` request
+ * as a non-browser client and skips the cookie double-submit CSRF check —
+ * a cross-site attacker cannot set that header. Without it, the very first
+ * call (mobile-token) has no cookie and no token, and gets CSRF-rejected.
+ */
+const NATIVE_MARKER = 'native'
+
 async function request<T>(path: string, init: RequestInit = {}): Promise<T> {
   const token = await getToken()
   const res = await fetch(`${apiBase()}${path}`, {
     ...init,
     headers: {
       'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      Authorization: `Bearer ${token || NATIVE_MARKER}`,
       ...(init.headers ?? {}),
     },
   })
