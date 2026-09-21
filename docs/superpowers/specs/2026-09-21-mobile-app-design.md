@@ -14,9 +14,10 @@ the web's emerald-on-dark-slate identity.
 
 ## 2. Non-goals (v1)
 
-Timed proctored exam attempts with lockdown, course-generation queue
-creation, in-app payments, native face-enrollment capture (all four
-deep-link to web). No Detox/Maestro; no shared npm workspace.
+`strict_lockdown` exam attempts, course-generation queue creation, in-app
+payments, native face-enrollment capture (deep-link to web). Timed
+`focus_only` / `ai_flagged` attempts ARE in v1 via native proctoring
+equivalents (see §11). No Detox/Maestro; no shared npm workspace.
 
 ## 3. Architecture
 
@@ -101,7 +102,27 @@ the next begins.
 ADR-006 update, `docs/api/*` entries for the two new endpoints,
 version-history row, `AGENTS.md` claim before code. No new collections.
 
-## 11. Open risks
+## 11. Proctoring on mobile (no extensions)
+
+Web tiers (`strict_lockdown` / `ai_flagged` / `focus_only`) map to native
+equivalents — the extension was always an aid, never the enforcer
+(submit logs `extension_detected:false` + warns, never rejects):
+
+| Web layer | Mobile equivalent |
+|---|---|
+| Tab-switch detection | `AppState` background/foreground transitions → same `/api/proctor/events` stream |
+| Fullscreen + extension enforcement | `FLAG_SECURE` (Android: blocks screenshots + recents preview) + iOS screenshot/screen-recording detection |
+| Webcam MediaRecorder chunks | `expo-camera` periodic snapshots + on-device face check → same `session_recordings` upload |
+| USB device audit | N/A on phones → root/jailbreak + emulator detection instead |
+| Copy/paste blocking | Non-selectable question UI + watermarking; server-side answer-pattern / plagiarism / leak detectors run unchanged |
+| Identity (face-match/Aadhaar) | Same server checks, capture via `expo-camera` |
+
+Policy: `strict_lockdown` exams stay desktop-only. Mobile lists
+`focus_only` / `ai_flagged` exams as takable, with a "continue on
+desktop" deep link for strict ones. Timed attempts are therefore IN v1
+for the two lower tiers (§2 non-goals updated accordingly).
+
+## 12. Open risks
 
 - Bearer + CSRF interaction must be live-verified (assumed pass).
 - SecureStore unavailable in Expo Go (dev-client needed early).
