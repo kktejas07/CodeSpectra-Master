@@ -69,15 +69,24 @@ export default function proxy(request: NextRequest) {
 
   // CSRF protection for API routes (webhooks & web-vitals exempt — external callers use HMAC signatures, not CSRF tokens)
   if (pathname.startsWith('/api/') && !CSRF_EXEMPT.some(p => pathname.startsWith(p))) {
-    const csrf = checkCsrf(request)
-    if (!csrf.pass) {
-      return NextResponse.json({ error: 'CSRF validation failed' }, { status: 403 })
-    }
-    if (csrf.token) {
-      response.headers.append(
-        'Set-Cookie',
-        `${CSRF_COOKIE}=${csrf.token}; Path=/; Max-Age=86400; SameSite=Lax; ${secureFlag}`,
-      )
+    // Bearer-authenticated callers (the mobile app, server-to-server clients)
+    // carry no ambient cookie, so a CSRF token is neither present nor
+    // meaningful — there is nothing to forge. Cross-site scripting cannot
+    // mint a Bearer header the way it can replay a cookie, so these requests
+    // skip the double-submit check and get a fresh cookie for later use.
+    const bearer = request.headers.get('authorization')?.startsWith('Bearer ') ?? false
+    if (!bearer) {
+      const csrf = checkCsrf(request)
+      if (!csrf.pass) {
+        return NextResponse.json({ error: 'CSRF validation failed' }, { status: 403 })
+      }
+      // Hand the browser a token so it can reuse it on later mutating calls.
+      if (csrf.token) {
+        response.headers.append(
+          'Set-Cookie',
+          `${CSRF_COOKIE}=${csrf.token}; Path=/; Max-Age=86400; SameSite=Lax; ${secureFlag}`,
+        )
+      }
     }
   }
 

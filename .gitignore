@@ -4,6 +4,17 @@
 .idea/
 .vscode/
 
+# Expo / React Native (mobile/)
+mobile/.expo/
+mobile/dist/
+mobile/web-build/
+*.jks
+*.p8
+*.p12
+*.key
+*.mobileprovision
+*.orig.*
+
 # Dependencies
 node_modules/
 /node_modules
