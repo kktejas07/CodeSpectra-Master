@@ -20,6 +20,7 @@ import {
 import { FALLBACK_THEME, MIN_TOUCH } from './src/theme'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { TabPlaceholder } from './src/screens/TabPlaceholder'
+import { ProblemsStack } from './src/screens/ProblemsStack'
 
 const Tab = createBottomTabNavigator()
 
@@ -174,6 +175,8 @@ export default function App(): React.JSX.Element {
                           Complete biometric enrollment on the web to unlock proctored assessments.
                         </Text>
                       </View>
+                    ) : t.id === 'problems' ? (
+                      <ProblemsStack theme={theme} />
                     ) : (
                       <TabPlaceholder theme={theme} tab={t} userName={doc.user.name ?? doc.user.email} />
                     )}
