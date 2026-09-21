@@ -28,6 +28,7 @@ import { LoginScreen } from './src/screens/LoginScreen'
 import { TabPlaceholder } from './src/screens/TabPlaceholder'
 import { ProblemsStack } from './src/screens/ProblemsStack'
 import { JudgeStack } from './src/screens/JudgeStack'
+import { AdminStack } from './src/screens/AdminStack'
 
 // Hold the native splash until React has painted the in-app splash, so
 // there is never a white flash between them.
@@ -220,6 +221,8 @@ export default function App(): React.JSX.Element {
                     <ProblemsStack theme={theme} />
                   ) : t.id === 'judge' ? (
                     <JudgeStack theme={theme} role={doc.user.role} />
+                  ) : t.id === 'admin' ? (
+                    <AdminStack theme={theme} />
                   ) : (
                     <TabPlaceholder theme={theme} tab={t} userName={doc.user.name ?? doc.user.email} />
                   )}
