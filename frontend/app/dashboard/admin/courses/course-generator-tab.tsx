@@ -81,11 +81,29 @@ export default function CourseGeneratorTab() {
   const [confirmMessage, setConfirmMessage] = useState('')
   const [confirmAction, setConfirmAction] = useState<(() => void) | null>(null)
 
+  // Live LLM chain health (cached probe doc — instant, refreshed via Test-all in settings)
+  const [llmHealth, setLlmHealth] = useState<{ working: number; total: number; checkedAt: string | null } | null>(null)
+  const loadLlmHealth = async () => {
+    try {
+      const res = await csrfFetch('/api/admin/llm-health', { credentials: 'include' })
+      const data = await res.json().catch(() => ({}))
+      const results = Array.isArray(data.results) ? data.results : []
+      setLlmHealth({
+        working: results.filter((r: any) => r.status === 'ok').length,
+        total: results.length,
+        checkedAt: data.checkedAt ?? null,
+      })
+    } catch {
+      setLlmHealth(null)
+    }
+  }
+
   // Load data
   useEffect(() => {
     loadJobs()
     loadExistingCourses()
     loadWorker()
+    void loadLlmHealth()
     const interval = setInterval(() => {
       loadJobs()
       loadWorker()
@@ -353,8 +371,43 @@ export default function CourseGeneratorTab() {
   const runningJobs = jobs.filter(j => j.status === 'running' || j.status === 'pending')
   const completedJobs = jobs.filter(j => j.status === 'completed' || j.status === 'failed')
 
+  const llmStrip = (() => {
+    const link = (
+      <Link href="/dashboard/admin/settings?section=llm" className="underline underline-offset-2 hover:text-foreground shrink-0">
+        AI &amp; LLM Keys → Health
+      </Link>
+    )
+    if (!llmHealth) {
+      return { dot: 'bg-muted-foreground', text: 'LLM chain: checking…', tone: 'text-muted-foreground', link }
+    }
+    if (llmHealth.total === 0 || !llmHealth.checkedAt) {
+      return { dot: 'bg-amber-500', text: 'LLM providers not tested yet — generation may fail. Run “Test all providers” in settings.', tone: 'text-amber-600', link }
+    }
+    if (llmHealth.working === 0) {
+      return { dot: 'bg-red-500', text: `LLM chain DOWN (0/${llmHealth.total} working) — generation will fail. Fix a provider first.`, tone: 'text-red-600', link }
+    }
+    if (llmHealth.working < llmHealth.total) {
+      return { dot: 'bg-amber-500', text: `LLM chain degraded (${llmHealth.working}/${llmHealth.total} working) — fallback covers the gaps.`, tone: 'text-amber-600', link }
+    }
+    return { dot: 'bg-emerald-500', text: `LLM chain healthy (${llmHealth.working}/${llmHealth.total} providers working)`, tone: 'text-emerald-600', link }
+  })()
+
   return (
     <div className="space-y-6">
+      {/* LLM chain status — cached probe, refreshes via Test-all in settings */}
+      <div className="flex items-center gap-2 rounded-lg border border-border/60 bg-card px-3 py-2 text-xs">
+        <span className={`inline-block h-2 w-2 rounded-full shrink-0 ${llmStrip.dot}`} />
+        <span className={`truncate flex-1 ${llmStrip.tone}`}>{llmStrip.text}</span>
+        {llmStrip.link}
+        <button
+          type="button"
+          onClick={() => { void loadLlmHealth(); loadWorker() }}
+          className="text-muted-foreground hover:text-foreground shrink-0"
+          title="Refresh status"
+        >
+          <RefreshCw className="h-3.5 w-3.5" />
+        </button>
+      </div>
 
       {/* Main Grid */}
       <div className="grid lg:grid-cols-3 gap-6">

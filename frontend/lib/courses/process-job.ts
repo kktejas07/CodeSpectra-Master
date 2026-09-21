@@ -408,26 +408,40 @@ export async function requeueJob(jobId: string, opts?: { regenerateAll?: boolean
 
   if (opts?.regenerateAll) await clearCourseVideos(job.courseId)
 
+  // ponytail: regenerate-all starts a FRESH log (old per-lesson failures
+  // described videos that were just deleted — keeping them misleads the
+  // next run). Retry-remaining keeps appending: its history still matches
+  // the videos on disk.
+  const freshLog = {
+    timestamp: new Date().toISOString(),
+    message: opts?.regenerateAll
+      ? 'Requeued — regenerating ALL videos (existing ones cleared)'
+      : 'Requeued — will skip lessons that already have video',
+    type: 'info',
+  }
   await db.collection('generation_jobs').updateOne(
     { id: jobId },
-    {
-      $set: {
-        status: 'pending',
-        error: null,
-        progress: 0,
-        completedItems: 0,
-        failedItems: 0,
-      },
-      $push: {
-        logs: {
-          timestamp: new Date().toISOString(),
-          message: opts?.regenerateAll
-            ? 'Requeued — regenerating ALL videos (existing ones cleared)'
-            : 'Requeued — will skip lessons that already have video',
-          type: 'info',
+    opts?.regenerateAll
+      ? {
+          $set: {
+            status: 'pending',
+            error: null,
+            progress: 0,
+            completedItems: 0,
+            failedItems: 0,
+            logs: [freshLog],
+          },
+        }
+      : {
+          $set: {
+            status: 'pending',
+            error: null,
+            progress: 0,
+            completedItems: 0,
+            failedItems: 0,
+          },
+          $push: { logs: freshLog } as any,
         },
-      } as any,
-    },
   )
   return { ok: true }
 }
