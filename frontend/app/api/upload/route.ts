@@ -8,6 +8,23 @@ import { getMongoDb } from '@/lib/mongodb'
 import { randomUUID } from 'node:crypto'
 import DOMPurify from 'isomorphic-dompurify'
 
+const PROD_BACKEND = 'http://codespectra-backend-cd7lq6:8000'
+const BACKEND_URL = process.env.INTERNAL_BACKEND_URL
+  || ((process.env.COURSE_WORKER === '1' || process.env.NODE_ENV === 'production')
+    ? PROD_BACKEND
+    : 'http://localhost:8001')
+
+async function getInternalSecret(): Promise<string> {
+  const fromEnv = process.env.INTERNAL_BACKEND_SECRET?.trim() || ''
+  if (fromEnv) return fromEnv
+  try {
+    const { readServerSecrets, isMaskedSecret } = await import('@/lib/server-secrets-cache')
+    const secrets = await readServerSecrets()
+    const stored = typeof secrets.internal_backend_secret === 'string' ? secrets.internal_backend_secret.trim() : ''
+    return stored && !isMaskedSecret(stored) ? stored : ''
+  } catch { return '' }
+}
+
 export const runtime = 'nodejs'
 export const dynamic = 'force-dynamic'
 
@@ -44,6 +61,40 @@ export async function POST(req: NextRequest) {
       // Create new buffer from sanitized string
       const buf = Buffer.from(sanitized, 'utf-8')
       bytes = buf.buffer.slice(buf.byteOffset, buf.byteOffset + buf.byteLength) as ArrayBuffer
+    }
+
+    // Virus scan via ClamAV (backend /internal/security/scan) before persisting.
+    try {
+      const secret = await getInternalSecret()
+      const scanRes = await fetch(`${BACKEND_URL}/internal/security/scan`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(secret ? { 'x-internal-secret': secret } : {}),
+        },
+        body: JSON.stringify({
+          file_base64: Buffer.from(bytes).toString('base64'),
+          filename: file.name,
+        }),
+        signal: AbortSignal.timeout(30_000),
+      })
+      if (!scanRes.ok) {
+        const detail = await scanRes.json().catch(() => ({ detail: 'Security scanner rejected this file.' }))
+        const msg = detail.detail || detail.error || 'Security scanner rejected this file.'
+        // 400 = ClamAV flagged malware; anything else = scanner offline → fail-closed.
+        return NextResponse.json(
+          { error: msg },
+          { status: scanRes.status === 400 || scanRes.status === 422 ? 400 : 503 },
+        )
+      }
+    } catch (scanErr) {
+      // Network/timeout error — scanner offline → fail-closed.
+      const msg = scanErr instanceof Error ? scanErr.message : String(scanErr)
+      console.error('[upload] virus scan error:', msg)
+      return NextResponse.json(
+        { error: 'Security scanner is currently offline. Please try again later.' },
+        { status: 503 },
+      )
     }
 
     const base64 = Buffer.from(bytes).toString('base64')
