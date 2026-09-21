@@ -9,6 +9,7 @@ import {
   KeyboardAvoidingView,
   Platform,
 } from 'react-native'
+import { Eye, EyeOff } from 'lucide-react-native'
 import type { ThemeTokens } from '../api/client'
 import { login, setToken } from '../api/client'
 import { MIN_TOUCH } from '../theme'
@@ -21,6 +22,7 @@ interface Props {
 export function LoginScreen({ theme, onLoggedIn }: Props): React.JSX.Element {
   const [email, setEmail] = useState('')
   const [password, setPassword] = useState('')
+  const [showPassword, setShowPassword] = useState(false)
   const [totp, setTotp] = useState('')
   const [needTotp, setNeedTotp] = useState(false)
   const [busy, setBusy] = useState(false)
@@ -74,15 +76,31 @@ export function LoginScreen({ theme, onLoggedIn }: Props): React.JSX.Element {
         onChangeText={setEmail}
         editable={!busy}
       />
-      <TextInput
-        style={s.input}
-        placeholder="Password"
-        placeholderTextColor={theme.muted}
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        editable={!busy}
-      />
+      <View style={s.passwordRow}>
+        <TextInput
+          style={s.passwordInput}
+          placeholder="Password"
+          placeholderTextColor={theme.muted}
+          secureTextEntry={!showPassword}
+          value={password}
+          onChangeText={setPassword}
+          editable={!busy}
+          autoCapitalize="none"
+          autoCorrect={false}
+          accessibilityLabel="Password"
+        />
+        <TouchableOpacity
+          style={s.revealBtn}
+          onPress={() => setShowPassword((v) => !v)}
+          activeOpacity={0.7}
+          accessibilityRole="button"
+          accessibilityLabel={showPassword ? 'Hide password' : 'Show password'}
+        >
+          {showPassword
+            ? <EyeOff size={18} color={theme.muted} stroke={theme.muted} />
+            : <Eye size={18} color={theme.muted} stroke={theme.muted} />}
+        </TouchableOpacity>
+      </View>
       {needTotp ? (
         <TextInput
           style={s.input}
@@ -126,6 +144,19 @@ const styles = (t: ThemeTokens) =>
       backgroundColor: t.card, borderColor: t.border, borderWidth: 1,
       borderRadius: 10, color: t.text, paddingHorizontal: 14,
       minHeight: MIN_TOUCH, marginBottom: 12, fontSize: 15,
+    },
+    passwordRow: {
+      flexDirection: 'row', alignItems: 'center',
+      backgroundColor: t.card, borderColor: t.border, borderWidth: 1,
+      borderRadius: 10, marginBottom: 12, minHeight: MIN_TOUCH,
+    },
+    passwordInput: {
+      flex: 1, color: t.text, paddingHorizontal: 14, fontSize: 15,
+      minHeight: MIN_TOUCH,
+    },
+    revealBtn: {
+      width: MIN_TOUCH, height: MIN_TOUCH,
+      alignItems: 'center', justifyContent: 'center',
     },
     button: {
       backgroundColor: t.primary, borderRadius: 10, minHeight: MIN_TOUCH,

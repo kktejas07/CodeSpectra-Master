@@ -6,12 +6,17 @@
     "orientation": "portrait",
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#080D17",
+    "icon": "./assets/icon.png",
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "ai.codespectra.app"
     },
     "android": {
-      "package": "ai.codespectra.app"
+      "package": "ai.codespectra.app",
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#080D17"
+      }
     },
     "extra": {
       "apiBase": "https://codespectra.ai"
@@ -21,9 +26,14 @@
       [
         "expo-splash-screen",
         {
+          "image": "./assets/splash-icon.png",
+          "imageWidth": 180,
+          "resizeMode": "contain",
           "backgroundColor": "#080D17",
-          "dark": { "backgroundColor": "#080D17" },
-          "resizeMode": "contain"
+          "dark": {
+            "image": "./assets/splash-icon.png",
+            "backgroundColor": "#080D17"
+          }
         }
       ]
     ]
