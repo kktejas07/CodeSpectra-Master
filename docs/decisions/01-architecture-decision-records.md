@@ -115,11 +115,11 @@
 
 ---
 
-## ADR-006: Monorepo Structure (frontend/ + backend/)
+## ADR-006: Monorepo Structure (frontend/ + backend/ + mobile/)
 
-**Status:** Accepted
+**Status:** Accepted (mobile/ re-added 2026-09-21; previously removed 2026-08-14 in v0.22.24, rebuilt server-driven per `docs/superpowers/specs/2026-09-21-mobile-app-design.md`)
 
-**Context:** CodeSpectra consists of a Next.js TypeScript application and a FastAPI Python service. These share no runtime code but are developed, tested, and deployed together. The team needed to decide between a monorepo and multiple repositories.
+**Context:** CodeSpectra consists of a Next.js TypeScript application, a FastAPI Python service, and an Expo React Native mobile app. These share no runtime code but are developed, tested, and deployed together. The team needed to decide between a monorepo and multiple repositories.
 
 **Decision:** Use a monorepo with separate directories for each application, without a shared package manager workspace.
 
@@ -134,17 +134,23 @@ codespectra/
 │   ├── requirements.txt  # pip-managed
 │   ├── Dockerfile
 │   └── ...
+├── mobile/           # Expo React Native + TypeScript (npm-managed)
+│   ├── App.tsx       # server-driven shell (tabs/theme/flags from bootstrap)
+│   ├── src/api/      # Bearer client + SecureStore session
+│   ├── src/screens/  # staged screens (1: shell, 2: learner, 3: judge, 4: admin)
+│   └── DESIGN.md     # design system record
 ├── docker-compose.yml
 └── docs/
 ```
 
 **Rationale:**
-- Single repository simplifies cross-team visibility — frontend and backend developers see all changes
+- Single repository simplifies cross-team visibility — frontend, backend, and mobile developers see all changes
 - No shared package manager workspace overhead — each sub-project manages its own dependencies independently
 - Single `docker-compose.yml` orchestrates all services for local development
 - Shared documentation in `docs/` and development conventions in `AGENTS.md`
 - CI/CD can be unified (single pipeline build all services) or per-service (separate Docker builds)
+- Mobile reuses the Next.js `/api/*` surface (Bearer session JWTs) — no separate mobile backend; no shared TS types (mobile mirrors the bootstrap contract, guarded by manifest contract tests)
 
 **Consequences:**
-- **Positive:** Easy to see the full system state in one checkout. Single PRs can span frontend and backend changes. Docker Compose orchestrates both services for local development. No cross-package version conflicts.
-- **Negative:** Git history includes all projects, which can be noisy. Monorepo tooling (changesets, Turborepo) was evaluated but not adopted — the team preferred simplicity over workspace tooling.
+- **Positive:** Easy to see the full system state in one checkout. Single PRs can span frontend and backend changes. Docker Compose orchestrates all services for local development. No cross-package version conflicts.
+- **Negative:** No shared TypeScript types between frontend and mobile (they copy types as needed). Git history includes all projects, which can be noisy. Monorepo tooling (changesets, Turborepo) was evaluated but not adopted — the team preferred simplicity over workspace tooling.

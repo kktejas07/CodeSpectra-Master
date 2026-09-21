@@ -112,18 +112,38 @@ export async function getAPIUser(): Promise<APIUser | null> {
       }
     }
 
-    if (adminAuth) {
-      const headersList = await headers()
-      const authHeader = headersList.get('authorization')
-      if (authHeader?.startsWith('Bearer ')) {
+    const headersList = await headers()
+    const authHeader = headersList.get('authorization')
+    if (authHeader?.startsWith('Bearer ')) {
+      const token = authHeader.slice(7)
+      // Firebase ID tokens first (when firebase-admin is configured).
+      if (adminAuth) {
         try {
-          const decoded = await adminAuth.verifyIdToken(authHeader.slice(7))
+          const decoded = await adminAuth.verifyIdToken(token)
           if (decoded) {
             const profile = await getUserProfile(decoded.uid)
             return { id: decoded.uid, email: decoded.email || '', role: profile.role, name: decoded.name ?? undefined, fullName: decoded.name ?? undefined, lastLoginMethod: profile.lastLoginMethod, lastLoginAt: profile.lastLoginAt, tenantId: profile.tenantId }
           }
-        } catch { /* invalid */ }
+        } catch { /* fall through to session-JWT check */ }
       }
+      // ponytail: own session JWTs (mobile-token endpoint, SecureStore-held)
+      // must also authenticate API calls — Firebase is optional, this is not.
+      try {
+        const payload = await verifySessionToken(token)
+        if (payload) {
+          const profile = await getUserProfile(payload.uid)
+          return {
+            id: payload.uid,
+            email: payload.email,
+            role: profile.role !== 'user' ? profile.role : normalizeUserRole(payload.role),
+            name: profile.fullName || profile.name,
+            fullName: profile.fullName || profile.name,
+            lastLoginMethod: profile.lastLoginMethod,
+            lastLoginAt: profile.lastLoginAt,
+            tenantId: profile.tenantId,
+          }
+        }
+      } catch { /* invalid */ }
     }
     return null
   } catch (error) {

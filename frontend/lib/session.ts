@@ -83,7 +83,7 @@ export interface SessionPayload {
   ver?: number
 }
 
-export async function signSessionToken(payload: SessionPayload): Promise<string> {
+export async function signSessionToken(payload: SessionPayload, expiresIn: string = '7d'): Promise<string> {
   let ver = payload.ver
   if (ver === undefined) {
     try {
@@ -100,7 +100,7 @@ export async function signSessionToken(payload: SessionPayload): Promise<string>
   return new SignJWT({ ...payload, ver })
     .setProtectedHeader({ alg: 'HS256' })
     .setIssuedAt()
-    .setExpirationTime('7d')
+    .setExpirationTime(expiresIn)
     .sign(await getSecret())
 }
 
