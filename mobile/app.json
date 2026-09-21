@@ -7,19 +7,31 @@
     "userInterfaceStyle": "automatic",
     "backgroundColor": "#080D17",
     "icon": "./assets/icon.png",
+    "scheme": "codespectra",
+    "primaryColor": "#00D681",
     "ios": {
       "supportsTablet": true,
-      "bundleIdentifier": "ai.codespectra.app"
+      "bundleIdentifier": "ai.codespectra.app",
+      "buildNumber": "1",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "CodeSpectra uses the camera for proctored assessments and face verification."
+      }
     },
     "android": {
       "package": "ai.codespectra.app",
+      "versionCode": 1,
+      "permissions": ["CAMERA"],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#080D17"
       }
     },
     "extra": {
-      "apiBase": "https://codespectra.ai"
+      "apiBase": "https://codespectra.ai",
+      "eas": {
+        "projectId": "fba9d16f-751a-4242-ac8c-25fd9edc382d"
+      }
     },
     "plugins": [
       "expo-secure-store",
@@ -36,6 +48,7 @@
           }
         }
       ]
-    ]
+    ],
+    "owner": "devendervutukuru"
   }
 }
