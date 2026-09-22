@@ -12,7 +12,9 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import * as NativeSplash from 'expo-splash-screen'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native'
+import {
+  NavigationContainer, DefaultTheme, createNavigationContainerRef,
+} from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import {
   Home, Code2, BookOpen, ClipboardList, Trophy, Gavel, Shield, User,
@@ -29,6 +31,11 @@ import { TabPlaceholder } from './src/screens/TabPlaceholder'
 import { ProblemsStack } from './src/screens/ProblemsStack'
 import { JudgeStack } from './src/screens/JudgeStack'
 import { AdminStack } from './src/screens/AdminStack'
+import { HomeScreen } from './src/screens/HomeScreen'
+import { CoursesStack } from './src/screens/CoursesStack'
+import { AssessmentsScreen } from './src/screens/AssessmentsScreen'
+import { LeaderboardScreen } from './src/screens/LeaderboardScreen'
+import { ProfileScreen } from './src/screens/ProfileScreen'
 
 // Hold the native splash until React has painted the in-app splash, so
 // there is never a white flash between them.
@@ -39,6 +46,9 @@ const MIN_SPLASH_MS = 900
 const SPLASH_FADE_MS = 240
 
 const Tab = createBottomTabNavigator()
+
+/** Lets Home's quick-links switch tabs without prop-drilling navigation. */
+const navigationRef = createNavigationContainerRef<Record<string, object | undefined>>()
 
 /** Closed icon registry: string key → component. Lookup, not policy. */
 const ICONS: Record<string, LucideIcon> = {
@@ -187,7 +197,7 @@ export default function App(): React.JSX.Element {
   }
 
   return shell(
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} ref={navigationRef}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
       <Tab.Navigator
         screenOptions={{
@@ -217,24 +227,35 @@ export default function App(): React.JSX.Element {
                         Complete biometric enrollment on the web to unlock proctored assessments.
                       </Text>
                     </View>
+                  ) : t.id === 'home' ? (
+                    <HomeScreen
+                      theme={theme}
+                      userName={doc.user.name ?? doc.user.email}
+                      tabs={tabs}
+                      onNavigate={(label) => navigationRef.current?.navigate(label)}
+                    />
                   ) : t.id === 'problems' ? (
                     <ProblemsStack theme={theme} />
+                  ) : t.id === 'courses' ? (
+                    <CoursesStack theme={theme} />
+                  ) : t.id === 'assessments' ? (
+                    <AssessmentsScreen theme={theme} />
+                  ) : t.id === 'leaderboard' ? (
+                    <LeaderboardScreen theme={theme} />
                   ) : t.id === 'judge' ? (
                     <JudgeStack theme={theme} role={doc.user.role} />
                   ) : t.id === 'admin' ? (
                     <AdminStack theme={theme} />
+                  ) : t.id === 'profile' ? (
+                    <ProfileScreen
+                      theme={theme}
+                      user={doc.user}
+                      faceEnrollmentRequired={doc.flags.faceEnrollmentRequired}
+                      onSignOut={() => void signOut()}
+                    />
                   ) : (
                     <TabPlaceholder theme={theme} tab={t} userName={doc.user.name ?? doc.user.email} />
                   )}
-                  {t.id === 'profile' ? (
-                    <TouchableOpacity
-                      style={[styles.signOut, { borderColor: theme.border }]}
-                      onPress={() => void signOut()}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.signOutText, { color: '#F87171' }]}>Sign out</Text>
-                    </TouchableOpacity>
-                  ) : null}
                 </View>
               )}
             </Tab.Screen>
