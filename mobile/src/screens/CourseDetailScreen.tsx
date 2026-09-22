@@ -10,9 +10,10 @@ import { MIN_TOUCH } from '../theme'
 interface Props {
   theme: ThemeTokens
   route: any
+  navigation: any
 }
 
-export function CourseDetailScreen({ theme, route }: Props): React.JSX.Element {
+export function CourseDetailScreen({ theme, route, navigation }: Props): React.JSX.Element {
   const id: string = route?.params?.id ?? ''
   const [course, setCourse] = useState<CourseDetail | null>(null)
   const [loading, setLoading] = useState(true)
@@ -106,14 +107,31 @@ export function CourseDetailScreen({ theme, route }: Props): React.JSX.Element {
                   ) : (
                     lessons.map((l: unknown, li: number) => {
                       const lesson = l as { id?: string; title?: string; duration?: number }
+                      const playable = Boolean(lesson.id)
                       return (
-                        <View key={lesson.id || li} style={s.lesson}>
+                        <TouchableOpacity
+                          key={lesson.id || li}
+                          style={s.lesson}
+                          activeOpacity={0.7}
+                          disabled={!playable}
+                          onPress={() =>
+                            navigation.navigate('Lesson', {
+                              courseId: course.id,
+                              lessonId: lesson.id,
+                              title: lesson.title ?? 'Lesson',
+                              duration: lesson.duration,
+                            })
+                          }
+                          accessibilityRole="button"
+                          accessibilityLabel={`Play ${lesson.title ?? 'lesson'}`}
+                        >
                           <Text style={s.lessonIndex}>{li + 1}</Text>
                           <Text style={s.lessonTitle} numberOfLines={1}>
                             {lesson.title ?? 'Untitled lesson'}
                           </Text>
                           {lesson.duration ? <Text style={s.meta}>{lesson.duration}m</Text> : null}
-                        </View>
+                          {playable ? <Text style={s.play}>▶</Text> : null}
+                        </TouchableOpacity>
                       )
                     })
                   )}
@@ -167,5 +185,6 @@ const styles = (t: ThemeTokens) =>
     lesson: { flexDirection: 'row', alignItems: 'center', gap: 10, paddingHorizontal: 14, paddingVertical: 9 },
     lessonIndex: { color: t.muted, fontSize: 12, width: 18 },
     lessonTitle: { color: t.text, fontSize: 14, flex: 1 },
+    play: { color: t.primary, fontSize: 13 },
     note: { color: t.muted, fontSize: 11, lineHeight: 16, marginTop: 18 },
   })

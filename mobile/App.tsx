@@ -26,6 +26,7 @@ import {
 } from './src/api/client'
 import { FALLBACK_THEME, MIN_TOUCH } from './src/theme'
 import { SplashScreen } from './src/screens/SplashScreen'
+import { registerForPush, unregisterPush } from './src/lib/push'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { TabPlaceholder } from './src/screens/TabPlaceholder'
 import { ProblemsStack } from './src/screens/ProblemsStack'
@@ -63,6 +64,17 @@ const ICONS: Record<string, LucideIcon> = {
 }
 
 const RANK: Record<string, number> = { user: 0, judge: 1, tenant_admin: 2, superadmin: 3 }
+
+/** Web-path prefix → manifest tab label, for notification deep links. */
+const TAB_FOR_LINK: Array<[string, string]> = [
+  ['/dashboard/problems', 'Problems'],
+  ['/dashboard/courses', 'Courses'],
+  ['/dashboard/assessments', 'Assess'],
+  ['/dashboard/leaderboard', 'Ranks'],
+  ['/dashboard/events', 'Judge'],
+  ['/dashboard/admin', 'Admin'],
+  ['/dashboard', 'Home'],
+]
 
 type Status = 'loading' | 'login' | 'ready'
 
@@ -137,10 +149,44 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const signOut = useCallback(async (): Promise<void> => {
+    await unregisterPush().catch(() => {})
     await clearToken()
     setDoc(null)
     setStatus('login')
   }, [])
+
+  // Register this device for push once signed in. Best-effort: a missing
+  // Firebase config file must never block the app from working.
+  useEffect(() => {
+    if (status !== 'ready') return
+    void registerForPush().then((r) => {
+      if (!r.ok && r.reason === 'not-configured') {
+        console.warn('[push]', r.message)
+      }
+    })
+  }, [status])
+
+  // Notification taps carry a `link` (web path). Switch to the matching tab
+  // when we have one; otherwise the payload is informational only.
+  useEffect(() => {
+    if (status !== 'ready') return
+    let sub: { remove: () => void } | undefined
+    void import('expo-notifications')
+      .then((Notifications) => {
+        const handle = (data: Record<string, unknown> | undefined): void => {
+          const link = typeof data?.link === 'string' ? data.link : ''
+          if (!link) return
+          const match = TAB_FOR_LINK.find(([prefix]) => link.includes(prefix))
+          if (match && navigationRef.isReady()) navigationRef.navigate(match[1])
+        }
+        Notifications.addNotificationResponseReceivedListener((res) => {
+          handle(res.notification.request.content.data as Record<string, unknown>)
+        })
+        sub = Notifications.addNotificationReceivedListener(() => {})
+      })
+      .catch(() => {})
+    return () => sub?.remove()
+  }, [status])
 
   const theme: ThemeTokens = doc?.theme ?? FALLBACK_THEME
 
@@ -210,6 +256,9 @@ export default function App(): React.JSX.Element {
         {tabs.map((t) => {
           const Icon = ICONS[t.icon] ?? User
           return (
+            // ponytail: the tab's `name` is its label (from the manifest), not
+            // its stable id — renames change route keys. Acceptable while
+            // code navigates by label; switch to t.id if labels ever churn.
             <Tab.Screen
               key={t.id}
               name={t.label}

@@ -24,11 +24,19 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: gate.error }, { status: gate.status })
   }
   const userId = gate.user.id
-  const body = await req.json().catch(() => ({})) as { token?: string; userId?: string }
+  const body = await req.json().catch(() => ({})) as {
+    token?: string
+    platform?: string
+  }
   const token = body.token
   if (!validToken(token)) {
     return NextResponse.json({ error: 'Invalid token' }, { status: 400 })
   }
+  // Native clients (FCM/APNs device tokens) report their own platform; the
+  // web push client predates the field, so it stays 'web'.
+  const platform = ['ios', 'android', 'web'].includes(String(body.platform))
+    ? String(body.platform)
+    : 'web'
 
   try {
     const db = await getMongoDb()
@@ -40,13 +48,13 @@ export async function POST(req: NextRequest) {
 
     const existing = await col.findOne({ user_id: userId, token })
     if (existing) {
-      await col.updateOne({ _id: existing._id }, { $set: { updated_at: now } })
+      await col.updateOne({ _id: existing._id }, { $set: { updated_at: now, platform } })
     } else {
       await col.insertOne({
         id: randomUUID(),
         user_id: userId,
         token,
-        platform: 'web',
+        platform,
         created_at: now,
         updated_at: now,
       })
