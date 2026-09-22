@@ -1,5 +1,7 @@
 # Mobile App Design — CodeSpectra (Expo, server-driven)
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 - Date: 2026-09-21
 - Status: proposed (awaiting user review)
 - Approach: A — Expo Router + server-driven shell (approved)
