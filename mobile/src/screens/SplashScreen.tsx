@@ -8,6 +8,10 @@ interface Props {
   tagline?: string
 }
 
+// The native driver requires a real native view tree, which the Jest
+// renderer does not have. On-device it stays true.
+const NATIVE_DRIVER = !process.env.JEST_WORKER_ID
+
 /**
  * In-app splash shown while the app checks its token and fetches the
  * bootstrap manifest. The native splash (app.json plugin) holds the same
@@ -29,18 +33,18 @@ export function SplashScreen({ tagline }: Props): React.JSX.Element {
     const entrance = Animated.sequence([
       Animated.parallel([
         Animated.timing(markOpacity, {
-          toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+          toValue: 1, duration: 260, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.spring(markScale, {
-          toValue: 1, friction: 6, tension: 90, useNativeDriver: true,
+          toValue: 1, friction: 6, tension: 90, useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
       Animated.parallel([
         Animated.timing(textOpacity, {
-          toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: true,
+          toValue: 1, duration: 220, easing: Easing.out(Easing.quad), useNativeDriver: NATIVE_DRIVER,
         }),
         Animated.timing(textShift, {
-          toValue: 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: true,
+          toValue: 0, duration: 220, easing: Easing.out(Easing.cubic), useNativeDriver: NATIVE_DRIVER,
         }),
       ]),
     ])
@@ -48,8 +52,8 @@ export function SplashScreen({ tagline }: Props): React.JSX.Element {
 
     const loop = Animated.loop(
       Animated.sequence([
-        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
-        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: true }),
+        Animated.timing(pulse, { toValue: 1, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: NATIVE_DRIVER }),
+        Animated.timing(pulse, { toValue: 0, duration: 900, easing: Easing.inOut(Easing.quad), useNativeDriver: NATIVE_DRIVER }),
       ]),
     )
     loop.start()
