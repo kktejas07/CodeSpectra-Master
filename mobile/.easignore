@@ -1,0 +1,15 @@
+# Keep EAS uploads small and secret-free. node_modules is rebuilt in the
+# cloud; .expo is a local cache. Never ship certificates or store keys.
+node_modules/
+.expo/
+dist/
+web-build/
+*.log
+*.jks
+*.keystore
+*.p8
+*.p12
+*.key
+*.mobileprovision
+.env
+.env.*

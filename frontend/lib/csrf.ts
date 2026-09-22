@@ -25,6 +25,9 @@ const CSRF_TOKEN_LENGTH = 32 // hex → 16 bytes of entropy
  * Verify that the incoming request carries a valid CSRF token.
  *
  *   GET / HEAD → always pass (idempotent), set the cookie.
+ *   (Middleware additionally exempts routes that ESTABLISH a session —
+ *   login / mobile-token — and any request carrying `Authorization: Bearer`,
+ *   since a cross-site attacker cannot forge either.)
  *   POST / PUT / PATCH / DELETE → check X-CSRF-Token header matches cookie.
  */
 export function checkCsrf(request: Request): { pass: boolean; token?: string } {

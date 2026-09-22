@@ -42,6 +42,33 @@ describe('checkCsrf (cookie path — unchanged)', () => {
   })
 })
 
+describe('session-establishing routes are CSRF-exempt', () => {
+  // Mirrors CSRF_EXEMPT in middleware.ts. Login/token mint a session, so
+  // there is nothing to forge, and native clients have no cookie yet.
+  const EXEMPT = ['/api/auth/login', '/api/auth/mobile-token']
+  const isExempt = (pathname: string): boolean => EXEMPT.some((p) => pathname.startsWith(p))
+
+  it('cookie-less mobile-token POST passes the middleware gate', () => {
+    expect(isExempt('/api/auth/mobile-token')).toBe(true)
+    // And the raw checker still rejects it — which is why the exemption exists.
+    expect(checkCsrf(post({ 'content-type': 'application/json' })).pass).toBe(false)
+  })
+
+  it('cookie-less web login POST passes the middleware gate', () => {
+    const webLogin = new Request('https://codespectra.ai/api/auth/login', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+    })
+    expect(checkCsrf(webLogin).pass).toBe(false)
+    expect(isExempt('/api/auth/login')).toBe(true)
+  })
+
+  it('unrelated mutating routes are NOT exempt', () => {
+    expect(isExempt('/api/admin/users')).toBe(false)
+    expect(isExempt('/api/courses')).toBe(false)
+  })
+})
+
 describe('Bearer requests (mobile)', () => {
   // The middleware skips checkCsrf when an Authorization: Bearer header is
   // present. This mirrors that branch so the behaviour is pinned in a test.
