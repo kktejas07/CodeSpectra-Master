@@ -681,8 +681,8 @@ export function LlmSettingsTabs() {
             </div>
           </div>
           <div className="flex-1" />
-          <Button variant="outline" size="sm" onClick={() => void loadHealth}><RefreshCw className="h-4 w-4 mr-1" /> Reload</Button>
-          <Button size="sm" onClick={() => void runHealthTest} disabled={healthTesting}>
+          <Button variant="outline" size="sm" onClick={() => void loadHealth()}><RefreshCw className="h-4 w-4 mr-1" /> Reload</Button>
+          <Button size="sm" onClick={() => void runHealthTest()} disabled={healthTesting}>
             {healthTesting ? <Loader2 className="mr-1 h-4 w-4 animate-spin" /> : <Activity className="mr-1 h-4 w-4" />}
             {healthTesting ? 'Probing…' : 'Test all providers'}
           </Button>
