@@ -18,6 +18,7 @@ import { requireSuperAdmin } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import { readServerSecrets, isMaskedSecret } from '@/lib/server-secrets-cache'
 import {
+  buildProbeHeaders,
   chainProbeTargets,
   classifyProbeError,
   type HealthDoc,
@@ -76,10 +77,7 @@ async function probeOne(
   try {
     const res = await fetch(`${backend}/internal/ai/complete`, {
       method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        ...(secret ? { 'x-internal-secret': secret } : {}),
-      },
+      headers: buildProbeHeaders(apiKey, secret),
       signal: AbortSignal.timeout(PROBE_TIMEOUT_MS),
       body: JSON.stringify({
         session_id: 'llm-health-probe',
