@@ -32,8 +32,9 @@ describe('LLM health tab buttons', () => {
   beforeEach(() => {
     vi.clearAllMocks()
   })
-
-  it('Test all providers fires POST /api/admin/llm-health', async () => {
+  // ponytail: 30s budget — jsdom + user-event runs slow under load and the
+  // default 5s flakes (proven 2026-09-22: green at 43s on a loaded box).
+  it('Test all providers fires POST /api/admin/llm-health', { timeout: 30000 }, async () => {
     const user = userEvent.setup()
     const calls = mockFetch()
     render(<LlmSettingsTabs />)
@@ -44,7 +45,7 @@ describe('LLM health tab buttons', () => {
     })
   })
 
-  it('Reload fires GET /api/admin/llm-health', async () => {
+  it('Reload fires GET /api/admin/llm-health', { timeout: 30000 }, async () => {
     const user = userEvent.setup()
     const calls = mockFetch()
     render(<LlmSettingsTabs />)
