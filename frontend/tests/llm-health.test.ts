@@ -7,7 +7,7 @@
  * Run: npx vitest run tests/llm-health.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { chainProbeTargets, classifyProbeError } from '@/lib/ai/provider-health'
+import { buildProbeHeaders, chainProbeTargets, classifyProbeError } from '@/lib/ai/provider-health'
 
 describe('classifyProbeError', () => {
   it('buckets the exact 2026-09-21 outage signatures', () => {
@@ -40,5 +40,26 @@ describe('chainProbeTargets', () => {
       expect(t.model).toBeTruthy()
       expect(t.secretKey).toMatch(/_api_key$/)
     }
+  })
+})
+
+describe('buildProbeHeaders', () => {
+  // 2026-09-22: probe showed 0/10 red with fresh keys because the key went
+  // out ONLY as body api_key_override (dropped by CompleteReq) with no key
+  // headers — backend ensure_key 500'd every provider. These pin the fix.
+  it('carries the key in every header the backend resolve_key reads', () => {
+    const h = buildProbeHeaders('sk-test-123', 'internal-secret')
+    expect(h['x-api-key']).toBe('sk-test-123')
+    expect(h['x-openai-api-key']).toBe('sk-test-123')
+    expect(h['x-gemini-api-key']).toBe('sk-test-123')
+    expect(h['x-anthropic-api-key']).toBe('sk-test-123')
+    expect(h['x-internal-secret']).toBe('internal-secret')
+    expect(h['Content-Type']).toBe('application/json')
+  })
+
+  it('omits the internal secret header when empty', () => {
+    const h = buildProbeHeaders('sk-test-123', '')
+    expect(h['x-api-key']).toBe('sk-test-123')
+    expect('x-internal-secret' in h).toBe(false)
   })
 })

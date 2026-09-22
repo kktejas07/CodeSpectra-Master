@@ -44,6 +44,27 @@ export interface HealthDoc {
   results: ProbeResult[]
 }
 
+/**
+ * Headers for a probe POST to backend /internal/ai/complete.
+ * ponytail: the backend container holds NO LLM keys (they live in Mongo,
+ * read by the Next layer), and CompleteReq has no api_key_override field —
+ * so the ONLY way the key reaches build_chat/resolve_key is these headers.
+ * Probing without them 500s every provider with "API Key not configured"
+ * even when all keys are fresh (0/10 red, 2026-09-22). Mirrors makeRequest()
+ * in provider-fallback.ts, which is why the course path worked while the
+ * probe never did.
+ */
+export function buildProbeHeaders(apiKey: string, internalSecret: string): Record<string, string> {
+  return {
+    'Content-Type': 'application/json',
+    ...(internalSecret ? { 'x-internal-secret': internalSecret } : {}),
+    'x-api-key': apiKey,
+    'x-openai-api-key': apiKey,
+    'x-gemini-api-key': apiKey,
+    'x-anthropic-api-key': apiKey,
+  }
+}
+
 /** First chain entry per provider, in fallback order — one probe each. */
 export function chainProbeTargets(): ProbeTarget[] {
   const seen = new Set<string>()
@@ -66,8 +87,7 @@ export function chainProbeTargets(): ProbeTarget[] {
  * Classify a failed probe into an actionable bucket.
  * Order matters: 429/credits checks first (a 429 body can also mention
  * "invalid" in passing), then auth, then dead-model 404s.
- */
-export function classifyProbeError(text: string, status?: number): ProbeStatus {
+ */export function classifyProbeError(text: string, status?: number): ProbeStatus {
   const t = text || ''
   if (
     status === 429 ||
