@@ -11,6 +11,7 @@ import { Tooltip, TooltipContent, TooltipProvider, TooltipTrigger } from '@/comp
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 type Category = 'Global' | 'Female' | 'Arts & Science' | 'Engineering' | 'Management' | 'Quiz' | 'Hackathon'
 
@@ -320,10 +321,11 @@ export default function LeaderboardPage() {
                   >
                     <div className="flex-1 flex flex-col items-center p-8 space-y-4 pt-12 text-center">
                       <div className="relative">
-                        <img
-                          src={ranker.avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(ranker.userId || 'x')}`}
-                          alt={ranker.name || 'User'}
-                          className="h-24 w-24 rounded-full border-4 border-white shadow-lg object-cover bg-white"
+                        <UserAvatar
+                          src={ranker.avatar}
+                          seed={ranker.userId}
+                          name={ranker.name}
+                          className="h-24 w-24 border-4 border-white shadow-lg bg-white"
                         />
                         <div className={cn("absolute -bottom-3 -right-3 flex items-center justify-center w-10 h-10 rounded-full font-bold shadow-md border-2 border-white", rankColor)}>
                           #{ranker.rank}
@@ -353,7 +355,7 @@ export default function LeaderboardPage() {
               <div className="relative z-10 flex items-center gap-4">
                 <div className="relative">
                   <Badge className="absolute -top-3 -left-3 rotate-[-15deg] bg-blue-600 text-white shadow-md z-20">My Rank</Badge>
-                  <img src={user?.photoURL || "https://api.dicebear.com/7.x/avataaars/svg?seed=fallback"} alt="You" className="w-16 h-16 rounded-full border-2 border-white shadow-md bg-white" />
+                  <UserAvatar src={user?.photoURL} seed={user?.email} name={user?.displayName} className="w-16 h-16 border-2 border-white shadow-md bg-white" />
                 </div>
                 <div>
                   <h3 className="text-xl font-bold">{user?.displayName || "Anonymous User"}</h3>

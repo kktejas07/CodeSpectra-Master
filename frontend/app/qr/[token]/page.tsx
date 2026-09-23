@@ -29,6 +29,7 @@ import { useAuth } from '@/lib/auth-context'
 import { Badge } from '@/components/ui/badge'
 import { Button } from '@/components/ui/button'
 import { usePageGuard } from '@/lib/use-page-guard'
+import { UserAvatar } from '@/components/ui/user-avatar'
 
 type Variant = 'user' | 'admin' | 'tenant'
 
@@ -286,9 +287,9 @@ function UserCard({ data, ringClass }: { data: UserResp; ringClass: string }) {
       data-testid="qr-user-card"
     >
       <header className="mb-6 flex items-start gap-4">
-        <img
-          src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(u.email || u.id)}`}
-          alt=""
+        <UserAvatar
+          seed={u.email || u.id}
+          name={u.name}
           className="h-20 w-20 rounded-2xl border-4 border-border/60"
         />
         <div className="flex-1 space-y-1">

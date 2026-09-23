@@ -6,6 +6,7 @@ import dynamic from 'next/dynamic'
 import Link from 'next/link'
 import { ArrowLeft, Loader2, Bookmark, CheckCircle2, ChevronDown, ChevronRight, Code2, Play, Send, Sparkles, XCircle, Timer, Sun, Moon, Maximize2, MoreVertical, MessageSquare, Bug, Lightbulb, HelpCircle, Pause, RotateCcw } from 'lucide-react'
 import { Button } from '@/components/ui/button'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonCard, SkeletonButton, SkeletonText } from '@/components/ui/skeleton-boneyard'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useToast } from '@/lib/toast-context'
@@ -675,7 +676,7 @@ export default function ProblemDetailPage() {
                              discussions.length === 0 ? <p className="text-xs text-muted-foreground">No discussions yet. Be the first to start a discussion!</p> :
                              discussions.map(d => (
                                <div key={d.id} className="mb-3 border-b border-border pb-2 last:border-0">
-                                  <div className="font-bold text-xs text-foreground flex items-center gap-2"><img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${d.user_name}`} className="h-5 w-5 rounded-full bg-slate-200" /> {d.user_name}</div>
+                                  <div className="font-bold text-xs text-foreground flex items-center gap-2"><UserAvatar seed={d.user_name} name={d.user_name} className="h-5 w-5" fallbackClassName="text-[8px]" /> {d.user_name}</div>
                                   <p className="text-xs mt-1 text-foreground/80">{d.content}</p>
                                   <p className="text-[10px] text-muted-foreground mt-1">{new Date(d.created_at).toLocaleString()}</p>
                                </div>

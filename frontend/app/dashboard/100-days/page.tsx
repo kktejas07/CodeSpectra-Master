@@ -11,6 +11,7 @@ import {
 import { HUNDRED_DAYS, type HundredDay } from '@/lib/100-days-data'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { csrfFetch } from '@/lib/csrf-fetch'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonCard, SkeletonStats, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
@@ -398,7 +399,7 @@ export default function HundredDaysPage() {
                 {/* Rank 2 */}
                 {leaderboard[1] && (
                 <div className="flex flex-col items-center gap-2 relative w-1/3">
-                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${leaderboard[1].name}`} className="h-10 w-10 rounded-full bg-slate-100" />
+                   <UserAvatar seed={leaderboard[1].name} name={leaderboard[1].name} className="h-10 w-10 bg-slate-100" />
                    <div className="text-center w-full">
                      <div className="text-[10px] font-bold uppercase truncate px-1">{leaderboard[1].name}</div>
                      <div className="text-[9px] text-muted-foreground whitespace-nowrap">{leaderboard[1].points.toLocaleString()} Pts</div>
@@ -413,7 +414,7 @@ export default function HundredDaysPage() {
                 {leaderboard[0] && (
                 <div className="flex flex-col items-center gap-2 relative w-1/3">
                    <div className="absolute -top-3 text-amber-500"><Trophy className="h-5 w-5 fill-amber-500" /></div>
-                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${leaderboard[0].name}`} className="h-12 w-12 rounded-full bg-amber-100 ring-2 ring-amber-400" />
+                   <UserAvatar seed={leaderboard[0].name} name={leaderboard[0].name} className="h-12 w-12 bg-amber-100 ring-2 ring-amber-400" />
                    <div className="text-center w-full">
                      <div className="text-[10px] font-bold uppercase truncate px-1 text-amber-600 dark:text-amber-400">{leaderboard[0].name}</div>
                      <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70 whitespace-nowrap">{leaderboard[0].points.toLocaleString()} Pts</div>
@@ -427,7 +428,7 @@ export default function HundredDaysPage() {
                 {/* Rank 3 */}
                 {leaderboard[2] && (
                 <div className="flex flex-col items-center gap-2 relative w-1/3">
-                   <img src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${leaderboard[2].name}`} className="h-10 w-10 rounded-full bg-slate-100" />
+                   <UserAvatar seed={leaderboard[2].name} name={leaderboard[2].name} className="h-10 w-10 bg-slate-100" />
                    <div className="text-center w-full">
                      <div className="text-[10px] font-bold uppercase truncate px-1">{leaderboard[2].name}</div>
                      <div className="text-[9px] text-muted-foreground whitespace-nowrap">{leaderboard[2].points.toLocaleString()} Pts</div>
@@ -441,7 +442,7 @@ export default function HundredDaysPage() {
 
              <div className="rounded-xl border border-border bg-muted/30 p-3 flex items-center justify-between mb-4">
                 <div className="flex items-center gap-3">
-                   <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" className="h-8 w-8 rounded-full bg-slate-200" />
+                   <UserAvatar seed="You" name="You" className="h-8 w-8 bg-slate-200" />
                    <div>
                      <div className="font-bold text-sm">You</div>
                      <div className="text-[10px] text-muted-foreground">{userRank.points.toLocaleString()} Pts</div>
