@@ -335,3 +335,4 @@
 | opencode (this session, CREATE-3COL) | DONE — Create dialog now 3-col on lg (5xl wide): full-width title/identity/topics/access/published, side-by-side ID+face checkboxes. | assessments page | DONE — UNPUSHED | 2026-10-02 |
 | opencode (this session, CREATE-3COL-DEPLOY) | DONE — built :latest, converged, live 200. | image codespectra-frontend-dmeptb:latest | DONE — LIVE | 2026-10-02 |
 | opencode (this session, SHUFFLE+BULK-UI) | DONE — per-candidate question shuffle (stable email+exam seed, id-keyed so grading unaffected); bulk page full width + searchable assessment combobox (cmdk Popover). tsc clean, gate green. | assessment take page, bulk page | DONE — UNPUSHED | 2026-10-02 |
+| opencode (this session, SHUFFLE-BULK-DEPLOY) | DONE — built :latest, converged, live 200. | image codespectra-frontend-dmeptb:latest | DONE — LIVE | 2026-10-02 |
