@@ -552,7 +552,7 @@ export const PROVIDER_MODELS: { provider: string; model: string; endpoint?: stri
   { provider: 'groq', model: 'openai/gpt-oss-20b', endpoint: 'https://api.groq.com/openai/v1' },
   { provider: 'groq', model: 'llama-3.3-70b-versatile', endpoint: 'https://api.groq.com/openai/v1' },
   { provider: 'gemini', model: 'gemini-3-flash-preview' },
-  { provider: 'cerebras', model: 'llama-3.3-70b', endpoint: 'https://api.cerebras.ai/v1' },
+  { provider: 'cerebras', model: 'gpt-oss-120b', endpoint: 'https://api.cerebras.ai/v1' },
   { provider: 'mistral', model: 'mistral-small-latest', endpoint: 'https://api.mistral.ai/v1' },
   { provider: 'openai', model: 'gpt-4o-mini' },
   { provider: 'opencode', model: 'mimo-v2.5-free' },
