@@ -67,6 +67,7 @@ interface QuestionDetail {
   confidence?: number
   jev_agree?: boolean | null
   jev_confidence?: number | null
+  graded_by?: string | null
 }
 
 interface ReviewData {
@@ -1607,6 +1608,11 @@ export default function ExamResultsPage() {
                                           {detail?.confidence !== undefined && (
                                             <span className="ml-2 font-normal opacity-80">
                                               (Confidence: {Math.round(detail.confidence * 100)}%)
+                                            </span>
+                                          )}
+                                          {detail?.graded_by && (
+                                            <span className="ml-2 font-normal opacity-80" title="LLM that produced this grade">
+                                              · {detail.graded_by}
                                             </span>
                                           )}
                                         </span>

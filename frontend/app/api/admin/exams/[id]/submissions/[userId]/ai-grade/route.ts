@@ -77,6 +77,7 @@ export async function POST(
       feedback: result.feedback,
       jev_agree: result.jev_agree ?? null,
       jev_confidence: result.jev_confidence ?? null,
+      graded_by: result.graded_by ?? null,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'AI grading failed'

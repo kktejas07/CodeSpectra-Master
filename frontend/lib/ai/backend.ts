@@ -209,7 +209,7 @@ export async function backendComplete(args: {
   userId?: string
   /** Set false to bypass the semantic response cache (default true). */
   cache?: boolean
-}): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string; usage?: { input_tokens: number, output_tokens: number } }> {
+}): Promise<{ ok: boolean; text?: string; json?: unknown; raw?: string; usage?: { input_tokens: number, output_tokens: number }; provider?: string; model?: string }> {
   // Phase-3 prompt guard: scan BEFORE the fetch, log-only mode — a flagged
   // prompt still proceeds; flags ride along on the usage log below.
   let injectionFlags: string[] = []

@@ -63,6 +63,8 @@ export interface GradeResult {
   /** Jev second opinion (free-text LLM grades only). Null = unverified. */
   jev_agree?: boolean | null
   jev_confidence?: number | null
+  /** Which LLM graded this (provider/model from the fallback chain). Null = deterministic or cache-hit. */
+  graded_by?: string | null
 }
 
 function normalizeSet(value: string): Set<string> {
@@ -161,6 +163,9 @@ export async function gradeAnswer(input: {
   }
 
   // ── Free-text (code / descriptive): grade with the configured LLM ──
+  // ponytail: the free-first fallback chain walks every keyed provider, so a
+  // dead/quota-hit key transparently grades on the next one. graded_by records
+  // the winner for auditability in the review UI.
   const isCoding = t.replace(/[-_]/g, '') === 'coding' || t === 'code'
   
   let finalAwarded: number | undefined = undefined
@@ -297,6 +302,10 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
 
   const confidence = typeof (parsed as any)?.confidence === 'number' ? (parsed as any).confidence : 1.0
   let requires_human_review = !!(parsed as any)?.requires_human_review || confidence < 0.75
+  const graded_by =
+    res.provider && res.model
+      ? `${res.provider}/${res.model}`
+      : res.provider || res.model || null
 
   // ── Jev second opinion (LLM-judged scores only) ──
   // Execution-scored code (finalAwarded set) skips this: the score is measured,
@@ -330,8 +339,8 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
   if (!feedback && !Number.isFinite(awarded)) {
     // Graceful fallback — return 0 points instead of crashing the whole review page
     console.warn('[ai-grade] LLM returned unstructured response, falling back to 0')
-    return { recommended: 0, verdict: 'incorrect', feedback: 'AI could not evaluate this answer — manual review recommended.', confidence: 0.0, requires_human_review: true, jev_agree, jev_confidence }
+    return { recommended: 0, verdict: 'incorrect', feedback: 'AI could not evaluate this answer — manual review recommended.', confidence: 0.0, requires_human_review: true, jev_agree, jev_confidence, graded_by }
   }
 
-  return { recommended, verdict: verdict as GradeResult['verdict'], feedback, confidence, requires_human_review, jev_agree, jev_confidence }
+  return { recommended, verdict: verdict as GradeResult['verdict'], feedback, confidence, requires_human_review, jev_agree, jev_confidence, graded_by }
 }

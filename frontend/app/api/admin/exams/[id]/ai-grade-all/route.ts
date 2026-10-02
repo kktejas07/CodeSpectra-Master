@@ -57,7 +57,7 @@ export async function POST(
     for (const submission of submissions) {
       const userId = submission.user_id
       const details = (submission.details || []) as Array<{
-        qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number; remarks?: string; requires_human_review?: boolean; confidence?: number; jev_agree?: boolean | null; jev_confidence?: number | null
+        qId: string; correct: boolean; points: number; answer: string; pending_review?: boolean; awarded?: number; remarks?: string; requires_human_review?: boolean; confidence?: number; jev_agree?: boolean | null; jev_confidence?: number | null; graded_by?: string | null
       }>
       const answers = (submission.answers || {}) as Record<string, string>
       const failList: string[] = []
@@ -123,6 +123,7 @@ export async function POST(
               confidence: res.confidence,
               jev_agree: res.jev_agree ?? null,
               jev_confidence: res.jev_confidence ?? null,
+              graded_by: res.graded_by ?? null,
             })
             totalGraded++
             gradedInSub++
