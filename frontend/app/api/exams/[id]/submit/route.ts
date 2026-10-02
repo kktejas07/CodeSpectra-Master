@@ -116,7 +116,25 @@ export async function POST(
     }
 
     const questions = Array.isArray(exam.questionList) ? exam.questionList : (Array.isArray(exam.questions) ? exam.questions : [])
-    const answers = body.answers || {}
+    const rawAnswers = body.answers || {}
+    // Injection/DoS guard: answers are stored verbatim in MongoDB, so cap
+    // per-answer and total size (16MB doc limit). Content stays untouched —
+    // it is inert text, never eval'd; code runs only in the Piston sandbox.
+    const MAX_ANSWER_CHARS = 100000
+    const MAX_TOTAL_ANSWER_CHARS = 1000000
+    let totalChars = 0
+    const answers: Record<string, string> = {}
+    for (const [k, v] of Object.entries(rawAnswers)) {
+      const s = String(v ?? '')
+      if (s.length > MAX_ANSWER_CHARS) {
+        return NextResponse.json({ error: `Answer too large (max ${MAX_ANSWER_CHARS} characters per question)` }, { status: 400 })
+      }
+      totalChars += s.length
+      answers[k.slice(0, 128)] = s
+    }
+    if (totalChars > MAX_TOTAL_ANSWER_CHARS) {
+      return NextResponse.json({ error: 'Submission too large' }, { status: 400 })
+    }
     let totalScore = 0
     let maxScore = 0
     const details: Array<{ qId: string; correct: boolean; points: number; answer: string; pending_review: boolean }> = []

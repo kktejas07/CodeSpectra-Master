@@ -53,6 +53,10 @@ export interface ExamDoc {
   /** When true, legacy ?share=true URLs are rejected — entry requires a
    *  valid token link (?link=) or invite. Null/false = legacy allowed. */
   require_token_links?: boolean | null
+  /** When false, candidates skip Government-ID capture/OCR. Null/missing = true (strict, backward-compat). */
+  require_id_verification?: boolean | null
+  /** When false, candidates skip live-face capture/verify. Null/missing = true (strict, backward-compat). */
+  require_face_capture?: boolean | null
   cert_template?: 'classic' | 'modern' | 'minimal' | 'professional' | 'corporate' | 'academic'
   questions?: Array<{
     id: string

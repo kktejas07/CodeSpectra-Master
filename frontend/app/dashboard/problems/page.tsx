@@ -8,6 +8,7 @@ import {
 } from 'lucide-react'
 import { DIFFICULTY_LEVELS, DIFFICULTY_LABELS, DIFFICULTY_COLORS, toDifficultyLevel } from '@/lib/difficulty-levels'
 import { Button } from '@/components/ui/button'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { Input } from '@/components/ui/input'
 import { Card } from '@/components/ui/card'
 import { usePageGuard } from '@/lib/use-page-guard'
@@ -440,7 +441,7 @@ export default function ProblemsListPage() {
              <div className="flex justify-between items-end gap-1 mb-6 h-36 px-1">
                 {/* Rank 2 */}
                 <div className="flex flex-col items-center gap-2 relative">
-                   <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Aniket" className="h-10 w-10 rounded-full bg-slate-100" />
+                   <UserAvatar seed="Aniket" name="Aniket" className="h-10 w-10 bg-slate-100" />
                    <div className="text-center leading-tight">
                      <div className="text-[9px] font-bold uppercase truncate w-14">Aniket</div>
                      <div className="text-[8px] text-muted-foreground font-semibold">142,975 Pts</div>
@@ -453,7 +454,7 @@ export default function ProblemsListPage() {
                 {/* Rank 1 */}
                 <div className="flex flex-col items-center gap-2 relative">
                    <div className="absolute -top-3 text-amber-500"><Trophy className="h-5 w-5 fill-amber-500" /></div>
-                   <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Prakash" className="h-12 w-12 rounded-full bg-amber-100 ring-2 ring-amber-400" />
+                   <UserAvatar seed="Prakash" name="Prakash" className="h-12 w-12 bg-amber-100 ring-2 ring-amber-400" />
                    <div className="text-center leading-tight">
                      <div className="text-[10px] font-bold uppercase truncate w-16 text-amber-600 dark:text-amber-400">Prakash</div>
                      <div className="text-[9px] font-bold text-amber-600/70 dark:text-amber-400/70">143,137 Pts</div>
@@ -465,7 +466,7 @@ export default function ProblemsListPage() {
 
                 {/* Rank 3 */}
                 <div className="flex flex-col items-center gap-2 relative">
-                   <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Purbayon" className="h-10 w-10 rounded-full bg-slate-100" />
+                   <UserAvatar seed="Purbayon" name="Purbayon" className="h-10 w-10 bg-slate-100" />
                    <div className="text-center leading-tight">
                      <div className="text-[9px] font-bold uppercase truncate w-14">Purbayon</div>
                      <div className="text-[8px] text-muted-foreground font-semibold">139,425 Pts</div>
@@ -478,7 +479,7 @@ export default function ProblemsListPage() {
 
              <div className="rounded-xl border border-border bg-muted/30 p-3 flex items-center justify-between mb-4 shadow-inner">
                 <div className="flex items-center gap-3">
-                   <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=You" className="h-8 w-8 rounded-full bg-slate-200" />
+                   <UserAvatar seed="You" name="You" className="h-8 w-8 bg-slate-200" />
                    <div>
                      <div className="font-bold text-sm">You</div>
                      <div className="text-[10px] text-muted-foreground font-semibold">100 Pts</div>

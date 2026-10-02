@@ -30,6 +30,8 @@ interface Exam {
   duration: number
   starts_at?: string | null
   ends_at?: string | null
+  require_id_verification?: boolean | null
+  require_face_capture?: boolean | null
   questions: number
   published: boolean
   attempts: number
@@ -83,6 +85,8 @@ export default function AdminExamsPage() {
   const [startsAt, setStartsAt] = useState('')
   const [endsAt, setEndsAt] = useState('')
   const [requireTokenLinks, setRequireTokenLinks] = useState(false)
+  const [requireIdVerification, setRequireIdVerification] = useState(true)
+  const [requireFaceCapture, setRequireFaceCapture] = useState(true)
   const [questions, setQuestions] = useState(0)
   const [published, setPublished] = useState(false)
   const [accessType, setAccessType] = useState<'invite_only' | 'open'>('invite_only')
@@ -183,6 +187,8 @@ export default function AdminExamsPage() {
     setStartsAt('')
     setEndsAt('')
     setRequireTokenLinks(false)
+    setRequireIdVerification(true)
+    setRequireFaceCapture(true)
     setQuestions(0)
     setPublished(false)
     setAccessType('invite_only')
@@ -201,6 +207,8 @@ export default function AdminExamsPage() {
     setDuration(exam.duration)
     setStartsAt(exam.starts_at ? new Date(exam.starts_at).toISOString().slice(0, 16) : '')
     setEndsAt(exam.ends_at ? new Date(exam.ends_at).toISOString().slice(0, 16) : '')
+    setRequireIdVerification(exam.require_id_verification !== false)
+    setRequireFaceCapture(exam.require_face_capture !== false)
     setQuestions(exam.questions)
     setPublished(exam.published)
     setDegreeType(exam.degree_type || '')
@@ -231,6 +239,8 @@ export default function AdminExamsPage() {
       starts_at: startsIso,
       ends_at: endsIso,
       require_token_links: requireTokenLinks,
+      require_id_verification: requireIdVerification,
+      require_face_capture: requireFaceCapture,
       questions, 
       published,
       access_type: accessType,
@@ -818,7 +828,39 @@ export default function AdminExamsPage() {
               </div>
             ) : (
               <>
-                <div className="grid gap-2">
+            <div className="sm:col-span-2 rounded-lg border bg-muted/20 p-3 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Identity verification</p>
+                <p className="text-xs text-muted-foreground">Turn off either step to let candidates skip it. Both off = consent only, exam starts directly.</p>
+              </div>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireIdVerification">
+                <input
+                  id="requireIdVerification"
+                  type="checkbox"
+                  checked={requireIdVerification}
+                  onChange={(e) => setRequireIdVerification(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Require ID verification
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture/upload a Government ID (OCR name match). Off = skip ID step.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireFaceCapture">
+                <input
+                  id="requireFaceCapture"
+                  type="checkbox"
+                  checked={requireFaceCapture}
+                  onChange={(e) => setRequireFaceCapture(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Require face capture
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture a live selfie (biometric verify + enroll). Off = skip face step.</span>
+                </span>
+              </label>
+            </div>
+            <div className="grid gap-2">
                   <Label>Paste CSV (email, name)</Label>
                   <p className="text-xs text-muted-foreground">
                     <strong>CSV:</strong> One candidate per line — <code>email,name</code> or <code>jane@example.com,Jane</code>

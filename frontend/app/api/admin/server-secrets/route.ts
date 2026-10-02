@@ -74,6 +74,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'upstash_redis_rest_token',
   'internal_backend_secret',
   'session_secret',
+  'typesafe_api_key',
 ]
 
 const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [

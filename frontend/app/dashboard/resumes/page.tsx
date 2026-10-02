@@ -7,6 +7,7 @@ import { FileText, Upload, Trash2, Plus, Search } from 'lucide-react'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { DataTable, type DataTableColumn, type BulkAction } from '@/components/ui/data-table'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonCard } from '@/components/ui/skeleton-boneyard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
@@ -132,9 +133,9 @@ export default function MyResumesPage() {
           
           {/* Mock Template 1 */}
           <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-xl border border-border bg-muted/20 relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all p-4 shadow-sm group">
-             <div className="absolute top-4 right-4 h-8 w-8 rounded-full bg-muted overflow-hidden border">
-                <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=Abhiram" alt="Avatar" className="h-full w-full object-cover" />
-             </div>
+              <div className="absolute top-4 right-4 h-8 w-8 rounded-full bg-muted overflow-hidden border">
+                 <UserAvatar seed="Abhiram" name="Abhiram" className="h-full w-full" />
+              </div>
              <div className="h-4 w-24 bg-foreground/80 rounded mb-2" />
              <div className="h-2 w-16 bg-muted-foreground/60 rounded mb-8" />
              
@@ -205,7 +206,7 @@ export default function MyResumesPage() {
           <div onClick={handleTemplateClick} className="shrink-0 w-[240px] h-[320px] rounded-xl border border-border bg-card relative overflow-hidden cursor-pointer hover:ring-2 hover:ring-blue-500 hover:ring-offset-2 transition-all shadow-sm group flex flex-col">
              <div className="h-16 bg-slate-800 p-3 flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-white/20 overflow-hidden shrink-0">
-                  <img src="https://api.dicebear.com/7.x/avataaars/svg?seed=ProductDesigner" alt="Avatar" className="h-full w-full object-cover" />
+                  <UserAvatar seed="ProductDesigner" name="Product Designer" className="h-full w-full" />
                 </div>
                 <div>
                   <div className="h-2.5 w-24 bg-white/90 rounded mb-1.5" />

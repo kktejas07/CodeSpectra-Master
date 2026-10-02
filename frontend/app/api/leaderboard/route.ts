@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server'
 import { requireAuth } from '@/lib/route-auth'
 import { getMongoDb } from '@/lib/mongodb'
+import { dicebearUrl } from '@/lib/avatar'
 import type { LeaderboardEntryDTO } from '@/lib/leaderboard-types'
 
 const LIMIT = 80
@@ -33,8 +34,7 @@ export async function GET(req: NextRequest) {
       language: '—',
       languageClass: 'text-muted-foreground',
       avatar:
-        String(u.avatarUrl || '') ||
-        `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(String(u.id || u.email || i))}`,
+        String(u.avatarUrl || '') || dicebearUrl(String(u.id || u.email || i)),
       lastSubmission: null,
       streak: 0,
       challengesSolved: 0,

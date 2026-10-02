@@ -35,6 +35,8 @@ interface Question {
   options?: string[]
   answer?: string
   score: number
+  /** Coding only: stdin → expected stdout pairs the grader executes. */
+  test_cases?: { input: string; output: string }[]
 }
 
 interface BankQuestionRow {
@@ -65,6 +67,8 @@ interface Exam {
   starts_at?: string | null
   ends_at?: string | null
   require_token_links?: boolean | null
+  require_id_verification?: boolean | null
+  require_face_capture?: boolean | null
   questions: number
   questionList: Question[]
   published: boolean
@@ -207,6 +211,8 @@ export default function ExamReviewPage() {
   const [metaStartsAt, setMetaStartsAt] = useState('')
   const [metaEndsAt, setMetaEndsAt] = useState('')
   const [metaRequireTokenLinks, setMetaRequireTokenLinks] = useState(false)
+  const [metaRequireId, setMetaRequireId] = useState(true)
+  const [metaRequireFace, setMetaRequireFace] = useState(true)
   const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
   const [metaDegreeType, setMetaDegreeType] = useState('')
   const [metaBranch, setMetaBranch] = useState('')
@@ -230,6 +236,9 @@ export default function ExamReviewPage() {
         setMetaStartsAt(found.starts_at ? new Date(found.starts_at).toISOString().slice(0, 16) : '')
         setMetaEndsAt(found.ends_at ? new Date(found.ends_at).toISOString().slice(0, 16) : '')
         setMetaRequireTokenLinks((found as { require_token_links?: boolean }).require_token_links === true)
+        // Missing/null = true (strict, backward-compat for pre-flag assessments).
+        setMetaRequireId((found as { require_id_verification?: boolean | null }).require_id_verification !== false)
+        setMetaRequireFace((found as { require_face_capture?: boolean | null }).require_face_capture !== false)
         setMetaCertTemplate(found.cert_template || 'classic')
         setMetaDegreeType(found.degree_type || '')
         setMetaBranch(found.branch || '')
@@ -287,13 +296,15 @@ export default function ExamReviewPage() {
           starts_at: startsIso,
           ends_at: endsIso,
           require_token_links: metaRequireTokenLinks,
+          require_id_verification: metaRequireId,
+          require_face_capture: metaRequireFace,
           cert_template: metaCertTemplate,
           degree_type: metaDegreeType,
           branch: metaBranch,
           screening_type: metaScreeningType,
         })
       })
-      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
+      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -579,6 +590,24 @@ export default function ExamReviewPage() {
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
                   <span className="text-muted-foreground whitespace-nowrap">Require personal links</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Off = candidates skip the Government-ID capture/OCR step">
+                  <input
+                    type="checkbox"
+                    checked={metaRequireId}
+                    onChange={(e) => setMetaRequireId(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Require ID</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Off = candidates skip the live-face capture/verify step">
+                  <input
+                    type="checkbox"
+                    checked={metaRequireFace}
+                    onChange={(e) => setMetaRequireFace(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Require face</span>
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Cert Template:</Label>
@@ -1122,6 +1151,58 @@ export default function ExamReviewPage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     This will be shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.
+                  </p>
+                </div>
+              )}
+              {/* Hidden test cases for coding questions — executed for scoring */}
+              {editingQuestion.type === 'coding' && (
+                <div className="grid gap-2">
+                  <Label>Hidden Test Cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, run for scoring)</span></Label>
+                  {(editingQuestion.test_cases || []).map((tc, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <Input
+                        value={tc.input}
+                        onChange={(e) => {
+                          const next = [...(editingQuestion.test_cases || [])]
+                          next[i] = { ...next[i], input: e.target.value }
+                          setEditingQuestion({ ...editingQuestion, test_cases: next })
+                        }}
+                        placeholder={`stdin ${i + 1}`}
+                        className="font-mono text-xs"
+                      />
+                      <Input
+                        value={tc.output}
+                        onChange={(e) => {
+                          const next = [...(editingQuestion.test_cases || [])]
+                          next[i] = { ...next[i], output: e.target.value }
+                          setEditingQuestion({ ...editingQuestion, test_cases: next })
+                        }}
+                        placeholder={`expected stdout ${i + 1}`}
+                        className="font-mono text-xs"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 shrink-0 p-0 text-destructive"
+                        title="Remove test case"
+                        onClick={() => setEditingQuestion({ ...editingQuestion, test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {(editingQuestion.test_cases || []).length < 10 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-fit gap-1"
+                      onClick={() => setEditingQuestion({ ...editingQuestion, test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '' }] })}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add test case
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Without test cases the code is graded by AI judgment; with them, the score comes from actual execution (passed ÷ total).
                   </p>
                 </div>
               )}

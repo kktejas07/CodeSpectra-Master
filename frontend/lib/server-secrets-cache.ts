@@ -130,6 +130,8 @@ export type ServerSecretsRecord = {
   // Sent as `x-internal-secret` on server->server calls to the FastAPI backend.
   // Must match the backend's INTERNAL_BACKEND_SECRET env var (set in Dokploy).
   internal_backend_secret?: string
+  // --- TypeSafe Jev (grade verification — Settings → AI & LLM) --------------
+  typesafe_api_key?: string
 }
 
 interface PlatformSettingDoc {

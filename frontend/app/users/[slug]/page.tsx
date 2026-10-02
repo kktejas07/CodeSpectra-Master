@@ -9,6 +9,7 @@ import { Button } from '@/components/ui/button'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useAuth } from '@/lib/auth-context'
 import { ContributionGraph } from '@/components/dashboard/contribution-graph'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { SkeletonAvatar, SkeletonList, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 type Difficulty = 'easy' | 'medium' | 'hard'
@@ -182,7 +183,6 @@ export default function UserProfilePage({
   }
 
   const { user, stats, recent } = data
-  const avatar = `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(user.email || user.id)}`
   const memberDate = user.joinedAt ? new Date(user.joinedAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) : null
   const level = Math.floor(stats.xp / 1000) + 1
 
@@ -219,7 +219,7 @@ export default function UserProfilePage({
               
               <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-blue-500 to-purple-500 p-0.75 shadow-lg">
                 <div className="rounded-full bg-background p-1">
-                  <img src={avatar} alt={user.name} className="h-28 w-28 rounded-full object-cover bg-muted/20" />
+                  <UserAvatar seed={user.email || user.id} name={user.name} className="h-28 w-28" />
                 </div>
               </div>
               

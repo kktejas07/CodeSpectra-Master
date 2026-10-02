@@ -38,6 +38,7 @@ interface PipelineCandidate {
   startedAt?: string
   completedAt?: string
   score?: number
+  scorePct?: number
   passed?: boolean
 }
 
@@ -71,7 +72,7 @@ const STAGE_CONFIG = [
 ] as const
 
 export default function PipelinePage() {
-  const gate = usePageGuard('superadmin')
+  const gate = usePageGuard('tenant_admin')
   const addToast = useToast()
 
   const [exams, setExams] = useState<ExamOption[]>([])
@@ -224,9 +225,9 @@ export default function PipelinePage() {
                             <p className="text-sm font-medium truncate">{c.name}</p>
                             <p className="text-xs text-muted-foreground truncate">{c.email}</p>
                             {c.company && <p className="text-xs text-muted-foreground truncate">{c.company}</p>}
-                            {c.score != null && (
+                            {(c.scorePct ?? c.score) != null && (
                               <Badge variant={c.passed ? 'success' : 'danger'} className="text-xs">
-                                {c.score}%
+                                {c.scorePct ?? c.score}%
                               </Badge>
                             )}
                             <p className="text-[11px] text-muted-foreground">

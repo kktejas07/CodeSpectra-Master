@@ -18,6 +18,7 @@ import { csrfFetch } from '@/lib/csrf-fetch'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useTour, autoPlayPageTour, type TourStep } from '@/components/tour/tour-context'
 import { SkeletonText } from '@/components/ui/skeleton-boneyard'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import Link from 'next/link'
 import Image from 'next/image'
 
@@ -304,7 +305,6 @@ export default function ProfilePage() {
   }, [gate.ready, startTour, setTourSeen])
 
   const displayName = user?.name || user?.email?.split('@')[0] || 'User'
-  const avatarSrc = avatar || `https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(displayName)}`
 
   const hasStats = stats && (
     (typeof stats.scans === 'number' && stats.scans > 0) ||
@@ -371,10 +371,11 @@ export default function ProfilePage() {
             
             <div className="relative mx-auto w-fit rounded-full bg-linear-to-br from-mint-pulse to-emerald-500 p-0.75 shadow-lg">
               <div className="rounded-full bg-background p-1">
-                <img
-                  src={avatarSrc}
-                  alt={displayName}
-                  className="h-28 w-28 rounded-full object-cover bg-muted/20"
+                <UserAvatar
+                  src={avatar}
+                  seed={displayName}
+                  name={displayName}
+                  className="h-28 w-28"
                 />
               </div>
             </div>

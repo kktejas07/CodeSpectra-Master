@@ -3,7 +3,7 @@
  * Run: npx vitest run tests/grading.test.ts
  */
 import { describe, it, expect } from 'vitest'
-import { answersEqual, multisetEqual, numericEqual, optionResolvedKey, canonicalObjectiveType, isObjectiveType } from '@/lib/grading'
+import { answersEqual, multisetEqual, numericEqual, optionResolvedKey, canonicalObjectiveType, isObjectiveType, sanitizeTestCases, sanitizeExamQuestion } from '@/lib/grading'
 
 describe('canonicalObjectiveType', () => {
   it('canonicalizes every accepted objective spelling', () => {
@@ -93,5 +93,56 @@ describe('multisetEqual', () => {
   it('empty vs empty matches, empty vs non-empty does not', () => {
     expect(multisetEqual('', '')).toBe(true)
     expect(multisetEqual('', 'Insert')).toBe(false)
+  })
+})
+
+describe('sanitizeTestCases — injection-safe test-case intake', () => {
+  it('keeps string input/output pairs, accepts key variants', () => {
+    expect(sanitizeTestCases([{ input: '2\n3', output: '5' }])).toEqual([{ input: '2\n3', output: '5' }])
+    expect(sanitizeTestCases([{ stdin: 'a', expected_stdout: 'b' }])).toEqual([{ input: 'a', output: 'b' }])
+    expect(sanitizeTestCases([{ input: 5, output: true }])).toEqual([{ input: '5', output: 'true' }])
+  })
+
+  it('drops operator keys, nested values, and non-objects', () => {
+    const out = sanitizeTestCases([
+      { input: 'x', output: 'y', $where: 'evil', __proto__: { p: 1 }, nested: { a: 1 }, list: [1] },
+      null,
+      'string',
+      42,
+      { input: '', output: '' },
+    ])
+    expect(out).toEqual([{ input: 'x', output: 'y' }])
+    expect(JSON.stringify(out[0])).toBe('{"input":"x","output":"y"}')
+  })
+
+  it('caps count and field length', () => {
+    const many = Array.from({ length: 25 }, (_, i) => ({ input: String(i), output: String(i) }))
+    expect(sanitizeTestCases(many)).toHaveLength(10)
+    expect(sanitizeTestCases([{ input: 'a'.repeat(5000), output: 'b' }])[0].input).toHaveLength(2000)
+  })
+
+  it('returns [] for non-arrays', () => {
+    expect(sanitizeTestCases(undefined)).toEqual([])
+    expect(sanitizeTestCases({ input: 'x' })).toEqual([])
+  })
+})
+
+describe('sanitizeExamQuestion — write-path question guard', () => {
+  it('keeps known scalars + sanitized cases, drops everything else', () => {
+    const q = sanitizeExamQuestion({
+      id: 'q1', type: 'coding', title: 'T', prompt: 'P', score: 10,
+      answer: 'model', options: ['a'],
+      test_cases: [{ input: '1', output: '2' }],
+      $set: { admin: true }, constructor: {}, evaluation: 'x'.repeat(30000),
+    })
+    expect(q).toEqual({
+      id: 'q1', type: 'coding', title: 'T', prompt: 'P', score: 10,
+      answer: 'model', options: ['a'], test_cases: [{ input: '1', output: '2' }],
+    })
+  })
+
+  it('returns {} for non-objects', () => {
+    expect(sanitizeExamQuestion(null)).toEqual({})
+    expect(sanitizeExamQuestion([])).toEqual({})
   })
 })

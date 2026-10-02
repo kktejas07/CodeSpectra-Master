@@ -121,3 +121,72 @@ export function multisetEqual(a: string, b: string, options?: string[]): boolean
   }
   return true
 }
+
+/** A single executable test case: stdin → expected stdout. Strings only. */
+export interface SanitizedTestCase {
+  input: string
+  output: string
+}
+const MAX_TEST_CASES = 10
+const MAX_TC_FIELD_CHARS = 2000
+
+/**
+ * Injection-safe normalizer for coding-question test cases.
+ *
+ * Data enters from three untrusted-ish sources (LLM-generated question JSON,
+ * question-bank docs, admin edit-page payloads) and is persisted to MongoDB
+ * and later fed to the Piston sandbox. This keeps ONLY string input/output
+ * pairs: array cap, per-field char cap, scalar coercion, common key-variant
+ * acceptance (stdin/expected/expected_stdout) — and drops everything else,
+ * so NoSQL operator keys (`$*`, dotted paths, `__proto__`) and nested
+ * objects/arrays can never reach the database.
+ */
+export function sanitizeTestCases(raw: unknown): SanitizedTestCase[] {
+  if (!Array.isArray(raw)) return []
+  const out: SanitizedTestCase[] = []
+  for (const tc of raw.slice(0, MAX_TEST_CASES)) {
+    if (!tc || typeof tc !== 'object' || Array.isArray(tc)) continue
+    const rec = tc as Record<string, unknown>
+    const pick = (v: unknown): string => {
+      if (typeof v === 'string') return v.slice(0, MAX_TC_FIELD_CHARS)
+      if (typeof v === 'number' || typeof v === 'boolean') return String(v).slice(0, MAX_TC_FIELD_CHARS)
+      return ''
+    }
+    const input = pick(rec.input ?? rec.stdin)
+    const output = pick(rec.output ?? rec.expected ?? rec.expected_stdout ?? rec.expected_output)
+    if (!input && !output) continue
+    out.push({ input, output })
+  }
+  return out
+}
+
+/**
+ * Strip one embedded exam/bank question down to known scalar fields plus
+ * injection-safe test cases. Used by every exam write path (POST normalize,
+ * PATCH + PUT passthrough guards) so a crafted payload can never smuggle
+ * NoSQL operator keys, nested objects, or unbounded blobs into `questionList`.
+ */
+export function sanitizeExamQuestion(raw: unknown): Record<string, unknown> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const q = raw as Record<string, unknown>
+  const cases = sanitizeTestCases(q.test_cases ?? q.testCases)
+  const clean: Record<string, unknown> = {
+    id: String(q.id || ''),
+    type: String(q.type || 'mcq'),
+    title: String(q.title || 'Question').slice(0, 500),
+    prompt: String(q.prompt || q.question || '').slice(0, 20000),
+    score: Number(q.score ?? q.points) || 10,
+  }
+  if (Array.isArray(q.options)) {
+    clean.options = (q.options as unknown[]).map(String).slice(0, 10).map((o) => o.slice(0, 2000))
+  }
+  if (q.answer !== undefined) clean.answer = String(q.answer).slice(0, 20000)
+  if (cases.length) clean.test_cases = cases
+  return clean
+}
+
+/** Apply {@link sanitizeExamQuestion} to a whole questionList payload. */
+export function sanitizeExamQuestionList(raw: unknown): Array<Record<string, unknown>> {
+  if (!Array.isArray(raw)) return []
+  return raw.map((q) => sanitizeExamQuestion(q))
+}

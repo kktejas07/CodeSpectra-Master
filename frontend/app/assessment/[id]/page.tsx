@@ -87,6 +87,8 @@ interface Exam {
   starts_at?: string | null
   ends_at?: string | null
   access_type?: 'invite_only' | 'open'
+  require_id_verification?: boolean | null
+  require_face_capture?: boolean | null
   questionList: Question[]
 }
 
@@ -602,10 +604,15 @@ export default function CandidateAssessmentPage() {
             </span>
           </label>
 
-          {user?.has_enrolled_face === false && (
+          {user?.has_enrolled_face === false && exam.require_face_capture !== false && (
             <div className="bg-primary/10 border border-primary/20 text-primary p-3 rounded-lg text-xs flex items-center gap-2">
               <AlertTriangle className="h-4 w-4 shrink-0" />
               <span>First time here? Your face biometrics will be enrolled during the identity verification step.</span>
+            </div>
+          )}
+          {(exam.require_id_verification === false || exam.require_face_capture === false) && (
+            <div className="bg-muted/40 border border-border p-3 rounded-lg text-xs text-muted-foreground">
+              Identity check for this assessment: {exam.require_id_verification === false && exam.require_face_capture === false ? 'consent only — no ID or face capture required' : exam.require_id_verification === false ? 'face selfie only — ID skipped' : 'ID only — face capture skipped'}.
             </div>
           )}
           <Button onClick={() => setShowVerification(true)} className="w-full text-lg h-12">
@@ -616,6 +623,8 @@ export default function CandidateAssessmentPage() {
         {showVerification && (
           <IdentityVerification
             examTitle={exam.title}
+            requireId={exam.require_id_verification !== false}
+            requireFace={exam.require_face_capture !== false}
             onCancel={() => setShowVerification(false)}
             onComplete={(data) => {
               setIdPhoto(data.idPhoto)

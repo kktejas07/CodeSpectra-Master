@@ -3,7 +3,7 @@
 import { useEffect, useState } from 'react'
 import { Card } from '@/components/ui/card'
 import { Badge } from '@/components/ui/badge'
-import { Avatar, AvatarImage, AvatarFallback } from '@/components/ui/avatar'
+import { UserAvatar } from '@/components/ui/user-avatar'
 import { Loader2Icon } from 'lucide-react'
 import { Spinner } from '@/components/ui/spinner'
 import { Trophy, Flame, Star, Target, Medal, Award, Hash, Crosshair, Bug, Lock, Zap } from 'lucide-react'
@@ -124,15 +124,7 @@ export function TeamLeaderboard({ members }: TeamLeaderboardProps) {
                   </div>
 
                   <div className="flex-1 flex items-center gap-3">
-                    <Avatar className="w-10 h-10 border-2 border-border">
-                      <AvatarImage
-                        src={`https://api.dicebear.com/7.x/avataaars/svg?seed=${encodeURIComponent(member.name)}`}
-                        alt={member.name}
-                      />
-                      <AvatarFallback>
-                        {(member.name || '?').charAt(0).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
+                    <UserAvatar seed={member.name} name={member.name} className="w-10 h-10 border-2 border-border" />
 
                     <div className="min-w-0">
                       <p className="font-semibold text-foreground truncate">{member.name}</p>
