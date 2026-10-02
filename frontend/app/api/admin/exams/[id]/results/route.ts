@@ -2,8 +2,6 @@ import { NextResponse } from 'next/server'
 import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { getMongoDb } from '@/lib/mongodb'
 import type { IdRouteContext } from '@/lib/app-route-context'
-import { detectPlagiarism } from '@/lib/proctoring/plagiarism-detector'
-import { detectLeaks } from '@/lib/proctoring/leak-detector'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAdmin()
@@ -63,20 +61,19 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       }
     }
 
-    // Also fetch users for submissions that don't have invites (public/share-link candidates)
+    // Also fetch users for submissions that don't have invites (public/share-link candidates).
+    // ponytail: single parallel batch — the old sequential await-per-user loop
+    // turned 65 candidates into 65+ serial Mongo roundtrips on every page load.
     const submissionUserIds = new Set<string>()
     for (const sub of submissions) {
       if (sub.user_id && !sub.user_id.startsWith('candidate_')) {
         submissionUserIds.add(sub.user_id)
       }
     }
-    for (const uid of submissionUserIds) {
-      await fetchUser(uid)
-    }
-
     for (const inv of invites) {
-      if (inv.user_id) await fetchUser(inv.user_id)
+      if (inv.user_id) submissionUserIds.add(inv.user_id)
     }
+    await Promise.all([...submissionUserIds].map((uid) => fetchUser(uid)))
 
     interface CandidateResultRow {
       id: string
@@ -164,7 +161,6 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       const email = sub.email || userMap[sub.user_id]?.email || ''
       if (!email || seenEmails.has(email.toLowerCase())) continue
 
-      await fetchUser(sub.user_id)
       const fetched = userMap[sub.user_id] || {}
 
       results.push({
@@ -186,27 +182,13 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       seenEmails.add(email.toLowerCase())
     }
 
-    // Run plagiarism and leak detection with a timeout — don't block the
-    // results response on slow LLM calls. Fire in parallel, best-effort.
-    let plagiarism = null
-    let leakDetection = null
-    const detectionTimeout = 15000 // 15s max for detection
-    try {
-      plagiarism = await Promise.race([
-        detectPlagiarism(id),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('plagiarism timeout')), detectionTimeout)),
-      ])
-    } catch (e) {
-      console.warn('[CodeSpectra] plagiarism detection skipped:', (e as Error).message || e)
-    }
-    try {
-      leakDetection = await Promise.race([
-        detectLeaks(id),
-        new Promise<null>((_, reject) => setTimeout(() => reject(new Error('leak timeout')), detectionTimeout)),
-      ])
-    } catch (e) {
-      console.warn('[CodeSpectra] leak detection skipped:', (e as Error).message || e)
-    }
+    // Plagiarism / leak detection intentionally NOT run here: it costs two
+    // sequential LLM calls (up to ~30s of timeouts with degraded providers)
+    // on every page load, and no UI consumes the result (verified: zero
+    // readers of these response fields). If detection UI is ever added, call
+    // the detectors from a dedicated lazy endpoint, never the list path.
+    const plagiarism = null
+    const leakDetection = null
 
     return NextResponse.json({
       exam: {

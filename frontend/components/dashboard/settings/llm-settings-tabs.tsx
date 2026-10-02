@@ -554,6 +554,7 @@ export function LlmSettingsTabs() {
                           )}
                           <div className="flex gap-2">
                             <Input
+                              id={`api-key-input-${p.id}`}
                               type="password"
                               placeholder={p.placeholder}
                               className="flex-1 h-8 text-xs font-mono"
@@ -573,9 +574,38 @@ export function LlmSettingsTabs() {
                             <a href={p.url} target="_blank" rel="noopener noreferrer" className="text-[10px] text-primary hover:underline shrink-0 self-center">
                               Get Key →
                             </a>
+                            {p.gateway && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                className="h-8 text-xs shrink-0"
+                                onClick={() => {
+                                  const el = document.getElementById(`api-key-input-${p.id}`) as HTMLInputElement | null
+                                  const val = (el?.value || '').trim()
+                                  if (!val) {
+                                    addToast({ type: 'error', title: 'Type a key first' })
+                                    return
+                                  }
+                                  setSecretsDraft(d => {
+                                    const existing = d[p.key] || ''
+                                    const keys = existing ? existing.split(',').map(k => k.trim()).filter(Boolean) : []
+                                    if (!keys.includes(val)) keys.push(val)
+                                    return { ...d, [p.key]: keys.join(', ') }
+                                  })
+                                  if (el) el.value = ''
+                                  addToast({ type: 'success', title: 'Key staged — click Save Keys to persist' })
+                                }}
+                              >
+                                Add
+                              </Button>
+                            )}
                           </div>
                           {p.gateway && (
                             <div className="space-y-2 rounded-md border border-border/40 bg-muted/20 p-3">
+                              <p className="text-[10px] text-muted-foreground">
+                                Type the key above, press <kbd className="rounded bg-muted px-1 font-mono">Enter</kbd> or Add,
+                                then <strong>Save Keys</strong> — the key field alone never persists.
+                              </p>
                               <div className="grid gap-1.5">
                                 <Label className="text-[11px] text-muted-foreground">Gateway endpoint (OpenAI-compatible base URL)</Label>
                                 <Input
