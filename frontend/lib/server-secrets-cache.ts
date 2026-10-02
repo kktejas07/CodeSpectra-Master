@@ -132,6 +132,10 @@ export type ServerSecretsRecord = {
   internal_backend_secret?: string
   // --- TypeSafe Jev (grade verification — Settings → AI & LLM) --------------
   typesafe_api_key?: string
+  // --- Custom OpenAI-compatible gateway (Settings → AI & LLM) -------------
+  custom_api_key?: string
+  custom_endpoint?: string
+  custom_model?: string
 }
 
 interface PlatformSettingDoc {

@@ -71,6 +71,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'internal_backend_secret',
   'session_secret',
   'typesafe_api_key',
+  'custom_api_key',
 ]
 
 export async function GET(request: Request) {

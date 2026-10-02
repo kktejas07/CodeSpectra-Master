@@ -27,7 +27,7 @@ export type ProviderId =
   | 'modelscope' | 'langchain' | 'langfuse' | 'pinecone' | 'qdrant'
   | 'tavily' | 'firecrawl' | 'serper' | 'jina' | 'exa'
   | 'notion' | 'slack' | 'google_knowledge' | 'browserbase'
-  | 'brightdata' | 'scrapingbee'
+  | 'brightdata' | 'scrapingbee' | 'custom'
 
 // Map provider names to secret key field names
 const PROVIDER_SECRET_MAP: Record<ProviderId, string> = {
@@ -76,6 +76,7 @@ const PROVIDER_SECRET_MAP: Record<ProviderId, string> = {
   browserbase: 'browserbase_api_key',
   brightdata: 'brightdata_api_key',
   scrapingbee: 'scrapingbee_api_key',
+  custom: 'custom_api_key',
 }
 
 // Environment variable names for each provider
@@ -87,6 +88,7 @@ const PROVIDER_ENV_MAP: Partial<Record<ProviderId, string>> = {
   openrouter: 'OPENROUTER_API_KEY',
   opencode: 'OPENCODE_API_KEY',
   nvidia: 'NVIDIA_API_KEY',
+  custom: 'CUSTOM_API_KEY',
 }
 
 interface ApiKeyResult {

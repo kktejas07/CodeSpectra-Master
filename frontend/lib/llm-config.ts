@@ -148,6 +148,17 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     endpoint: 'https://api.mistral.ai/v1',
     authType: 'bearer',
   },
+  {
+    // ponytail: user-supplied OpenAI-compatible gateway (e.g. a proxy like
+    // https://api.apinex.bond/v1). Endpoint + models come from saved settings,
+    // never from this static list — keep models empty so the UI forces entry.
+    id: 'custom',
+    label: 'Custom gateway (OpenAI-compatible)',
+    free: false,
+    models: [],
+    endpoint: '',
+    authType: 'bearer',
+  },
 ] as const
 
 export type LLMProviderId = (typeof LLM_PROVIDERS)[number]['id']

@@ -75,6 +75,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'internal_backend_secret',
   'session_secret',
   'typesafe_api_key',
+  'custom_api_key',
 ]
 
 const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
@@ -84,6 +85,8 @@ const PLAIN_FIELDS: (keyof ServerSecretsRecord)[] = [
   'piston_url',
   'piston_run_timeout_ms',
   'piston_max_concurrent',
+  'custom_endpoint',
+  'custom_model',
   'github_client_id',
   'stripe_price_pro_monthly',
   'stripe_price_pro_yearly',
