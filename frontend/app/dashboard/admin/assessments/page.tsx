@@ -679,6 +679,38 @@ export default function AdminExamsPage() {
                 <span className="block text-xs text-muted-foreground font-normal">Disable legacy ?share=true URLs — candidates must use token links or invites.</span>
               </span>
             </label>
+            <div className="sm:col-span-2 rounded-lg border bg-muted/20 p-3 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Identity verification</p>
+                <p className="text-xs text-muted-foreground">Turn off either step to let candidates skip it. Both off = consent only, exam starts directly.</p>
+              </div>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireIdVerification">
+                <input
+                  id="requireIdVerification"
+                  type="checkbox"
+                  checked={requireIdVerification}
+                  onChange={(e) => setRequireIdVerification(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Require ID verification
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture/upload a Government ID (OCR name match). Off = skip ID step.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireFaceCapture">
+                <input
+                  id="requireFaceCapture"
+                  type="checkbox"
+                  checked={requireFaceCapture}
+                  onChange={(e) => setRequireFaceCapture(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Require face capture
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture a live selfie (biometric verify + enroll). Off = skip face step.</span>
+                </span>
+              </label>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="questions">Questions</Label>
               <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
@@ -828,38 +860,6 @@ export default function AdminExamsPage() {
               </div>
             ) : (
               <>
-            <div className="sm:col-span-2 rounded-lg border bg-muted/20 p-3 space-y-3">
-              <div>
-                <p className="text-sm font-medium">Identity verification</p>
-                <p className="text-xs text-muted-foreground">Turn off either step to let candidates skip it. Both off = consent only, exam starts directly.</p>
-              </div>
-              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireIdVerification">
-                <input
-                  id="requireIdVerification"
-                  type="checkbox"
-                  checked={requireIdVerification}
-                  onChange={(e) => setRequireIdVerification(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
-                />
-                <span>
-                  Require ID verification
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture/upload a Government ID (OCR name match). Off = skip ID step.</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireFaceCapture">
-                <input
-                  id="requireFaceCapture"
-                  type="checkbox"
-                  checked={requireFaceCapture}
-                  onChange={(e) => setRequireFaceCapture(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
-                />
-                <span>
-                  Require face capture
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture a live selfie (biometric verify + enroll). Off = skip face step.</span>
-                </span>
-              </label>
-            </div>
             <div className="grid gap-2">
                   <Label>Paste CSV (email, name)</Label>
                   <p className="text-xs text-muted-foreground">

@@ -557,14 +557,16 @@ export default function ExamResultsPage() {
   }
 
     const [bulkGradeIds, setBulkGradeIds] = useState<string[] | null>(null)
-    // Chunked grading progress (visible in the dialog below). Batches of 4
-    // keep every request fast — one giant POST used to run for minutes and
-    // die behind the proxy with an HTML error page ("<!DOCTYPE..." JSON crash).
+    // Chunked grading progress (visible in the dialog below). Batches of 2
+    // keep every request under the ~100s proxy limit — batches of 4 still
+    // died with 524s on free-text-heavy exams (LLM chain walks + rate-limit
+    // backoffs + per-grade pacing add up fast).
     const [gradeProg, setGradeProg] = useState<{
       done: number; total: number; graded: number; failed: number; running: boolean
+      items: Array<{ id: string; name: string; status: 'pending' | 'grading' | 'done' | 'failed'; detail: string }>
     } | null>(null)
     const gradeCancelRef = useRef(false)
-    const GRADE_CHUNK = 4
+    const GRADE_CHUNK = 2
 
     const postGradeChunk = async (chunk: string[]) => {
       const res = await csrfFetch(`/api/admin/exams/${params.id}/ai-grade-all`, {
@@ -590,7 +592,16 @@ export default function ExamResultsPage() {
     if (!ids.length || gradeProg?.running) return
     gradeCancelRef.current = false
     setBulkGradeIds(ids)
-    setGradeProg({ done: 0, total: ids.length, graded: 0, failed: 0, running: true })
+    const nameOf = (id: string) => {
+      const r = results.find((x) => (x.userId || x.id) === id)
+      return r ? r.name : id
+    }
+    const items: Array<{ id: string; name: string; status: 'pending' | 'grading' | 'done' | 'failed'; detail: string }> =
+      ids.map((id) => ({ id, name: nameOf(id), status: 'pending', detail: 'Waiting…' }))
+    const setItem = (id: string, patch: Partial<(typeof items)[number]>) => {
+      setGradeProg(prev => (prev ? { ...prev, items: prev.items.map((it) => (it.id === id ? { ...it, ...patch } : it)) } : prev))
+    }
+    setGradeProg({ done: 0, total: ids.length, graded: 0, failed: 0, running: true, items })
     let graded = 0
     let failed = 0
     const failedIds = new Set<string>()
@@ -598,19 +609,36 @@ export default function ExamResultsPage() {
       for (let i = 0; i < ids.length; i += GRADE_CHUNK) {
         if (gradeCancelRef.current) break
         const chunk = ids.slice(i, i + GRADE_CHUNK)
+        chunk.forEach((c) => setItem(c, { status: 'grading', detail: 'Grading…' }))
         try {
           const json = await postGradeChunk(chunk)
           graded += json.graded || 0
           failed += json.failed || 0
+          const byUser = new Map<string, { graded: number; failed: string[] }>()
           for (const r of json.results || []) {
-            if (Array.isArray(r.failed) && r.failed.length > 0 && r.userId) failedIds.add(r.userId)
+            if (r?.userId) byUser.set(r.userId, { graded: r.graded || 0, failed: Array.isArray(r.failed) ? r.failed : [] })
+          }
+          for (const c of chunk) {
+            const u = byUser.get(c)
+            if (!u) {
+              failedIds.add(c)
+              setItem(c, { status: 'failed', detail: 'No result returned — retry grades only the remainder.' })
+            } else if (u.failed.length > 0) {
+              failedIds.add(c)
+              setItem(c, { status: 'failed', detail: `${u.graded} graded, ${u.failed.length} question(s) failed — retry picks up the rest.` })
+            } else {
+              setItem(c, { status: 'done', detail: u.graded > 0 ? `${u.graded} question(s) graded` : 'Nothing pending — already graded.' })
+            }
           }
         } catch (e: unknown) {
+          const msg = e instanceof Error ? e.message : 'Batch failed.'
           failed += chunk.length
-          chunk.forEach((c) => failedIds.add(c))
-          addToast({ type: 'error', title: `Batch ${Math.floor(i / GRADE_CHUNK) + 1} failed`, message: e instanceof Error ? e.message : 'Retry grades only the remainder.' })
+          chunk.forEach((c) => {
+            failedIds.add(c)
+            setItem(c, { status: 'failed', detail: msg })
+          })
         }
-        setGradeProg({ done: Math.min(ids.length, i + chunk.length), total: ids.length, graded, failed, running: true })
+        setGradeProg(prev => (prev ? { ...prev, done: Math.min(ids.length, i + chunk.length), graded, failed } : prev))
       }
       const cancelled = gradeCancelRef.current
       addToast({
@@ -2169,6 +2197,22 @@ export default function ExamResultsPage() {
               <span>{gradeProg?.graded} graded{gradeProg && gradeProg.failed > 0 ? ` · ${gradeProg.failed} failed` : ''}</span>
             </div>
           </div>
+          {gradeProg && gradeProg.items.length > 0 && (
+            <div className="max-h-56 overflow-y-auto rounded-md border divide-y divide-border/40">
+              {gradeProg.items.map((it) => (
+                <div key={it.id} className="flex items-start gap-2 px-3 py-1.5 text-xs">
+                  {it.status === 'done' && <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0 mt-0.5" />}
+                  {it.status === 'failed' && <XCircle className="h-3.5 w-3.5 text-rose-500 shrink-0 mt-0.5" />}
+                  {it.status === 'grading' && <Loader2 className="h-3.5 w-3.5 text-blue-500 animate-spin shrink-0 mt-0.5" />}
+                  {it.status === 'pending' && <Clock className="h-3.5 w-3.5 text-muted-foreground shrink-0 mt-0.5" />}
+                  <div className="min-w-0">
+                    <p className="font-medium truncate">{it.name}</p>
+                    <p className="text-muted-foreground break-words">{it.detail}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
           <DialogFooter>
             {gradeProg?.running ? (
               <Button variant="outline" onClick={() => { gradeCancelRef.current = true }}>
