@@ -1,7 +1,6 @@
 import { NextResponse } from 'next/server'
-import { requireSuperAdmin } from '@/lib/route-auth'
+import { requireAdmin, requireTenantEntity } from '@/lib/api-auth'
 import { candidateInvites } from '@/lib/db/admin'
-import { exams, examSubmissions } from '@/lib/db/content'
 
 export const runtime = 'nodejs'
 
@@ -15,7 +14,10 @@ interface PipelineCandidate {
   invitedAt: string
   startedAt?: string
   completedAt?: string
+  /** Raw points (kept for compat). */
   score?: number
+  /** 0-100 percent — the value the UI renders. */
+  scorePct?: number
   passed?: boolean
 }
 
@@ -40,8 +42,15 @@ interface PipelineResponse {
   examTitle: string
 }
 
+const pct = (score: unknown, max: unknown): number | undefined => {
+  const s = Number(score)
+  const m = Number(max)
+  if (!Number.isFinite(s) || !Number.isFinite(m) || m <= 0) return undefined
+  return Math.max(0, Math.min(100, Math.round((s / m) * 100)))
+}
+
 export async function GET(request: Request) {
-  const gate = await requireSuperAdmin()
+  const gate = await requireAdmin()
   if ('error' in gate) return NextResponse.json({ error: gate.error }, { status: gate.status })
 
   try {
@@ -52,53 +61,53 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'examId is required' }, { status: 400 })
     }
 
-    const examCol = await exams()
-    const exam = await examCol.findOne({ id: examId })
-    if (!exam) {
-      return NextResponse.json({ error: 'Assessment not found' }, { status: 404 })
+    const db = await (await import('@/lib/mongodb')).getMongoDb()
+    const owned = await requireTenantEntity(db, 'exams', examId, gate.user)
+    if ('error' in owned) {
+      return NextResponse.json({ error: owned.error }, { status: owned.status })
     }
+    const exam = owned.doc
 
     const inviteCol = await candidateInvites()
-    const subCol = await examSubmissions()
+    const subCol = await db.collection('exam_submissions')
 
-    // Get all invites for this exam
     const invites = await inviteCol.find({ exam_id: examId }).sort({ created_at: -1 }).toArray()
-
-    // Get all submissions for this exam to cross-reference
     const submissions = await subCol.find({ exam_id: examId }).toArray()
-    const subByEmail = new Map<string, typeof submissions[0]>()
-    const subByUserId = new Map<string, typeof submissions[0]>()
+
+    const subByUserId = new Map<string, (typeof submissions)[0]>()
     for (const s of submissions) {
-      if (s.user_id) subByUserId.set(s.user_id, s)
+      if (s.user_id) subByUserId.set(String(s.user_id), s)
     }
-
-    // Also look up submissions by email via user lookup
-    const userIds = invites.filter(i => i.user_id).map(i => i.user_id)
-    if (userIds.length > 0) {
-      const userCol = (await (await import('@/lib/mongodb')).getMongoDb()).collection('user')
-      const users = await userCol.find({ id: { $in: userIds } }).project({ id: 1, email: 1 }).toArray()
-      const emailByUserId = new Map(users.map((u: any) => [u.id, u.email]))
-      for (const s of submissions) {
-        const email = emailByUserId.get(s.user_id)
-        if (email) subByEmail.set(email.toLowerCase(), s)
-        subByUserId.set(s.user_id, s)
-      }
-    }
-
-    // Also index invites by email for submission matching
-    const inviteByEmail = new Map<string, typeof invites[0]>()
+    const inviteByUserId = new Map<string, (typeof invites)[0]>()
+    const inviteByEmail = new Map<string, (typeof invites)[0]>()
     for (const inv of invites) {
-      inviteByEmail.set(inv.email.toLowerCase(), inv)
+      if (inv.user_id) inviteByUserId.set(String(inv.user_id), inv)
+      if (inv.email) inviteByEmail.set(String(inv.email).toLowerCase(), inv)
     }
 
-    // Also check submissions where email is in the invites
-    const allSubs = await subCol.find({ exam_id: examId }).toArray()
-    for (const s of allSubs) {
-      // Try to find matching invite by user_id
-      const matchingInvite = invites.find(i => i.user_id === s.user_id)
-      if (matchingInvite) {
-        subByEmail.set(matchingInvite.email.toLowerCase(), s)
+    // People = union of invites + submissions. Public-link / open-access
+    // candidates have submissions but no invite — previously invisible here.
+    const seen = new Set<string>()
+    const people: Array<{ key: string; invite?: (typeof invites)[0]; sub?: (typeof submissions)[0] }> = []
+    for (const inv of invites) {
+      const key = `inv:${inv.id}`
+      seen.add(key)
+      let sub: (typeof submissions)[0] | undefined
+      if (inv.user_id) sub = subByUserId.get(String(inv.user_id))
+      if (!sub && inv.email) {
+        sub = submissions.find((s) => (s.email || '').toLowerCase() === String(inv.email).toLowerCase())
       }
+      people.push({ key, invite: inv, sub })
+    }
+    for (const s of submissions) {
+      let inv: (typeof invites)[0] | undefined
+      if (s.user_id) inv = inviteByUserId.get(String(s.user_id))
+      if (!inv && s.email) inv = inviteByEmail.get(String(s.email).toLowerCase())
+      if (inv) continue // already covered via the invite loop
+      const key = `sub:${s.id}`
+      if (seen.has(key)) continue
+      seen.add(key)
+      people.push({ key, sub: s })
     }
 
     const stages: PipelineResponse['stages'] = {
@@ -109,58 +118,66 @@ export async function GET(request: Request) {
       failed: [],
     }
 
-    for (const inv of invites) {
-      const email = inv.email.toLowerCase()
-      const sub = subByEmail.get(email) || subByUserId.get(inv.user_id)
-
+    for (const { invite, sub } of people) {
+      const email = String(invite?.email || sub?.email || '')
       let status: PipelineCandidate['status'] = 'invited'
       let startedAt: string | undefined
       let completedAt: string | undefined
       let score: number | undefined
+      let scorePct: number | undefined
       let passed: boolean | undefined
 
       if (sub) {
         completedAt = sub.submitted_at
-        score = sub.score
-        passed = sub.passed
-        if (sub.passed) {
+        score = typeof sub.score === 'number' ? sub.score : undefined
+        scorePct = pct(sub.score, sub.max_score)
+        const released = Boolean(sub.released_at || sub.score_released)
+        if (released && sub.passed === true) {
           status = 'passed'
-        } else {
+          passed = true
+        } else if (released && sub.passed === false) {
           status = 'failed'
+          passed = false
+        } else {
+          // Submitted but unreleased (or legacy released without a flag):
+          // graded work in progress, not a verdict.
+          status = 'completed'
         }
-      } else if (inv.status === 'active') {
+      } else if (invite && invite.status === 'active') {
         status = 'inProgress'
-        startedAt = inv.updated_at || inv.created_at
+        startedAt = invite.updated_at || invite.created_at
       }
 
-      const candidate: PipelineCandidate = {
-        id: inv.id,
-        email: inv.email,
-        name: inv.full_name || inv.email.split('@')[0],
-        company: (inv as any).company || null,
-        role: (inv as any).role_title || null,
+      stages[status].push({
+        id: String(invite?.id || sub?.id || email),
+        email,
+        name: invite?.full_name || email.split('@')[0] || 'Candidate',
+        company: (invite as any)?.company || null,
+        role: (invite as any)?.role_title || null,
         status,
-        invitedAt: inv.created_at,
+        invitedAt: invite?.created_at || sub?.submitted_at || '',
         startedAt,
         completedAt,
         score,
+        scorePct,
         passed,
-      }
-
-      stages[status].push(candidate)
+      })
     }
 
-    const total = invites.length
+    const total = people.length
     const invited = stages.invited.length
     const inProgress = stages.inProgress.length
     const completed = stages.completed.length + stages.passed.length + stages.failed.length
     const passed = stages.passed.length
     const failed = stages.failed.length
     const passRate = completed > 0 ? Math.round((passed / completed) * 100) : 0
-    const allScored = [...stages.completed, ...stages.passed, ...stages.failed].filter(c => c.score != null)
-    const avgScore = allScored.length > 0
-      ? Math.round(allScored.reduce((sum, c) => sum + (c.score || 0), 0) / allScored.length)
-      : 0
+    const scored = [...stages.completed, ...stages.passed, ...stages.failed].filter(
+      (c) => c.scorePct !== undefined
+    )
+    const avgScore =
+      scored.length > 0
+        ? Math.round(scored.reduce((sum, c) => sum + (c.scorePct || 0), 0) / scored.length)
+        : 0
 
     const response: PipelineResponse = {
       stages,
