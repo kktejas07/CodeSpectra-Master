@@ -15,6 +15,7 @@ import { useToast } from '@/lib/toast-context'
 import { DataTable } from '@/components/ui/data-table'
 import type { DataTableColumn, BulkAction } from '@/components/ui/data-table'
 import { csrfFetch } from '@/lib/csrf-fetch'
+import { ScoreHistogram, StatusDonut, QuestionBars } from '@/components/assessment/results-charts'
 import {
   AlertDialog,
   AlertDialogAction,
@@ -268,6 +269,11 @@ export default function ExamResultsPage() {
   // Jev second-opinion availability (null = not checked yet). Grades work
   // without it; unverified free-text grades are flagged for human review.
   const [jevConfigured, setJevConfigured] = useState<boolean | null>(null)
+  // Per-question aggregates for the difficulty chart (null = not loaded).
+  const [questionStats, setQuestionStats] = useState<Array<{
+    qId: string; title: string; type: string; max: number;
+    avgPct: number | null; graded: number; answered: number; total: number
+  }> | null>(null)
   const [manualGrades, setManualGrades] = useState<Record<string, number>>({})
   const [savingGrades, setSavingGrades] = useState(false)
   const [aiGrading, setAiGrading] = useState<Record<string, boolean>>({})
@@ -351,6 +357,13 @@ export default function ExamResultsPage() {
       .then((j) => setJevConfigured(j.configured === true))
       .catch(() => setJevConfigured(false))
   }, [])
+  useEffect(() => {
+    if (!params.id) return
+    fetch(`/api/admin/exams/${params.id}/question-stats`, { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => setQuestionStats(Array.isArray(j.data) ? j.data : []))
+      .catch(() => setQuestionStats([]))
+  }, [params.id])
 
   // Real-time polling for proctor events when review modal is open
   useEffect(() => {
@@ -1258,6 +1271,14 @@ export default function ExamResultsPage() {
             <div className="text-xs text-muted-foreground mt-0.5">{label}</div>
           </button>
         ))}
+      </div>
+
+      {/* Analytics — computed from rows already on screen, no extra calls
+          except question-stats (graded answers only). Empty states hide. */}
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+        <ScoreHistogram rows={results} />
+        <StatusDonut rows={results} />
+        {questionStats && questionStats.length > 0 && <QuestionBars stats={questionStats} />}
       </div>
 
       {resultFilter !== 'all' && (
