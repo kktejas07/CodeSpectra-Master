@@ -8,6 +8,7 @@ import {
   getProblem, runCode, starterFor,
   LANGUAGES, type Language, type ProblemDetail, type RunResult,
 } from '../api/problems'
+import { useProctoring } from '../lib/use-proctoring'
 import { MIN_TOUCH } from '../theme'
 
 interface Props {
@@ -34,6 +35,17 @@ export function ProblemDetailScreen({ theme, route }: Props): React.JSX.Element 
   const [running, setRunning] = useState(false)
   const [output, setOutput] = useState<RunResult | null>(null)
   const [verdicts, setVerdicts] = useState<SampleVerdict[] | null>(null)
+  const [violations, setViolations] = useState(0)
+
+  // Native proctoring: app-backgrounding, screenshots, idle, device integrity.
+  // Same event stream the web monitors write to, so server-side analysis
+  // (answer pattern, plagiarism, leak detection) works unchanged.
+  useProctoring({
+    sessionKind: 'problem',
+    sessionId: slug,
+    enabled: Boolean(slug),
+    onViolation: (_kind, count) => setViolations(count),
+  })
 
   const load = useCallback(async () => {
     setLoading(true)
@@ -131,6 +143,15 @@ export function ProblemDetailScreen({ theme, route }: Props): React.JSX.Element 
 
   return (
     <ScrollView style={s.root} contentContainerStyle={s.content} keyboardShouldPersistTaps="handled">
+      {violations > 0 ? (
+        <View style={s.violation}>
+          <Text style={s.violationText}>
+            ⚠ {violations} focus {violations === 1 ? 'loss' : 'losses'} recorded. Leaving the app during a
+            proctored session is reported.
+          </Text>
+        </View>
+      ) : null}
+
       <Text style={s.title}>{detail.title}</Text>
       <Text style={s.meta}>
         {detail.difficulty} · {(detail.topics ?? []).join(' · ')}
@@ -252,6 +273,11 @@ const styles = (t: ThemeTokens) =>
     title: { color: t.text, fontSize: 22, fontWeight: '700', lineHeight: 28 },
     meta: { color: t.muted, fontSize: 13, marginTop: 6, textTransform: 'capitalize' },
     section: { color: t.text, fontSize: 16, fontWeight: '700', marginTop: 20, marginBottom: 8 },
+    violation: {
+      backgroundColor: 'rgba(234,179,8,0.10)', borderColor: 'rgba(234,179,8,0.30)',
+      borderWidth: 1, borderRadius: 10, padding: 12, marginBottom: 12,
+    },
+    violationText: { color: '#EAB308', fontSize: 12, lineHeight: 17 },
     body: { color: t.text, fontSize: 15, lineHeight: 22, marginTop: 12 },
     mono: {
       color: t.text, fontSize: 13, lineHeight: 19, fontFamily: Platform.OS === 'ios' ? 'Menlo' : 'monospace',

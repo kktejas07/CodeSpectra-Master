@@ -12,7 +12,9 @@ import {
 import { StatusBar } from 'expo-status-bar'
 import * as NativeSplash from 'expo-splash-screen'
 import { SafeAreaProvider } from 'react-native-safe-area-context'
-import { NavigationContainer, DefaultTheme } from '@react-navigation/native'
+import {
+  NavigationContainer, DefaultTheme, createNavigationContainerRef,
+} from '@react-navigation/native'
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs'
 import {
   Home, Code2, BookOpen, ClipboardList, Trophy, Gavel, Shield, User,
@@ -24,11 +26,17 @@ import {
 } from './src/api/client'
 import { FALLBACK_THEME, MIN_TOUCH } from './src/theme'
 import { SplashScreen } from './src/screens/SplashScreen'
+import { registerForPush, unregisterPush } from './src/lib/push'
 import { LoginScreen } from './src/screens/LoginScreen'
 import { TabPlaceholder } from './src/screens/TabPlaceholder'
 import { ProblemsStack } from './src/screens/ProblemsStack'
 import { JudgeStack } from './src/screens/JudgeStack'
 import { AdminStack } from './src/screens/AdminStack'
+import { HomeScreen } from './src/screens/HomeScreen'
+import { CoursesStack } from './src/screens/CoursesStack'
+import { AssessmentsScreen } from './src/screens/AssessmentsScreen'
+import { LeaderboardScreen } from './src/screens/LeaderboardScreen'
+import { ProfileScreen } from './src/screens/ProfileScreen'
 
 // Hold the native splash until React has painted the in-app splash, so
 // there is never a white flash between them.
@@ -39,6 +47,9 @@ const MIN_SPLASH_MS = 900
 const SPLASH_FADE_MS = 240
 
 const Tab = createBottomTabNavigator()
+
+/** Lets Home's quick-links switch tabs without prop-drilling navigation. */
+const navigationRef = createNavigationContainerRef<Record<string, object | undefined>>()
 
 /** Closed icon registry: string key → component. Lookup, not policy. */
 const ICONS: Record<string, LucideIcon> = {
@@ -53,6 +64,17 @@ const ICONS: Record<string, LucideIcon> = {
 }
 
 const RANK: Record<string, number> = { user: 0, judge: 1, tenant_admin: 2, superadmin: 3 }
+
+/** Web-path prefix → manifest tab label, for notification deep links. */
+const TAB_FOR_LINK: Array<[string, string]> = [
+  ['/dashboard/problems', 'Problems'],
+  ['/dashboard/courses', 'Courses'],
+  ['/dashboard/assessments', 'Assess'],
+  ['/dashboard/leaderboard', 'Ranks'],
+  ['/dashboard/events', 'Judge'],
+  ['/dashboard/admin', 'Admin'],
+  ['/dashboard', 'Home'],
+]
 
 type Status = 'loading' | 'login' | 'ready'
 
@@ -127,10 +149,44 @@ export default function App(): React.JSX.Element {
   }, [])
 
   const signOut = useCallback(async (): Promise<void> => {
+    await unregisterPush().catch(() => {})
     await clearToken()
     setDoc(null)
     setStatus('login')
   }, [])
+
+  // Register this device for push once signed in. Best-effort: a missing
+  // Firebase config file must never block the app from working.
+  useEffect(() => {
+    if (status !== 'ready') return
+    void registerForPush().then((r) => {
+      if (!r.ok && r.reason === 'not-configured') {
+        console.warn('[push]', r.message)
+      }
+    })
+  }, [status])
+
+  // Notification taps carry a `link` (web path). Switch to the matching tab
+  // when we have one; otherwise the payload is informational only.
+  useEffect(() => {
+    if (status !== 'ready') return
+    let sub: { remove: () => void } | undefined
+    void import('expo-notifications')
+      .then((Notifications) => {
+        const handle = (data: Record<string, unknown> | undefined): void => {
+          const link = typeof data?.link === 'string' ? data.link : ''
+          if (!link) return
+          const match = TAB_FOR_LINK.find(([prefix]) => link.includes(prefix))
+          if (match && navigationRef.isReady()) navigationRef.navigate(match[1])
+        }
+        Notifications.addNotificationResponseReceivedListener((res) => {
+          handle(res.notification.request.content.data as Record<string, unknown>)
+        })
+        sub = Notifications.addNotificationReceivedListener(() => {})
+      })
+      .catch(() => {})
+    return () => sub?.remove()
+  }, [status])
 
   const theme: ThemeTokens = doc?.theme ?? FALLBACK_THEME
 
@@ -187,7 +243,7 @@ export default function App(): React.JSX.Element {
   }
 
   return shell(
-    <NavigationContainer theme={navTheme}>
+    <NavigationContainer theme={navTheme} ref={navigationRef}>
       <StatusBar style={theme.mode === 'dark' ? 'light' : 'dark'} />
       <Tab.Navigator
         screenOptions={{
@@ -200,6 +256,9 @@ export default function App(): React.JSX.Element {
         {tabs.map((t) => {
           const Icon = ICONS[t.icon] ?? User
           return (
+            // ponytail: the tab's `name` is its label (from the manifest), not
+            // its stable id — renames change route keys. Acceptable while
+            // code navigates by label; switch to t.id if labels ever churn.
             <Tab.Screen
               key={t.id}
               name={t.label}
@@ -217,24 +276,35 @@ export default function App(): React.JSX.Element {
                         Complete biometric enrollment on the web to unlock proctored assessments.
                       </Text>
                     </View>
+                  ) : t.id === 'home' ? (
+                    <HomeScreen
+                      theme={theme}
+                      userName={doc.user.name ?? doc.user.email}
+                      tabs={tabs}
+                      onNavigate={(label) => navigationRef.current?.navigate(label)}
+                    />
                   ) : t.id === 'problems' ? (
                     <ProblemsStack theme={theme} />
+                  ) : t.id === 'courses' ? (
+                    <CoursesStack theme={theme} />
+                  ) : t.id === 'assessments' ? (
+                    <AssessmentsScreen theme={theme} />
+                  ) : t.id === 'leaderboard' ? (
+                    <LeaderboardScreen theme={theme} />
                   ) : t.id === 'judge' ? (
                     <JudgeStack theme={theme} role={doc.user.role} />
                   ) : t.id === 'admin' ? (
                     <AdminStack theme={theme} />
+                  ) : t.id === 'profile' ? (
+                    <ProfileScreen
+                      theme={theme}
+                      user={doc.user}
+                      faceEnrollmentRequired={doc.flags.faceEnrollmentRequired}
+                      onSignOut={() => void signOut()}
+                    />
                   ) : (
                     <TabPlaceholder theme={theme} tab={t} userName={doc.user.name ?? doc.user.email} />
                   )}
-                  {t.id === 'profile' ? (
-                    <TouchableOpacity
-                      style={[styles.signOut, { borderColor: theme.border }]}
-                      onPress={() => void signOut()}
-                      activeOpacity={0.7}
-                    >
-                      <Text style={[styles.signOutText, { color: '#F87171' }]}>Sign out</Text>
-                    </TouchableOpacity>
-                  ) : null}
                 </View>
               )}
             </Tab.Screen>

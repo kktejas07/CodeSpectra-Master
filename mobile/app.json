@@ -21,7 +21,9 @@
     "android": {
       "package": "ai.codespectra.app",
       "versionCode": 1,
-      "permissions": ["CAMERA"],
+      "permissions": [
+        "CAMERA"
+      ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
         "backgroundColor": "#080D17"
@@ -46,6 +48,19 @@
             "image": "./assets/splash-icon.png",
             "backgroundColor": "#080D17"
           }
+        }
+      ],
+      [
+        "expo-video",
+        {
+          "supportsBackgroundPlayback": false,
+          "supportsPictureInPicture": true
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "color": "#00D681"
         }
       ]
     ],

@@ -1,5 +1,7 @@
 # KYC Integration Setup Guide
 
+> **Auto-Generated**: Internal Engineering documentation.
+
 ## Didit (Global KYC)
 
 ### Step 1: Create Account
