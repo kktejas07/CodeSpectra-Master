@@ -313,6 +313,8 @@ export async function POST(request: Request) {
       starts_at: body.starts_at || null,
       ends_at: body.ends_at || null,
       require_token_links: body.require_token_links === true,
+      require_id_verification: body.require_id_verification === false ? false : true,
+      require_face_capture: body.require_face_capture === false ? false : true,
       questions: numQuestions,
       questionList,
       access_type: body.access_type || 'invite_only',

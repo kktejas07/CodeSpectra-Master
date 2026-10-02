@@ -65,6 +65,8 @@ interface Exam {
   starts_at?: string | null
   ends_at?: string | null
   require_token_links?: boolean | null
+  require_id_verification?: boolean | null
+  require_face_capture?: boolean | null
   questions: number
   questionList: Question[]
   published: boolean
@@ -207,6 +209,8 @@ export default function ExamReviewPage() {
   const [metaStartsAt, setMetaStartsAt] = useState('')
   const [metaEndsAt, setMetaEndsAt] = useState('')
   const [metaRequireTokenLinks, setMetaRequireTokenLinks] = useState(false)
+  const [metaRequireId, setMetaRequireId] = useState(true)
+  const [metaRequireFace, setMetaRequireFace] = useState(true)
   const [metaCertTemplate, setMetaCertTemplate] = useState('classic')
   const [metaDegreeType, setMetaDegreeType] = useState('')
   const [metaBranch, setMetaBranch] = useState('')
@@ -230,6 +234,9 @@ export default function ExamReviewPage() {
         setMetaStartsAt(found.starts_at ? new Date(found.starts_at).toISOString().slice(0, 16) : '')
         setMetaEndsAt(found.ends_at ? new Date(found.ends_at).toISOString().slice(0, 16) : '')
         setMetaRequireTokenLinks((found as { require_token_links?: boolean }).require_token_links === true)
+        // Missing/null = true (strict, backward-compat for pre-flag assessments).
+        setMetaRequireId((found as { require_id_verification?: boolean | null }).require_id_verification !== false)
+        setMetaRequireFace((found as { require_face_capture?: boolean | null }).require_face_capture !== false)
         setMetaCertTemplate(found.cert_template || 'classic')
         setMetaDegreeType(found.degree_type || '')
         setMetaBranch(found.branch || '')
@@ -287,13 +294,15 @@ export default function ExamReviewPage() {
           starts_at: startsIso,
           ends_at: endsIso,
           require_token_links: metaRequireTokenLinks,
+          require_id_verification: metaRequireId,
+          require_face_capture: metaRequireFace,
           cert_template: metaCertTemplate,
           degree_type: metaDegreeType,
           branch: metaBranch,
           screening_type: metaScreeningType,
         })
       })
-      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
+      setExam({ ...exam, title: metaTitle, subject: metaSubject, level: metaLevel, duration: metaDuration, starts_at: startsIso, ends_at: endsIso, require_token_links: metaRequireTokenLinks, require_id_verification: metaRequireId, require_face_capture: metaRequireFace, cert_template: metaCertTemplate, degree_type: metaDegreeType, branch: metaBranch, screening_type: metaScreeningType })
       setEditingMeta(false)
       addToast({ type: 'success', title: 'Assessment details updated' })
     } catch {
@@ -579,6 +588,24 @@ export default function ExamReviewPage() {
                     className="h-4 w-4 rounded border-input accent-primary"
                   />
                   <span className="text-muted-foreground whitespace-nowrap">Require personal links</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Off = candidates skip the Government-ID capture/OCR step">
+                  <input
+                    type="checkbox"
+                    checked={metaRequireId}
+                    onChange={(e) => setMetaRequireId(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Require ID</span>
+                </label>
+                <label className="flex items-center gap-1.5 text-xs cursor-pointer" title="Off = candidates skip the live-face capture/verify step">
+                  <input
+                    type="checkbox"
+                    checked={metaRequireFace}
+                    onChange={(e) => setMetaRequireFace(e.target.checked)}
+                    className="h-4 w-4 rounded border-input accent-primary"
+                  />
+                  <span className="text-muted-foreground whitespace-nowrap">Require face</span>
                 </label>
                 <div className="flex items-center gap-1.5">
                   <Label className="text-xs text-muted-foreground whitespace-nowrap">Cert Template:</Label>

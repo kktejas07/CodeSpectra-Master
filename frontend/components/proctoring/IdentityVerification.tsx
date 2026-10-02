@@ -9,12 +9,18 @@ import { FaceCamera } from '@/components/auth/face-camera'
 import { X, ShieldAlert, ArrowRight, FileText, AlertCircle, RefreshCw, Camera, User, Check, Loader2 } from "lucide-react"
 
 interface IdentityVerificationProps {
-  onComplete: (data: { idPhoto: string; facePhoto: string }) => void
+  onComplete: (data: { idPhoto: string | null; facePhoto: string | null }) => void
   onCancel: () => void
   examTitle: string
+  /** False = skip the Government-ID step. Defaults true (strict, backward-compat). */
+  requireId?: boolean | null
+  /** False = skip the live-face step. Defaults true (strict, backward-compat). */
+  requireFace?: boolean | null
 }
 
-export function IdentityVerification({ onComplete, onCancel, examTitle }: IdentityVerificationProps) {
+export function IdentityVerification({ onComplete, onCancel, examTitle, requireId = true, requireFace = true }: IdentityVerificationProps) {
+  const needId = requireId !== false
+  const needFace = requireFace !== false
   const addToast = useToast()
   const [step, setStep] = useState<'consent' | 'capture_id' | 'capture_face' | 'confirm'>('consent')
   
@@ -81,8 +87,17 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
 
   const handleNextFromConsent = () => {
     if (agreedTerms && agreedPrivacy) {
-      setStep('capture_id')
-      startCamera()
+      // No identity steps required — consent alone completes verification.
+      if (!needId && !needFace) {
+        onComplete({ idPhoto: null, facePhoto: null })
+        return
+      }
+      if (needId) {
+        setStep('capture_id')
+        startCamera()
+      } else {
+        setStep('capture_face')
+      }
     }
   }
 
@@ -130,7 +145,11 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
         
         addToast({ type: 'success', title: 'ID Verified', message: 'Name matches account profile.' })
         stopCamera()
-        setStep('capture_face')
+        if (needFace) {
+          setStep('capture_face')
+        } else {
+          setStep('confirm')
+        }
       } catch (err: any) {
         setIdError(err.message)
       } finally {
@@ -147,7 +166,10 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
   }
 
   const handleFinish = async () => {
-    if (idPhoto && facePhoto && faceDescriptor) {
+    const idOk = !needId || !!idPhoto
+    const faceOk = !needFace || !!facePhoto
+    if (!idOk || !faceOk) return
+    if (needFace && facePhoto && faceDescriptor) {
       setIsVerifying(true)
       try {
         const res = await csrfFetch('/api/assessment/face-verify', {
@@ -167,10 +189,10 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
       } finally {
         setIsVerifying(false)
       }
-    } else if (idPhoto && facePhoto) {
-      // Fallback if no descriptor
-      if (useAsProfile) setProfileAvatar(facePhoto)
-      onComplete({ idPhoto, facePhoto })
+    } else if (idOk && faceOk) {
+      // Fallback if no descriptor (or face step skipped)
+      if (useAsProfile && facePhoto) setProfileAvatar(facePhoto)
+      onComplete({ idPhoto: idPhoto ?? null, facePhoto: facePhoto ?? null })
     }
   }
 
@@ -214,11 +236,15 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
           <h2 className="text-xl font-bold text-foreground">Identity Verification</h2>
           <p className="text-xs text-muted-foreground mt-1">Required for starting: <strong className="text-foreground">{examTitle}</strong></p>
           
-          {/* Steps Indicator */}
+          {/* Steps Indicator — skipped steps render muted so the bar matches the active flow */}
           <div className="flex items-center gap-2 mt-4">
             <div className={`h-1.5 flex-1 rounded-full ${step === 'consent' ? 'bg-primary' : 'bg-primary/30'}`} />
-            <div className={`h-1.5 flex-1 rounded-full ${step === 'capture_id' ? 'bg-primary' : idPhoto ? 'bg-primary/50' : 'bg-muted'}`} />
-            <div className={`h-1.5 flex-1 rounded-full ${step === 'capture_face' ? 'bg-primary' : facePhoto ? 'bg-primary/50' : 'bg-muted'}`} />
+            {needId && (
+              <div className={`h-1.5 flex-1 rounded-full ${step === 'capture_id' ? 'bg-primary' : idPhoto ? 'bg-primary/50' : 'bg-muted'}`} />
+            )}
+            {needFace && (
+              <div className={`h-1.5 flex-1 rounded-full ${step === 'capture_face' ? 'bg-primary' : facePhoto ? 'bg-primary/50' : 'bg-muted'}`} />
+            )}
             <div className={`h-1.5 flex-1 rounded-full ${step === 'confirm' ? 'bg-primary' : 'bg-muted'}`} />
           </div>
         </div>
@@ -233,7 +259,9 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                 <ul className="list-disc pl-4 space-y-1.5 text-muted-foreground text-xs">
                   <li><strong>Proctored Environment:</strong> We monitor your camera stream, eye movements, and active browser tab.</li>
                   <li><strong>Zero Cheating Tolerance:</strong> Switching tabs, copy-pasting, or using external AI resources will flag your assessment.</li>
-                  <li><strong>Identity Check:</strong> You must verify your identity before taking the assessment.</li>
+                  {(needId || needFace) && (
+                    <li><strong>Identity Check:</strong> You must verify your identity before taking the assessment{!needId ? ' (face selfie only)' : !needFace ? ' (ID only)' : ''}.</li>
+                  )}
                 </ul>
               </div>
             </div>
@@ -259,7 +287,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                   className="mt-1 h-4 w-4 rounded border-input text-primary focus:ring-primary"
                 />
                 <span className="text-muted-foreground text-xs">
-                  I consent to CodeSpectra collecting my live face photo and Government ID photo. I understand these are used solely by the recruiting team for verification and will be stored securely.
+                  I consent to CodeSpectra collecting {needId && needFace ? 'my live face photo and Government ID photo' : needId ? 'my Government ID photo' : needFace ? 'my live face photo' : 'session proctoring data'}. I understand {needId || needFace ? 'these are' : 'it is'} used solely by the recruiting team for verification and will be stored securely.
                 </span>
               </label>
             </div>
@@ -271,14 +299,14 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                 disabled={!agreedTerms || !agreedPrivacy}
                 className="gap-2"
               >
-                Proceed <ArrowRight className="h-4 w-4" />
+                {(!needId && !needFace) ? (<>Start Assessment <ArrowRight className="h-4 w-4" /></>) : (<>Proceed <ArrowRight className="h-4 w-4" /></>)}
               </Button>
             </div>
           </div>
         )}
 
-        {/* Step 2: Capture ID */}
-        {step === 'capture_id' && (
+        {/* Step 2: Capture ID (skipped when requireId === false) */}
+        {needId && step === 'capture_id' && (
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-base flex items-center justify-center gap-2">
@@ -373,8 +401,10 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                 <Button onClick={handleNextFromId} disabled={!idPhoto || isIdVerifying} className="gap-2">
                   {isIdVerifying ? (
                     <><Loader2 className="h-4 w-4 animate-spin" /> Verifying...</>
-                  ) : (
+                  ) : needFace ? (
                     <>Next: Face Capture <ArrowRight className="h-4 w-4" /></>
+                  ) : (
+                    <>Next: Review <ArrowRight className="h-4 w-4" /></>
                   )}
                 </Button>
               </div>
@@ -382,8 +412,8 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
           </div>
         )}
 
-        {/* Step 3: Capture Face */}
-        {step === 'capture_face' && (
+        {/* Step 3: Capture Face (skipped when requireFace === false) */}
+        {needFace && step === 'capture_face' && (
           <div className="space-y-4">
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-base flex items-center justify-center gap-2">
@@ -415,7 +445,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
             </div>
 
             <div className="flex justify-end gap-3 border-t pt-4">
-              <Button variant="outline" onClick={() => { setStep('capture_id'); startCamera(); }}>Back</Button>
+              <Button variant="outline" onClick={() => { if (needId) { setStep('capture_id'); startCamera(); } else { setStep('consent'); } }}>Back</Button>
             </div>
           </div>
         )}
@@ -426,11 +456,12 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
             <div className="text-center space-y-1">
               <h3 className="font-semibold text-base">Review Verification Photos</h3>
               <p className="text-xs text-muted-foreground">
-                Verify that both images are clear and readable. If correct, submit to start the assessment.
+                Verify that {needId && needFace ? 'both images are' : 'the image is'} clear and readable. If correct, submit to start the assessment.
               </p>
             </div>
 
-            <div className="grid grid-cols-2 gap-4">
+            <div className={`grid gap-4 ${needId && needFace ? 'grid-cols-2' : 'grid-cols-1 max-w-xs mx-auto w-full'}`}>
+              {needId && (
               <div className="space-y-1.5">
                 <span className="text-xs font-semibold text-muted-foreground block text-center">Government ID</span>
                 <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted">
@@ -440,7 +471,9 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                   Retake ID
                 </Button>
               </div>
+              )}
 
+              {needFace && (
               <div className="space-y-1.5">
                 <span className="text-xs font-semibold text-muted-foreground block text-center">Live Face Selfie</span>
                 <div className="aspect-4/3 rounded-lg border overflow-hidden bg-muted">
@@ -450,8 +483,10 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                   Retake Selfie
                 </Button>
               </div>
+              )}
             </div>
 
+            {needFace && (
             <label className="flex items-start gap-3 cursor-pointer p-3 bg-muted/40 rounded-lg border text-sm">
                 <input
                   type="checkbox"
@@ -463,9 +498,10 @@ export function IdentityVerification({ onComplete, onCancel, examTitle }: Identi
                   Also use my verification selfie as my profile picture. You can change it anytime from Profile &gt; Edit.
                 </span>
               </label>
+            )}
 
             <div className="flex justify-end gap-3 border-t pt-4">
-              <Button variant="outline" onClick={() => { setStep('capture_face'); }}>Back</Button>
+              <Button variant="outline" onClick={() => { if (needFace) { setStep('capture_face'); } else if (needId) { setStep('capture_id'); startCamera(); } else { setStep('consent'); } }}>Back</Button>
               <Button onClick={handleFinish} disabled={isVerifying} className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white">
                 {isVerifying ? 'Verifying...' : <><Check className="h-4 w-4" /> Start Assessment Now</>}
               </Button>
