@@ -63,6 +63,14 @@ interface Exam {
   level: string
   duration: number
   publicLinkViews?: number
+  plagiarismReport?: {
+    score: number
+    pairs: number
+    aiFlags: number
+    bankMatches: number
+    leaks: number
+    checked_at: string
+  } | null
 }
 
 interface QuestionDetail {
@@ -332,6 +340,8 @@ export default function ExamResultsPage() {
       }
       if (!res.ok) throw new Error(json?.error || `Check failed (${res.status})`)
       setPlagResult(json)
+      // Refresh the header badge (report is persisted on the exam).
+      await fetchData().catch(() => {})
     } catch (e: unknown) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Plagiarism check failed' })
       setPlagOpen(false)
@@ -1393,6 +1403,15 @@ export default function ExamResultsPage() {
               className={jevConfigured ? 'gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'gap-1 bg-muted text-muted-foreground'}
             >
               <ShieldAlert className="w-3.5 h-3.5" /> {jevConfigured ? 'Jev verified' : 'Jev off'}
+            </Badge>
+          )}
+          {exam?.plagiarismReport && (
+            <Badge
+              variant="secondary"
+              title={`Checked ${new Date(exam.plagiarismReport.checked_at).toLocaleString()} · ${exam.plagiarismReport.pairs} pair(s), ${exam.plagiarismReport.aiFlags} AI flag(s), ${exam.plagiarismReport.bankMatches} bank match(es)`}
+              className={exam.plagiarismReport.score > 0 ? 'gap-1 bg-rose-500/10 text-rose-500 border-rose-500/20' : 'gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20'}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" /> Plagiarism {exam.plagiarismReport.score}/100
             </Badge>
           )}
           {pendingGradingCount > 0 && (

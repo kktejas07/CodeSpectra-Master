@@ -197,6 +197,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         level: exam.level || '',
         duration: exam.duration || 0,
         publicLinkViews: exam.public_link_views || 0,
+        plagiarismReport: exam.plagiarism_report || null,
       },
       results,
       plagiarism,

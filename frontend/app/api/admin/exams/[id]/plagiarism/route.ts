@@ -55,8 +55,22 @@ export async function POST(
       return u ? u.fullName || u.name || u.email || uid : uid
     }
 
+    // Persist the latest report on the exam so the results header can badge
+    // it without re-running the (expensive) check on every page load.
+    const checkedAt = new Date().toISOString()
+    const report = {
+      score: result.plagiarism.score,
+      pairs: result.plagiarism.suspiciousPairs.length,
+      aiFlags: result.plagiarism.aiGeneratedFlags.length,
+      bankMatches: result.plagiarism.questionBankMatches.length,
+      leaks: result.leaks.totalFlagged,
+      checked_at: checkedAt,
+    }
+    await db.collection('exams').updateOne({ id: examId }, { $set: { plagiarism_report: report } })
+
     return NextResponse.json({
       score: result.plagiarism.score,
+      checked_at: checkedAt,
       suspiciousPairs: result.plagiarism.suspiciousPairs.map((p) => ({
         ...p,
         name1: nameOf(p.userId1),
