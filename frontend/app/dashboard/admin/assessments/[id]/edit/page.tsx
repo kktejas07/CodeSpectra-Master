@@ -35,6 +35,8 @@ interface Question {
   options?: string[]
   answer?: string
   score: number
+  /** Coding only: stdin → expected stdout pairs the grader executes. */
+  test_cases?: { input: string; output: string }[]
 }
 
 interface BankQuestionRow {
@@ -1149,6 +1151,58 @@ export default function ExamReviewPage() {
                   />
                   <p className="text-xs text-muted-foreground">
                     This will be shown to the reviewer side-by-side with the candidate&apos;s answer during manual grading.
+                  </p>
+                </div>
+              )}
+              {/* Hidden test cases for coding questions — executed for scoring */}
+              {editingQuestion.type === 'coding' && (
+                <div className="grid gap-2">
+                  <Label>Hidden Test Cases <span className="text-muted-foreground font-normal">(stdin → expected stdout, run for scoring)</span></Label>
+                  {(editingQuestion.test_cases || []).map((tc, i) => (
+                    <div key={i} className="flex items-start gap-2">
+                      <Input
+                        value={tc.input}
+                        onChange={(e) => {
+                          const next = [...(editingQuestion.test_cases || [])]
+                          next[i] = { ...next[i], input: e.target.value }
+                          setEditingQuestion({ ...editingQuestion, test_cases: next })
+                        }}
+                        placeholder={`stdin ${i + 1}`}
+                        className="font-mono text-xs"
+                      />
+                      <Input
+                        value={tc.output}
+                        onChange={(e) => {
+                          const next = [...(editingQuestion.test_cases || [])]
+                          next[i] = { ...next[i], output: e.target.value }
+                          setEditingQuestion({ ...editingQuestion, test_cases: next })
+                        }}
+                        placeholder={`expected stdout ${i + 1}`}
+                        className="font-mono text-xs"
+                      />
+                      <Button
+                        variant="ghost"
+                        size="sm"
+                        className="h-9 w-9 shrink-0 p-0 text-destructive"
+                        title="Remove test case"
+                        onClick={() => setEditingQuestion({ ...editingQuestion, test_cases: (editingQuestion.test_cases || []).filter((_, j) => j !== i) })}
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))}
+                  {(editingQuestion.test_cases || []).length < 10 && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="w-fit gap-1"
+                      onClick={() => setEditingQuestion({ ...editingQuestion, test_cases: [...(editingQuestion.test_cases || []), { input: '', output: '' }] })}
+                    >
+                      <Plus className="h-3.5 w-3.5" /> Add test case
+                    </Button>
+                  )}
+                  <p className="text-xs text-muted-foreground">
+                    Without test cases the code is graded by AI judgment; with them, the score comes from actual execution (passed ÷ total).
                   </p>
                 </div>
               )}

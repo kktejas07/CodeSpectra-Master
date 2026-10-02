@@ -225,6 +225,7 @@ type SecretsDraft = {
   browserbase_api_key: string
   brightdata_api_key: string
   scrapingbee_api_key: string
+  typesafe_api_key: string
   internal_backend_secret: string
 }
 
@@ -303,6 +304,7 @@ const emptySecretsDraft = (): SecretsDraft => ({
   browserbase_api_key: '',
   brightdata_api_key: '',
   scrapingbee_api_key: '',
+  typesafe_api_key: '',
   internal_backend_secret: '',
 })
 
@@ -2002,6 +2004,55 @@ function SystemSettingsInner() {
                       className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
                     >
                       {visibleFields.internal_backend_secret ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                    </button>
+                  </div>
+                </div>
+
+                {/* TypeSafe Jev (grade verification second opinion) */}
+                <div className="space-y-3 rounded-lg border border-border/60 bg-card/40 p-4" data-testid="jev-section">
+                  <div className="flex items-center justify-between">
+                    <p className="text-sm font-semibold text-foreground">Grade verification (TypeSafe Jev)</p>
+                    <div className="flex items-center gap-2">
+                      {secretsMeta.has_typesafe_api_key ? (
+                        <span className="rounded-full bg-emerald-500/15 text-emerald-300 px-2 py-0.5 text-[10px] uppercase font-medium">✓ Active</span>
+                      ) : (
+                        <span className="rounded-full bg-amber-500/15 text-amber-300 px-2 py-0.5 text-[10px] uppercase font-medium">Not configured</span>
+                      )}
+                      <span className="rounded-full bg-primary/15 text-primary px-2 py-0.5 text-[10px] uppercase tracking-wide">Dynamic</span>
+                    </div>
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Decision-only second opinion on LLM grades (descriptive + non-executed code).
+                    Jev answers two yes/no checks per grade and escalates to human review on
+                    disagreement — it can never lower a grade or clear caution. Key from{' '}
+                    <code>console.typesafe.ai → Settings → Keys</code>. Without this, free-text
+                    grades still work but are always flagged for human review (fail-closed).
+                  </p>
+                  {secretsMeta.has_typesafe_api_key ? (
+                    <p className="font-mono text-[11px] text-muted-foreground">
+                      Current key: {String(secretsMeta.typesafe_api_key_masked ?? '—')}
+                    </p>
+                  ) : null}
+                  <div className="relative">
+                    <Input
+                      id="sec_typesafe_api_key"
+                      type={visibleFields.typesafe_api_key ? 'text' : 'password'}
+                      value={visibleFields.typesafe_api_key ? (revealedValues.typesafe_api_key ?? '') : '••••••••'}
+                      onChange={(e) =>
+                        setSecretsDraft((d) => ({ ...d, typesafe_api_key: e.target.value }))
+                      }
+                      placeholder="ts_…  (leave blank to keep saved key)"
+                      className="font-mono pr-10"
+                      data-testid="jev-key-input"
+                      autoComplete="off"
+                    />
+                    <button
+                      type="button"
+                      tabIndex={-1}
+                      onClick={() => handleRevealToggle('typesafe_api_key')}
+                      className="absolute right-2 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground" title="Toggle visibility"
+                    >
+                      {visibleFields.typesafe_api_key ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
                     </button>
                   </div>
                 </div>

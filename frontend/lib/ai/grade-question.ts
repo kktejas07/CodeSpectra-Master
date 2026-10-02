@@ -2,6 +2,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import { answersEqual, multisetEqual, canonicalObjectiveType } from '@/lib/grading'
 import { executeOnce } from '@/lib/piston'
+import { verifyGrade } from '@/lib/ai/jev'
 
 export const OBJECTIVE_TYPES = ['multiple-choice', 'mcq', 'true_false', 'multiple_response', 'fill_blanks']
 
@@ -59,6 +60,9 @@ export interface GradeResult {
   feedback: string
   confidence?: number
   requires_human_review?: boolean
+  /** Jev second opinion (free-text LLM grades only). Null = unverified. */
+  jev_agree?: boolean | null
+  jev_confidence?: number | null
 }
 
 function normalizeSet(value: string): Set<string> {
@@ -292,13 +296,42 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
     : recommended >= maxPoints ? 'correct' : recommended > 0 ? 'partial' : 'incorrect'
 
   const confidence = typeof (parsed as any)?.confidence === 'number' ? (parsed as any).confidence : 1.0
-  const requires_human_review = !!(parsed as any)?.requires_human_review || confidence < 0.75
+  let requires_human_review = !!(parsed as any)?.requires_human_review || confidence < 0.75
+
+  // ── Jev second opinion (LLM-judged scores only) ──
+  // Execution-scored code (finalAwarded set) skips this: the score is measured,
+  // not judged, so there is nothing to second-guess. For LLM-judged grades Jev
+  // can only ESCALATE to human review, never clear the grader's own caution.
+  // Jev unavailable (no key / error) also escalates — fail-closed, never a
+  // silent pass. One extra API call per free-text grade, paced by the caller.
+  let jev_agree: boolean | null = null
+  let jev_confidence: number | null = null
+  if (finalAwarded === undefined) {
+    try {
+      const jev = await verifyGrade({
+        questionText,
+        modelAnswer,
+        candidateAnswer,
+        awarded: recommended,
+        maxPoints,
+      })
+      if (jev) {
+        jev_agree = jev.agree
+        jev_confidence = jev.confidence
+        if (!jev.agree && jev.confidence >= 0.7) requires_human_review = true
+      } else {
+        requires_human_review = true
+      }
+    } catch {
+      requires_human_review = true
+    }
+  }
 
   if (!feedback && !Number.isFinite(awarded)) {
     // Graceful fallback — return 0 points instead of crashing the whole review page
     console.warn('[ai-grade] LLM returned unstructured response, falling back to 0')
-    return { recommended: 0, verdict: 'incorrect', feedback: 'AI could not evaluate this answer — manual review recommended.', confidence: 0.0, requires_human_review: true }
+    return { recommended: 0, verdict: 'incorrect', feedback: 'AI could not evaluate this answer — manual review recommended.', confidence: 0.0, requires_human_review: true, jev_agree, jev_confidence }
   }
 
-  return { recommended, verdict: verdict as GradeResult['verdict'], feedback, confidence, requires_human_review }
+  return { recommended, verdict: verdict as GradeResult['verdict'], feedback, confidence, requires_human_review, jev_agree, jev_confidence }
 }

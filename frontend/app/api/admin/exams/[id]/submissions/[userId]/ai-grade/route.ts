@@ -64,6 +64,8 @@ export async function POST(
       modelAnswer,
       type: q.type || '',
       maxPoints,
+      options: Array.isArray(q.options) ? q.options.map(String) : undefined,
+      testCases: q.test_cases || q.testCases,
     })
 
     return NextResponse.json({
@@ -73,6 +75,8 @@ export async function POST(
       max_points: maxPoints,
       verdict: result.verdict,
       feedback: result.feedback,
+      jev_agree: result.jev_agree ?? null,
+      jev_confidence: result.jev_confidence ?? null,
     })
   } catch (e: unknown) {
     const msg = e instanceof Error ? e.message : 'AI grading failed'

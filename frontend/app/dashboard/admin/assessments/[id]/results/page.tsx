@@ -65,6 +65,8 @@ interface QuestionDetail {
   remarks?: string
   requires_human_review?: boolean
   confidence?: number
+  jev_agree?: boolean | null
+  jev_confidence?: number | null
 }
 
 interface ReviewData {
@@ -262,6 +264,9 @@ export default function ExamResultsPage() {
   const [reviewLoading, setReviewLoading] = useState(false)
   const [releasing, setReleasing] = useState<string | null>(null)
   const [bulkReleasing, setBulkReleasing] = useState(false)
+  // Jev second-opinion availability (null = not checked yet). Grades work
+  // without it; unverified free-text grades are flagged for human review.
+  const [jevConfigured, setJevConfigured] = useState<boolean | null>(null)
   const [manualGrades, setManualGrades] = useState<Record<string, number>>({})
   const [savingGrades, setSavingGrades] = useState(false)
   const [aiGrading, setAiGrading] = useState<Record<string, boolean>>({})
@@ -339,6 +344,12 @@ export default function ExamResultsPage() {
 
   useEffect(() => { fetchData() }, [fetchData])
   useEffect(() => { fetchRecovery() }, [fetchRecovery])
+  useEffect(() => {
+    fetch('/api/admin/jev-status', { credentials: 'include' })
+      .then((r) => r.json())
+      .then((j) => setJevConfigured(j.configured === true))
+      .catch(() => setJevConfigured(false))
+  }, [])
 
   // Real-time polling for proctor events when review modal is open
   useEffect(() => {
@@ -1177,6 +1188,15 @@ export default function ExamResultsPage() {
               <Clock className="w-3.5 h-3.5" /> {pendingGradingCount} awaiting grading
             </Badge>
           )}
+          {jevConfigured !== null && (
+            <Badge
+              variant="secondary"
+              title={jevConfigured ? 'Jev second-opinion verification active — disagreements escalate to human review' : 'Jev key not configured — free-text grades will be flagged for human review'}
+              className={jevConfigured ? 'gap-1 bg-emerald-500/10 text-emerald-600 border-emerald-500/20' : 'gap-1 bg-muted text-muted-foreground'}
+            >
+              <ShieldAlert className="w-3.5 h-3.5" /> {jevConfigured ? 'Jev verified' : 'Jev off'}
+            </Badge>
+          )}
           {pendingGradingCount > 0 && (
             <Button
               variant="outline"
@@ -1477,6 +1497,15 @@ export default function ExamResultsPage() {
                                   {detail?.requires_human_review && (
                                     <Badge variant="outline" className="text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0" title="AI Confidence was low, human review is recommended">
                                       <AlertTriangle className="w-3 h-3 mr-1" /> Review Recommended
+                                    </Badge>
+                                  )}
+                                  {detail?.jev_agree !== undefined && detail?.jev_agree !== null && (
+                                    <Badge
+                                      variant="outline"
+                                      title={detail.jev_agree ? 'Jev second opinion agreed with the AI grade' : 'Jev second opinion disagreed — check this grade manually'}
+                                      className={detail.jev_agree ? 'text-emerald-500 bg-emerald-500/10 border-emerald-500/30 shrink-0' : 'text-rose-500 bg-rose-500/10 border-rose-500/30 shrink-0'}
+                                    >
+                                      <ShieldAlert className="w-3 h-3 mr-1" /> Jev {detail.jev_agree ? 'agreed' : 'disputed'}{detail.jev_confidence !== undefined && detail.jev_confidence !== null ? ` ${Math.round(detail.jev_confidence * 100)}%` : ''}
                                     </Badge>
                                   )}
                                   <Badge variant={detail?.correct ? 'default' : 'secondary'} className={`shrink-0 ${detail?.correct ? 'bg-emerald-500/20 text-emerald-500 border-emerald-500/30' : 'text-rose-500 bg-rose-500/10 border-rose-500/30'}`}>

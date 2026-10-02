@@ -7,6 +7,7 @@
  */
 import { getMongoDb } from '@/lib/mongodb'
 import { createHash } from 'crypto'
+import { sanitizeTestCases } from '@/lib/grading'
 import type { Collection } from 'mongodb'
 
 export type BankQuestionType = 'mcq' | 'multiple_response' | 'true_false' | 'coding' | 'descriptive' | 'fill_blanks'
@@ -148,17 +149,9 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
     ? techStackRaw.map((t) => normString(t, 60)).filter(Boolean)
     : normString(techStackRaw, 500).split(',').map((s) => s.trim()).filter(Boolean)
 
-  // test_cases — LLMs emit varied shapes; accept all and normalize.
-  const testCases: BankTestCase[] = []
-  if (Array.isArray(raw.test_cases)) {
-    for (const tc of raw.test_cases as Array<Record<string, unknown>>) {
-      if (tc && typeof tc === 'object') {
-        const input = normString(tc.input ?? tc.stdin, 1000)
-        const output = normString(tc.output ?? tc.expected_output ?? tc.expected_stdout ?? tc.answer, 2000)
-        if (input !== '' || output !== '') testCases.push({ input, output })
-      }
-    }
-  }
+  // test_cases — single injection-safe choke point (array cap, string-only
+  // {input, output}, operator keys dropped). See lib/grading.ts.
+  const testCases: BankTestCase[] = sanitizeTestCases(raw.test_cases)
 
   const branch = normString(raw.branch || raw.domain, 60).toLowerCase()
   const degreeType = normString(raw.degree_type, 40).toLowerCase()
@@ -201,6 +194,9 @@ export function normalizeBankQuestion(raw: Record<string, unknown>): BankQuestio
  * dropped straight into `exams.questionList`.
  */
 export function bankToExamQuestion(b: BankQuestionDoc): Record<string, unknown> {
+  // ponytail: test_cases used to be dropped here, which silently disabled
+  // execution-based coding scores (the grader's Piston path saw no cases).
+  const cases = sanitizeTestCases(b.test_cases)
   return {
     id: crypto.randomUUID(),
     type: b.type,
@@ -209,6 +205,7 @@ export function bankToExamQuestion(b: BankQuestionDoc): Record<string, unknown> 
     options: b.options,
     answer: b.answer,
     score: b.marks,
+    ...(cases.length ? { test_cases: cases } : {}),
     ...(b.branch ? { branch: b.branch } : {}),
     ...(b.subject ? { subject: b.subject } : {}),
     ...(b.difficulty ? { difficulty: b.difficulty } : {}),

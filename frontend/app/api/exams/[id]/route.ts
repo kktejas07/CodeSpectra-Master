@@ -3,6 +3,7 @@ import { requireAuth } from '@/lib/route-auth'
 import { exams } from '@/lib/db/content'
 import type { IdRouteContext } from '@/lib/app-route-context'
 import { getMongoDb } from '@/lib/mongodb'
+import { sanitizeExamQuestionList } from '@/lib/grading'
 
 export async function GET(_request: Request, { params }: IdRouteContext) {
   const gate = await requireAuth().catch(() => ({ error: 'Unauthorized' }))
@@ -68,6 +69,10 @@ export async function PUT(request: Request, { params }: IdRouteContext) {
       if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
     const data = (await request.json()) as Record<string, unknown>
+    // Same injection guard as PATCH /api/exams (see lib/grading.ts).
+    if (Array.isArray(data.questionList)) {
+      data.questionList = sanitizeExamQuestionList(data.questionList)
+    }
     await col.updateOne({ id }, { $set: data })
     const updated = await col.findOne({ id })
     return NextResponse.json(updated)

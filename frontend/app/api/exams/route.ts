@@ -5,6 +5,7 @@ import { getGeneralSettings } from '@/lib/platform-general-settings-server'
 import { backendComplete } from '@/lib/ai/backend'
 import { platformModelOverrides } from '@/lib/ai/platform-model-overrides'
 import { sampleFromBank, bankToExamQuestion } from '@/lib/question-bank'
+import { sanitizeTestCases, sanitizeExamQuestionList } from '@/lib/grading'
 
 export const runtime = 'nodejs'
 
@@ -18,6 +19,7 @@ interface QuestionDoc {
   options?: string[]
   answer?: string
   score: number
+  test_cases?: { input: string; output: string }[]
 }
 
 const CODE_BLOCK_RE = /```(?:json)?\s*([\s\S]*?)```/
@@ -56,6 +58,8 @@ function normalizeQuestion(raw: Record<string, unknown>): QuestionDoc {
   const type = VALID_TYPES.includes(raw.type as QuestionType) ? (raw.type as QuestionType) : 'mcq'
   const options = Array.isArray(raw.options) ? raw.options.map(String).filter(Boolean) : undefined
   const answer = raw.answer ? String(raw.answer) : undefined
+  // Injection-safe: only string input/output pairs survive (see lib/grading.ts).
+  const cases = sanitizeTestCases((raw as Record<string, unknown>).test_cases ?? (raw as Record<string, unknown>).testCases)
   return {
     id: crypto.randomUUID(),
     type,
@@ -64,6 +68,7 @@ function normalizeQuestion(raw: Record<string, unknown>): QuestionDoc {
     options: ['mcq', 'multiple_response', 'true_false', 'fill_blanks'].includes(type) ? options : undefined,
     answer: type === 'coding' || type === 'descriptive' ? answer : answer,
     score: Number(raw.score) || 10,
+    ...(cases.length ? { test_cases: cases } : {}),
   }
 }
 
@@ -237,9 +242,10 @@ export async function POST(request: Request) {
           '- For multiple_response: 4-5 options, mark ALL correct answers in answer field (comma separated)\n' +
           '- For true_false: options=["True","False"], answer="True" or "False"\n' +
           '- For coding: omit options and answer, prompt must describe a specific coding task\n' +
+          '- For coding: ALSO include test_cases as 2-4 objects {"input": "<stdin>", "output": "<exact expected stdout>"} that verify the task — these execute the candidate\'s code for scoring\n' +
           '- For descriptive: omit options, answer should be key points or a model answer\n' +
           '- For fill_blanks: use ___ in prompt for blanks, answer is the missing word(s)\n\n' +
-          'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number }.\n' +
+          'Return ONLY a JSON array. Each object must match: { type:"' + typesStr + '", title:string, prompt:string, options?:string[], answer?:string, score:number' + (allowedTypes.includes('coding') ? ', test_cases?:[{input:string, output:string}] (coding only)' : '') + '}.\n' +
           'Never repeat content. Return exactly ' + remaining + ' items.'
         const aiRes = await backendComplete({
           systemMessage: 'You are a senior technical assessor who creates realistic job screening questions. Each question must test a distinct skill with realistic distractors. Return ONLY valid JSON.',
@@ -351,6 +357,11 @@ export async function PATCH(request: Request) {
       const exam = await db.collection('exams').findOne({ id })
       if (!exam) return NextResponse.json({ error: 'Not found' }, { status: 404 })
       if (exam.tenant_id !== user.tenantId) return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
+    }
+    // Harden the generic passthrough (see lib/grading.ts sanitizeExamQuestionList):
+    // a crafted PATCH must not smuggle operator keys or blobs into the exam doc.
+    if (Array.isArray(updates.questionList)) {
+      updates.questionList = sanitizeExamQuestionList(updates.questionList)
     }
     await db.collection('exams').updateOne({ id }, { $set: { ...updates, updatedAt: new Date().toISOString() } })
     return NextResponse.json({ ok: true })

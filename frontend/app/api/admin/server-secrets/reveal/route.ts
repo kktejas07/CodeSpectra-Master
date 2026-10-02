@@ -70,6 +70,7 @@ const SECRET_FIELDS: (keyof ServerSecretsRecord)[] = [
   'upstash_redis_rest_token',
   'internal_backend_secret',
   'session_secret',
+  'typesafe_api_key',
 ]
 
 export async function GET(request: Request) {
