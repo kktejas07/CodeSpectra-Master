@@ -332,3 +332,4 @@
 | opencode (this session, IDENTITY-DEPLOY2) | DONE — bundle-verified Require ID text in Create dialog, service converged, live 200. | image codespectra-frontend-dmeptb:latest | DONE — LIVE | 2026-10-02 |
 | opencode (this session, CREATE-DIALOG-UI) | DONE — widened Create/Edit Assessment dialog (sm:max-w-160 → 3xl, 92vh scroll cap, roomier 2-col gaps) so footer/fields fit without page scroll. | assessments page | DONE — UNPUSHED | 2026-10-02 |
 | opencode (this session, CREATE-DIALOG-DEPLOY) | DONE — built :latest, converged, live 200. | image codespectra-frontend-dmeptb:latest | DONE — LIVE | 2026-10-02 |
+| opencode (this session, CREATE-3COL) | DONE — Create dialog now 3-col on lg (5xl wide): full-width title/identity/topics/access/published, side-by-side ID+face checkboxes. | assessments page | DONE — UNPUSHED | 2026-10-02 |
