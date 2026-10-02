@@ -25,9 +25,14 @@ function EnrollFaceInner() {
     ? new Date().getTime() - new Date(user.createdAt).getTime() > 7 * 24 * 60 * 60 * 1000 
     : false;
 
-  const handleCapture = useCallback(async (descriptor: Float32Array, imageBase64: string) => {
+  const handleCapture = useCallback(async (descriptor: Float32Array | null, imageBase64: string) => {
     setLoading(true);
     setError(null);
+    if (!descriptor) {
+      setError("Face detection failed — please retry.");
+      setLoading(false);
+      return;
+    }
     try {
       const res = await csrfFetch("/api/auth/face-enroll", {
         method: "POST",

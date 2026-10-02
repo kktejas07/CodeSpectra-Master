@@ -132,9 +132,14 @@ function LoginInner() {
     }
   }
 
-  async function handleFaceLogin(descriptor: Float32Array) {
+  async function handleFaceLogin(descriptor: Float32Array | null) {
     setError(null);
     setLoading(true);
+    if (!descriptor) {
+      setError("Face detection failed — please retry.");
+      setLoading(false);
+      return;
+    }
     try {
       if (!email) {
         throw new Error("Please enter your email to use Face Login.");

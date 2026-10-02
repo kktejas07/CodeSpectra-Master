@@ -434,6 +434,7 @@ export function IdentityVerification({ onComplete, onCancel, examTitle, requireI
             <div className="py-2">
               <FaceCamera 
                 mode="verify" 
+                captureMode="instant"
                 onCapture={(descriptor, base64) => {
                   setFaceDescriptor(descriptor)
                   setFacePhoto(base64)

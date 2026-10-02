@@ -7,8 +7,16 @@ import { Button } from '@/components/ui/button'
 
 interface FaceCameraProps {
   mode: 'enroll' | 'verify'
-  onCapture: (descriptor: Float32Array, imageBase64: string) => void
+  onCapture: (descriptor: Float32Array | null, imageBase64: string) => void
   onError?: (err: Error) => void
+  /**
+   * 'liveness' (default) runs face detection + descriptor (needed for login /
+   * enrollment matching). 'instant' grabs the frame immediately with NO
+   * detection — reliable where the TFJS backend is unavailable/slow (some
+   * GPUs/headless setups stall detection for 25s then fail). Used by
+   * assessment proctoring, which only needs a stored photo.
+   */
+  captureMode?: 'liveness' | 'instant'
 }
 
 const CDN_MODEL_URL = 'https://cdn.jsdelivr.net/npm/@vladmandic/face-api@1.7.15/model'
@@ -28,12 +36,50 @@ function detectOptions() {
 }
 
 let modelsPromise: Promise<void> | null = null
+let backendName = 'unknown'
+
+/**
+ * Force the TFJS compute backend to initialize on a tiny tensor.
+ *
+ * ponytail: without this the FIRST real detectSingleFace pays backend init +
+ * WebGL shader compile on the main thread, which on machines without GPU
+ * acceleration (or with hardware acceleration off) stalls long enough that the
+ * 8s detect timer fires, the loop retries, and the user sits on "Hold still"
+ * for the full 25s budget before a misleading "could not lock onto your face".
+ * Warming up here turns that into either a fast capture or a clear init error.
+ * Falls back to the CPU backend when WebGL is unavailable.
+ */
+async function warmUpBackend(): Promise<void> {
+  const tf = faceapi.tf as any
+  const probe = () => {
+    const t = tf.tensor1d([0, 1, 2, 3])
+    t.square().dataSync()
+    t.dispose()
+  }
+  try {
+    await tf.ready?.()
+    probe()
+    backendName = tf.getBackend?.() || 'unknown'
+    return
+  } catch {
+    try {
+      await tf.setBackend?.('cpu')
+      await tf.ready?.()
+      probe()
+      backendName = tf.getBackend?.() || 'cpu'
+      return
+    } catch {
+      throw new Error('Face engine could not initialize in this browser (no WebGL or CPU backend available).')
+    }
+  }
+}
 
 function loadFaceModels() {
   if (!modelsPromise) {
     modelsPromise = (async () => {
       await (faceapi.tf as { ready?: () => Promise<void> }).ready?.()
       let lastErr: unknown = null
+      let loaded = false
       for (const base of MODEL_URLS) {
         try {
           await Promise.all([
@@ -41,12 +87,17 @@ function loadFaceModels() {
             faceapi.nets.faceLandmark68TinyNet.loadFromUri(base),
             faceapi.nets.faceRecognitionNet.loadFromUri(base),
           ])
-          return
+          loaded = true
+          break
         } catch (err) {
           lastErr = err
         }
       }
-      throw lastErr instanceof Error ? lastErr : new Error('Face model download failed from all sources')
+      if (!loaded) {
+        throw lastErr instanceof Error ? lastErr : new Error('Face model download failed from all sources')
+      }
+      // Backend warm-up is URL-independent — run it once, after the nets load.
+      await warmUpBackend()
     })().catch((err) => {
       modelsPromise = null
       throw err
@@ -65,14 +116,16 @@ function withTimeout<T>(thenable: unknown, ms: number, label: string): Promise<T
   })
 }
 
-export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
+export function FaceCamera({ mode, onCapture, onError, captureMode = 'liveness' }: FaceCameraProps) {
   const videoRef = useRef<HTMLVideoElement>(null)
   const streamRef = useRef<MediaStream | null>(null)
   const onErrorRef = useRef(onError)
   const onCaptureRef = useRef(onCapture)
   const runIdRef = useRef(0)
   const [status, setStatus] = useState<'initializing' | 'ready' | 'detecting' | 'captured' | 'error'>('initializing')
-  const [message, setMessage] = useState('Loading face recognition models...')
+  const [message, setMessage] = useState(
+    captureMode === 'instant' ? 'Starting camera…' : 'Loading face recognition models...'
+  )
   // Bumped by retryInit to re-run the init effect below (full re-init:
   // models are cached after first success, camera stream is re-requested).
   const [initNonce, setInitNonce] = useState(0)
@@ -89,11 +142,15 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
 
     async function start() {
       try {
-        slowTimer = setTimeout(() => {
-          if (mounted) setMessage('Still downloading recognition models — slow connection, please wait…')
-        }, MODEL_SLOW_HINT_MS)
-        await withTimeout(loadFaceModels(), MODEL_LOAD_TIMEOUT_MS, 'Model download timed out')
-        if (slowTimer) { clearTimeout(slowTimer); slowTimer = null }
+        // Instant mode needs no face-api models — skip the ~6.7MB download and
+        // backend warm-up entirely and go straight to the camera.
+        if (captureMode !== 'instant') {
+          slowTimer = setTimeout(() => {
+            if (mounted) setMessage('Still downloading recognition models — slow connection, please wait…')
+          }, MODEL_SLOW_HINT_MS)
+          await withTimeout(loadFaceModels(), MODEL_LOAD_TIMEOUT_MS, 'Model download timed out')
+          if (slowTimer) { clearTimeout(slowTimer); slowTimer = null }
+        }
         if (!mounted) return
         setMessage('Please grant camera permissions.')
         const stream = await navigator.mediaDevices.getUserMedia({
@@ -151,7 +208,7 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
     }
     runIdRef.current += 1
     setStatus('initializing')
-    setMessage('Loading face recognition models...')
+    setMessage(captureMode === 'instant' ? 'Starting camera…' : 'Loading face recognition models...')
     setInitNonce((n) => n + 1)
   }
 
@@ -168,6 +225,11 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
 
   const analyzeFace = async (runId: number) => {
     const startedAt = Date.now()
+    // ponytail: previously EVERY thrown detection was swallowed and the loop
+    // spun the full 25s budget, ending on a misleading "could not lock onto
+    // your face". A persistent engine error (no backend, dead GPU) now bails
+    // with the real message instead of hanging.
+    let consecutiveErrors = 0
 
     while (runIdRef.current === runId) {
       if (!videoRef.current) return
@@ -204,6 +266,7 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
           await new Promise((r) => setTimeout(r, 150))
           continue
         }
+        consecutiveErrors = 0
 
         const { width, height } = detection.detection.box
         const videoWidth = videoRef.current.videoWidth
@@ -270,6 +333,39 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
 
   const captureFace = () => {
     if (!videoRef.current || status === 'captured') return
+    // Instant mode: no detection loop, no descriptor — just grab the frame.
+    // The assessment stores the photo for proctor review; biometric matching
+    // is best-effort elsewhere and must never block the exam start.
+    if (captureMode === 'instant') {
+      const runId = runIdRef.current + 1
+      runIdRef.current = runId
+      setStatus('detecting')
+      setMessage('Capturing photo…')
+      const video = videoRef.current
+      try {
+        const videoWidth = video.videoWidth || 640
+        const videoHeight = video.videoHeight || 480
+        const canvas = document.createElement('canvas')
+        canvas.width = videoWidth
+        canvas.height = videoHeight
+        canvas.getContext('2d')?.drawImage(video, 0, 0, videoWidth, videoHeight)
+        const dataUrl = canvas.toDataURL('image/jpeg', 0.8)
+        if (streamRef.current) {
+          streamRef.current.getTracks().forEach((track) => track.stop())
+          streamRef.current = null
+        }
+        if (runIdRef.current !== runId) return
+        setStatus('captured')
+        setMessage('Photo captured.')
+        onCaptureRef.current(null, dataUrl)
+      } catch (err) {
+        console.error('Instant capture failed:', err)
+        setStatus('error')
+        setMessage('Could not capture the photo. Please retry.')
+        onErrorRef.current?.(err instanceof Error ? err : new Error(String(err)))
+      }
+      return
+    }
     const runId = runIdRef.current + 1
     runIdRef.current = runId
     setStatus('detecting')
@@ -294,7 +390,9 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
               <Loader2 className="w-12 h-12 text-primary animate-pulse p-2" />
             </div>
             <p className="text-sm font-medium mt-4 bg-clip-text text-transparent bg-linear-to-r from-primary to-primary/60">{message}</p>
-            <p className="text-xs text-muted-foreground mt-1 animate-pulse">Initializing Biometrics Engine...</p>
+            <p className="text-xs text-muted-foreground mt-1 animate-pulse">
+              {captureMode === 'instant' ? 'Starting camera...' : 'Initializing Biometrics Engine...'}
+            </p>
           </div>
         )}
 
@@ -336,7 +434,7 @@ export function FaceCamera({ mode, onCapture, onError }: FaceCameraProps) {
         {status === 'ready' && (
           <Button onClick={captureFace} className="w-full gap-2">
             <Camera className="w-4 h-4" />
-            {mode === 'enroll' ? 'Capture Face & Enroll' : 'Verify My Face'}
+            {mode === 'enroll' ? 'Capture Face & Enroll' : captureMode === 'instant' ? 'Capture Photo' : 'Verify My Face'}
           </Button>
         )}
 
