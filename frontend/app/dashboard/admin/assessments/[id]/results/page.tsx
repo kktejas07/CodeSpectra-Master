@@ -1,6 +1,6 @@
 'use client'
 
-import { useEffect, useState, useCallback } from 'react'
+import { useEffect, useState, useCallback, useRef } from 'react'
 import { useRouter, useParams } from 'next/navigation'
 import { Button } from '@/components/ui/button'
 import ReactMarkdown from 'react-markdown'
@@ -26,6 +26,15 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog'
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog'
+import { Progress } from '@/components/ui/progress'
 
 
 interface CandidateResult {
@@ -294,6 +303,42 @@ export default function ExamResultsPage() {
   const [advanceTarget, setAdvanceTarget] = useState('')
   const [advancing, setAdvancing] = useState(false)
   const [exportingPdf, setExportingPdf] = useState(false)
+  // On-demand plagiarism check (deterministic pairs + AI semantic checks).
+  const [plagOpen, setPlagOpen] = useState(false)
+  const [plagRunning, setPlagRunning] = useState(false)
+  const [plagResult, setPlagResult] = useState<{
+    score: number
+    suspiciousPairs: Array<{ name1: string; name2: string; questionId: string; similarity: number; bothCorrect: boolean; aiSemanticMatch?: boolean; aiConfidence?: number }>
+    aiGeneratedFlags: Array<{ name: string; questionId: string; probability: number; reason: string }>
+    questionBankMatches: Array<{ name: string; questionId: string; matchType: string }>
+    leaks: unknown
+  } | null>(null)
+
+  const runPlagiarismCheck = async () => {
+    setPlagOpen(true)
+    setPlagRunning(true)
+    setPlagResult(null)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/plagiarism`, {
+        method: 'POST',
+        credentials: 'include',
+      })
+      const text = await res.text()
+      let json: any = null
+      try {
+        json = text ? JSON.parse(text) : null
+      } catch {
+        throw new Error(`Server answered ${res.status} with a non-JSON page — retry.`)
+      }
+      if (!res.ok) throw new Error(json?.error || `Check failed (${res.status})`)
+      setPlagResult(json)
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Plagiarism check failed' })
+      setPlagOpen(false)
+    } finally {
+      setPlagRunning(false)
+    }
+  }
 
   // Invite recovery — invites stuck in `used` with no matching submission
   // (invite-lockout chain). Resetting flips them back to pending so the
@@ -502,37 +547,83 @@ export default function ExamResultsPage() {
   }
 
     const [bulkGradeIds, setBulkGradeIds] = useState<string[] | null>(null)
+    // Chunked grading progress (visible in the dialog below). Batches of 4
+    // keep every request fast — one giant POST used to run for minutes and
+    // die behind the proxy with an HTML error page ("<!DOCTYPE..." JSON crash).
+    const [gradeProg, setGradeProg] = useState<{
+      done: number; total: number; graded: number; failed: number; running: boolean
+    } | null>(null)
+    const gradeCancelRef = useRef(false)
+    const GRADE_CHUNK = 4
 
-  const gradeCandidates = async (ids: string[]) => {
-    if (!ids.length || bulkGradeIds) return
-    setBulkGradeIds(ids)
-    try {
+    const postGradeChunk = async (chunk: string[]) => {
       const res = await csrfFetch(`/api/admin/exams/${params.id}/ai-grade-all`, {
         method: 'POST',
         credentials: 'include',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userIds: ids }),
+        body: JSON.stringify({ userIds: chunk }),
       })
-      const json = await res.json()
-      if (!res.ok) throw new Error(json.error || 'Bulk grading failed')
+      const text = await res.text()
+      let json: any = null
+      try {
+        json = text ? JSON.parse(text) : null
+      } catch {
+        throw new Error(
+          `Server answered ${res.status} with a non-JSON page (usually a proxy timeout on a long request) — retry; already-graded answers are kept so re-running only grades the rest.`
+        )
+      }
+      if (!res.ok) throw new Error(json?.error || `Bulk grading failed (${res.status})`)
+      return json
+    }
+
+  const gradeCandidates = async (ids: string[]) => {
+    if (!ids.length || gradeProg?.running) return
+    gradeCancelRef.current = false
+    setBulkGradeIds(ids)
+    setGradeProg({ done: 0, total: ids.length, graded: 0, failed: 0, running: true })
+    let graded = 0
+    let failed = 0
+    const failedIds = new Set<string>()
+    try {
+      for (let i = 0; i < ids.length; i += GRADE_CHUNK) {
+        if (gradeCancelRef.current) break
+        const chunk = ids.slice(i, i + GRADE_CHUNK)
+        try {
+          const json = await postGradeChunk(chunk)
+          graded += json.graded || 0
+          failed += json.failed || 0
+          for (const r of json.results || []) {
+            if (Array.isArray(r.failed) && r.failed.length > 0 && r.userId) failedIds.add(r.userId)
+          }
+        } catch (e: unknown) {
+          failed += chunk.length
+          chunk.forEach((c) => failedIds.add(c))
+          addToast({ type: 'error', title: `Batch ${Math.floor(i / GRADE_CHUNK) + 1} failed`, message: e instanceof Error ? e.message : 'Retry grades only the remainder.' })
+        }
+        setGradeProg({ done: Math.min(ids.length, i + chunk.length), total: ids.length, graded, failed, running: true })
+      }
+      const cancelled = gradeCancelRef.current
       addToast({
-        type: json.failed > 0 ? 'warning' : 'success',
-        title: `AI graded ${json.graded} question(s) across ${json.candidates} candidate(s)`,
-        message: json.failed > 0
-          ? `${json.failed} question(s) were rate-limited or failed — click Grade again and it will pick up the rest.`
-          : 'Grades saved. Refresh the list to see updated scores.',
+        type: failed > 0 ? 'warning' : 'success',
+        title: cancelled
+          ? `Grading stopped — ${graded} question(s) graded so far`
+          : `AI graded ${graded} question(s) across ${ids.length - failedIds.size} candidate(s)`,
+        message: failed > 0
+          ? `${failed} question(s) failed or rate-limited — click Grade again and it picks up only the rest.`
+          : 'Grades saved. List refreshed below.',
       })
-      const failedIds = new Set(json.results.filter((r: { failed: string[] }) => r.failed.length > 0).map((r: { userId: string }) => r.userId))
       setResults(prev => prev.map(r => {
         if (ids.includes(r.userId || r.id)) {
           return { ...r, graded: !failedIds.has(r.userId || '') ? true : r.graded }
         }
         return r
       }))
+      await fetchData()
     } catch (e: unknown) {
       addToast({ type: 'error', title: e instanceof Error ? e.message : 'Bulk grading failed' })
     } finally {
       setBulkGradeIds(null)
+      setGradeProg(prev => (prev ? { ...prev, running: false } : prev))
     }
   }
 
@@ -1119,6 +1210,12 @@ export default function ExamResultsPage() {
         if (row.deliveryStatus === 'sending') {
           return <span className="text-xs text-muted-foreground flex items-center gap-1"><Clock className="w-3 h-3"/> Sending</span>
         }
+        if (row.deliveryStatus === 'sent') {
+          return <span className="text-xs text-blue-500 flex items-center gap-1"><Send className="w-3 h-3"/> Sent</span>
+        }
+        if (row.deliveryStatus === 'opened') {
+          return <span className="text-xs text-emerald-500 flex items-center gap-1"><Eye className="w-3 h-3"/> Opened</span>
+        }
         if (row.deliveryStatus === 'delivered') {
           return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Delivered</span>
         }
@@ -1328,6 +1425,16 @@ export default function ExamResultsPage() {
           >
             {exportingReport ? <Loader2 className="w-4 h-4 animate-spin" /> : <Download className="w-4 h-4" />}
             Export Report
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={runPlagiarismCheck}
+            disabled={plagRunning}
+            title="Cross-submission copy detection + AI-authorship flags (runs on demand, up to ~2 min)"
+          >
+            {plagRunning ? <Loader2 className="w-4 h-4 animate-spin" /> : <ShieldAlert className="w-4 h-4" />}
+            Check plagiarism
           </Button>
           <Button variant="outline" className="gap-2" onClick={remindAllPending} disabled={bulkReminding}>
             {bulkReminding ? <Loader2 className="w-4 h-4 animate-spin" /> : <Bell className="w-4 h-4" />}
@@ -2023,6 +2130,111 @@ export default function ExamResultsPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Bulk grading progress — chunked batches with live counts so a
+          minutes-long grade never looks stuck, plus cancel + retry remainder. */}
+      <Dialog open={!!gradeProg} onOpenChange={(open) => { if (!open && !gradeProg?.running) setGradeProg(null) }}>
+        <DialogContent className="sm:max-w-md" onInteractOutside={(e) => { if (gradeProg?.running) e.preventDefault() }}>
+          <DialogHeader>
+            <DialogTitle>{gradeProg?.running ? 'Grading in progress…' : 'Grading finished'}</DialogTitle>
+            <DialogDescription>
+              {gradeProg?.running
+                ? `Candidate ${Math.min(gradeProg.done + 1, gradeProg.total)} of ${gradeProg.total} — grades save as each batch completes, so stopping loses nothing.`
+                : `${gradeProg?.graded} question(s) graded, ${gradeProg?.failed} failed. Re-run grades only the remainder.`}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-2 py-2">
+            <Progress value={gradeProg && gradeProg.total > 0 ? Math.round((gradeProg.done / gradeProg.total) * 100) : 0} />
+            <div className="flex justify-between text-xs text-muted-foreground">
+              <span>{gradeProg?.done} / {gradeProg?.total} candidates</span>
+              <span>{gradeProg?.graded} graded{gradeProg && gradeProg.failed > 0 ? ` · ${gradeProg.failed} failed` : ''}</span>
+            </div>
+          </div>
+          <DialogFooter>
+            {gradeProg?.running ? (
+              <Button variant="outline" onClick={() => { gradeCancelRef.current = true }}>
+                Stop after this batch
+              </Button>
+            ) : (
+              <Button onClick={() => setGradeProg(null)}>Close</Button>
+            )}
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* On-demand plagiarism report — deterministic pairs + AI flags. */}
+      <Dialog open={plagOpen} onOpenChange={setPlagOpen}>
+        <DialogContent className="sm:max-w-2xl max-h-[85vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Plagiarism check</DialogTitle>
+            <DialogDescription>
+              {plagRunning
+                ? 'Comparing answers across submissions (exact matches instantly, AI semantic checks take longer)…'
+                : plagResult
+                  ? `Risk score ${plagResult.score}/100 · ${plagResult.suspiciousPairs.length} suspicious pair(s) · ${plagResult.aiGeneratedFlags.length} AI-authorship flag(s)`
+                  : 'No result.'}
+            </DialogDescription>
+          </DialogHeader>
+          {plagRunning && (
+            <div className="space-y-2 py-4">
+              <Progress value={undefined} />
+              <p className="text-xs text-muted-foreground text-center">Running — safe to wait; closing keeps the server run going but discards the view.</p>
+            </div>
+          )}
+          {plagResult && !plagRunning && (
+            <div className="space-y-4 py-2">
+              {plagResult.suspiciousPairs.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">Suspicious pairs</p>
+                  <div className="max-h-56 overflow-y-auto rounded-md border divide-y divide-border/40">
+                    {plagResult.suspiciousPairs.map((p, i) => (
+                      <div key={i} className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                        <AlertTriangle className="h-3.5 w-3.5 text-amber-500 shrink-0" />
+                        <span className="font-medium truncate">{p.name1} ↔ {p.name2}</span>
+                        <span className="ml-auto font-mono shrink-0">{Math.round(p.similarity * 100)}%{p.bothCorrect ? ' · both correct' : ''}{p.aiSemanticMatch ? ` · AI ${p.aiConfidence}%` : ''}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {plagResult.aiGeneratedFlags.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">Possible AI-written answers</p>
+                  <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
+                    {plagResult.aiGeneratedFlags.map((f, i) => (
+                      <div key={i} className="px-3 py-1.5 text-xs">
+                        <span className="font-medium">{f.name}</span>
+                        <span className="text-muted-foreground"> · {Math.round(f.probability)}% — {f.reason}</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {plagResult.questionBankMatches.length > 0 && (
+                <div className="space-y-2">
+                  <p className="text-sm font-semibold">Matches against question-bank answers</p>
+                  <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
+                    {plagResult.questionBankMatches.map((m, i) => (
+                      <div key={i} className="px-3 py-1.5 text-xs">
+                        <span className="font-medium">{m.name}</span>
+                        <span className="text-muted-foreground"> · {m.matchType} match</span>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
+              {plagResult.suspiciousPairs.length === 0 && plagResult.aiGeneratedFlags.length === 0 && plagResult.questionBankMatches.length === 0 && (
+                <p className="text-sm text-emerald-600 flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4" /> No copy or AI-authorship signals found.
+                </p>
+              )}
+            </div>
+          )}
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPlagOpen(false)}>Close</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
 
       <AlertDialog open={showReleaseAllConfirm} onOpenChange={setShowReleaseAllConfirm}>
         <AlertDialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
