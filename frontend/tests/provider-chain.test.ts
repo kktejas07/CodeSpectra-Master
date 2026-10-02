@@ -91,3 +91,15 @@ describe('llm defaults', () => {
     }
   })
 })
+
+describe('custom gateway registry', () => {
+  it('custom provider exists, bearer-authed, with no baked-in endpoint', async () => {
+    const { LLM_PROVIDERS } = await import('@/lib/llm-config')
+    const custom = LLM_PROVIDERS.find((p) => p.id === 'custom')
+    expect(custom).toBeTruthy()
+    expect(custom!.authType).toBe('bearer')
+    // Endpoint must come from saved settings — a static default here would
+    // silently route traffic somewhere the admin never chose.
+    expect(custom!.endpoint).toBe('')
+  })
+})

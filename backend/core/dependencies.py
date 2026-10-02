@@ -195,6 +195,7 @@ _KEY_HEADER_MAP: dict[str, str] = {
     "omnirouter": "x-openai-api-key",
     "groq": "x-openai-api-key",
     "nvidia": "x-openai-api-key",
+    "custom": "x-openai-api-key",
 }
 
 _ENV_MAP: dict[str, str] = {
@@ -206,6 +207,7 @@ _ENV_MAP: dict[str, str] = {
     "groq": "GROQ_API_KEY",
     "nvidia": "NVIDIA_API_KEY",
     "omnirouter": "OPENAI_API_KEY",
+    "custom": "CUSTOM_API_KEY",
 }
 
 

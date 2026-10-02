@@ -141,6 +141,18 @@ export async function POST() {
 
   const targets = chainProbeTargets()
   const secrets = (await readServerSecrets()) as Record<string, unknown>
+  // Custom gateway joins the probe when its endpoint is configured (same
+  // rule as the fallback chain: endpoint + key required, never probe blind).
+  const customEndpoint = String(secrets.custom_endpoint || '').trim().replace(/\/+$/, '')
+  if (customEndpoint && /^https?:\/\//.test(customEndpoint)) {
+    targets.push({
+      provider: 'custom',
+      model: String(secrets.custom_model || '').trim() || 'custom',
+      endpoint: customEndpoint,
+      secretKey: 'custom_api_key',
+      free: false,
+    })
+  }
   const { getApiKey } = await import('@/lib/ai/get-api-key')
   const backend = backendBase()
   const secret = await internalSecret()

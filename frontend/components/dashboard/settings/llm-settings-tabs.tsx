@@ -27,6 +27,9 @@ interface ProviderKey {
   icon: any
   category: 'llm' | 'speech' | 'vector' | 'search' | 'obs' | 'integration' | 'image' | 'other'
   categoryLabel: string
+  /** Custom gateway card: also edits endpoint + default model (separate
+   *  state — must NOT go through the comma-merge key saver). */
+  gateway?: boolean
 }
 
 interface UsageStats {
@@ -79,6 +82,8 @@ const PROVIDERS: ProviderKey[] = [
   { id: 'anthropic', label: 'Anthropic Claude', placeholder: 'sk-ant-...', url: 'https://console.anthropic.com', urlLabel: 'Anthropic Console', desc: 'Paid. Deep code review, agentic fixes, and chat.', key: 'anthropic_api_key', icon: Brain, category: 'llm', categoryLabel: 'LLM Providers' },
   { id: 'groq', label: 'Groq', placeholder: 'gsk_...', url: 'https://console.groq.com/keys', urlLabel: 'Groq Console', desc: 'Free tier. Ultra-fast inference. Llama, Mixtral, Gemma.', key: 'groq_api_key', icon: Zap, category: 'llm', categoryLabel: 'LLM Providers' },
   { id: 'openrouter', label: 'OpenRouter', placeholder: 'sk-or-...', url: 'https://openrouter.ai/keys', urlLabel: 'OpenRouter Keys', desc: 'Free & paid. 300+ models including free tiers.', key: 'openrouter_api_key', icon: Puzzle, category: 'llm', categoryLabel: 'LLM Providers' },
+  { id: 'opencode', label: 'OpenCode (Zen)', placeholder: '...', url: 'https://opencode.ai', urlLabel: 'OpenCode', desc: 'Free tier via Zen gateway. Dozens of open models.', key: 'opencode_api_key', icon: Zap, category: 'llm', categoryLabel: 'LLM Providers' },
+  { id: 'custom', label: 'Custom gateway', placeholder: 'sk-...', url: 'https://platform.openai.com/api-keys', urlLabel: 'Key issuer', desc: 'Any OpenAI-compatible endpoint (e.g. a proxy gateway). Set endpoint + model below.', key: 'custom_api_key', icon: Globe, category: 'llm', categoryLabel: 'LLM Providers', gateway: true },
   { id: 'nvidia', label: 'NVIDIA NIM', placeholder: 'nvapi-...', url: 'https://build.nvidia.com', urlLabel: 'NVIDIA NIM', desc: 'Paid. Llama 3.1, Mistral, Nemotron models.', key: 'nvidia_api_key', icon: Cpu, category: 'llm', categoryLabel: 'LLM Providers' },
   { id: 'deepseek', label: 'DeepSeek', placeholder: 'sk-...', url: 'https://platform.deepseek.com', urlLabel: 'DeepSeek Platform', desc: 'Paid. DeepSeek V3, R1 reasoning models.', key: 'deepseek_api_key', icon: Brain, category: 'llm', categoryLabel: 'LLM Providers' },
   { id: 'cerebras', label: 'Cerebras', placeholder: 'csk-...', url: 'https://cloud.cerebras.ai', urlLabel: 'Cerebras Cloud', desc: 'Paid. Ultra-fast inference on Cerebras wafer-scale.', key: 'cerebras_api_key', icon: Zap, category: 'llm', categoryLabel: 'LLM Providers' },
@@ -150,6 +155,14 @@ export function LlmSettingsTabs() {
   const [revealedValues, setRevealedValues] = useState<Record<string, string>>({})
   const [saving, setSaving] = useState(false)
   const [loading, setLoading] = useState(true)
+  // Custom gateway endpoint + default model. Deliberately OUTSIDE secretsDraft:
+  // saveKeys comma-splits and reveal-merges every draft value (correct for
+  // multi-keys, destructive for a URL/model string), so these save via direct
+  // replace-PATCH in saveGateway below.
+  const [customEndpoint, setCustomEndpoint] = useState('')
+  const [customModel, setCustomModel] = useState('')
+  const [savedGateway, setSavedGateway] = useState<{ endpoint: string | null; model: string | null }>({ endpoint: null, model: null })
+  const [savingGateway, setSavingGateway] = useState(false)
   const [usageStats, setUsageStats] = useState<UsageStats[]>([])
   const [expandedProvider, setExpandedProvider] = useState<string | null>(null)
   const [editingKey, setEditingKey] = useState<{ provider: string; index: number; value: string } | null>(null)
@@ -203,11 +216,42 @@ export function LlmSettingsTabs() {
     fetch('/api/admin/server-secrets', { credentials: 'include' })
       .then(r => r.json())
       .then(d => {
-        applySecretsMeta((d.secrets || d) as Record<string, unknown>)
+        const sec = (d.secrets || d) as Record<string, unknown>
+        applySecretsMeta(sec)
+        const ep = typeof sec.custom_endpoint === 'string' ? sec.custom_endpoint : null
+        const mo = typeof sec.custom_model === 'string' ? sec.custom_model : null
+        if (ep) setCustomEndpoint(ep)
+        if (mo) setCustomModel(mo)
+        setSavedGateway({ endpoint: ep, model: mo })
       })
       .catch(() => {})
       .finally(() => setLoading(false))
   }, [applySecretsMeta])
+
+  const saveGateway = useCallback(async () => {
+    const endpoint = customEndpoint.trim().replace(/\/+$/, '')
+    if (endpoint && !/^https?:\/\//.test(endpoint)) {
+      addToast({ type: 'error', title: 'Endpoint must start with http(s)://' })
+      return
+    }
+    setSavingGateway(true)
+    try {
+      const res = await csrfFetch('/api/admin/server-secrets', {
+        method: 'PATCH',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ custom_endpoint: endpoint, custom_model: customModel.trim() }),
+      })
+      const json = await res.json().catch(() => ({}))
+      if (!res.ok) throw new Error(json.error || 'Save failed')
+      setSavedGateway({ endpoint: endpoint || null, model: customModel.trim() || null })
+      addToast({ type: 'success', title: 'Custom gateway saved — it now joins the fallback chain' })
+    } catch (e) {
+      addToast({ type: 'error', title: 'Save failed', message: e instanceof Error ? e.message : 'Unknown error' })
+    } finally {
+      setSavingGateway(false)
+    }
+  }, [customEndpoint, customModel, addToast])
 
   // Load usage stats
   const loadUsage = useCallback(() => {
@@ -281,6 +325,8 @@ export function LlmSettingsTabs() {
         'platform.stability.ai': 'stability_api_key', 'fal.ai': 'fal_api_key', 'huggingface.co': 'huggingface_api_key',
         'cloud.cerebras.ai': 'cerebras_api_key', 'console.mistral.ai': 'mistral_api_key',
         'openrouter.ai': 'openrouter_api_key', 'github.com': 'openrouter_api_key',
+        'opencode': 'opencode_api_key', 'opencode.ai': 'opencode_api_key', 'zen': 'opencode_api_key',
+        'custom': 'custom_api_key', 'gateway': 'custom_api_key', 'apinex': 'custom_api_key',
         'workers.ai': 'cloudflare_workers_api_key', 'platform.kimi.ai': 'kimi_api_key',
         'cloud.sambanova.com': 'sambanova_api_key', 'ollama.com': 'openrouter_api_key',
       }
@@ -528,6 +574,40 @@ export function LlmSettingsTabs() {
                               Get Key →
                             </a>
                           </div>
+                          {p.gateway && (
+                            <div className="space-y-2 rounded-md border border-border/40 bg-muted/20 p-3">
+                              <div className="grid gap-1.5">
+                                <Label className="text-[11px] text-muted-foreground">Gateway endpoint (OpenAI-compatible base URL)</Label>
+                                <Input
+                                  value={customEndpoint}
+                                  onChange={(e) => setCustomEndpoint(e.target.value)}
+                                  placeholder="https://api.apinex.bond/v1"
+                                  className="h-8 text-xs font-mono"
+                                />
+                              </div>
+                              <div className="grid gap-1.5">
+                                <Label className="text-[11px] text-muted-foreground">Default model</Label>
+                                <Input
+                                  value={customModel}
+                                  onChange={(e) => setCustomModel(e.target.value)}
+                                  placeholder="e.g. provider/model-name"
+                                  className="h-8 text-xs font-mono"
+                                />
+                              </div>
+                              {savedGateway.endpoint && (
+                                <p className="text-[10px] text-muted-foreground font-mono truncate" title={savedGateway.endpoint}>
+                                  Saved: {savedGateway.endpoint}{savedGateway.model ? ` · ${savedGateway.model}` : ''}
+                                </p>
+                              )}
+                              <Button size="sm" variant="outline" className="h-8 text-xs gap-1.5" onClick={saveGateway} disabled={savingGateway}>
+                                {savingGateway ? <Loader2 className="h-3 w-3 animate-spin" /> : <Save className="h-3 w-3" />}
+                                Save gateway
+                              </Button>
+                              <p className="text-[10px] text-muted-foreground">
+                                With endpoint + key set, this gateway joins the automatic fallback chain and the Health tab probe.
+                              </p>
+                            </div>
+                          )}
                         </div>
                       )}
                     </Card>
