@@ -300,7 +300,18 @@ export default function CandidateAssessmentPage() {
           }
         }
 
-        setExam(found)
+        // ponytail: per-candidate question shuffle, stable across refresh via
+        // an email+exam seed. Answers/drafts/timings are all keyed by question
+        // id, so order is cosmetic — grading is unaffected, same as the
+        // existing per-question option shuffle.
+        if (Array.isArray(found.questionList) && found.questionList.length > 1 && user) {
+          const seedStr = `${user.email || user.uid}:${found.id}`
+          let seed = 0
+          for (const ch of seedStr) seed = (seed * 31 + ch.charCodeAt(0)) >>> 0
+          setExam({ ...found, questionList: shuffleArray(found.questionList, seed) })
+        } else {
+          setExam(found)
+        }
         if (typeof window !== 'undefined') {
           try {
             const draft = localStorage.getItem(`codespectra_exam_draft_${params.id}`)
