@@ -40,10 +40,19 @@ export async function PATCH(
 
     const exam = await db.collection('exams').findOne({ id: examId })
     const examTitle = exam?.title || 'Technical Assessment'
+    // Pass/fail uses the exam's remembered cutoff (bulk release stores it).
+    const storedCutoff = Number((exam as Record<string, any>)?.passing_score)
+    const cutoff = Number.isFinite(storedCutoff) && storedCutoff >= 0 ? Math.min(100, Math.round(storedCutoff)) : 40
+    const maxScore = Number(submission.max_score)
+    const pct =
+      Number.isFinite(Number(submission.score)) && Number.isFinite(maxScore) && maxScore > 0
+        ? Math.max(0, Math.min(100, Math.round((Number(submission.score) / maxScore) * 100)))
+        : null
+    const isPass = pct !== null && pct >= cutoff
 
     const result = await db.collection('exam_submissions').updateOne(
       { exam_id: examId, user_id: userId },
-      { $set: { released_at: nowIso(), score_released: true } },
+      { $set: { released_at: nowIso(), score_released: true, passed: isPass, cutoff } },
     )
 
     if (result.matchedCount === 0) {

@@ -285,6 +285,15 @@ export default function ExamResultsPage() {
   const [resultFilter, setResultFilter] = useState<'all' | 'completed' | 'in_progress' | 'pending' | 'ungraded' | 'flagged'>('all')
   const [exportingReport, setExportingReport] = useState(false)
   const [showReleaseAllConfirm, setShowReleaseAllConfirm] = useState(false)
+  // Cutoff release dialog state
+  const [releaseCutoff, setReleaseCutoff] = useState(40)
+  const [releaseResult, setReleaseResult] = useState<{
+    released: number; passed: number; failed: number; skipped_pending: number; cutoff: number
+  } | null>(null)
+  const [examsList, setExamsList] = useState<{ id: string; title: string }[]>([])
+  const [advanceTarget, setAdvanceTarget] = useState('')
+  const [advancing, setAdvancing] = useState(false)
+  const [exportingPdf, setExportingPdf] = useState(false)
 
   // Invite recovery — invites stuck in `used` with no matching submission
   // (invite-lockout chain). Resetting flips them back to pending so the
@@ -870,23 +879,35 @@ export default function ExamResultsPage() {
   }
 
   const releaseAllWithAudit = async () => {
-    setShowReleaseAllConfirm(false)
     setBulkReleasing(true)
     try {
       const res = await csrfFetch(`/api/admin/exams/${params.id}/release-scores`, {
         method: 'POST',
         credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ cutoff: releaseCutoff }),
       })
       const json = await res.json()
       if (!res.ok) throw new Error(json.error)
 
+      setReleaseCutoff(json.cutoff ?? releaseCutoff)
+      setReleaseResult({
+        released: json.released || 0,
+        passed: json.passed || 0,
+        failed: json.failed || 0,
+        skipped_pending: json.skipped_pending || 0,
+        cutoff: json.cutoff ?? releaseCutoff,
+      })
       addToast({
         type: json.released === 0 ? 'info' : 'success',
-        title: json.released === 0 ? 'No unreleased scores found' : `${json.released} scores released`,
+        title: json.released === 0
+          ? 'No unreleased scores found'
+          : `${json.released} scores released (${json.passed} passed, ${json.failed} below cutoff)`,
+        message: json.skipped_pending > 0 ? `${json.skipped_pending} ungraded submission(s) stayed locked.` : undefined,
       })
 
       if (json.released > 0) {
-        await recordAuditLog('release_scores', String(params.id), `Released ${json.released} scores`)
+        await recordAuditLog('release_scores', String(params.id), `Released ${json.released} scores at ${json.cutoff}% cutoff`)
       }
 
       // Refresh results
@@ -895,6 +916,72 @@ export default function ExamResultsPage() {
       addToast({ type: 'error', title: 'Bulk release failed' })
     } finally {
       setBulkReleasing(false)
+    }
+  }
+
+  const openReleaseDialog = () => {
+    setReleaseResult(null)
+    setAdvanceTarget('')
+    setShowReleaseAllConfirm(true)
+    if (examsList.length === 0) {
+      fetch('/api/exams', { credentials: 'include' })
+        .then((r) => r.json())
+        .then((j) => setExamsList((j.data || []).filter((e: { id: string }) => e.id !== params.id).map((e: { id: string; title: string }) => ({ id: e.id, title: e.title }))))
+        .catch(() => {})
+    }
+  }
+
+  // Live preview from rows on screen: releasable = submitted + graded + unreleased.
+  const releasablePreview = results.filter((r) => r.status === 'completed' && r.graded && !r.released)
+  const blockedPreviewCount = results.filter((r) => r.status === 'completed' && !r.graded && !r.released).length
+  const passPreview = releasablePreview.filter((r) => (r.score ?? 0) >= releaseCutoff)
+  const failPreview = releasablePreview.filter((r) => (r.score ?? 0) < releaseCutoff)
+
+  const exportPassPdf = async () => {
+    const cutoff = releaseResult?.cutoff ?? releaseCutoff
+    // Post-release ground truth: released rows at/above the applied cutoff.
+    const list = results
+      .filter((r) => r.released && (r.score ?? 0) >= cutoff)
+      .map((r) => ({ name: r.name, email: r.email, score: r.score }))
+    if (list.length === 0) {
+      addToast({ type: 'info', title: 'No passed candidates to export yet' })
+      return
+    }
+    setExportingPdf(true)
+    try {
+      const { downloadPassListPdf } = await import('@/lib/pass-list-pdf')
+      await downloadPassListPdf(exam?.title || 'Assessment', cutoff, list)
+    } catch {
+      addToast({ type: 'error', title: 'PDF export failed' })
+    } finally {
+      setExportingPdf(false)
+    }
+  }
+
+  const advancePassers = async () => {
+    if (!advanceTarget) {
+      addToast({ type: 'error', title: 'Pick the next-round assessment first' })
+      return
+    }
+    setAdvancing(true)
+    try {
+      const res = await csrfFetch(`/api/admin/exams/${params.id}/advance`, {
+        method: 'POST',
+        credentials: 'include',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ targetExamId: advanceTarget }),
+      })
+      const json = await res.json()
+      if (!res.ok) throw new Error(json.error || 'Advance failed')
+      addToast({
+        type: 'success',
+        title: `${json.advanced} candidate(s) advanced to ${json.target?.title || 'next round'}`,
+        message: json.skipped > 0 ? `${json.skipped} skipped (already invited or missing email).` : undefined,
+      })
+    } catch (e: unknown) {
+      addToast({ type: 'error', title: e instanceof Error ? e.message : 'Advance failed' })
+    } finally {
+      setAdvancing(false)
     }
   }
 
@@ -1226,7 +1313,7 @@ export default function ExamResultsPage() {
             <Button
               variant="default"
               className="gap-2 bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={() => setShowReleaseAllConfirm(true)}
+              onClick={openReleaseDialog}
               disabled={bulkReleasing}
             >
               {bulkReleasing ? <Loader2 className="w-4 h-4 animate-spin" /> : <Send className="w-4 h-4" />}
@@ -1938,21 +2025,88 @@ export default function ExamResultsPage() {
       </AlertDialog>
 
       <AlertDialog open={showReleaseAllConfirm} onOpenChange={setShowReleaseAllConfirm}>
-        <AlertDialogContent>
+        <AlertDialogContent className="sm:max-w-xl max-h-[90vh] overflow-y-auto">
           <AlertDialogHeader>
-            <AlertDialogTitle>Release All Scores?</AlertDialogTitle>
+            <AlertDialogTitle>Release scores with cutoff</AlertDialogTitle>
             <AlertDialogDescription>
-              This will release all unreleased scores to candidates. Candidates will be notified and able to view their results. This action cannot be undone.
+              Everyone graded gets their score; candidates at or above the cutoff are marked passed.
+              {blockedPreviewCount > 0 ? ` ${blockedPreviewCount} ungraded submission(s) stay locked.` : ''} This cannot be undone.
             </AlertDialogDescription>
           </AlertDialogHeader>
+          <div className="space-y-4 py-2">
+            <div className="flex items-center gap-3">
+              <label htmlFor="release-cutoff" className="text-sm font-medium whitespace-nowrap">Cutoff %</label>
+              <input
+                id="release-cutoff"
+                type="number"
+                min={0}
+                max={100}
+                value={releaseCutoff}
+                disabled={bulkReleasing || releaseResult !== null}
+                onChange={(e) => setReleaseCutoff(Math.max(0, Math.min(100, parseInt(e.target.value) || 0)))}
+                className="h-9 w-24 rounded-md border border-border bg-background px-2 text-sm"
+              />
+              <div className="flex gap-2 text-xs">
+                <Badge variant="secondary" className="bg-emerald-500/10 text-emerald-600">{passPreview.length} pass</Badge>
+                <Badge variant="secondary" className="bg-rose-500/10 text-rose-500">{failPreview.length} below</Badge>
+                <Badge variant="secondary">{releasablePreview.length} releasing</Badge>
+              </div>
+            </div>
+            {passPreview.length > 0 && (
+              <div className="max-h-44 overflow-y-auto rounded-md border divide-y divide-border/40">
+                {passPreview.map((r) => (
+                  <div key={r.id} className="flex items-center gap-2 px-3 py-1.5 text-xs">
+                    <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
+                    <span className="font-medium truncate">{r.name}</span>
+                    <span className="text-muted-foreground truncate ml-auto">{r.email}</span>
+                    <span className="font-mono font-semibold">{r.score}%</span>
+                  </div>
+                ))}
+              </div>
+            )}
+            {releaseResult && (
+              <div className="space-y-3 rounded-lg border border-emerald-500/30 bg-emerald-500/5 p-3">
+                <p className="text-sm font-medium text-emerald-600">
+                  Released {releaseResult.released} at {releaseResult.cutoff}% — {releaseResult.passed} passed, {releaseResult.failed} below cutoff
+                  {releaseResult.skipped_pending > 0 ? `, ${releaseResult.skipped_pending} still locked (ungraded)` : ''}.
+                </p>
+                <div className="flex flex-wrap gap-2">
+                  <Button size="sm" variant="outline" className="gap-2" onClick={exportPassPdf} disabled={exportingPdf}>
+                    {exportingPdf ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    Export pass list (PDF)
+                  </Button>
+                </div>
+                <div className="flex flex-wrap items-center gap-2">
+                  <select
+                    value={advanceTarget}
+                    onChange={(e) => setAdvanceTarget(e.target.value)}
+                    className="h-9 flex-1 min-w-40 rounded-md border border-border bg-background px-2 text-xs"
+                  >
+                    <option value="">Advance passers to…</option>
+                    {examsList.map((e) => (
+                      <option key={e.id} value={e.id}>{e.title}</option>
+                    ))}
+                  </select>
+                  <Button size="sm" className="gap-2" onClick={advancePassers} disabled={advancing || !advanceTarget}>
+                    {advancing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Send className="h-3.5 w-3.5" />}
+                    Advance
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
           <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
-            <AlertDialogAction
-              className="bg-emerald-600 hover:bg-emerald-700 text-white"
-              onClick={releaseAllWithAudit}
-            >
-              Release All
-            </AlertDialogAction>
+            <AlertDialogCancel disabled={bulkReleasing}>Close</AlertDialogCancel>
+            {!releaseResult && (
+              <AlertDialogAction
+                className="bg-emerald-600 hover:bg-emerald-700 text-white"
+                onClick={(e) => { e.preventDefault(); void releaseAllWithAudit() }}
+                disabled={bulkReleasing || releasablePreview.length === 0}
+              >
+                {bulkReleasing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                Release {releasablePreview.length}
+              </AlertDialogAction>
+            )}
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
