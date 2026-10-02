@@ -11,5 +11,5 @@ python-jose>=3.3.0
 requests>=2.34.2
 httpx>=0.27.0
 pyyaml>=6.0.3
-redis>=5.0.0
+redis>=8.1.0
 
