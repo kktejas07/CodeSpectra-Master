@@ -68,6 +68,11 @@ export async function GET(request: Request) {
     }
     const exam = owned.doc
 
+    // Pass/fail cutoff for this exam (set when results are released). Null
+    // means no verdict yet — those candidates stay in Completed.
+    const cutoffRaw = Number((exam as Record<string, unknown>).passing_score)
+    const cutoff = Number.isFinite(cutoffRaw) && cutoffRaw >= 0 && cutoffRaw <= 100 ? cutoffRaw : null
+
     const inviteCol = await candidateInvites()
     const subCol = await db.collection('exam_submissions')
 
@@ -131,16 +136,25 @@ export async function GET(request: Request) {
         completedAt = sub.submitted_at
         score = typeof sub.score === 'number' ? sub.score : undefined
         scorePct = pct(sub.score, sub.max_score)
+
+        // A verdict requires a cutoff. Prefer the explicit flag written at
+        // release; otherwise derive it from the exam's cutoff (passing_score)
+        // so the pass/fail lanes populate as soon as a cutoff is set — admins
+        // use this page to shortlist BEFORE releasing results to candidates.
         const released = Boolean(sub.released_at || sub.score_released)
-        if (released && sub.passed === true) {
+        let verdict: boolean | null = typeof sub.passed === 'boolean' ? sub.passed : null
+        if (verdict === null && cutoff !== null && scorePct !== undefined) {
+          verdict = scorePct >= cutoff
+        }
+
+        if (verdict === true) {
           status = 'passed'
           passed = true
-        } else if (released && sub.passed === false) {
+        } else if (verdict === false) {
           status = 'failed'
           passed = false
         } else {
-          // Submitted but unreleased (or legacy released without a flag):
-          // graded work in progress, not a verdict.
+          // Graded but no cutoff configured and not released → no verdict yet.
           status = 'completed'
         }
       } else if (invite && invite.status === 'active') {
