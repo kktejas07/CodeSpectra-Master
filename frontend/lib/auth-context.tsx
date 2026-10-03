@@ -67,7 +67,7 @@ interface AuthContextValue {
   sessionExpired: boolean
   clearSessionExpired: () => void
   signInWithEmail: (email: string, password: string, totpToken?: string, turnstileToken?: string) => Promise<void>
-  signUpWithEmail: (email: string, password: string, name: string, extendedProfileData?: Record<string, string>, turnstileToken?: string) => Promise<void>
+  signUpWithEmail: (email: string, password: string, name: string, extendedProfileData?: Record<string, string>, turnstileToken?: string, opts?: { inviteToken?: string }) => Promise<void>
   signInWithGoogle: () => Promise<void>
   signInWithGithub: () => Promise<void>
   signOut: () => Promise<void>
@@ -260,9 +260,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await reportFingerprint(json.user.id)
   }
 
-  const signUpWithEmailFn = async (email: string, password: string, name: string, extendedProfileData?: Record<string, string>, turnstileToken?: string) => {
+  const signUpWithEmailFn = async (email: string, password: string, name: string, extendedProfileData?: Record<string, string>, turnstileToken?: string, opts?: { inviteToken?: string }) => {
     const body: Record<string, string> = { email, password, name, ...(extendedProfileData || {}) }
     if (turnstileToken) body.turnstileToken = turnstileToken
+    if (opts?.inviteToken) body.inviteToken = opts.inviteToken
     await withFingerprint(body)
     const res = await csrfFetch('/api/auth/signup', {
       method: 'POST',

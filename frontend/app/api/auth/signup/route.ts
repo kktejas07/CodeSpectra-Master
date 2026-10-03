@@ -18,15 +18,50 @@ export const runtime = 'nodejs'
 export async function POST(request: Request) {
   try {
     const ipKey = clientLimiterKeyFromRequest(request, null)
-    const ipCheck = await rateLimitRedis(`signup:ip:${ipKey}`, 3, 3600_000)
-    if (!ipCheck.ok) {
-      return NextResponse.json(
-        { error: `Too many accounts created from this location. Try again later.` },
-        { status: 429 },
-      )
+    const rawIp = ipKey.replace(/^(ip:|u:)/, '')
+
+    // Peek at the body early: a VALID assessment invite exempts this signup
+    // from the per-IP throttle. Bulk-invited candidates (college labs, shared
+    // NAT) would otherwise trip the 3/hour/IP bot guard on the 4th signup.
+    // The token must exist, match this email, and be unused — a forged or
+    // spent token falls straight back through to the throttle below.
+    let invitedBypass = false
+    let previewBody: Record<string, unknown> = {}
+    try {
+      previewBody = await request.clone().json()
+    } catch {
+      previewBody = {}
+    }
+    const previewToken = typeof previewBody.inviteToken === 'string' ? previewBody.inviteToken.trim() : ''
+    const previewEmail = typeof previewBody.email === 'string' ? previewBody.email.toLowerCase().trim() : ''
+    if (previewToken && previewEmail) {
+      try {
+        const db = await getMongoDb()
+        const inv = await db.collection('candidate_invites').findOne({ token: previewToken })
+        if (
+          inv &&
+          String(inv.email || '').toLowerCase() === previewEmail &&
+          (inv.status === 'pending' || inv.status === 'active')
+        ) {
+          invitedBypass = true
+        }
+      } catch {
+        invitedBypass = false
+      }
     }
 
-    const rawIp = ipKey.replace(/^(ip:|u:)/, '')
+    if (!invitedBypass) {
+      const ipCheck = await rateLimitRedis(`signup:ip:${ipKey}`, 3, 3600_000)
+      if (!ipCheck.ok) {
+        return NextResponse.json(
+          { error: `Too many accounts created from this location. Try again later.` },
+          { status: 429 },
+        )
+      }
+    } else {
+      await writeAuditLog({ action: 'auth.signup', outcome: 'success', actor: previewEmail, actorIp: rawIp, resource: 'auth/signup', resourceType: 'auth', severity: 'info', detail: 'IP throttle bypassed via valid assessment invite', user_id: previewEmail })
+    }
+
     if (await isIpBlocked(rawIp)) {
       await recordSecurityEvent({
         type: 'auth.blocked_ip',
