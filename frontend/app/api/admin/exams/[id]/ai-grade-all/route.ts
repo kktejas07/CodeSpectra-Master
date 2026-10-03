@@ -90,6 +90,7 @@ export async function POST(
     outer:
     for (const submission of submissions) {
       const userId = submission.user_id
+      try {
       const details = (submission.details || []) as DetailDoc[]
       const answers = (submission.answers || {}) as Record<string, string>
       const failList: string[] = []
@@ -185,6 +186,12 @@ export async function POST(
 
       await persist(userId, updatedDetails)
       results.push({ userId, graded: gradedInSub, failed: failList })
+      } catch (e) {
+        // One candidate's failure must not 500 the whole chunk (which would
+        // mark every candidate in it as failed on the client).
+        console.error('[CodeSpectra] ai-grade-all submission failed:', userId, e)
+        results.push({ userId, graded: 0, failed: ['processing error — retry'] })
+      }
     }
 
     // Tell the client whether more free-text grades remain (it loops until false).

@@ -47,21 +47,21 @@ export const PROVIDER_FALLBACK_CHAIN: {
   { provider: 'anthropic', model: 'claude-3-5-haiku-20241022', secretKey: 'anthropic_api_key', free: false },
 ]
 
-// Rate limit detection patterns
+// Rate limit detection patterns. NOTE: a rate limit is transient (retry after
+// a short wait). Credit/quota exhaustion is NOT — it won't recover by waiting,
+// so those are classified as dead below; retrying them just burned the request
+// budget (every grade stalled ~30s on the credits-less override model).
 const RATE_LIMIT_PATTERNS = [
   /429/i,
   /rate.?limit/i,
-  /quota.?exceeded/i,
-  /insufficient.?credits/i,
   /too.?many.?requests/i,
   /requests.*per.*minute/i,
   /requests.*per.*day/i,
-  /exceeded.*quota/i,
   /API Error \(429\)/i,
   /try again in (\d+)s/i,
 ]
 
-// Dead provider detection (non-recoverable errors)
+// Dead provider detection (non-recoverable — skip immediately, no wait)
 const DEAD_PROVIDER_PATTERNS = [
   /invalid.*api.*key/i,
   /authentication.*failed/i,
@@ -71,6 +71,14 @@ const DEAD_PROVIDER_PATTERNS = [
   /key.*not.*found/i,
   /disabled.*account/i,
   /suspended/i,
+  // Credit/billing exhaustion and hard quotas — waiting never fixes these.
+  /insufficient.?credits/i,
+  /exceeded.*quota/i,
+  /quota.?exceeded/i,
+  /402/i,
+  /billing/i,
+  /payment.*required/i,
+  /no.*credits/i,
 ]
 
 interface FallbackResult {
@@ -102,7 +110,7 @@ interface BackendCompleteArgs {
 /**
  * Detect if an error response indicates rate limiting
  */
-function isRateLimitError(text: string, status?: number): { isRateLimit: boolean; retryAfterSec?: number } {
+export function isRateLimitError(text: string, status?: number): { isRateLimit: boolean; retryAfterSec?: number } {
   if (status === 429) {
     const match = text.match(/try again in (\d+)s/i)
     return { isRateLimit: true, retryAfterSec: match ? parseInt(match[1]) : 60 }
@@ -119,7 +127,7 @@ function isRateLimitError(text: string, status?: number): { isRateLimit: boolean
 /**
  * Detect if an error is non-recoverable (dead provider)
  */
-function isDeadProvider(text: string, status?: number): boolean {
+export function isDeadProvider(text: string, status?: number): boolean {
   if (status === 401 || status === 403) return true
   for (const pattern of DEAD_PROVIDER_PATTERNS) {
     if (pattern.test(text)) return true
