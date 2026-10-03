@@ -6,6 +6,7 @@
  * Cost: HTTP fetch/RSS = free. LLM = existing platform AI keys (usage).
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { SIGNAL_FEEDS } from '@/lib/signals/feeds'
 import { fetchFeedItems } from '@/lib/signals/rss'
 import { rewriteSignal } from '@/lib/signals/rewrite'
@@ -27,7 +28,7 @@ function authorize(req: NextRequest): boolean {
   return fromQuery === expected || fromHeader === expected
 }
 
-export async function POST(req: NextRequest) {
+async function postImpl(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -101,6 +102,8 @@ export async function POST(req: NextRequest) {
     ids: created,
   })
 }
+
+export const POST = withCronHeartbeat('signals-ingest', postImpl)
 
 export async function GET(req: NextRequest) {
   return POST(req)

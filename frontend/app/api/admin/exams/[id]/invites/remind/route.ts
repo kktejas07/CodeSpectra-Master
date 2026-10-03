@@ -55,12 +55,17 @@ export async function POST(
 
         const result = await sendEmail(invite.email, template)
 
-        if (result.postalMessageId) {
-          await db.collection('candidate_invites').updateOne(
-            { id: invite.id },
-            { $set: { postal_message_id: result.postalMessageId, delivery_status: 'sending' } }
-          )
-        }
+        await db.collection('candidate_invites').updateOne(
+          { id: invite.id },
+          {
+            $set: {
+              ...(result.postalMessageId ? { postal_message_id: result.postalMessageId } : {}),
+              delivery_status: result.success ? 'sent' : 'failed',
+              delivery_updated_at: new Date().toISOString(),
+              ...(result.success ? {} : { delivery_error: 'Reminder send failed' }),
+            },
+          }
+        )
         sent++
       } catch (e) {
         errors.push(`Failed for ${invite.email}: ${e instanceof Error ? e.message : 'unknown'}`)

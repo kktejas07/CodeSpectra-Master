@@ -27,7 +27,16 @@ import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
 import { csrfFetch } from '@/lib/csrf-fetch'
 
-type LoopRow = {
+type RunMeta = {
+  lastRunAt: string | null
+  lastStatus: 'ok' | 'error' | null
+  lastDurationMs: number | null
+  lastError?: string | null
+  runs: number
+  failures: number
+}
+
+type LoopRow = RunMeta & {
   id: string
   name: string
   what: string
@@ -35,7 +44,7 @@ type LoopRow = {
   status: 'running' | 'disabled'
 }
 
-type HttpJob = {
+type HttpJob = RunMeta & {
   id: string
   path: string
   name: string
@@ -43,6 +52,7 @@ type HttpJob = {
   recommend: string
   cronHint: string
   auth: string
+  intervalMinutes: number
   configured: boolean
   status: 'ready' | 'needs_secret'
 }
@@ -85,6 +95,87 @@ type CronPayload = {
   scheduledWorkflows: WorkflowRow[]
   recentRuns: RunRow[]
   queue: { pending: number; total: number }
+}
+
+const SECRET_MISSING = (job: { configured: boolean }) => !job.configured
+
+/** "3m ago" / "2d ago" / "never". */
+function ago(iso: string | null): string {
+  if (!iso) return 'never'
+  const ms = Date.now() - new Date(iso).getTime()
+  if (!Number.isFinite(ms)) return 'never'
+  const s = Math.max(0, Math.round(ms / 1000))
+  if (s < 60) return `${s}s ago`
+  if (s < 3600) return `${Math.floor(s / 60)}m ago`
+  if (s < 86400) return `${Math.floor(s / 3600)}h ago`
+  return `${Math.floor(s / 86400)}d ago`
+}
+
+type JobState = { label: string; tone: 'ok' | 'warn' | 'bad'; hint: string }
+
+/**
+ * Evidence-based state. "Secret is set" only means the endpoint CAN run —
+ * lastRun proves it DID. Stale = no run within 2.5× its intended interval.
+ */
+function httpState(job: HttpJob): JobState {
+  if (SECRET_MISSING(job)) {
+    return { label: 'Needs CRON_SECRET', tone: 'warn', hint: 'Set the secret so your external cron can call it.' }
+  }
+  if (!job.lastRunAt) {
+    return { label: 'Never run', tone: 'warn', hint: 'No call recorded — point your external cron at this URL.' }
+  }
+  if (job.lastStatus === 'error') {
+    return { label: 'Last run failed', tone: 'bad', hint: job.lastError || 'The last invocation returned an error.' }
+  }
+  const ageMs = Date.now() - new Date(job.lastRunAt).getTime()
+  if (ageMs > job.intervalMinutes * 2.5 * 60_000) {
+    return { label: 'Stale', tone: 'warn', hint: `No run within ${Math.round(job.intervalMinutes * 2.5)}m (expected every ${job.intervalMinutes}m).` }
+  }
+  return { label: 'Running', tone: 'ok', hint: 'Ran recently.' }
+}
+
+function loopState(loop: LoopRow): JobState {
+  if (loop.status === 'disabled') {
+    return { label: 'Disabled', tone: 'warn', hint: 'NEXT_PUBLIC_DISABLE_SCHEDULER=1' }
+  }
+  if (!loop.lastRunAt) {
+    return { label: 'Waiting', tone: 'warn', hint: 'Loop started but has not ticked yet.' }
+  }
+  if (loop.lastStatus === 'error') {
+    return { label: 'Last tick failed', tone: 'bad', hint: loop.lastError || 'Last tick errored.' }
+  }
+  const ageMs = Date.now() - new Date(loop.lastRunAt).getTime()
+  const staleAfter = loop.id === 'trial-expiry' ? 27 * 60 * 60_000 : 3 * 60_000
+  if (ageMs > staleAfter) {
+    return { label: 'Stale', tone: 'warn', hint: `Last tick ${ago(loop.lastRunAt)}.` }
+  }
+  return { label: 'Running', tone: 'ok', hint: 'Ticking normally.' }
+}
+
+function StatePill({ state }: { state: JobState }) {
+  const cls =
+    state.tone === 'ok'
+      ? 'bg-emerald-500/15 text-emerald-700 dark:text-emerald-300'
+      : state.tone === 'bad'
+        ? 'bg-rose-500/15 text-rose-700 dark:text-rose-300'
+        : 'bg-amber-500/15 text-amber-800 dark:text-amber-300'
+  return (
+    <Badge variant="outline" className={`shrink-0 border-transparent ${cls}`} title={state.hint}>
+      {state.label}
+    </Badge>
+  )
+}
+
+function RunLine({ meta, errorLabel }: { meta: RunMeta; errorLabel?: string }) {
+  return (
+    <p className="mt-1 wrap-break-word text-[11px] text-muted-foreground">
+      Last run: {ago(meta.lastRunAt)}
+      {meta.lastDurationMs != null ? ` · ${meta.lastDurationMs}ms` : ''}
+      {meta.runs > 0 ? ` · ${meta.runs} run${meta.runs === 1 ? '' : 's'}` : ''}
+      {meta.failures > 0 ? ` · ${meta.failures} failed` : ''}
+      {errorLabel ? ` · ${errorLabel}` : ''}
+    </p>
+  )
 }
 
 function StatusPill({
@@ -182,6 +273,9 @@ export default function CronJobsPage() {
   }
 
   const secretMissing = Boolean(data && !data.scheduler.cronSecretSet)
+  const httpStates = data ? data.httpJobs.map(httpState) : []
+  const runningJobs = httpStates.filter((s) => s.tone === 'ok').length
+  const attentionJobs = httpStates.filter((s) => s.tone !== 'ok').length
 
   return (
     <div className="w-full min-w-0 space-y-6 p-4 sm:p-6">
@@ -363,12 +457,9 @@ export default function CronJobsPage() {
                     <p className="mt-1 wrap-break-word text-[11px] text-muted-foreground">
                       Suggested: {loop.recommend}
                     </p>
+                    <RunLine meta={loop} />
                   </div>
-                  <StatusPill
-                    ok={loop.status === 'running'}
-                    okLabel="Running"
-                    badLabel="Disabled"
-                  />
+                  <StatePill state={loopState(loop)} />
                 </div>
               ))}
             </div>
@@ -376,12 +467,17 @@ export default function CronJobsPage() {
 
           <Card className="min-w-0 overflow-hidden">
             <div className="border-b border-border/60 px-4 py-3 sm:px-5">
-              <h2 className="flex items-center gap-2 text-sm font-semibold">
+              <h2 className="flex flex-wrap items-center gap-2 text-sm font-semibold">
                 <Zap className="h-4 w-4 shrink-0" /> HTTP cron endpoints
+                <Badge variant="success" className="text-[10px]">{runningJobs} running</Badge>
+                {attentionJobs > 0 ? (
+                  <Badge variant="warning" className="text-[10px]">{attentionJobs} need attention</Badge>
+                ) : null}
               </h2>
               <p className="mt-0.5 wrap-break-word text-xs text-muted-foreground">
                 Point Dokploy / cron-job.org / GitHub Actions at these URLs with{' '}
-                <code className="rounded bg-muted px-1">?secret=CRON_SECRET</code>.
+                <code className="rounded bg-muted px-1">?secret=CRON_SECRET</code>. Status is based on
+                the last recorded call, not just the secret being set.
               </p>
             </div>
             <div className="divide-y divide-border/60">
@@ -393,11 +489,7 @@ export default function CronJobsPage() {
                   <div className="min-w-0 flex-1 space-y-1">
                     <div className="flex flex-wrap items-center gap-2">
                       <p className="text-sm font-medium">{job.name}</p>
-                      <StatusPill
-                        ok={job.status === 'ready'}
-                        okLabel="Ready"
-                        badLabel="Needs CRON_SECRET"
-                      />
+                      <StatePill state={httpState(job)} />
                       {job.id === 'signals-ingest' ? (
                         <Badge variant="outline" className="gap-1 text-[10px]">
                           <Radio className="h-3 w-3" /> Signals
@@ -405,6 +497,7 @@ export default function CronJobsPage() {
                       ) : null}
                     </div>
                     <p className="wrap-break-word text-xs text-muted-foreground">{job.what}</p>
+                    <RunLine meta={job} errorLabel={job.lastStatus === 'error' && job.lastError ? job.lastError : undefined} />
                     <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
                       <code className="max-w-full break-all rounded bg-muted px-1.5 py-0.5">
                         {job.path}

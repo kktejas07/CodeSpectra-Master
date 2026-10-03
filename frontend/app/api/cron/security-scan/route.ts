@@ -1,4 +1,5 @@
 import { NextResponse } from 'next/server'
+import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
 import { requireSuperAdmin } from '@/lib/route-auth'
 
@@ -24,7 +25,7 @@ interface ScanReport {
 }
 
 /** POST /api/cron/security-scan?secret=CRON_SECRET — ingest weekly scan report (server cron). */
-export async function POST(req: Request) {
+async function postImpl(req: Request) {
   try {
     const url = new URL(req.url)
     const expected = process.env.CRON_SECRET?.trim() || ''
@@ -75,6 +76,8 @@ export async function POST(req: Request) {
 }
 
 /** GET — latest report + lightweight history (superadmin). */
+export const POST = withCronHeartbeat('security-scan', postImpl)
+
 export async function GET() {
   const gate = await requireSuperAdmin()
   if ('error' in gate) {

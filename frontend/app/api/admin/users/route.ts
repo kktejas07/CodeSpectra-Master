@@ -261,15 +261,32 @@ export async function POST(request: Request) {
       welcomeEmailSent = result.success
       delivery = result.provider
 
-      // Store Postal message ID for delivery tracking
-      if (result.postalMessageId) {
-        await invitesCol.updateOne(
-          { id: inviteId },
-          { $set: { postal_message_id: result.postalMessageId } }
-        )
-      }
+      // Delivery lifecycle: sent (provider accepted) → delivered/opened via
+      // Postal webhook; failed when every provider throws. Never left on the
+      // initial 'sending' once we know the outcome.
+      await invitesCol.updateOne(
+        { id: inviteId },
+        {
+          $set: {
+            ...(result.postalMessageId ? { postal_message_id: result.postalMessageId } : {}),
+            delivery_status: result.success ? 'sent' : 'failed',
+            delivery_updated_at: new Date().toISOString(),
+            ...(result.success ? {} : { delivery_error: 'All email providers failed' }),
+          },
+        }
+      )
     } catch {
       // All providers failed — link still returned for manual copy
+      await invitesCol.updateOne(
+        { id: inviteId },
+        {
+          $set: {
+            delivery_status: 'failed',
+            delivery_updated_at: new Date().toISOString(),
+            delivery_error: 'All email providers failed',
+          },
+        }
+      ).catch(() => {})
     }
 
     return NextResponse.json({

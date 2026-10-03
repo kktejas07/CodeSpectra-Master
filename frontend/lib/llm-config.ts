@@ -136,7 +136,7 @@ export const LLM_PROVIDERS: ProviderDef[] = [
     id: 'cerebras',
     label: 'Cerebras (fast inference)',
     free: true,
-    models: ['llama-3.3-70b', 'openai/gpt-oss-120b'],
+    models: ['gpt-oss-120b', 'zai-glm-4.7'],
     endpoint: 'https://api.cerebras.ai/v1',
     authType: 'bearer',
   },

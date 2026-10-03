@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server'
+import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { getMongoDb } from '@/lib/mongodb'
 import { sendEmail } from '@/lib/send-email'
 
@@ -17,7 +18,7 @@ function authorize(req: NextRequest): boolean {
   return fromQuery === expected || fromHeader === expected
 }
 
-export async function POST(req: NextRequest) {
+async function postImpl(req: NextRequest) {
   if (!authorize(req)) {
     return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
   }
@@ -74,6 +75,8 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ error: 'Failed to send digest' }, { status: 500 })
   }
 }
+
+export const POST = withCronHeartbeat('weekly-digest', postImpl)
 
 export async function GET(req: NextRequest) {
   return POST(req)

@@ -2,7 +2,7 @@ import { backendComplete } from '@/lib/ai/backend'
 import { readPlatformLlmConfig } from '@/lib/ai/get-user-model'
 import { answersEqual, multisetEqual, canonicalObjectiveType } from '@/lib/grading'
 import { executeOnce } from '@/lib/piston'
-import { verifyGrade } from '@/lib/ai/jev'
+import { verifyGrade, isJevConfigured } from '@/lib/ai/jev'
 
 export const OBJECTIVE_TYPES = ['multiple-choice', 'mcq', 'true_false', 'multiple_response', 'fill_blanks']
 
@@ -311,28 +311,40 @@ Be strict but fair. Grade what is actually there, not potential. If it is code, 
   // Execution-scored code (finalAwarded set) skips this: the score is measured,
   // not judged, so there is nothing to second-guess. For LLM-judged grades Jev
   // can only ESCALATE to human review, never clear the grader's own caution.
-  // Jev unavailable (no key / error) also escalates — fail-closed, never a
-  // silent pass. One extra API call per free-text grade, paced by the caller.
+  // No Jev key configured → skip silently and trust the LLM's own confidence
+  // gate below (otherwise free-text could never auto-complete without a key).
+  // Jev configured but unreachable/disagreeing → escalate (fail-closed).
+  // One extra API call per free-text grade, paced by the caller.
   let jev_agree: boolean | null = null
   let jev_confidence: number | null = null
   if (finalAwarded === undefined) {
+    let jevOn = false
     try {
-      const jev = await verifyGrade({
-        questionText,
-        modelAnswer,
-        candidateAnswer,
-        awarded: recommended,
-        maxPoints,
-      })
-      if (jev) {
-        jev_agree = jev.agree
-        jev_confidence = jev.confidence
-        if (!jev.agree && jev.confidence >= 0.7) requires_human_review = true
-      } else {
+      jevOn = await isJevConfigured()
+    } catch {
+      jevOn = false
+    }
+    if (!jevOn) {
+      // No verifier configured — LLM confidence (< 0.75) already flags above.
+    } else {
+      try {
+        const jev = await verifyGrade({
+          questionText,
+          modelAnswer,
+          candidateAnswer,
+          awarded: recommended,
+          maxPoints,
+        })
+        if (jev) {
+          jev_agree = jev.agree
+          jev_confidence = jev.confidence
+          if (!jev.agree && jev.confidence >= 0.7) requires_human_review = true
+        } else {
+          requires_human_review = true
+        }
+      } catch {
         requires_human_review = true
       }
-    } catch {
-      requires_human_review = true
     }
   }
 

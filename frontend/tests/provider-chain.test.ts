@@ -59,6 +59,14 @@ describe('provider fallback chain', () => {
     const providers = new Set(PROVIDER_FALLBACK_CHAIN.map(e => e.provider))
     expect(providers.size).toBeGreaterThanOrEqual(8)
   })
+
+  it('cerebras never uses llama-3.3-70b (retired by vendor; groq/openrouter variants with longer IDs are unaffected)', () => {
+    for (const e of PROVIDER_FALLBACK_CHAIN) {
+      if (e.provider === 'cerebras') {
+        expect(e.model).not.toBe('llama-3.3-70b')
+      }
+    }
+  })
 })
 
 describe('course worker chain', () => {

@@ -19,6 +19,7 @@
  * so single-instance deployments work out of the box.
  */
 import { NextRequest, NextResponse } from 'next/server'
+import { withCronHeartbeat } from '@/lib/cron-heartbeat'
 import { runDueWorkflows, startSchedulerLoop } from '@/lib/scheduler'
 import { getMongoDb } from '@/lib/mongodb'
 
@@ -66,9 +67,6 @@ async function handle(req: NextRequest) {
   return NextResponse.json({ ok: true, ...report, autoClosedExams: autoClosed })
 }
 
-export async function POST(req: NextRequest) {
-  return handle(req)
-}
-export async function GET(req: NextRequest) {
-  return handle(req)
-}
+const cronTick = withCronHeartbeat('tick', handle)
+export const POST = cronTick
+export const GET = cronTick

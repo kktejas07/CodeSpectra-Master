@@ -36,7 +36,7 @@ export const PROVIDER_FALLBACK_CHAIN: {
   { provider: 'nvidia', model: 'nvidia/llama-3.1-nemotron-70b-instruct', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: true },
   { provider: 'nvidia', model: 'deepseek-ai/deepseek-v4-flash-0731', endpoint: 'https://integrate.api.nvidia.com/v1', secretKey: 'nvidia_api_key', free: true },
   { provider: 'gemini', model: 'gemini-3-flash-preview', secretKey: 'gemini_api_key', free: true },
-  { provider: 'cerebras', model: 'llama-3.3-70b', endpoint: 'https://api.cerebras.ai/v1', secretKey: 'cerebras_api_key', free: true },
+  { provider: 'cerebras', model: 'gpt-oss-120b', endpoint: 'https://api.cerebras.ai/v1', secretKey: 'cerebras_api_key', free: true },
   { provider: 'opencode', model: 'mimo-v2.5-free', secretKey: 'opencode_api_key', free: true },
   { provider: 'opencode', model: 'minimax-m3-free', secretKey: 'opencode_api_key', free: true },
   { provider: 'openrouter', model: 'openrouter/auto', secretKey: 'openrouter_api_key', free: true },

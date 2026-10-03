@@ -16,6 +16,7 @@
  * executes each via the existing engine. Returns a per-workflow log.
  */
 import { executeWorkflow } from './workflow-engine'
+import { recordCronRun } from './cron-heartbeat'
 import { logger } from './logger'
 import {
   workflows,
@@ -231,10 +232,21 @@ export function startSchedulerLoop(): void {
   if (process.env.NEXT_PUBLIC_DISABLE_SCHEDULER === '1') return
   _bootstrapped = true
 
+  const tick = async () => {
+    const started = Date.now()
+    try {
+      await runDueWorkflows()
+      await recordCronRun('scheduler-loop', true, Date.now() - started)
+    } catch (e) {
+      await recordCronRun('scheduler-loop', false, Date.now() - started, e instanceof Error ? e.message : String(e))
+      console.error('[scheduler] tick error:', e)
+    }
+  }
+
   setTimeout(() => {
-    void runDueWorkflows().catch((e) => console.error('[scheduler] tick error:', e))
+    void tick()
     _timer = setInterval(() => {
-      void runDueWorkflows().catch((e) => console.error('[scheduler] tick error:', e))
+      void tick()
     }, 60_000)
   }, alignFirstTickMs())
 }
@@ -259,9 +271,13 @@ export function startTrialExpiryLoop(): void {
 }
 
 async function checkTrials(): Promise<void> {
+  const started = Date.now()
   try {
     const { expireTrials } = await import('./coupon-service')
     const count = await expireTrials()
     if (count > 0) logger.info(`[trial] Expired ${count} trial subscription(s)`)
-  } catch { /* ignore */ }
+    await recordCronRun('trial-expiry', true, Date.now() - started)
+  } catch {
+    await recordCronRun('trial-expiry', false, Date.now() - started)
+  }
 }

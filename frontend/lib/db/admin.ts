@@ -81,7 +81,7 @@ export interface CandidateInviteDoc {
   created_at: string
   updated_at?: string | null
   postal_message_id?: number | null
-  delivery_status?: 'sending' | 'delivered' | 'failed' | 'bounced' | null
+  delivery_status?: 'sending' | 'sent' | 'delivered' | 'opened' | 'failed' | 'bounced' | null
   delivery_error?: string | null
   delivery_updated_at?: string | null
 }

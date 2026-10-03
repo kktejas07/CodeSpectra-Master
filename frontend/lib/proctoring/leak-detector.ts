@@ -1,4 +1,5 @@
 import { getMongoDb } from '@/lib/mongodb'
+import { buildBankAnswerMap, bankAnswerFor } from '@/lib/proctoring/plagiarism-detector'
 
 export interface LeakDetectionResult {
   leakedQuestions: Array<{
@@ -42,12 +43,8 @@ export async function detectLeaks(examId: string): Promise<LeakDetectionResult> 
     return { leakedQuestions: [], totalFlagged: 0 }
   }
 
-  // Build map for O(1) lookup: question_id or question_text -> answer
-  const bankMap = new Map<string, string>()
-  for (const b of questionBank) {
-    if (b.question_id) bankMap.set(b.question_id, String(b.answer || '').trim().toLowerCase())
-    if (b.question_text) bankMap.set(b.question_text, String(b.answer || '').trim().toLowerCase())
-  }
+  // Shared real-shape bank map (BankQuestionDoc fields — see plagiarism-detector).
+  const bankMap = buildBankAnswerMap(questionBank as Array<Record<string, unknown>>)
 
   // Pre-process submissions by question for efficient counting
   const submissionsByQuestion: Record<string, string[]> = {}
@@ -63,7 +60,7 @@ export async function detectLeaks(examId: string): Promise<LeakDetectionResult> 
   }
 
   for (const q of questions) {
-    const bankAnswer = bankMap.get(q.id) || bankMap.get(q.question)
+    const bankAnswer = bankAnswerFor(bankMap, q as { id?: unknown; title?: unknown; prompt?: unknown; question?: unknown })
     if (!bankAnswer) continue
 
     const userAnswers = submissionsByQuestion[q.id] || []

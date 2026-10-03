@@ -55,7 +55,12 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: 'Missing message.id or event type' }, { status: 400 })
   }
 
-  const deliveryStatus = STATUS_MAP[eventType] || null
+  // Lifecycle: sending → sent (provider accepted) → delivered (webhook) →
+  // opened (tracking pixel / link click). Unknown open/click-style events map
+  // to opened so new Postal event names degrade honestly instead of dropping.
+  const deliveryStatus =
+    STATUS_MAP[eventType] ||
+    (/open|click/i.test(eventType) ? 'opened' : null)
   if (!deliveryStatus) {
     return NextResponse.json({ ok: true, skipped: eventType })
   }

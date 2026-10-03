@@ -8,7 +8,8 @@ import { Card } from '@/components/ui/card'
 import { Input } from '@/components/ui/input'
 import { Label } from '@/components/ui/label'
 import { Textarea } from '@/components/ui/textarea'
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select'
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover'
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from '@/components/ui/command'
 import { DataTable, type DataTableColumn } from '@/components/ui/data-table'
 import { usePageGuard } from '@/lib/use-page-guard'
 import { useToast } from '@/lib/toast-context'
@@ -24,7 +25,9 @@ import {
   AlertTriangle,
   Send,
   Check,
+  ChevronsUpDown,
 } from 'lucide-react'
+import { cn } from '@/lib/utils'
 import { SkeletonCard, SkeletonText } from '@/components/ui/skeleton-boneyard'
 
 interface ExamOption {
@@ -55,6 +58,7 @@ export default function BulkSchedulePage() {
   const [exams, setExams] = useState<ExamOption[]>([])
   const [loadingExams, setLoadingExams] = useState(true)
   const [selectedExamId, setSelectedExamId] = useState('')
+  const [examPickerOpen, setExamPickerOpen] = useState(false)
   const selectedExam = exams.find(e => e.id === selectedExamId) || null
 
   const [candidates, setCandidates] = useState<ParsedCandidate[]>([])
@@ -236,7 +240,7 @@ export default function BulkSchedulePage() {
   if (!gate.ready) return null
 
   return (
-    <div className="max-w-5xl mx-auto space-y-6">
+    <div className="w-full space-y-6">
       {/* Header */}
       <div className="flex items-center gap-3">
         <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary/10">
@@ -271,19 +275,50 @@ export default function BulkSchedulePage() {
         {step === 0 && (
           <div className="space-y-4">
             <h2 className="text-lg font-semibold">Select Assessment</h2>
-            <p className="text-sm text-muted-foreground">Choose which assessment to schedule for your candidates.</p>
-            <Select value={selectedExamId} onValueChange={setSelectedExamId}>
-              <SelectTrigger className="max-w-md">
-                <SelectValue placeholder={loadingExams ? 'Loading assessments...' : 'Select an assessment'} />
-              </SelectTrigger>
-              <SelectContent>
-                {exams.map(e => (
-                  <SelectItem key={e.id} value={e.id}>
-                    {e.title}{e.subject ? ` — ${e.subject}` : ''}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <p className="text-sm text-muted-foreground">Choose which assessment to schedule for your candidates. Search by title or role.</p>
+            <Popover open={examPickerOpen} onOpenChange={setExamPickerOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={examPickerOpen}
+                  className="w-full max-w-xl justify-between font-normal"
+                  disabled={loadingExams}
+                >
+                  <span className="truncate">
+                    {loadingExams
+                      ? 'Loading assessments...'
+                      : selectedExam
+                        ? `${selectedExam.title}${selectedExam.subject ? ` — ${selectedExam.subject}` : ''}`
+                        : 'Select an assessment'}
+                  </span>
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent align="start" className="w-(--radix-popover-trigger-width) p-0">
+                <Command>
+                  <CommandInput placeholder="Search assessments..." />
+                  <CommandList>
+                    <CommandEmpty>No assessment found.</CommandEmpty>
+                    <CommandGroup>
+                      {exams.map(e => (
+                        <CommandItem
+                          key={e.id}
+                          value={`${e.title} ${e.subject || ''} ${e.id}`}
+                          onSelect={() => {
+                            setSelectedExamId(e.id)
+                            setExamPickerOpen(false)
+                          }}
+                        >
+                          <Check className={cn('mr-2 h-4 w-4 shrink-0', selectedExamId === e.id ? 'opacity-100' : 'opacity-0')} />
+                          <span className="truncate">{e.title}{e.subject ? ` — ${e.subject}` : ''}</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
             <div className="flex justify-end">
               <Button disabled={!selectedExamId} onClick={() => setStep(1)}>
                 Next <ArrowRight className="ml-2 h-4 w-4" />

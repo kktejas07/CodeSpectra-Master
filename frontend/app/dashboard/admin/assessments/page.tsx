@@ -593,12 +593,12 @@ export default function AdminExamsPage() {
       )}
 
       <Dialog open={isModalOpen} onOpenChange={setIsModalOpen}>
-        <DialogContent className="sm:max-w-160">
+        <DialogContent className="sm:max-w-5xl max-h-[92vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingExam ? 'Edit Assessment' : 'Create Assessment'}</DialogTitle>
           </DialogHeader>
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 py-4">
-            <div className="col-span-1 sm:col-span-2 grid gap-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-5 gap-y-4 py-4">
+            <div className="col-span-1 sm:col-span-2 lg:col-span-3 grid gap-2">
               <Label htmlFor="title">Title</Label>
               <Input id="title" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="e.g. JavaScript Fundamentals" />
             </div>
@@ -679,15 +679,49 @@ export default function AdminExamsPage() {
                 <span className="block text-xs text-muted-foreground font-normal">Disable legacy ?share=true URLs — candidates must use token links or invites.</span>
               </span>
             </label>
+            <div className="sm:col-span-2 lg:col-span-3 rounded-lg border bg-muted/20 p-4 space-y-3">
+              <div>
+                <p className="text-sm font-medium">Identity verification</p>
+                <p className="text-xs text-muted-foreground">Turn off either step to let candidates skip it. Both off = consent only, exam starts directly.</p>
+              </div>
+              <div className="grid gap-3 sm:grid-cols-2">
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireIdVerification">
+                <input
+                  id="requireIdVerification"
+                  type="checkbox"
+                  checked={requireIdVerification}
+                  onChange={(e) => setRequireIdVerification(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Require ID verification
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture/upload a Government ID (OCR name match). Off = skip ID step.</span>
+                </span>
+              </label>
+              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireFaceCapture">
+                <input
+                  id="requireFaceCapture"
+                  type="checkbox"
+                  checked={requireFaceCapture}
+                  onChange={(e) => setRequireFaceCapture(e.target.checked)}
+                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
+                />
+                <span>
+                  Require face capture
+                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture a live selfie (biometric verify + enroll). Off = skip face step.</span>
+                </span>
+              </label>
+              </div>
+            </div>
             <div className="grid gap-2">
               <Label htmlFor="questions">Questions</Label>
               <Input id="questions" type="number" min="0" value={questions} onChange={(e) => setQuestions(parseInt(e.target.value) || 0)} />
             </div>
-            <div className="sm:col-span-2 grid gap-2">
+            <div className="sm:col-span-2 lg:col-span-3 grid gap-2">
               <Label htmlFor="techStack">Topics / Skills (comma separated)</Label>
               <Input id="techStack" value={techStack} onChange={(e) => setTechStack(e.target.value)} placeholder="e.g. Selenium, TestNG, API Testing, SQL" />
             </div>
-            <div className="flex items-center justify-between mt-2 sm:col-span-2">
+            <div className="flex items-center justify-between mt-2 sm:col-span-2 lg:col-span-3">
               <div className="space-y-0.5">
                 <Label>Access Type</Label>
                 <div className="text-sm text-muted-foreground">
@@ -719,7 +753,7 @@ export default function AdminExamsPage() {
                 </button>
               </div>
             </div>
-            <div className="flex items-center justify-between mt-2 sm:col-span-2">
+            <div className="flex items-center justify-between mt-2 sm:col-span-2 lg:col-span-3">
               <div className="space-y-0.5">
                 <Label>Published</Label>
                 <div className="text-sm text-muted-foreground">
@@ -828,38 +862,6 @@ export default function AdminExamsPage() {
               </div>
             ) : (
               <>
-            <div className="sm:col-span-2 rounded-lg border bg-muted/20 p-3 space-y-3">
-              <div>
-                <p className="text-sm font-medium">Identity verification</p>
-                <p className="text-xs text-muted-foreground">Turn off either step to let candidates skip it. Both off = consent only, exam starts directly.</p>
-              </div>
-              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireIdVerification">
-                <input
-                  id="requireIdVerification"
-                  type="checkbox"
-                  checked={requireIdVerification}
-                  onChange={(e) => setRequireIdVerification(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
-                />
-                <span>
-                  Require ID verification
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture/upload a Government ID (OCR name match). Off = skip ID step.</span>
-                </span>
-              </label>
-              <label className="flex items-start gap-2 text-sm cursor-pointer" htmlFor="requireFaceCapture">
-                <input
-                  id="requireFaceCapture"
-                  type="checkbox"
-                  checked={requireFaceCapture}
-                  onChange={(e) => setRequireFaceCapture(e.target.checked)}
-                  className="mt-1 h-4 w-4 rounded border-input accent-primary"
-                />
-                <span>
-                  Require face capture
-                  <span className="block text-xs text-muted-foreground font-normal">Candidates capture a live selfie (biometric verify + enroll). Off = skip face step.</span>
-                </span>
-              </label>
-            </div>
             <div className="grid gap-2">
                   <Label>Paste CSV (email, name)</Label>
                   <p className="text-xs text-muted-foreground">

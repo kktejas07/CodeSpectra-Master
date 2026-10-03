@@ -55,6 +55,26 @@ function asProb(value: unknown): number | null {
 }
 
 /**
+ * Decide whether Jev agrees with an LLM grade. Pure + exported for tests.
+ *
+ * Verifies the GRADE, not the ANSWER: a wrong answer correctly scored 0 is a
+ * fine grade. Only MISALIGNMENT (concept-correct answer scored low, or a wrong
+ * answer scored high) or the model's own inconsistency check flags review.
+ */
+export function jevAgrees(input: {
+  conceptProb: number
+  scoreProb: number
+  awarded: number
+  maxPoints: number
+}): boolean {
+  const { conceptProb, scoreProb, awarded, maxPoints } = input
+  const goodAnswer = conceptProb >= 0.5
+  const highAward = maxPoints > 0 ? awarded >= maxPoints * 0.5 : false
+  const aligned = goodAnswer === highAward
+  return aligned && scoreProb >= 0.5
+}
+
+/**
  * Verify one LLM-produced grade. Returns null when verification is
  * unavailable (no key / network / shape) — the caller must then flag the
  * grade for human review rather than trusting it blindly.
@@ -119,10 +139,12 @@ export async function verifyGrade(input: {
   const scoreProb = asProb(answers.score_fits?.noul)
   if (conceptProb === null || scoreProb === null) return null
 
+  // Verify the GRADE, not the ANSWER — see jevAgrees for the rationale.
+  const agree = jevAgrees({ conceptProb, scoreProb, awarded, maxPoints })
+
   const confidence = (conceptProb + scoreProb) / 2
   return {
-    // Agree only when BOTH lean yes — a single strong no is a red flag.
-    agree: conceptProb >= 0.5 && scoreProb >= 0.5,
+    agree,
     confidence,
     conceptProb,
     scoreProb,
