@@ -6,6 +6,7 @@ export const runtime = 'nodejs'
 
 interface PipelineCandidate {
   id: string
+  userId?: string
   email: string
   name: string
   company?: string | null
@@ -19,6 +20,8 @@ interface PipelineCandidate {
   /** 0-100 percent — the value the UI renders. */
   scorePct?: number
   passed?: boolean
+  /** Recruitment stage set by admins via the drag-and-drop board. */
+  pipeline_stage?: string
 }
 
 interface PipelineResponse {
@@ -164,6 +167,7 @@ export async function GET(request: Request) {
 
       stages[status].push({
         id: String(invite?.id || sub?.id || email),
+        userId: String(sub?.user_id || invite?.user_id || ''),
         email,
         name: invite?.full_name || email.split('@')[0] || 'Candidate',
         company: (invite as any)?.company || null,
@@ -175,6 +179,8 @@ export async function GET(request: Request) {
         score,
         scorePct,
         passed,
+        // Admin-set recruitment stage (drag-and-drop board). 'none' = not yet moved.
+        pipeline_stage: String((sub as any)?.pipeline_stage || 'none'),
       })
     }
 
