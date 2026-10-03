@@ -17,6 +17,7 @@ import { ExtensionGate } from '@/components/proctoring/ExtensionGate'
 import { IdentityVerification } from '@/components/proctoring/IdentityVerification'
 import { SessionRecorder } from '@/components/proctoring/SessionRecorder'
 import { CodingQuestionEditor } from '@/components/assessment/CodingQuestionEditor'
+import { normalizeCodeLang } from '@/lib/code-languages'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
 import rehypeHighlight from 'rehype-highlight'
@@ -855,39 +856,33 @@ export default function CandidateAssessmentPage() {
                   )
                 })()
               ) : currentQ.type === 'coding' ? (
-                <CodingQuestionEditor
-                  question={currentQ as any}
-                  answer={typeof answers[currentQ.id] === 'string'
-                    ? (() => {
-                        try {
-                          const parsed = JSON.parse(answers[currentQ.id] as string)
-                          return parsed?.code || ''
-                        } catch {
-                          return answers[currentQ.id] as string
-                        }
-                      })()
-                    : ''}
-                  onChange={(code) => {
-                    let lang = 'python'
-                    if (answers[currentQ.id]) {
-                      try {
-                        const parsed = JSON.parse(answers[currentQ.id] as string)
-                        lang = parsed?.language || 'python'
-                      } catch {}
+                (() => {
+                  const stored = answers[currentQ.id]
+                  let code = ''
+                  let lang = normalizeCodeLang(currentQ.language || 'python')
+                  if (typeof stored === 'string') {
+                    try {
+                      const parsed = JSON.parse(stored)
+                      code = parsed?.code || ''
+                      lang = normalizeCodeLang(parsed?.language || lang)
+                    } catch {
+                      code = stored
                     }
-                    setAnswers(prev => ({ ...prev, [currentQ.id]: JSON.stringify({ language: lang, code }) }))
+                  }
+                  const writeAnswer = (nextLang: string, nextCode: string) => {
+                    setAnswers(prev => ({ ...prev, [currentQ.id]: JSON.stringify({ language: nextLang, code: nextCode }) }))
                     trackAnswer(currentQ.id, 'answer')
-                  }}
-                  language={(() => {
-                    if (answers[currentQ.id]) {
-                      try {
-                        const parsed = JSON.parse(answers[currentQ.id] as string)
-                        return parsed?.language || 'python'
-                      } catch {}
-                    }
-                    return currentQ.language || 'python'
-                  })()}
-                />
+                  }
+                  return (
+                    <CodingQuestionEditor
+                      question={currentQ as any}
+                      answer={code}
+                      language={lang}
+                      onChange={(nextCode) => writeAnswer(lang, nextCode ?? '')}
+                      onLanguageChange={(nextLang) => writeAnswer(nextLang, code)}
+                    />
+                  )
+                })()
               ) : (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between">
