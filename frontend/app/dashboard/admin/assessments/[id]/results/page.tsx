@@ -54,6 +54,7 @@ interface CandidateResult {
   released?: boolean
   deliveryStatus?: string | null
   graded?: boolean
+  needsReview?: boolean
   source?: string
 }
 
@@ -1238,6 +1239,7 @@ export default function ExamResultsPage() {
       cell: (row: CandidateResult) => {
         if (row.status !== 'completed') return <span className="text-xs text-muted-foreground">--</span>
         if (row.graded) return <span className="text-xs text-emerald-500 flex items-center gap-1"><CheckCircle2 className="w-3 h-3"/> Graded</span>
+        if (row.needsReview) return <span className="text-xs text-amber-500 flex items-center gap-1" title="AI graded, but a question is flagged for human review — open the candidate to finish"><Clock className="w-3 h-3"/> Needs review</span>
         return <span className="text-xs text-amber-500 flex items-center gap-1"><Clock className="w-3 h-3"/> Not Graded</span>
       },
     },

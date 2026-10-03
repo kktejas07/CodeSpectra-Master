@@ -89,6 +89,8 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
       released: boolean
       deliveryStatus: string | null
       graded: boolean
+      /** AI graded but a question is flagged for human review (pending_review). */
+      needsReview: boolean
       source?: string
     }
 
@@ -149,6 +151,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         released: sub?.released_at ? true : false,
         deliveryStatus: sub && inv.delivery_status === 'sending' ? 'delivered' : (inv.delivery_status || null),
         graded: sub ? (sub.has_pending_review === false) : false,
+        needsReview: sub ? (sub.has_pending_review === true) : false,
       })
     }
 
@@ -177,6 +180,7 @@ export async function GET(_request: Request, { params }: IdRouteContext) {
         released: sub.released_at ? true : false,
         deliveryStatus: 'delivered',
         graded: sub.has_pending_review === false,
+        needsReview: sub.has_pending_review === true,
         source: sub.source || 'public_link',
       })
       seenEmails.add(email.toLowerCase())
