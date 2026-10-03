@@ -29,8 +29,14 @@ export function rateLimitSlidingWindow(
 export function clientLimiterKeyFromRequest(request: Request, userId: string | null): string {
   if (userId) return `u:${userId}`
   const h = request.headers as Headers
-  const xf = h.get('x-forwarded-for')
-  const ip = xf?.split(',')[0]?.trim() || h.get('x-real-ip') || 'unknown'
+  // Behind Cloudflare, x-forwarded-for's first hop is a Cloudflare edge IP
+  // (shared by every user) — rate-limiting/auto-blocking on it punished the
+  // whole CDN edge. Prefer cf-connecting-ip / x-real-ip which carry the real
+  // client address, then fall back to the forwarded chain.
+  const cf = h.get('cf-connecting-ip')?.trim()
+  const real = h.get('x-real-ip')?.trim()
+  const xf = h.get('x-forwarded-for')?.split(',')[0]?.trim()
+  const ip = cf || real || xf || 'unknown'
   return `ip:${ip}`
 }
 
