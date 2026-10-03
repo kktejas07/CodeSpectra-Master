@@ -612,16 +612,34 @@ export default function ExamResultsPage() {
         const chunk = ids.slice(i, i + GRADE_CHUNK)
         chunk.forEach((c) => setItem(c, { status: 'grading', detail: 'Grading…' }))
         try {
-          const json = await postGradeChunk(chunk)
+          // The server caps free-text grades per request and reports hasMore;
+          // call back until the chunk is fully graded. Each round persists, so
+          // stopping/exiting never loses completed work.
+          let json = await postGradeChunk(chunk)
           graded += json.graded || 0
           failed += json.failed || 0
+          let rounds = 0
+          let lastGraded = json.graded || 0
+          while (json.hasMore && !gradeCancelRef.current && rounds < 40) {
+            rounds++
+            json = await postGradeChunk(chunk)
+            graded += json.graded || 0
+            failed += json.failed || 0
+            setGradeProg(prev => (prev ? { ...prev, graded, failed } : prev))
+            // No progress in a round = stuck (e.g. persistent rate limit) — stop
+            // rather than spin forever; re-running picks up the remainder.
+            if ((json.graded || 0) === 0 && lastGraded === 0) break
+            lastGraded = json.graded || 0
+          }
           const byUser = new Map<string, { graded: number; failed: string[] }>()
           for (const r of json.results || []) {
             if (r?.userId) byUser.set(r.userId, { graded: r.graded || 0, failed: Array.isArray(r.failed) ? r.failed : [] })
           }
           for (const c of chunk) {
             const u = byUser.get(c)
-            if (!u) {
+            if (json.hasMore && !u) {
+              setItem(c, { status: 'grading', detail: 'Remainder still pending — retry, or grade manually in review.' })
+            } else if (!u) {
               failedIds.add(c)
               setItem(c, { status: 'failed', detail: 'No result returned — retry grades only the remainder.' })
             } else if (u.failed.length > 0) {
